@@ -1,0 +1,70 @@
+using MediatR;
+using Microsoft.AspNetCore.Mvc;
+using Ettad.Workflows.Service.Command.CreateWorkflow;
+using Ettad.Workflows.Service.Command.DeleteWorkflow;
+using Ettad.Workflows.Service.Command.UpdateWorkflow;
+using Ettad.Workflows.Service.Queries.GetWorkflow;
+using Ettad.Workflows.Service.Queries.GetWorkflowById;
+using Ettad.CrossCutting.Comman.Models;
+using Ettad.ResponseHandler.Models;
+
+namespace Ettad.Workflows.API.Controllers
+{
+    [ApiController]
+    [Route("api/[controller]")]
+    public class WorkflowsController : ApiControllerBase
+    {
+        private readonly IMediator _mediator;
+
+        public WorkflowsController(IMediator mediator)
+        {
+            _mediator = mediator;
+        }
+
+        [HttpGet("{id}")]
+        public async Task<IActionResult> GetWorkflowById(int id)
+        {
+            var query = new GetWorkflowByIdQuery(id);
+            var result = await _mediator.Send(query);
+            return Ok(result);
+        }
+
+        [HttpPost("all")]
+        public async Task<IActionResult> GetAllWorkflows([FromBody] PagedListRequest request)
+        {
+            var query = new GetWorkflowsWithPaginationQuery(request);
+            var result = await _mediator.Send(query);
+            return Ok(result);
+        }
+
+        [HttpGet("all-list")]
+        public async Task<IActionResult> GetAllWorkflowsList()
+        {
+            var query = new GetWorkflowsQuery();
+            var result = await _mediator.Send(query);
+            return Ok(result);
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> CreateWorkflow([FromBody] CreateWorkflowCommand command)
+        {
+            var result = await _mediator.Send(command);
+            return Ok(result);
+        }
+
+        [HttpPut]
+        public async Task<IActionResult> UpdateWorkflow([FromBody] UpdateWorkflowCommand command)
+        {
+            var result = await _mediator.Send(command);
+            return Ok(result);
+        }
+
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> DeleteWorkflow(int id)
+        {
+            var command = new DeleteWorkflowCommand(id);
+            var result = await _mediator.Send(command);
+            return Ok(result);
+        }
+    }
+}

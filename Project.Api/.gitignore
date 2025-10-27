@@ -1,0 +1,9 @@
+# Serilog Log Files
+Logs/
+*.log
+*.txt
+
+# Ignore all log files but keep directory structure
+!Logs/.gitkeep
+!Logs/errors/.gitkeep
+
