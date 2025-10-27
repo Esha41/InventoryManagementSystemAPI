@@ -13,17 +13,11 @@ public class CrudPermissionsGenerator
 
     private readonly ApplicationDbContext _context;
 
-    public const string Reports = "Reports";
-    public const string Requests = "Requests";
-    public const string Analytics = "Analytics";
-    public const string Approvals = "Approvals";
-    public const string EmployeeData = "EmployeeData";
-    public const string TimeScheduling = "TimeScheduling";
-    public const string UserManagement = "UserManagement";
-    public const string SettingsSupport = "SettingsSupport";
-    public const string DeviceManagement = "DeviceManagement";
-    public const string AttendanceSettings = "AttendanceSettings";
-    public const string OrganizationSettings = "OrganizationSettings";
+    public const string Dashboard = "Dashboard";
+    public const string Requests = "Request Management";
+    public const string Inventory = "Inventory Management";
+    public const string UserManagement = "User Management";
+    public const string Reports = "Reports & Analytics";
 
     public CrudPermissionsGenerator( ApplicationDbContext context)
     {

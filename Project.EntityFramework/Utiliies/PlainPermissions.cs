@@ -10,46 +10,41 @@ namespace Ettad.Data.Enums
 {
     public enum PlainPermissions
     {
+
+        [Category(PlainPermissionsGenerator.General)]
+        dashboard_view,
+
+        [Category(PlainPermissionsGenerator.General)]
+        request_create,
+        [Category(PlainPermissionsGenerator.General)]
+        request_view,
+        [Category(PlainPermissionsGenerator.General)]
+        request_manage,
+
+        [Category(PlainPermissionsGenerator.General)]
+        asset_create,
+        [Category(PlainPermissionsGenerator.General)]
+        asset_view,
+        [Category(PlainPermissionsGenerator.General)]
+        inventory_view,
+
+
+        [Category(PlainPermissionsGenerator.General)]
+        user_view,
+        [Category(PlainPermissionsGenerator.General)]
+        role_view,
+        [Category(PlainPermissionsGenerator.General)]
+        role_edit,
+
+
         [Category(PlainPermissionsGenerator.General)]
         CanChangePassword,
-
         [Category(PlainPermissionsGenerator.General)]
-        EnableRecursiveReportingManager,
-
-        [Category(PlainPermissionsGenerator.General)]
-        IncludeEmployeeViewInManagerDashboard,
-
-        [Category(PlainPermissionsGenerator.General)]
-        EmailLogs,
-
-        [Category(PlainPermissionsGenerator.Calculation)]
-        CanAdjustAttendanceLog,
-        [Category(PlainPermissionsGenerator.Calculation)]
-        CanRecalculateAttendance,
-
-        [Category(PlainPermissionsGenerator.DataImport)]
-        CanImportData,
-
-        [Category(PlainPermissionsGenerator.EmployeeView)]
-        ViewAllEmployees,
-        [Category(PlainPermissionsGenerator.EmployeeView)]
-        BasedOnEntity,
-
-        [Category(PlainPermissionsGenerator.Reports)]
         CanGenerateReport,
-        [Category(PlainPermissionsGenerator.Reports)]
-        CanSchedulerReport,
-        [Category(PlainPermissionsGenerator.Reports)]
-        CanMakeReportAsPublic,
-
-        [Category(PlainPermissionsGenerator.Roles)]
-        CanAssignRolesToUser,
-        [Category(PlainPermissionsGenerator.Roles)]
-        CanReadUserRoles,
-        [Category(PlainPermissionsGenerator.Roles)]
-        CanReadUsersInRole,
-        [Category(PlainPermissionsGenerator.Roles)]
-        CanDeleteUserFromRole
+        [Category(PlainPermissionsGenerator.General)]
+        CanImportData,
+        [Category(PlainPermissionsGenerator.General)]
+        EmailLogs
     }
 
 }
