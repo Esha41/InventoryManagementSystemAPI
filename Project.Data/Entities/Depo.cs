@@ -9,7 +9,7 @@ namespace Ettad.Data.Entities
     {
         public string NameAr { get; set; }
         public string NameEn { get; set; }
-        public required string Location { get; set; }
+        public string Location { get; set; }
         public decimal Latitude { get; set; }
         public decimal Longitude { get; set; }
     }
