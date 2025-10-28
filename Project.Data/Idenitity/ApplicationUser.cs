@@ -13,7 +13,6 @@ namespace Ettad.Comman.Idenitity
         public int? EmployeeId { get; set; }
       //  public Employee Employee { get; set; }
 
-        public int? OrganizationId { get; set; }
-      //  public Organization Organization { get; set; }
+        public int? DepartmentId { get; set; }
     }
 }

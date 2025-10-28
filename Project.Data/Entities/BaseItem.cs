@@ -1,38 +1,37 @@
-﻿using Moujam.Casiher.Comman.Base;
-using System.ComponentModel.DataAnnotations;
+﻿using Ettad.Data.Enums;
+using Moujam.Casiher.Comman.Base;
 
-namespace BrzanData.Models
+namespace Ettad.Data.Entities
 {
     public abstract class BaseItem : AuditEntity<long> //Base  for Ammunation , Explosive , Weapon , Accessory
     {
-        [Required, MaxLength(200)]
         public int ItemNo { get; set; }
-
-        [Required, MaxLength(200)]
+       
+        public ItemType ItemType { get; set; }
+       
         public int Lot { get; set; }
         
-        [Required, MaxLength(200)]
         public string BatchNo { get; set; }
         
-        [Required, MaxLength(200)]
         public int HccId  { get; set; }
         
-        [Required, MaxLength(200)]
-        public int Manufacture { get; set; }
-        
-        [Required, MaxLength(200)]
         public int SupplierId { get; set; }
         
-        [Required, MaxLength(200)]
         public int CountryId { get; set; }
         
-        [Required, MaxLength(200)]
-        public int Quantity { get; set; }
-
-        [Required, MaxLength(200)]
         public int PartNo { get; set; }
 
-        [Required, MaxLength(200)]
-        public required string Depot { get; set; }
+        public string Depot { get; set; }
+
+        public int? ManufacturerId { get; set; }
+
+        #region Navigation Properties
+
+        public Hcc Hcc { get; set; }
+        public Supplier Supplier { get; set; }
+        public Country Country { get; set; }
+        public Manufacturer Manufacturer { get; set; }
+
+        #endregion
     }
 }

@@ -1,10 +1,9 @@
 ﻿using System.ComponentModel.DataAnnotations;
+using Ettad.Data.Entities;
 
-namespace BrzanData.Models
+namespace Ettad.Data.Entities
 {
     public class Weapon :BaseItem
     {
-        [Required, MaxLength(200)]
-        public required string Status { get; set; }
     }
 }

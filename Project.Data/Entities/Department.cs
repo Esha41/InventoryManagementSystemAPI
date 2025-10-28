@@ -1,7 +1,7 @@
 ﻿using Ettad.Data.Interfaces;
 using Moujam.Casiher.Comman.Base;
 
-namespace BrzanData.Models
+namespace Ettad.Data.Entities
 {
     public class Department : AuditEntity<int>, INameable
     {

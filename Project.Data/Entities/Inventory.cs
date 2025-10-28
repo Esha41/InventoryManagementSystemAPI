@@ -1,48 +1,26 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using Moujam.Casiher.Comman.Base;
 
-namespace BrzanData.Models
+namespace Ettad.Data.Entities
 {
-    public class Inventory
+    public class Inventory : AuditEntity<long>
     {
-        [Key]
-        [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
-        public int Id { get; set; }
-
-        [Required]
-        public int ItemId { get; set; }
-
-        // Navigation properties for joins
-        public Weapon? Weapon { get; set; }
-        public Ammunition? Ammunition { get; set; }
-        public Explosive? Explosive { get; set; }
-        public Accessory? Accessory { get; set; }
-
-        [Required]
         public int DepoId { get; set; }
-        public Depo? Depo { get; set; }
 
-        [Required]
-        public int ItemQuantity { get; set; }
+        public string InvoiceNumber { get; set; }
 
-        [Required]
-        public int CurrentQuantity { get; set; }
+        public DateTime? InvoiceDate { get; set; }
 
-       
-
-
-        [Required]
-        public int MinimumStockLevel { get; set; }
-
-        [Required]
-        public int MaximumStockLevel { get; set; }
+        public DateTime? RecievedDate {  get; set; }
                    
-        [Required]
-        public DateTime CreatedDate { get; set; }
-       
-        [MaxLength(500)]
-        public string? Notes { get; set; }
+        public string Notes { get; set; }
 
-       
+        #region Navigation Properties
+
+        public Depo Depo { get; set; }
+        public ICollection<InventoryDetail> InventoryDetails { get; set; }
+        
+        #endregion
     }
 }

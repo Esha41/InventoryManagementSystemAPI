@@ -1,6 +1,11 @@
-﻿namespace BrzanData.Models
+﻿using Ettad.Data.Interfaces;
+using Moujam.Casiher.Comman.Base;
+
+namespace Ettad.Data.Entities
 {
-    public class Unit
+    public class Unit : AuditEntity<int>, INameable
     {
+        public string NameAr { get; set; }
+        public string NameEn { get; set; }
     }
 }

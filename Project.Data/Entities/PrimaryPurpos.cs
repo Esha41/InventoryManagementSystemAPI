@@ -1,9 +1,9 @@
-﻿using Ettad.Data.Interfaces;
+using Ettad.Data.Interfaces;
 using Moujam.Casiher.Comman.Base;
 
 namespace Ettad.Data.Entities
 {
-    public class NatureOption : AuditEntity<int>, INameable
+    public class PrimaryPurpos : AuditEntity<int>, INameable
     {
         public string NameAr { get; set; }
         public string NameEn { get; set; }

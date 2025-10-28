@@ -1,10 +1,13 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using Ettad.Data.Interfaces;
+using Moujam.Casiher.Comman.Base;
 
-namespace BrzanData.Models
+namespace Ettad.Data.Entities
 {
-    public class CaseType
+    public class CaseType : AuditEntity<int>, INameable
     {
-        // Empty class inheriting from BaseEntity
+        public string NameAr { get; set; }
+        public string NameEn { get; set; }
     }
 }
