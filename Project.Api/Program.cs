@@ -158,9 +158,10 @@ builder.Services.Configure<FileSettings>(builder.Configuration.GetSection("FileS
 builder.Services.AddInfrastructureServices();
 
 Ettad.User.Services.ModuleServicesDependences.AddReposetoriesServices(builder.Services);
+builder.Services.AddAutoMapper(typeof(Ettad.Module.lookup.Mapper.LookupMappingProfile));
 
-// Register Employee services directly
-builder.Services.AddScoped<IUserService, UserService>();
+    // Register Employee services directly
+    builder.Services.AddScoped<IUserService, UserService>();
 
 //builder.Services.AddAutoMapper(typeof(Ettad.Module.lookup.Mapper.LookupMappingProfile));
 
