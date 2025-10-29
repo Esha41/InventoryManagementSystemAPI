@@ -1,11 +1,12 @@
-﻿using Ettad.CrossCutting.Comman.Base;
-using Ettad.Data.Interfaces;
+﻿using Ettad.CrossCutting.Comman;
+using Ettad.CrossCutting.Comman.Base;
 
 namespace Ettad.Data.Entities
 {
-    public class Color : BaseEntity<int>, INameable
+    public class Color : BaseEntity<int>, ILookup
     {
         public string NameAr { get; set; }
         public string NameEn { get; set; }
+        public bool IsDeleted { get; set; }
     }
 }

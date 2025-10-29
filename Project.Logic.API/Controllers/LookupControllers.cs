@@ -1,23 +1,21 @@
-//to do
+using Microsoft.Extensions.Logging;
+using Ettad.CrossCutting.Common.Security;
+using Ettad.Data.Entities;
+using Ettad.Module.lookup.Dtos;
+using Ettad.Lookups.Services.Contracts;
 
-//using Microsoft.AspNetCore.Mvc;
-//using Microsoft.Extensions.Logging;
+namespace Ettad.Lookups.Domain.API.Controllers
+{
 
-//using Ettad.Lookups.Domain.API.Controllers;
-//using Ettad.CrossCutting.Common.Security;
-
-//namespace Ettad.Lookups.Domain.API.Controllers
-//{
-
-//    [CheckAuthorize(
-// "Permissions.Organizations.Page",
-// "Permissions.Organizations.View",
-// "Permissions.Organizations.Create", "Permissions.Organizations.Edit", "Permissions.Organizations.Delete"
-//)]
-//    public class OrganizationController : LookupController<Organization, OrganizationDto>
-//    {
-//        public OrganizationController(ILookupService<Organization, OrganizationDto> iLookupService, ILogger<LookupController<Organization, OrganizationDto>> logger) : base(iLookupService, logger) { }
-//    }
+    [CheckAuthorize(
+     "Permissions.Departments.Page",
+     "Permissions.Departments.View",
+     "Permissions.Departments.Create", "Permissions.Departments.Edit", "Permissions.Departments.Delete"
+    )]
+    public class DepartmentController : LookupController<Department, DepartmentDto>
+    {
+        public DepartmentController(ILookupService<Department, DepartmentDto> iLookupService, ILogger<LookupController<Department, DepartmentDto>> logger) : base(iLookupService, logger) { }
+    }
 //    public class JobController : LookupController<Job, JobDto>
 //    {
 //        public JobController(ILookupService<Job, JobDto> iLookupService, ILogger<LookupController<Job, JobDto>> logger) : base(iLookupService, logger) { }
@@ -110,4 +108,4 @@
 //        public RamadanPeriodController(ILookupService<RamadanPeriod, RamadanPeriodDto> iLookupService, ILogger<LookupController<RamadanPeriod, RamadanPeriodDto>> logger) : base(iLookupService, logger) { }
 //    }
 
-//}
+}

@@ -7,11 +7,6 @@ using Ettad.CrossCutting.Data.Repository;
 using Ettad.Lookups.Services.Contracts;
 using Ettad.ResponseHandler.Consts;
 using Ettad.ResponseHandler.Models;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using Ettad.Lookups.Services.Contracts;
 
 namespace Ettad.Lookups.Services.Implementation
 {
@@ -97,7 +92,7 @@ namespace Ettad.Lookups.Services.Implementation
                     _logger.LogInformation("Retrieving {LookupType} lookup item by name '{Name}' for Organization {OrganizationId}", 
                         typeof(T).Name, name, _currentUserService.OrganizationId);
 
-                    var result = await _repository.FindOneAsync(x => x.Name == name);
+                    var result = await _repository.FindOneAsync(x => x.NameAr == name || x.NameEn == name);
                     if (result == null)
                     {
                         _logger.LogWarning("{LookupType} lookup item with name '{Name}' not found for Organization {OrganizationId}", 
@@ -228,7 +223,7 @@ namespace Ettad.Lookups.Services.Implementation
 
                     var items = _repository.Find(x =>
                         (includeDeleted || !x.IsDeleted) &&
-                        (x.Name.Contains(searchText) || x.NameSE.Contains(searchText))
+                        (x.NameAr.Contains(searchText) || x.NameEn.Contains(searchText))
                     );
 
                     var result = await items.ToListAsync();

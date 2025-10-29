@@ -1,13 +1,12 @@
-using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
-using Ettad.Data.Interfaces;
+using Ettad.CrossCutting.Comman;
 using Moujam.Casiher.Comman.Base;
 
 namespace Ettad.Data.Entities
 {
-    public class CaseType : AuditEntity<int>, INameable
+    public class CaseType : AuditEntity<int>, ILookup
     {
         public string NameAr { get; set; }
         public string NameEn { get; set; }
+        public bool IsDeleted { get; set; }
     }
 }

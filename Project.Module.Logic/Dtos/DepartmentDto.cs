@@ -1,9 +1,12 @@
-﻿using Ettad.CrossCutting.Comman;
-using Moujam.Casiher.Comman.Base;
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
 
-namespace Ettad.Data.Entities
+namespace Ettad.Module.lookup.Dtos
 {
-    public class Department : AuditEntity<int>, ILookup
+    public class DepartmentDto
     {
         public string Code { get; set; }
         public string NameAr { get; set; }
