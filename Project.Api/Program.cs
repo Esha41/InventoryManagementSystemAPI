@@ -1,33 +1,29 @@
+using Ettad.Comman.Idenitity;
+using Ettad.CrossCutting.Comman.FileUpload;
+using Ettad.CrossCutting.Comman.Idenitity;
+using Ettad.CrossCutting.Comman.Monitoring;
+//using Ettad.Module.Logic.Extensions;
+//using Mujam.Intergration.Service.Mangment;
+using Ettad.CrossCutting.Data.Repository;
+using Ettad.EntityFramework.DataBaseContext;
+using Ettad.EntityFramework.DataBaseContext.DataSeeding;
+using Ettad.Lookups.Services.Contracts;
+using Ettad.Lookups.Services.Implementation;
+using Ettad.Repository;
+using Ettad.User.Services.DTO;
+using Ettad.User.Services.Helpers;
+using Ettad.User.Services.Interfaces;
+using Ettad.Workflow.Service;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using Moujam.Casiher.Comman.Models;
-
-using Ettad.Comman.Idenitity;
-using Ettad.CrossCutting.Comman.FileUpload;
-using Ettad.CrossCutting.Comman.Idenitity;
-//using Ettad.Module.Logic.Extensions;
-//using Mujam.Intergration.Service.Mangment;
-using Ettad.CrossCutting.Data.Repository;
-
-using Ettad.EntityFramework.DataBaseContext;
-using Ettad.EntityFramework.DataBaseContext.DataSeeding;
-
-using Ettad.Lookups.Services.Contracts;
-using Ettad.Lookups.Services.Implementation;
-
-using Ettad.Repository;
-using Ettad.User.Services.DTO;
-using Ettad.User.Services.Helpers;
-using Ettad.User.Services.Interfaces;
-using System.Text;
-
 using Serilog;
 using Serilog.Events;
-using Ettad.CrossCutting.Comman.Monitoring;
-using Ettad.Workflow.Service;
+using System.Text;
+using System.Text.Json;
 
 // Configure Serilog
 Log.Logger = new LoggerConfiguration()
@@ -119,7 +115,11 @@ builder.Services.AddAuthentication(option =>
                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(configuration["JWT:Secret"] ?? throw new InvalidOperationException("JWT Secret is missing")))
                };
            });
-builder.Services.AddSwaggerGen(options =>
+    builder.Services.AddControllers().AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
+    });
+    builder.Services.AddSwaggerGen(options =>
 {
     options.AddSecurityDefinition(name: "Bearer", securityScheme: new OpenApiSecurityScheme
     {
