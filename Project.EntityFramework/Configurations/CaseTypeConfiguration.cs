@@ -4,13 +4,13 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace Ettad.EntityFramework.Configurations
 {
-    internal class DepoConfiguration : IEntityTypeConfiguration<Depot>
+    internal class CaseTypeConfiguration : IEntityTypeConfiguration<CaseType>
     {
-        public void Configure(EntityTypeBuilder<Depot> builder)
+        public void Configure(EntityTypeBuilder<CaseType> builder)
         {
             builder.HasKey(x => x.Id);
 
-            builder.ToTable("Depots");
+            builder.ToTable("CaseTypes");
 
             builder.Property(x => x.NameAr)
                 .IsRequired()

@@ -3,10 +3,9 @@ using Moujam.Casiher.Comman.Base;
 
 namespace Ettad.Data.Entities
 {
-    public class Department : AuditEntity<int>, INameable
+    public class HazardDivision : AuditEntity<int>, INameable
     {
         public string NameAr { get; set; }
         public string NameEn { get; set; }
-        public string Code { get; set; }
     }
 }

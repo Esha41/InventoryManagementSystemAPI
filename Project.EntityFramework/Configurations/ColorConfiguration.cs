@@ -4,13 +4,13 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace Ettad.EntityFramework.Configurations
 {
-    internal class DepoConfiguration : IEntityTypeConfiguration<Depot>
+    internal class ColorConfiguration : IEntityTypeConfiguration<Color>
     {
-        public void Configure(EntityTypeBuilder<Depot> builder)
+        public void Configure(EntityTypeBuilder<Color> builder)
         {
             builder.HasKey(x => x.Id);
 
-            builder.ToTable("Depots");
+            builder.ToTable("Colors");
 
             builder.Property(x => x.NameAr)
                 .IsRequired()

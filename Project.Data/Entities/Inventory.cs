@@ -18,7 +18,7 @@ namespace Ettad.Data.Entities
 
         #region Navigation Properties
 
-        public Depo Depo { get; set; }
+        public Depot Depo { get; set; }
         public ICollection<InventoryDetail> InventoryDetails { get; set; }
         
         #endregion

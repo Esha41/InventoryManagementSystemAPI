@@ -4,13 +4,13 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace Ettad.EntityFramework.Configurations
 {
-    internal class DepoConfiguration : IEntityTypeConfiguration<Depot>
+    internal class DepartmentConfiguration : IEntityTypeConfiguration<Department>
     {
-        public void Configure(EntityTypeBuilder<Depot> builder)
+        public void Configure(EntityTypeBuilder<Department> builder)
         {
             builder.HasKey(x => x.Id);
 
-            builder.ToTable("Depots");
+            builder.ToTable("Departments");
 
             builder.Property(x => x.NameAr)
                 .IsRequired()
@@ -24,6 +24,13 @@ namespace Ettad.EntityFramework.Configurations
                 .HasMaxLength(500);
 
             builder.HasIndex(x => x.NameEn)
+                .IsUnique();
+
+            builder.Property(x => x.Code)
+                .IsRequired()
+                .HasMaxLength(100);
+
+            builder.HasIndex(x => x.Code)
                 .IsUnique();
         }
     }

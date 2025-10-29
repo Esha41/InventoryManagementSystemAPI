@@ -5,7 +5,7 @@ using Moujam.Casiher.Comman.Base;
 
 namespace Ettad.Data.Entities
 {
-    public class Depo : AuditEntity<int>, INameable
+    public class Depot : AuditEntity<int>, INameable
     {
         public string NameAr { get; set; }
         public string NameEn { get; set; }

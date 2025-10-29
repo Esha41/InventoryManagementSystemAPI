@@ -4,13 +4,13 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace Ettad.EntityFramework.Configurations
 {
-    internal class DepoConfiguration : IEntityTypeConfiguration<Depot>
+    internal class CompatibilityConfiguration : IEntityTypeConfiguration<Compatibility>
     {
-        public void Configure(EntityTypeBuilder<Depot> builder)
+        public void Configure(EntityTypeBuilder<Compatibility> builder)
         {
             builder.HasKey(x => x.Id);
 
-            builder.ToTable("Depots");
+            builder.ToTable("Compatibilities");
 
             builder.Property(x => x.NameAr)
                 .IsRequired()
