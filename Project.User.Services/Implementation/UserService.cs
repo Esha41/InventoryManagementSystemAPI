@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Identity;
+﻿using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Ettad.Application.Common.Interfaces;
 using Ettad.Comman.Idenitity;
@@ -43,46 +43,65 @@ public class UserService : IUserService
 
     public async Task<APIOperationResponse<UserDto>> CreateAsync(CreateUserDto dto)
     {
-       // var emp = await _employeeRepository.FindOneAsync(x=>x.EmployeeId==dto.EmployeeId);
-        ApplicationUser user; 
+        ApplicationUser user;
 
-        if ( dto.IsLdapUser == false)
+        if (!dto.IsLdapUser)
         {
-            //return APIOperationResponse<UserDto>.Fail(Ettad.ResponseHandler.Consts.ResponseType.NotFound,
-            //  "employee not found");
-             user = new ApplicationUser
+            user = new ApplicationUser
             {
                 UserName = dto.UserName,
-                Email = dto. UserName ,// dto.Email,
+                Email = dto.UserName,
                 IsLdapUser = dto.IsLdapUser,
                 ExtraEmployeesView = dto.ExtraEmployeesView,
                 EmployeeId = dto.EmployeeId,
-                OrganizationId = dto.OrganizationId == null ? _currentUserService.OrganizationId : dto.OrganizationId
+                OrganizationId = dto.OrganizationId ?? _currentUserService.OrganizationId
             };
         }
         else
         {
-            //to do
             user = new ApplicationUser
             {
-                UserName ="k", //emp.OfficialEmail,
-                Email ="ii", //emp.OfficialEmail,
+                UserName = "k",
+                Email = "ii",
                 IsLdapUser = dto.IsLdapUser,
                 ExtraEmployeesView = dto.ExtraEmployeesView,
                 EmployeeId = dto.EmployeeId,
-                OrganizationId = dto.OrganizationId == null ? _currentUserService.OrganizationId : dto.OrganizationId
+                OrganizationId = dto.OrganizationId ?? _currentUserService.OrganizationId
             };
-
         }
-            
 
+        // 1️⃣ Create the user
         var result = await _userManager.CreateAsync(user, dto.Password);
 
         if (!result.Succeeded)
-            return APIOperationResponse<UserDto>.Fail(Ettad.ResponseHandler.Consts.ResponseType.BadRequest,
-                string.Join(",", result.Errors.Select(e => e.Description)));
+            return APIOperationResponse<UserDto>.Fail(
+                Ettad.ResponseHandler.Consts.ResponseType.BadRequest,
+                string.Join(",", result.Errors.Select(e => e.Description))
+            );
 
-        return APIOperationResponse<UserDto>.Success(MapToDto(user));
+        // 2️⃣ Assign role to the user
+        if (!string.IsNullOrEmpty(dto.RoleId))
+        {
+            // Get role name from RoleId
+            var role = await _roleManager.FindByIdAsync(dto.RoleId);
+            if (role != null)
+            {
+                var roleResult = await _userManager.AddToRoleAsync(user, role.Name);
+                if (!roleResult.Succeeded)
+                    return APIOperationResponse<UserDto>.Fail(
+                        Ettad.ResponseHandler.Consts.ResponseType.BadRequest,
+                        string.Join(",", roleResult.Errors.Select(e => e.Description))
+                    );
+            }
+        }
+
+        // 3️⃣ Map to DTO
+        var userDto = MapToDto(user);
+
+        // 4️⃣ Include role info in DTO
+       // userDto.RoleId = dto.RoleId;
+
+        return APIOperationResponse<UserDto>.Success(userDto);
     }
 
     public async Task<APIOperationResponse<UserDto>> UpdateAsync(UpdateUserDto dto)

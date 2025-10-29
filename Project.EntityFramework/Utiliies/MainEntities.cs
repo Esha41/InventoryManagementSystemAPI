@@ -290,4 +290,28 @@ public static class MainEntities
         CrudOperation.Edit,
         CrudOperation.Delete
     };
+    // ========================================
+    // USER MANAGEMENT
+    // ========================================
+    [Category(CrudPermissionsGenerator.UserManagement)]
+    public static readonly CrudOperation[] SystemUsers = new[]
+    {
+            CrudOperation.Page,
+            CrudOperation.View,
+            CrudOperation.Create,
+            CrudOperation.Edit,
+            CrudOperation.Delete,
+        };
+
+    [Category(CrudPermissionsGenerator.UserManagement)]
+    public static readonly CrudOperation[] Roles = new[]
+    {
+            CrudOperation.Page,
+            CrudOperation.View,
+            CrudOperation.Create,
+            CrudOperation.Edit,
+            CrudOperation.Delete
+    };
+
+
 }
