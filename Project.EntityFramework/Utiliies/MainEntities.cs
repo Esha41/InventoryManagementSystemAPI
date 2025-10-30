@@ -22,6 +22,196 @@ public static class MainEntities
         CrudOperation.View
     };
 
+    [Category(CrudPermissionsGenerator.OrganizationSettings)]
+    public static readonly CrudOperation[] Companies = new[]
+    {
+        CrudOperation.Page,
+        CrudOperation.View,
+        CrudOperation.Create,
+        CrudOperation.Edit,
+        CrudOperation.Delete,
+    };
+
+    [Category(CrudPermissionsGenerator.OrganizationSettings)]
+    public static readonly CrudOperation[] Departments = new[]
+    {
+        CrudOperation.Page,
+        CrudOperation.View,
+        CrudOperation.Create,
+        CrudOperation.Edit,
+        CrudOperation.Delete,
+    };
+
+    [Category(CrudPermissionsGenerator.OrganizationSettings)]
+    public static readonly CrudOperation[] Propellants = new[]
+    {
+        CrudOperation.Page,
+        CrudOperation.View,
+        CrudOperation.Create,
+        CrudOperation.Edit,
+        CrudOperation.Delete,
+    };
+
+    [Category(CrudPermissionsGenerator.OrganizationSettings)]
+    public static readonly CrudOperation[] Units = new[]
+    {
+        CrudOperation.Page,
+        CrudOperation.View,
+        CrudOperation.Create,
+        CrudOperation.Edit,
+        CrudOperation.Delete,
+    };
+
+    [Category(CrudPermissionsGenerator.OrganizationSettings)]
+    public static readonly CrudOperation[] ProjectailMaterials = new[]
+    {
+        CrudOperation.Page,
+        CrudOperation.View,
+        CrudOperation.Create,
+        CrudOperation.Edit,
+        CrudOperation.Delete,
+    };
+
+    [Category(CrudPermissionsGenerator.OrganizationSettings)]
+    public static readonly CrudOperation[] NatureOptions = new[]
+    {
+        CrudOperation.Page,
+        CrudOperation.View,
+        CrudOperation.Create,
+        CrudOperation.Edit,
+        CrudOperation.Delete,
+    };
+
+    [Category(CrudPermissionsGenerator.OrganizationSettings)]
+    public static readonly CrudOperation[] Nsns = new[]
+    {
+        CrudOperation.Page,
+        CrudOperation.View,
+        CrudOperation.Create,
+        CrudOperation.Edit,
+        CrudOperation.Delete,
+    };
+
+    [Category(CrudPermissionsGenerator.OrganizationSettings)]
+    public static readonly CrudOperation[] PrimaryPurposes = new[]
+    {
+        CrudOperation.Page,
+        CrudOperation.View,
+        CrudOperation.Create,
+        CrudOperation.Edit,
+        CrudOperation.Delete,
+    };
+
+    [Category(CrudPermissionsGenerator.OrganizationSettings)]
+    public static readonly CrudOperation[] Manufacturers = new[]
+    {
+        CrudOperation.Page,
+        CrudOperation.View,
+        CrudOperation.Create,
+        CrudOperation.Edit,
+        CrudOperation.Delete,
+    };
+
+    [Category(CrudPermissionsGenerator.OrganizationSettings)]
+    public static readonly CrudOperation[] Hccs = new[]
+    {
+        CrudOperation.Page,
+        CrudOperation.View,
+        CrudOperation.Create,
+        CrudOperation.Edit,
+        CrudOperation.Delete,
+    };
+
+    [Category(CrudPermissionsGenerator.OrganizationSettings)]
+    public static readonly CrudOperation[] Depots = new[]
+    {
+        CrudOperation.Page,
+        CrudOperation.View,
+        CrudOperation.Create,
+        CrudOperation.Edit,
+        CrudOperation.Delete,
+    };
+
+    [Category(CrudPermissionsGenerator.OrganizationSettings)]
+    public static readonly CrudOperation[] HazardDivisions = new[]
+    {
+        CrudOperation.Page,
+        CrudOperation.View,
+        CrudOperation.Create,
+        CrudOperation.Edit,
+        CrudOperation.Delete,
+    };
+
+    [Category(CrudPermissionsGenerator.OrganizationSettings)]
+    public static readonly CrudOperation[] Countries = new[]
+    {
+        CrudOperation.Page,
+        CrudOperation.View,
+        CrudOperation.Create,
+        CrudOperation.Edit,
+        CrudOperation.Delete,
+    };
+
+    [Category(CrudPermissionsGenerator.OrganizationSettings)]
+    public static readonly CrudOperation[] CaseTypes = new[]
+    {
+        CrudOperation.Page,
+        CrudOperation.View,
+        CrudOperation.Create,
+        CrudOperation.Edit,
+        CrudOperation.Delete,
+    };
+
+    [Category(CrudPermissionsGenerator.OrganizationSettings)]
+    public static readonly CrudOperation[] Compatibilities = new[]
+    {
+        CrudOperation.Page,
+        CrudOperation.View,
+        CrudOperation.Create,
+        CrudOperation.Edit,
+        CrudOperation.Delete,
+    };
+
+    [Category(CrudPermissionsGenerator.OrganizationSettings)]
+    public static readonly CrudOperation[] Colors = new[]
+    {
+        CrudOperation.Page,
+        CrudOperation.View,
+        CrudOperation.Create,
+        CrudOperation.Edit,
+        CrudOperation.Delete,
+    };
+
+    [Category(CrudPermissionsGenerator.OrganizationSettings)]
+    public static readonly CrudOperation[] Organizations = new[]
+    {
+        CrudOperation.Page,
+        CrudOperation.View,
+        CrudOperation.Create,
+        CrudOperation.Edit,
+        CrudOperation.Delete,
+    };
+
+    [Category(CrudPermissionsGenerator.AttendanceSettings)]
+    public static readonly CrudOperation[] NotificationPolicies = new[]
+    {
+        CrudOperation.Page,
+        CrudOperation.View,
+        CrudOperation.Create,
+        CrudOperation.Edit,
+        CrudOperation.Delete,
+    };
+
+    [Category(CrudPermissionsGenerator.EmployeeData)]
+    public static readonly CrudOperation[] Employees = new[]
+    {
+        CrudOperation.Page,
+        CrudOperation.View,
+        CrudOperation.Create,
+        CrudOperation.Edit,
+        CrudOperation.Delete,
+    };
+
     [Category(CrudPermissionsGenerator.Dashboard)]
     public static readonly CrudOperation[] Forecast = new[]
     {

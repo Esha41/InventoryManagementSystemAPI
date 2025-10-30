@@ -1,11 +1,6 @@
 using AutoMapper;
-
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using static System.Runtime.InteropServices.JavaScript.JSType;
+using Ettad.Data.Entities;
+using Ettad.Module.lookup.Dtos;
 
 namespace Ettad.Module.lookup.Mapper
 {
@@ -13,8 +8,21 @@ namespace Ettad.Module.lookup.Mapper
     {
         public LookupMappingProfile()
         {
-           
+            CreateMap<DepartmentDto, Department>();
+            CreateMap<CountryDto, Country>();
+            CreateMap<DepotDto, Depot>();
+            CreateMap<ColorDto, Color>();
+            CreateMap<CaseTypeDto, CaseType>();
+            CreateMap<CompatibilityDto, Compatibility>();
+            CreateMap<HazardDivisionDto, HazardDivision>();
+            CreateMap<HccDto, Hcc>();
+            CreateMap<ManufacturerDto, Manufacturer>();
+            CreateMap<NatureOptionDto, NatureOption>();
+            CreateMap<NsnDto, Nsn>();
+            CreateMap<PrimaryPurposDto, PrimaryPurpos>();
+            CreateMap<ProjectailMaterialDto, ProjectailMaterial>();
+            CreateMap<PropellantDto, Propellant>();
+            CreateMap<UnitDto, Unit>();
         }
     }
-
 }
