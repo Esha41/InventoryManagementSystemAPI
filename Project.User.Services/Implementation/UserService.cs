@@ -36,10 +36,33 @@ public class UserService : IUserService
     public async Task<APIOperationResponse<List<UserDto>>> GetAllAsync()
     {
         var orgId = _currentUserService.OrganizationId;
-        var users = _userManager.Users.Where(a=>a.OrganizationId == orgId).ToList();
-        var mapped = users.Select(MapToDto).ToList();
+
+        // ✅ Pull matching users (allow null org if needed)
+        var users = await _userManager.Users
+                       .ToListAsync();
+
+        var mapped = new List<UserDto>();
+
+        foreach (var user in users)
+        {
+            var dto = MapToDto(user);
+
+            // ✅ Get role names
+            var roleNames = await _userManager.GetRolesAsync(user);
+
+            // ✅ Convert to role IDs
+            var roleIds = await _roleManager.Roles
+                .Where(r => roleNames.Contains(r.Name))
+                .Select(r => r.Id)
+                .ToListAsync();
+
+            dto.RoleIds = roleIds;
+            mapped.Add(dto);
+        }
+
         return APIOperationResponse<List<UserDto>>.Success(mapped);
     }
+
 
     public async Task<APIOperationResponse<UserDto>> CreateAsync(CreateUserDto dto)
     {
@@ -79,27 +102,25 @@ public class UserService : IUserService
                 string.Join(",", result.Errors.Select(e => e.Description))
             );
 
-        // 2️⃣ Assign role to the user
-        if (!string.IsNullOrEmpty(dto.RoleId))
+        // 2️⃣ Assign roles to the user
+        if (dto.RoleIds != null && dto.RoleIds.Any())
         {
-            // Get role name from RoleId
-            var role = await _roleManager.FindByIdAsync(dto.RoleId);
-            if (role != null)
+            foreach (var roleId in dto.RoleIds)
             {
-                var roleResult = await _userManager.AddToRoleAsync(user, role.Name);
-                if (!roleResult.Succeeded)
-                    return APIOperationResponse<UserDto>.Fail(
-                        Ettad.ResponseHandler.Consts.ResponseType.BadRequest,
-                        string.Join(",", roleResult.Errors.Select(e => e.Description))
-                    );
+                var role = await _roleManager.FindByIdAsync(roleId);
+                if (role != null)
+                {
+                    var roleResult = await _userManager.AddToRoleAsync(user, role.Name);
+                    if (!roleResult.Succeeded)
+                        return APIOperationResponse<UserDto>.Fail(
+                            Ettad.ResponseHandler.Consts.ResponseType.BadRequest,
+                            string.Join(",", roleResult.Errors.Select(e => e.Description))
+                        );
+                }
             }
         }
-
-        // 3️⃣ Map to DTO
+               
         var userDto = MapToDto(user);
-
-        // 4️⃣ Include role info in DTO
-       // userDto.RoleId = dto.RoleId;
 
         return APIOperationResponse<UserDto>.Success(userDto);
     }

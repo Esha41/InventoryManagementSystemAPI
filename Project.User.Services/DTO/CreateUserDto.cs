@@ -9,9 +9,8 @@ namespace Ettad.User.Services.DTO
         public string ExtraEmployeesView { get; set; }
         public int? EmployeeId { get; set; }
         public int? OrganizationId { get; set; }
-        public string RoleId { get; set; }
-       
-      
+        public List<string> RoleIds { get; set; }
+
     }
 
 }
