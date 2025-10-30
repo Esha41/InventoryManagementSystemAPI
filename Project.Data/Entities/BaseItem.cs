@@ -5,6 +5,8 @@ namespace Ettad.Data.Entities
 {
     public abstract class BaseItem : AuditEntity<long> // Base  for Ammunation , Explosive , Weapon , Accessory
     {
+        public string Name { get; set; }
+
         public string ItemNo { get; set; }
        
         public ItemType ItemType { get; set; }
@@ -24,6 +26,10 @@ namespace Ettad.Data.Entities
         public long? ManufacturerId { get; set; }
 
         public bool ReadyForIssue { get; set; } = true;
+
+        public DateTime? ExpiryDate { get; set; }
+
+        public bool IsDeleted { get; set; } = false;
 
         #region Navigation Properties
 

@@ -23,6 +23,7 @@ namespace Ettad.Module.lookup.Mapper
             CreateMap<ProjectailMaterialDto, ProjectailMaterial>();
             CreateMap<PropellantDto, Propellant>();
             CreateMap<UnitDto, Unit>();
+            CreateMap<SupplierDto, Supplier>();
         }
     }
 }

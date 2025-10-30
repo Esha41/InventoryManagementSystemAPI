@@ -43,6 +43,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ettad.User.API", "Project.M
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ettad.Module.lookup", "Project.Module.Logic\Ettad.Module.lookup.csproj", "{9D1D577D-06ED-4B7A-A427-75F977796CDD}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Ettad.Modules.Inventory", "Ettad.Modules.Inventory", "{E65A21A3-9860-4D30-BFC3-F4A2D863C852}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ettad.Inventory.Services", "Ettad.Inventory.Services\Ettad.Inventory.Services.csproj", "{C4400980-E8FA-4508-AF55-555FABDDF982}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -97,6 +101,10 @@ Global
 		{9D1D577D-06ED-4B7A-A427-75F977796CDD}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{9D1D577D-06ED-4B7A-A427-75F977796CDD}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{9D1D577D-06ED-4B7A-A427-75F977796CDD}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C4400980-E8FA-4508-AF55-555FABDDF982}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C4400980-E8FA-4508-AF55-555FABDDF982}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C4400980-E8FA-4508-AF55-555FABDDF982}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C4400980-E8FA-4508-AF55-555FABDDF982}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -117,6 +125,8 @@ Global
 		{B3992494-1DF6-4BC5-86B6-0D4D6BE99CC0} = {AFF453E7-D1F0-4BC9-B9FA-DBA9F9B582A8}
 		{854872CC-9C63-454D-86FC-50354C66D016} = {7EB7C356-E5C7-4056-AC53-BF93D64A21E2}
 		{9D1D577D-06ED-4B7A-A427-75F977796CDD} = {AFF453E7-D1F0-4BC9-B9FA-DBA9F9B582A8}
+		{E65A21A3-9860-4D30-BFC3-F4A2D863C852} = {724F3B7A-DA79-4588-9EA4-1BC8EE03ED54}
+		{C4400980-E8FA-4508-AF55-555FABDDF982} = {E65A21A3-9860-4D30-BFC3-F4A2D863C852}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {ECC5B3B4-1215-4670-A666-332AAF335B64}

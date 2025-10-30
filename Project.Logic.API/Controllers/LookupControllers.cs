@@ -260,4 +260,21 @@ namespace Ettad.Lookups.Domain.API.Controllers
     }
 
     #endregion
+
+    #region Supplier
+
+    [CheckAuthorize(
+        "Permissions.Suppliers.Page",
+        "Permissions.Suppliers.View",
+        "Permissions.Suppliers.Create",
+        "Permissions.Suppliers.Edit",
+        "Permissions.Suppliers.Delete"
+    )]
+    public class SupplierController : LookupController<Supplier, SupplierDto>
+    {
+        public SupplierController(ILookupService<Supplier, SupplierDto> iLookupService, ILogger<LookupController<Supplier, SupplierDto>> logger)
+            : base(iLookupService, logger) { }
+    }
+
+    #endregion
 }
