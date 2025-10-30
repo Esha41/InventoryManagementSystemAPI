@@ -62,7 +62,7 @@ namespace Ettad.EntityFramework.Migrations
                 name: "CaseTypes",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "int", nullable: false)
+                    Id = table.Column<long>(type: "bigint", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
                     NameAr = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: false),
                     NameEn = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: false),
@@ -81,7 +81,7 @@ namespace Ettad.EntityFramework.Migrations
                 name: "Colors",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "int", nullable: false)
+                    Id = table.Column<long>(type: "bigint", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
                     NameAr = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: false),
                     NameEn = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: false),
@@ -96,7 +96,7 @@ namespace Ettad.EntityFramework.Migrations
                 name: "Compatibilities",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "int", nullable: false)
+                    Id = table.Column<long>(type: "bigint", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
                     NameAr = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: false),
                     NameEn = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: false),
@@ -115,7 +115,7 @@ namespace Ettad.EntityFramework.Migrations
                 name: "Countries",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "int", nullable: false)
+                    Id = table.Column<long>(type: "bigint", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
                     NameAr = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     NameEn = table.Column<string>(type: "nvarchar(max)", nullable: true),
@@ -131,7 +131,7 @@ namespace Ettad.EntityFramework.Migrations
                 name: "Departments",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "int", nullable: false)
+                    Id = table.Column<long>(type: "bigint", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
                     Code = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
                     NameAr = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: false),
@@ -151,7 +151,7 @@ namespace Ettad.EntityFramework.Migrations
                 name: "Depots",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "int", nullable: false)
+                    Id = table.Column<long>(type: "bigint", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
                     NameAr = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: false),
                     NameEn = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: false),
@@ -188,7 +188,7 @@ namespace Ettad.EntityFramework.Migrations
                 name: "HazardDivisions",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "int", nullable: false)
+                    Id = table.Column<long>(type: "bigint", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
                     NameAr = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: false),
                     NameEn = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: false),
@@ -207,7 +207,7 @@ namespace Ettad.EntityFramework.Migrations
                 name: "Hcc",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "int", nullable: false)
+                    Id = table.Column<long>(type: "bigint", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
                     NameAr = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: false),
                     NameEn = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: false),
@@ -226,7 +226,7 @@ namespace Ettad.EntityFramework.Migrations
                 name: "Manufacturers",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "int", nullable: false)
+                    Id = table.Column<long>(type: "bigint", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
                     NameAr = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: false),
                     NameEn = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: false),
@@ -245,7 +245,7 @@ namespace Ettad.EntityFramework.Migrations
                 name: "NatureOptions",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "int", nullable: false)
+                    Id = table.Column<long>(type: "bigint", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
                     NameAr = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     NameEn = table.Column<string>(type: "nvarchar(max)", nullable: true),
@@ -264,7 +264,7 @@ namespace Ettad.EntityFramework.Migrations
                 name: "Nsn",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "int", nullable: false)
+                    Id = table.Column<long>(type: "bigint", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
                     NameAr = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: false),
                     NameEn = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: false),
@@ -283,7 +283,7 @@ namespace Ettad.EntityFramework.Migrations
                 name: "PrimaryPurposes",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "int", nullable: false)
+                    Id = table.Column<long>(type: "bigint", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
                     NameAr = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: false),
                     NameEn = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: false),
@@ -302,7 +302,7 @@ namespace Ettad.EntityFramework.Migrations
                 name: "ProjectailMaterials",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "int", nullable: false)
+                    Id = table.Column<long>(type: "bigint", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
                     NameAr = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: false),
                     NameEn = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: false),
@@ -321,7 +321,7 @@ namespace Ettad.EntityFramework.Migrations
                 name: "Propellants",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "int", nullable: false)
+                    Id = table.Column<long>(type: "bigint", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
                     NameAr = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: false),
                     NameEn = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: false),
@@ -340,7 +340,7 @@ namespace Ettad.EntityFramework.Migrations
                 name: "Suppliers",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "int", nullable: false)
+                    Id = table.Column<long>(type: "bigint", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
                     NameAr = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: false),
                     NameEn = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: false),
@@ -358,7 +358,7 @@ namespace Ettad.EntityFramework.Migrations
                 name: "Units",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "int", nullable: false)
+                    Id = table.Column<long>(type: "bigint", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
                     NameAr = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: false),
                     NameEn = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: false),
@@ -509,7 +509,7 @@ namespace Ettad.EntityFramework.Migrations
                 {
                     Id = table.Column<long>(type: "bigint", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
-                    DepoId = table.Column<int>(type: "int", nullable: false),
+                    DepoId = table.Column<long>(type: "bigint", nullable: false),
                     InvoiceNumber = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: true),
                     InvoiceDate = table.Column<DateTime>(type: "datetime2", nullable: true),
                     RecievedDate = table.Column<DateTime>(type: "datetime2", nullable: true),
@@ -540,11 +540,11 @@ namespace Ettad.EntityFramework.Migrations
                     ItemType = table.Column<int>(type: "int", nullable: false),
                     Lot = table.Column<int>(type: "int", nullable: false),
                     BatchNo = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: false),
-                    HccId = table.Column<int>(type: "int", nullable: false),
-                    SupplierId = table.Column<int>(type: "int", nullable: true),
-                    CountryId = table.Column<int>(type: "int", nullable: true),
+                    HccId = table.Column<long>(type: "bigint", nullable: false),
+                    SupplierId = table.Column<long>(type: "bigint", nullable: true),
+                    CountryId = table.Column<long>(type: "bigint", nullable: true),
                     PartNo = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: false),
-                    ManufacturerId = table.Column<int>(type: "int", nullable: true),
+                    ManufacturerId = table.Column<long>(type: "bigint", nullable: true),
                     ReadyForIssue = table.Column<bool>(type: "bit", nullable: false),
                     CreationDate = table.Column<DateTime>(type: "datetime2", nullable: false),
                     ModificationDate = table.Column<DateTime>(type: "datetime2", nullable: true),
@@ -612,20 +612,22 @@ namespace Ettad.EntityFramework.Migrations
                 columns: table => new
                 {
                     Id = table.Column<long>(type: "bigint", nullable: false),
-                    BulletDiameters = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
+                    BulletDiameter = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
+                    BulletDiameterUnitId = table.Column<long>(type: "bigint", nullable: false),
                     CaseLength = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
+                    CaseLengthUnitId = table.Column<long>(type: "bigint", nullable: false),
                     IsLinked = table.Column<bool>(type: "bit", nullable: false),
                     Primer = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     TotalWeight = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
-                    NatureOptionId = table.Column<int>(type: "int", nullable: true),
-                    NsnId = table.Column<int>(type: "int", nullable: false),
-                    PrimaryPurposId = table.Column<int>(type: "int", nullable: true),
-                    ProjectileColorId = table.Column<int>(type: "int", nullable: true),
-                    ProjectailMaterialId = table.Column<int>(type: "int", nullable: true),
-                    CaseTypeId = table.Column<int>(type: "int", nullable: false),
-                    PropellantId = table.Column<int>(type: "int", nullable: false),
-                    CompatibilityId = table.Column<int>(type: "int", nullable: false),
-                    HazardDivisionId = table.Column<int>(type: "int", nullable: false)
+                    NatureOptionId = table.Column<long>(type: "bigint", nullable: true),
+                    NsnId = table.Column<long>(type: "bigint", nullable: false),
+                    PrimaryPurposId = table.Column<long>(type: "bigint", nullable: true),
+                    ProjectileColorId = table.Column<long>(type: "bigint", nullable: true),
+                    ProjectailMaterialId = table.Column<long>(type: "bigint", nullable: true),
+                    CaseTypeId = table.Column<long>(type: "bigint", nullable: false),
+                    PropellantId = table.Column<long>(type: "bigint", nullable: false),
+                    CompatibilityId = table.Column<long>(type: "bigint", nullable: false),
+                    HazardDivisionId = table.Column<long>(type: "bigint", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -690,6 +692,18 @@ namespace Ettad.EntityFramework.Migrations
                         principalTable: "Propellants",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_Ammunitions_Units_BulletDiameterUnitId",
+                        column: x => x.BulletDiameterUnitId,
+                        principalTable: "Units",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_Ammunitions_Units_CaseLengthUnitId",
+                        column: x => x.CaseLengthUnitId,
+                        principalTable: "Units",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
                 });
 
             migrationBuilder.CreateTable(
@@ -749,6 +763,16 @@ namespace Ettad.EntityFramework.Migrations
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                 });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Ammunitions_BulletDiameterUnitId",
+                table: "Ammunitions",
+                column: "BulletDiameterUnitId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Ammunitions_CaseLengthUnitId",
+                table: "Ammunitions",
+                column: "CaseLengthUnitId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Ammunitions_CaseTypeId",
@@ -1091,9 +1115,6 @@ namespace Ettad.EntityFramework.Migrations
                 name: "InventoryDetails");
 
             migrationBuilder.DropTable(
-                name: "Units");
-
-            migrationBuilder.DropTable(
                 name: "WorkflowApprovalHistory");
 
             migrationBuilder.DropTable(
@@ -1122,6 +1143,9 @@ namespace Ettad.EntityFramework.Migrations
 
             migrationBuilder.DropTable(
                 name: "Propellants");
+
+            migrationBuilder.DropTable(
+                name: "Units");
 
             migrationBuilder.DropTable(
                 name: "AspNetRoles");

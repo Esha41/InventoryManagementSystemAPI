@@ -4,7 +4,7 @@ using Ettad.Data.Interfaces;
 
 namespace Ettad.Data.Entities
 {
-    public class Country : BaseEntity<int>, ILookup
+    public class Country : BaseEntity<long>, ILookup
     {
         public string NameAr { get; set; }
         public string NameEn { get; set; }

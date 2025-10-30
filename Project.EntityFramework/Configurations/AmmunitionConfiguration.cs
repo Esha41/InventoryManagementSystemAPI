@@ -63,6 +63,18 @@ namespace Ettad.EntityFramework.Configurations
                 .IsRequired(false)
                 .HasForeignKey(x => x.HazardDivisionId)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            builder.HasOne(x => x.CaseLengthUnit)
+                .WithMany()
+                .IsRequired(true)
+                .HasForeignKey(x => x.CaseLengthUnitId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.HasOne(x => x.BulletDiameterUnit)
+                .WithMany()
+                .IsRequired(true)
+                .HasForeignKey(x => x.BulletDiameterUnitId)
+                .OnDelete(DeleteBehavior.Restrict);
         }
     }
 }

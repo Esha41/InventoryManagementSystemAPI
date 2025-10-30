@@ -13,15 +13,15 @@ namespace Ettad.Data.Entities
         
         public string BatchNo { get; set; }
         
-        public int HccId  { get; set; }
+        public long HccId  { get; set; }
         
-        public int? SupplierId { get; set; }
+        public long? SupplierId { get; set; }
         
-        public int? CountryId { get; set; }
+        public long? CountryId { get; set; }
         
         public string PartNo { get; set; }
 
-        public int? ManufacturerId { get; set; }
+        public long? ManufacturerId { get; set; }
 
         public bool ReadyForIssue { get; set; } = true;
 

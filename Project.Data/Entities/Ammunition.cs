@@ -4,9 +4,13 @@ namespace Ettad.Data.Entities
 {
     public class Ammunition : BaseItem
     {
-        public decimal BulletDiameters { get; set; }
+        public decimal BulletDiameter { get; set; }
+
+        public long BulletDiameterUnitId { get; set; }
 
         public decimal CaseLength {  get; set; }
+
+        public long CaseLengthUnitId { get; set; }
 
         public bool IsLinked { get; set; }
        
@@ -14,26 +18,28 @@ namespace Ettad.Data.Entities
       
         public decimal TotalWeight { get; set; }
 
-        public int? NatureOptionId { get; set; }
+        public long? NatureOptionId { get; set; }
 
-        public int NsnId { get; set; }
+        public long NsnId { get; set; }
 
-        public int? PrimaryPurposId { get; set; }
+        public long? PrimaryPurposId { get; set; }
 
-        public int? ProjectileColorId { get; set; }
+        public long? ProjectileColorId { get; set; }
 
-        public int? ProjectailMaterialId { get; set; }
+        public long? ProjectailMaterialId { get; set; }
 
-        public int CaseTypeId { get; set; }
+        public long CaseTypeId { get; set; }
 
-        public int PropellantId { get; set; }
+        public long PropellantId { get; set; }
 
-        public int CompatibilityId { get; set; }
+        public long CompatibilityId { get; set; }
 
-        public int HazardDivisionId { get; set; }
+        public long HazardDivisionId { get; set; }
 
         #region Navigation Properties
 
+        public Unit BulletDiameterUnit { get; set; }
+        public Unit CaseLengthUnit { get; set; }
         public NatureOption NatureOption { get; set; }
         public Nsn Nsn { get; set; }
         public PrimaryPurpos PrimaryPurpos { get; set; }

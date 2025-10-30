@@ -3,7 +3,7 @@ using Ettad.CrossCutting.Comman.Base;
 
 namespace Ettad.Data.Entities
 {
-    public class Color : BaseEntity<int>, ILookup
+    public class Color : BaseEntity<long>, ILookup
     {
         public string NameAr { get; set; }
         public string NameEn { get; set; }

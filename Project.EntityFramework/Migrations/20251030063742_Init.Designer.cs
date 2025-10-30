@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Ettad.EntityFramework.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20251029123010_Init")]
+    [Migration("20251030063742_Init")]
     partial class Init
     {
         /// <inheritdoc />
@@ -154,8 +154,8 @@ namespace Ettad.EntityFramework.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
 
-                    b.Property<int?>("CountryId")
-                        .HasColumnType("int");
+                    b.Property<long?>("CountryId")
+                        .HasColumnType("bigint");
 
                     b.Property<string>("CreatedBy")
                         .HasColumnType("nvarchar(max)");
@@ -163,8 +163,8 @@ namespace Ettad.EntityFramework.Migrations
                     b.Property<DateTime>("CreationDate")
                         .HasColumnType("datetime2");
 
-                    b.Property<int>("HccId")
-                        .HasColumnType("int");
+                    b.Property<long>("HccId")
+                        .HasColumnType("bigint");
 
                     b.Property<string>("ItemNo")
                         .IsRequired()
@@ -177,8 +177,8 @@ namespace Ettad.EntityFramework.Migrations
                     b.Property<int>("Lot")
                         .HasColumnType("int");
 
-                    b.Property<int?>("ManufacturerId")
-                        .HasColumnType("int");
+                    b.Property<long?>("ManufacturerId")
+                        .HasColumnType("bigint");
 
                     b.Property<DateTime?>("ModificationDate")
                         .HasColumnType("datetime2");
@@ -194,8 +194,8 @@ namespace Ettad.EntityFramework.Migrations
                     b.Property<bool>("ReadyForIssue")
                         .HasColumnType("bit");
 
-                    b.Property<int?>("SupplierId")
-                        .HasColumnType("int");
+                    b.Property<long?>("SupplierId")
+                        .HasColumnType("bigint");
 
                     b.HasKey("Id");
 
@@ -217,11 +217,11 @@ namespace Ettad.EntityFramework.Migrations
 
             modelBuilder.Entity("Ettad.Data.Entities.CaseType", b =>
                 {
-                    b.Property<int>("Id")
+                    b.Property<long>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
+                        .HasColumnType("bigint");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
 
                     b.Property<string>("CreatedBy")
                         .HasColumnType("nvarchar(max)");
@@ -261,11 +261,11 @@ namespace Ettad.EntityFramework.Migrations
 
             modelBuilder.Entity("Ettad.Data.Entities.Color", b =>
                 {
-                    b.Property<int>("Id")
+                    b.Property<long>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
+                        .HasColumnType("bigint");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
 
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
@@ -293,11 +293,11 @@ namespace Ettad.EntityFramework.Migrations
 
             modelBuilder.Entity("Ettad.Data.Entities.Compatibility", b =>
                 {
-                    b.Property<int>("Id")
+                    b.Property<long>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
+                        .HasColumnType("bigint");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
 
                     b.Property<string>("CreatedBy")
                         .HasColumnType("nvarchar(max)");
@@ -337,11 +337,11 @@ namespace Ettad.EntityFramework.Migrations
 
             modelBuilder.Entity("Ettad.Data.Entities.Country", b =>
                 {
-                    b.Property<int>("Id")
+                    b.Property<long>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
+                        .HasColumnType("bigint");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
 
                     b.Property<string>("Code")
                         .HasColumnType("nvarchar(max)");
@@ -362,11 +362,11 @@ namespace Ettad.EntityFramework.Migrations
 
             modelBuilder.Entity("Ettad.Data.Entities.Department", b =>
                 {
-                    b.Property<int>("Id")
+                    b.Property<long>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
+                        .HasColumnType("bigint");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
 
                     b.Property<string>("Code")
                         .IsRequired()
@@ -414,11 +414,11 @@ namespace Ettad.EntityFramework.Migrations
 
             modelBuilder.Entity("Ettad.Data.Entities.Depot", b =>
                 {
-                    b.Property<int>("Id")
+                    b.Property<long>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
+                        .HasColumnType("bigint");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
 
                     b.Property<string>("CreatedBy")
                         .HasColumnType("nvarchar(max)");
@@ -467,11 +467,11 @@ namespace Ettad.EntityFramework.Migrations
 
             modelBuilder.Entity("Ettad.Data.Entities.HazardDivision", b =>
                 {
-                    b.Property<int>("Id")
+                    b.Property<long>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
+                        .HasColumnType("bigint");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
 
                     b.Property<string>("CreatedBy")
                         .HasColumnType("nvarchar(max)");
@@ -511,11 +511,11 @@ namespace Ettad.EntityFramework.Migrations
 
             modelBuilder.Entity("Ettad.Data.Entities.Hcc", b =>
                 {
-                    b.Property<int>("Id")
+                    b.Property<long>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
+                        .HasColumnType("bigint");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
 
                     b.Property<string>("CreatedBy")
                         .HasColumnType("nvarchar(max)");
@@ -567,8 +567,8 @@ namespace Ettad.EntityFramework.Migrations
                     b.Property<DateTime>("CreationDate")
                         .HasColumnType("datetime2");
 
-                    b.Property<int>("DepoId")
-                        .HasColumnType("int");
+                    b.Property<long>("DepoId")
+                        .HasColumnType("bigint");
 
                     b.Property<DateTime?>("InvoiceDate")
                         .HasColumnType("datetime2");
@@ -627,11 +627,11 @@ namespace Ettad.EntityFramework.Migrations
 
             modelBuilder.Entity("Ettad.Data.Entities.Manufacturer", b =>
                 {
-                    b.Property<int>("Id")
+                    b.Property<long>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
+                        .HasColumnType("bigint");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
 
                     b.Property<string>("CreatedBy")
                         .HasColumnType("nvarchar(max)");
@@ -671,11 +671,11 @@ namespace Ettad.EntityFramework.Migrations
 
             modelBuilder.Entity("Ettad.Data.Entities.NatureOption", b =>
                 {
-                    b.Property<int>("Id")
+                    b.Property<long>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
+                        .HasColumnType("bigint");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
 
                     b.Property<string>("CreatedBy")
                         .HasColumnType("nvarchar(max)");
@@ -705,11 +705,11 @@ namespace Ettad.EntityFramework.Migrations
 
             modelBuilder.Entity("Ettad.Data.Entities.Nsn", b =>
                 {
-                    b.Property<int>("Id")
+                    b.Property<long>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
+                        .HasColumnType("bigint");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
 
                     b.Property<string>("CreatedBy")
                         .HasColumnType("nvarchar(max)");
@@ -749,11 +749,11 @@ namespace Ettad.EntityFramework.Migrations
 
             modelBuilder.Entity("Ettad.Data.Entities.PrimaryPurpos", b =>
                 {
-                    b.Property<int>("Id")
+                    b.Property<long>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
+                        .HasColumnType("bigint");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
 
                     b.Property<string>("CreatedBy")
                         .HasColumnType("nvarchar(max)");
@@ -793,11 +793,11 @@ namespace Ettad.EntityFramework.Migrations
 
             modelBuilder.Entity("Ettad.Data.Entities.ProjectailMaterial", b =>
                 {
-                    b.Property<int>("Id")
+                    b.Property<long>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
+                        .HasColumnType("bigint");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
 
                     b.Property<string>("CreatedBy")
                         .HasColumnType("nvarchar(max)");
@@ -837,11 +837,11 @@ namespace Ettad.EntityFramework.Migrations
 
             modelBuilder.Entity("Ettad.Data.Entities.Propellant", b =>
                 {
-                    b.Property<int>("Id")
+                    b.Property<long>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
+                        .HasColumnType("bigint");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
 
                     b.Property<string>("CreatedBy")
                         .HasColumnType("nvarchar(max)");
@@ -903,11 +903,11 @@ namespace Ettad.EntityFramework.Migrations
 
             modelBuilder.Entity("Ettad.Data.Entities.Supplier", b =>
                 {
-                    b.Property<int>("Id")
+                    b.Property<long>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
+                        .HasColumnType("bigint");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
 
                     b.Property<string>("CreatedBy")
                         .HasColumnType("nvarchar(max)");
@@ -944,11 +944,11 @@ namespace Ettad.EntityFramework.Migrations
 
             modelBuilder.Entity("Ettad.Data.Entities.Unit", b =>
                 {
-                    b.Property<int>("Id")
+                    b.Property<long>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
+                        .HasColumnType("bigint");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
 
                     b.Property<string>("CreatedBy")
                         .HasColumnType("nvarchar(max)");
@@ -1240,47 +1240,57 @@ namespace Ettad.EntityFramework.Migrations
                 {
                     b.HasBaseType("Ettad.Data.Entities.BaseItem");
 
-                    b.Property<decimal>("BulletDiameters")
+                    b.Property<decimal>("BulletDiameter")
                         .HasColumnType("decimal(18,2)");
+
+                    b.Property<long>("BulletDiameterUnitId")
+                        .HasColumnType("bigint");
 
                     b.Property<decimal>("CaseLength")
                         .HasColumnType("decimal(18,2)");
 
-                    b.Property<int>("CaseTypeId")
-                        .HasColumnType("int");
+                    b.Property<long>("CaseLengthUnitId")
+                        .HasColumnType("bigint");
 
-                    b.Property<int>("CompatibilityId")
-                        .HasColumnType("int");
+                    b.Property<long>("CaseTypeId")
+                        .HasColumnType("bigint");
 
-                    b.Property<int>("HazardDivisionId")
-                        .HasColumnType("int");
+                    b.Property<long>("CompatibilityId")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("HazardDivisionId")
+                        .HasColumnType("bigint");
 
                     b.Property<bool>("IsLinked")
                         .HasColumnType("bit");
 
-                    b.Property<int?>("NatureOptionId")
-                        .HasColumnType("int");
+                    b.Property<long?>("NatureOptionId")
+                        .HasColumnType("bigint");
 
-                    b.Property<int>("NsnId")
-                        .HasColumnType("int");
+                    b.Property<long>("NsnId")
+                        .HasColumnType("bigint");
 
-                    b.Property<int?>("PrimaryPurposId")
-                        .HasColumnType("int");
+                    b.Property<long?>("PrimaryPurposId")
+                        .HasColumnType("bigint");
 
                     b.Property<string>("Primer")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<int?>("ProjectailMaterialId")
-                        .HasColumnType("int");
+                    b.Property<long?>("ProjectailMaterialId")
+                        .HasColumnType("bigint");
 
-                    b.Property<int?>("ProjectileColorId")
-                        .HasColumnType("int");
+                    b.Property<long?>("ProjectileColorId")
+                        .HasColumnType("bigint");
 
-                    b.Property<int>("PropellantId")
-                        .HasColumnType("int");
+                    b.Property<long>("PropellantId")
+                        .HasColumnType("bigint");
 
                     b.Property<decimal>("TotalWeight")
                         .HasColumnType("decimal(18,2)");
+
+                    b.HasIndex("BulletDiameterUnitId");
+
+                    b.HasIndex("CaseLengthUnitId");
 
                     b.HasIndex("CaseTypeId");
 
@@ -1440,6 +1450,18 @@ namespace Ettad.EntityFramework.Migrations
 
             modelBuilder.Entity("Ettad.Data.Entities.Ammunition", b =>
                 {
+                    b.HasOne("Ettad.Data.Entities.Unit", "BulletDiameterUnit")
+                        .WithMany()
+                        .HasForeignKey("BulletDiameterUnitId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Ettad.Data.Entities.Unit", "CaseLengthUnit")
+                        .WithMany()
+                        .HasForeignKey("CaseLengthUnitId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
                     b.HasOne("Ettad.Data.Entities.CaseType", "CaseType")
                         .WithMany()
                         .HasForeignKey("CaseTypeId")
@@ -1491,6 +1513,10 @@ namespace Ettad.EntityFramework.Migrations
                         .WithMany()
                         .HasForeignKey("PropellantId")
                         .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("BulletDiameterUnit");
+
+                    b.Navigation("CaseLengthUnit");
 
                     b.Navigation("CaseType");
 

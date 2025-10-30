@@ -9,6 +9,20 @@ namespace Ettad.Module.lookup.Mapper
         public LookupMappingProfile()
         {
             CreateMap<DepartmentDto, Department>();
+            CreateMap<CountryDto, Country>();
+            CreateMap<DepotDto, Depot>();
+            CreateMap<ColorDto, Color>();
+            CreateMap<CaseTypeDto, CaseType>();
+            CreateMap<CompatibilityDto, Compatibility>();
+            CreateMap<HazardDivisionDto, HazardDivision>();
+            CreateMap<HccDto, Hcc>();
+            CreateMap<ManufacturerDto, Manufacturer>();
+            CreateMap<NatureOptionDto, NatureOption>();
+            CreateMap<NsnDto, Nsn>();
+            CreateMap<PrimaryPurposDto, PrimaryPurpos>();
+            CreateMap<ProjectailMaterialDto, ProjectailMaterial>();
+            CreateMap<PropellantDto, Propellant>();
+            CreateMap<UnitDto, Unit>();
         }
     }
 }

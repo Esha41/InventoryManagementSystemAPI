@@ -4,7 +4,7 @@ using Moujam.Casiher.Comman.Base;
 
 namespace Ettad.Data.Entities
 {
-    public class PrimaryPurpos : AuditEntity<int>, ILookup
+    public class PrimaryPurpos : AuditEntity<long>, ILookup
     {
         public string NameAr { get; set; }
         public string NameEn { get; set; }

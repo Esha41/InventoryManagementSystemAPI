@@ -3,7 +3,7 @@ using Moujam.Casiher.Comman.Base;
 
 namespace Ettad.Data.Entities
 {
-    public class Depot : AuditEntity<int>, ILookup
+    public class Depot : AuditEntity<long>, ILookup
     {
         public string NameAr { get; set; }
         public string NameEn { get; set; }

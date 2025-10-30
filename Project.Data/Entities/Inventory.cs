@@ -6,7 +6,7 @@ namespace Ettad.Data.Entities
 {
     public class Inventory : AuditEntity<long>
     {
-        public int DepoId { get; set; }
+        public long DepoId { get; set; }
 
         public string InvoiceNumber { get; set; }
 
