@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Ettad.EntityFramework.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20251030063742_Init")]
+    [Migration("20251030065542_Init")]
     partial class Init
     {
         /// <inheritdoc />
