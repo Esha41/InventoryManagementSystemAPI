@@ -28,6 +28,7 @@ using Serilog;
 using Serilog.Events;
 using Ettad.CrossCutting.Comman.Monitoring;
 using Ettad.Workflow.Service;
+using Ettad.Inventory.Service;
 
 // Configure Serilog
 Log.Logger = new LoggerConfiguration()
@@ -71,16 +72,17 @@ builder.Services.AddScoped<IEmailSender, EmailSender>();
 
 builder.Services.AddScoped<IFileStorageService, FileStorageService>();
 
-
 builder.Services.Configure<JwtOptions>(
 builder.Configuration.GetSection("JWT"));
 
+#region Register Modules
+builder.Services.AddInventoryServices();
+#endregion
+
 #region Connection String
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"),
-    b => b.MigrationsAssembly(typeof(ApplicationDbContext).Assembly.FullName)));
-
-
+options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"),
+b => b.MigrationsAssembly(typeof(ApplicationDbContext).Assembly.FullName)));
 #endregion
 
 #region Identity

@@ -30,6 +30,8 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Ettad.Inventory.API\Ettad.Inventory.API.csproj" />
+    <ProjectReference Include="..\Ettad.Inventory.Services\Ettad.Inventory.Service.csproj" />
     <ProjectReference Include="..\Ettad.Workflow.Service\Ettad.Workflows.Service.csproj" />
     <ProjectReference Include="..\Ettad.Workflows.API\Ettad.Workflows.API.csproj" />
     <ProjectReference Include="..\Project.Comman\Ettad.CrossCutting.Comman.csproj" />

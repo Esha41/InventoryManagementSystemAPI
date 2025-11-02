@@ -4,6 +4,7 @@ using Ettad.EntityFramework.DataBaseContext;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Ettad.EntityFramework.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251102061608_RefactorDatabaseTables")]
+    partial class RefactorDatabaseTables
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1551,7 +1554,7 @@ namespace Ettad.EntityFramework.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("EmailConfigurations", (string)null);
+                    b.ToTable("EmailConfigurations");
                 });
 
             modelBuilder.Entity("Ettad.Data.Entities.Supplier", b =>
@@ -1778,7 +1781,7 @@ namespace Ettad.EntityFramework.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Workflows", (string)null);
+                    b.ToTable("Workflows");
                 });
 
             modelBuilder.Entity("Ettad.Data.Entities.Workflows.WorkflowApprovalHistory", b =>
@@ -1829,7 +1832,7 @@ namespace Ettad.EntityFramework.Migrations
 
                     b.HasIndex("WorkflowStepId");
 
-                    b.ToTable("WorkflowApprovalHistory", (string)null);
+                    b.ToTable("WorkflowApprovalHistory");
                 });
 
             modelBuilder.Entity("Ettad.Data.Entities.Workflows.WorkflowStep", b =>
@@ -1871,7 +1874,7 @@ namespace Ettad.EntityFramework.Migrations
 
                     b.HasIndex("WorkflowId");
 
-                    b.ToTable("WorkflowSteps", (string)null);
+                    b.ToTable("WorkflowSteps");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>

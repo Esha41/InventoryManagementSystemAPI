@@ -787,4 +787,14 @@ public static class MainEntities
         CrudOperation.Edit,
         CrudOperation.Delete,
     };
+
+    [Category(CrudPermissionsGenerator.InventoryManagement)]
+    public static readonly CrudOperation[] Ammunition = new[]
+    {
+        CrudOperation.Page,
+        CrudOperation.View,
+        CrudOperation.Create,
+        CrudOperation.Edit,
+        CrudOperation.Delete,
+    };
 }
