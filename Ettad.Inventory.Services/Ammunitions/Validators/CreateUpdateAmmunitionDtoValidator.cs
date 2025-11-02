@@ -15,9 +15,6 @@ namespace Ettad.Inventory.Service.Ammunitions.Validators
                 .NotEmpty().WithMessage("Item number is required")
                 .MaximumLength(100).WithMessage("Item number cannot exceed 100 characters");
 
-            RuleFor(x => x.Lot)
-                .GreaterThan(0).WithMessage("Lot must be greater than 0");
-
             RuleFor(x => x.BatchNo)
                 .NotEmpty().WithMessage("Batch number is required")
                 .MaximumLength(100).WithMessage("Batch number cannot exceed 100 characters");
@@ -67,18 +64,6 @@ namespace Ettad.Inventory.Service.Ammunitions.Validators
                 .GreaterThan(0).WithMessage("Hazard division is required");
 
             // Optional field validations
-            RuleFor(x => x.SupplierId)
-                .GreaterThan(0).When(x => x.SupplierId.HasValue)
-                .WithMessage("Supplier ID must be greater than 0 when provided");
-
-            RuleFor(x => x.CountryId)
-                .GreaterThan(0).When(x => x.CountryId.HasValue)
-                .WithMessage("Country ID must be greater than 0 when provided");
-
-            RuleFor(x => x.ManufacturerId)
-                .GreaterThan(0).When(x => x.ManufacturerId.HasValue)
-                .WithMessage("Manufacturer ID must be greater than 0 when provided");
-
             RuleFor(x => x.NatureOptionId)
                 .GreaterThan(0).When(x => x.NatureOptionId.HasValue)
                 .WithMessage("Nature option ID must be greater than 0 when provided");

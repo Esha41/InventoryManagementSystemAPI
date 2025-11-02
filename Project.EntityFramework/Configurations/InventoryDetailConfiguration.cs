@@ -17,11 +17,34 @@ namespace Ettad.EntityFramework.Configurations
                 .HasForeignKey(x =>  x.InventoryId)
                 .OnDelete(DeleteBehavior.Restrict);
 
-
             builder.HasOne(x => x.Item)
                 .WithMany()
                 .IsRequired()
                 .HasForeignKey(x => x.ItemId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.HasOne(x => x.Supplier)
+                .WithMany()
+                .IsRequired(false)
+                .HasForeignKey(x => x.SupplierId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.HasOne(x => x.Manufacturer)
+                .WithMany()
+                .IsRequired(false)
+                .HasForeignKey(x => x.ManufacturerId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.HasOne(x => x.Country)
+                .WithMany()
+                .IsRequired(false)
+                .HasForeignKey(x => x.CountryId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.HasOne(x => x.Manufacturer)
+                .WithMany()
+                .IsRequired(false)
+                .HasForeignKey(x => x.ManufacturerId)
                 .OnDelete(DeleteBehavior.Restrict);
         }
     }

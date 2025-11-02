@@ -6,7 +6,15 @@ namespace Ettad.Data.Entities
     {
         public long ItemId { get; set; }
 
+        public int Lot { get; set; }
+
         public long InventoryId { get; set; }
+
+        public long? SupplierId { get; set; }
+
+        public long? ManufacturerId { get; set; }
+
+        public long? CountryId { get; set; }
 
         public long ItemQuantity { get; set; }
 
@@ -16,6 +24,10 @@ namespace Ettad.Data.Entities
 
         public BaseItem Item { get; set; }
         public Inventory Inventory { get; set; }
+        public Supplier Supplier { get; set; }
+        public Manufacturer Manufacturer { get; set; }
+        public Country Country { get; set; }
+
 
         #endregion
     }

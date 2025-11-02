@@ -6,19 +6,11 @@
 
         public string ItemNo { get; set; }
 
-        public int Lot { get; set; }
-
         public string BatchNo { get; set; }
 
         public long HccId { get; set; }
 
-        public long? SupplierId { get; set; }
-
-        public long? CountryId { get; set; }
-
         public string PartNo { get; set; }
-
-        public long? ManufacturerId { get; set; }
 
         public bool ReadyForIssue { get; set; } = true;
 

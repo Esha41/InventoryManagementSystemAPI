@@ -6,4 +6,11 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\Ettad.Inventory.Services\Ettad.Inventory.Service.csproj" />
+    <ProjectReference Include="..\Project.Comman\Ettad.CrossCutting.Comman.csproj" />
+    <ProjectReference Include="..\Project.Data\Ettad.Data.csproj" />
+    <ProjectReference Include="..\Project.ResponseHandler\Ettad.CrossCutting.ResponseHandler.csproj" />
+  </ItemGroup>
+
 </Project>
