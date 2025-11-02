@@ -3,7 +3,7 @@ using Ettad.Data.Enums;
 
 namespace Ettad.Data.Entities
 {
-    public abstract class BaseItem : AuditEntity<long> // Base  for Ammunation , Explosive , Weapon , Accessory
+    public abstract class BaseItem : FullAuditEntity<long> // Base  for Ammunation , Explosive , Weapon , Accessory
     {
         public string Name { get; set; }
 
@@ -20,8 +20,6 @@ namespace Ettad.Data.Entities
         public bool ReadyForIssue { get; set; } = true;
 
         public DateTime? ExpiryDate { get; set; }
-
-        public bool IsDeleted { get; set; } = false;
 
         #region Navigation Properties
 

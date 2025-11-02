@@ -2,7 +2,7 @@
 
 namespace Ettad.Data.Entities
 {
-    public class AllowanceItem : AuditEntity<long>
+    public class AllowanceItem : FullAuditEntity<long>
     {
         public long ItemId { get; set; }
         public long DepartmentId { get; set; }

@@ -2,6 +2,7 @@ using FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
 using System.Reflection;
 using Ettad.Inventory.Service.Ammunitions;
+using Ettad.Inventory.Service.AllowanceItems;
 
 namespace Ettad.Inventory.Service
 {
@@ -17,6 +18,7 @@ namespace Ettad.Inventory.Service
 
             // Register services
             services.AddScoped<IAmmunitionService, AmmunitionService>();
+            services.AddScoped<IAllowanceItemService, AllowanceItemService>();
 
             return services;
         }

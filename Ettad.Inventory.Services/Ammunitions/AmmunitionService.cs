@@ -7,6 +7,7 @@ using Ettad.Data.Enums;
 using Ettad.Inventory.Service.Ammunitions.Dtos;
 using Ettad.ResponseHandler.Consts;
 using Ettad.ResponseHandler.Models;
+using Ettad.Application.Common.Interfaces;
 
 namespace Ettad.Inventory.Service.Ammunitions
 {
@@ -15,15 +16,18 @@ namespace Ettad.Inventory.Service.Ammunitions
         private readonly ICrossCuttingRepository<Ammunition> _ammunitionRepository;
         private readonly IMapper _mapper;
         private readonly IValidator<CreateUpdateAmmunitionDto> _validator;
+        private readonly ICurrentUserService _currentUserService;
 
         public AmmunitionService(
             ICrossCuttingRepository<Ammunition> ammunitionRepository,
             IMapper mapper,
-            IValidator<CreateUpdateAmmunitionDto> validator)
+            IValidator<CreateUpdateAmmunitionDto> validator,
+            ICurrentUserService currentUserService)
         {
             _ammunitionRepository = ammunitionRepository;
             _mapper = mapper;
             _validator = validator;
+            _currentUserService = currentUserService;
         }
 
         public async Task<APIOperationResponse<AmmunitionDto>> GetByIdAsync(long id)
@@ -105,6 +109,7 @@ namespace Ettad.Inventory.Service.Ammunitions
                 var ammunition = _mapper.Map<Ammunition>(inputDto);
                 ammunition.ItemType = ItemType.Ammunition;
                 ammunition.CreationDate = DateTime.UtcNow;
+                ammunition.CreatedBy = _currentUserService.UserId;
 
                 // Add to repository
                 var createdAmmunition = await _ammunitionRepository.AddAsync(ammunition);
@@ -156,6 +161,7 @@ namespace Ettad.Inventory.Service.Ammunitions
                 // Map updates to entity
                 _mapper.Map(inputDto, existingAmmunition);
                 existingAmmunition.ModificationDate = DateTime.UtcNow;
+                existingAmmunition.ModifiedBy = _currentUserService.UserId;
 
                 // Update in repository
                 await _ammunitionRepository.UpdateAsync(existingAmmunition);
@@ -195,10 +201,8 @@ namespace Ettad.Inventory.Service.Ammunitions
                 if (ammunition == null)
                     return APIOperationResponse<bool>.Fail(ResponseType.NotFound, "Ammunition not found");
 
-                // Soft delete
-                ammunition.IsDeleted = true;
-                ammunition.ModificationDate = DateTime.UtcNow;
-                await _ammunitionRepository.UpdateAsync(ammunition);
+                // Soft delete - interceptor will handle IsDeleted, DeletionDate, and DeletedBy automatically
+                await _ammunitionRepository.DeleteAsync(ammunition);
 
                 return APIOperationResponse<bool>.Success(true, "Ammunition deleted successfully");
             }

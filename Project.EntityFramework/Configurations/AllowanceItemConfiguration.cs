@@ -25,6 +25,10 @@ namespace Ettad.EntityFramework.Configurations
                 .IsRequired(true)
                 .HasForeignKey(x => x.DepartmentId)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            // Unique constraint: ItemId + DepartmentId + Year combination must be unique
+            builder.HasIndex(x => new { x.ItemId, x.DepartmentId, x.Year })
+                .IsUnique();
         }
     }
 }

@@ -797,4 +797,14 @@ public static class MainEntities
         CrudOperation.Edit,
         CrudOperation.Delete,
     };
+
+    [Category(CrudPermissionsGenerator.InventoryManagement)]
+    public static readonly CrudOperation[] AllowanceItem = new[]
+    {
+        CrudOperation.Page,
+        CrudOperation.View,
+        CrudOperation.Create,
+        CrudOperation.Edit,
+        CrudOperation.Delete,
+    };
 }
