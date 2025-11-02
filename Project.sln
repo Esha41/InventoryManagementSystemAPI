@@ -45,7 +45,9 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ettad.Module.lookup", "Proj
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Ettad.Modules.Inventory", "Ettad.Modules.Inventory", "{E65A21A3-9860-4D30-BFC3-F4A2D863C852}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ettad.Inventory.Services", "Ettad.Inventory.Services\Ettad.Inventory.Services.csproj", "{C4400980-E8FA-4508-AF55-555FABDDF982}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ettad.Inventory.Service", "Ettad.Inventory.Services\Ettad.Inventory.Service.csproj", "{C4400980-E8FA-4508-AF55-555FABDDF982}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ettad.Inventory.API", "Ettad.Inventory.API\Ettad.Inventory.API.csproj", "{75A6B98E-A44F-49AE-986F-97B76B606E53}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -105,6 +107,10 @@ Global
 		{C4400980-E8FA-4508-AF55-555FABDDF982}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{C4400980-E8FA-4508-AF55-555FABDDF982}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{C4400980-E8FA-4508-AF55-555FABDDF982}.Release|Any CPU.Build.0 = Release|Any CPU
+		{75A6B98E-A44F-49AE-986F-97B76B606E53}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{75A6B98E-A44F-49AE-986F-97B76B606E53}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{75A6B98E-A44F-49AE-986F-97B76B606E53}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{75A6B98E-A44F-49AE-986F-97B76B606E53}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -127,6 +133,7 @@ Global
 		{9D1D577D-06ED-4B7A-A427-75F977796CDD} = {AFF453E7-D1F0-4BC9-B9FA-DBA9F9B582A8}
 		{E65A21A3-9860-4D30-BFC3-F4A2D863C852} = {724F3B7A-DA79-4588-9EA4-1BC8EE03ED54}
 		{C4400980-E8FA-4508-AF55-555FABDDF982} = {E65A21A3-9860-4D30-BFC3-F4A2D863C852}
+		{75A6B98E-A44F-49AE-986F-97B76B606E53} = {E65A21A3-9860-4D30-BFC3-F4A2D863C852}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {ECC5B3B4-1215-4670-A666-332AAF335B64}

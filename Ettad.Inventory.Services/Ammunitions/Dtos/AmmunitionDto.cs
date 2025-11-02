@@ -1,6 +1,6 @@
 ﻿using Ettad.Data.Entities;
 
-namespace Ettad.Inventory.Services.Ammunitions.Dtos
+namespace Ettad.Inventory.Service.Ammunitions.Dtos
 {
     public class AmmunitionDto
     {

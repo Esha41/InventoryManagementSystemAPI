@@ -1,7 +1,7 @@
 using FluentValidation;
-using Ettad.Inventory.Services.Ammunitions.Dtos;
+using Ettad.Inventory.Service.Ammunitions.Dtos;
 
-namespace Ettad.Inventory.Services.Ammunitions.Validators
+namespace Ettad.Inventory.Service.Ammunitions.Validators
 {
     public class CreateUpdateAmmunitionDtoValidator : AbstractValidator<CreateUpdateAmmunitionDto>
     {

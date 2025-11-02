@@ -1,7 +1,7 @@
-﻿using Ettad.Inventory.Services.Ammunitions.Dtos;
+﻿using Ettad.Inventory.Service.Ammunitions.Dtos;
 using Ettad.ResponseHandler.Models;
 
-namespace Ettad.Inventory.Services.Ammunitions
+namespace Ettad.Inventory.Service.Ammunitions
 {
     public interface IAmmunitionService
     {

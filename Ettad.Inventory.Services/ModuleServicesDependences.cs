@@ -1,9 +1,9 @@
 using FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
 using System.Reflection;
-using Ettad.Inventory.Services.Ammunitions;
+using Ettad.Inventory.Service.Ammunitions;
 
-namespace Ettad.Inventory.Services
+namespace Ettad.Inventory.Service
 {
     public static class ModuleServicesDependences
     {

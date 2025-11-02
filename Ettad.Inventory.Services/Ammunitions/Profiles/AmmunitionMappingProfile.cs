@@ -1,8 +1,8 @@
 using AutoMapper;
 using Ettad.Data.Entities;
-using Ettad.Inventory.Services.Ammunitions.Dtos;
+using Ettad.Inventory.Service.Ammunitions.Dtos;
 
-namespace Ettad.Inventory.Services.Ammunitions.Profiles
+namespace Ettad.Inventory.Service.Ammunitions.Profiles
 {
     public class AmmunitionMappingProfile : Profile
     {

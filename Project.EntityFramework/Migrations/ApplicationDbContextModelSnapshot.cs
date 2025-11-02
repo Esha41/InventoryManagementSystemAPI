@@ -160,8 +160,14 @@ namespace Ettad.EntityFramework.Migrations
                     b.Property<DateTime>("CreationDate")
                         .HasColumnType("datetime2");
 
+                    b.Property<DateTime?>("ExpiryDate")
+                        .HasColumnType("datetime2");
+
                     b.Property<long>("HccId")
                         .HasColumnType("bigint");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
 
                     b.Property<string>("ItemNo")
                         .IsRequired()
@@ -181,6 +187,9 @@ namespace Ettad.EntityFramework.Migrations
                         .HasColumnType("datetime2");
 
                     b.Property<string>("ModifiedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Name")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("PartNo")
@@ -254,6 +263,48 @@ namespace Ettad.EntityFramework.Migrations
                         .IsUnique();
 
                     b.ToTable("CaseTypes", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1L,
+                            CreationDate = new DateTime(2025, 11, 2, 8, 1, 43, 275, DateTimeKind.Unspecified).AddTicks(980),
+                            IsDeleted = false,
+                            NameAr = "نحاسي",
+                            NameEn = "Brass"
+                        },
+                        new
+                        {
+                            Id = 2L,
+                            CreationDate = new DateTime(2025, 11, 2, 8, 1, 43, 275, DateTimeKind.Unspecified).AddTicks(1043),
+                            IsDeleted = false,
+                            NameAr = "فولاذي",
+                            NameEn = "Steel"
+                        },
+                        new
+                        {
+                            Id = 3L,
+                            CreationDate = new DateTime(2025, 11, 2, 8, 1, 43, 275, DateTimeKind.Unspecified).AddTicks(1045),
+                            IsDeleted = false,
+                            NameAr = "ألومنيوم",
+                            NameEn = "Aluminum"
+                        },
+                        new
+                        {
+                            Id = 4L,
+                            CreationDate = new DateTime(2025, 11, 2, 8, 1, 43, 275, DateTimeKind.Unspecified).AddTicks(1047),
+                            IsDeleted = false,
+                            NameAr = "بلاستيك",
+                            NameEn = "Plastic"
+                        },
+                        new
+                        {
+                            Id = 5L,
+                            CreationDate = new DateTime(2025, 11, 2, 8, 1, 43, 275, DateTimeKind.Unspecified).AddTicks(1048),
+                            IsDeleted = false,
+                            NameAr = "مختلط",
+                            NameEn = "Composite"
+                        });
                 });
 
             modelBuilder.Entity("Ettad.Data.Entities.Color", b =>
@@ -286,6 +337,43 @@ namespace Ettad.EntityFramework.Migrations
                         .IsUnique();
 
                     b.ToTable("Colors", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1L,
+                            IsDeleted = false,
+                            NameAr = "أخضر",
+                            NameEn = "Green"
+                        },
+                        new
+                        {
+                            Id = 2L,
+                            IsDeleted = false,
+                            NameAr = "أسود",
+                            NameEn = "Black"
+                        },
+                        new
+                        {
+                            Id = 3L,
+                            IsDeleted = false,
+                            NameAr = "أصفر",
+                            NameEn = "Yellow"
+                        },
+                        new
+                        {
+                            Id = 4L,
+                            IsDeleted = false,
+                            NameAr = "أحمر",
+                            NameEn = "Red"
+                        },
+                        new
+                        {
+                            Id = 5L,
+                            IsDeleted = false,
+                            NameAr = "رمادي",
+                            NameEn = "Gray"
+                        });
                 });
 
             modelBuilder.Entity("Ettad.Data.Entities.Compatibility", b =>
@@ -330,6 +418,48 @@ namespace Ettad.EntityFramework.Migrations
                         .IsUnique();
 
                     b.ToTable("Compatibilities", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1L,
+                            CreationDate = new DateTime(2025, 11, 2, 8, 1, 43, 275, DateTimeKind.Unspecified).AddTicks(3747),
+                            IsDeleted = false,
+                            NameAr = "المجموعة أ",
+                            NameEn = "Group A"
+                        },
+                        new
+                        {
+                            Id = 2L,
+                            CreationDate = new DateTime(2025, 11, 2, 8, 1, 43, 275, DateTimeKind.Unspecified).AddTicks(3764),
+                            IsDeleted = false,
+                            NameAr = "المجموعة ب",
+                            NameEn = "Group B"
+                        },
+                        new
+                        {
+                            Id = 3L,
+                            CreationDate = new DateTime(2025, 11, 2, 8, 1, 43, 275, DateTimeKind.Unspecified).AddTicks(3766),
+                            IsDeleted = false,
+                            NameAr = "المجموعة ج",
+                            NameEn = "Group C"
+                        },
+                        new
+                        {
+                            Id = 4L,
+                            CreationDate = new DateTime(2025, 11, 2, 8, 1, 43, 275, DateTimeKind.Unspecified).AddTicks(3767),
+                            IsDeleted = false,
+                            NameAr = "المجموعة د",
+                            NameEn = "Group D"
+                        },
+                        new
+                        {
+                            Id = 5L,
+                            CreationDate = new DateTime(2025, 11, 2, 8, 1, 43, 275, DateTimeKind.Unspecified).AddTicks(3769),
+                            IsDeleted = false,
+                            NameAr = "المجموعة هـ",
+                            NameEn = "Group E"
+                        });
                 });
 
             modelBuilder.Entity("Ettad.Data.Entities.Country", b =>
@@ -341,20 +471,77 @@ namespace Ettad.EntityFramework.Migrations
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
 
                     b.Property<string>("Code")
-                        .HasColumnType("nvarchar(max)");
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
 
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
 
                     b.Property<string>("NameAr")
-                        .HasColumnType("nvarchar(max)");
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
 
                     b.Property<string>("NameEn")
-                        .HasColumnType("nvarchar(max)");
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
 
                     b.HasKey("Id");
 
-                    b.ToTable("Countries");
+                    b.HasIndex("Code")
+                        .IsUnique();
+
+                    b.HasIndex("NameAr")
+                        .IsUnique();
+
+                    b.HasIndex("NameEn")
+                        .IsUnique();
+
+                    b.ToTable("Countries", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1L,
+                            Code = "SA",
+                            IsDeleted = false,
+                            NameAr = "المملكة العربية السعودية",
+                            NameEn = "Saudi Arabia"
+                        },
+                        new
+                        {
+                            Id = 2L,
+                            Code = "US",
+                            IsDeleted = false,
+                            NameAr = "الولايات المتحدة الأمريكية",
+                            NameEn = "United States"
+                        },
+                        new
+                        {
+                            Id = 3L,
+                            Code = "UK",
+                            IsDeleted = false,
+                            NameAr = "المملكة المتحدة",
+                            NameEn = "United Kingdom"
+                        },
+                        new
+                        {
+                            Id = 4L,
+                            Code = "FR",
+                            IsDeleted = false,
+                            NameAr = "فرنسا",
+                            NameEn = "France"
+                        },
+                        new
+                        {
+                            Id = 5L,
+                            Code = "DE",
+                            IsDeleted = false,
+                            NameAr = "ألمانيا",
+                            NameEn = "Germany"
+                        });
                 });
 
             modelBuilder.Entity("Ettad.Data.Entities.Department", b =>
@@ -407,6 +594,53 @@ namespace Ettad.EntityFramework.Migrations
                         .IsUnique();
 
                     b.ToTable("Departments", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1L,
+                            Code = "LOG",
+                            CreationDate = new DateTime(2025, 11, 2, 8, 1, 43, 275, DateTimeKind.Unspecified).AddTicks(6732),
+                            IsDeleted = false,
+                            NameAr = "قسم اللوجستيات",
+                            NameEn = "Logistics Department"
+                        },
+                        new
+                        {
+                            Id = 2L,
+                            Code = "OPS",
+                            CreationDate = new DateTime(2025, 11, 2, 8, 1, 43, 275, DateTimeKind.Unspecified).AddTicks(6752),
+                            IsDeleted = false,
+                            NameAr = "قسم العمليات",
+                            NameEn = "Operations Department"
+                        },
+                        new
+                        {
+                            Id = 3L,
+                            Code = "INV",
+                            CreationDate = new DateTime(2025, 11, 2, 8, 1, 43, 275, DateTimeKind.Unspecified).AddTicks(6754),
+                            IsDeleted = false,
+                            NameAr = "قسم المخزون",
+                            NameEn = "Inventory Department"
+                        },
+                        new
+                        {
+                            Id = 4L,
+                            Code = "ARM",
+                            CreationDate = new DateTime(2025, 11, 2, 8, 1, 43, 275, DateTimeKind.Unspecified).AddTicks(6755),
+                            IsDeleted = false,
+                            NameAr = "قسم التسليح",
+                            NameEn = "Armament Department"
+                        },
+                        new
+                        {
+                            Id = 5L,
+                            Code = "MNT",
+                            CreationDate = new DateTime(2025, 11, 2, 8, 1, 43, 275, DateTimeKind.Unspecified).AddTicks(6757),
+                            IsDeleted = false,
+                            NameAr = "قسم الصيانة",
+                            NameEn = "Maintenance Department"
+                        });
                 });
 
             modelBuilder.Entity("Ettad.Data.Entities.Depot", b =>
@@ -460,6 +694,52 @@ namespace Ettad.EntityFramework.Migrations
                         .IsUnique();
 
                     b.ToTable("Depots", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1L,
+                            CreationDate = new DateTime(2025, 11, 2, 8, 1, 43, 275, DateTimeKind.Unspecified).AddTicks(8068),
+                            IsDeleted = false,
+                            Latitude = 24.7136m,
+                            Location = "Riyadh",
+                            Longitude = 46.6753m,
+                            NameAr = "مستودع الرياض المركزي",
+                            NameEn = "Riyadh Central Depot"
+                        },
+                        new
+                        {
+                            Id = 2L,
+                            CreationDate = new DateTime(2025, 11, 2, 8, 1, 43, 275, DateTimeKind.Unspecified).AddTicks(8083),
+                            IsDeleted = false,
+                            Latitude = 21.5433m,
+                            Location = "Jeddah",
+                            Longitude = 39.1728m,
+                            NameAr = "مستودع جدة الغربي",
+                            NameEn = "Jeddah West Depot"
+                        },
+                        new
+                        {
+                            Id = 3L,
+                            CreationDate = new DateTime(2025, 11, 2, 8, 1, 43, 275, DateTimeKind.Unspecified).AddTicks(8085),
+                            IsDeleted = false,
+                            Latitude = 26.4207m,
+                            Location = "Dammam",
+                            Longitude = 50.0888m,
+                            NameAr = "مستودع الدمام الشرقي",
+                            NameEn = "Dammam East Depot"
+                        },
+                        new
+                        {
+                            Id = 4L,
+                            CreationDate = new DateTime(2025, 11, 2, 8, 1, 43, 275, DateTimeKind.Unspecified).AddTicks(8087),
+                            IsDeleted = false,
+                            Latitude = 21.2703m,
+                            Location = "Taif",
+                            Longitude = 40.4150m,
+                            NameAr = "مستودع الطائف الجنوبي",
+                            NameEn = "Taif South Depot"
+                        });
                 });
 
             modelBuilder.Entity("Ettad.Data.Entities.HazardDivision", b =>
@@ -504,6 +784,48 @@ namespace Ettad.EntityFramework.Migrations
                         .IsUnique();
 
                     b.ToTable("HazardDivisions", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1L,
+                            CreationDate = new DateTime(2025, 11, 2, 8, 1, 43, 275, DateTimeKind.Unspecified).AddTicks(9282),
+                            IsDeleted = false,
+                            NameAr = "القسم 1.1 - مواد متفجرة",
+                            NameEn = "Division 1.1 - Explosives"
+                        },
+                        new
+                        {
+                            Id = 2L,
+                            CreationDate = new DateTime(2025, 11, 2, 8, 1, 43, 275, DateTimeKind.Unspecified).AddTicks(9290),
+                            IsDeleted = false,
+                            NameAr = "القسم 1.2 - مواد قابلة للانفجار",
+                            NameEn = "Division 1.2 - Projection Hazard"
+                        },
+                        new
+                        {
+                            Id = 3L,
+                            CreationDate = new DateTime(2025, 11, 2, 8, 1, 43, 275, DateTimeKind.Unspecified).AddTicks(9292),
+                            IsDeleted = false,
+                            NameAr = "القسم 1.3 - مواد قابلة للاشتعال",
+                            NameEn = "Division 1.3 - Fire Hazard"
+                        },
+                        new
+                        {
+                            Id = 4L,
+                            CreationDate = new DateTime(2025, 11, 2, 8, 1, 43, 275, DateTimeKind.Unspecified).AddTicks(9293),
+                            IsDeleted = false,
+                            NameAr = "القسم 1.4 - مواد منخفضة المخاطر",
+                            NameEn = "Division 1.4 - Minor Hazard"
+                        },
+                        new
+                        {
+                            Id = 5L,
+                            CreationDate = new DateTime(2025, 11, 2, 8, 1, 43, 275, DateTimeKind.Unspecified).AddTicks(9295),
+                            IsDeleted = false,
+                            NameAr = "القسم 1.5 - مواد غير حساسة",
+                            NameEn = "Division 1.5 - Very Insensitive"
+                        });
                 });
 
             modelBuilder.Entity("Ettad.Data.Entities.Hcc", b =>
@@ -548,6 +870,48 @@ namespace Ettad.EntityFramework.Migrations
                         .IsUnique();
 
                     b.ToTable("Hcc", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1L,
+                            CreationDate = new DateTime(2025, 11, 2, 8, 1, 43, 276, DateTimeKind.Unspecified).AddTicks(492),
+                            IsDeleted = false,
+                            NameAr = "HCC-A1",
+                            NameEn = "HCC-A1"
+                        },
+                        new
+                        {
+                            Id = 2L,
+                            CreationDate = new DateTime(2025, 11, 2, 8, 1, 43, 276, DateTimeKind.Unspecified).AddTicks(501),
+                            IsDeleted = false,
+                            NameAr = "HCC-B2",
+                            NameEn = "HCC-B2"
+                        },
+                        new
+                        {
+                            Id = 3L,
+                            CreationDate = new DateTime(2025, 11, 2, 8, 1, 43, 276, DateTimeKind.Unspecified).AddTicks(502),
+                            IsDeleted = false,
+                            NameAr = "HCC-C3",
+                            NameEn = "HCC-C3"
+                        },
+                        new
+                        {
+                            Id = 4L,
+                            CreationDate = new DateTime(2025, 11, 2, 8, 1, 43, 276, DateTimeKind.Unspecified).AddTicks(503),
+                            IsDeleted = false,
+                            NameAr = "HCC-D4",
+                            NameEn = "HCC-D4"
+                        },
+                        new
+                        {
+                            Id = 5L,
+                            CreationDate = new DateTime(2025, 11, 2, 8, 1, 43, 276, DateTimeKind.Unspecified).AddTicks(505),
+                            IsDeleted = false,
+                            NameAr = "HCC-E5",
+                            NameEn = "HCC-E5"
+                        });
                 });
 
             modelBuilder.Entity("Ettad.Data.Entities.Inventory", b =>
@@ -664,6 +1028,48 @@ namespace Ettad.EntityFramework.Migrations
                         .IsUnique();
 
                     b.ToTable("Manufacturers", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1L,
+                            CreationDate = new DateTime(2025, 11, 2, 8, 1, 43, 276, DateTimeKind.Unspecified).AddTicks(5007),
+                            IsDeleted = false,
+                            NameAr = "مصنع الذخائر الملكي",
+                            NameEn = "Royal Ordnance Factory"
+                        },
+                        new
+                        {
+                            Id = 2L,
+                            CreationDate = new DateTime(2025, 11, 2, 8, 1, 43, 276, DateTimeKind.Unspecified).AddTicks(5026),
+                            IsDeleted = false,
+                            NameAr = "شركة رايثيون",
+                            NameEn = "Raytheon Company"
+                        },
+                        new
+                        {
+                            Id = 3L,
+                            CreationDate = new DateTime(2025, 11, 2, 8, 1, 43, 276, DateTimeKind.Unspecified).AddTicks(5028),
+                            IsDeleted = false,
+                            NameAr = "مؤسسة الصناعات العسكرية الوطنية",
+                            NameEn = "National Military Industries"
+                        },
+                        new
+                        {
+                            Id = 4L,
+                            CreationDate = new DateTime(2025, 11, 2, 8, 1, 43, 276, DateTimeKind.Unspecified).AddTicks(5054),
+                            IsDeleted = false,
+                            NameAr = "شركة لوكهيد مارتن",
+                            NameEn = "Lockheed Martin"
+                        },
+                        new
+                        {
+                            Id = 5L,
+                            CreationDate = new DateTime(2025, 11, 2, 8, 1, 43, 276, DateTimeKind.Unspecified).AddTicks(5055),
+                            IsDeleted = false,
+                            NameAr = "مجموعة بي إيه إي سيستمز",
+                            NameEn = "BAE Systems"
+                        });
                 });
 
             modelBuilder.Entity("Ettad.Data.Entities.NatureOption", b =>
@@ -690,14 +1096,66 @@ namespace Ettad.EntityFramework.Migrations
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("NameAr")
-                        .HasColumnType("nvarchar(max)");
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
 
                     b.Property<string>("NameEn")
-                        .HasColumnType("nvarchar(max)");
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
 
                     b.HasKey("Id");
 
-                    b.ToTable("NatureOptions");
+                    b.HasIndex("NameAr")
+                        .IsUnique();
+
+                    b.HasIndex("NameEn")
+                        .IsUnique();
+
+                    b.ToTable("NatureOptions", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1L,
+                            CreationDate = new DateTime(2025, 11, 2, 8, 1, 43, 276, DateTimeKind.Unspecified).AddTicks(6301),
+                            IsDeleted = false,
+                            NameAr = "قتالية",
+                            NameEn = "Combat"
+                        },
+                        new
+                        {
+                            Id = 2L,
+                            CreationDate = new DateTime(2025, 11, 2, 8, 1, 43, 276, DateTimeKind.Unspecified).AddTicks(6312),
+                            IsDeleted = false,
+                            NameAr = "تدريبية",
+                            NameEn = "Training"
+                        },
+                        new
+                        {
+                            Id = 3L,
+                            CreationDate = new DateTime(2025, 11, 2, 8, 1, 43, 276, DateTimeKind.Unspecified).AddTicks(6313),
+                            IsDeleted = false,
+                            NameAr = "تعليمية",
+                            NameEn = "Educational"
+                        },
+                        new
+                        {
+                            Id = 4L,
+                            CreationDate = new DateTime(2025, 11, 2, 8, 1, 43, 276, DateTimeKind.Unspecified).AddTicks(6315),
+                            IsDeleted = false,
+                            NameAr = "وهمية",
+                            NameEn = "Dummy"
+                        },
+                        new
+                        {
+                            Id = 5L,
+                            CreationDate = new DateTime(2025, 11, 2, 8, 1, 43, 276, DateTimeKind.Unspecified).AddTicks(6316),
+                            IsDeleted = false,
+                            NameAr = "عرض",
+                            NameEn = "Display"
+                        });
                 });
 
             modelBuilder.Entity("Ettad.Data.Entities.Nsn", b =>
@@ -742,6 +1200,48 @@ namespace Ettad.EntityFramework.Migrations
                         .IsUnique();
 
                     b.ToTable("Nsn", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1L,
+                            CreationDate = new DateTime(2025, 11, 2, 8, 1, 43, 276, DateTimeKind.Unspecified).AddTicks(7565),
+                            IsDeleted = false,
+                            NameAr = "NSN-1005-01-123-4567",
+                            NameEn = "NSN-1005-01-123-4567"
+                        },
+                        new
+                        {
+                            Id = 2L,
+                            CreationDate = new DateTime(2025, 11, 2, 8, 1, 43, 276, DateTimeKind.Unspecified).AddTicks(7574),
+                            IsDeleted = false,
+                            NameAr = "NSN-1010-01-234-5678",
+                            NameEn = "NSN-1010-01-234-5678"
+                        },
+                        new
+                        {
+                            Id = 3L,
+                            CreationDate = new DateTime(2025, 11, 2, 8, 1, 43, 276, DateTimeKind.Unspecified).AddTicks(7576),
+                            IsDeleted = false,
+                            NameAr = "NSN-1015-01-345-6789",
+                            NameEn = "NSN-1015-01-345-6789"
+                        },
+                        new
+                        {
+                            Id = 4L,
+                            CreationDate = new DateTime(2025, 11, 2, 8, 1, 43, 276, DateTimeKind.Unspecified).AddTicks(7577),
+                            IsDeleted = false,
+                            NameAr = "NSN-1020-01-456-7890",
+                            NameEn = "NSN-1020-01-456-7890"
+                        },
+                        new
+                        {
+                            Id = 5L,
+                            CreationDate = new DateTime(2025, 11, 2, 8, 1, 43, 276, DateTimeKind.Unspecified).AddTicks(7578),
+                            IsDeleted = false,
+                            NameAr = "NSN-1025-01-567-8901",
+                            NameEn = "NSN-1025-01-567-8901"
+                        });
                 });
 
             modelBuilder.Entity("Ettad.Data.Entities.PrimaryPurpos", b =>
@@ -786,6 +1286,48 @@ namespace Ettad.EntityFramework.Migrations
                         .IsUnique();
 
                     b.ToTable("PrimaryPurposes", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1L,
+                            CreationDate = new DateTime(2025, 11, 2, 8, 1, 43, 276, DateTimeKind.Unspecified).AddTicks(8902),
+                            IsDeleted = false,
+                            NameAr = "قتالي",
+                            NameEn = "Combat"
+                        },
+                        new
+                        {
+                            Id = 2L,
+                            CreationDate = new DateTime(2025, 11, 2, 8, 1, 43, 276, DateTimeKind.Unspecified).AddTicks(8910),
+                            IsDeleted = false,
+                            NameAr = "تدريبي",
+                            NameEn = "Training"
+                        },
+                        new
+                        {
+                            Id = 3L,
+                            CreationDate = new DateTime(2025, 11, 2, 8, 1, 43, 276, DateTimeKind.Unspecified).AddTicks(8912),
+                            IsDeleted = false,
+                            NameAr = "دفاعي",
+                            NameEn = "Defense"
+                        },
+                        new
+                        {
+                            Id = 4L,
+                            CreationDate = new DateTime(2025, 11, 2, 8, 1, 43, 276, DateTimeKind.Unspecified).AddTicks(8913),
+                            IsDeleted = false,
+                            NameAr = "استطلاعي",
+                            NameEn = "Reconnaissance"
+                        },
+                        new
+                        {
+                            Id = 5L,
+                            CreationDate = new DateTime(2025, 11, 2, 8, 1, 43, 276, DateTimeKind.Unspecified).AddTicks(8914),
+                            IsDeleted = false,
+                            NameAr = "هجومي",
+                            NameEn = "Offensive"
+                        });
                 });
 
             modelBuilder.Entity("Ettad.Data.Entities.ProjectailMaterial", b =>
@@ -830,6 +1372,48 @@ namespace Ettad.EntityFramework.Migrations
                         .IsUnique();
 
                     b.ToTable("ProjectailMaterials", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1L,
+                            CreationDate = new DateTime(2025, 11, 2, 8, 1, 43, 277, DateTimeKind.Unspecified).AddTicks(125),
+                            IsDeleted = false,
+                            NameAr = "فولاذ",
+                            NameEn = "Steel"
+                        },
+                        new
+                        {
+                            Id = 2L,
+                            CreationDate = new DateTime(2025, 11, 2, 8, 1, 43, 277, DateTimeKind.Unspecified).AddTicks(133),
+                            IsDeleted = false,
+                            NameAr = "نحاس",
+                            NameEn = "Brass"
+                        },
+                        new
+                        {
+                            Id = 3L,
+                            CreationDate = new DateTime(2025, 11, 2, 8, 1, 43, 277, DateTimeKind.Unspecified).AddTicks(135),
+                            IsDeleted = false,
+                            NameAr = "رصاص",
+                            NameEn = "Lead"
+                        },
+                        new
+                        {
+                            Id = 4L,
+                            CreationDate = new DateTime(2025, 11, 2, 8, 1, 43, 277, DateTimeKind.Unspecified).AddTicks(136),
+                            IsDeleted = false,
+                            NameAr = "تنغستن",
+                            NameEn = "Tungsten"
+                        },
+                        new
+                        {
+                            Id = 5L,
+                            CreationDate = new DateTime(2025, 11, 2, 8, 1, 43, 277, DateTimeKind.Unspecified).AddTicks(138),
+                            IsDeleted = false,
+                            NameAr = "يورانيوم منضب",
+                            NameEn = "Depleted Uranium"
+                        });
                 });
 
             modelBuilder.Entity("Ettad.Data.Entities.Propellant", b =>
@@ -874,6 +1458,48 @@ namespace Ettad.EntityFramework.Migrations
                         .IsUnique();
 
                     b.ToTable("Propellants", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1L,
+                            CreationDate = new DateTime(2025, 11, 2, 8, 1, 43, 277, DateTimeKind.Unspecified).AddTicks(1328),
+                            IsDeleted = false,
+                            NameAr = "بارود أحادي القاعدة",
+                            NameEn = "Single-base Powder"
+                        },
+                        new
+                        {
+                            Id = 2L,
+                            CreationDate = new DateTime(2025, 11, 2, 8, 1, 43, 277, DateTimeKind.Unspecified).AddTicks(1338),
+                            IsDeleted = false,
+                            NameAr = "بارود ثنائي القاعدة",
+                            NameEn = "Double-base Powder"
+                        },
+                        new
+                        {
+                            Id = 3L,
+                            CreationDate = new DateTime(2025, 11, 2, 8, 1, 43, 277, DateTimeKind.Unspecified).AddTicks(1339),
+                            IsDeleted = false,
+                            NameAr = "بارود ثلاثي القاعدة",
+                            NameEn = "Triple-base Powder"
+                        },
+                        new
+                        {
+                            Id = 4L,
+                            CreationDate = new DateTime(2025, 11, 2, 8, 1, 43, 277, DateTimeKind.Unspecified).AddTicks(1340),
+                            IsDeleted = false,
+                            NameAr = "نيتروسليلوز",
+                            NameEn = "Nitrocellulose"
+                        },
+                        new
+                        {
+                            Id = 5L,
+                            CreationDate = new DateTime(2025, 11, 2, 8, 1, 43, 277, DateTimeKind.Unspecified).AddTicks(1341),
+                            IsDeleted = false,
+                            NameAr = "كورديت",
+                            NameEn = "Cordite"
+                        });
                 });
 
             modelBuilder.Entity("Ettad.Data.Entities.Settings.EmailConfiguration", b =>
@@ -912,6 +1538,9 @@ namespace Ettad.EntityFramework.Migrations
                     b.Property<DateTime>("CreationDate")
                         .HasColumnType("datetime2");
 
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
                     b.Property<DateTime?>("ModificationDate")
                         .HasColumnType("datetime2");
 
@@ -937,6 +1566,48 @@ namespace Ettad.EntityFramework.Migrations
                         .IsUnique();
 
                     b.ToTable("Suppliers", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1L,
+                            CreationDate = new DateTime(2025, 11, 2, 8, 1, 43, 277, DateTimeKind.Unspecified).AddTicks(2487),
+                            IsDeleted = false,
+                            NameAr = "شركة الإمدادات العسكرية المتقدمة",
+                            NameEn = "Advanced Military Supplies Co."
+                        },
+                        new
+                        {
+                            Id = 2L,
+                            CreationDate = new DateTime(2025, 11, 2, 8, 1, 43, 277, DateTimeKind.Unspecified).AddTicks(2495),
+                            IsDeleted = false,
+                            NameAr = "المؤسسة العامة للتسليح",
+                            NameEn = "General Armament Corporation"
+                        },
+                        new
+                        {
+                            Id = 3L,
+                            CreationDate = new DateTime(2025, 11, 2, 8, 1, 43, 277, DateTimeKind.Unspecified).AddTicks(2496),
+                            IsDeleted = false,
+                            NameAr = "شركة الصناعات الدفاعية",
+                            NameEn = "Defense Industries Company"
+                        },
+                        new
+                        {
+                            Id = 4L,
+                            CreationDate = new DateTime(2025, 11, 2, 8, 1, 43, 277, DateTimeKind.Unspecified).AddTicks(2498),
+                            IsDeleted = false,
+                            NameAr = "مجموعة التجهيزات العسكرية",
+                            NameEn = "Military Equipment Group"
+                        },
+                        new
+                        {
+                            Id = 5L,
+                            CreationDate = new DateTime(2025, 11, 2, 8, 1, 43, 277, DateTimeKind.Unspecified).AddTicks(2499),
+                            IsDeleted = false,
+                            NameAr = "شركة التوريدات الاستراتيجية",
+                            NameEn = "Strategic Supplies Corporation"
+                        });
                 });
 
             modelBuilder.Entity("Ettad.Data.Entities.Unit", b =>
@@ -981,6 +1652,48 @@ namespace Ettad.EntityFramework.Migrations
                         .IsUnique();
 
                     b.ToTable("Units", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1L,
+                            CreationDate = new DateTime(2025, 11, 2, 8, 1, 43, 277, DateTimeKind.Unspecified).AddTicks(3708),
+                            IsDeleted = false,
+                            NameAr = "قطعة",
+                            NameEn = "Piece"
+                        },
+                        new
+                        {
+                            Id = 2L,
+                            CreationDate = new DateTime(2025, 11, 2, 8, 1, 43, 277, DateTimeKind.Unspecified).AddTicks(3717),
+                            IsDeleted = false,
+                            NameAr = "صندوق",
+                            NameEn = "Box"
+                        },
+                        new
+                        {
+                            Id = 3L,
+                            CreationDate = new DateTime(2025, 11, 2, 8, 1, 43, 277, DateTimeKind.Unspecified).AddTicks(3719),
+                            IsDeleted = false,
+                            NameAr = "طن",
+                            NameEn = "Ton"
+                        },
+                        new
+                        {
+                            Id = 4L,
+                            CreationDate = new DateTime(2025, 11, 2, 8, 1, 43, 277, DateTimeKind.Unspecified).AddTicks(3720),
+                            IsDeleted = false,
+                            NameAr = "كيلوغرام",
+                            NameEn = "Kilogram"
+                        },
+                        new
+                        {
+                            Id = 5L,
+                            CreationDate = new DateTime(2025, 11, 2, 8, 1, 43, 277, DateTimeKind.Unspecified).AddTicks(3721),
+                            IsDeleted = false,
+                            NameAr = "حاوية",
+                            NameEn = "Container"
+                        });
                 });
 
             modelBuilder.Entity("Ettad.Data.Entities.Workflows.Workflow", b =>

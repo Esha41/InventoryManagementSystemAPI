@@ -4,11 +4,11 @@ using Microsoft.EntityFrameworkCore;
 using Ettad.CrossCutting.Data.Repository;
 using Ettad.Data.Entities;
 using Ettad.Data.Enums;
-using Ettad.Inventory.Services.Ammunitions.Dtos;
+using Ettad.Inventory.Service.Ammunitions.Dtos;
 using Ettad.ResponseHandler.Consts;
 using Ettad.ResponseHandler.Models;
 
-namespace Ettad.Inventory.Services.Ammunitions
+namespace Ettad.Inventory.Service.Ammunitions
 {
     public class AmmunitionService : IAmmunitionService
     {

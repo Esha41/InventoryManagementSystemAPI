@@ -1,4 +1,4 @@
-﻿namespace Ettad.Inventory.Services.Ammunitions.Dtos
+﻿namespace Ettad.Inventory.Service.Ammunitions.Dtos
 {
     public class CreateUpdateAmmunitionDto
     {
