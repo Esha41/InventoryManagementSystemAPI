@@ -41,6 +41,14 @@ namespace Ettad.User.API.Controllers
             var response = await _userService.GetAllAsync();
             return ProcessResponse(response);
         }
+        //[HttpGet]
+        //[CheckAuthorize("Permissions.SystemUsers.View", "Permissions.SystemUsers.page")]
+        //public async Task<IActionResult> GetAllUsers()
+        //{
+        //    var response = await _userService.GetAllUserAsync();
+        //    return ProcessResponse(response);
+        //}
+
 
         [CheckAuthorize("Permissions.SystemUsers.Create")]
         [HttpPost]

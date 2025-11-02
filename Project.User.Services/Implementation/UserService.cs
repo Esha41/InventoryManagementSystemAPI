@@ -33,13 +33,21 @@ public class UserService : IUserService
         return APIOperationResponse<UserDto>.Success(MapToDto(user));
     }
 
+    //public async Task<APIOperationResponse<List<UserDto>>> GetAllAsync() 
+    //{ 
+    //    var orgId = _currentUserService.OrganizationId; 
+    //    var users = _userManager.Users.Where(a => a.OrganizationId == orgId).ToList(); 
+    //    var mapped = users.Select(MapToDto).ToList(); 
+    //    return APIOperationResponse<List<UserDto>>.Success(mapped); 
+    //}
+
     public async Task<APIOperationResponse<List<UserDto>>> GetAllAsync()
     {
-        var orgId = _currentUserService.OrganizationId;
+        // 1️⃣ Get all users (no org filter)
+        var users = await _userManager.Users.ToListAsync();
 
-        // ✅ Pull matching users (allow null org if needed)
-        var users = await _userManager.Users
-                       .ToListAsync();
+        // 2️⃣ Get all roles upfront to avoid repeated DB calls
+        var allRoles = await _roleManager.Roles.ToListAsync();
 
         var mapped = new List<UserDto>();
 
@@ -47,21 +55,21 @@ public class UserService : IUserService
         {
             var dto = MapToDto(user);
 
-            // ✅ Get role names
+            // 3️⃣ Get user roles (names)
             var roleNames = await _userManager.GetRolesAsync(user);
 
-            // ✅ Convert to role IDs
-            var roleIds = await _roleManager.Roles
+            // 4️⃣ Map role names → role IDs using pre-fetched roles
+            dto.RoleIds = allRoles
                 .Where(r => roleNames.Contains(r.Name))
                 .Select(r => r.Id)
-                .ToListAsync();
+                .ToList();
 
-            dto.RoleIds = roleIds;
             mapped.Add(dto);
         }
 
         return APIOperationResponse<List<UserDto>>.Success(mapped);
     }
+
 
 
     public async Task<APIOperationResponse<UserDto>> CreateAsync(CreateUserDto dto)
