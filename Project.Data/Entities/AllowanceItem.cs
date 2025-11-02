@@ -1,0 +1,17 @@
+﻿using Ettad.CrossCutting.Comman.Base;
+
+namespace Ettad.Data.Entities
+{
+    public class AllowanceItem : AuditEntity<long>
+    {
+        public long ItemId { get; set; }
+        public long DepartmentId { get; set; }
+        public int Year { get; set; }
+        public int Quantity { get; set; }
+
+        #region Navigation Properties
+        public BaseItem Item { get; set; }
+        public Department Department { get; set; }
+        #endregion
+    }
+}

@@ -4,9 +4,8 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
-using Ettad.CrossCutting.Comman.Base;
 
-namespace Moujam.Casiher.Comman.Base
+namespace Ettad.CrossCutting.Comman.Base
 {
     public class AuditEntity<T> : BaseEntity<T>
     {

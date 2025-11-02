@@ -1,5 +1,5 @@
 using Ettad.CrossCutting.Comman;
-using Moujam.Casiher.Comman.Base;
+using Ettad.CrossCutting.Comman.Base;
 
 namespace Ettad.Data.Entities
 {
