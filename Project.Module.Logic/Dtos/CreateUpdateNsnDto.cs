@@ -1,6 +1,6 @@
 namespace Ettad.Module.lookup.Dtos
 {
-    public class SupplierDto
+    public class CreateUpdateNsnDto
     {
         public string NameAr { get; set; }
         public string NameEn { get; set; }

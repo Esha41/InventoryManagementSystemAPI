@@ -15,9 +15,9 @@ namespace Ettad.Lookups.Domain.API.Controllers
         "Permissions.Departments.Edit",
         "Permissions.Departments.Delete"
     )]
-    public class DepartmentController : LookupController<Department, DepartmentDto>
+    public class DepartmentController : LookupController<Department, CreateUpdateDepartmentDto>
     {
-        public DepartmentController(ILookupService<Department, DepartmentDto> iLookupService, ILogger<LookupController<Department, DepartmentDto>> logger)
+        public DepartmentController(ILookupService<Department, CreateUpdateDepartmentDto> iLookupService, ILogger<LookupController<Department, CreateUpdateDepartmentDto>> logger)
             : base(iLookupService, logger) { }
     }
 
@@ -32,9 +32,9 @@ namespace Ettad.Lookups.Domain.API.Controllers
         "Permissions.Propellants.Edit",
         "Permissions.Propellants.Delete"
     )]
-    public class PropellantController : LookupController<Propellant, PropellantDto>
+    public class PropellantController : LookupController<Propellant, CreateUpdatePropellantDto>
     {
-        public PropellantController(ILookupService<Propellant, PropellantDto> iLookupService, ILogger<LookupController<Propellant, PropellantDto>> logger)
+        public PropellantController(ILookupService<Propellant, CreateUpdatePropellantDto> iLookupService, ILogger<LookupController<Propellant, CreateUpdatePropellantDto>> logger)
             : base(iLookupService, logger) { }
     }
 
@@ -49,9 +49,9 @@ namespace Ettad.Lookups.Domain.API.Controllers
         "Permissions.Units.Edit",
         "Permissions.Units.Delete"
     )]
-    public class UnitController : LookupController<Unit, UnitDto>
+    public class UnitController : LookupController<Unit, CreateUpdateUnitDto>
     {
-        public UnitController(ILookupService<Unit, UnitDto> iLookupService, ILogger<LookupController<Unit, UnitDto>> logger)
+        public UnitController(ILookupService<Unit, CreateUpdateUnitDto> iLookupService, ILogger<LookupController<Unit, CreateUpdateUnitDto>> logger)
             : base(iLookupService, logger) { }
     }
 
@@ -66,9 +66,9 @@ namespace Ettad.Lookups.Domain.API.Controllers
         "Permissions.ProjectailMaterials.Edit",
         "Permissions.ProjectailMaterials.Delete"
     )]
-    public class ProjectailMaterialController : LookupController<ProjectailMaterial, ProjectailMaterialDto>
+    public class ProjectailMaterialController : LookupController<ProjectailMaterial, CreateUpdateProjectailMaterialDto>
     {
-        public ProjectailMaterialController(ILookupService<ProjectailMaterial, ProjectailMaterialDto> iLookupService, ILogger<LookupController<ProjectailMaterial, ProjectailMaterialDto>> logger)
+        public ProjectailMaterialController(ILookupService<ProjectailMaterial, CreateUpdateProjectailMaterialDto> iLookupService, ILogger<LookupController<ProjectailMaterial, CreateUpdateProjectailMaterialDto>> logger)
             : base(iLookupService, logger) { }
     }
 
@@ -83,9 +83,9 @@ namespace Ettad.Lookups.Domain.API.Controllers
         "Permissions.NatureOptions.Edit",
         "Permissions.NatureOptions.Delete"
     )]
-    public class NatureOptionController : LookupController<NatureOption, NatureOptionDto>
+    public class NatureOptionController : LookupController<NatureOption, CreateUpdateNatureOptionDto>
     {
-        public NatureOptionController(ILookupService<NatureOption, NatureOptionDto> iLookupService, ILogger<LookupController<NatureOption, NatureOptionDto>> logger)
+        public NatureOptionController(ILookupService<NatureOption, CreateUpdateNatureOptionDto> iLookupService, ILogger<LookupController<NatureOption, CreateUpdateNatureOptionDto>> logger)
             : base(iLookupService, logger) { }
     }
 
@@ -100,9 +100,9 @@ namespace Ettad.Lookups.Domain.API.Controllers
         "Permissions.Nsns.Edit",
         "Permissions.Nsns.Delete"
     )]
-    public class NsnController : LookupController<Nsn, NsnDto>
+    public class NsnController : LookupController<Nsn, CreateUpdateNsnDto>
     {
-        public NsnController(ILookupService<Nsn, NsnDto> iLookupService, ILogger<LookupController<Nsn, NsnDto>> logger)
+        public NsnController(ILookupService<Nsn, CreateUpdateNsnDto> iLookupService, ILogger<LookupController<Nsn, CreateUpdateNsnDto>> logger)
             : base(iLookupService, logger) { }
     }
 
@@ -117,9 +117,9 @@ namespace Ettad.Lookups.Domain.API.Controllers
         "Permissions.PrimaryPurposes.Edit",
         "Permissions.PrimaryPurposes.Delete"
     )]
-    public class PrimaryPurposController : LookupController<PrimaryPurpos, PrimaryPurposDto>
+    public class PrimaryPurposController : LookupController<PrimaryPurpos, CreateUpdatePrimaryPurposDto>
     {
-        public PrimaryPurposController(ILookupService<PrimaryPurpos, PrimaryPurposDto> iLookupService, ILogger<LookupController<PrimaryPurpos, PrimaryPurposDto>> logger)
+        public PrimaryPurposController(ILookupService<PrimaryPurpos, CreateUpdatePrimaryPurposDto> iLookupService, ILogger<LookupController<PrimaryPurpos, CreateUpdatePrimaryPurposDto>> logger)
             : base(iLookupService, logger) { }
     }
 
@@ -134,9 +134,9 @@ namespace Ettad.Lookups.Domain.API.Controllers
         "Permissions.Manufacturers.Edit",
         "Permissions.Manufacturers.Delete"
     )]
-    public class ManufacturerController : LookupController<Manufacturer, ManufacturerDto>
+    public class ManufacturerController : LookupController<Manufacturer, CreateUpdateManufacturerDto>
     {
-        public ManufacturerController(ILookupService<Manufacturer, ManufacturerDto> iLookupService, ILogger<LookupController<Manufacturer, ManufacturerDto>> logger)
+        public ManufacturerController(ILookupService<Manufacturer, CreateUpdateManufacturerDto> iLookupService, ILogger<LookupController<Manufacturer, CreateUpdateManufacturerDto>> logger)
             : base(iLookupService, logger) { }
     }
 
@@ -151,9 +151,9 @@ namespace Ettad.Lookups.Domain.API.Controllers
         "Permissions.Hccs.Edit",
         "Permissions.Hccs.Delete"
     )]
-    public class HccController : LookupController<Hcc, HccDto>
+    public class HccController : LookupController<Hcc, CreateUpdateHccDto>
     {
-        public HccController(ILookupService<Hcc, HccDto> iLookupService, ILogger<LookupController<Hcc, HccDto>> logger)
+        public HccController(ILookupService<Hcc, CreateUpdateHccDto> iLookupService, ILogger<LookupController<Hcc, CreateUpdateHccDto>> logger)
             : base(iLookupService, logger) { }
     }
 
@@ -168,9 +168,9 @@ namespace Ettad.Lookups.Domain.API.Controllers
         "Permissions.Depots.Edit",
         "Permissions.Depots.Delete"
     )]
-    public class DepotController : LookupController<Depot, DepotDto>
+    public class DepotController : LookupController<Depot, CreateUpdateDepotDto>
     {
-        public DepotController(ILookupService<Depot, DepotDto> iLookupService, ILogger<LookupController<Depot, DepotDto>> logger)
+        public DepotController(ILookupService<Depot, CreateUpdateDepotDto> iLookupService, ILogger<LookupController<Depot, CreateUpdateDepotDto>> logger)
             : base(iLookupService, logger) { }
     }
 
@@ -185,9 +185,9 @@ namespace Ettad.Lookups.Domain.API.Controllers
         "Permissions.HazardDivisions.Edit",
         "Permissions.HazardDivisions.Delete"
     )]
-    public class HazardDivisionController : LookupController<HazardDivision, HazardDivisionDto>
+    public class HazardDivisionController : LookupController<HazardDivision, CreateUpdateHazardDivisionDto>
     {
-        public HazardDivisionController(ILookupService<HazardDivision, HazardDivisionDto> iLookupService, ILogger<LookupController<HazardDivision, HazardDivisionDto>> logger)
+        public HazardDivisionController(ILookupService<HazardDivision, CreateUpdateHazardDivisionDto> iLookupService, ILogger<LookupController<HazardDivision, CreateUpdateHazardDivisionDto>> logger)
             : base(iLookupService, logger) { }
     }
 
@@ -202,9 +202,9 @@ namespace Ettad.Lookups.Domain.API.Controllers
         "Permissions.Countries.Edit",
         "Permissions.Countries.Delete"
     )]
-    public class CountryController : LookupController<Country, CountryDto>
+    public class CountryController : LookupController<Country, CreateUpdateCountryDto>
     {
-        public CountryController(ILookupService<Country, CountryDto> iLookupService, ILogger<LookupController<Country, CountryDto>> logger)
+        public CountryController(ILookupService<Country, CreateUpdateCountryDto> iLookupService, ILogger<LookupController<Country, CreateUpdateCountryDto>> logger)
             : base(iLookupService, logger) { }
     }
 
@@ -219,9 +219,9 @@ namespace Ettad.Lookups.Domain.API.Controllers
         "Permissions.CaseTypes.Edit",
         "Permissions.CaseTypes.Delete"
     )]
-    public class CaseTypeController : LookupController<CaseType, CaseTypeDto>
+    public class CaseTypeController : LookupController<CaseType, CreateUpdateCaseTypeDto>
     {
-        public CaseTypeController(ILookupService<CaseType, CaseTypeDto> iLookupService, ILogger<LookupController<CaseType, CaseTypeDto>> logger)
+        public CaseTypeController(ILookupService<CaseType, CreateUpdateCaseTypeDto> iLookupService, ILogger<LookupController<CaseType, CreateUpdateCaseTypeDto>> logger)
             : base(iLookupService, logger) { }
     }
 
@@ -236,9 +236,9 @@ namespace Ettad.Lookups.Domain.API.Controllers
         "Permissions.Compatibilities.Edit",
         "Permissions.Compatibilities.Delete"
     )]
-    public class CompatibilityController : LookupController<Compatibility, CompatibilityDto>
+    public class CompatibilityController : LookupController<Compatibility, CreateUpdateCompatibilityDto>
     {
-        public CompatibilityController(ILookupService<Compatibility, CompatibilityDto> iLookupService, ILogger<LookupController<Compatibility, CompatibilityDto>> logger)
+        public CompatibilityController(ILookupService<Compatibility, CreateUpdateCompatibilityDto> iLookupService, ILogger<LookupController<Compatibility, CreateUpdateCompatibilityDto>> logger)
             : base(iLookupService, logger) { }
     }
 
@@ -253,9 +253,9 @@ namespace Ettad.Lookups.Domain.API.Controllers
         "Permissions.Colors.Edit",
         "Permissions.Colors.Delete"
     )]
-    public class ColorController : LookupController<Color, ColorDto>
+    public class ColorController : LookupController<Color, CreateUpdateColorDto>
     {
-        public ColorController(ILookupService<Color, ColorDto> iLookupService, ILogger<LookupController<Color, ColorDto>> logger)
+        public ColorController(ILookupService<Color, CreateUpdateColorDto> iLookupService, ILogger<LookupController<Color, CreateUpdateColorDto>> logger)
             : base(iLookupService, logger) { }
     }
 
@@ -270,9 +270,9 @@ namespace Ettad.Lookups.Domain.API.Controllers
         "Permissions.Suppliers.Edit",
         "Permissions.Suppliers.Delete"
     )]
-    public class SupplierController : LookupController<Supplier, SupplierDto>
+    public class SupplierController : LookupController<Supplier, CreateUpdateSupplierDto>
     {
-        public SupplierController(ILookupService<Supplier, SupplierDto> iLookupService, ILogger<LookupController<Supplier, SupplierDto>> logger)
+        public SupplierController(ILookupService<Supplier, CreateUpdateSupplierDto> iLookupService, ILogger<LookupController<Supplier, CreateUpdateSupplierDto>> logger)
             : base(iLookupService, logger) { }
     }
 

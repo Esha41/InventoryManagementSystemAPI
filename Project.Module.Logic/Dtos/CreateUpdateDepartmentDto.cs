@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace Ettad.Module.lookup.Dtos
 {
-    public class DepartmentDto
+    public class CreateUpdateDepartmentDto
     {
         public string Code { get; set; }
         public string NameAr { get; set; }
