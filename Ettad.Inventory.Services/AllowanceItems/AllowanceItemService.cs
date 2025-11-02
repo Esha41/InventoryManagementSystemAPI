@@ -3,26 +3,31 @@ using FluentValidation;
 using Ettad.CrossCutting.Data.Repository;
 using Ettad.Data.Entities;
 using Ettad.Inventory.Service.AllowanceItems.Dtos;
+using Ettad.Inventory.Service.AllowanceItems.Validators;
 using Ettad.ResponseHandler.Consts;
 using Ettad.ResponseHandler.Models;
 using Ettad.Application.Common.Interfaces;
+using Ettad.Data.Enums;
 
 namespace Ettad.Inventory.Service.AllowanceItems
 {
     public class AllowanceItemService : IAllowanceItemService
     {
         private readonly ICrossCuttingRepository<AllowanceItem> _allowanceItemRepository;
+        private readonly ICrossCuttingRepository<Department> _departmentRepository;
         private readonly IMapper _mapper;
         private readonly IValidator<CreateUpdateAllowanceItemDto> _validator;
         private readonly ICurrentUserService _currentUserService;
 
         public AllowanceItemService(
             ICrossCuttingRepository<AllowanceItem> allowanceItemRepository,
+            ICrossCuttingRepository<Department> departmentRepository,
             IMapper mapper,
             IValidator<CreateUpdateAllowanceItemDto> validator,
             ICurrentUserService currentUserService)
         {
             _allowanceItemRepository = allowanceItemRepository;
+            _departmentRepository = departmentRepository;
             _mapper = mapper;
             _validator = validator;
             _currentUserService = currentUserService;
@@ -146,6 +151,182 @@ namespace Ettad.Inventory.Service.AllowanceItems
             catch (Exception ex)
             {
                 return APIOperationResponse<bool>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
+            }
+        }
+
+        public async Task<APIOperationResponse<AllowanceItemByDepartmentDto>> GetByDepartmentAndYearAsync(long departmentId, int year)
+        {
+            try
+            {
+                var department = await _departmentRepository.FindOneAsync(d => d.Id == departmentId && !d.IsDeleted);
+                if (department == null)
+                    return APIOperationResponse<AllowanceItemByDepartmentDto>.Fail(ResponseType.NotFound, "Department not found");
+
+                var allowanceItems = await _allowanceItemRepository.FindAsync(
+                    a => a.DepartmentId == departmentId && a.Year == year && !a.IsDeleted,
+                    false,
+                    nameof(AllowanceItem.Item),
+                    nameof(AllowanceItem.Department)
+                );
+
+                var itemDetails = _mapper.Map<List<AllowanceItemDetailDto>>(allowanceItems);
+
+                var result = new AllowanceItemByDepartmentDto
+                {
+                    DepartmentId = department.Id,
+                    DepartmentCode = department.Code,
+                    DepartmentNameAr = department.NameAr,
+                    DepartmentNameEn = department.NameEn,
+                    Year = year,
+                    Items = itemDetails
+                };
+
+                return APIOperationResponse<AllowanceItemByDepartmentDto>.Success(result);
+            }
+            catch (Exception ex)
+            {
+                return APIOperationResponse<AllowanceItemByDepartmentDto>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
+            }
+        }
+
+        public async Task<APIOperationResponse<List<AllowanceItemByDepartmentDto>>> GetByDepartmentAsync(long departmentId)
+        {
+            try
+            {
+                var department = await _departmentRepository.FindOneAsync(d => d.Id == departmentId && !d.IsDeleted);
+                if (department == null)
+                    return APIOperationResponse<List<AllowanceItemByDepartmentDto>>.Fail(ResponseType.NotFound, "Department not found");
+
+                var allowanceItems = await _allowanceItemRepository.FindAsync(
+                    a => a.DepartmentId == departmentId && !a.IsDeleted,
+                    false,
+                    nameof(AllowanceItem.Item),
+                    nameof(AllowanceItem.Department)
+                );
+
+                var groupedByYear = allowanceItems.GroupBy(a => a.Year).ToList();
+
+                var result = groupedByYear.Select(group => new AllowanceItemByDepartmentDto
+                {
+                    DepartmentId = department.Id,
+                    DepartmentCode = department.Code,
+                    DepartmentNameAr = department.NameAr,
+                    DepartmentNameEn = department.NameEn,
+                    Year = group.Key,
+                    Items = _mapper.Map<List<AllowanceItemDetailDto>>(group.ToList())
+                }).ToList();
+
+                return APIOperationResponse<List<AllowanceItemByDepartmentDto>>.Success(result);
+            }
+            catch (Exception ex)
+            {
+                return APIOperationResponse<List<AllowanceItemByDepartmentDto>>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
+            }
+        }
+
+        public async Task<APIOperationResponse<AllowanceItemByDepartmentDto>> GetByDepartmentYearAndItemTypeAsync(long departmentId, int year, ItemType itemType)
+        {
+            try
+            {
+                var department = await _departmentRepository.FindOneAsync(d => d.Id == departmentId && !d.IsDeleted);
+                if (department == null)
+                    return APIOperationResponse<AllowanceItemByDepartmentDto>.Fail(ResponseType.NotFound, "Department not found");
+
+                var allowanceItems = await _allowanceItemRepository.FindAsync(
+                    a => a.DepartmentId == departmentId && a.Year == year && a.ItemType == itemType && !a.IsDeleted,
+                    false,
+                    nameof(AllowanceItem.Item),
+                    nameof(AllowanceItem.Department)
+                );
+
+                var itemDetails = _mapper.Map<List<AllowanceItemDetailDto>>(allowanceItems);
+
+                var result = new AllowanceItemByDepartmentDto
+                {
+                    DepartmentId = department.Id,
+                    DepartmentCode = department.Code,
+                    DepartmentNameAr = department.NameAr,
+                    DepartmentNameEn = department.NameEn,
+                    Year = year,
+                    ItemType = itemType,
+                    Items = itemDetails
+                };
+
+                return APIOperationResponse<AllowanceItemByDepartmentDto>.Success(result);
+            }
+            catch (Exception ex)
+            {
+                return APIOperationResponse<AllowanceItemByDepartmentDto>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
+            }
+        }
+
+        public async Task<APIOperationResponse<List<AllowanceItemDto>>> BulkCreateAsync(BulkCreateAllowanceItemDto inputDto)
+        {
+            try
+            {
+                var bulkValidator = new BulkCreateAllowanceItemDtoValidator();
+                var validationResult = await bulkValidator.ValidateAsync(inputDto);
+                if (!validationResult.IsValid)
+                {
+                    var errors = string.Join(", ", validationResult.Errors.Select(e => e.ErrorMessage));
+                    return APIOperationResponse<List<AllowanceItemDto>>.Fail(ResponseType.BadRequest, errors);
+                }
+
+                var createdItems = new List<AllowanceItemDto>();
+
+                foreach (var itemDto in inputDto.Items)
+                {
+                    var createDto = new CreateUpdateAllowanceItemDto
+                    {
+                        ItemId = itemDto.ItemId,
+                        DepartmentId = inputDto.DepartmentId,
+                        Year = inputDto.Year,
+                        Quantity = itemDto.Quantity,
+                        ItemType = itemDto.ItemType
+                    };
+
+                    // Validate individual item
+                    var itemValidationResult = await _validator.ValidateAsync(createDto);
+                    if (!itemValidationResult.IsValid)
+                    {
+                        var errors = string.Join(", ", itemValidationResult.Errors.Select(e => e.ErrorMessage));
+                        return APIOperationResponse<List<AllowanceItemDto>>.Fail(ResponseType.BadRequest, $"Item {itemDto.ItemId}: {errors}");
+                    }
+
+                    // Check if already exists
+                    var existing = await _allowanceItemRepository.FindOneAsync(
+                        a => a.ItemId == itemDto.ItemId &&
+                             a.DepartmentId == inputDto.DepartmentId &&
+                             a.Year == inputDto.Year &&
+                             a.ItemType == itemDto.ItemType &&
+                             !a.IsDeleted);
+
+                    if (existing != null)
+                    {
+                        // Update existing quantity
+                        existing.Quantity = itemDto.Quantity;
+                        existing.ModificationDate = DateTime.UtcNow;
+                        existing.ModifiedBy = _currentUserService.UserId;
+                        await _allowanceItemRepository.UpdateAsync(existing);
+                        createdItems.Add(_mapper.Map<AllowanceItemDto>(existing));
+                    }
+                    else
+                    {
+                        // Create new
+                        var allowanceItem = _mapper.Map<AllowanceItem>(createDto);
+                        allowanceItem.CreationDate = DateTime.UtcNow;
+                        allowanceItem.CreatedBy = _currentUserService.UserId;
+
+                        var created = await _allowanceItemRepository.AddAsync(allowanceItem);
+                        createdItems.Add(_mapper.Map<AllowanceItemDto>(created));
+                    }
+                }
+
+                return APIOperationResponse<List<AllowanceItemDto>>.Success(createdItems, "Allowance items created successfully");
+            }
+            catch (Exception ex)
+            {
+                return APIOperationResponse<List<AllowanceItemDto>>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
             }
         }
     }

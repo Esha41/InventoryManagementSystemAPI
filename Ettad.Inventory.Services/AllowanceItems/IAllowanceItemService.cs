@@ -1,5 +1,6 @@
 using Ettad.Inventory.Service.AllowanceItems.Dtos;
 using Ettad.ResponseHandler.Models;
+using Ettad.Data.Enums;
 
 namespace Ettad.Inventory.Service.AllowanceItems
 {
@@ -10,5 +11,9 @@ namespace Ettad.Inventory.Service.AllowanceItems
         Task<APIOperationResponse<AllowanceItemDto>> CreateAsync(CreateUpdateAllowanceItemDto inputDto);
         Task<APIOperationResponse<AllowanceItemDto>> UpdateAsync(long id, CreateUpdateAllowanceItemDto inputDto);
         Task<APIOperationResponse<bool>> DeleteAsync(long id);
+        Task<APIOperationResponse<AllowanceItemByDepartmentDto>> GetByDepartmentAndYearAsync(long departmentId, int year);
+        Task<APIOperationResponse<List<AllowanceItemByDepartmentDto>>> GetByDepartmentAsync(long departmentId);
+        Task<APIOperationResponse<AllowanceItemByDepartmentDto>> GetByDepartmentYearAndItemTypeAsync(long departmentId, int year, ItemType itemType);
+        Task<APIOperationResponse<List<AllowanceItemDto>>> BulkCreateAsync(BulkCreateAllowanceItemDto inputDto);
     }
 }

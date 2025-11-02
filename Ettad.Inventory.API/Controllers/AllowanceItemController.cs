@@ -2,6 +2,7 @@ using Ettad.CrossCutting.Common.Security;
 using Ettad.Inventory.Service.AllowanceItems;
 using Ettad.Inventory.Service.AllowanceItems.Dtos;
 using Ettad.ResponseHandler.Models;
+using Ettad.Data.Enums;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Net;
@@ -38,12 +39,48 @@ namespace Ettad.Inventory.API.Controllers
             return ProcessResponse(result);
         }
 
+        [HttpGet("department/{departmentId}/year/{year}")]
+        [ProducesResponseType((int)HttpStatusCode.OK)]
+        [CheckAuthorize("Permissions.AllowanceItem.View", "Permissions.AllowanceItem.Page")]
+        public async Task<IActionResult> GetByDepartmentAndYear(long departmentId, int year)
+        {
+            var result = await _allowanceItemService.GetByDepartmentAndYearAsync(departmentId, year);
+            return ProcessResponse(result);
+        }
+
+        [HttpGet("department/{departmentId}")]
+        [ProducesResponseType((int)HttpStatusCode.OK)]
+        [CheckAuthorize("Permissions.AllowanceItem.View", "Permissions.AllowanceItem.Page")]
+        public async Task<IActionResult> GetByDepartment(long departmentId)
+        {
+            var result = await _allowanceItemService.GetByDepartmentAsync(departmentId);
+            return ProcessResponse(result);
+        }
+
+        [HttpGet("department/{departmentId}/year/{year}/itemtype/{itemType}")]
+        [ProducesResponseType((int)HttpStatusCode.OK)]
+        [CheckAuthorize("Permissions.AllowanceItem.View", "Permissions.AllowanceItem.Page")]
+        public async Task<IActionResult> GetByDepartmentYearAndItemType(long departmentId, int year, ItemType itemType)
+        {
+            var result = await _allowanceItemService.GetByDepartmentYearAndItemTypeAsync(departmentId, year, itemType);
+            return ProcessResponse(result);
+        }
+
         [HttpPost]
         [ProducesResponseType((int)HttpStatusCode.Created)]
         [CheckAuthorize("Permissions.AllowanceItem.Create")]
         public async Task<IActionResult> Create([FromBody] CreateUpdateAllowanceItemDto dto)
         {
             var result = await _allowanceItemService.CreateAsync(dto);
+            return ProcessResponse(result);
+        }
+
+        [HttpPost("bulk")]
+        [ProducesResponseType((int)HttpStatusCode.Created)]
+        [CheckAuthorize("Permissions.AllowanceItem.Create")]
+        public async Task<IActionResult> BulkCreate([FromBody] BulkCreateAllowanceItemDto dto)
+        {
+            var result = await _allowanceItemService.BulkCreateAsync(dto);
             return ProcessResponse(result);
         }
 

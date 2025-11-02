@@ -14,6 +14,14 @@ namespace Ettad.EntityFramework.Configurations
             builder.Property(x => x.Year)
                 .IsRequired();
 
+            builder.Property(x => x.ItemType)
+                .IsRequired()
+                .HasConversion<int>();
+
+            // Unique constraint: ItemId + DepartmentId + Year combination must be unique
+            builder.HasIndex(x => new { x.ItemId, x.DepartmentId, x.Year })
+                .IsUnique();
+
             builder.HasOne(x => x.Item)
                 .WithMany()
                 .IsRequired(true)
@@ -25,10 +33,6 @@ namespace Ettad.EntityFramework.Configurations
                 .IsRequired(true)
                 .HasForeignKey(x => x.DepartmentId)
                 .OnDelete(DeleteBehavior.Restrict);
-
-            // Unique constraint: ItemId + DepartmentId + Year combination must be unique
-            builder.HasIndex(x => new { x.ItemId, x.DepartmentId, x.Year })
-                .IsUnique();
         }
     }
 }
