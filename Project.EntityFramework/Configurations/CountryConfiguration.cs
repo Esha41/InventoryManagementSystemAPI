@@ -1,16 +1,16 @@
-﻿using Ettad.Data.Entities;
+using Ettad.Data.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace Ettad.EntityFramework.Configurations
 {
-    internal class DepartmentConfiguration : IEntityTypeConfiguration<Department>
+    internal class CountryConfiguration : IEntityTypeConfiguration<Country>
     {
-        public void Configure(EntityTypeBuilder<Department> builder)
+        public void Configure(EntityTypeBuilder<Country> builder)
         {
             builder.HasKey(x => x.Id);
 
-            builder.ToTable("Departments");
+            builder.ToTable("Countries");
 
             builder.Property(x => x.NameAr)
                 .IsRequired()
@@ -35,47 +35,48 @@ namespace Ettad.EntityFramework.Configurations
 
             // Seed data
             builder.HasData(
-                new Department
+                new Country
                 {
                     Id = 1,
-                    Code = "LOG",
-                    NameAr = "قسم اللوجستيات",
-                    NameEn = "Logistics Department",
+                    Code = "SA",
+                    NameAr = "المملكة العربية السعودية",
+                    NameEn = "Saudi Arabia",
                     IsDeleted = false
                 },
-                new Department
+                new Country
                 {
                     Id = 2,
-                    Code = "OPS",
-                    NameAr = "قسم العمليات",
-                    NameEn = "Operations Department",
+                    Code = "US",
+                    NameAr = "الولايات المتحدة الأمريكية",
+                    NameEn = "United States",
                     IsDeleted = false
                 },
-                new Department
+                new Country
                 {
                     Id = 3,
-                    Code = "INV",
-                    NameAr = "قسم المخزون",
-                    NameEn = "Inventory Department",
+                    Code = "UK",
+                    NameAr = "المملكة المتحدة",
+                    NameEn = "United Kingdom",
                     IsDeleted = false
                 },
-                new Department
+                new Country
                 {
                     Id = 4,
-                    Code = "ARM",
-                    NameAr = "قسم التسليح",
-                    NameEn = "Armament Department",
+                    Code = "FR",
+                    NameAr = "فرنسا",
+                    NameEn = "France",
                     IsDeleted = false
                 },
-                new Department
+                new Country
                 {
                     Id = 5,
-                    Code = "MNT",
-                    NameAr = "قسم الصيانة",
-                    NameEn = "Maintenance Department",
+                    Code = "DE",
+                    NameAr = "ألمانيا",
+                    NameEn = "Germany",
                     IsDeleted = false
                 }
             );
         }
     }
 }
+

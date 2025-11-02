@@ -25,6 +25,45 @@ namespace Ettad.EntityFramework.Configurations
 
             builder.HasIndex(x => x.NameEn)
                 .IsUnique();
+
+            // Seed data
+            builder.HasData(
+                new ProjectailMaterial
+                {
+                    Id = 1,
+                    NameAr = "فولاذ",
+                    NameEn = "Steel",
+                    IsDeleted = false
+                },
+                new ProjectailMaterial
+                {
+                    Id = 2,
+                    NameAr = "نحاس",
+                    NameEn = "Brass",
+                    IsDeleted = false
+                },
+                new ProjectailMaterial
+                {
+                    Id = 3,
+                    NameAr = "رصاص",
+                    NameEn = "Lead",
+                    IsDeleted = false
+                },
+                new ProjectailMaterial
+                {
+                    Id = 4,
+                    NameAr = "تنغستن",
+                    NameEn = "Tungsten",
+                    IsDeleted = false
+                },
+                new ProjectailMaterial
+                {
+                    Id = 5,
+                    NameAr = "يورانيوم منضب",
+                    NameEn = "Depleted Uranium",
+                    IsDeleted = false
+                }
+            );
         }
     }
 }

@@ -25,6 +25,45 @@ namespace Ettad.EntityFramework.Configurations
 
             builder.HasIndex(x => x.NameEn)
                 .IsUnique();
+
+            // Seed data
+            builder.HasData(
+                new PrimaryPurpos
+                {
+                    Id = 1,
+                    NameAr = "قتالي",
+                    NameEn = "Combat",
+                    IsDeleted = false
+                },
+                new PrimaryPurpos
+                {
+                    Id = 2,
+                    NameAr = "تدريبي",
+                    NameEn = "Training",
+                    IsDeleted = false
+                },
+                new PrimaryPurpos
+                {
+                    Id = 3,
+                    NameAr = "دفاعي",
+                    NameEn = "Defense",
+                    IsDeleted = false
+                },
+                new PrimaryPurpos
+                {
+                    Id = 4,
+                    NameAr = "استطلاعي",
+                    NameEn = "Reconnaissance",
+                    IsDeleted = false
+                },
+                new PrimaryPurpos
+                {
+                    Id = 5,
+                    NameAr = "هجومي",
+                    NameEn = "Offensive",
+                    IsDeleted = false
+                }
+            );
         }
     }
 }

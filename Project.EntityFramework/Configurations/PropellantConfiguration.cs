@@ -25,6 +25,45 @@ namespace Ettad.EntityFramework.Configurations
 
             builder.HasIndex(x => x.NameEn)
                 .IsUnique();
+
+            // Seed data
+            builder.HasData(
+                new Propellant
+                {
+                    Id = 1,
+                    NameAr = "بارود أحادي القاعدة",
+                    NameEn = "Single-base Powder",
+                    IsDeleted = false
+                },
+                new Propellant
+                {
+                    Id = 2,
+                    NameAr = "بارود ثنائي القاعدة",
+                    NameEn = "Double-base Powder",
+                    IsDeleted = false
+                },
+                new Propellant
+                {
+                    Id = 3,
+                    NameAr = "بارود ثلاثي القاعدة",
+                    NameEn = "Triple-base Powder",
+                    IsDeleted = false
+                },
+                new Propellant
+                {
+                    Id = 4,
+                    NameAr = "نيتروسليلوز",
+                    NameEn = "Nitrocellulose",
+                    IsDeleted = false
+                },
+                new Propellant
+                {
+                    Id = 5,
+                    NameAr = "كورديت",
+                    NameEn = "Cordite",
+                    IsDeleted = false
+                }
+            );
         }
     }
 }

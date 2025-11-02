@@ -25,6 +25,45 @@ namespace Ettad.EntityFramework.Configurations
 
             builder.HasIndex(x => x.NameEn)
                 .IsUnique();
+
+            // Seed data
+            builder.HasData(
+                new Color
+                {
+                    Id = 1,
+                    NameAr = "أخضر",
+                    NameEn = "Green",
+                    IsDeleted = false
+                },
+                new Color
+                {
+                    Id = 2,
+                    NameAr = "أسود",
+                    NameEn = "Black",
+                    IsDeleted = false
+                },
+                new Color
+                {
+                    Id = 3,
+                    NameAr = "أصفر",
+                    NameEn = "Yellow",
+                    IsDeleted = false
+                },
+                new Color
+                {
+                    Id = 4,
+                    NameAr = "أحمر",
+                    NameEn = "Red",
+                    IsDeleted = false
+                },
+                new Color
+                {
+                    Id = 5,
+                    NameAr = "رمادي",
+                    NameEn = "Gray",
+                    IsDeleted = false
+                }
+            );
         }
     }
 }

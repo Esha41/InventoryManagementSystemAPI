@@ -1,16 +1,16 @@
-﻿using Ettad.Data.Entities;
+using Ettad.Data.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace Ettad.EntityFramework.Configurations
 {
-    internal class CaseTypeConfiguration : IEntityTypeConfiguration<CaseType>
+    internal class NatureOptionConfiguration : IEntityTypeConfiguration<NatureOption>
     {
-        public void Configure(EntityTypeBuilder<CaseType> builder)
+        public void Configure(EntityTypeBuilder<NatureOption> builder)
         {
             builder.HasKey(x => x.Id);
 
-            builder.ToTable("CaseTypes");
+            builder.ToTable("NatureOptions");
 
             builder.Property(x => x.NameAr)
                 .IsRequired()
@@ -28,42 +28,43 @@ namespace Ettad.EntityFramework.Configurations
 
             // Seed data
             builder.HasData(
-                new CaseType
+                new NatureOption
                 {
                     Id = 1,
-                    NameAr = "نحاسي",
-                    NameEn = "Brass",
+                    NameAr = "قتالية",
+                    NameEn = "Combat",
                     IsDeleted = false
                 },
-                new CaseType
+                new NatureOption
                 {
                     Id = 2,
-                    NameAr = "فولاذي",
-                    NameEn = "Steel",
+                    NameAr = "تدريبية",
+                    NameEn = "Training",
                     IsDeleted = false
                 },
-                new CaseType
+                new NatureOption
                 {
                     Id = 3,
-                    NameAr = "ألومنيوم",
-                    NameEn = "Aluminum",
+                    NameAr = "تعليمية",
+                    NameEn = "Educational",
                     IsDeleted = false
                 },
-                new CaseType
+                new NatureOption
                 {
                     Id = 4,
-                    NameAr = "بلاستيك",
-                    NameEn = "Plastic",
+                    NameAr = "وهمية",
+                    NameEn = "Dummy",
                     IsDeleted = false
                 },
-                new CaseType
+                new NatureOption
                 {
                     Id = 5,
-                    NameAr = "مختلط",
-                    NameEn = "Composite",
+                    NameAr = "عرض",
+                    NameEn = "Display",
                     IsDeleted = false
                 }
             );
         }
     }
 }
+

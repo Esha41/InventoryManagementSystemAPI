@@ -25,6 +25,45 @@ namespace Ettad.EntityFramework.Configurations
 
             builder.HasIndex(x => x.NameEn)
                 .IsUnique();
+
+            // Seed data
+            builder.HasData(
+                new Compatibility
+                {
+                    Id = 1,
+                    NameAr = "المجموعة أ",
+                    NameEn = "Group A",
+                    IsDeleted = false
+                },
+                new Compatibility
+                {
+                    Id = 2,
+                    NameAr = "المجموعة ب",
+                    NameEn = "Group B",
+                    IsDeleted = false
+                },
+                new Compatibility
+                {
+                    Id = 3,
+                    NameAr = "المجموعة ج",
+                    NameEn = "Group C",
+                    IsDeleted = false
+                },
+                new Compatibility
+                {
+                    Id = 4,
+                    NameAr = "المجموعة د",
+                    NameEn = "Group D",
+                    IsDeleted = false
+                },
+                new Compatibility
+                {
+                    Id = 5,
+                    NameAr = "المجموعة هـ",
+                    NameEn = "Group E",
+                    IsDeleted = false
+                }
+            );
         }
     }
 }

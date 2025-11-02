@@ -25,6 +25,45 @@ namespace Ettad.EntityFramework.Configurations
 
             builder.HasIndex(x => x.NameEn)
                 .IsUnique();
+
+            // Seed data
+            builder.HasData(
+                new Supplier
+                {
+                    Id = 1,
+                    NameAr = "شركة الإمدادات العسكرية المتقدمة",
+                    NameEn = "Advanced Military Supplies Co.",
+                    IsDeleted = false
+                },
+                new Supplier
+                {
+                    Id = 2,
+                    NameAr = "المؤسسة العامة للتسليح",
+                    NameEn = "General Armament Corporation",
+                    IsDeleted = false
+                },
+                new Supplier
+                {
+                    Id = 3,
+                    NameAr = "شركة الصناعات الدفاعية",
+                    NameEn = "Defense Industries Company",
+                    IsDeleted = false
+                },
+                new Supplier
+                {
+                    Id = 4,
+                    NameAr = "مجموعة التجهيزات العسكرية",
+                    NameEn = "Military Equipment Group",
+                    IsDeleted = false
+                },
+                new Supplier
+                {
+                    Id = 5,
+                    NameAr = "شركة التوريدات الاستراتيجية",
+                    NameEn = "Strategic Supplies Corporation",
+                    IsDeleted = false
+                }
+            );
         }
     }
 }
