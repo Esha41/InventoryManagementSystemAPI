@@ -45,6 +45,7 @@ namespace Ettad.EntityFramework.DataBaseContext
         public DbSet<Supplier> Suppliers { get; set; }
         public DbSet<Unit> Units { get; set; }
         public DbSet<ApplicationEntity> ApplicationEntities { get;set;}
+        public DbSet<RoleApplicationEntity> RoleApplicationEntities { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

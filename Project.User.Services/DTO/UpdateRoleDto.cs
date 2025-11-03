@@ -9,5 +9,6 @@ namespace Ettad.User.Services.DTO
         [StringLength(100, ErrorMessage = "Role name must be between {2} and {1} characters.", MinimumLength = 2)]
         public string Name { get; set; }
         public bool IsDefaultRole { get; set; }
+        public List<int> ApplicationEntityIds { get; set; } = new List<int>();
     }
 }

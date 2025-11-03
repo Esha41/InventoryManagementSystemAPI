@@ -1,10 +1,11 @@
-using AutoMapper;
+﻿using AutoMapper;
 using AutoMapper.QueryableExtensions;
 using Ettad.Application.Common.Interfaces;
 using Ettad.Comman.Idenitity;
 using Ettad.CrossCutting.Comman.Idenitity;
 using Ettad.CrossCutting.Comman.Models;
 using Ettad.CrossCutting.Comman.Models.Identity;
+using Ettad.Data.Entities;
 using Ettad.EntityFramework.DataBaseContext;
 using Ettad.EntityFramework.Utiliies;
 using Ettad.Infrastructure.Utilities;
@@ -70,13 +71,16 @@ namespace Ettad.User.Services.Implementation
 
         public async Task<APIOperationResponse<RoleDto>> CreateRoleAsync(CreateRoleDto createRoleDto)
         {
+            // 1️⃣ Check if role exists
             if (await _roleManager.RoleExistsAsync(createRoleDto.Name))
             {
                 return APIOperationResponse<RoleDto>.BadRequest($"Role with name '{createRoleDto.Name}' already exists.");
             }
 
+            // 2️⃣ Map DTO to ApplicationRole
             var newRole = _mapper.Map<ApplicationRole>(createRoleDto);
 
+            // 3️⃣ Create role in Identity
             IdentityResult result = await _roleManager.CreateAsync(newRole);
 
             if (!result.Succeeded)
@@ -85,26 +89,55 @@ namespace Ettad.User.Services.Implementation
                 return APIOperationResponse<RoleDto>.BadRequest("Failed to create role.", errors);
             }
 
+            // 4️⃣ Map created role to RoleDto
             var roleDto = _mapper.Map<RoleDto>(newRole);
+
+            // 5️⃣ Assign selected application entities, if any
+            if (createRoleDto.ApplicationEntityIds != null && createRoleDto.ApplicationEntityIds.Any())
+            {
+                foreach (var entityId in createRoleDto.ApplicationEntityIds)
+                {
+                    // Avoid duplicates
+                    var exists = await _context.RoleApplicationEntities
+                        .AnyAsync(x => x.RoleId == newRole.Id && x.ApplicationEntityId == entityId);
+
+                    if (!exists)
+                    {
+                        _context.RoleApplicationEntities.Add(new RoleApplicationEntity
+                        {
+                            RoleId = newRole.Id,
+                            ApplicationEntityId = entityId,
+                            CreatedBy = "system", // replace with current user if available
+                            CreatedDate = DateTime.UtcNow
+                        });
+                    }
+                }
+
+                await _context.SaveChangesAsync();
+            }
+
+            // 6️⃣ Return success
             return APIOperationResponse<RoleDto>.Success(roleDto, "Role created successfully.");
         }
 
+
         public async Task<APIOperationResponse<RoleDto>> UpdateRoleAsync(string id, UpdateRoleDto updateRoleDto)
         {
+            // 1️⃣ Find the role
             var role = await _roleManager.FindByIdAsync(id);
             if (role == null)
             {
                 return APIOperationResponse<RoleDto>.NotFound($"Role with ID '{id}' not found.");
             }
 
-            // Check if the new name is already taken by another role
+            // 2️⃣ Check if the new name is already taken by another role
             var existingRoleWithSameName = await _roleManager.FindByNameAsync(updateRoleDto.Name);
             if (existingRoleWithSameName != null && existingRoleWithSameName.Id != id)
             {
                 return APIOperationResponse<RoleDto>.BadRequest($"Role name '{updateRoleDto.Name}' is already taken.");
             }
 
-            // Update properties
+            // 3️⃣ Update role properties
             role.Name = updateRoleDto.Name;
             role.IsDefaultRole = updateRoleDto.IsDefaultRole;
 
@@ -116,9 +149,34 @@ namespace Ettad.User.Services.Implementation
                 return APIOperationResponse<RoleDto>.BadRequest("Failed to update role.", errors);
             }
 
+            // 4️⃣ Update mapped application entities if provided
+            if (updateRoleDto.ApplicationEntityIds != null)
+            {
+                // Remove existing mappings
+                var existingMappings = _context.RoleApplicationEntities
+                    .Where(x => x.RoleId == role.Id);
+                _context.RoleApplicationEntities.RemoveRange(existingMappings);
+
+                // Add new mappings
+                foreach (var entityId in updateRoleDto.ApplicationEntityIds)
+                {
+                    _context.RoleApplicationEntities.Add(new RoleApplicationEntity
+                    {
+                        RoleId = role.Id,
+                        ApplicationEntityId = entityId,
+                        CreatedBy = "system", // replace with current user if available
+                        CreatedDate = DateTime.UtcNow
+                    });
+                }
+
+                await _context.SaveChangesAsync();
+            }
+
+            // 5️⃣ Map updated role to DTO and return
             var updatedRoleDto = _mapper.Map<RoleDto>(role);
             return APIOperationResponse<RoleDto>.Success(updatedRoleDto, "Role updated successfully.");
         }
+
 
         public async Task<APIOperationResponse<string>> DeleteRoleAsync(string id)
         {
