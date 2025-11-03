@@ -264,11 +264,11 @@ namespace Ettad.Lookups.Domain.API.Controllers
     #region Supplier
 
     [CheckAuthorize(
-        "Permissions.Suppliers.Page",
-        "Permissions.Suppliers.View",
-        "Permissions.Suppliers.Create",
-        "Permissions.Suppliers.Edit",
-        "Permissions.Suppliers.Delete"
+        "Permissions.Supplier.Page",
+        "Permissions.Supplier.View",
+        "Permissions.Supplier.Create",
+        "Permissions.Supplier.Edit",
+        "Permissions.Supplier.Delete"
     )]
     public class SupplierController : LookupController<Supplier, CreateUpdateSupplierDto>
     {

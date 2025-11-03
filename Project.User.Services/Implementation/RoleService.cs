@@ -20,7 +20,7 @@ namespace Ettad.User.Services.Implementation
     public class RoleService : IRoleService
     {
         private readonly RoleManager<ApplicationRole> _roleManager;
-        private readonly UserManager<ApplicationUser> _userManager;
+        private readonly UserManager<ApplicationUser> _userManager;        
         private readonly IMapper _mapper;
         private readonly ApplicationDbContext _context;
         private readonly ICurrentUserService _currentUserService;
@@ -325,6 +325,26 @@ namespace Ettad.User.Services.Implementation
             }
 
             return APIOperationResponse<bool>.Success(true, "Users removed from role successfully.");
+        }
+        public async Task<APIOperationResponse<List<ApplicationEntityDto>>> GetAllApplicationEntitiesAsync()
+        {
+            var entities = await _context.ApplicationEntities
+                .OrderBy(e => e.Id) // optional, ensures consistent ordering
+                .Select(e => new ApplicationEntityDto
+                {
+                    Id = e.Id,
+                    Code = e.Code,
+                    NameAr = e.NameAr,
+                    NameEn = e.NameEn,
+                    IsDeleted = e.IsDeleted,
+                    CreationDate = e.CreationDate,
+                    ModificationDate = e.ModificationDate,
+                    ModifiedBy = e.ModifiedBy,
+                    CreatedBy = e.CreatedBy
+                })
+                .ToListAsync();
+
+            return APIOperationResponse<List<ApplicationEntityDto>>.Success(entities, "Entities retrieved successfully");
         }
 
     }

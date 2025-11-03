@@ -162,5 +162,17 @@ namespace Ettad.User.API.Controllers
             return ProcessResponse(response);
         }
 
+        [HttpGet("entities")]
+        public async Task<IActionResult> GetAllAppicationEntities()
+        {
+            var result = await _roleService.GetAllApplicationEntitiesAsync();
+
+            if (!result.Succeeded)
+            {
+                return BadRequest(result); // or use appropriate status code
+            }
+
+            return Ok(result);
+        }
     }
 }
