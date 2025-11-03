@@ -205,32 +205,49 @@ public class UserService : IUserService
         return APIOperationResponse<bool>.Success(true, "User deleted successfully");
     }
 
+    //public async Task<APIOperationResponse<List<UserRoleDto>>> GetUserRolesAsync(string userId)
+    //{
+    //    var user = await _userManager.FindByIdAsync(userId);
+    //    if (user == null)
+    //    {
+    //        return APIOperationResponse<List<UserRoleDto>>.NotFound("User not found.");
+    //    }
+
+    //    var userRolesList = new List<UserRoleDto>();
+
+    //    var allRoles = await _roleManager.Roles.ToListAsync();
+
+    //    foreach (var role in allRoles)
+    //    {
+    //        var userRoleDto = new UserRoleDto
+    //        {
+    //            RoleId = role.Id,
+    //            RoleName = role.Name,
+    //            IsSelected = await _userManager.IsInRoleAsync(user, role.Name)
+    //        };
+    //        userRolesList.Add(userRoleDto);
+    //    }
+
+    //    return APIOperationResponse<List<UserRoleDto>>.Success(userRolesList);
+    //}
     public async Task<APIOperationResponse<List<UserRoleDto>>> GetUserRolesAsync(string userId)
     {
         var user = await _userManager.FindByIdAsync(userId);
         if (user == null)
-        {
             return APIOperationResponse<List<UserRoleDto>>.NotFound("User not found.");
-        }
-
-        var userRolesList = new List<UserRoleDto>();
 
         var allRoles = await _roleManager.Roles.ToListAsync();
+        var userRoleNames = await _userManager.GetRolesAsync(user);
 
-        foreach (var role in allRoles)
+        var userRolesList = allRoles.Select(role => new UserRoleDto
         {
-            var userRoleDto = new UserRoleDto
-            {
-                RoleId = role.Id,
-                RoleName = role.Name,
-                IsSelected = await _userManager.IsInRoleAsync(user, role.Name)
-            };
-            userRolesList.Add(userRoleDto);
-        }
+            RoleId = role.Id,
+            RoleName = role.Name,
+            IsSelected = userRoleNames.Contains(role.Name)
+        }).ToList();
 
         return APIOperationResponse<List<UserRoleDto>>.Success(userRolesList);
     }
-
 
     public async Task<APIOperationResponse<bool>> UpdateUserRolesAsync(string userId, UpdateUserRolesDto dto)
     {

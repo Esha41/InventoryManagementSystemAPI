@@ -290,6 +290,15 @@ public static class MainEntities
         CrudOperation.Edit,
         CrudOperation.Delete
     };
+    [Category(CrudPermissionsGenerator.Inventory)]
+    public static readonly CrudOperation[] SupplyManagement = new[]
+   {
+        CrudOperation.Page,
+        CrudOperation.View,
+        CrudOperation.Create,
+        CrudOperation.Edit,
+        CrudOperation.Delete
+    };
     // ========================================
     // USER MANAGEMENT
     // ========================================

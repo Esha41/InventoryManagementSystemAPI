@@ -19,6 +19,7 @@ public class CrudPermissionsGenerator
     public const string UserManagement = "User Management";
     public const string Reports = "Reports & Analytics";
 
+
     public CrudPermissionsGenerator( ApplicationDbContext context)
     {
         _context = context;
