@@ -27,6 +27,7 @@ using Ettad.Workflow.Service;
 using Ettad.Inventory.Service;
 using System.Text;
 using System.Text.Json;
+using Ettad.EntityFramework.Interceptors;
 
 // Configure Serilog
 Log.Logger = new LoggerConfiguration()
