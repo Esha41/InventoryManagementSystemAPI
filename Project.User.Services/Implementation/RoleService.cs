@@ -1,6 +1,5 @@
 using AutoMapper;
 using AutoMapper.QueryableExtensions;
-using Microsoft.AspNetCore.Identity;
 using Ettad.Application.Common.Interfaces;
 using Ettad.Comman.Idenitity;
 using Ettad.CrossCutting.Comman.Idenitity;
@@ -12,6 +11,8 @@ using Ettad.Infrastructure.Utilities;
 using Ettad.ResponseHandler.Models;
 using Ettad.User.Services.DTO;
 using Ettad.User.Services.Interfaces;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 
 namespace Ettad.User.Services.Implementation
@@ -43,6 +44,19 @@ namespace Ettad.User.Services.Implementation
             var roleDto = _mapper.Map<RoleDto>(role);
             return APIOperationResponse<RoleDto>.Success(roleDto);
         }
+        public async Task<APIOperationResponse<List<RoleDto>>> GetAllRolesAsync()
+        {
+            var roles = await _roleManager.Roles
+                .Select(r => new RoleDto
+                {
+                    Id = r.Id,
+                    Name = r.Name
+                })
+                .ToListAsync();
+
+            return APIOperationResponse<List<RoleDto>>.Success(roles, "Roles retrieved successfully");
+        }
+
 
         public async Task<APIOperationResponse<PaginatedList<RoleDto>>> GetRolesAsync(PagedListRequest request)
         {

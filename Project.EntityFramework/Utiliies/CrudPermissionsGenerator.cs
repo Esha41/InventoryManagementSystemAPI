@@ -24,7 +24,8 @@ public class CrudPermissionsGenerator
     public const string DeviceManagement = "DeviceManagement";
     public const string AttendanceSettings = "AttendanceSettings";
     public const string OrganizationSettings = "OrganizationSettings";
-    public const string InventoryManagement = "InventoryManagement";
+    public const string Inventory = "Inventory";
+    public const string Dashboard = "Dashboard";
 
     public CrudPermissionsGenerator(ApplicationDbContext context)
     {
@@ -97,15 +98,36 @@ public class CrudPermissionsGenerator
         return permissions;
     }
 
-    private static List<string?> GeneratePermissionsList(string entityName, CrudOperation[] operations)
+    //private static List<string?> GeneratePermissionsList(string entityName, CrudOperation[] operations)
+    //{
+    //    return new List<string?>
+    //    {
+    //        operations.Contains(CrudOperation.Page) ? $"Permissions.{entityName}.Page" : null,
+    //        operations.Contains(CrudOperation.View) ? $"Permissions.{entityName}.View" : null,
+    //        operations.Contains(CrudOperation.Create) ? $"Permissions.{entityName}.Create" : null,
+    //        operations.Contains(CrudOperation.Edit) ? $"Permissions.{entityName}.Edit" : null,
+    //        operations.Contains(CrudOperation.Delete) ? $"Permissions.{entityName}.Delete" : null,
+    //    };
+    //}
+    private static List<string> GeneratePermissionsList(string entityName, CrudOperation[]? operations)
     {
-        return new List<string?>
-        {
-            operations.Contains(CrudOperation.Page) ? $"Permissions.{entityName}.Page" : null,
-            operations.Contains(CrudOperation.View) ? $"Permissions.{entityName}.View" : null,
-            operations.Contains(CrudOperation.Create) ? $"Permissions.{entityName}.Create" : null,
-            operations.Contains(CrudOperation.Edit) ? $"Permissions.{entityName}.Edit" : null,
-            operations.Contains(CrudOperation.Delete) ? $"Permissions.{entityName}.Delete" : null,
-        };
+        var list = new List<string>();
+
+        if (operations == null || operations.Length == 0)
+            return list;
+
+        if (operations.Contains(CrudOperation.Page))
+            list.Add($"Permissions.{entityName}.Page");
+        if (operations.Contains(CrudOperation.View))
+            list.Add($"Permissions.{entityName}.View");
+        if (operations.Contains(CrudOperation.Create))
+            list.Add($"Permissions.{entityName}.Create");
+        if (operations.Contains(CrudOperation.Edit))
+            list.Add($"Permissions.{entityName}.Edit");
+        if (operations.Contains(CrudOperation.Delete))
+            list.Add($"Permissions.{entityName}.Delete");
+
+        return list;
     }
+
 }

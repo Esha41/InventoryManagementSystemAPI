@@ -13,7 +13,8 @@ namespace Ettad.User.Services.Interfaces
         {
             Task<APIOperationResponse<UserDto>> GetByIdAsync(string id);
             Task<APIOperationResponse<List<UserDto>>> GetAllAsync();
-            Task<APIOperationResponse<UserDto>> CreateAsync(CreateUserDto dto);
+       // Task<APIOperationResponse<List<UserDto>>> GetAllUserAsync();
+        Task<APIOperationResponse<UserDto>> CreateAsync(CreateUserDto dto);
             Task<APIOperationResponse<UserDto>> UpdateAsync(UpdateUserDto dto);
             Task<APIOperationResponse<bool>> DeleteAsync(string id);
         Task<APIOperationResponse<List<UserRoleDto>>> GetUserRolesAsync(string userId);

@@ -14,6 +14,7 @@ namespace Ettad.User.Services.Interfaces
     {
         Task<APIOperationResponse<PaginatedList<RoleDto>>> GetRolesAsync(PagedListRequest request);
         Task<APIOperationResponse<RoleDto>> GetRoleByIdAsync(string id);
+        Task<APIOperationResponse<List<RoleDto>>> GetAllRolesAsync();
         Task<APIOperationResponse<RoleDto>> CreateRoleAsync(CreateRoleDto createRoleDto);
         Task<APIOperationResponse<RoleDto>> UpdateRoleAsync(string id, UpdateRoleDto updateRoleDto);
         Task<APIOperationResponse<string>> DeleteRoleAsync(string id);
