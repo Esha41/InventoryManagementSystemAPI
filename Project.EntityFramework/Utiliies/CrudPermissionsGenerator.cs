@@ -26,6 +26,7 @@ public class CrudPermissionsGenerator
     public const string OrganizationSettings = "OrganizationSettings";
     public const string Inventory = "Inventory";
     public const string Dashboard = "Dashboard";
+    public const string RequestManagement = "RequestManagement";
 
     public CrudPermissionsGenerator(ApplicationDbContext context)
     {
