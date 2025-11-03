@@ -72,16 +72,43 @@ namespace Ettad.User.Services.Implementation
             return APIOperationResponse<List<RoleDto>>.Success(roles, "Roles retrieved successfully");
         }
 
-
         public async Task<APIOperationResponse<PaginatedList<RoleDto>>> GetRolesAsync(PagedListRequest request)
         {
-            var queryableRoles = _roleManager.Roles
-                .ProjectTo<RoleDto>(_mapper.ConfigurationProvider);
+            // 1️⃣ Get roles as IQueryable
+            var queryableRoles = _roleManager.Roles.AsQueryable();
 
-            var paginatedRoles = await PaginatedList<RoleDto>.CreateAsyncForTableBinding(queryableRoles, request);
+            // 2️⃣ Project to RoleDto using AutoMapper
+            var projectedRoles = queryableRoles
+                .Select(role => new RoleDto
+                {
+                    Id = role.Id,
+                    Name = role.Name,
+                    IsDefaultRole = (bool)role.IsDefaultRole
+                });
 
+            // 3️⃣ Apply pagination
+            var paginatedRoles = await PaginatedList<RoleDto>.CreateAsyncForTableBinding(projectedRoles, request);
+
+            // 4️⃣ Fetch assigned ApplicationEntityIds for each role
+            var roleIds = paginatedRoles.Items.Select(r => r.Id).ToList();
+
+            var roleEntities = await _context.RoleApplicationEntities
+                .Where(x => roleIds.Contains(x.RoleId))
+                .GroupBy(x => x.RoleId)
+                .ToDictionaryAsync(g => g.Key, g => g.Select(e => e.ApplicationEntityId).ToList());
+
+            foreach (var role in paginatedRoles.Items)
+            {
+                if (roleEntities.TryGetValue(role.Id, out var entityIds))
+                {
+                    role.ApplicationEntityIds = entityIds;
+                }
+            }
+
+            // 5️⃣ Return paginated response
             return APIOperationResponse<PaginatedList<RoleDto>>.Success(paginatedRoles);
         }
+
 
         public async Task<APIOperationResponse<RoleDto>> CreateRoleAsync(CreateRoleDto createRoleDto)
         {
