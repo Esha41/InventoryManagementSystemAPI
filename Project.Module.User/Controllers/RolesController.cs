@@ -51,6 +51,16 @@ namespace Ettad.User.API.Controllers
             if (!response.Succeeded) return NotFound(response);
             return Ok(response);
         }
+        [AllowAnonymous]
+        [HttpGet]
+        public async Task<IActionResult> GetAllRoles()
+        {
+            var response = await _roleService.GetAllRolesAsync();
+            if (!response.Succeeded) return BadRequest(response);
+
+            return Ok(response);
+        }
+
 
         [HttpPost]
         [CheckAuthorize(

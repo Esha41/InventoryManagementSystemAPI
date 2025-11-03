@@ -14,6 +14,5 @@ namespace Ettad.Comman.Idenitity
       //  public Employee Employee { get; set; }
 
         public int? OrganizationId { get; set; }
-      //  public Organization Organization { get; set; }
     }
 }

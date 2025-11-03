@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Identity;
+﻿using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Ettad.Application.Common.Interfaces;
 using Ettad.Comman.Idenitity;
@@ -33,83 +33,163 @@ public class UserService : IUserService
         return APIOperationResponse<UserDto>.Success(MapToDto(user));
     }
 
+    //public async Task<APIOperationResponse<List<UserDto>>> GetAllAsync() 
+    //{ 
+    //    var orgId = _currentUserService.OrganizationId; 
+    //    var users = _userManager.Users.Where(a => a.OrganizationId == orgId).ToList(); 
+    //    var mapped = users.Select(MapToDto).ToList(); 
+    //    return APIOperationResponse<List<UserDto>>.Success(mapped); 
+    //}
+
     public async Task<APIOperationResponse<List<UserDto>>> GetAllAsync()
     {
-        var orgId = _currentUserService.OrganizationId;
-        var users = _userManager.Users.Where(a=>a.OrganizationId == orgId).ToList();
-        var mapped = users.Select(MapToDto).ToList();
+        // 1️⃣ Get all users (no org filter)
+        var users = await _userManager.Users.ToListAsync();
+
+        // 2️⃣ Get all roles upfront to avoid repeated DB calls
+        var allRoles = await _roleManager.Roles.ToListAsync();
+
+        var mapped = new List<UserDto>();
+
+        foreach (var user in users)
+        {
+            var dto = MapToDto(user);
+
+            // 3️⃣ Get user roles (names)
+            var roleNames = await _userManager.GetRolesAsync(user);
+
+            // 4️⃣ Map role names → role IDs using pre-fetched roles
+            dto.RoleIds = allRoles
+                .Where(r => roleNames.Contains(r.Name))
+                .Select(r => r.Id)
+                .ToList();
+
+            mapped.Add(dto);
+        }
+
         return APIOperationResponse<List<UserDto>>.Success(mapped);
     }
 
+
     public async Task<APIOperationResponse<UserDto>> CreateAsync(CreateUserDto dto)
     {
-       // var emp = await _employeeRepository.FindOneAsync(x=>x.EmployeeId==dto.EmployeeId);
-        ApplicationUser user; 
+        if (dto == null)
+            return APIOperationResponse<UserDto>.Fail(ResponseType.BadRequest, "Invalid request");
 
-        if ( dto.IsLdapUser == false)
+        // 1️⃣ Create the user object
+        var user = new ApplicationUser
         {
-            //return APIOperationResponse<UserDto>.Fail(Ettad.ResponseHandler.Consts.ResponseType.NotFound,
-            //  "employee not found");
-             user = new ApplicationUser
-            {
-                UserName = dto.UserName,
-                Email = dto. UserName ,// dto.Email,
-                IsLdapUser = dto.IsLdapUser,
-                ExtraEmployeesView = dto.ExtraEmployeesView,
-                EmployeeId = dto.EmployeeId,
-                OrganizationId = dto.OrganizationId == null ? _currentUserService.OrganizationId : dto.OrganizationId
-            };
-        }
-        else
-        {
-            //to do
-            user = new ApplicationUser
-            {
-                UserName ="k", //emp.OfficialEmail,
-                Email ="ii", //emp.OfficialEmail,
-                IsLdapUser = dto.IsLdapUser,
-                ExtraEmployeesView = dto.ExtraEmployeesView,
-                EmployeeId = dto.EmployeeId,
-                OrganizationId = dto.OrganizationId == null ? _currentUserService.OrganizationId : dto.OrganizationId
-            };
+            UserName = dto.UserName,
+            Email = dto.UserName,
+            IsLdapUser = dto.IsLdapUser,
+            ExtraEmployeesView = dto.ExtraEmployeesView,
+            EmployeeId = dto.EmployeeId,
+            OrganizationId = dto.OrganizationId ?? _currentUserService.OrganizationId
+        };
 
-        }
-            
-
+        // 2️⃣ Create user in DB
         var result = await _userManager.CreateAsync(user, dto.Password);
-
         if (!result.Succeeded)
-            return APIOperationResponse<UserDto>.Fail(Ettad.ResponseHandler.Consts.ResponseType.BadRequest,
-                string.Join(",", result.Errors.Select(e => e.Description)));
+            return APIOperationResponse<UserDto>.Fail(
+                ResponseType.BadRequest,
+                string.Join(",", result.Errors.Select(e => e.Description))
+            );
 
-        return APIOperationResponse<UserDto>.Success(MapToDto(user));
+        // 3️⃣ Assign roles (if any)
+        if (dto.RoleIds != null && dto.RoleIds.Any())
+        {
+            var roleNames = await _roleManager.Roles
+                .Where(r => dto.RoleIds.Contains(r.Id))
+                .Select(r => r.Name)
+                .ToListAsync();
+
+            if (roleNames.Any())
+            {
+                var addRolesResult = await _userManager.AddToRolesAsync(user, roleNames);
+                if (!addRolesResult.Succeeded)
+                {
+                    return APIOperationResponse<UserDto>.Fail(
+                        ResponseType.BadRequest,
+                        string.Join(",", addRolesResult.Errors.Select(e => e.Description))
+                    );
+                }
+            }
+        }
+
+        // 4️⃣ Return created user
+        var userDto = MapToDto(user);
+        return APIOperationResponse<UserDto>.Success(userDto);
     }
+
 
     public async Task<APIOperationResponse<UserDto>> UpdateAsync(UpdateUserDto dto)
     {
+        if (dto == null)
+            return APIOperationResponse<UserDto>.Fail(ResponseType.BadRequest, "Invalid request");
+
+        // 1️⃣ Find user
         var user = await _userManager.FindByIdAsync(dto.Id);
         if (user == null)
             return APIOperationResponse<UserDto>.Fail(ResponseType.NotFound, "User not found");
-        else 
+
+        // 2️⃣ Update basic fields
+        user.UserName = dto.UserName ?? user.UserName;
+        user.Email = dto.UserName ?? user.Email;
+        user.IsLdapUser = dto.IsLdapUser;
+        user.ExtraEmployeesView = dto.ExtraEmployeesView;
+        user.EmployeeId = dto.EmployeeId;
+        user.OrganizationId = dto.OrganizationId;
+
+        // 3️⃣ Update roles
+        if (dto.RoleIds != null)
         {
-            user.UserName = dto.UserName == null ? user.Email : dto.UserName;
-            user.Email = dto.UserName == null ? user.Email : dto.UserName;
-            user.IsLdapUser = dto.IsLdapUser;
-            user.ExtraEmployeesView = dto.ExtraEmployeesView;
-            user.EmployeeId = dto.EmployeeId;
+            // Get current roles
+            var currentRoles = await _userManager.GetRolesAsync(user);
 
-            user.OrganizationId = dto.OrganizationId;
+            // Map RoleIds to Role Names
+            var newRoleNames = await _roleManager.Roles
+                .Where(r => dto.RoleIds.Contains(r.Id))
+                .Select(r => r.Name)
+                .ToListAsync();
 
-            var result = await _userManager.UpdateAsync(user);
+            // Remove roles that are no longer assigned
+            var rolesToRemove = currentRoles.Except(newRoleNames).ToList();
+            if (rolesToRemove.Any())
+            {
+                var removeResult = await _userManager.RemoveFromRolesAsync(user, rolesToRemove);
+                if (!removeResult.Succeeded)
+                    return APIOperationResponse<UserDto>.Fail(
+                        ResponseType.InternalServerError,
+                        string.Join(",", removeResult.Errors.Select(e => e.Description))
+                    );
+            }
 
-            if (!result.Succeeded)
-                return APIOperationResponse<UserDto>.Fail(ResponseType.InternalServerError,
-                    string.Join(",", result.Errors.Select(e => e.Description)));
-
-            return APIOperationResponse<UserDto>.Success(MapToDto(user));
+            // Add new roles
+            var rolesToAdd = newRoleNames.Except(currentRoles).ToList();
+            if (rolesToAdd.Any())
+            {
+                var addResult = await _userManager.AddToRolesAsync(user, rolesToAdd);
+                if (!addResult.Succeeded)
+                    return APIOperationResponse<UserDto>.Fail(
+                        ResponseType.InternalServerError,
+                        string.Join(",", addResult.Errors.Select(e => e.Description))
+                    );
+            }
         }
 
+        // 4️⃣ Update user
+        var updateResult = await _userManager.UpdateAsync(user);
+        if (!updateResult.Succeeded)
+            return APIOperationResponse<UserDto>.Fail(
+                ResponseType.InternalServerError,
+                string.Join(",", updateResult.Errors.Select(e => e.Description))
+            );
+
+        // 5️⃣ Return updated user
+        return APIOperationResponse<UserDto>.Success(MapToDto(user));
     }
+
+
 
     public async Task<APIOperationResponse<bool>> DeleteAsync(string id)
     {
@@ -125,32 +205,49 @@ public class UserService : IUserService
         return APIOperationResponse<bool>.Success(true, "User deleted successfully");
     }
 
+    //public async Task<APIOperationResponse<List<UserRoleDto>>> GetUserRolesAsync(string userId)
+    //{
+    //    var user = await _userManager.FindByIdAsync(userId);
+    //    if (user == null)
+    //    {
+    //        return APIOperationResponse<List<UserRoleDto>>.NotFound("User not found.");
+    //    }
+
+    //    var userRolesList = new List<UserRoleDto>();
+
+    //    var allRoles = await _roleManager.Roles.ToListAsync();
+
+    //    foreach (var role in allRoles)
+    //    {
+    //        var userRoleDto = new UserRoleDto
+    //        {
+    //            RoleId = role.Id,
+    //            RoleName = role.Name,
+    //            IsSelected = await _userManager.IsInRoleAsync(user, role.Name)
+    //        };
+    //        userRolesList.Add(userRoleDto);
+    //    }
+
+    //    return APIOperationResponse<List<UserRoleDto>>.Success(userRolesList);
+    //}
     public async Task<APIOperationResponse<List<UserRoleDto>>> GetUserRolesAsync(string userId)
     {
         var user = await _userManager.FindByIdAsync(userId);
         if (user == null)
-        {
             return APIOperationResponse<List<UserRoleDto>>.NotFound("User not found.");
-        }
-
-        var userRolesList = new List<UserRoleDto>();
 
         var allRoles = await _roleManager.Roles.ToListAsync();
+        var userRoleNames = await _userManager.GetRolesAsync(user);
 
-        foreach (var role in allRoles)
+        var userRolesList = allRoles.Select(role => new UserRoleDto
         {
-            var userRoleDto = new UserRoleDto
-            {
-                RoleId = role.Id,
-                RoleName = role.Name,
-                IsSelected = await _userManager.IsInRoleAsync(user, role.Name)
-            };
-            userRolesList.Add(userRoleDto);
-        }
+            RoleId = role.Id,
+            RoleName = role.Name,
+            IsSelected = userRoleNames.Contains(role.Name)
+        }).ToList();
 
         return APIOperationResponse<List<UserRoleDto>>.Success(userRolesList);
     }
-
 
     public async Task<APIOperationResponse<bool>> UpdateUserRolesAsync(string userId, UpdateUserRolesDto dto)
     {

@@ -13,20 +13,28 @@ public class CrudPermissionsGenerator
 
     private readonly ApplicationDbContext _context;
 
+    public const string Reports = "Reports";
+    public const string Requests = "Requests";
+    public const string Analytics = "Analytics";
+    public const string Approvals = "Approvals";
+    public const string EmployeeData = "EmployeeData";
+    public const string TimeScheduling = "TimeScheduling";
+    public const string UserManagement = "UserManagement";
+    public const string SettingsSupport = "SettingsSupport";
+    public const string DeviceManagement = "DeviceManagement";
+    public const string AttendanceSettings = "AttendanceSettings";
+    public const string OrganizationSettings = "OrganizationSettings";
+    public const string Inventory = "Inventory";
     public const string Dashboard = "Dashboard";
-    public const string Requests = "Request Management";
-    public const string Inventory = "Inventory Management";
-    public const string UserManagement = "User Management";
-    public const string Reports = "Reports & Analytics";
 
-    public CrudPermissionsGenerator( ApplicationDbContext context)
+    public CrudPermissionsGenerator(ApplicationDbContext context)
     {
         _context = context;
     }
 
     public async Task<List<CrudPermissions>> GenerateAllPermissions()
     {
-       // var reports = new List<ReportItem>();
+        // var reports = new List<ReportItem>();
         var permissions = new List<CrudPermissions>();
         var employeeSettings = new EmployeeSettings();
         var fields = typeof(MainEntities).GetFields();
@@ -48,31 +56,31 @@ public class CrudPermissionsGenerator
         //}
         foreach (var field in fields)
         {
-          var isEnabled = true;
-        //    switch (field.Name.ToUpper())
-        //    {
-        //        case "JOBS":
-        //            isEnabled = employeeSettings.IsEnabledJob;
-        //            break;
-        //        case "TEAMS":
-        //            isEnabled = employeeSettings.IsEnabledTeam;
-        //            break;
-        //        case "GRADES":
-        //            isEnabled = employeeSettings.IsEnabledGrade;
-        //            break;
-        //        case "FAMILIES":
-        //            isEnabled = employeeSettings.IsEnabledFamily;
-        //            break;
-        //        case "PROJECTS":
-        //            isEnabled = employeeSettings.IsEnabledProject;
-        //            break;
-        //        case "SECTIONS":
-        //            isEnabled = employeeSettings.IsEnabledSection;
-        //            break;
-        //        case "COSTCENTERS":
-        //            isEnabled = employeeSettings.IsEnabledCostCenter;
-        //            break;
-        //    }
+            var isEnabled = true;
+            //    switch (field.Name.ToUpper())
+            //    {
+            //        case "JOBS":
+            //            isEnabled = employeeSettings.IsEnabledJob;
+            //            break;
+            //        case "TEAMS":
+            //            isEnabled = employeeSettings.IsEnabledTeam;
+            //            break;
+            //        case "GRADES":
+            //            isEnabled = employeeSettings.IsEnabledGrade;
+            //            break;
+            //        case "FAMILIES":
+            //            isEnabled = employeeSettings.IsEnabledFamily;
+            //            break;
+            //        case "PROJECTS":
+            //            isEnabled = employeeSettings.IsEnabledProject;
+            //            break;
+            //        case "SECTIONS":
+            //            isEnabled = employeeSettings.IsEnabledSection;
+            //            break;
+            //        case "COSTCENTERS":
+            //            isEnabled = employeeSettings.IsEnabledCostCenter;
+            //            break;
+            //    }
             if (isEnabled)
             {
                 permissions.Add(new CrudPermissions()
@@ -86,19 +94,40 @@ public class CrudPermissionsGenerator
                 });
             }
         }
- 
+
         return permissions;
     }
 
-    private static List<string?> GeneratePermissionsList(string entityName, CrudOperation[] operations)
+    //private static List<string?> GeneratePermissionsList(string entityName, CrudOperation[] operations)
+    //{
+    //    return new List<string?>
+    //    {
+    //        operations.Contains(CrudOperation.Page) ? $"Permissions.{entityName}.Page" : null,
+    //        operations.Contains(CrudOperation.View) ? $"Permissions.{entityName}.View" : null,
+    //        operations.Contains(CrudOperation.Create) ? $"Permissions.{entityName}.Create" : null,
+    //        operations.Contains(CrudOperation.Edit) ? $"Permissions.{entityName}.Edit" : null,
+    //        operations.Contains(CrudOperation.Delete) ? $"Permissions.{entityName}.Delete" : null,
+    //    };
+    //}
+    private static List<string> GeneratePermissionsList(string entityName, CrudOperation[]? operations)
     {
-        return new List<string?>
-        {
-            operations.Contains(CrudOperation.Page) ? $"Permissions.{entityName}.Page" : null,
-            operations.Contains(CrudOperation.View) ? $"Permissions.{entityName}.View" : null,
-            operations.Contains(CrudOperation.Create) ? $"Permissions.{entityName}.Create" : null,
-            operations.Contains(CrudOperation.Edit) ? $"Permissions.{entityName}.Edit" : null,
-            operations.Contains(CrudOperation.Delete) ? $"Permissions.{entityName}.Delete" : null,
-        };
+        var list = new List<string>();
+
+        if (operations == null || operations.Length == 0)
+            return list;
+
+        if (operations.Contains(CrudOperation.Page))
+            list.Add($"Permissions.{entityName}.Page");
+        if (operations.Contains(CrudOperation.View))
+            list.Add($"Permissions.{entityName}.View");
+        if (operations.Contains(CrudOperation.Create))
+            list.Add($"Permissions.{entityName}.Create");
+        if (operations.Contains(CrudOperation.Edit))
+            list.Add($"Permissions.{entityName}.Edit");
+        if (operations.Contains(CrudOperation.Delete))
+            list.Add($"Permissions.{entityName}.Delete");
+
+        return list;
     }
+
 }
