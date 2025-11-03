@@ -24,7 +24,8 @@ public class CrudPermissionsGenerator
     public const string DeviceManagement = "DeviceManagement";
     public const string AttendanceSettings = "AttendanceSettings";
     public const string OrganizationSettings = "OrganizationSettings";
-    public const string InventoryManagement = "InventoryManagement";
+    public const string Inventory = "Inventory";
+    public const string Dashboard = "Dashboard";
 
     public CrudPermissionsGenerator(ApplicationDbContext context)
     {
