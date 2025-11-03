@@ -17,9 +17,6 @@ namespace Ettad.EntityFramework.Configurations
             builder.HasIndex(x => x.ItemNo)
                 .IsUnique();
 
-            builder.Property(x => x.Lot)
-                .IsRequired();
-
             builder.Property(x => x.ItemType)
                 .IsRequired();
 
@@ -35,24 +32,6 @@ namespace Ettad.EntityFramework.Configurations
                 .WithMany()
                 .IsRequired()
                 .HasForeignKey(x =>  x.HccId)
-                .OnDelete(DeleteBehavior.Restrict);
-
-            builder.HasOne(x => x.Supplier)
-                .WithMany()
-                .IsRequired(false)
-                .HasForeignKey(x =>  x.SupplierId)
-                .OnDelete(DeleteBehavior.Restrict);
-
-            builder.HasOne(x => x.Country)
-                .WithMany()
-                .IsRequired(false)
-                .HasForeignKey(x =>  x.CountryId)
-                .OnDelete(DeleteBehavior.Restrict);
-
-            builder.HasOne(x => x.Manufacturer)
-                .WithMany()
-                .IsRequired(false)
-                .HasForeignKey(x =>  x.ManufacturerId)
                 .OnDelete(DeleteBehavior.Restrict);
         }
     }

@@ -14,72 +14,6 @@ public enum CrudOperation
 
 public static class MainEntities
 {
-    [Category(CrudPermissionsGenerator.Analytics)]
-    public static readonly CrudOperation[] EmployeeAnalytics = new[]
-    {
-        CrudOperation.Page,
-        CrudOperation.View
-    };
-
-    [Category(CrudPermissionsGenerator.Analytics)]
-    public static readonly CrudOperation[] ManagerAnalytics = new[]
-    {
-        CrudOperation.Page,
-        CrudOperation.View
-    };
-
-    [Category(CrudPermissionsGenerator.Analytics)]
-    public static readonly CrudOperation[] CustomManagerEmployeeViewAnalytics = new[]
-{
-        CrudOperation.Page,
-        CrudOperation.View
-    };
-
-    [Category(CrudPermissionsGenerator.Analytics)]
-    public static readonly CrudOperation[] HrAnalytics = new[]
-    {
-        CrudOperation.Page,
-        CrudOperation.View
-    };
-
-    [Category(CrudPermissionsGenerator.Analytics)]
-    public static readonly CrudOperation[] TrainingAnalytics = new[]
-    {
-        CrudOperation.Page,
-        CrudOperation.View
-    };
-
-    [Category(CrudPermissionsGenerator.Analytics)]
-    public static readonly CrudOperation[] JudicialInspectionAnalytics = new[]
-    {
-        CrudOperation.Page,
-        CrudOperation.View
-    };
-
-    [Category(CrudPermissionsGenerator.Analytics)]
-    public static readonly CrudOperation[] AttorneyGeneralAnalytics = new[]
-    {
-        CrudOperation.Page,
-        CrudOperation.View
-    };
-
-    [Category(CrudPermissionsGenerator.Analytics)]
-    public static readonly CrudOperation[] Calendar = new[]
-    {
-        CrudOperation.Page,
-        CrudOperation.View
-    };
-
-    [Category(CrudPermissionsGenerator.OrganizationSettings)]
-    public static readonly CrudOperation[] Companies = new[]
-    {
-        CrudOperation.Page,
-        CrudOperation.View,
-        CrudOperation.Create,
-        CrudOperation.Edit,
-        CrudOperation.Delete,
-    };
-
     [Category(CrudPermissionsGenerator.OrganizationSettings)]
     public static readonly CrudOperation[] Departments = new[]
     {
@@ -222,6 +156,16 @@ public static class MainEntities
 
     [Category(CrudPermissionsGenerator.OrganizationSettings)]
     public static readonly CrudOperation[] Colors = new[]
+    {
+        CrudOperation.Page,
+        CrudOperation.View,
+        CrudOperation.Create,
+        CrudOperation.Edit,
+        CrudOperation.Delete,
+    };
+
+    [Category(CrudPermissionsGenerator.OrganizationSettings)]
+    public static readonly CrudOperation[] Supplier = new[]
     {
         CrudOperation.Page,
         CrudOperation.View,
@@ -836,6 +780,26 @@ public static class MainEntities
 
     [Category(CrudPermissionsGenerator.EmployeeData)]
     public static readonly CrudOperation[] DeviceAssignment = new[]
+    {
+        CrudOperation.Page,
+        CrudOperation.View,
+        CrudOperation.Create,
+        CrudOperation.Edit,
+        CrudOperation.Delete,
+    };
+
+    [Category(CrudPermissionsGenerator.InventoryManagement)]
+    public static readonly CrudOperation[] Ammunition = new[]
+    {
+        CrudOperation.Page,
+        CrudOperation.View,
+        CrudOperation.Create,
+        CrudOperation.Edit,
+        CrudOperation.Delete,
+    };
+
+    [Category(CrudPermissionsGenerator.InventoryManagement)]
+    public static readonly CrudOperation[] AllowanceItem = new[]
     {
         CrudOperation.Page,
         CrudOperation.View,

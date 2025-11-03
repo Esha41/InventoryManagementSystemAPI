@@ -17,14 +17,55 @@ namespace Ettad.EntityFramework.Configurations
                 .HasMaxLength(500);
 
             builder.HasIndex(x => x.NameAr)
-                .IsUnique();
+                .IsUnique()
+                .HasFilter("[IsDeleted] = 0");
 
             builder.Property(x => x.NameEn)
                 .IsRequired()
                 .HasMaxLength(500);
 
             builder.HasIndex(x => x.NameEn)
-                .IsUnique();
+                .IsUnique()
+                .HasFilter("[IsDeleted] = 0");
+
+            // Seed data
+            builder.HasData(
+                new Color
+                {
+                    Id = 1,
+                    NameAr = "أخضر",
+                    NameEn = "Green",
+                    IsDeleted = false
+                },
+                new Color
+                {
+                    Id = 2,
+                    NameAr = "أسود",
+                    NameEn = "Black",
+                    IsDeleted = false
+                },
+                new Color
+                {
+                    Id = 3,
+                    NameAr = "أصفر",
+                    NameEn = "Yellow",
+                    IsDeleted = false
+                },
+                new Color
+                {
+                    Id = 4,
+                    NameAr = "أحمر",
+                    NameEn = "Red",
+                    IsDeleted = false
+                },
+                new Color
+                {
+                    Id = 5,
+                    NameAr = "رمادي",
+                    NameEn = "Gray",
+                    IsDeleted = false
+                }
+            );
         }
     }
 }

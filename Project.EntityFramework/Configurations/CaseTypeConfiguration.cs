@@ -17,14 +17,55 @@ namespace Ettad.EntityFramework.Configurations
                 .HasMaxLength(500);
 
             builder.HasIndex(x => x.NameAr)
-                .IsUnique();
+                .IsUnique()
+                .HasFilter("[IsDeleted] = 0");
 
             builder.Property(x => x.NameEn)
                 .IsRequired()
                 .HasMaxLength(500);
 
             builder.HasIndex(x => x.NameEn)
-                .IsUnique();
+                .IsUnique()
+                .HasFilter("[IsDeleted] = 0");
+
+            // Seed data
+            builder.HasData(
+                new CaseType
+                {
+                    Id = 1,
+                    NameAr = "نحاسي",
+                    NameEn = "Brass",
+                    IsDeleted = false
+                },
+                new CaseType
+                {
+                    Id = 2,
+                    NameAr = "فولاذي",
+                    NameEn = "Steel",
+                    IsDeleted = false
+                },
+                new CaseType
+                {
+                    Id = 3,
+                    NameAr = "ألومنيوم",
+                    NameEn = "Aluminum",
+                    IsDeleted = false
+                },
+                new CaseType
+                {
+                    Id = 4,
+                    NameAr = "بلاستيك",
+                    NameEn = "Plastic",
+                    IsDeleted = false
+                },
+                new CaseType
+                {
+                    Id = 5,
+                    NameAr = "مختلط",
+                    NameEn = "Composite",
+                    IsDeleted = false
+                }
+            );
         }
     }
 }

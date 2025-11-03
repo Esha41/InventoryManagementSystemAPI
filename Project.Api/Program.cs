@@ -14,6 +14,7 @@ using Ettad.CrossCutting.Data.Repository;
 
 using Ettad.EntityFramework.DataBaseContext;
 using Ettad.EntityFramework.DataBaseContext.DataSeeding;
+using Ettad.EntityFramework.Interceptors;
 
 using Ettad.Lookups.Services.Contracts;
 using Ettad.Lookups.Services.Implementation;
@@ -28,6 +29,7 @@ using Serilog;
 using Serilog.Events;
 using Ettad.CrossCutting.Comman.Monitoring;
 using Ettad.Workflow.Service;
+using Ettad.Inventory.Service;
 
 // Configure Serilog
 Log.Logger = new LoggerConfiguration()
@@ -54,8 +56,11 @@ builder.Host.UseSerilog((context, services, configuration) => configuration
 
 var configuration= builder.Configuration;
 
-// Add HttpContextAccessor for Serilog enrichers
+// Add HttpContextAccessor for Serilog enrichers and CurrentUserService
 builder.Services.AddHttpContextAccessor();
+
+// Register ICurrentUserService early so interceptor can use it
+builder.Services.AddScoped<Ettad.Application.Common.Interfaces.ICurrentUserService, Ettad.User.Services.Implementation.CurrentUserService>();
 
 // Add services to the container.
 builder.Services.AddControllers();
@@ -71,16 +76,26 @@ builder.Services.AddScoped<IEmailSender, EmailSender>();
 
 builder.Services.AddScoped<IFileStorageService, FileStorageService>();
 
-
 builder.Services.Configure<JwtOptions>(
 builder.Configuration.GetSection("JWT"));
 
+#region Register Modules
+builder.Services.AddInventoryServices();
+#endregion
+
+// Register soft delete interceptor (ICurrentUserService is already registered above)
+builder.Services.AddScoped<SoftDeleteInterceptor>();
+
 #region Connection String
-builder.Services.AddDbContext<ApplicationDbContext>(options =>
+builder.Services.AddDbContext<ApplicationDbContext>((serviceProvider, options) =>
+{
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"),
-    b => b.MigrationsAssembly(typeof(ApplicationDbContext).Assembly.FullName)));
-
-
+        b => b.MigrationsAssembly(typeof(ApplicationDbContext).Assembly.FullName));
+    
+    // Get the interceptor from service provider
+    var interceptor = serviceProvider.GetRequiredService<SoftDeleteInterceptor>();
+    options.AddInterceptors(interceptor);
+});
 #endregion
 
 #region Identity
@@ -158,6 +173,10 @@ builder.Services.Configure<FileSettings>(builder.Configuration.GetSection("FileS
 builder.Services.AddInfrastructureServices();
 
 Ettad.User.Services.ModuleServicesDependences.AddReposetoriesServices(builder.Services);
+
+// Register soft delete interceptor after ICurrentUserService is registered
+builder.Services.AddScoped<SoftDeleteInterceptor>();
+
 builder.Services.AddAutoMapper(typeof(Ettad.Module.lookup.Mapper.LookupMappingProfile));
 
     // Register Employee services directly
