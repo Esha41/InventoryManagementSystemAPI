@@ -1,4 +1,3 @@
-using Moujam.Casiher.Comman.Base;
 using Ettad.Data.Enums;
 using System;
 using System.Collections.Generic;
@@ -7,6 +6,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Ettad.CrossCutting.Comman.Base;
 
 namespace Ettad.Data.Entities.Workflows
 {

@@ -17,14 +17,55 @@ namespace Ettad.EntityFramework.Configurations
                 .HasMaxLength(500);
 
             builder.HasIndex(x => x.NameAr)
-                .IsUnique();
+                .IsUnique()
+                .HasFilter("[IsDeleted] = 0");
 
             builder.Property(x => x.NameEn)
                 .IsRequired()
                 .HasMaxLength(500);
 
             builder.HasIndex(x => x.NameEn)
-                .IsUnique();
+                .IsUnique()
+                .HasFilter("[IsDeleted] = 0");
+
+            // Seed data
+            builder.HasData(
+                new Unit
+                {
+                    Id = 1,
+                    NameAr = "قطعة",
+                    NameEn = "Piece",
+                    IsDeleted = false
+                },
+                new Unit
+                {
+                    Id = 2,
+                    NameAr = "صندوق",
+                    NameEn = "Box",
+                    IsDeleted = false
+                },
+                new Unit
+                {
+                    Id = 3,
+                    NameAr = "طن",
+                    NameEn = "Ton",
+                    IsDeleted = false
+                },
+                new Unit
+                {
+                    Id = 4,
+                    NameAr = "كيلوغرام",
+                    NameEn = "Kilogram",
+                    IsDeleted = false
+                },
+                new Unit
+                {
+                    Id = 5,
+                    NameAr = "حاوية",
+                    NameEn = "Container",
+                    IsDeleted = false
+                }
+            );
         }
     }
 }
