@@ -37,14 +37,28 @@ namespace Ettad.User.Services.Implementation
 
         public async Task<APIOperationResponse<RoleDto>> GetRoleByIdAsync(string id)
         {
+            // 1️⃣ Find the role by ID
             var role = await _roleManager.FindByIdAsync(id);
             if (role == null)
             {
                 return APIOperationResponse<RoleDto>.NotFound($"Role with ID '{id}' not found.");
             }
+
+            // 2️⃣ Map to RoleDto
             var roleDto = _mapper.Map<RoleDto>(role);
-            return APIOperationResponse<RoleDto>.Success(roleDto);
+
+            // 3️⃣ Get assigned application entity IDs
+            var entityIds = await _context.RoleApplicationEntities
+                .Where(x => x.RoleId == role.Id)
+                .Select(x => x.ApplicationEntityId)
+                .ToListAsync();
+
+            roleDto.ApplicationEntityIds = entityIds;
+
+            // 4️⃣ Return success response
+            return APIOperationResponse<RoleDto>.Success(roleDto, "Role retrieved successfully.");
         }
+
         public async Task<APIOperationResponse<List<RoleDto>>> GetAllRolesAsync()
         {
             var roles = await _roleManager.Roles
