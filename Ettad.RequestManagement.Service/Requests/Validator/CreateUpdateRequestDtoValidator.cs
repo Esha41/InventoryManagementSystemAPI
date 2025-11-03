@@ -31,6 +31,17 @@ namespace Ettad.RequestManagement.Service.Requests.Validator
 
             RuleFor(x => x.RequestReciverId)
                 .GreaterThan(0).WithMessage("Request receiver ID must be greater than 0");
+
+            // Validate RequestDetails
+            RuleForEach(x => x.RequestDetails)
+                .ChildRules(detail =>
+                {
+                    detail.RuleFor(d => d.ItemId)
+                        .GreaterThan(0).WithMessage("Item ID must be greater than 0");
+
+                    detail.RuleFor(d => d.ItemQuantity)
+                        .GreaterThan(0).WithMessage("Item quantity must be greater than 0");
+                });
         }
     }
 }

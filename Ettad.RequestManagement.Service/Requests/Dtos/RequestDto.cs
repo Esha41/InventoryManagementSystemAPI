@@ -35,7 +35,7 @@ namespace Ettad.RequestManagement.Service.Requests.Dtos
         public Depot Depo { get; set; }
         public Department Department { get; set; }
         public RequestReciver RequestReciver { get; set; }
-        public ICollection<RequestDetail> ResquestDetails { get; set; }
+        public ICollection<RequestDetailDto> ResquestDetails { get; set; }
         #endregion
     }
 }

@@ -12,17 +12,20 @@ namespace Ettad.RequestManagement.Service.Requests
     public class RequestServices :IRequestService
     {
         private readonly ICrossCuttingRepository<Entities.Request> _requestRepository;
+        private readonly ICrossCuttingRepository<Entities.RequestDetail> _requestDetailRepository;
         private readonly IMapper _mapper;
         private readonly IValidator<CreateUpdateRequestDto> _validator;
         private readonly ICurrentUserService _currentUserService;
 
         public RequestServices(
             ICrossCuttingRepository<Entities.Request> requestRepository,
+            ICrossCuttingRepository<Entities.RequestDetail> requestDetailRepository,
             IMapper mapper,
             IValidator<CreateUpdateRequestDto> validator,
             ICurrentUserService currentUserService)
         {
             _requestRepository = requestRepository;
+            _requestDetailRepository = requestDetailRepository;
             _mapper = mapper;
             _validator = validator;
             _currentUserService = currentUserService;
@@ -38,7 +41,7 @@ namespace Ettad.RequestManagement.Service.Requests
                     nameof(Entities.Request.Depo),
                     nameof(Entities.Request.Department),
                     nameof(Entities.Request.RequestReciver),
-                    nameof(Entities.Request.ResquestDetails)
+                    $"{nameof(Entities.Request.ResquestDetails)}.{nameof(Entities.RequestDetail.Item)}"
                 );
 
                 if (request == null)
@@ -63,7 +66,7 @@ namespace Ettad.RequestManagement.Service.Requests
                     nameof(Entities.Request.Depo),
                     nameof(Entities.Request.Department),
                     nameof(Entities.Request.RequestReciver),
-                    nameof(Entities.Request.ResquestDetails)
+                    $"{nameof(Entities.Request.ResquestDetails)}.{nameof(Entities.RequestDetail.Item)}"
                 );
 
                 var dtos = _mapper.Map<List<RequestDto>>(requests);
@@ -95,6 +98,22 @@ namespace Ettad.RequestManagement.Service.Requests
                 // Add to repository
                 var createdRequest = await _requestRepository.AddAsync(request);
 
+                // Create RequestDetails if provided
+                if (inputDto.RequestDetails != null && inputDto.RequestDetails.Any())
+                {
+                    var requestDetails = inputDto.RequestDetails.Select(rd => new Entities.RequestDetail
+                    {
+                        RequestId = createdRequest.Id,
+                        ItemId = rd.ItemId,
+                        ItemQuantity = rd.ItemQuantity
+                    }).ToList();
+
+                    foreach (var detail in requestDetails)
+                    {
+                        await _requestDetailRepository.AddAsync(detail);
+                    }
+                }
+
                 // Reload with navigation properties
                 var result = await _requestRepository.FindOneAsync(
                     r => r.Id == createdRequest.Id,
@@ -102,7 +121,7 @@ namespace Ettad.RequestManagement.Service.Requests
                     nameof(Entities.Request.Depo),
                     nameof(Entities.Request.Department),
                     nameof(Entities.Request.RequestReciver),
-                    nameof(Entities.Request.ResquestDetails)
+                    $"{nameof(Entities.Request.ResquestDetails)}.{nameof(Entities.RequestDetail.Item)}"
                 );
 
                 var dto = _mapper.Map<RequestDto>(result);
@@ -139,6 +158,35 @@ namespace Ettad.RequestManagement.Service.Requests
                 // Update in repository
                 await _requestRepository.UpdateAsync(existingRequest);
 
+                // Handle RequestDetails update
+                if (inputDto.RequestDetails != null)
+                {
+                    // Get existing request details
+                    var existingDetails = await _requestDetailRepository.FindAsync(rd => rd.RequestId == id);
+                    
+                    // Delete existing details
+                    foreach (var detail in existingDetails)
+                    {
+                        await _requestDetailRepository.DeleteAsync(detail);
+                    }
+
+                    // Create new details
+                    if (inputDto.RequestDetails.Any())
+                    {
+                        var newRequestDetails = inputDto.RequestDetails.Select(rd => new Entities.RequestDetail
+                        {
+                            RequestId = id,
+                            ItemId = rd.ItemId,
+                            ItemQuantity = rd.ItemQuantity
+                        }).ToList();
+
+                        foreach (var detail in newRequestDetails)
+                        {
+                            await _requestDetailRepository.AddAsync(detail);
+                        }
+                    }
+                }
+
                 // Reload with navigation properties
                 var result = await _requestRepository.FindOneAsync(
                     r => r.Id == id,
@@ -146,7 +194,7 @@ namespace Ettad.RequestManagement.Service.Requests
                     nameof(Entities.Request.Depo),
                     nameof(Entities.Request.Department),
                     nameof(Entities.Request.RequestReciver),
-                    nameof(Entities.Request.ResquestDetails)
+                    $"{nameof(Entities.Request.ResquestDetails)}.{nameof(Entities.RequestDetail.Item)}"
                 );
 
                 var dto = _mapper.Map<RequestDto>(result);

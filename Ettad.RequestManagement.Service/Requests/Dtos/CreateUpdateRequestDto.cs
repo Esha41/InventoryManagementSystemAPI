@@ -28,5 +28,7 @@ namespace Ettad.RequestManagement.Service.Requests.Dtos
         public string RequesterRank { get; set; }
         public string RequesterIdNo { get; set; }
         public string Comment { get; set; }
+
+        public List<CreateUpdateRequestDetailDto> RequestDetails { get; set; } = new();
     }
 }

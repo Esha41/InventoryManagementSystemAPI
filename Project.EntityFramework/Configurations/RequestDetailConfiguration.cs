@@ -19,7 +19,7 @@ namespace Ettad.EntityFramework.Configurations
 
             builder.HasOne(x => x.Item)
                 .WithMany()
-                .IsRequired(false)
+                .IsRequired(true)
                 .HasForeignKey(x => x.ItemId)
                 .OnDelete(DeleteBehavior.Restrict);
 
@@ -28,8 +28,6 @@ namespace Ettad.EntityFramework.Configurations
                 .IsRequired(true)
                 .HasForeignKey(x => x.RequestId)
                 .OnDelete(DeleteBehavior.Restrict);
-
-
         }
     }
 }

@@ -4,8 +4,6 @@ namespace Ettad.Data.Entities
 {
     public class Request : AuditEntity<long>
     {
-
-       
         public string RequestNo { get; set; } 
         public string RequestDate { get; set; }
         public string RequestStatus { get; set; }
