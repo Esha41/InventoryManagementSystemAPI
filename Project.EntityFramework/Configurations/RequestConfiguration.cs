@@ -30,7 +30,7 @@ namespace Ettad.EntityFramework.Configurations
 
             builder.HasOne(x => x.Department)
                 .WithMany()
-                .IsRequired(false)
+                .IsRequired(true)
                 .HasForeignKey(x => x.DepartmentId)
                 .OnDelete(DeleteBehavior.Restrict);
 
