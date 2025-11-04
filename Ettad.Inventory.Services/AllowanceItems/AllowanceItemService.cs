@@ -224,42 +224,6 @@ namespace Ettad.Inventory.Service.AllowanceItems
             }
         }
 
-        public async Task<APIOperationResponse<AllowanceItemByDepartmentDto>> GetByDepartmentYearAndItemTypeAsync(long departmentId, int year, ItemType itemType)
-        {
-            try
-            {
-                var department = await _departmentRepository.FindOneAsync(d => d.Id == departmentId && !d.IsDeleted);
-                if (department == null)
-                    return APIOperationResponse<AllowanceItemByDepartmentDto>.Fail(ResponseType.NotFound, "Department not found");
-
-                var allowanceItems = await _allowanceItemRepository.FindAsync(
-                    a => a.DepartmentId == departmentId && a.Year == year && a.ItemType == itemType && !a.IsDeleted,
-                    false,
-                    nameof(AllowanceItem.Item),
-                    nameof(AllowanceItem.Department)
-                );
-
-                var itemDetails = _mapper.Map<List<AllowanceItemDetailDto>>(allowanceItems);
-
-                var result = new AllowanceItemByDepartmentDto
-                {
-                    DepartmentId = department.Id,
-                    DepartmentCode = department.Code,
-                    DepartmentNameAr = department.NameAr,
-                    DepartmentNameEn = department.NameEn,
-                    Year = year,
-                    ItemType = itemType,
-                    Items = itemDetails
-                };
-
-                return APIOperationResponse<AllowanceItemByDepartmentDto>.Success(result);
-            }
-            catch (Exception ex)
-            {
-                return APIOperationResponse<AllowanceItemByDepartmentDto>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
-            }
-        }
-
         public async Task<APIOperationResponse<List<AllowanceItemDto>>> BulkCreateAsync(BulkCreateAllowanceItemDto inputDto)
         {
             try
@@ -282,7 +246,6 @@ namespace Ettad.Inventory.Service.AllowanceItems
                         DepartmentId = inputDto.DepartmentId,
                         Year = inputDto.Year,
                         Quantity = itemDto.Quantity,
-                        ItemType = itemDto.ItemType
                     };
 
                     // Validate individual item
@@ -298,7 +261,6 @@ namespace Ettad.Inventory.Service.AllowanceItems
                         a => a.ItemId == itemDto.ItemId &&
                              a.DepartmentId == inputDto.DepartmentId &&
                              a.Year == inputDto.Year &&
-                             a.ItemType == itemDto.ItemType &&
                              !a.IsDeleted);
 
                     if (existing != null)

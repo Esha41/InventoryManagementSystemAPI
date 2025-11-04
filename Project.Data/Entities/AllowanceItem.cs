@@ -9,7 +9,6 @@ namespace Ettad.Data.Entities
         public long DepartmentId { get; set; }
         public int Year { get; set; }
         public int Quantity { get; set; }
-        public ItemType ItemType { get; set; }
 
         #region Navigation Properties
         public BaseItem Item { get; set; }
