@@ -43,6 +43,7 @@ namespace Ettad.Module.lookup.Mapper
             CreateMap<Propellant, PropellantDto>();
             CreateMap<Supplier, SupplierDto>();
             CreateMap<Unit, UnitDto>();
+            CreateMap<CreateUpdateRankDto, Rank>();
         }
     }
 }

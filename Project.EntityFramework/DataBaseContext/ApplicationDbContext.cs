@@ -44,6 +44,13 @@ namespace Ettad.EntityFramework.DataBaseContext
         public DbSet<Propellant> Propellants { get; set; }
         public DbSet<Supplier> Suppliers { get; set; }
         public DbSet<Unit> Units { get; set; }
+        public DbSet<Rank> Ranks { get; set; }
+        public DbSet<Request> Requests { get; set; }
+        public DbSet<RequestDetail> RequestsDetails { get; set; }
+        public DbSet<RequestReciver> RequestRecivers { get; set; }
+
+
+
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

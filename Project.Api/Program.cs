@@ -28,6 +28,7 @@ using Ettad.Inventory.Service;
 using System.Text;
 using System.Text.Json;
 using Ettad.EntityFramework.Interceptors;
+using Ettad.RequestManagement.Service;
 
 // Configure Serilog
 Log.Logger = new LoggerConfiguration()
@@ -79,6 +80,7 @@ builder.Configuration.GetSection("JWT"));
 
 #region Register Modules
 builder.Services.AddInventoryServices();
+builder.Services.AddRequestServices();
 #endregion
 
 // Register soft delete interceptor (ICurrentUserService is already registered above)
