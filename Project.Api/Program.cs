@@ -262,7 +262,7 @@ app.UseCors("AllowAll");
                 context.Database.Migrate();
             }
             await ApplicationDbcontextSeed.SeedDefaultUserAsync(context,userManager, roleManager);
-            //await ApplicationDbInitializer.SeedDefaultDataAsync(scope.ServiceProvider);
+            await Ettad.EntityFramework.DataBaseContext.DataSeeding.ApplicationDbInitializer.SeedDefaultDataAsync(scope.ServiceProvider);
 
             Log.Information("Database migration and seeding completed successfully");
         }

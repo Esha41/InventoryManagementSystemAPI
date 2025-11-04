@@ -4,7 +4,7 @@ using Ettad.CrossCutting.Comman.Base;
 
 namespace Ettad.Data.Entities
 {
-    public class Inventory : AuditEntity<long>
+    public class Inventory : FullAuditEntity<long>
     {
         public long DepoId { get; set; }
 
