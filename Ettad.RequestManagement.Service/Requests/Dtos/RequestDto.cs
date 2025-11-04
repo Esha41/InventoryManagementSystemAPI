@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Ettad.Data.Entities;
+using Ettad.Data.Enums;
 namespace Ettad.RequestManagement.Service.Requests.Dtos
 {
     public class RequestDto
@@ -11,7 +12,7 @@ namespace Ettad.RequestManagement.Service.Requests.Dtos
         public long Id { get; set; }
         public string RequestNo { get; set; }
         public string RequestDate { get; set; }
-        public string RequestStatus { get; set; }
+        public RequestStatus RequestStatus { get; set; }
         public long DepotId { get; set; }
         public string RequestPriority { get; set; }
         public string RequestKind { get; set; }

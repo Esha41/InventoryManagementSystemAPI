@@ -1,5 +1,6 @@
 ﻿using FluentValidation;
 using Ettad.RequestManagement.Service.Requests.Dtos;
+using Ettad.Data.Enums;
 
 namespace Ettad.RequestManagement.Service.Requests.Validator
 {
@@ -15,7 +16,7 @@ namespace Ettad.RequestManagement.Service.Requests.Validator
                 .NotEmpty().WithMessage("Request date is required");
 
             RuleFor(x => x.RequestStatus)
-                .NotEmpty().WithMessage("Request status is required");
+                .IsInEnum().WithMessage("Request status must be a valid value (Pending, Approved, Rejected)");
 
             RuleFor(x => x.DepotId)
                 .GreaterThan(0).WithMessage("Depot ID must be greater than 0");

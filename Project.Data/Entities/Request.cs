@@ -1,4 +1,5 @@
 ﻿using Ettad.CrossCutting.Comman.Base;
+using Ettad.Data.Enums;
 
 namespace Ettad.Data.Entities
 {
@@ -6,7 +7,7 @@ namespace Ettad.Data.Entities
     {
         public string RequestNo { get; set; } 
         public string RequestDate { get; set; }
-        public string RequestStatus { get; set; }
+        public RequestStatus RequestStatus { get; set; }
         public long DepotId { get; set; }
         public string RequestPriority { get; set; }
         public string RequestKind { get; set; }
