@@ -24,4 +24,3 @@ namespace Ettad.Inventory.Service.Inventories.Dtos
         #endregion
     }
 }
-
