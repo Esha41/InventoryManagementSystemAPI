@@ -1,7 +1,6 @@
 ﻿using AutoMapper;
 using Ettad.Data.Entities;
 using Ettad.RequestManagement.Service.Requests.Dtos;
-using Ettad.RequestManagement.Service.RequestRecivers.Dtos;
 using Entities = Ettad.Data.Entities;
 
 namespace Ettad.RequestManagement.Service.Requests.Profiles
@@ -29,18 +28,12 @@ namespace Ettad.RequestManagement.Service.Requests.Profiles
                 .ForMember(dest => dest.CreationDate, opt => opt.Ignore())
                 .ForMember(dest => dest.CreatedBy, opt => opt.Ignore())
                 .ForMember(dest => dest.ModificationDate, opt => opt.Ignore())
-                .ForMember(dest => dest.ResquestDetails, opt => opt.Ignore()); // We handle this manually in the service
-
-            // RequestReciver Entity to DTO
-            CreateMap<RequestReciver, RequestReciverDto>();
-
-            // CreateUpdate DTO to Entity
-            CreateMap<CreateUpdateRequestReciverDto, RequestReciver>()
-                .ForMember(dest => dest.Id, opt => opt.Ignore())
-                .ForMember(dest => dest.CreationDate, opt => opt.Ignore())
-                .ForMember(dest => dest.CreatedBy, opt => opt.Ignore())
-                .ForMember(dest => dest.ModificationDate, opt => opt.Ignore())
-                .ForMember(dest => dest.Rank, opt => opt.Ignore());
+                .ForMember(dest => dest.ModifiedBy, opt => opt.Ignore())
+                .ForMember(dest => dest.Depo, opt => opt.Ignore())
+                .ForMember(dest => dest.Department, opt => opt.Ignore())
+                .ForMember(dest => dest.RequestReciver, opt => opt.Ignore())
+                .ForMember(dest => dest.RequesterRank, opt => opt.Ignore())
+                .ForMember(dest => dest.ResquestDetails, opt => opt.Ignore()); 
         }
     }
 }
