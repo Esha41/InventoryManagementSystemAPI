@@ -22,9 +22,6 @@ namespace Ettad.Inventory.Service.Inventories.Validators
                 .Must(date => !date.HasValue || date.Value <= DateTime.Now)
                 .WithMessage("Received date cannot be in the future");
 
-            RuleFor(x => x.Notes)
-                .MaximumLength(500).WithMessage("Notes cannot exceed 500 characters");
-
             RuleFor(x => x.InventoryDetails)
                 .NotEmpty().WithMessage("At least one inventory detail is required")
                 .Must(details => details != null && details.Count > 0)
