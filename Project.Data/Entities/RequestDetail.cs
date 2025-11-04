@@ -10,6 +10,12 @@ namespace Ettad.Data.Entities
 
         public long RequestId { get; set; }
 
+        public bool IsDeleted { get; set; } = false;
+
+        public DateTime? DeletedDate { get; set; }
+
+        public string DeletedBy { get; set; }
+
         #region Navigation Properties
 
         public BaseItem Item { get; set; }

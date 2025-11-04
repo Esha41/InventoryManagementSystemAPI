@@ -5,6 +5,7 @@ using System.Linq;
 using FluentValidation;
 using System.Reflection;
 using Ettad.RequestManagement.Service.Requests;
+using Ettad.RequestManagement.Service.RequestRecivers;
 
 
 namespace Ettad.RequestManagement.Service
@@ -21,7 +22,7 @@ namespace Ettad.RequestManagement.Service
 
             // Register services
             services.AddScoped<IRequestService, RequestServices>();
-          
+            services.AddScoped<IRequestReciverService, RequestReciverService>();
 
             return services;
         }

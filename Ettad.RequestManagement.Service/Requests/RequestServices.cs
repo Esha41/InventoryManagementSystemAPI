@@ -41,6 +41,7 @@ namespace Ettad.RequestManagement.Service.Requests
                     nameof(Entities.Request.Depo),
                     nameof(Entities.Request.Department),
                     nameof(Entities.Request.RequestReciver),
+                    nameof(Entities.Request.RequesterRank),
                     $"{nameof(Entities.Request.ResquestDetails)}.{nameof(Entities.RequestDetail.Item)}"
                 );
 
@@ -66,6 +67,7 @@ namespace Ettad.RequestManagement.Service.Requests
                     nameof(Entities.Request.Depo),
                     nameof(Entities.Request.Department),
                     nameof(Entities.Request.RequestReciver),
+                    nameof(Entities.Request.RequesterRank),
                     $"{nameof(Entities.Request.ResquestDetails)}.{nameof(Entities.RequestDetail.Item)}"
                 );
 
@@ -121,6 +123,7 @@ namespace Ettad.RequestManagement.Service.Requests
                     nameof(Entities.Request.Depo),
                     nameof(Entities.Request.Department),
                     nameof(Entities.Request.RequestReciver),
+                    nameof(Entities.Request.RequesterRank),
                     $"{nameof(Entities.Request.ResquestDetails)}.{nameof(Entities.RequestDetail.Item)}"
                 );
 
@@ -194,6 +197,7 @@ namespace Ettad.RequestManagement.Service.Requests
                     nameof(Entities.Request.Depo),
                     nameof(Entities.Request.Department),
                     nameof(Entities.Request.RequestReciver),
+                    nameof(Entities.Request.RequesterRank),
                     $"{nameof(Entities.Request.ResquestDetails)}.{nameof(Entities.RequestDetail.Item)}"
                 );
 
@@ -218,6 +222,44 @@ namespace Ettad.RequestManagement.Service.Requests
                 await _requestRepository.DeleteAsync(request);
 
                 return APIOperationResponse<bool>.Success(true, "Request deleted successfully");
+            }
+            catch (Exception ex)
+            {
+                return APIOperationResponse<bool>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
+            }
+        }
+
+        public async Task<APIOperationResponse<bool>> SoftDeleteRequestDetailAsync(long requestId, long requestDetailId)
+        {
+            try
+            {
+                // Check if request exists
+                var request = await _requestRepository.FindOneAsync(r => r.Id == requestId);
+                if (request == null)
+                    return APIOperationResponse<bool>.Fail(ResponseType.NotFound, "Request not found");
+
+                // Find the specific request detail
+                var requestDetail = await _requestDetailRepository.FindOneAsync(rd => rd.Id == requestDetailId && rd.RequestId == requestId);
+                if (requestDetail == null)
+                    return APIOperationResponse<bool>.Fail(ResponseType.NotFound, "Request detail not found");
+
+                // Soft delete the request detail
+                requestDetail.IsDeleted = true;
+                requestDetail.DeletedDate = DateTime.UtcNow;
+                requestDetail.DeletedBy = _currentUserService.UserId;
+                await _requestDetailRepository.UpdateAsync(requestDetail);
+
+                // Check if all request details are soft deleted
+                var allDetails = await _requestDetailRepository.FindAsync(rd => rd.RequestId == requestId);
+                
+                // If no active details remain (all are soft deleted due to query filter), delete the request
+                if (!allDetails.Any())
+                {
+                    await _requestRepository.DeleteAsync(request);
+                    return APIOperationResponse<bool>.Success(true, "Request detail deleted and request removed because all details are deleted");
+                }
+
+                return APIOperationResponse<bool>.Success(true, "Request detail deleted successfully");
             }
             catch (Exception ex)
             {

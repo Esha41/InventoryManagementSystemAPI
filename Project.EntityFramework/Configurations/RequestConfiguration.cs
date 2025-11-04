@@ -40,6 +40,12 @@ namespace Ettad.EntityFramework.Configurations
                 .HasForeignKey(x => x.RequestReciverId)
                 .OnDelete(DeleteBehavior.Restrict);
 
+            builder.HasOne(x => x.RequesterRank)
+                .WithMany()
+                .IsRequired(true)
+                .HasForeignKey(x => x.RequesterRankId)
+                .OnDelete(DeleteBehavior.Restrict);
+
 
         }
     }

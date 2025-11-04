@@ -6,11 +6,11 @@ using System.Threading.Tasks;
 
 namespace Ettad.Data.Enums
 {
-    public enum RequestStatus
+    public enum RequestPriority
     {
-        UnderProcess = 1,
-        Approved = 2,
-        Rejected = 3
+        High = 1,
+        Medium = 2,
+        Low = 3
     }
 }
 

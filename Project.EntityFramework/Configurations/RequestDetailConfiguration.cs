@@ -28,6 +28,9 @@ namespace Ettad.EntityFramework.Configurations
                 .IsRequired(true)
                 .HasForeignKey(x => x.RequestId)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            // Global query filter for soft delete
+            builder.HasQueryFilter(x => !x.IsDeleted);
         }
     }
 }

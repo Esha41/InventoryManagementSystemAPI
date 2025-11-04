@@ -13,20 +13,21 @@ namespace Ettad.RequestManagement.Service.Requests.Dtos
         public string RequestDate { get; set; }
         public RequestStatus RequestStatus { get; set; }
         public long DepotId { get; set; }
-        public string RequestPriority { get; set; }
-        public string RequestKind { get; set; }
+        public RequestPriority RequestPriority { get; set; }
+        public RequestType RequestType { get; set; }
+        public RequestPurpose RequestPurpose { get; set; }
         public long DepartmentId { get; set; }
         public long RequestReciverId { get; set; }
         public bool IsFromReserved { get; set; }
-        public string UsageDate { get; set; }
-        public string UsageTime { get; set; }
+        public DateTime UsageDate { get; set; }
+        public TimeOnly UsageTime { get; set; }
         public string UsePurpose { get; set; }
-        public string AnnualDiscard { get; set; }
+        public long AnnualDiscard { get; set; }
         public string UsageLocation { get; set; }
         public int NumberOfOfficer { get; set; }
         public int NumberOfOtherRank { get; set; }
         public string RequesterName { get; set; }
-        public string RequesterRank { get; set; }
+        public long RequesterRankId { get; set; }
         public string RequesterIdNo { get; set; }
         public string Comment { get; set; }
 

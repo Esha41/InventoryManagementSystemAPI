@@ -22,16 +22,22 @@ namespace Ettad.RequestManagement.Service.Requests.Validator
                 .GreaterThan(0).WithMessage("Depot ID must be greater than 0");
 
             RuleFor(x => x.RequestPriority)
-                .NotEmpty().WithMessage("Request priority is required");
+                .IsInEnum().WithMessage("Request priority must be a valid value (High, Medium, Low)");
 
-            RuleFor(x => x.RequestKind)
-                .NotEmpty().WithMessage("Request kind is required");
+            RuleFor(x => x.RequestType)
+                .IsInEnum().WithMessage("Request type must be a valid value (Order, Return, Discard)");
+
+            RuleFor(x => x.RequestPurpose)
+                .IsInEnum().WithMessage("Request purpose must be a valid value (Normal, Duty, Operation, Training)");
 
             RuleFor(x => x.DepartmentId)
                 .GreaterThan(0).WithMessage("Department ID must be greater than 0");
 
             RuleFor(x => x.RequestReciverId)
                 .GreaterThan(0).WithMessage("Request receiver ID must be greater than 0");
+
+            RuleFor(x => x.RequesterRankId)
+                .GreaterThan(0).WithMessage("Requester rank ID must be greater than 0");
 
             // Validate RequestDetails
             RuleForEach(x => x.RequestDetails)

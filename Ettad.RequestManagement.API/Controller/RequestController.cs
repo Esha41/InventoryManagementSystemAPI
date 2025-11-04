@@ -64,5 +64,14 @@ namespace Ettad.RequestManagement.API.Controller
             var result = await _requestService.DeleteAsync(id);
             return ProcessResponse(result);
         }
+
+        [HttpDelete("{requestId}/details/{requestDetailId}")]
+        [ProducesResponseType((int)HttpStatusCode.OK)]
+        [CheckAuthorize("Permissions.Request.Delete")]
+        public async Task<IActionResult> SoftDeleteRequestDetail(long requestId, long requestDetailId)
+        {
+            var result = await _requestService.SoftDeleteRequestDetailAsync(requestId, requestDetailId);
+            return ProcessResponse(result);
+        }
     }
 }

@@ -11,5 +11,6 @@ namespace Ettad.RequestManagement.Service.Requests
         Task<APIOperationResponse<RequestDto>> CreateAsync(CreateUpdateRequestDto inputDto);
         Task<APIOperationResponse<RequestDto>> UpdateAsync(long id, CreateUpdateRequestDto inputDto);
         Task<APIOperationResponse<bool>> DeleteAsync(long id);
+        Task<APIOperationResponse<bool>> SoftDeleteRequestDetailAsync(long requestId, long requestDetailId);
     }
 }
