@@ -6,7 +6,7 @@ namespace Ettad.Data.Entities
     public class Request : AuditEntity<long>
     {
         public string RequestNo { get; set; } 
-        public string RequestDate { get; set; }
+        public DateTime RequestDate { get; set; }
         public RequestStatus RequestStatus { get; set; }
         public long DepotId { get; set; }
         public RequestPriority RequestPriority { get; set; }
