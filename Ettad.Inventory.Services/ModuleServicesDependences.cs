@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using System.Reflection;
 using Ettad.Inventory.Service.Ammunitions;
 using Ettad.Inventory.Service.AllowanceItems;
+using Ettad.Inventory.Service.Inventories;
 
 namespace Ettad.Inventory.Service
 {
@@ -19,6 +20,7 @@ namespace Ettad.Inventory.Service
             // Register services
             services.AddScoped<IAmmunitionService, AmmunitionService>();
             services.AddScoped<IAllowanceItemService, AllowanceItemService>();
+            services.AddScoped<IInventoryService, InventoryService>();
 
             return services;
         }

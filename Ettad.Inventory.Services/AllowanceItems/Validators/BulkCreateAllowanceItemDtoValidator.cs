@@ -32,9 +32,6 @@ namespace Ettad.Inventory.Service.AllowanceItems.Validators
 
             RuleFor(x => x.Quantity)
                 .GreaterThan(0).WithMessage("Quantity must be greater than 0");
-
-            RuleFor(x => x.ItemType)
-                .IsInEnum().WithMessage("ItemType must be a valid enum value");
         }
     }
 }

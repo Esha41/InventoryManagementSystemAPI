@@ -13,7 +13,6 @@ namespace Ettad.Inventory.Service.AllowanceItems
         Task<APIOperationResponse<bool>> DeleteAsync(long id);
         Task<APIOperationResponse<AllowanceItemByDepartmentDto>> GetByDepartmentAndYearAsync(long departmentId, int year);
         Task<APIOperationResponse<List<AllowanceItemByDepartmentDto>>> GetByDepartmentAsync(long departmentId);
-        Task<APIOperationResponse<AllowanceItemByDepartmentDto>> GetByDepartmentYearAndItemTypeAsync(long departmentId, int year, ItemType itemType);
         Task<APIOperationResponse<List<AllowanceItemDto>>> BulkCreateAsync(BulkCreateAllowanceItemDto inputDto);
     }
 }

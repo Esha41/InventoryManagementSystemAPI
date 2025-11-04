@@ -254,6 +254,16 @@ public static class MainEntities
         CrudOperation.Delete,
     };
 
+    [Category(CrudPermissionsGenerator.Inventory)]
+    public static readonly CrudOperation[] Inventory = new[]
+    {
+        CrudOperation.Page,
+        CrudOperation.View,
+        CrudOperation.Create,
+        CrudOperation.Edit,
+        CrudOperation.Delete,
+    };
+
     // ==============================
     // DASHBOARD
     // ==============================

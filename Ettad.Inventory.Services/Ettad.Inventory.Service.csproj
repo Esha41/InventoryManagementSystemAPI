@@ -17,6 +17,7 @@
     <ProjectReference Include="..\Project.Data\Ettad.Data.csproj" />
     <ProjectReference Include="..\Project.Repository\Ettad.Repository.csproj" />
     <ProjectReference Include="..\Project.ResponseHandler\Ettad.CrossCutting.ResponseHandler.csproj" />
+    <ProjectReference Include="..\Project.Module.Logic\Ettad.Module.lookup.csproj" />
   </ItemGroup>
 
 </Project>

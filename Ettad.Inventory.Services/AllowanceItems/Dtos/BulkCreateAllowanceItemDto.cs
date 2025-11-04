@@ -5,7 +5,6 @@ namespace Ettad.Inventory.Service.AllowanceItems.Dtos
     public class BulkAllowanceItemDto
     {
         public long ItemId { get; set; }
-        public ItemType ItemType { get; set; }
         public int Quantity { get; set; }
     }
 
