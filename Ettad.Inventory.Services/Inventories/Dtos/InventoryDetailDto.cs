@@ -1,4 +1,5 @@
-using Ettad.Data.Entities;
+using Ettad.Inventory.Service.Common.Dtos;
+using Ettad.Module.lookup.Dtos;
 
 namespace Ettad.Inventory.Service.Inventories.Dtos
 {
@@ -24,10 +25,10 @@ namespace Ettad.Inventory.Service.Inventories.Dtos
 
         #region Navigation Properties
 
-        public BaseItem Item { get; set; }
-        public Supplier Supplier { get; set; }
-        public Manufacturer Manufacturer { get; set; }
-        public Country Country { get; set; }
+        public BaseItemDto Item { get; set; }
+        public SupplierDto Supplier { get; set; }
+        public ManufacturerDto Manufacturer { get; set; }
+        public CountryDto Country { get; set; }
 
         #endregion
     }

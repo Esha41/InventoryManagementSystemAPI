@@ -1,6 +1,7 @@
 using AutoMapper;
 using Ettad.Data.Entities;
 using Ettad.Inventory.Service.Inventories.Dtos;
+using Ettad.Inventory.Service.Common.Dtos;
 using InventoryEntity = Ettad.Data.Entities.Inventory;
 using InventoryDetailEntity = Ettad.Data.Entities.InventoryDetail;
 
@@ -13,7 +14,7 @@ namespace Ettad.Inventory.Service.Inventories.Profiles
             // Entity to DTO
             CreateMap<InventoryEntity, InventoryDto>();
             CreateMap<InventoryDetailEntity, InventoryDetailDto>();
-
+            
             // Create DTO to Entity
             CreateMap<CreateInventoryDto, InventoryEntity>()
                 .ForMember(dest => dest.Id, opt => opt.Ignore())
@@ -29,7 +30,6 @@ namespace Ettad.Inventory.Service.Inventories.Profiles
             CreateMap<CreateInventoryDetailDto, InventoryDetailEntity>()
                 .ForMember(dest => dest.Id, opt => opt.Ignore())
                 .ForMember(dest => dest.InventoryId, opt => opt.Ignore())
-                .ForMember(dest => dest.CurrentQuantity, opt => opt.MapFrom(src => src.ItemQuantity)) // Initially current = item quantity
                 .ForMember(dest => dest.Item, opt => opt.Ignore())
                 .ForMember(dest => dest.Inventory, opt => opt.Ignore())
                 .ForMember(dest => dest.Supplier, opt => opt.Ignore())

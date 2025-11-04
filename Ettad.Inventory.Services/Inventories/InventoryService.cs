@@ -46,6 +46,7 @@ namespace Ettad.Inventory.Service.Inventories
                     false,
                     nameof(InventoryEntity.Depo),
                     $"{nameof(InventoryEntity.InventoryDetails)}.{nameof(InventoryDetailEntity.Item)}",
+                    $"{nameof(InventoryEntity.InventoryDetails)}.{nameof(InventoryDetailEntity.Item)}.Hcc",
                     $"{nameof(InventoryEntity.InventoryDetails)}.{nameof(InventoryDetailEntity.Supplier)}",
                     $"{nameof(InventoryEntity.InventoryDetails)}.{nameof(InventoryDetailEntity.Manufacturer)}",
                     $"{nameof(InventoryEntity.InventoryDetails)}.{nameof(InventoryDetailEntity.Country)}"
@@ -72,6 +73,7 @@ namespace Ettad.Inventory.Service.Inventories
                     false,
                     nameof(InventoryEntity.Depo),
                     $"{nameof(InventoryEntity.InventoryDetails)}.{nameof(InventoryDetailEntity.Item)}",
+                    $"{nameof(InventoryEntity.InventoryDetails)}.{nameof(InventoryDetailEntity.Item)}.Hcc",
                     $"{nameof(InventoryEntity.InventoryDetails)}.{nameof(InventoryDetailEntity.Supplier)}",
                     $"{nameof(InventoryEntity.InventoryDetails)}.{nameof(InventoryDetailEntity.Manufacturer)}",
                     $"{nameof(InventoryEntity.InventoryDetails)}.{nameof(InventoryDetailEntity.Country)}"
@@ -121,6 +123,7 @@ namespace Ettad.Inventory.Service.Inventories
                     false,
                     nameof(InventoryEntity.Depo),
                     $"{nameof(InventoryEntity.InventoryDetails)}.{nameof(InventoryDetailEntity.Item)}",
+                    $"{nameof(InventoryEntity.InventoryDetails)}.{nameof(InventoryDetailEntity.Item)}.Hcc",
                     $"{nameof(InventoryEntity.InventoryDetails)}.{nameof(InventoryDetailEntity.Supplier)}",
                     $"{nameof(InventoryEntity.InventoryDetails)}.{nameof(InventoryDetailEntity.Manufacturer)}",
                     $"{nameof(InventoryEntity.InventoryDetails)}.{nameof(InventoryDetailEntity.Country)}"
@@ -195,7 +198,6 @@ namespace Ettad.Inventory.Service.Inventories
                         // Add new detail
                         var newDetail = _mapper.Map<InventoryDetailEntity>(detailDto);
                         newDetail.InventoryId = id;
-                        newDetail.CurrentQuantity = detailDto.ItemQuantity; // Initialize current quantity
                         existingInventory.InventoryDetails.Add(newDetail);
                     }
                 }
@@ -209,6 +211,7 @@ namespace Ettad.Inventory.Service.Inventories
                     false,
                     nameof(InventoryEntity.Depo),
                     $"{nameof(InventoryEntity.InventoryDetails)}.{nameof(InventoryDetailEntity.Item)}",
+                    $"{nameof(InventoryEntity.InventoryDetails)}.{nameof(InventoryDetailEntity.Item)}.Hcc",
                     $"{nameof(InventoryEntity.InventoryDetails)}.{nameof(InventoryDetailEntity.Supplier)}",
                     $"{nameof(InventoryEntity.InventoryDetails)}.{nameof(InventoryDetailEntity.Manufacturer)}",
                     $"{nameof(InventoryEntity.InventoryDetails)}.{nameof(InventoryDetailEntity.Country)}"

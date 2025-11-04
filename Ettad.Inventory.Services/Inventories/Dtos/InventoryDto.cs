@@ -1,4 +1,4 @@
-using Ettad.Data.Entities;
+using Ettad.Module.lookup.Dtos;
 
 namespace Ettad.Inventory.Service.Inventories.Dtos
 {
@@ -18,7 +18,7 @@ namespace Ettad.Inventory.Service.Inventories.Dtos
 
         #region Navigation Properties
 
-        public Depot Depo { get; set; }
+        public DepotDto Depo { get; set; }
         public List<InventoryDetailDto> InventoryDetails { get; set; }
 
         #endregion
