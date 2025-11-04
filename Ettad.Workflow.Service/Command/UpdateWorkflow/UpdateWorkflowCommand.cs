@@ -1,4 +1,4 @@
-using AutoMapper;
+﻿using AutoMapper;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -20,11 +20,7 @@ namespace Ettad.Workflows.Service.Command.UpdateWorkflow
     {
         public int Id { get; set; }
         public string WorkflowName { get; set; }
-        public WorkflowType WorkflowType { get; set; }
-        public RequesterType RequesterType { get; set; }
-        public int OrganizationId { get; set; }
-        public int? CompanyId { get; set; }
-        public int? DepartementId { get; set; }
+        public WorkflowType WorkflowType { get; set; }      
         public bool IsActive { get; set; } = true;
         public List<WorkflowStepCreateDto> WorkflowSteps { get; set; } = new();
     }
@@ -50,87 +46,73 @@ namespace Ettad.Workflows.Service.Command.UpdateWorkflow
 
         public async Task<APIOperationResponse<WorkflowDto>> Handle(UpdateWorkflowCommand request, CancellationToken cancellationToken)
         {
-            _logger.LogInformation("Starting workflow update for ID {WorkflowId} at {Time}", request.Id, DateTime.UtcNow);
+            _logger.LogInformation("Updating workflow {Id}", request.Id);
 
-            try
+            var workflow = await _context.Workflows
+                .Include(w => w.WorkflowSteps)
+                .FirstOrDefaultAsync(w => w.Id == request.Id, cancellationToken);
+
+            if (workflow == null)
+                return APIOperationResponse<WorkflowDto>.NotFound($"Workflow {request.Id} not found");
+
+            if (request.WorkflowSteps?.Any() == true && request.WorkflowSteps.GroupBy(x => x.StepOrder).Any(g => g.Count() > 1))
+                return APIOperationResponse<WorkflowDto>.BadRequest("Duplicate StepOrder found");
+
+            // Ensure edited steps are not already used in approval history
+            foreach (var step in request.WorkflowSteps.Where(x => x.Id > 0))
             {
-                int orgId = (int)(_currentUserService.IsSuperAdmin ? request.OrganizationId : _currentUserService.OrganizationId);
-
-                // Find existing workflow
-                var workflow = await _context.Workflows
-                    .Include(w => w.WorkflowSteps)
-                    .FirstOrDefaultAsync(w => w.Id == request.Id, cancellationToken);
-
-                if (workflow == null)
-                {
-                    return APIOperationResponse<WorkflowDto>.NotFound($"Workflow with ID {request.Id} not found");
-                }
-
-                // Validate step orders are unique
-                if (request.WorkflowSteps?.Any() == true && HasDuplicateStepOrder(request.WorkflowSteps))
-                {
-                    return APIOperationResponse<WorkflowDto>.BadRequest("Duplicate StepOrder values are not allowed in workflow steps.");
-                }
-
-                // Check if any workflow step is referenced in approval history
-                if (request.WorkflowSteps?.Any() == true)
-                {
-                    foreach (var step in request.WorkflowSteps)
-                    {
-                        if (step.Id > 0 && await IsWorkflowStepInApprovalHistory(step.Id, cancellationToken))
-                        {
-                            return APIOperationResponse<WorkflowDto>.BadRequest($"Workflow step with ID {step.Id} cannot be edited because it is referenced in approval history.");
-                        }
-                    }
-                }
-
-                // Deactivate duplicate active workflows if this one is active
-                if (request.IsActive)
-                {
-                    await CheckAndDeactivateDuplicateWorkflows(request, orgId, workflow.Id, cancellationToken);
-                }
-
-                // Update workflow properties
-                workflow.WorkflowName = request.WorkflowName;
-                workflow.WorkflowType = request.WorkflowType;               
-                workflow.IsActive = request.IsActive;
-                workflow.ModifiedBy = _currentUserService.UserName;
-                workflow.ModificationDate = DateTime.UtcNow;
-
-                // Update workflow steps
-                if (request.WorkflowSteps?.Any() == true)
-                {
-                    await UpdateWorkflowSteps(workflow, request.WorkflowSteps, cancellationToken);
-                }
-
-                await _context.SaveChangesAsync(cancellationToken);
-
-                var workflowDto = _mapper.Map<WorkflowDto>(workflow);
-
-                _logger.LogInformation("Workflow updated successfully with ID {WorkflowId} at {Time}", workflow.Id, DateTime.UtcNow);
-                return APIOperationResponse<WorkflowDto>.Success(workflowDto);
+                if (await _context.WorkflowApprovalHistory.AnyAsync(x => x.WorkflowStepId == step.Id, cancellationToken))
+                    return APIOperationResponse<WorkflowDto>.BadRequest($"Step {step.Id} is in approval history and cannot be modified");
             }
-            catch (Exception ex)
+
+            // ✅ Deactivate other active workflows of same type
+            if (request.IsActive)
             {
-                _logger.LogError(ex, "Error while updating workflow with ID {WorkflowId} at {Time}", request.Id, DateTime.UtcNow);
-                return APIOperationResponse<WorkflowDto>.ServerError($"Workflow update failed: {ex.Message}");
+                var activeDupes = await _context.Workflows
+                    .Where(w => w.IsActive &&
+                                !w.IsDeleted &&
+                                w.Id != workflow.Id &&
+                                w.WorkflowType == request.WorkflowType)
+                    .ToListAsync(cancellationToken);
+
+                foreach (var wf in activeDupes)
+                {
+                    wf.IsActive = false;
+                    wf.ModifiedBy = _currentUserService.UserName;
+                    wf.ModificationDate = DateTime.UtcNow;
+                }
             }
+
+            // ✅ Update workflow info
+            workflow.WorkflowName = request.WorkflowName;
+            workflow.WorkflowType = request.WorkflowType;
+            workflow.IsActive = request.IsActive;
+            workflow.ModifiedBy = _currentUserService.UserName;
+            workflow.ModificationDate = DateTime.UtcNow;
+
+            await UpdateWorkflowSteps(workflow, request.WorkflowSteps, cancellationToken);
+
+            await _context.SaveChangesAsync(cancellationToken);
+
+            return APIOperationResponse<WorkflowDto>.Success(_mapper.Map<WorkflowDto>(workflow));
         }
 
+
         // Check for duplicate active workflows and deactivate them if found
-        private async Task CheckAndDeactivateDuplicateWorkflows(UpdateWorkflowCommand request, int organizationId, int currentWorkflowId, CancellationToken cancellationToken)
+        private async Task CheckAndDeactivateDuplicateWorkflows(UpdateWorkflowCommand request, int currentWorkflowId, CancellationToken cancellationToken)
         {
             var existingActiveWorkflows = await _context.Workflows
-                .Where(w => 
-                            w.IsActive &&
-                            !w.IsDeleted &&
-                            w.Id != currentWorkflowId)
+                .Where(w =>
+                    w.IsActive &&
+                    !w.IsDeleted &&
+                    w.Id != currentWorkflowId)
                 .ToListAsync(cancellationToken);
 
             if (existingActiveWorkflows.Any())
             {
-                _logger.LogInformation("Found {Count} active duplicate workflows for organization {OrganizationId} and department {DepartmentId}. Deactivating them.",
-                    existingActiveWorkflows.Count, organizationId, request.DepartementId);
+                _logger.LogInformation(
+                    "Found {Count} active duplicate workflows. Deactivating them.",
+                    existingActiveWorkflows.Count);
 
                 foreach (var existingWorkflow in existingActiveWorkflows)
                 {
@@ -140,70 +122,58 @@ namespace Ettad.Workflows.Service.Command.UpdateWorkflow
                 }
 
                 await _context.SaveChangesAsync(cancellationToken);
-                _logger.LogInformation("Successfully deactivated {Count} duplicate workflows", existingActiveWorkflows.Count);
+
+                _logger.LogInformation(
+                    "Successfully deactivated {Count} duplicate workflows",
+                    existingActiveWorkflows.Count);
             }
         }
 
+
         // Update workflow steps
-        private async Task UpdateWorkflowSteps(
-     Ettad.Data.Entities.Workflows.Workflow workflow,
-     List<WorkflowStepCreateDto> incomingSteps,
-     CancellationToken cancellationToken)
+        private async Task UpdateWorkflowSteps(Ettad.Data.Entities.Workflows.Workflow workflow, List<WorkflowStepCreateDto> incomingSteps, CancellationToken cancellationToken)
         {
-            var existingSteps = workflow.WorkflowSteps?.ToList() ?? new List<WorkflowStep>();
+            var existingSteps = workflow.WorkflowSteps.ToList();
 
             // Remove deleted steps
-            var stepsToRemove = existingSteps
-                .Where(es => !incomingSteps.Any(s => s.Id == es.Id))
-                .ToList();
-
-            foreach (var stepToRemove in stepsToRemove)
+            foreach (var dbStep in existingSteps.Where(db => !incomingSteps.Any(i => i.Id == db.Id)))
             {
-                if (await IsWorkflowStepInApprovalHistory(stepToRemove.Id, cancellationToken))
-                {
-                    _logger.LogWarning(
-                        "Cannot remove workflow step {StepId} as it is referenced in approval history",
-                        stepToRemove.Id);
-                    continue;
-                }
-                _context.WorkflowSteps.Remove(stepToRemove);
+                if (!await _context.WorkflowApprovalHistory.AnyAsync(x => x.WorkflowStepId == dbStep.Id, cancellationToken))
+                    _context.WorkflowSteps.Remove(dbStep);
             }
 
-            // Update existing steps or add new ones
-            foreach (var incomingStep in incomingSteps)
+            // Add/Update
+            foreach (var dto in incomingSteps)
             {
-                var existingStep = existingSteps.FirstOrDefault(es => es.Id == incomingStep.Id);
+                var step = existingSteps.FirstOrDefault(x => x.Id == dto.Id);
 
-                if (existingStep != null)
+                if (step != null)
                 {
-                    // Update properties
-                    existingStep.StepOrder = incomingStep.StepOrder;
-                    existingStep.ApplicationRoleId = incomingStep.ApplicationRoleId;
-                    existingStep.ApplicationEntityId = incomingStep.ApplicationEntityId;
-                    existingStep.MustApprove = incomingStep.MustApprove;
-                    existingStep.RequireHigherApproval = incomingStep.RequireHigherApproval;
-                    existingStep.HigherApprovalRoleId = incomingStep.HigherApprovalRoleId;
-                    existingStep.ReserveQty = incomingStep.ReserveQty;
-                    existingStep.ModifiedBy = _currentUserService.UserName;
-                    existingStep.ModificationDate = DateTime.UtcNow;
+                    step.StepOrder = dto.StepOrder;
+                    step.ApplicationRoleId = dto.ApplicationRoleId;
+                    step.ApplicationEntityId = dto.ApplicationEntityId;
+                    step.MustApprove = dto.MustApprove;
+                    step.RequireHigherApproval = dto.RequireHigherApproval;
+                    step.HigherApprovalRoleId = dto.HigherApprovalRoleId;
+                    step.ReserveQty = dto.ReserveQty;
+                    step.ModifiedBy = _currentUserService.UserName;
+                    step.ModificationDate = DateTime.UtcNow;
                 }
                 else
                 {
-                    // Add new step
-                    var newStep = new WorkflowStep
+                    _context.WorkflowSteps.Add(new WorkflowStep
                     {
                         WorkflowId = workflow.Id,
-                        StepOrder = incomingStep.StepOrder,
-                        ApplicationRoleId = incomingStep.ApplicationRoleId,
-                        ApplicationEntityId = incomingStep.ApplicationEntityId,
-                        MustApprove = incomingStep.MustApprove,
-                        RequireHigherApproval = incomingStep.RequireHigherApproval,
-                        HigherApprovalRoleId = incomingStep.HigherApprovalRoleId,
-                        ReserveQty = incomingStep.ReserveQty,
+                        StepOrder = dto.StepOrder,
+                        ApplicationRoleId = dto.ApplicationRoleId,
+                        ApplicationEntityId = dto.ApplicationEntityId,
+                        MustApprove = dto.MustApprove,
+                        RequireHigherApproval = dto.RequireHigherApproval,
+                        HigherApprovalRoleId = dto.HigherApprovalRoleId,
+                        ReserveQty = dto.ReserveQty,
                         CreatedBy = _currentUserService.UserName,
                         CreationDate = DateTime.UtcNow
-                    };
-                    _context.WorkflowSteps.Add(newStep);
+                    });
                 }
             }
         }

@@ -445,6 +445,16 @@ namespace Ettad.User.Services.Implementation
 
             return APIOperationResponse<List<ApplicationEntityDto>>.Success(entities, "Entities retrieved successfully");
         }
-
+        public async Task<List<RoleApplicationEntityDto>> GetApplicationEntitiesByRoleAsync(string roleId)
+        {
+            return await _context.RoleApplicationEntities
+                .Where(r => r.RoleId == roleId)
+                .Select(r => new RoleApplicationEntityDto
+                {
+                    RoleId = r.RoleId,
+                    ApplicationEntityId = r.ApplicationEntityId
+                })
+                .ToListAsync();
+        }
     }
 }

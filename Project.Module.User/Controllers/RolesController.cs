@@ -174,5 +174,14 @@ namespace Ettad.User.API.Controllers
 
             return Ok(result);
         }
+        [HttpGet("getApplicationentities{roleId}")]
+        public async Task<ActionResult<List<RoleApplicationEntityDto>>> GetByRole(string roleId)
+        {
+            var result = await _roleService.GetApplicationEntitiesByRoleAsync(roleId);
+            if (result == null || result.Count == 0)
+                return NotFound($"No application entities found for role {roleId}");
+
+            return Ok(result);
+        }
     }
 }

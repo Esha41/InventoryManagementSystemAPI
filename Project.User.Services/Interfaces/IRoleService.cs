@@ -25,6 +25,7 @@ namespace Ettad.User.Services.Interfaces
 
         Task<APIOperationResponse<bool>> RemoveUsersFromRoleAsync(string roleId, RemoveUsersFromRoleDto dto);
         Task<APIOperationResponse<List<ApplicationEntityDto>>> GetAllApplicationEntitiesAsync();
+        Task<List<RoleApplicationEntityDto>> GetApplicationEntitiesByRoleAsync(string roleId);
 
     }
 }
