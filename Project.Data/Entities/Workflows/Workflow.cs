@@ -18,23 +18,14 @@ namespace Ettad.Data.Entities.Workflows
         public string WorkflowName { get; set; }
 
         [Required]
-        public WorkflowType WorkflowType { get; set; } // Using enum instead of string
-
-        [Required]
-        public RequesterType RequesterType { get; set; } // Using enum instead of int
-
-        [Required]
-        public int OrganizationId { get; set; }
-
-        public int? CompanyId { get; set; }
-
-        public int? DepartementId { get; set; }
+        public WorkflowType WorkflowType { get; set; } 
 
         [Required]
         public bool IsActive { get; set; } = true;
         public bool IsDeleted { get; set; } = false;
 
-        
+        public bool IsSpecialOrReserved { get; set; } = false;
+
         // Navigation properties
         public virtual ICollection<WorkflowStep> WorkflowSteps { get; set; }
     }

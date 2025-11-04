@@ -10,18 +10,21 @@ namespace Ettad.Workflows.Service.DTO
     public class WorkflowDto
     {
         public int Id { get; set; }
+
         public string WorkflowName { get; set; }
+
         public WorkflowType WorkflowType { get; set; }
-        public RequesterType RequesterType { get; set; }
-        public int OrganizationId { get; set; }
-        public int? CompanyId { get; set; }
-        public int? DepartementId { get; set; }
+
         public bool IsActive { get; set; }
+
         public bool IsDeleted { get; set; }
 
+        public bool IsSpecialOrReserved { get; set; }
 
-        public virtual ICollection<WorkflowStepDto> WorkflowSteps { get; set; }
+        // Steps in the workflow
+        public List<WorkflowStepDto> WorkflowSteps { get; set; } = new();
     }
+
 
 
 }

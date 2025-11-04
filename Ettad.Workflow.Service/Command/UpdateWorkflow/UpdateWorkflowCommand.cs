@@ -92,11 +92,7 @@ namespace Ettad.Workflows.Service.Command.UpdateWorkflow
 
                 // Update workflow properties
                 workflow.WorkflowName = request.WorkflowName;
-                workflow.WorkflowType = request.WorkflowType;
-                workflow.RequesterType = request.RequesterType;
-                workflow.OrganizationId = orgId;
-                workflow.CompanyId = request.CompanyId;
-                workflow.DepartementId = request.DepartementId;
+                workflow.WorkflowType = request.WorkflowType;               
                 workflow.IsActive = request.IsActive;
                 workflow.ModifiedBy = _currentUserService.UserName;
                 workflow.ModificationDate = DateTime.UtcNow;
@@ -125,8 +121,7 @@ namespace Ettad.Workflows.Service.Command.UpdateWorkflow
         private async Task CheckAndDeactivateDuplicateWorkflows(UpdateWorkflowCommand request, int organizationId, int currentWorkflowId, CancellationToken cancellationToken)
         {
             var existingActiveWorkflows = await _context.Workflows
-                .Where(w => w.OrganizationId == organizationId &&
-                            w.DepartementId == request.DepartementId &&
+                .Where(w => 
                             w.IsActive &&
                             !w.IsDeleted &&
                             w.Id != currentWorkflowId)
@@ -150,7 +145,10 @@ namespace Ettad.Workflows.Service.Command.UpdateWorkflow
         }
 
         // Update workflow steps
-        private async Task UpdateWorkflowSteps(Ettad.Data.Entities.Workflows.Workflow workflow, List<WorkflowStepCreateDto> incomingSteps, CancellationToken cancellationToken)
+        private async Task UpdateWorkflowSteps(
+     Ettad.Data.Entities.Workflows.Workflow workflow,
+     List<WorkflowStepCreateDto> incomingSteps,
+     CancellationToken cancellationToken)
         {
             var existingSteps = workflow.WorkflowSteps?.ToList() ?? new List<WorkflowStep>();
 
@@ -163,33 +161,45 @@ namespace Ettad.Workflows.Service.Command.UpdateWorkflow
             {
                 if (await IsWorkflowStepInApprovalHistory(stepToRemove.Id, cancellationToken))
                 {
-                    _logger.LogWarning("Cannot remove workflow step {StepId} as it is referenced in approval history", stepToRemove.Id);
+                    _logger.LogWarning(
+                        "Cannot remove workflow step {StepId} as it is referenced in approval history",
+                        stepToRemove.Id);
                     continue;
                 }
                 _context.WorkflowSteps.Remove(stepToRemove);
             }
 
-            // Update or add steps
+            // Update existing steps or add new ones
             foreach (var incomingStep in incomingSteps)
             {
                 var existingStep = existingSteps.FirstOrDefault(es => es.Id == incomingStep.Id);
 
                 if (existingStep != null)
                 {
+                    // Update properties
                     existingStep.StepOrder = incomingStep.StepOrder;
-                    existingStep.ApproverEmployeeId = incomingStep.ApproverEmployeeId;
+                    existingStep.ApplicationRoleId = incomingStep.ApplicationRoleId;
+                    existingStep.ApplicationEntityId = incomingStep.ApplicationEntityId;
                     existingStep.MustApprove = incomingStep.MustApprove;
+                    existingStep.RequireHigherApproval = incomingStep.RequireHigherApproval;
+                    existingStep.HigherApprovalRoleId = incomingStep.HigherApprovalRoleId;
+                    existingStep.ReserveQty = incomingStep.ReserveQty;
                     existingStep.ModifiedBy = _currentUserService.UserName;
                     existingStep.ModificationDate = DateTime.UtcNow;
                 }
                 else
                 {
+                    // Add new step
                     var newStep = new WorkflowStep
                     {
                         WorkflowId = workflow.Id,
                         StepOrder = incomingStep.StepOrder,
-                        ApproverEmployeeId = incomingStep.ApproverEmployeeId,
+                        ApplicationRoleId = incomingStep.ApplicationRoleId,
+                        ApplicationEntityId = incomingStep.ApplicationEntityId,
                         MustApprove = incomingStep.MustApprove,
+                        RequireHigherApproval = incomingStep.RequireHigherApproval,
+                        HigherApprovalRoleId = incomingStep.HigherApprovalRoleId,
+                        ReserveQty = incomingStep.ReserveQty,
                         CreatedBy = _currentUserService.UserName,
                         CreationDate = DateTime.UtcNow
                     };
@@ -197,6 +207,7 @@ namespace Ettad.Workflows.Service.Command.UpdateWorkflow
                 }
             }
         }
+
 
         // Check if workflow step is referenced in approval history
         private async Task<bool> IsWorkflowStepInApprovalHistory(int workflowStepId, CancellationToken cancellationToken)

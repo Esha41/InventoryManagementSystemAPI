@@ -14,16 +14,22 @@ namespace Ettad.Workflows.Service.Mapper
     {
         public MappingProfile()
         {
+            // Workflow
             CreateMap<Ettad.Data.Entities.Workflows.Workflow, WorkflowDto>();
             CreateMap<WorkflowDto, Ettad.Data.Entities.Workflows.Workflow>();
 
+            // WorkflowStep
             CreateMap<WorkflowStepCreateDto, WorkflowStep>().ReverseMap();
-
             CreateMap<WorkflowStep, WorkflowStepDto>();
-            CreateMap<WorkflowStepDto ,WorkflowStep>();
+            CreateMap<WorkflowStepDto, WorkflowStep>();
 
+            // WorkflowApprovalStep
+            CreateMap<WorkflowApprovalStep, WorkflowApprovalStepDto>();
+            CreateMap<WorkflowApprovalStepDto, WorkflowApprovalStep>();
+
+            // WorkflowApprovalHistory
             CreateMap<WorkflowApprovalHistory, WorkflowApprovalHistoryDto>();
-            CreateMap<WorkflowApprovalHistoryDto,WorkflowApprovalHistory>();
+            CreateMap<WorkflowApprovalHistoryDto, WorkflowApprovalHistory>();
         }
     }
 

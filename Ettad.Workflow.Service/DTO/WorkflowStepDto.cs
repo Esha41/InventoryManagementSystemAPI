@@ -10,26 +10,49 @@ namespace Ettad.Workflows.Service.DTO
     public class WorkflowStepDto
     {
         public int Id { get; set; }
+
         public int WorkflowId { get; set; }
+
         public int StepOrder { get; set; }
-        public ApproverType? ApproverType { get; set; }
-        public int? ApproverEmployeeId { get; set; }
-        public bool MustApprove { get; set; }
 
+        // Replaced ApproverType / ApproverEmployeeId
+        public string ApplicationRoleId { get; set; }          // required role
+        public int ApplicationEntityId { get; set; }             // required role for this step
+            // entity being approved
 
-        public virtual ICollection<WorkflowApprovalHistoryDto> ApprovalHistories { get; set; }
+        public bool MustApprove { get; set; } = true;
+
+        public bool RequireHigherApproval { get; set; } = false;
+        public string? HigherApprovalRoleId { get; set; }
+
+        public bool ReserveQty { get; set; } = false;
+
+        // Approval steps for this workflow step
+        public List<WorkflowApprovalStepDto> ApprovalSteps { get; set; } = new();
     }
+
     public class WorkflowStepCreateDto
     {
         public int Id { get; set; }
+
         public int WorkflowId { get; set; }
+
         public int StepOrder { get; set; }
-        public ApproverType? ApproverType { get; set; }
-        public int? ApproverEmployeeId { get; set; }
-        public bool MustApprove { get; set; }
 
+        // Instead of ApproverType / ApproverEmployeeId
+        public string ApplicationRoleId { get; set; }  // required role for this step
 
+        public int ApplicationEntityId { get; set; }   // reference to the entity being approved
+
+        public bool MustApprove { get; set; } = true;
+
+        public bool RequireHigherApproval { get; set; } = false;
+
+        public string? HigherApprovalRoleId { get; set; }
+
+        public bool ReserveQty { get; set; } = false;
     }
+
 
 
 }

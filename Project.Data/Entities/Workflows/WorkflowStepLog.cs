@@ -1,18 +1,23 @@
-﻿using Ettad.Data.Enums;
+using Ettad.Data.Enums;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Ettad.CrossCutting.Comman.Base;
 
-namespace Ettad.Workflows.Service.DTO
+namespace Ettad.Data.Entities.Workflows
 {
-    public class WorkflowApprovalHistoryDto
+    public class WorkflowApprovalHistory : AuditEntity<int>
     {
-        public int Id { get; set; }
+       
 
-        // Reference to parent workflow step
+        [Required]
+        [ForeignKey("WorkflowStep")]
         public int WorkflowStepId { get; set; }
+
 
         public RequestStatus OldRequestStatus { get; set; }
 
@@ -23,5 +28,9 @@ namespace Ettad.Workflows.Service.DTO
         public string? ChangedBy { get; set; }
 
         public DateTime ChangedAt { get; set; }
+
+        // Navigation properties
+        public virtual WorkflowStep WorkflowStep { get; set; }
+
     }
 }
