@@ -174,7 +174,7 @@ namespace Ettad.User.API.Controllers
 
             return Ok(result);
         }
-        [HttpGet("getApplicationentities{roleId}")]
+        [HttpGet("getApplicationentities/{roleId}")]
         public async Task<ActionResult<List<RoleApplicationEntityDto>>> GetByRole(string roleId)
         {
             var result = await _roleService.GetApplicationEntitiesByRoleAsync(roleId);
