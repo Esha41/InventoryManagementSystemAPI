@@ -47,27 +47,26 @@ try
 {
     var builder = WebApplication.CreateBuilder(args);
 
-// Add Serilog to the application
-builder.Host.UseSerilog((context, services, configuration) => configuration
-    .ReadFrom.Configuration(context.Configuration)
-    .ReadFrom.Services(services)
-    .Enrich.FromLogContext()
-    .WithUserEnricher(services));
+    // Add Serilog to the application
+    builder.Host.UseSerilog((context, services, configuration) => configuration
+        .ReadFrom.Configuration(context.Configuration)
+        .ReadFrom.Services(services)
+        .Enrich.FromLogContext()
+        .WithUserEnricher(services));
 
-var configuration= builder.Configuration;
+    var configuration = builder.Configuration;
 
-// Add HttpContextAccessor for Serilog enrichers and CurrentUserService
-builder.Services.AddHttpContextAccessor();
+    // Add HttpContextAccessor for Serilog enrichers and CurrentUserService
+    builder.Services.AddHttpContextAccessor();
 
-// Register ICurrentUserService early so interceptor can use it
-builder.Services.AddScoped<Ettad.Application.Common.Interfaces.ICurrentUserService, Ettad.User.Services.Implementation.CurrentUserService>();
+    // Register ICurrentUserService early so interceptor can use it
+    builder.Services.AddScoped<Ettad.Application.Common.Interfaces.ICurrentUserService, Ettad.User.Services.Implementation.CurrentUserService>();
 
     // Add services to the container.
     // Register controllers from all referenced assemblies
     builder.Services.AddControllers()
         .AddApplicationPart(typeof(Ettad.Inventory.API.Controllers.AmmunitionController).Assembly)
         .AddApplicationPart(typeof(Ettad.Workflows.API.Controllers.WorkflowsController).Assembly)
-        .AddApplicationPart(typeof(Ettad.RequestManagement.API.Controller.RequestController).Assembly)
         .AddApplicationPart(typeof(Ettad.User.API.Controllers.UsersController).Assembly)
         .AddApplicationPart(typeof(Ettad.Lookups.Domain.API.Controllers.DepartmentController).Assembly)
         .AddJsonOptions(options =>
@@ -77,120 +76,120 @@ builder.Services.AddScoped<Ettad.Application.Common.Interfaces.ICurrentUserServi
 
     // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
     builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddScoped(typeof(CrossCuttingRepository<>)); 
+    builder.Services.AddScoped(typeof(CrossCuttingRepository<>));
 
-builder.Services.AddScoped(typeof(ICrossCuttingRepository<>), typeof(CrossCuttingRepository<>));
+    builder.Services.AddScoped(typeof(ICrossCuttingRepository<>), typeof(CrossCuttingRepository<>));
 
-builder.Services.AddScoped(typeof(ILookupService<,>), typeof(LookupService<,>));
+    builder.Services.AddScoped(typeof(ILookupService<,>), typeof(LookupService<,>));
 
-builder.Services.AddScoped<IEmailSender, EmailSender>();
+    builder.Services.AddScoped<IEmailSender, EmailSender>();
 
-builder.Services.AddScoped<IFileStorageService, FileStorageService>();
+    builder.Services.AddScoped<IFileStorageService, FileStorageService>();
 
-builder.Services.Configure<JwtOptions>(
-builder.Configuration.GetSection("JWT"));
+    builder.Services.Configure<JwtOptions>(
+    builder.Configuration.GetSection("JWT"));
 
-#region Register Modules
-builder.Services.AddInventoryServices();
-builder.Services.AddRequestServices();
-#endregion
+    #region Register Modules
+    builder.Services.AddInventoryServices();
+    builder.Services.AddRequestServices();
+    #endregion
 
-// Register soft delete interceptor (ICurrentUserService is already registered above)
-builder.Services.AddScoped<SoftDeleteInterceptor>();
+    // Register soft delete interceptor (ICurrentUserService is already registered above)
+    builder.Services.AddScoped<SoftDeleteInterceptor>();
 
-#region Connection String
-builder.Services.AddDbContext<ApplicationDbContext>((serviceProvider, options) =>
-{
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"),
-        b => b.MigrationsAssembly(typeof(ApplicationDbContext).Assembly.FullName));
-    
-    // Get the interceptor from service provider
-    var interceptor = serviceProvider.GetRequiredService<SoftDeleteInterceptor>();
-    options.AddInterceptors(interceptor);
-});
-#endregion
+    #region Connection String
+    builder.Services.AddDbContext<ApplicationDbContext>((serviceProvider, options) =>
+    {
+        options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"),
+            b => b.MigrationsAssembly(typeof(ApplicationDbContext).Assembly.FullName));
 
-#region Identity
-builder.Services.AddIdentity<ApplicationUser, ApplicationRole>(options =>
-{
-    options.Password.RequireDigit = false;
-    options.Password.RequireLowercase = false;
-    options.Password.RequireUppercase = false;
-    options.Password.RequireNonAlphanumeric = false;
-    options.Password.RequiredUniqueChars = 0;
-    options.Password.RequiredLength = 5;
-}).AddDefaultTokenProviders()
-.AddEntityFrameworkStores<ApplicationDbContext>();
-#endregion
-builder.Services.AddAuthentication(option =>
-{
-    option.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-    option.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-    option.DefaultScheme = JwtBearerDefaults.AuthenticationScheme;
-})
-           .AddJwtBearer(options =>
-           {
-               options.SaveToken = true;
-               options.RequireHttpsMetadata = false;
+        // Get the interceptor from service provider
+        var interceptor = serviceProvider.GetRequiredService<SoftDeleteInterceptor>();
+        options.AddInterceptors(interceptor);
+    });
+    #endregion
 
-               var validIssuers = configuration.GetSection("JWT:ValidIssuers").Get<string[]>();
-               var validAudiences = configuration.GetSection("JWT:ValidAudiences").Get<string[]>();
-
-               options.TokenValidationParameters = new TokenValidationParameters
+    #region Identity
+    builder.Services.AddIdentity<ApplicationUser, ApplicationRole>(options =>
+    {
+        options.Password.RequireDigit = false;
+        options.Password.RequireLowercase = false;
+        options.Password.RequireUppercase = false;
+        options.Password.RequireNonAlphanumeric = false;
+        options.Password.RequiredUniqueChars = 0;
+        options.Password.RequiredLength = 5;
+    }).AddDefaultTokenProviders()
+    .AddEntityFrameworkStores<ApplicationDbContext>();
+    #endregion
+    builder.Services.AddAuthentication(option =>
+    {
+        option.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+        option.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+        option.DefaultScheme = JwtBearerDefaults.AuthenticationScheme;
+    })
+               .AddJwtBearer(options =>
                {
-                   ValidateIssuer = false,
-                   //ValidIssuer = configuration["JWT:ValidIssur"],
-                //   ValidIssuers = validIssuers,
-                   ValidateAudience = false,
-                   //ValidAudiences = validAudiences,
-                   IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(configuration["JWT:Secret"] ?? throw new InvalidOperationException("JWT Secret is missing")))
-               };
-           });
-var baseUrl = builder.Configuration.GetValue<string>("FileSettings:BASE_URL");
-if (!string.IsNullOrEmpty(baseUrl))
-{
-    baseUrl = baseUrl.Remove(baseUrl.LastIndexOf("/"));
-}
-builder.Services.Configure<FileSettings>(builder.Configuration.GetSection("FileSettings"));
-//builder.Services.AddRefitClient<IServieMangamentApI>().ConfigureHttpClient(c => c.BaseAddress = new Uri(baseUrl));
-#region Dependency Injection
-builder.Services.AddInfrastructureServices();
+                   options.SaveToken = true;
+                   options.RequireHttpsMetadata = false;
 
-Ettad.User.Services.ModuleServicesDependences.AddReposetoriesServices(builder.Services);
+                   var validIssuers = configuration.GetSection("JWT:ValidIssuers").Get<string[]>();
+                   var validAudiences = configuration.GetSection("JWT:ValidAudiences").Get<string[]>();
 
-// Register soft delete interceptor after ICurrentUserService is registered
-builder.Services.AddScoped<SoftDeleteInterceptor>();
+                   options.TokenValidationParameters = new TokenValidationParameters
+                   {
+                       ValidateIssuer = false,
+                       //ValidIssuer = configuration["JWT:ValidIssur"],
+                       //   ValidIssuers = validIssuers,
+                       ValidateAudience = false,
+                       //ValidAudiences = validAudiences,
+                       IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(configuration["JWT:Secret"] ?? throw new InvalidOperationException("JWT Secret is missing")))
+                   };
+               });
+    var baseUrl = builder.Configuration.GetValue<string>("FileSettings:BASE_URL");
+    if (!string.IsNullOrEmpty(baseUrl))
+    {
+        baseUrl = baseUrl.Remove(baseUrl.LastIndexOf("/"));
+    }
+    builder.Services.Configure<FileSettings>(builder.Configuration.GetSection("FileSettings"));
+    //builder.Services.AddRefitClient<IServieMangamentApI>().ConfigureHttpClient(c => c.BaseAddress = new Uri(baseUrl));
+    #region Dependency Injection
+    builder.Services.AddInfrastructureServices();
 
-builder.Services.AddAutoMapper(typeof(Ettad.Module.lookup.Mapper.LookupMappingProfile));
+    Ettad.User.Services.ModuleServicesDependences.AddReposetoriesServices(builder.Services);
+
+    // Register soft delete interceptor after ICurrentUserService is registered
+    builder.Services.AddScoped<SoftDeleteInterceptor>();
+
+    builder.Services.AddAutoMapper(typeof(Ettad.Module.lookup.Mapper.LookupMappingProfile));
 
     // Register Employee services directly
     builder.Services.AddScoped<IUserService, UserService>();
 
-//builder.Services.AddAutoMapper(typeof(Ettad.Module.lookup.Mapper.LookupMappingProfile));
+    //builder.Services.AddAutoMapper(typeof(Ettad.Module.lookup.Mapper.LookupMappingProfile));
 
-// Register HR services
+    // Register HR services
 
     builder.Services.AddWorkflowServices();
-// Register Attendance services
+    // Register Attendance services
 
-// Configure Swagger to include all controllers from referenced assemblies
-builder.Services.AddSwaggerGen(options =>
-{
-    options.CustomSchemaIds(type => type.FullName);
-    
-    // Add security definition for Bearer token
-    options.AddSecurityDefinition(name: "Bearer", securityScheme: new OpenApiSecurityScheme
+    // Configure Swagger to include all controllers from referenced assemblies
+    builder.Services.AddSwaggerGen(options =>
     {
-        Name = "Authorization",
-        Description = "Enter the Bearer Authorization string as following: `Bearer Generated-JWT-Token`",
-        In = ParameterLocation.Header,
-        Type = SecuritySchemeType.ApiKey,
-        Scheme = "Bearer"
-    });
-    
-    // Add security requirement
-    options.AddSecurityRequirement(new OpenApiSecurityRequirement
-    {
+        options.CustomSchemaIds(type => type.FullName);
+
+        // Add security definition for Bearer token
+        options.AddSecurityDefinition(name: "Bearer", securityScheme: new OpenApiSecurityScheme
+        {
+            Name = "Authorization",
+            Description = "Enter the Bearer Authorization string as following: `Bearer Generated-JWT-Token`",
+            In = ParameterLocation.Header,
+            Type = SecuritySchemeType.ApiKey,
+            Scheme = "Bearer"
+        });
+
+        // Add security requirement
+        options.AddSecurityRequirement(new OpenApiSecurityRequirement
+        {
         {
             new OpenApiSecurityScheme
             {
@@ -204,60 +203,60 @@ builder.Services.AddSwaggerGen(options =>
             },
             new List<string>()
         }
+        });
     });
-});
 
-builder.Services.AddCors(options =>
-{
-    options.AddPolicy("AllowAll",
-        policy => policy
-            .AllowAnyOrigin()
-            .AllowAnyMethod()
-            .AllowAnyHeader());
-});
-
-
-#endregion
-
-var app = builder.Build();
-
-// Configure Serilog request logging
-app.UseSerilogRequestLogging(configure =>
-{
-    configure.MessageTemplate = "HTTP {RequestMethod} {RequestPath} responded {StatusCode} in {Elapsed:0.0000} ms";
-    configure.GetLevel = (httpContext, elapsed, ex) => ex != null
-        ? LogEventLevel.Error
-        : httpContext.Response.StatusCode > 499
-            ? LogEventLevel.Error
-            : LogEventLevel.Information;
-    configure.EnrichDiagnosticContext = (diagnosticContext, httpContext) =>
+    builder.Services.AddCors(options =>
     {
-        diagnosticContext.Set("RequestHost", httpContext.Request.Host.Value);
-        diagnosticContext.Set("RequestScheme", httpContext.Request.Scheme);
-        diagnosticContext.Set("UserAgent", httpContext.Request.Headers["User-Agent"].ToString());
-        diagnosticContext.Set("ClientIP", httpContext.Connection.RemoteIpAddress?.ToString());
-        
-        if (httpContext.User.Identity?.IsAuthenticated == true)
+        options.AddPolicy("AllowAll",
+            policy => policy
+                .AllowAnyOrigin()
+                .AllowAnyMethod()
+                .AllowAnyHeader());
+    });
+
+
+    #endregion
+
+    var app = builder.Build();
+
+    // Configure Serilog request logging
+    app.UseSerilogRequestLogging(configure =>
+    {
+        configure.MessageTemplate = "HTTP {RequestMethod} {RequestPath} responded {StatusCode} in {Elapsed:0.0000} ms";
+        configure.GetLevel = (httpContext, elapsed, ex) => ex != null
+            ? LogEventLevel.Error
+            : httpContext.Response.StatusCode > 499
+                ? LogEventLevel.Error
+                : LogEventLevel.Information;
+        configure.EnrichDiagnosticContext = (diagnosticContext, httpContext) =>
         {
-            diagnosticContext.Set("UserName", httpContext.User.Identity.Name);
-        }
-    };
-});
+            diagnosticContext.Set("RequestHost", httpContext.Request.Host.Value);
+            diagnosticContext.Set("RequestScheme", httpContext.Request.Scheme);
+            diagnosticContext.Set("UserAgent", httpContext.Request.Headers["User-Agent"].ToString());
+            diagnosticContext.Set("ClientIP", httpContext.Connection.RemoteIpAddress?.ToString());
 
-// Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
-app.UseStaticFiles();
-app.UseHttpsRedirection();
+            if (httpContext.User.Identity?.IsAuthenticated == true)
+            {
+                diagnosticContext.Set("UserName", httpContext.User.Identity.Name);
+            }
+        };
+    });
 
-app.UseAuthentication();
+    // Configure the HTTP request pipeline.
+    if (app.Environment.IsDevelopment())
+    {
+        app.UseSwagger();
+        app.UseSwaggerUI();
+    }
+    app.UseStaticFiles();
+    app.UseHttpsRedirection();
 
-app.UseAuthorization();
-app.MapControllers();
-app.UseCors("AllowAll");
+    app.UseAuthentication();
+
+    app.UseAuthorization();
+    app.MapControllers();
+    app.UseCors("AllowAll");
 
     using (var scope = app.Services.CreateScope())
     {
@@ -272,7 +271,7 @@ app.UseCors("AllowAll");
             {
                 context.Database.Migrate();
             }
-            await ApplicationDbcontextSeed.SeedDefaultUserAsync(context,userManager, roleManager);
+            await ApplicationDbcontextSeed.SeedDefaultUserAsync(context, userManager, roleManager);
             await Ettad.EntityFramework.DataBaseContext.DataSeeding.ApplicationDbInitializer.SeedDefaultDataAsync(scope.ServiceProvider);
 
             Log.Information("Database migration and seeding completed successfully");
@@ -280,7 +279,7 @@ app.UseCors("AllowAll");
         catch (Exception ex)
         {
             Log.Error(ex, "An error occurred during database migration or seeding");
-          //  await ApplicationDbInitializer.SeedDefaultDataAsync(scope.ServiceProvider);
+            //  await ApplicationDbInitializer.SeedDefaultDataAsync(scope.ServiceProvider);
         }
     }
 

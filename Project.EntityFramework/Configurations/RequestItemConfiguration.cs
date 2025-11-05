@@ -1,36 +1,33 @@
 ﻿using Ettad.Data.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Ettad.EntityFramework.Configurations
 {
-    internal class RequestDetailConfiguration : IEntityTypeConfiguration<RequestDetail>
+    internal class RequestItemConfiguration : IEntityTypeConfiguration<RequestItem>
     {
-
-        public void Configure(EntityTypeBuilder<RequestDetail> builder)
+        public void Configure(EntityTypeBuilder<RequestItem> builder)
         {
-            builder.ToTable("RequestDetails");
             builder.HasKey(x => x.Id);
+            builder.ToTable("RequestItems");
+
+            builder.Property(x => x.Quantity)
+                .IsRequired();
+
+            builder.Property(x => x.Notes)
+                .IsRequired(false);
 
             builder.HasOne(x => x.Item)
                 .WithMany()
-                .IsRequired(true)
                 .HasForeignKey(x => x.ItemId)
+                .IsRequired()
                 .OnDelete(DeleteBehavior.Restrict);
 
             builder.HasOne(x => x.Request)
-                .WithMany(x => x.ResquestDetails)
-                .IsRequired(true)
+                .WithMany(x => x.RequestItems)
                 .HasForeignKey(x => x.RequestId)
+                .IsRequired()
                 .OnDelete(DeleteBehavior.Restrict);
-
-            // Global query filter for soft delete
-            builder.HasQueryFilter(x => !x.IsDeleted);
         }
     }
 }
