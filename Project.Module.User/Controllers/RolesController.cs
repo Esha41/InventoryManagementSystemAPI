@@ -162,5 +162,24 @@ namespace Ettad.User.API.Controllers
             return ProcessResponse(response);
         }
 
+        [HttpGet("entities")]
+       public async Task<ActionResult> GetAllAppicationEntities()
+        {
+            // Calls role service to retrieve all application entities
+            var result = await _roleService.GetAllApplicationEntitiesAsync();
+
+            // Returns standardized API response using base controller helper
+            return ProcessResponse(result);
+        }
+
+        [HttpGet("getApplicationentities/{roleId}")]
+        public async Task<ActionResult<List<RoleApplicationEntityDto>>> GetByRole(string roleId)
+        {
+            var result = await _roleService.GetApplicationEntitiesByRoleAsync(roleId);
+            if (result == null || result.Count == 0)
+                return NotFound($"No application entities found for role {roleId}");
+
+            return Ok(result);
+        }
     }
 }

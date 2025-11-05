@@ -44,6 +44,7 @@ namespace Ettad.Module.lookup.Mapper
             CreateMap<Supplier, SupplierDto>();
             CreateMap<Unit, UnitDto>();
             CreateMap<CreateUpdateRankDto, Rank>();
+            CreateMap<CreateUpdateWorkFlowTypeDto, WorkFlowType>();
         }
     }
 }

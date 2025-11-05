@@ -18,11 +18,8 @@ namespace Ettad.Workflows.Service.Command.CreateWorkflow
     public class CreateWorkflowCommand : IRequest<APIOperationResponse<WorkflowDto>>
     {
         public string WorkflowName { get; set; }
-        public WorkflowType WorkflowType { get; set; }
-        public RequesterType RequesterType { get; set; }
-        public int OrganizationId { get; set; }
-        public int? CompanyId { get; set; }
-        public int? DepartementId { get; set; }
+        public int WorkflowType { get; set; }
+        public RequesterType RequesterType { get; set; }       
         public bool IsActive { get; set; } = true;
         public List<WorkflowStepCreateDto> WorkflowSteps { get; set; } = new();
     }
@@ -49,10 +46,8 @@ namespace Ettad.Workflows.Service.Command.CreateWorkflow
 
             try
             {
-                int orgId = (int)(_currentUserService.IsSuperAdmin ? request.OrganizationId : _currentUserService.OrganizationId);
-
                 // Check for duplicate active workflow
-                var deactivationResult = await CheckAndDeactivateDuplicateWorkflows(request, orgId, cancellationToken);
+                var deactivationResult = await CheckAndDeactivateDuplicateWorkflows(request, cancellationToken);
                 if (!deactivationResult)
                 {
                     return APIOperationResponse<WorkflowDto>.ServerError("Failed to deactivate duplicate workflows.");
@@ -62,10 +57,6 @@ namespace Ettad.Workflows.Service.Command.CreateWorkflow
                 {
                     WorkflowName = request.WorkflowName,
                     WorkflowType = request.WorkflowType,
-                    RequesterType = request.RequesterType,
-                    OrganizationId = orgId,
-                    CompanyId = request.CompanyId,
-                    DepartementId = request.DepartementId,
                     IsActive = request.IsActive,
                     CreatedBy = _currentUserService.UserName,
                     CreationDate = DateTime.UtcNow
@@ -100,22 +91,20 @@ namespace Ettad.Workflows.Service.Command.CreateWorkflow
             }
         }
 
-        // Checks for duplicate active workflows and deactivates them if found
-        private async Task<bool> CheckAndDeactivateDuplicateWorkflows(CreateWorkflowCommand request, int organizationId, CancellationToken cancellationToken)
+        // Updated duplicate check without organization/department
+        private async Task<bool> CheckAndDeactivateDuplicateWorkflows(CreateWorkflowCommand request, CancellationToken cancellationToken)
         {
             try
             {
+                // Find active workflows of the same type as the incoming request
                 var existingActiveWorkflows = await _context.Workflows
-                    .Where(w => w.OrganizationId == organizationId &&
-                               w.DepartementId == request.DepartementId &&
-                               w.IsActive == true &&
-                               w.IsDeleted == false)
+                    .Where(w => w.IsActive && !w.IsDeleted && w.WorkflowType == request.WorkflowType)
                     .ToListAsync(cancellationToken);
 
                 if (existingActiveWorkflows.Any())
                 {
-                    _logger.LogInformation("Found {Count} active workflows for organization {OrganizationId} and department {DepartmentId}. Deactivating them.",
-                        existingActiveWorkflows.Count, organizationId, request.DepartementId);
+                    _logger.LogInformation("Found {Count} active workflows of type {Type}. Deactivating them.",
+                        existingActiveWorkflows.Count, request.WorkflowType);
 
                     foreach (var existingWorkflow in existingActiveWorkflows)
                     {
@@ -125,16 +114,19 @@ namespace Ettad.Workflows.Service.Command.CreateWorkflow
                     }
 
                     await _context.SaveChangesAsync(cancellationToken);
-                    _logger.LogInformation("Successfully deactivated {Count} existing workflows", existingActiveWorkflows.Count);
+                    _logger.LogInformation("Successfully deactivated {Count} workflows of type {Type}",
+                        existingActiveWorkflows.Count, request.WorkflowType);
                 }
+
                 return true;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error while deactivating duplicate workflows");
+                _logger.LogError(ex, "Error while deactivating duplicate workflows of type {Type}", request.WorkflowType);
                 return false;
             }
         }
+
 
         // Adds workflow steps to the created workflow
         private async Task<bool> AddWorkflowSteps(List<WorkflowStepCreateDto> workflowSteps, int workflowId, CancellationToken cancellationToken)
@@ -145,8 +137,13 @@ namespace Ettad.Workflows.Service.Command.CreateWorkflow
                 {
                     WorkflowId = workflowId,
                     StepOrder = step.StepOrder,
-                    ApproverEmployeeId = step.ApproverEmployeeId,
+                    ApplicationRoleId = step.ApplicationRoleId,
+                    ApplicationEntityId = step.ApplicationEntityId,
                     MustApprove = step.MustApprove,
+                    RequireHigherApproval = step.RequireHigherApproval,
+                    HigherApprovalRoleId = step.HigherApprovalRoleId,
+                    HigherApplicationEntityId = step.HigherApplicationEntityId,
+                    ReserveQty = step.ReserveQty,
                     CreatedBy = _currentUserService.UserName,
                     CreationDate = DateTime.UtcNow
                 }).ToList();
@@ -164,6 +161,7 @@ namespace Ettad.Workflows.Service.Command.CreateWorkflow
             }
         }
 
+
         // Manual mapping from Workflow entity to WorkflowDto
         private WorkflowDto MapToWorkflowDto(Ettad.Data.Entities.Workflows.Workflow workflow)
         {
@@ -174,25 +172,24 @@ namespace Ettad.Workflows.Service.Command.CreateWorkflow
                 Id = workflow.Id,
                 WorkflowName = workflow.WorkflowName,
                 WorkflowType = workflow.WorkflowType,
-                RequesterType = workflow.RequesterType,
-                OrganizationId = workflow.OrganizationId,
-                CompanyId = workflow.CompanyId,
-                DepartementId = workflow.DepartementId,
                 IsActive = workflow.IsActive,
                 IsDeleted = workflow.IsDeleted,
-
 
                 WorkflowSteps = workflow.WorkflowSteps?.Select(step => new WorkflowStepDto
                 {
                     Id = step.Id,
                     WorkflowId = step.WorkflowId,
                     StepOrder = step.StepOrder,
-                    ApproverType = step.ApproverType,
-                    ApproverEmployeeId = step.ApproverEmployeeId,
+                    ApplicationRoleId = step.ApplicationRoleId,
+                    ApplicationEntityId = step.ApplicationEntityId,
                     MustApprove = step.MustApprove,
-
+                    RequireHigherApproval = step.RequireHigherApproval,
+                    HigherApprovalRoleId = step.HigherApprovalRoleId,
+                    ReserveQty = step.ReserveQty
+                    
                 }).ToList()
             };
         }
+
     }
 }

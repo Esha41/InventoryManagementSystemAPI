@@ -19,8 +19,9 @@ namespace Ettad.EntityFramework.DataBaseContext
         public DbSet<ApplicationUser> Users { get; set; }
         public DbSet<ApplicationRole> Roles { get; set; }
         public DbSet<Workflow> Workflows { get; set; }
-        public DbSet<WorkflowApprovalHistory> WorkflowApprovalHistory { get; set; }
+        public DbSet<WorkflowStepApprovalLog> WorkflowStepApprovalLog { get; set; }
         public DbSet<WorkflowStep> WorkflowSteps { get; set; }
+        public DbSet<WorkflowApprovalStep> WorkflowApprovalSteps { get; set; }
         public DbSet<EmailConfiguration> EmailConfigurations { get; set; }
 
         public DbSet<BaseItem> BaseItems { get; set; }
@@ -52,6 +53,10 @@ namespace Ettad.EntityFramework.DataBaseContext
 
 
 
+        public DbSet<ApplicationEntity> ApplicationEntities { get;set;}
+        public DbSet<RoleApplicationEntity> RoleApplicationEntities { get; set; }
+        public DbSet<WorkFlowType> WorkFlowTypes { get; set; }
+       
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             modelBuilder.ApplyConfigurationsFromAssembly(typeof(ApplicationDbContext).Assembly);

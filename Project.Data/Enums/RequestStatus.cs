@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -8,9 +8,12 @@ namespace Ettad.Data.Enums
 {
     public enum RequestStatus
     {
-        UnderProcess = 1,
+        Pending = 1,
         Approved = 2,
-        Rejected = 3
+        Rejected = 3,
+        Edit = 4,
+        Cancelled = 5
+
     }
 }
 
