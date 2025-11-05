@@ -16,3 +16,4 @@ namespace Ettad.Data.Enums
 
     }
 }
+

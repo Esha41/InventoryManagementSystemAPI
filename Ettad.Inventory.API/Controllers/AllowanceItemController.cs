@@ -57,15 +57,6 @@ namespace Ettad.Inventory.API.Controllers
             return ProcessResponse(result);
         }
 
-        [HttpGet("department/{departmentId}/year/{year}/itemtype/{itemType}")]
-        [ProducesResponseType((int)HttpStatusCode.OK)]
-        [CheckAuthorize("Permissions.AllowanceItem.View", "Permissions.AllowanceItem.Page")]
-        public async Task<IActionResult> GetByDepartmentYearAndItemType(long departmentId, int year, ItemType itemType)
-        {
-            var result = await _allowanceItemService.GetByDepartmentYearAndItemTypeAsync(departmentId, year, itemType);
-            return ProcessResponse(result);
-        }
-
         [HttpPost]
         [ProducesResponseType((int)HttpStatusCode.Created)]
         [CheckAuthorize("Permissions.AllowanceItem.Create")]

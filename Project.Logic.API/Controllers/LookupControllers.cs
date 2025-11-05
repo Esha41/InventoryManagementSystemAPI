@@ -278,6 +278,24 @@ namespace Ettad.Lookups.Domain.API.Controllers
     }
 
     #endregion
+
+    #region Rank
+
+    [CheckAuthorize(
+        "Permissions.Rank.Page",
+        "Permissions.Rank.View",
+        "Permissions.Rank.Create",
+        "Permissions.Rank.Edit",
+        "Permissions.Rank.Delete"
+    )]
+    public class RankController : LookupController<Rank, CreateUpdateRankDto>
+    {
+        public RankController(ILookupService<Rank, CreateUpdateRankDto> iLookupService, ILogger<LookupController<Rank, CreateUpdateRankDto>> logger)
+            : base(iLookupService, logger) { }
+    }
+
+    #endregion
+
     #region Workflow
     [CheckAuthorize(
        "Permissions.WorkFlowType.Page",

@@ -8,9 +8,7 @@ namespace Ettad.Inventory.Service.Ammunitions.Profiles
     {
         public AmmunitionMappingProfile()
         {
-            // Entity to DTO
-            CreateMap<Ammunition, AmmunitionDto>()
-                .ReverseMap();
+            CreateMap<Ammunition, AmmunitionDto>();
 
             // CreateUpdate DTO to Entity
             CreateMap<CreateUpdateAmmunitionDto, Ammunition>()

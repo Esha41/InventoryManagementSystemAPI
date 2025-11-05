@@ -1,0 +1,16 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Ettad.RequestManagement.Service\Ettad.RequestManagement.Service.csproj" />
+    <ProjectReference Include="..\Project.Comman\Ettad.CrossCutting.Comman.csproj" />
+    <ProjectReference Include="..\Project.Data\Ettad.Data.csproj" />
+    <ProjectReference Include="..\Project.ResponseHandler\Ettad.CrossCutting.ResponseHandler.csproj" />
+  </ItemGroup>
+
+</Project>
