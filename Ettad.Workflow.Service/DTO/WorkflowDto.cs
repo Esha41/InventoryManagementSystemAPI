@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 
 namespace Ettad.Workflows.Service.DTO
@@ -13,6 +14,7 @@ namespace Ettad.Workflows.Service.DTO
 
         public string WorkflowName { get; set; }
 
+        [JsonConverter(typeof(JsonStringEnumConverter))]
         public WorkflowType WorkflowType { get; set; }
 
         public bool IsActive { get; set; }
