@@ -36,7 +36,11 @@ namespace Ettad.Data.Entities.Workflows
         public bool RequireHigherApproval { get; set; } = false;
 
         public string? HigherApprovalRoleId { get; set; }       // Optional higher approval
+       
         public ApplicationRole? HigherApprovalRole { get; set; }
+
+        public long? HigherApplicationEntityId { get; set; }
+        public ApplicationEntity HigherApplicationEntity { get; set; }
 
         [Required]
         public bool ReserveQty { get; set; } = false;

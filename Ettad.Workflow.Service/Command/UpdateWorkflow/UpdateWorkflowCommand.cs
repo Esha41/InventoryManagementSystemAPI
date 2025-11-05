@@ -170,6 +170,7 @@ namespace Ettad.Workflows.Service.Command.UpdateWorkflow
                         MustApprove = dto.MustApprove,
                         RequireHigherApproval = dto.RequireHigherApproval,
                         HigherApprovalRoleId = dto.HigherApprovalRoleId,
+                        HigherApplicationEntityId=dto.HigherApplicationEntityId,
                         ReserveQty = dto.ReserveQty,
                         CreatedBy = _currentUserService.UserName,
                         CreationDate = DateTime.UtcNow

@@ -25,6 +25,8 @@ namespace Ettad.Workflows.Service.DTO
         public bool RequireHigherApproval { get; set; } = false;
         public string? HigherApprovalRoleId { get; set; }
 
+        public long? HigherApplicationEntityId { get; set; }
+
         public bool ReserveQty { get; set; } = false;
 
         // Approval steps for this workflow step
@@ -49,6 +51,8 @@ namespace Ettad.Workflows.Service.DTO
         public bool RequireHigherApproval { get; set; } = false;
 
         public string? HigherApprovalRoleId { get; set; }
+
+        public long? HigherApplicationEntityId { get; set; }
 
         public bool ReserveQty { get; set; } = false;
     }

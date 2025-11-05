@@ -38,6 +38,11 @@ namespace Ettad.EntityFramework.Configurations
                    .HasForeignKey(x => x.HigherApprovalRoleId)
                    .IsRequired(false) // <-- make it optional
                    .OnDelete(DeleteBehavior.Restrict);
+            builder.HasOne(x => x.HigherApplicationEntity)
+     .WithMany()
+     .HasForeignKey(x => x.HigherApplicationEntityId)
+     .IsRequired(false)
+     .OnDelete(DeleteBehavior.Restrict);
 
         }
     }

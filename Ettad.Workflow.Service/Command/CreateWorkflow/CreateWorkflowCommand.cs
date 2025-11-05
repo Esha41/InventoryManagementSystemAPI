@@ -139,6 +139,7 @@ namespace Ettad.Workflows.Service.Command.CreateWorkflow
                     MustApprove = step.MustApprove,
                     RequireHigherApproval = step.RequireHigherApproval,
                     HigherApprovalRoleId = step.HigherApprovalRoleId,
+                    HigherApplicationEntityId = step.HigherApplicationEntityId,
                     ReserveQty = step.ReserveQty,
                     CreatedBy = _currentUserService.UserName,
                     CreationDate = DateTime.UtcNow
