@@ -14,8 +14,9 @@ namespace Ettad.Workflows.Service.DTO
 
         public string WorkflowName { get; set; }
 
-        [JsonConverter(typeof(JsonStringEnumConverter))]
-        public WorkflowType WorkflowType { get; set; }
+       
+        public int WorkflowType { get; set; }
+        public string WorkflowTypeName { get; set; } // Name from table
 
         public bool IsActive { get; set; }
 

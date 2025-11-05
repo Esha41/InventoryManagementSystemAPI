@@ -18,7 +18,7 @@ namespace Ettad.Workflows.Service.Command.CreateWorkflow
     public class CreateWorkflowCommand : IRequest<APIOperationResponse<WorkflowDto>>
     {
         public string WorkflowName { get; set; }
-        public WorkflowType WorkflowType { get; set; }
+        public int WorkflowType { get; set; }
         public RequesterType RequesterType { get; set; }       
         public bool IsActive { get; set; } = true;
         public List<WorkflowStepCreateDto> WorkflowSteps { get; set; } = new();

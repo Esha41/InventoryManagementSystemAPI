@@ -39,17 +39,43 @@ namespace Ettad.Workflows.Service.Queries.GetWorkflow
                 .Where(w => !w.IsDeleted)
                 .AsQueryable();
 
-            // Filter the query based on the current user's role and OrganizationId
+            // Filter based on user if needed
             if (!_currentUserService.IsSuperAdmin)
             {
-                workflowsQueryable = workflowsQueryable;
+                workflowsQueryable = workflowsQueryable; // Add filter if required
             }
 
             var workflows = await workflowsQueryable
-                .ProjectTo<WorkflowDto>(_mapper.ConfigurationProvider)
+                .Join(
+                    _context.WorkFlowTypes.Where(t => !t.IsDeleted), // join only active types
+                    w => w.WorkflowType,   // FK in Workflows table
+                    t => t.Id,             // PK in WorkFlowType table
+                    (w, t) => new WorkflowDto
+                    {
+                        Id = w.Id,
+                        WorkflowName = w.WorkflowName,
+                        WorkflowType = w.WorkflowType,
+                        WorkflowTypeName = t.NameEn, // or NameAr if you prefer
+                        IsActive = w.IsActive,
+                        IsDeleted = w.IsDeleted,
+                        WorkflowSteps = w.WorkflowSteps.Select(step => new WorkflowStepDto
+                        {
+                            Id = step.Id,
+                            WorkflowId = step.WorkflowId,
+                            StepOrder = step.StepOrder,
+                            ApplicationRoleId = step.ApplicationRoleId,
+                            ApplicationEntityId = step.ApplicationEntityId,
+                            MustApprove = step.MustApprove,
+                            RequireHigherApproval = step.RequireHigherApproval,
+                            HigherApprovalRoleId = step.HigherApprovalRoleId,
+                            ReserveQty = step.ReserveQty
+                        }).ToList()
+                    }
+                )
                 .ToListAsync(cancellationToken);
 
             return APIOperationResponse<List<WorkflowDto>>.Success(workflows);
         }
+
     }
 }

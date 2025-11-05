@@ -47,6 +47,7 @@ namespace Ettad.EntityFramework.DataBaseContext
         public DbSet<Unit> Units { get; set; }
         public DbSet<ApplicationEntity> ApplicationEntities { get;set;}
         public DbSet<RoleApplicationEntity> RoleApplicationEntities { get; set; }
+        public DbSet<WorkFlowType> WorkFlowTypes { get; set; }
        
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

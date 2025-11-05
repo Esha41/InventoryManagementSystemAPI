@@ -18,7 +18,7 @@ namespace Ettad.Data.Entities.Workflows
         public string WorkflowName { get; set; }
 
         [Required]
-        public WorkflowType WorkflowType { get; set; } 
+        public int WorkflowType { get; set; } 
 
         [Required]
         public bool IsActive { get; set; } = true;
