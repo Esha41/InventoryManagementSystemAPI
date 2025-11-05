@@ -11,11 +11,11 @@ namespace Ettad.EntityFramework.Configurations
             builder.HasKey(x => x.Id);
             builder.ToTable("BaseRequests");
 
-            builder.Property(x => x.OrderNo)
+            builder.Property(x => x.RequestNo)
                 .IsRequired()
                 .HasMaxLength(255);
 
-            builder.HasIndex(x => x.OrderNo)
+            builder.HasIndex(x => x.RequestNo)
                 .IsUnique();
 
             builder.Property(x => x.Reason)

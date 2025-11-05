@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using FluentValidation;
 using System.Reflection;
+using Ettad.RequestManagement.Service.Discards;
 
 namespace Ettad.RequestManagement.Service
 {
@@ -18,6 +19,7 @@ namespace Ettad.RequestManagement.Service
             services.AddValidatorsFromAssembly(Assembly.GetExecutingAssembly());
 
             // Register services
+            services.AddScoped<IDiscardService, DiscardService>();
 
             return services;
         }

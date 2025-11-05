@@ -6,7 +6,7 @@ namespace Ettad.RequestManagement.Service.Common.Dtos
     public class BaseRequestDto
     {
         public long Id { get; set; }
-        public string OrderNo { get; set; }
+        public string RequestNo { get; set; }
         public string RequestType { get; set; }
         public string Reason { get; set; }
         public string Priority { get; set; }

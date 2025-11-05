@@ -1,0 +1,72 @@
+using AutoMapper;
+using Ettad.Data.Entities;
+using Ettad.Data.Enums;
+using Ettad.RequestManagement.Service.Discards.Dtos;
+using Ettad.RequestManagement.Service.Common.Dtos;
+using DiscardEntity = Ettad.Data.Entities.Discard;
+using RequestItemEntity = Ettad.Data.Entities.RequestItem;
+
+namespace Ettad.RequestManagement.Service.Discards.Profiles
+{
+    public class DiscardMappingProfile : Profile
+    {
+        public DiscardMappingProfile()
+        {
+            // Entity to DTO - BaseRequestMappingProfile handles BaseRequest to BaseRequestDto
+            // including enum to string conversions. DiscardDto inherits from BaseRequestDto
+            // so we can use the base mapping or just inherit it
+            CreateMap<DiscardEntity, DiscardDto>()
+                .IncludeBase<BaseRequest, BaseRequestDto>();
+
+            // Create DTO to Entity
+            CreateMap<CreateDiscardDto, DiscardEntity>()
+                .ForMember(dest => dest.Id, opt => opt.Ignore())
+                .ForMember(dest => dest.CreationDate, opt => opt.Ignore())
+                .ForMember(dest => dest.CreatedBy, opt => opt.Ignore())
+                .ForMember(dest => dest.ModificationDate, opt => opt.Ignore())
+                .ForMember(dest => dest.ModifiedBy, opt => opt.Ignore())
+                .ForMember(dest => dest.IsDeleted, opt => opt.Ignore())
+                .ForMember(dest => dest.DeletionDate, opt => opt.Ignore())
+                .ForMember(dest => dest.DeletedBy, opt => opt.Ignore())
+                .ForMember(dest => dest.Department, opt => opt.Ignore())
+                .ForMember(dest => dest.Requester, opt => opt.Ignore())
+                .ForMember(dest => dest.Reciever, opt => opt.Ignore())
+                .ForMember(dest => dest.Depot, opt => opt.Ignore())
+                .ForMember(dest => dest.RequestPurpose, opt => opt.Ignore())
+                .ForMember(dest => dest.RequestItems, opt => opt.Ignore()) // Handle separately
+                .ForMember(dest => dest.RequestType, opt => opt.MapFrom(src => RequestType.Discard)) // Always set to Discard by backend
+                .ForMember(dest => dest.Priority, opt => opt.MapFrom(src => Enum.Parse<RequestPriority>(src.Priority, true))) // Validator ensures valid value
+                .ForMember(dest => dest.Status, opt => opt.MapFrom(src => RequestStatus.New)); // Always set to New by backend
+
+            CreateMap<CreateDiscardItemDto, RequestItemEntity>()
+                .ForMember(dest => dest.Id, opt => opt.Ignore())
+                .ForMember(dest => dest.RequestId, opt => opt.Ignore())
+                .ForMember(dest => dest.Item, opt => opt.Ignore())
+                .ForMember(dest => dest.Request, opt => opt.Ignore());
+
+            // Update DTO to Entity
+            CreateMap<UpdateDiscardDto, DiscardEntity>()
+                .ForMember(dest => dest.Id, opt => opt.Ignore())
+                .ForMember(dest => dest.CreationDate, opt => opt.Ignore())
+                .ForMember(dest => dest.CreatedBy, opt => opt.Ignore())
+                .ForMember(dest => dest.ModificationDate, opt => opt.Ignore())
+                .ForMember(dest => dest.ModifiedBy, opt => opt.Ignore())
+                .ForMember(dest => dest.IsDeleted, opt => opt.Ignore())
+                .ForMember(dest => dest.DeletionDate, opt => opt.Ignore())
+                .ForMember(dest => dest.DeletedBy, opt => opt.Ignore())
+                .ForMember(dest => dest.Department, opt => opt.Ignore())
+                .ForMember(dest => dest.Requester, opt => opt.Ignore())
+                .ForMember(dest => dest.Reciever, opt => opt.Ignore())
+                .ForMember(dest => dest.Depot, opt => opt.Ignore())
+                .ForMember(dest => dest.RequestPurpose, opt => opt.Ignore())
+                .ForMember(dest => dest.RequestItems, opt => opt.Ignore()) // Handle separately
+                .ForMember(dest => dest.Priority, opt => opt.MapFrom(src => Enum.Parse<RequestPriority>(src.Priority, true))); // Validator ensures valid value
+
+            CreateMap<UpdateDiscardItemDto, RequestItemEntity>()
+                .ForMember(dest => dest.Id, opt => opt.Ignore())
+                .ForMember(dest => dest.RequestId, opt => opt.Ignore())
+                .ForMember(dest => dest.Item, opt => opt.Ignore())
+                .ForMember(dest => dest.Request, opt => opt.Ignore());
+        }
+    }
+}
