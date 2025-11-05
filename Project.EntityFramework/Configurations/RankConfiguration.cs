@@ -31,6 +31,80 @@ namespace Ettad.EntityFramework.Configurations
 
             builder.HasIndex(x => x.NameEn)
                 .IsUnique();
+
+            // Seed data
+            builder.HasData(
+                new Rank
+                {
+                    Id = 1,
+                    NameAr = "عقيد",
+                    NameEn = "Colonel",
+                    IsDeleted = false
+                },
+                new Rank
+                {
+                    Id = 2,
+                    NameAr = "مقدم",
+                    NameEn = "Lieutenant Colonel",
+                    IsDeleted = false
+                },
+                new Rank
+                {
+                    Id = 3,
+                    NameAr = "رائد",
+                    NameEn = "Major",
+                    IsDeleted = false
+                },
+                new Rank
+                {
+                    Id = 4,
+                    NameAr = "نقيب",
+                    NameEn = "Captain",
+                    IsDeleted = false
+                },
+                new Rank
+                {
+                    Id = 5,
+                    NameAr = "ملازم أول",
+                    NameEn = "First Lieutenant",
+                    IsDeleted = false
+                },
+                new Rank
+                {
+                    Id = 6,
+                    NameAr = "ملازم",
+                    NameEn = "Second Lieutenant",
+                    IsDeleted = false
+                },
+                new Rank
+                {
+                    Id = 7,
+                    NameAr = "رقيب أول",
+                    NameEn = "Master Sergeant",
+                    IsDeleted = false
+                },
+                new Rank
+                {
+                    Id = 8,
+                    NameAr = "رقيب",
+                    NameEn = "Sergeant",
+                    IsDeleted = false
+                },
+                new Rank
+                {
+                    Id = 9,
+                    NameAr = "عريف",
+                    NameEn = "Corporal",
+                    IsDeleted = false
+                },
+                new Rank
+                {
+                    Id = 10,
+                    NameAr = "جندي",
+                    NameEn = "Private",
+                    IsDeleted = false
+                }
+            );
         }
     }
 }
