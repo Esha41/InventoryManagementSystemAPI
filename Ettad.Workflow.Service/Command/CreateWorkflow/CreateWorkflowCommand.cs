@@ -96,13 +96,15 @@ namespace Ettad.Workflows.Service.Command.CreateWorkflow
         {
             try
             {
+                // Find active workflows of the same type as the incoming request
                 var existingActiveWorkflows = await _context.Workflows
-                    .Where(w => w.IsActive && !w.IsDeleted)
+                    .Where(w => w.IsActive && !w.IsDeleted && w.WorkflowType == request.WorkflowType)
                     .ToListAsync(cancellationToken);
 
                 if (existingActiveWorkflows.Any())
                 {
-                    _logger.LogInformation("Found {Count} active workflows. Deactivating them.", existingActiveWorkflows.Count);
+                    _logger.LogInformation("Found {Count} active workflows of type {Type}. Deactivating them.",
+                        existingActiveWorkflows.Count, request.WorkflowType);
 
                     foreach (var existingWorkflow in existingActiveWorkflows)
                     {
@@ -112,14 +114,15 @@ namespace Ettad.Workflows.Service.Command.CreateWorkflow
                     }
 
                     await _context.SaveChangesAsync(cancellationToken);
-                    _logger.LogInformation("Successfully deactivated {Count} existing workflows", existingActiveWorkflows.Count);
+                    _logger.LogInformation("Successfully deactivated {Count} workflows of type {Type}",
+                        existingActiveWorkflows.Count, request.WorkflowType);
                 }
 
                 return true;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error while deactivating duplicate workflows");
+                _logger.LogError(ex, "Error while deactivating duplicate workflows of type {Type}", request.WorkflowType);
                 return false;
             }
         }
