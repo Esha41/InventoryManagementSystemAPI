@@ -264,15 +264,32 @@ namespace Ettad.Lookups.Domain.API.Controllers
     #region Supplier
 
     [CheckAuthorize(
-        "Permissions.Suppliers.Page",
-        "Permissions.Suppliers.View",
-        "Permissions.Suppliers.Create",
-        "Permissions.Suppliers.Edit",
-        "Permissions.Suppliers.Delete"
+        "Permissions.Supplier.Page",
+        "Permissions.Supplier.View",
+        "Permissions.Supplier.Create",
+        "Permissions.Supplier.Edit",
+        "Permissions.Supplier.Delete"
     )]
     public class SupplierController : LookupController<Supplier, CreateUpdateSupplierDto>
     {
         public SupplierController(ILookupService<Supplier, CreateUpdateSupplierDto> iLookupService, ILogger<LookupController<Supplier, CreateUpdateSupplierDto>> logger)
+            : base(iLookupService, logger) { }
+    }
+
+    #endregion
+
+    #region Rank
+
+    [CheckAuthorize(
+        "Permissions.Rank.Page",
+        "Permissions.Rank.View",
+        "Permissions.Rank.Create",
+        "Permissions.Rank.Edit",
+        "Permissions.Rank.Delete"
+    )]
+    public class RankController : LookupController<Rank, CreateUpdateRankDto>
+    {
+        public RankController(ILookupService<Rank, CreateUpdateRankDto> iLookupService, ILogger<LookupController<Rank, CreateUpdateRankDto>> logger)
             : base(iLookupService, logger) { }
     }
 

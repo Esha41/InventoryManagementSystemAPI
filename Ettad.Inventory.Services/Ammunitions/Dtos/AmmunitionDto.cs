@@ -1,4 +1,4 @@
-﻿using Ettad.Data.Entities;
+﻿using Ettad.Module.lookup.Dtos;
 
 namespace Ettad.Inventory.Service.Ammunitions.Dtos
 {
@@ -54,18 +54,18 @@ namespace Ettad.Inventory.Service.Ammunitions.Dtos
 
         #region Navigation Properties
 
-        public Hcc Hcc { get; set; }
-        public Unit BulletDiameterUnit { get; set; }
-        public Unit CaseLengthUnit { get; set; }
-        public NatureOption NatureOption { get; set; }
-        public Nsn Nsn { get; set; }
-        public PrimaryPurpos PrimaryPurpos { get; set; }
-        public Color ProjectileColor { get; set; }
-        public ProjectailMaterial ProjectailMaterial { get; set; }
-        public CaseType CaseType { get; set; }
-        public Propellant Propellant { get; set; }
-        public Compatibility Compatibility { get; set; }
-        public HazardDivision HazardDivision { get; set; }
+        public HccDto Hcc { get; set; }
+        public UnitDto BulletDiameterUnit { get; set; }
+        public UnitDto CaseLengthUnit { get; set; }
+        public NatureOptionDto NatureOption { get; set; }
+        public NsnDto Nsn { get; set; }
+        public PrimaryPurposDto PrimaryPurpos { get; set; }
+        public ColorDto ProjectileColor { get; set; }
+        public ProjectailMaterialDto ProjectailMaterial { get; set; }
+        public CaseTypeDto CaseType { get; set; }
+        public PropellantDto Propellant { get; set; }
+        public CompatibilityDto Compatibility { get; set; }
+        public HazardDivisionDto HazardDivision { get; set; }
 
         #endregion
     }

@@ -254,6 +254,16 @@ public static class MainEntities
         CrudOperation.Delete,
     };
 
+    [Category(CrudPermissionsGenerator.Inventory)]
+    public static readonly CrudOperation[] Inventory = new[]
+    {
+        CrudOperation.Page,
+        CrudOperation.View,
+        CrudOperation.Create,
+        CrudOperation.Edit,
+        CrudOperation.Delete,
+    };
+
     // ==============================
     // DASHBOARD
     // ==============================
@@ -395,6 +405,36 @@ public static class MainEntities
 
     [Category(CrudPermissionsGenerator.Inventory)]
     public static readonly CrudOperation[] AssetDeliveryDetails = new[]
+    {
+        CrudOperation.Page,
+        CrudOperation.View,
+        CrudOperation.Create,
+        CrudOperation.Edit,
+        CrudOperation.Delete
+    };
+
+    [Category(CrudPermissionsGenerator.RequestManagement)]
+    public static readonly CrudOperation[] Request = new[]
+    {
+        CrudOperation.Page,
+        CrudOperation.View,
+        CrudOperation.Create,
+        CrudOperation.Edit,
+        CrudOperation.Delete
+    };
+
+    [Category(CrudPermissionsGenerator.RequestManagement)]
+    public static readonly CrudOperation[] RequestReciver = new[]
+    {
+        CrudOperation.Page,
+        CrudOperation.View,
+        CrudOperation.Create,
+        CrudOperation.Edit,
+        CrudOperation.Delete
+    };
+
+    [Category(CrudPermissionsGenerator.RequestManagement)]
+    public static readonly CrudOperation[] Rank = new[]
     {
         CrudOperation.Page,
         CrudOperation.View,

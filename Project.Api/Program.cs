@@ -28,6 +28,8 @@ using Ettad.Inventory.Service;
 using System.Text;
 using System.Text.Json;
 using Ettad.EntityFramework.Interceptors;
+using Ettad.RequestManagement.Service;
+using System.Reflection;
 
 // Configure Serilog
 Log.Logger = new LoggerConfiguration()
@@ -60,10 +62,21 @@ builder.Services.AddHttpContextAccessor();
 // Register ICurrentUserService early so interceptor can use it
 builder.Services.AddScoped<Ettad.Application.Common.Interfaces.ICurrentUserService, Ettad.User.Services.Implementation.CurrentUserService>();
 
-// Add services to the container.
-builder.Services.AddControllers();
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
-builder.Services.AddEndpointsApiExplorer();
+    // Add services to the container.
+    // Register controllers from all referenced assemblies
+    builder.Services.AddControllers()
+        .AddApplicationPart(typeof(Ettad.Inventory.API.Controllers.AmmunitionController).Assembly)
+        .AddApplicationPart(typeof(Ettad.Workflows.API.Controllers.WorkflowsController).Assembly)
+        .AddApplicationPart(typeof(Ettad.RequestManagement.API.Controller.RequestController).Assembly)
+        .AddApplicationPart(typeof(Ettad.User.API.Controllers.UsersController).Assembly)
+        .AddApplicationPart(typeof(Ettad.Lookups.Domain.API.Controllers.DepartmentController).Assembly)
+        .AddJsonOptions(options =>
+        {
+            options.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
+        });
+
+    // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
+    builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddScoped(typeof(CrossCuttingRepository<>)); 
 
 builder.Services.AddScoped(typeof(ICrossCuttingRepository<>), typeof(CrossCuttingRepository<>));
@@ -79,6 +92,7 @@ builder.Configuration.GetSection("JWT"));
 
 #region Register Modules
 builder.Services.AddInventoryServices();
+builder.Services.AddRequestServices();
 #endregion
 
 // Register soft delete interceptor (ICurrentUserService is already registered above)
@@ -132,38 +146,6 @@ builder.Services.AddAuthentication(option =>
                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(configuration["JWT:Secret"] ?? throw new InvalidOperationException("JWT Secret is missing")))
                };
            });
-    builder.Services.AddControllers().AddJsonOptions(options =>
-    {
-        options.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
-    });
-    builder.Services.AddSwaggerGen(options =>
-{
-    options.AddSecurityDefinition(name: "Bearer", securityScheme: new OpenApiSecurityScheme
-    {
-        Name = "Authorization",
-        Description = "Enter the Bearer Authorization string as following: `Bearer Generated-JWT-Token`",
-        In = ParameterLocation.Header,
-        Type = SecuritySchemeType.ApiKey,
-        Scheme = "Bearer"
-    });
-    options.AddSecurityRequirement(new OpenApiSecurityRequirement
-    {
-        {
-            new OpenApiSecurityScheme
-            {
-                Name = "Bearer",
-                In = ParameterLocation.Header,
-                Reference = new OpenApiReference
-                {
-                    Id = "Bearer",
-                    Type = ReferenceType.SecurityScheme
-                }
-            },
-            new List<string>()
-        }
-    });
-
-});
 var baseUrl = builder.Configuration.GetValue<string>("FileSettings:BASE_URL");
 if (!string.IsNullOrEmpty(baseUrl))
 {
@@ -191,9 +173,38 @@ builder.Services.AddAutoMapper(typeof(Ettad.Module.lookup.Mapper.LookupMappingPr
     builder.Services.AddWorkflowServices();
 // Register Attendance services
 
-builder.Services.AddSwaggerGen(c =>
+// Configure Swagger to include all controllers from referenced assemblies
+builder.Services.AddSwaggerGen(options =>
 {
-    c.CustomSchemaIds(type => type.FullName); 
+    options.CustomSchemaIds(type => type.FullName);
+    
+    // Add security definition for Bearer token
+    options.AddSecurityDefinition(name: "Bearer", securityScheme: new OpenApiSecurityScheme
+    {
+        Name = "Authorization",
+        Description = "Enter the Bearer Authorization string as following: `Bearer Generated-JWT-Token`",
+        In = ParameterLocation.Header,
+        Type = SecuritySchemeType.ApiKey,
+        Scheme = "Bearer"
+    });
+    
+    // Add security requirement
+    options.AddSecurityRequirement(new OpenApiSecurityRequirement
+    {
+        {
+            new OpenApiSecurityScheme
+            {
+                Name = "Bearer",
+                In = ParameterLocation.Header,
+                Reference = new OpenApiReference
+                {
+                    Id = "Bearer",
+                    Type = ReferenceType.SecurityScheme
+                }
+            },
+            new List<string>()
+        }
+    });
 });
 
 builder.Services.AddCors(options =>
@@ -262,7 +273,7 @@ app.UseCors("AllowAll");
                 context.Database.Migrate();
             }
             await ApplicationDbcontextSeed.SeedDefaultUserAsync(context,userManager, roleManager);
-            //await ApplicationDbInitializer.SeedDefaultDataAsync(scope.ServiceProvider);
+            await Ettad.EntityFramework.DataBaseContext.DataSeeding.ApplicationDbInitializer.SeedDefaultDataAsync(scope.ServiceProvider);
 
             Log.Information("Database migration and seeding completed successfully");
         }

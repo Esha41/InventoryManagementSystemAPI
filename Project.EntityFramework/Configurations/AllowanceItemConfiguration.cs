@@ -14,13 +14,10 @@ namespace Ettad.EntityFramework.Configurations
             builder.Property(x => x.Year)
                 .IsRequired();
 
-            builder.Property(x => x.ItemType)
-                .IsRequired()
-                .HasConversion<int>();
-
             // Unique constraint: ItemId + DepartmentId + Year combination must be unique
             builder.HasIndex(x => new { x.ItemId, x.DepartmentId, x.Year })
-                .IsUnique();
+                .IsUnique()
+                .HasFilter("[IsDeleted] = 0");
 
             builder.HasOne(x => x.Item)
                 .WithMany()
