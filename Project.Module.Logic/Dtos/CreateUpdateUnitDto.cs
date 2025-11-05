@@ -7,4 +7,3 @@ namespace Ettad.Module.lookup.Dtos
         public bool IsDeleted { get; set; }
     }
 }
-

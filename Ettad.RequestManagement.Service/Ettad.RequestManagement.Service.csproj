@@ -14,13 +14,17 @@
 	</ItemGroup>
 
 	<ItemGroup>
+		<ProjectReference Include="..\Ettad.Inventory.Services\Ettad.Inventory.Service.csproj" />
 		<ProjectReference Include="..\Project.Data\Ettad.Data.csproj" />
+		<ProjectReference Include="..\Project.Module.Logic\Ettad.Module.lookup.csproj" />
 		<ProjectReference Include="..\Project.Repository\Ettad.Repository.csproj" />
 		<ProjectReference Include="..\Project.ResponseHandler\Ettad.CrossCutting.ResponseHandler.csproj" />
 	</ItemGroup>
 
 	<ItemGroup>
-	  <Folder Include="Common\" />
+	  <Folder Include="Discards\Dtos\" />
+	  <Folder Include="Discards\Validators\" />
+	  <Folder Include="Discards\Profiles\" />
 	</ItemGroup>
 
 </Project>

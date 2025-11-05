@@ -442,4 +442,14 @@ public static class MainEntities
         CrudOperation.Edit,
         CrudOperation.Delete
     };
+
+    [Category(CrudPermissionsGenerator.EmployeeData)]
+    public static readonly CrudOperation[] Employee = new[]
+    {
+        CrudOperation.Page,
+        CrudOperation.View,
+        CrudOperation.Create,
+        CrudOperation.Edit,
+        CrudOperation.Delete
+    };
 }

@@ -1,3 +1,5 @@
+using Ettad.Data.Entities;
+
 namespace Ettad.Module.lookup.Dtos
 {
     public class DepartmentDto
