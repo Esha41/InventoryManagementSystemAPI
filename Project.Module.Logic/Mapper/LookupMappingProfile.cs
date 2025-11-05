@@ -24,6 +24,7 @@ namespace Ettad.Module.lookup.Mapper
             CreateMap<CreateUpdatePropellantDto, Propellant>();
             CreateMap<CreateUpdateUnitDto, Unit>();
             CreateMap<CreateUpdateSupplierDto, Supplier>();
+            CreateMap<CreateUpdateWorkFlowTypeDto, WorkFlowType>();
         }
     }
 }

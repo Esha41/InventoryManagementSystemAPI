@@ -1,8 +1,9 @@
-using Microsoft.Extensions.Logging;
 using Ettad.CrossCutting.Common.Security;
 using Ettad.Data.Entities;
-using Ettad.Module.lookup.Dtos;
+using Ettad.Data.Enums;
 using Ettad.Lookups.Services.Contracts;
+using Ettad.Module.lookup.Dtos;
+using Microsoft.Extensions.Logging;
 
 namespace Ettad.Lookups.Domain.API.Controllers
 {
@@ -276,5 +277,19 @@ namespace Ettad.Lookups.Domain.API.Controllers
             : base(iLookupService, logger) { }
     }
 
+    #endregion
+    #region Workflow
+    [CheckAuthorize(
+       "Permissions.WorkFlowType.Page",
+       "Permissions.WorkFlowType.View",
+       "Permissions.WorkFlowType.Create",
+       "Permissions.WorkFlowType.Edit",
+       "Permissions.WorkFlowType.Delete"
+   )]
+    public class WorkFlowTypeController : LookupController<WorkFlowType, CreateUpdateWorkFlowTypeDto>
+    {
+        public WorkFlowTypeController(ILookupService<WorkFlowType, CreateUpdateWorkFlowTypeDto> iLookupService, ILogger<LookupController<WorkFlowType, CreateUpdateWorkFlowTypeDto>> logger)
+            : base(iLookupService, logger) { }
+    }
     #endregion
 }
