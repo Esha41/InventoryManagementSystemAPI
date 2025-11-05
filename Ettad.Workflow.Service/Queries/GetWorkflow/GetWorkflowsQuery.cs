@@ -68,6 +68,7 @@ namespace Ettad.Workflows.Service.Queries.GetWorkflow
                             MustApprove = step.MustApprove,
                             RequireHigherApproval = step.RequireHigherApproval,
                             HigherApprovalRoleId = step.HigherApprovalRoleId,
+                            HigherApplicationEntityId= step.HigherApplicationEntityId,
                             ReserveQty = step.ReserveQty
                         }).ToList()
                     }
