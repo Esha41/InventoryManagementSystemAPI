@@ -69,6 +69,7 @@ try
         .AddApplicationPart(typeof(Ettad.Workflows.API.Controllers.WorkflowsController).Assembly)
         .AddApplicationPart(typeof(Ettad.User.API.Controllers.UsersController).Assembly)
         .AddApplicationPart(typeof(Ettad.Lookups.Domain.API.Controllers.DepartmentController).Assembly)
+        .AddApplicationPart(typeof(Ettad.RequestManagement.API.Controllers.OrderController).Assembly)
         .AddJsonOptions(options =>
         {
             options.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
