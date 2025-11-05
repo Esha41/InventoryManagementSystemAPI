@@ -9,22 +9,18 @@ using System.Threading.Tasks;
 
 namespace Ettad.EntityFramework.Configurations
 {
-    internal class WorkflowApprovalHistoryConfiguration : IEntityTypeConfiguration<WorkflowApprovalHistory>
+    internal class WorkflowApprovalHistoryConfiguration : IEntityTypeConfiguration<WorkflowStepApprovalLog>
     {
-        public void Configure(EntityTypeBuilder<WorkflowApprovalHistory> builder)
+        public void Configure(EntityTypeBuilder<WorkflowStepApprovalLog> builder)
         {
-            builder.ToTable("WorkflowApprovalHistories");
+            builder.ToTable("WorkflowStepApprovalLog");
 
             builder.HasKey(x => x.Id);
 
             builder.Property(x => x.OldRequestStatus).IsRequired();
             builder.Property(x => x.NewRequestStatus).IsRequired();
             builder.Property(x => x.ChangedAt).HasDefaultValueSql("GETUTCDATE()");
-
-            builder.HasOne(x => x.WorkflowStep)
-                   .WithMany(x => x.ApprovalHistories)
-                   .HasForeignKey(x => x.WorkflowStepId)
-                   .OnDelete(DeleteBehavior.Cascade);
+          
 
             builder.Property(x => x.Comments).HasMaxLength(1000).IsRequired(false);
             builder.Property(x => x.ChangedBy).HasMaxLength(200).IsRequired(false);

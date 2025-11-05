@@ -26,6 +26,7 @@ namespace Ettad.Data.Entities.Workflows
         public ApplicationRole ApplicationRole { get; set; }    // Navigation property
 
         [Required]
+        [ForeignKey("ApplicationEntity")]
         public int ApplicationEntityId { get; set; }                       // Reference to the entity being approved
 
         [Required]
@@ -41,8 +42,7 @@ namespace Ettad.Data.Entities.Workflows
         public bool ReserveQty { get; set; } = false;
 
         // Navigation properties
-        public virtual Workflow Workflow { get; set; }
-        public virtual ICollection<WorkflowApprovalHistory> ApprovalHistories { get; set; } = new List<WorkflowApprovalHistory>();
+        public virtual Workflow Workflow { get; set; }       
         public virtual ICollection<WorkflowApprovalStep> ApprovalSteps { get; set; } = new List<WorkflowApprovalStep>();
     }
 

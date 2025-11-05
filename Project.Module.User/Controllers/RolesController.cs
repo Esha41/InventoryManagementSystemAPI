@@ -163,17 +163,15 @@ namespace Ettad.User.API.Controllers
         }
 
         [HttpGet("entities")]
-        public async Task<IActionResult> GetAllAppicationEntities()
+       public async Task<ActionResult> GetAllAppicationEntities()
         {
+            // Calls role service to retrieve all application entities
             var result = await _roleService.GetAllApplicationEntitiesAsync();
 
-            if (!result.Succeeded)
-            {
-                return BadRequest(result); // or use appropriate status code
-            }
-
-            return Ok(result);
+            // Returns standardized API response using base controller helper
+            return ProcessResponse(result);
         }
+
         [HttpGet("getApplicationentities/{roleId}")]
         public async Task<ActionResult<List<RoleApplicationEntityDto>>> GetByRole(string roleId)
         {

@@ -181,18 +181,8 @@ namespace Ettad.Workflows.Service.Command.CreateWorkflow
                     MustApprove = step.MustApprove,
                     RequireHigherApproval = step.RequireHigherApproval,
                     HigherApprovalRoleId = step.HigherApprovalRoleId,
-                    ReserveQty = step.ReserveQty,
-
-                    ApprovalSteps = step.ApprovalHistories?.Select(history => new WorkflowApprovalStepDto
-                    {
-                        Id = history.Id,
-                        WorkflowStepId = history.WorkflowStepId,
-                        OldRequestStatus = history.OldRequestStatus,
-                        NewRequestStatus = history.NewRequestStatus,
-                        Comments = history.Comments,
-                        ChangedBy = history.ChangedBy,
-                        ChangedAt = history.ChangedAt
-                    }).ToList() ?? new List<WorkflowApprovalStepDto>()
+                    ReserveQty = step.ReserveQty
+                    
                 }).ToList()
             };
         }

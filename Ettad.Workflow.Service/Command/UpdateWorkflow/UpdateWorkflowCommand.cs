@@ -61,7 +61,7 @@ namespace Ettad.Workflows.Service.Command.UpdateWorkflow
             // Ensure edited steps are not already used in approval history
             foreach (var step in request.WorkflowSteps.Where(x => x.Id > 0))
             {
-                if (await _context.WorkflowApprovalHistory.AnyAsync(x => x.WorkflowStepId == step.Id, cancellationToken))
+                if (await _context.WorkflowStepApprovalLog.AnyAsync(x => x.WorkflowApprovalStepId == step.Id, cancellationToken))
                     return APIOperationResponse<WorkflowDto>.BadRequest($"Step {step.Id} is in approval history and cannot be modified");
             }
 
@@ -138,7 +138,7 @@ namespace Ettad.Workflows.Service.Command.UpdateWorkflow
             // Remove deleted steps
             foreach (var dbStep in existingSteps.Where(db => !incomingSteps.Any(i => i.Id == db.Id)))
             {
-                if (!await _context.WorkflowApprovalHistory.AnyAsync(x => x.WorkflowStepId == dbStep.Id, cancellationToken))
+                if (!await _context.WorkflowStepApprovalLog.AnyAsync(x => x.WorkflowApprovalStepId == dbStep.Id, cancellationToken))
                     _context.WorkflowSteps.Remove(dbStep);
             }
 
@@ -182,8 +182,8 @@ namespace Ettad.Workflows.Service.Command.UpdateWorkflow
         // Check if workflow step is referenced in approval history
         private async Task<bool> IsWorkflowStepInApprovalHistory(int workflowStepId, CancellationToken cancellationToken)
         {
-            return await _context.WorkflowApprovalHistory
-                .AnyAsync(ah => ah.WorkflowStepId == workflowStepId, cancellationToken);
+            return await _context.WorkflowStepApprovalLog
+                .AnyAsync(ah => ah.WorkflowApprovalStepId == workflowStepId, cancellationToken);
         }
 
         // Ensure unique step orders

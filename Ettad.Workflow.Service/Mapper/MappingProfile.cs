@@ -28,8 +28,8 @@ namespace Ettad.Workflows.Service.Mapper
             CreateMap<WorkflowApprovalStepDto, WorkflowApprovalStep>();
 
             // WorkflowApprovalHistory
-            CreateMap<WorkflowApprovalHistory, WorkflowApprovalHistoryDto>();
-            CreateMap<WorkflowApprovalHistoryDto, WorkflowApprovalHistory>();
+            CreateMap<WorkflowStepApprovalLog, WorkflowApprovalHistoryDto>();
+            CreateMap<WorkflowApprovalHistoryDto, WorkflowStepApprovalLog>();
         }
     }
 
