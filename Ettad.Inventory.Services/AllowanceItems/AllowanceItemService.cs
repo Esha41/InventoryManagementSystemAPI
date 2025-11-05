@@ -55,7 +55,8 @@ namespace Ettad.Inventory.Service.AllowanceItems
         {
             try
             {
-                var allowanceItems = await _allowanceItemRepository.GetAllAsync();
+                // Only get non-deleted items
+                var allowanceItems = await _allowanceItemRepository.FindAsync(a => !a.IsDeleted);
 
                 var dtos = _mapper.Map<List<AllowanceItemDto>>(allowanceItems);
                 return APIOperationResponse<List<AllowanceItemDto>>.Success(dtos);
