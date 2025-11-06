@@ -22,7 +22,6 @@
 	<ItemGroup>
 	  <Folder Include="Common\" />
 	  <Folder Include="Orders\Profile\" />
-	  <Folder Include="Orders\Validator\" />
 	</ItemGroup>
 
 </Project>
