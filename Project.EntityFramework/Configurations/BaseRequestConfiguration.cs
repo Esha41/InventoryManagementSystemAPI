@@ -11,11 +11,11 @@ namespace Ettad.EntityFramework.Configurations
             builder.HasKey(x => x.Id);
             builder.ToTable("BaseRequests");
 
-            builder.Property(x => x.OrderNo)
+            builder.Property(x => x.RequestNo)
                 .IsRequired()
                 .HasMaxLength(255);
 
-            builder.HasIndex(x => x.OrderNo)
+            builder.HasIndex(x => x.RequestNo)
                 .IsUnique();
 
             builder.Property(x => x.Reason)
@@ -24,21 +24,15 @@ namespace Ettad.EntityFramework.Configurations
             builder.Property(x => x.Notes)
                 .IsRequired(false);
 
-            // ✅ Convert enums to string in DB
+            // Enums stored as int by default
             builder.Property(x => x.RequestType)
-                .HasConversion<string>()
-                .IsRequired()
-                .HasMaxLength(255);
+                .IsRequired();
 
             builder.Property(x => x.Priority)
-                .HasConversion<string>()
-                .IsRequired()
-                .HasMaxLength(255);
+                .IsRequired();
 
             builder.Property(x => x.Status)
-                .HasConversion<string>()
-                .IsRequired()
-                .HasMaxLength(255);
+                .IsRequired();
 
             builder.HasOne(x => x.Department)
                 .WithMany()

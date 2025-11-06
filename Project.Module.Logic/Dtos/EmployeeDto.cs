@@ -1,12 +1,10 @@
-﻿using Ettad.CrossCutting.Comman;
-using Ettad.CrossCutting.Comman.Base;
-
-namespace Ettad.Data.Entities
+namespace Ettad.Module.lookup.Dtos
 {
-    public class Employee : FullAuditEntity<long>, ILookup
+    public class EmployeeDto
     {
-        public string NameEn { get; set; }
+        public long Id { get; set; }
         public string NameAr { get; set; }
+        public string NameEn { get; set; }
         public string IdNo { get; set; }
         public string Email { get; set; }
         public string Phone { get; set; }
@@ -15,7 +13,7 @@ namespace Ettad.Data.Entities
         public long? RankId { get; set; }
 
         #region Navigation Properties
-        public Rank Rank { get; set; }
+        public RankDto Rank { get; set; }
         #endregion
     }
 }

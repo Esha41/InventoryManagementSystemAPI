@@ -43,7 +43,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ettad.User.API", "Project.M
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ettad.Module.lookup", "Project.Module.Logic\Ettad.Module.lookup.csproj", "{9D1D577D-06ED-4B7A-A427-75F977796CDD}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Ettad.Modules", "Ettad.Modules", "{E65A21A3-9860-4D30-BFC3-F4A2D863C852}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Ettad.Modules.InventoryManagement", "Ettad.Modules.InventoryManagement", "{E65A21A3-9860-4D30-BFC3-F4A2D863C852}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ettad.Inventory.Service", "Ettad.Inventory.Services\Ettad.Inventory.Service.csproj", "{C4400980-E8FA-4508-AF55-555FABDDF982}"
 EndProject
