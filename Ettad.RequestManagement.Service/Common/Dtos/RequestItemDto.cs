@@ -1,6 +1,4 @@
-﻿using Ettad.Inventory.Service.Common.Dtos;
-
-namespace Ettad.RequestManagement.Service.Common.Dtos
+﻿namespace Ettad.RequestManagement.Service.Common.Dtos
 {
     public class RequestItemDto
     {
@@ -8,12 +6,11 @@ namespace Ettad.RequestManagement.Service.Common.Dtos
         public long ItemId { get; set; }
         public long Quantity { get; set; }
         public long RequestId { get; set; }
-        public string Notes { get; set; }
+        public string? Notes { get; set; }
 
-        #region Navigation Properties
-
-        public BaseItemDto Item { get; set; }
-
+        #region Navigation Properties (Simplified)
+        public string ItemName { get; set; }
+        public string ItemNo { get; set; }
         #endregion
     }
 }

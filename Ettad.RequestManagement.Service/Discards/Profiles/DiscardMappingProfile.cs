@@ -12,9 +12,7 @@ namespace Ettad.RequestManagement.Service.Discards.Profiles
     {
         public DiscardMappingProfile()
         {
-            // Entity to DTO - BaseRequestMappingProfile handles BaseRequest to BaseRequestDto
-            // including enum to string conversions. DiscardDto inherits from BaseRequestDto
-            // so we can use the base mapping or just inherit it
+            // Entity to DTO - Use base mapping which handles RequestItems automatically
             CreateMap<DiscardEntity, DiscardDto>()
                 .IncludeBase<BaseRequest, BaseRequestDto>();
 
@@ -60,7 +58,10 @@ namespace Ettad.RequestManagement.Service.Discards.Profiles
                 .ForMember(dest => dest.Depot, opt => opt.Ignore())
                 .ForMember(dest => dest.RequestPurpose, opt => opt.Ignore())
                 .ForMember(dest => dest.RequestItems, opt => opt.Ignore()) // Handle separately
-                .ForMember(dest => dest.Priority, opt => opt.MapFrom(src => Enum.Parse<RequestPriority>(src.Priority, true))); // Validator ensures valid value
+                .ForMember(dest => dest.RequestType, opt => opt.MapFrom(src => RequestType.Discard)) // Always set to Discard by backend
+                .ForMember(dest => dest.RequestNo, opt => opt.Ignore()) // Don't update RequestNo on update
+                .ForMember(dest => dest.Priority, opt => opt.MapFrom(src => Enum.Parse<RequestPriority>(src.Priority, true))) // Validator ensures valid value
+                .ForMember(dest => dest.Status, opt => opt.Ignore()); // Status is managed separately, don't update from DTO
 
             CreateMap<UpdateDiscardItemDto, RequestItemEntity>()
                 .ForMember(dest => dest.Id, opt => opt.Ignore())
