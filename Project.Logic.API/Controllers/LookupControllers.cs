@@ -312,7 +312,6 @@ namespace Ettad.Lookups.Domain.API.Controllers
     }
 
     #endregion
-}
 
     #region Workflow
     [CheckAuthorize(

@@ -12,8 +12,6 @@ namespace Ettad.RequestManagement.Service.Orders.Profile
             CreateMap<Order, OrderDto>()
                 .ForMember(dest => dest.DepartmentNameAr, opt => opt.MapFrom(src => src.Department != null ? src.Department.NameAr : null))
                 .ForMember(dest => dest.DepartmentNameEn, opt => opt.MapFrom(src => src.Department != null ? src.Department.NameEn : null))
-                .ForMember(dest => dest.RequesterName, opt => opt.MapFrom(src => src.Requester != null ? $"{src.Requester.FirstName} {src.Requester.LastName}".Trim() : null))
-                .ForMember(dest => dest.RecieverName, opt => opt.MapFrom(src => src.Reciever != null ? $"{src.Reciever.FirstName} {src.Reciever.LastName}".Trim() : null))
                 .ForMember(dest => dest.DepotNameAr, opt => opt.MapFrom(src => src.Depot != null ? src.Depot.NameAr : null))
                 .ForMember(dest => dest.DepotNameEn, opt => opt.MapFrom(src => src.Depot != null ? src.Depot.NameEn : null))
                 .ForMember(dest => dest.RequestPurposeNameAr, opt => opt.MapFrom(src => src.RequestPurpose != null ? src.RequestPurpose.NameAr : null))

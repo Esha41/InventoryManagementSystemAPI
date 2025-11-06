@@ -11,7 +11,7 @@ namespace Ettad.Data.Enums
         New = 1,
         UnderProcess = 2,
         Approved = 3,
-        Rejected = 4
+        Rejected = 4,
         Cancelled = 5
     }
 }
