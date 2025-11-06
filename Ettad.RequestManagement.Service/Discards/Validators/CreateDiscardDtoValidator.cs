@@ -8,10 +8,6 @@ namespace Ettad.RequestManagement.Service.Discards.Validators
     {
         public CreateDiscardDtoValidator()
         {
-            RuleFor(x => x.RequestNo)
-                .NotEmpty().WithMessage("Request number is required")
-                .MaximumLength(500).WithMessage("Request number cannot exceed 500 characters");
-
             RuleFor(x => x.Priority)
                 .NotEmpty().WithMessage("Priority is required")
                 .Must(p => Enum.TryParse<RequestPriority>(p, true, out _))

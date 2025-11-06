@@ -1,10 +1,8 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using FluentValidation;
 using System.Reflection;
 using Ettad.RequestManagement.Service.Discards;
+using Ettad.RequestManagement.Service.Common;
 
 namespace Ettad.RequestManagement.Service
 {
@@ -19,6 +17,7 @@ namespace Ettad.RequestManagement.Service
             services.AddValidatorsFromAssembly(Assembly.GetExecutingAssembly());
 
             // Register services
+            services.AddScoped<IRequestNoGeneratorService, RequestNoGeneratorService>();
             services.AddScoped<IDiscardService, DiscardService>();
 
             return services;

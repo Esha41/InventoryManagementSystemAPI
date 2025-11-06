@@ -4,6 +4,7 @@ using Ettad.CrossCutting.Data.Repository;
 using Ettad.Data.Entities;
 using Ettad.Data.Enums;
 using Ettad.RequestManagement.Service.Discards.Dtos;
+using Ettad.RequestManagement.Service.Common;
 using Ettad.ResponseHandler.Consts;
 using Ettad.ResponseHandler.Models;
 using Ettad.Application.Common.Interfaces;
@@ -17,19 +18,22 @@ namespace Ettad.RequestManagement.Service.Discards
         private readonly IMapper _mapper;
         private readonly IValidator<CreateDiscardDto> _createValidator;
         private readonly ICurrentUserService _currentUserService;
+        private readonly IRequestNoGeneratorService _requestNoGeneratorService;
 
         public DiscardService(
             ICrossCuttingRepository<Discard> discardRepository,
             ICrossCuttingRepository<RequestItem> requestItemRepository,
             IMapper mapper,
             IValidator<CreateDiscardDto> createValidator,
-            ICurrentUserService currentUserService)
+            ICurrentUserService currentUserService,
+            IRequestNoGeneratorService requestNoGeneratorService)
         {
             _discardRepository = discardRepository;
             _requestItemRepository = requestItemRepository;
             _mapper = mapper;
             _createValidator = createValidator;
             _currentUserService = currentUserService;
+            _requestNoGeneratorService = requestNoGeneratorService;
         }
 
         public async Task<APIOperationResponse<DiscardDto>> GetByIdAsync(long id)
@@ -99,6 +103,10 @@ namespace Ettad.RequestManagement.Service.Discards
 
                 // Map DTO to entity
                 var discard = _mapper.Map<Discard>(inputDto);
+                
+                // Generate RequestNo
+                discard.RequestNo = await _requestNoGeneratorService.GenerateRequestNoAsync(RequestType.Discard, inputDto.DepartmentId);
+                
                 discard.RequestType = RequestType.Discard;
                 discard.Status = RequestStatus.New; // Always set to New when creating
                 discard.CreationDate = DateTime.UtcNow;

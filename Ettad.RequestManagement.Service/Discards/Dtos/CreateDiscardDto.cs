@@ -2,7 +2,6 @@ namespace Ettad.RequestManagement.Service.Discards.Dtos
 {
     public class CreateDiscardDto
     {
-        public string RequestNo { get; set; }
         public string? Reason { get; set; }
         public string Priority { get; set; }
         public string? Notes { get; set; }
