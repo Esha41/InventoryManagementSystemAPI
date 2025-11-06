@@ -1,3 +1,5 @@
+using Ettad.Data.Enums;
+
 namespace Ettad.RequestManagement.Service.RequestPurposes.Dtos
 {
     public class CreateUpdateRequestPurposeDto
@@ -11,7 +13,7 @@ namespace Ettad.RequestManagement.Service.RequestPurposes.Dtos
         public long Id { get; set; }
         public string NameAr { get; set; }
         public string NameEn { get; set; }
-        public string RequestType { get; set; }
+        public RequestType RequestType { get; set; }
     }
 }
 

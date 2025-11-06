@@ -7,11 +7,8 @@ namespace Ettad.RequestManagement.Service.Common.Profiles
     {
         public BaseRequestMappingProfile()
         {
-            // BaseRequest to BaseRequestDto - handles enum to string conversions and navigation properties as names
+            // BaseRequest to BaseRequestDto - enums map as int by default, navigation properties as names
             CreateMap<BaseRequest, BaseRequestDto>()
-                .ForMember(dest => dest.RequestType, opt => opt.MapFrom(src => src.RequestType.ToString()))
-                .ForMember(dest => dest.Priority, opt => opt.MapFrom(src => src.Priority.ToString()))
-                .ForMember(dest => dest.Status, opt => opt.MapFrom(src => src.Status.ToString()))
                 .ForMember(dest => dest.DepartmentName, opt => opt.MapFrom(src => src.Department != null ? src.Department.NameEn : null))
                 .ForMember(dest => dest.RequesterName, opt => opt.MapFrom(src => src.Requester != null ? src.Requester.NameEn : null))
                 .ForMember(dest => dest.RecieverName, opt => opt.MapFrom(src => src.Reciever != null ? src.Reciever.NameEn : null))

@@ -8,7 +8,7 @@ namespace Ettad.RequestManagement.Service.Returns
         Task<APIOperationResponse<ReturnDto>> GetByIdAsync(long id);
         Task<APIOperationResponse<List<ReturnDto>>> GetAllAsync();
         Task<APIOperationResponse<long>> CreateAsync(CreateReturnDto inputDto);
-        Task<APIOperationResponse<bool>> ChangePriorityAsync(long id, string priority);
+        Task<APIOperationResponse<bool>> ChangePriorityAsync(long id, RequestPriority priority);
         Task<APIOperationResponse<bool>> DeleteAsync(long id);
     }
 }

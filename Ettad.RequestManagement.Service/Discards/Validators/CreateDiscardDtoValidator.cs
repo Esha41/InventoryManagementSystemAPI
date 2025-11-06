@@ -9,9 +9,7 @@ namespace Ettad.RequestManagement.Service.Discards.Validators
         public CreateDiscardDtoValidator()
         {
             RuleFor(x => x.Priority)
-                .NotEmpty().WithMessage("Priority is required")
-                .Must(p => Enum.TryParse<RequestPriority>(p, true, out _))
-                .WithMessage("Priority must be a valid value (High, Medium, Low)");
+                .IsInEnum().WithMessage("Priority must be a valid value (High, Medium, Low)");
 
             RuleFor(x => x.DepartmentId)
                 .GreaterThan(0).WithMessage("Department is required");

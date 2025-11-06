@@ -14,9 +14,7 @@ namespace Ettad.EntityFramework.Configurations
             builder.ToTable("RequestPurposes");
 
             builder.Property(x => x.RequestType)
-                .HasConversion<string>()
-                .IsRequired()
-                .HasMaxLength(255);
+                .IsRequired();
 
             builder.Property(x => x.NameAr)
                 .IsRequired()

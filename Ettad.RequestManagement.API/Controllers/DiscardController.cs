@@ -1,6 +1,7 @@
 using Ettad.CrossCutting.Common.Security;
 using Ettad.RequestManagement.Service.Discards;
 using Ettad.RequestManagement.Service.Discards.Dtos;
+using Ettad.Data.Enums;
 using Ettad.ResponseHandler.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -62,12 +63,8 @@ namespace Ettad.RequestManagement.API.Controllers
         [HttpPatch("{id}/priority")]
         [ProducesResponseType((int)HttpStatusCode.OK)]
         [CheckAuthorize("Permissions.Discard.Edit")]
-        public async Task<IActionResult> ChangePriority(long id, [FromBody] string priority)
+        public async Task<IActionResult> ChangePriority(long id, [FromBody] RequestPriority priority)
         {
-            // Validate priority in controller
-            if (string.IsNullOrWhiteSpace(priority))
-                return BadRequest("Priority is required");
-
             var result = await _discardService.ChangePriorityAsync(id, priority);
             return ProcessResponse(result);
         }

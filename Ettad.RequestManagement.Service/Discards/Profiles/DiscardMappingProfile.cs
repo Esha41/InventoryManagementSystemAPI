@@ -32,7 +32,7 @@ namespace Ettad.RequestManagement.Service.Discards.Profiles
                 .ForMember(dest => dest.RequestPurpose, opt => opt.Ignore())
                 .ForMember(dest => dest.RequestItems, opt => opt.Ignore()) // Handle separately
                 .ForMember(dest => dest.RequestType, opt => opt.MapFrom(src => RequestType.Discard)) // Always set to Discard by backend
-                .ForMember(dest => dest.Priority, opt => opt.MapFrom(src => Enum.Parse<RequestPriority>(src.Priority, true))) // Validator ensures valid value
+                .ForMember(dest => dest.Priority, opt => opt.MapFrom(src => src.Priority)) // Direct enum mapping
                 .ForMember(dest => dest.Status, opt => opt.MapFrom(src => RequestStatus.New)); // Always set to New by backend
 
             CreateMap<CreateDiscardItemDto, RequestItem>()

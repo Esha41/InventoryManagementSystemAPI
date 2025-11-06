@@ -1,9 +1,11 @@
+using Ettad.Data.Enums;
+
 namespace Ettad.RequestManagement.Service.Discards.Dtos
 {
     public class CreateDiscardDto
     {
         public string? Reason { get; set; }
-        public string Priority { get; set; }
+        public RequestPriority Priority { get; set; }
         public string? Notes { get; set; }
         public long DepartmentId { get; set; }
         public long? RequesterId { get; set; }

@@ -143,17 +143,10 @@ namespace Ettad.RequestManagement.Service.Returns
             }
         }
 
-        public async Task<APIOperationResponse<bool>> ChangePriorityAsync(long id, string priority)
+        public async Task<APIOperationResponse<bool>> ChangePriorityAsync(long id, RequestPriority priority)
         {
             try
             {
-                // Validate priority string
-                if (string.IsNullOrWhiteSpace(priority))
-                    return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, "Priority is required");
-
-                if (!Enum.TryParse<RequestPriority>(priority, true, out var priorityValue))
-                    return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, "Priority must be a valid value (High, Medium, Low)");
-
                 // Check if return exists
                 var existingReturn = await _returnRepository.FindOneAsync(
                     r => r.Id == id && !r.IsDeleted
@@ -163,7 +156,7 @@ namespace Ettad.RequestManagement.Service.Returns
                     return APIOperationResponse<bool>.Fail(ResponseType.NotFound, "Return not found");
 
                 // Update priority
-                existingReturn.Priority = priorityValue;
+                existingReturn.Priority = priority;
                 existingReturn.ModificationDate = DateTime.UtcNow;
                 existingReturn.ModifiedBy = _currentUserService.UserId;
 

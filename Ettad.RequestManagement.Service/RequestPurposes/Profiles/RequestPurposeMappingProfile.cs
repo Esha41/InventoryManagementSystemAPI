@@ -9,8 +9,8 @@ namespace Ettad.RequestManagement.Service.RequestPurposes.Profiles
     {
         public RequestPurposeMappingProfile()
         {
-            CreateMap<RequestPurpose, RequestPurposeDto>()
-                .ForMember(dest => dest.RequestType, opt => opt.MapFrom(src => src.RequestType.ToString()));
+            // Entity to DTO - enum maps as int by default
+            CreateMap<RequestPurpose, RequestPurposeDto>();
 
             CreateMap<CreateUpdateRequestPurposeDto, RequestPurpose>()
                 .ForMember(dest => dest.Id, opt => opt.Ignore())

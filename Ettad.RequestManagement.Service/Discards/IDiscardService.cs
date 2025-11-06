@@ -8,7 +8,7 @@ namespace Ettad.RequestManagement.Service.Discards
         Task<APIOperationResponse<DiscardDto>> GetByIdAsync(long id);
         Task<APIOperationResponse<List<DiscardDto>>> GetAllAsync();
         Task<APIOperationResponse<long>> CreateAsync(CreateDiscardDto inputDto);
-        Task<APIOperationResponse<bool>> ChangePriorityAsync(long id, string priority);
+        Task<APIOperationResponse<bool>> ChangePriorityAsync(long id, RequestPriority priority);
         Task<APIOperationResponse<bool>> DeleteAsync(long id);
     }
 }

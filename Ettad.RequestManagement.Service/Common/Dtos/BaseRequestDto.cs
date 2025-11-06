@@ -1,13 +1,15 @@
-﻿namespace Ettad.RequestManagement.Service.Common.Dtos
+﻿using Ettad.Data.Enums;
+
+namespace Ettad.RequestManagement.Service.Common.Dtos
 {
     public class BaseRequestDto
     {
         public long Id { get; set; }
         public string RequestNo { get; set; }
-        public string RequestType { get; set; }
+        public RequestType RequestType { get; set; }
         public string? Reason { get; set; }
-        public string Priority { get; set; }
-        public string Status { get; set; }
+        public RequestPriority Priority { get; set; }
+        public RequestStatus Status { get; set; }
         public string? Notes { get; set; }
         public long DepartmentId { get; set; }
         public long? RequesterId { get; set; }

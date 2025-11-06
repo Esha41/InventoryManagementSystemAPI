@@ -143,17 +143,10 @@ namespace Ettad.RequestManagement.Service.Discards
             }
         }
 
-        public async Task<APIOperationResponse<bool>> ChangePriorityAsync(long id, string priority)
+        public async Task<APIOperationResponse<bool>> ChangePriorityAsync(long id, RequestPriority priority)
         {
             try
             {
-                // Validate priority string
-                if (string.IsNullOrWhiteSpace(priority))
-                    return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, "Priority is required");
-
-                if (!Enum.TryParse<RequestPriority>(priority, true, out var priorityValue))
-                    return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, "Priority must be a valid value (High, Medium, Low)");
-
                 // Check if discard exists
                 var existingDiscard = await _discardRepository.FindOneAsync(
                     d => d.Id == id && !d.IsDeleted
@@ -163,7 +156,7 @@ namespace Ettad.RequestManagement.Service.Discards
                     return APIOperationResponse<bool>.Fail(ResponseType.NotFound, "Discard not found");
 
                 // Update priority
-                existingDiscard.Priority = priorityValue;
+                existingDiscard.Priority = priority;
                 existingDiscard.ModificationDate = DateTime.UtcNow;
                 existingDiscard.ModifiedBy = _currentUserService.UserId;
 
