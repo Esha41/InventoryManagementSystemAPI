@@ -492,4 +492,13 @@ public static class MainEntities
         CrudOperation.Edit,
         CrudOperation.Delete
     };
+    [Category(CrudPermissionsGenerator.WorkFlowType)]
+    public static readonly CrudOperation[] WorkFlowType = new[]
+    {
+        CrudOperation.Page,
+        CrudOperation.View,
+        CrudOperation.Create,
+        CrudOperation.Edit,
+        CrudOperation.Delete
+    };
 }

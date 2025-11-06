@@ -1,4 +1,4 @@
-using Ettad.Data.Enums;
+﻿using Ettad.Data.Enums;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -10,17 +10,18 @@ namespace Ettad.Workflows.Service.DTO
     public class WorkflowApprovalHistoryDto
     {
         public int Id { get; set; }
+
+        // Reference to parent workflow step
         public int WorkflowStepId { get; set; }
-        public int TargetRequestId { get; set; }
-        public WorkflowType RequestType { get; set; }
-        public int? ApproverEmployeeId { get; set; }
-        public int IsDelagation { get; set; }
-        public DateTime? ApprovedDate { get; set; }
-        public ApprovalStatus Status { get; set; }
-        public string Comments { get; set; }
-  
 
-        //public virtual WorkflowStepDto WorkflowStep { get; set; }
+        public RequestStatus OldRequestStatus { get; set; }
+
+        public RequestStatus NewRequestStatus { get; set; }
+
+        public string? Comments { get; set; }
+
+        public string? ChangedBy { get; set; }
+
+        public DateTime ChangedAt { get; set; }
     }
-
 }

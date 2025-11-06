@@ -47,7 +47,7 @@ namespace Ettad.Workflows.Service.Queries.GetWorkflow
             // Filter the query based on the current user's role and OrganizationId
             if (!_currentUserService.IsSuperAdmin)
             {
-                workflowsQueryable = workflowsQueryable.Where(w => w.OrganizationId == _currentUserService.OrganizationId);
+                workflowsQueryable = workflowsQueryable;
             }
 
             var projectedQueryable = workflowsQueryable.ProjectTo<WorkflowDto>(_mapper.ConfigurationProvider);

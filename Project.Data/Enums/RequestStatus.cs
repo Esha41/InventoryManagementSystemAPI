@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -12,6 +12,7 @@ namespace Ettad.Data.Enums
         UnderProcess = 2,
         Approved = 3,
         Rejected = 4
+        Cancelled = 5
     }
 }
 
