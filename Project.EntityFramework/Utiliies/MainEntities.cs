@@ -331,6 +331,16 @@ public static class MainEntities
     };
 
     [Category(CrudPermissionsGenerator.Requests)]
+    public static readonly CrudOperation[] Return = new[]
+    {
+        CrudOperation.Page,
+        CrudOperation.View,
+        CrudOperation.Create,
+        CrudOperation.Edit,
+        CrudOperation.Delete
+    };
+
+    [Category(CrudPermissionsGenerator.Requests)]
     public static readonly CrudOperation[] ViewRequest = new[]
     {
         CrudOperation.Page,
