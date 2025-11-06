@@ -25,6 +25,8 @@
 	  <Folder Include="Discards\Dtos\" />
 	  <Folder Include="Discards\Validators\" />
 	  <Folder Include="Discards\Profiles\" />
+	  <Folder Include="Common\" />
+	  <Folder Include="Orders\Profile\" />
 	</ItemGroup>
 
 </Project>

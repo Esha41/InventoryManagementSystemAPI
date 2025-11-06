@@ -5,6 +5,7 @@ using Ettad.RequestManagement.Service.Discards;
 using Ettad.RequestManagement.Service.Common;
 using Ettad.RequestManagement.Service.RequestPurposes;
 using Ettad.RequestManagement.Service.Returns;
+using Ettad.RequestManagement.Service.Orders;
 
 namespace Ettad.RequestManagement.Service
 {
@@ -23,6 +24,7 @@ namespace Ettad.RequestManagement.Service
             services.AddScoped<IRequestPurposeService, RequestPurposeService>();
             services.AddScoped<IDiscardService, DiscardService>();
             services.AddScoped<IReturnService, ReturnService>();
+            services.AddScoped<IOrderService, OrderService>();
 
             return services;
         }
