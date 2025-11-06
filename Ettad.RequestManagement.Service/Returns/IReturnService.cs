@@ -1,3 +1,4 @@
+using Ettad.Data.Enums;
 using Ettad.RequestManagement.Service.Returns.Dtos;
 using Ettad.ResponseHandler.Models;
 
