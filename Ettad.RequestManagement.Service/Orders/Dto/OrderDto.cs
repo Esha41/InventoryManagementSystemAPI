@@ -7,7 +7,7 @@ namespace Ettad.RequestManagement.Service.Orders.Dto
         public long Id { get; set; }
 
         #region BaseRequest Properties
-        public string OrderNo { get; set; }
+        public string RequestNo { get; set; }
         public RequestType RequestType { get; set; }
         public string Reason { get; set; }
         public RequestPriority Priority { get; set; }
