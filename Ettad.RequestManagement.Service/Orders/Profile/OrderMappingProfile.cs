@@ -39,6 +39,7 @@ namespace Ettad.RequestManagement.Service.Orders.Profile
 
             // Create DTO to Entity (RequestItems handled manually in service)
             CreateMap<CreateOrderDto, Order>()
+                .ForMember(dest => dest.RequestNo, opt => opt.MapFrom(src => src.OrderNo))
                 .ForMember(dest => dest.Id, opt => opt.Ignore())
                 .ForMember(dest => dest.CreationDate, opt => opt.Ignore())
                 .ForMember(dest => dest.CreatedBy, opt => opt.Ignore())
