@@ -453,6 +453,16 @@ public static class MainEntities
         CrudOperation.Delete
     };
 
+    [Category(CrudPermissionsGenerator.RequestManagement)]
+    public static readonly CrudOperation[] RequestPurpose = new[]
+    {
+        CrudOperation.Page,
+        CrudOperation.View,
+        CrudOperation.Create,
+        CrudOperation.Edit,
+        CrudOperation.Delete
+    };
+
     [Category(CrudPermissionsGenerator.EmployeeData)]
     public static readonly CrudOperation[] Employee = new[]
     {

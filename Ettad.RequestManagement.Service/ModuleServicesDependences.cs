@@ -3,6 +3,7 @@ using FluentValidation;
 using System.Reflection;
 using Ettad.RequestManagement.Service.Discards;
 using Ettad.RequestManagement.Service.Common;
+using Ettad.RequestManagement.Service.RequestPurposes;
 
 namespace Ettad.RequestManagement.Service
 {
@@ -18,6 +19,7 @@ namespace Ettad.RequestManagement.Service
 
             // Register services
             services.AddScoped<IRequestNoGeneratorService, RequestNoGeneratorService>();
+            services.AddScoped<IRequestPurposeService, RequestPurposeService>();
             services.AddScoped<IDiscardService, DiscardService>();
 
             return services;

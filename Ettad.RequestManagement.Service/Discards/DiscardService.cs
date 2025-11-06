@@ -15,6 +15,7 @@ namespace Ettad.RequestManagement.Service.Discards
     {
         private readonly ICrossCuttingRepository<Discard> _discardRepository;
         private readonly ICrossCuttingRepository<RequestItem> _requestItemRepository;
+        private readonly ICrossCuttingRepository<RequestPurpose> _requestPurposeRepository;
         private readonly IMapper _mapper;
         private readonly IValidator<CreateDiscardDto> _createValidator;
         private readonly ICurrentUserService _currentUserService;
@@ -23,6 +24,7 @@ namespace Ettad.RequestManagement.Service.Discards
         public DiscardService(
             ICrossCuttingRepository<Discard> discardRepository,
             ICrossCuttingRepository<RequestItem> requestItemRepository,
+            ICrossCuttingRepository<RequestPurpose> requestPurposeRepository,
             IMapper mapper,
             IValidator<CreateDiscardDto> createValidator,
             ICurrentUserService currentUserService,
@@ -30,6 +32,7 @@ namespace Ettad.RequestManagement.Service.Discards
         {
             _discardRepository = discardRepository;
             _requestItemRepository = requestItemRepository;
+            _requestPurposeRepository = requestPurposeRepository;
             _mapper = mapper;
             _createValidator = createValidator;
             _currentUserService = currentUserService;
@@ -100,6 +103,14 @@ namespace Ettad.RequestManagement.Service.Discards
                     var errors = string.Join(", ", validationResult.Errors.Select(e => e.ErrorMessage));
                     return APIOperationResponse<long>.Fail(ResponseType.BadRequest, errors);
                 }
+
+                // Validate that RequestPurposeId belongs to a RequestPurpose with type Discard
+                var requestPurpose = await _requestPurposeRepository.FindOneAsync(
+                    rp => rp.Id == inputDto.RequestPurposeId && rp.RequestType == RequestType.Discard && !rp.IsDeleted
+                );
+
+                if (requestPurpose == null)
+                    return APIOperationResponse<long>.Fail(ResponseType.BadRequest, "Request purpose must be of type Discard");
 
                 // Map DTO to entity
                 var discard = _mapper.Map<Discard>(inputDto);
