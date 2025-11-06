@@ -100,6 +100,7 @@ namespace Ettad.RequestManagement.Service.Orders
 
                 // Map DTO to entity (exclude RequestItems for now)
                 var order = _mapper.Map<Order>(inputDto);
+                order.RequestNo = inputDto.OrderNo; // Explicitly set RequestNo from OrderNo
                 order.RequestType = RequestType.Order; // Always set request type to Order
                 order.Status = RequestStatus.New; // Always set initial status to New
                 order.CreationDate = DateTime.UtcNow;
