@@ -57,14 +57,18 @@ namespace Ettad.RequestManagement.API.Controllers
         }
 
         /// <summary>
-        /// Update an existing discard and its items
+        /// Change the priority of an existing discard
         /// </summary>
-        [HttpPut("{id}")]
+        [HttpPatch("{id}/priority")]
         [ProducesResponseType((int)HttpStatusCode.OK)]
         [CheckAuthorize("Permissions.Discard.Edit")]
-        public async Task<IActionResult> Update(long id, [FromBody] UpdateDiscardDto dto)
+        public async Task<IActionResult> ChangePriority(long id, [FromBody] string priority)
         {
-            var result = await _discardService.UpdateAsync(id, dto);
+            // Validate priority in controller
+            if (string.IsNullOrWhiteSpace(priority))
+                return BadRequest("Priority is required");
+
+            var result = await _discardService.ChangePriorityAsync(id, priority);
             return ProcessResponse(result);
         }
 

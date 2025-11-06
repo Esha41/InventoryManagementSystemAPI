@@ -41,33 +41,6 @@ namespace Ettad.RequestManagement.Service.Discards.Profiles
                 .ForMember(dest => dest.RequestId, opt => opt.Ignore())
                 .ForMember(dest => dest.Item, opt => opt.Ignore())
                 .ForMember(dest => dest.Request, opt => opt.Ignore());
-
-            // Update DTO to Entity
-            CreateMap<UpdateDiscardDto, DiscardEntity>()
-                .ForMember(dest => dest.Id, opt => opt.Ignore())
-                .ForMember(dest => dest.CreationDate, opt => opt.Ignore())
-                .ForMember(dest => dest.CreatedBy, opt => opt.Ignore())
-                .ForMember(dest => dest.ModificationDate, opt => opt.Ignore())
-                .ForMember(dest => dest.ModifiedBy, opt => opt.Ignore())
-                .ForMember(dest => dest.IsDeleted, opt => opt.Ignore())
-                .ForMember(dest => dest.DeletionDate, opt => opt.Ignore())
-                .ForMember(dest => dest.DeletedBy, opt => opt.Ignore())
-                .ForMember(dest => dest.Department, opt => opt.Ignore())
-                .ForMember(dest => dest.Requester, opt => opt.Ignore())
-                .ForMember(dest => dest.Reciever, opt => opt.Ignore())
-                .ForMember(dest => dest.Depot, opt => opt.Ignore())
-                .ForMember(dest => dest.RequestPurpose, opt => opt.Ignore())
-                .ForMember(dest => dest.RequestItems, opt => opt.Ignore()) // Handle separately
-                .ForMember(dest => dest.RequestType, opt => opt.MapFrom(src => RequestType.Discard)) // Always set to Discard by backend
-                .ForMember(dest => dest.RequestNo, opt => opt.Ignore()) // Don't update RequestNo on update
-                .ForMember(dest => dest.Priority, opt => opt.MapFrom(src => Enum.Parse<RequestPriority>(src.Priority, true))) // Validator ensures valid value
-                .ForMember(dest => dest.Status, opt => opt.Ignore()); // Status is managed separately, don't update from DTO
-
-            CreateMap<UpdateDiscardItemDto, RequestItemEntity>()
-                .ForMember(dest => dest.Id, opt => opt.Ignore())
-                .ForMember(dest => dest.RequestId, opt => opt.Ignore())
-                .ForMember(dest => dest.Item, opt => opt.Ignore())
-                .ForMember(dest => dest.Request, opt => opt.Ignore());
         }
     }
 }

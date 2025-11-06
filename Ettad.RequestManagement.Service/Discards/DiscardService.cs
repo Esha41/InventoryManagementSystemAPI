@@ -16,7 +16,6 @@ namespace Ettad.RequestManagement.Service.Discards
         private readonly ICrossCuttingRepository<RequestItem> _requestItemRepository;
         private readonly IMapper _mapper;
         private readonly IValidator<CreateDiscardDto> _createValidator;
-        private readonly IValidator<UpdateDiscardDto> _updateValidator;
         private readonly ICurrentUserService _currentUserService;
 
         public DiscardService(
@@ -24,14 +23,12 @@ namespace Ettad.RequestManagement.Service.Discards
             ICrossCuttingRepository<RequestItem> requestItemRepository,
             IMapper mapper,
             IValidator<CreateDiscardDto> createValidator,
-            IValidator<UpdateDiscardDto> updateValidator,
             ICurrentUserService currentUserService)
         {
             _discardRepository = discardRepository;
             _requestItemRepository = requestItemRepository;
             _mapper = mapper;
             _createValidator = createValidator;
-            _updateValidator = updateValidator;
             _currentUserService = currentUserService;
         }
 
@@ -88,7 +85,7 @@ namespace Ettad.RequestManagement.Service.Discards
             }
         }
 
-        public async Task<APIOperationResponse<DiscardDto>> CreateAsync(CreateDiscardDto inputDto)
+        public async Task<APIOperationResponse<long>> CreateAsync(CreateDiscardDto inputDto)
         {
             try
             {
@@ -97,7 +94,7 @@ namespace Ettad.RequestManagement.Service.Discards
                 if (!validationResult.IsValid)
                 {
                     var errors = string.Join(", ", validationResult.Errors.Select(e => e.ErrorMessage));
-                    return APIOperationResponse<DiscardDto>.Fail(ResponseType.BadRequest, errors);
+                    return APIOperationResponse<long>.Fail(ResponseType.BadRequest, errors);
                 }
 
                 // Map DTO to entity
@@ -119,114 +116,46 @@ namespace Ettad.RequestManagement.Service.Discards
                 // Add to repository
                 var createdDiscard = await _discardRepository.AddAsync(discard);
 
-                // Reload with navigation properties
-                var result = await _discardRepository.FindOneAsync(
-                    d => d.Id == createdDiscard.Id,
-                    false,
-                    nameof(BaseRequest.Department),
-                    nameof(BaseRequest.Requester),
-                    nameof(BaseRequest.Reciever),
-                    nameof(BaseRequest.Depot),
-                    nameof(BaseRequest.RequestPurpose),
-                    $"{nameof(BaseRequest.RequestItems)}.{nameof(RequestItem.Item)}",
-                    $"{nameof(BaseRequest.RequestItems)}.{nameof(RequestItem.Item)}.{nameof(BaseItem.Hcc)}"
-                );
-
-                var dto = _mapper.Map<DiscardDto>(result);
-                return APIOperationResponse<DiscardDto>.Success(dto, "Discard created successfully");
+                return APIOperationResponse<long>.Success(createdDiscard.Id, "Discard created successfully");
             }
             catch (Exception ex)
             {
-                return APIOperationResponse<DiscardDto>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
+                return APIOperationResponse<long>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
             }
         }
 
-        public async Task<APIOperationResponse<DiscardDto>> UpdateAsync(long id, UpdateDiscardDto inputDto)
+        public async Task<APIOperationResponse<bool>> ChangePriorityAsync(long id, string priority)
         {
             try
             {
-                // Validate input
-                var validationResult = await _updateValidator.ValidateAsync(inputDto);
-                if (!validationResult.IsValid)
-                {
-                    var errors = string.Join(", ", validationResult.Errors.Select(e => e.ErrorMessage));
-                    return APIOperationResponse<DiscardDto>.Fail(ResponseType.BadRequest, errors);
-                }
+                // Validate priority string
+                if (string.IsNullOrWhiteSpace(priority))
+                    return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, "Priority is required");
+
+                if (!Enum.TryParse<RequestPriority>(priority, true, out var priorityValue))
+                    return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, "Priority must be a valid value (High, Medium, Low)");
 
                 // Check if discard exists
                 var existingDiscard = await _discardRepository.FindOneAsync(
-                    d => d.Id == id && !d.IsDeleted,
-                    false,
-                    nameof(BaseRequest.RequestItems)
+                    d => d.Id == id && !d.IsDeleted
                 );
 
                 if (existingDiscard == null)
-                    return APIOperationResponse<DiscardDto>.Fail(ResponseType.NotFound, "Discard not found");
+                    return APIOperationResponse<bool>.Fail(ResponseType.NotFound, "Discard not found");
 
-                // Map updates to entity (excluding RequestItems)
-                _mapper.Map(inputDto, existingDiscard);
+                // Update priority
+                existingDiscard.Priority = priorityValue;
                 existingDiscard.ModificationDate = DateTime.UtcNow;
                 existingDiscard.ModifiedBy = _currentUserService.UserId;
-
-                // Handle discard items updates
-                // Remove old items that are not in the update DTO
-                var existingItemIds = inputDto.DiscardItems
-                    .Where(item => item.Id.HasValue)
-                    .Select(item => item.Id.Value)
-                    .ToList();
-
-                var itemsToRemove = existingDiscard.RequestItems
-                    .Where(item => !existingItemIds.Contains(item.Id))
-                    .ToList();
-
-                foreach (var item in itemsToRemove)
-                {
-                    await _requestItemRepository.DeleteAsync(item);
-                }
-
-                // Update existing items and add new ones
-                foreach (var itemDto in inputDto.DiscardItems)
-                {
-                    if (itemDto.Id.HasValue)
-                    {
-                        // Update existing item
-                        var existingItem = existingDiscard.RequestItems.FirstOrDefault(i => i.Id == itemDto.Id.Value);
-                        if (existingItem != null)
-                        {
-                            _mapper.Map(itemDto, existingItem);
-                        }
-                    }
-                    else
-                    {
-                        // Add new item
-                        var newItem = _mapper.Map<RequestItem>(itemDto);
-                        newItem.RequestId = id;
-                        existingDiscard.RequestItems.Add(newItem);
-                    }
-                }
 
                 // Update in repository
                 await _discardRepository.UpdateAsync(existingDiscard);
 
-                // Reload with navigation properties
-                var result = await _discardRepository.FindOneAsync(
-                    d => d.Id == id,
-                    false,
-                    nameof(BaseRequest.Department),
-                    nameof(BaseRequest.Requester),
-                    nameof(BaseRequest.Reciever),
-                    nameof(BaseRequest.Depot),
-                    nameof(BaseRequest.RequestPurpose),
-                    $"{nameof(BaseRequest.RequestItems)}.{nameof(RequestItem.Item)}",
-                    $"{nameof(BaseRequest.RequestItems)}.{nameof(RequestItem.Item)}.{nameof(BaseItem.Hcc)}"
-                );
-
-                var dto = _mapper.Map<DiscardDto>(result);
-                return APIOperationResponse<DiscardDto>.Success(dto, "Discard updated successfully");
+                return APIOperationResponse<bool>.Success(true, "Discard priority updated successfully");
             }
             catch (Exception ex)
             {
-                return APIOperationResponse<DiscardDto>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
+                return APIOperationResponse<bool>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
             }
         }
 
