@@ -8,12 +8,11 @@ namespace Ettad.Data.Enums
 {
     public enum RequestStatus
     {
-        Pending = 1,
-        Approved = 2,
-        Rejected = 3,
-        Edit = 4,
+        New = 1,
+        UnderProcess = 2,
+        Approved = 3,
+        Rejected = 4,
         Cancelled = 5
-
     }
 }
 

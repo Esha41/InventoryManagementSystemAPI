@@ -321,6 +321,26 @@ public static class MainEntities
     };
 
     [Category(CrudPermissionsGenerator.Requests)]
+    public static readonly CrudOperation[] Discard = new[]
+    {
+        CrudOperation.Page,
+        CrudOperation.View,
+        CrudOperation.Create,
+        CrudOperation.Edit,
+        CrudOperation.Delete
+    };
+
+    [Category(CrudPermissionsGenerator.Requests)]
+    public static readonly CrudOperation[] Return = new[]
+    {
+        CrudOperation.Page,
+        CrudOperation.View,
+        CrudOperation.Create,
+        CrudOperation.Edit,
+        CrudOperation.Delete
+    };
+
+    [Category(CrudPermissionsGenerator.Requests)]
     public static readonly CrudOperation[] ViewRequest = new[]
     {
         CrudOperation.Page,
@@ -435,6 +455,36 @@ public static class MainEntities
 
     [Category(CrudPermissionsGenerator.RequestManagement)]
     public static readonly CrudOperation[] Rank = new[]
+    {
+        CrudOperation.Page,
+        CrudOperation.View,
+        CrudOperation.Create,
+        CrudOperation.Edit,
+        CrudOperation.Delete
+    };
+
+    [Category(CrudPermissionsGenerator.RequestManagement)]
+    public static readonly CrudOperation[] RequestPurpose = new[]
+    {
+        CrudOperation.Page,
+        CrudOperation.View,
+        CrudOperation.Create,
+        CrudOperation.Edit,
+        CrudOperation.Delete
+    };
+
+    [Category(CrudPermissionsGenerator.EmployeeData)]
+    public static readonly CrudOperation[] Employee = new[]
+    {
+        CrudOperation.Page,
+        CrudOperation.View,
+        CrudOperation.Create,
+        CrudOperation.Edit,
+        CrudOperation.Delete
+    };
+
+    [Category(CrudPermissionsGenerator.RequestManagement)]
+    public static readonly CrudOperation[] Order = new[]
     {
         CrudOperation.Page,
         CrudOperation.View,

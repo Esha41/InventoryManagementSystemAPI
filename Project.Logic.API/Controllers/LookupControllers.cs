@@ -296,6 +296,23 @@ namespace Ettad.Lookups.Domain.API.Controllers
 
     #endregion
 
+    #region Employee
+
+    [CheckAuthorize(
+        "Permissions.Employee.Page",
+        "Permissions.Employee.View",
+        "Permissions.Employee.Create",
+        "Permissions.Employee.Edit",
+        "Permissions.Employee.Delete"
+    )]
+    public class EmployeeController : LookupController<Employee, CreateUpdateEmployeeDto>
+    {
+        public EmployeeController(ILookupService<Employee, CreateUpdateEmployeeDto> iLookupService, ILogger<LookupController<Employee, CreateUpdateEmployeeDto>> logger)
+            : base(iLookupService, logger) { }
+    }
+
+    #endregion
+
     #region Workflow
     [CheckAuthorize(
        "Permissions.WorkFlowType.Page",

@@ -1,6 +1,6 @@
 namespace Ettad.Module.lookup.Dtos
 {
-    public class CreateUpdateUnitDto
+    public class CreateUpdateOrderPurposeDto
     {
         public string NameAr { get; set; }
         public string NameEn { get; set; }
