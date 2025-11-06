@@ -2,14 +2,14 @@ using Ettad.Data.Enums;
 
 namespace Ettad.RequestManagement.Service.Orders.Dto
 {
-    public class CreateUpdateOrderDto
+    public class CreateOrderDto
     {
         #region BaseRequest Properties
         public string OrderNo { get; set; }
-        public RequestType RequestType { get; set; }
+        // RequestType is automatically set to 'Order' in the service
         public string Reason { get; set; }
         public RequestPriority Priority { get; set; }
-        public RequestStatus Status { get; set; }
+        // Status is automatically set to 'New' in the service
         public string Notes { get; set; }
         public long DepartmentId { get; set; }
         public long? RequesterId { get; set; }
@@ -27,6 +27,10 @@ namespace Ettad.RequestManagement.Service.Orders.Dto
         public string UsageLocation { get; set; }
         public int? NumberOfOfficer { get; set; }
         public int? NumberOfOtherRank { get; set; }
+        #endregion
+
+        #region Request Items
+        public List<CreateUpdateRequestItemDto> RequestItems { get; set; }
         #endregion
     }
 }

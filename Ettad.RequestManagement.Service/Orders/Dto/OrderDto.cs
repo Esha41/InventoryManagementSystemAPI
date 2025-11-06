@@ -1,6 +1,4 @@
-﻿using Ettad.Data.Entities;
-using Ettad.Data.Enums;
-
+﻿using Ettad.Data.Enums;
 
 namespace Ettad.RequestManagement.Service.Orders.Dto
 {
@@ -33,15 +31,16 @@ namespace Ettad.RequestManagement.Service.Orders.Dto
         public int? NumberOfOtherRank { get; set; }
         #endregion
 
-        
-
-        #region Navigation Properties
-        public Department Department { get; set; }
-        public Employee Requester { get; set; }
-        public Employee Reciever { get; set; }
-        public Depot Depot { get; set; }
-        public RequestPurpose RequestPurpose { get; set; }
-        public ICollection<RequestItem> RequestItems { get; set; }
+        #region Navigation Names
+        public string DepartmentNameAr { get; set; }
+        public string DepartmentNameEn { get; set; }
+        public string RequesterName { get; set; }
+        public string RecieverName { get; set; }
+        public string DepotNameAr { get; set; }
+        public string DepotNameEn { get; set; }
+        public string RequestPurposeNameAr { get; set; }
+        public string RequestPurposeNameEn { get; set; }
+        public ICollection<OrderRequestItemDto> RequestItems { get; set; }
         #endregion
     }
 }

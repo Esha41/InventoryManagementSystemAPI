@@ -2,19 +2,16 @@ using FluentValidation;
 using Ettad.Data.Enums;
 using Ettad.RequestManagement.Service.Orders.Dto;
 
-namespace Ettad.RequestManagement.Service.Orders.Validator
+namespace Ettad.RequestManagement.Service.Orders.Validators
 {
-    public class CreateUpdateOrderDtoValidator : AbstractValidator<CreateUpdateOrderDto>
+    public class CreateOrderDtoValidator : AbstractValidator<CreateOrderDto>
     {
-        public CreateUpdateOrderDtoValidator()
+        public CreateOrderDtoValidator()
         {
             // BaseRequest Properties Validation
             RuleFor(x => x.OrderNo)
                 .NotEmpty().WithMessage("Order number is required")
                 .MaximumLength(50).WithMessage("Order number cannot exceed 50 characters");
-
-            RuleFor(x => x.RequestType)
-                .IsInEnum().WithMessage("Invalid request type");
 
             RuleFor(x => x.Reason)
                 .NotEmpty().WithMessage("Reason is required")
@@ -22,9 +19,6 @@ namespace Ettad.RequestManagement.Service.Orders.Validator
 
             RuleFor(x => x.Priority)
                 .IsInEnum().WithMessage("Invalid priority");
-
-            RuleFor(x => x.Status)
-                .IsInEnum().WithMessage("Invalid status");
 
             RuleFor(x => x.Notes)
                 .MaximumLength(1000).WithMessage("Notes cannot exceed 1000 characters");
@@ -73,6 +67,13 @@ namespace Ettad.RequestManagement.Service.Orders.Validator
             RuleFor(x => x.NumberOfOtherRank)
                 .GreaterThanOrEqualTo(0).When(x => x.NumberOfOtherRank.HasValue)
                 .WithMessage("Number of other ranks must be greater than or equal to 0 when provided");
+
+            // Request Items Validation
+            RuleFor(x => x.RequestItems)
+                .NotEmpty().WithMessage("At least one request item is required");
+
+            RuleForEach(x => x.RequestItems)
+                .SetValidator(new CreateUpdateRequestItemDtoValidator());
         }
     }
 }

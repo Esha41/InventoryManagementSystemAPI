@@ -52,12 +52,12 @@ namespace Ettad.RequestManagement.API.Controllers
         /// Create a new order
         /// </summary>
         /// <param name="dto">Order creation data</param>
-        /// <returns>Created order</returns>
+        /// <returns>Created order ID</returns>
         [HttpPost]
-        [ProducesResponseType(typeof(APIOperationResponse<OrderDto>), (int)HttpStatusCode.Created)]
+        [ProducesResponseType(typeof(APIOperationResponse<long>), (int)HttpStatusCode.Created)]
         [ProducesResponseType((int)HttpStatusCode.BadRequest)]
         [CheckAuthorize("Permissions.Order.Create")]
-        public async Task<IActionResult> Create([FromBody] CreateUpdateOrderDto dto)
+        public async Task<IActionResult> Create([FromBody] CreateOrderDto dto)
         {
             var result = await _orderService.CreateAsync(dto);
             return ProcessResponse(result);
@@ -68,13 +68,13 @@ namespace Ettad.RequestManagement.API.Controllers
         /// </summary>
         /// <param name="id">Order ID</param>
         /// <param name="dto">Order update data</param>
-        /// <returns>Updated order</returns>
+        /// <returns>Success result</returns>
         [HttpPut("{id}")]
-        [ProducesResponseType(typeof(APIOperationResponse<OrderDto>), (int)HttpStatusCode.OK)]
+        [ProducesResponseType(typeof(APIOperationResponse<bool>), (int)HttpStatusCode.OK)]
         [ProducesResponseType((int)HttpStatusCode.BadRequest)]
         [ProducesResponseType((int)HttpStatusCode.NotFound)]
         [CheckAuthorize("Permissions.Order.Edit")]
-        public async Task<IActionResult> Update(long id, [FromBody] CreateUpdateOrderDto dto)
+        public async Task<IActionResult> Update(long id, [FromBody] UpdateOrderDto dto)
         {
             var result = await _orderService.UpdateAsync(id, dto);
             return ProcessResponse(result);
