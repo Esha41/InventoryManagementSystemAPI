@@ -11,5 +11,6 @@ namespace Ettad.User.Services.DTO
         public string RoleId { get; set; }
         public string RoleName { get; set; }
         public bool IsSelected { get; set; }
+        public long? DeparmentId { get; set; }
     }
 }
