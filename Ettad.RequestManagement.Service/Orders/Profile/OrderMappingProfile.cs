@@ -10,6 +10,7 @@ namespace Ettad.RequestManagement.Service.Orders.Profile
         {
             // Entity to DTO - Map navigation properties to name strings
             CreateMap<Order, OrderDto>()
+                .ForMember(dest => dest.RequestNo, opt => opt.MapFrom(src => src.RequestNo))
                 .ForMember(dest => dest.DepartmentNameAr, opt => opt.MapFrom(src => src.Department != null ? src.Department.NameAr : null))
                 .ForMember(dest => dest.DepartmentNameEn, opt => opt.MapFrom(src => src.Department != null ? src.Department.NameEn : null))
                 .ForMember(dest => dest.DepotNameAr, opt => opt.MapFrom(src => src.Depot != null ? src.Depot.NameAr : null))
