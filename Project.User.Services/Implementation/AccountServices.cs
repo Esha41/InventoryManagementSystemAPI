@@ -79,8 +79,11 @@ namespace Ettad.User.Services.Implementation
                 var ldapSettings = await _settingsProvider.GetLdapSettings(cancellationToken);
 
                 var isAdminLogin = true;
-                    //_adminUsers.AdminUserNames
-                   // .Any(a => loginInformation.Username.Contains(a, StringComparison.OrdinalIgnoreCase));
+
+                var users = await _userRepository.FindByNameAsync(loginInformation.Username.Trim());
+                isAdminLogin = users != null; 
+                //isAdminLogin= _adminUsers.AdminUserNames
+                //    .Any(a => loginInformation.Username.Contains(a, StringComparison.OrdinalIgnoreCase));
 
                 ApplicationUser? user;
 
