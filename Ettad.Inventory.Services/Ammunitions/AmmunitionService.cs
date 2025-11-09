@@ -103,11 +103,21 @@ namespace Ettad.Inventory.Service.Ammunitions
                     return APIOperationResponse<long>.Fail(ResponseType.BadRequest, errors);
                 }
 
+                if (!string.IsNullOrWhiteSpace(inputDto.Nsn))
+                {
+                    var existingWithSameNsn = await _ammunitionRepository.FindOneAsync(
+                        a => !a.IsDeleted && a.Nsn == inputDto.Nsn.Trim());
+
+                    if (existingWithSameNsn != null)
+                        return APIOperationResponse<long>.Fail(ResponseType.BadRequest, "NSN already exists");
+                }
+
                 // Map DTO to entity
                 var ammunition = _mapper.Map<Ammunition>(inputDto);
                 ammunition.ItemType = ItemType.Ammunition;
                 ammunition.CreationDate = DateTime.UtcNow;
                 ammunition.CreatedBy = _currentUserService.UserId;
+                ammunition.Nsn = string.IsNullOrWhiteSpace(inputDto.Nsn) ? null : inputDto.Nsn.Trim();
 
                 // Add to repository
                 var createdAmmunition = await _ammunitionRepository.AddAsync(ammunition);
@@ -136,10 +146,20 @@ namespace Ettad.Inventory.Service.Ammunitions
                 if (existingAmmunition == null)
                     return APIOperationResponse<bool>.Fail(ResponseType.NotFound, "Ammunition not found");
 
+                if (!string.IsNullOrWhiteSpace(inputDto.Nsn))
+                {
+                    var duplicate = await _ammunitionRepository.FindOneAsync(
+                        a => !a.IsDeleted && a.Id != id && a.Nsn == inputDto.Nsn.Trim());
+
+                    if (duplicate != null)
+                        return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, "NSN already exists");
+                }
+
                 // Map updates to entity
                 _mapper.Map(inputDto, existingAmmunition);
                 existingAmmunition.ModificationDate = DateTime.UtcNow;
                 existingAmmunition.ModifiedBy = _currentUserService.UserId;
+                existingAmmunition.Nsn = string.IsNullOrWhiteSpace(inputDto.Nsn) ? null : inputDto.Nsn.Trim();
 
                 // Update in repository
                 await _ammunitionRepository.UpdateAsync(existingAmmunition);

@@ -48,9 +48,6 @@ namespace Ettad.Inventory.Service.Ammunitions.Validators
             RuleFor(x => x.TotalWeight)
                 .GreaterThan(0).WithMessage("Total weight must be greater than 0");
 
-            RuleFor(x => x.Nsn)
-                .NotEmpty().WithMessage("NSN is required")
-                .MaximumLength(255).WithMessage("NSN cannot exceed 255 characters");
 
             RuleFor(x => x.CaseTypeId)
                 .GreaterThan(0).WithMessage("Case type is required");

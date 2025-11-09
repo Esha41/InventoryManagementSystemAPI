@@ -20,8 +20,6 @@ namespace Ettad.Data.Entities
 
         public long? NatureOptionId { get; set; }
 
-        public string Nsn { get; set; }
-
         public long? PrimaryPurposId { get; set; }
 
         public long? ProjectileColorId { get; set; }

@@ -17,14 +17,6 @@ namespace Ettad.EntityFramework.Configurations
             builder.Property(x => x.CaseLength)
                 .IsRequired();
 
-            builder.Property(x => x.Nsn)
-                .HasMaxLength(255)
-                .IsRequired();
-
-            builder.HasIndex(x => x.Nsn)
-                .IsUnique()
-                .HasFilter("[IsDeleted] = 0");
-
             builder.HasOne(x => x.NatureOption)
                 .WithMany()
                 .IsRequired(false)
@@ -107,7 +99,7 @@ namespace Ettad.EntityFramework.Configurations
                     Primer = "Boxer",
                     TotalWeight = 12.0m,
                     NatureOptionId = 1,
-                    Nsn = "1305-01-123-4567",
+                    Nsn = "1305-01-000-0001",
                     PrimaryPurposId = 1,
                     ProjectileColorId = 1,
                     ProjectailMaterialId = 1,
@@ -137,7 +129,7 @@ namespace Ettad.EntityFramework.Configurations
                     Primer = "Berdan",
                     TotalWeight = 24.0m,
                     NatureOptionId = 2,
-                    Nsn = "1305-01-234-5678",
+                    Nsn = "1305-01-000-0002",
                     PrimaryPurposId = 2,
                     ProjectileColorId = 2,
                     ProjectailMaterialId = 2,
@@ -167,7 +159,7 @@ namespace Ettad.EntityFramework.Configurations
                     Primer = "Boxer",
                     TotalWeight = 7.5m,
                     NatureOptionId = 3,
-                    Nsn = "1305-01-345-6789",
+                    Nsn = "1305-01-000-0003",
                     PrimaryPurposId = 3,
                     ProjectileColorId = 3,
                     ProjectailMaterialId = 3,
@@ -197,7 +189,7 @@ namespace Ettad.EntityFramework.Configurations
                     Primer = "Berdan",
                     TotalWeight = 115.0m,
                     NatureOptionId = 1,
-                    Nsn = "1305-01-123-4567",
+                    Nsn = "1305-01-000-0004",
                     PrimaryPurposId = 1,
                     ProjectileColorId = 1,
                     ProjectailMaterialId = 1,
@@ -227,7 +219,7 @@ namespace Ettad.EntityFramework.Configurations
                     Primer = "Boxer",
                     TotalWeight = 23.0m,
                     NatureOptionId = 2,
-                    Nsn = "1305-01-234-5678",
+                    Nsn = "1305-01-000-0005",
                     PrimaryPurposId = 2,
                     ProjectileColorId = 2,
                     ProjectailMaterialId = 2,
@@ -257,7 +249,7 @@ namespace Ettad.EntityFramework.Configurations
                     Primer = "Boxer",
                     TotalWeight = 15.0m,
                     NatureOptionId = 3,
-                    Nsn = "1305-01-345-6789",
+                    Nsn = "1305-01-000-0006",
                     PrimaryPurposId = 3,
                     ProjectileColorId = 3,
                     ProjectailMaterialId = 3,
@@ -287,7 +279,7 @@ namespace Ettad.EntityFramework.Configurations
                     Primer = "Berdan",
                     TotalWeight = 130.0m,
                     NatureOptionId = 1,
-                    Nsn = "1305-01-123-4567",
+                    Nsn = "1305-01-000-0007",
                     PrimaryPurposId = 1,
                     ProjectileColorId = 1,
                     ProjectailMaterialId = 1,
@@ -317,7 +309,7 @@ namespace Ettad.EntityFramework.Configurations
                     Primer = "Berdan",
                     TotalWeight = 10.5m,
                     NatureOptionId = 2,
-                    Nsn = "1305-01-234-5678",
+                    Nsn = "1305-01-000-0008",
                     PrimaryPurposId = 2,
                     ProjectileColorId = 2,
                     ProjectailMaterialId = 2,
@@ -347,7 +339,7 @@ namespace Ettad.EntityFramework.Configurations
                     Primer = "Boxer",
                     TotalWeight = 11.0m,
                     NatureOptionId = 3,
-                    Nsn = "1305-01-345-6789",
+                    Nsn = "1305-01-000-0009",
                     PrimaryPurposId = 3,
                     ProjectileColorId = 3,
                     ProjectailMaterialId = 3,
