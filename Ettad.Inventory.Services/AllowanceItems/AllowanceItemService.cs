@@ -67,7 +67,7 @@ namespace Ettad.Inventory.Service.AllowanceItems
             }
         }
 
-        public async Task<APIOperationResponse<AllowanceItemDto>> CreateAsync(CreateUpdateAllowanceItemDto inputDto)
+        public async Task<APIOperationResponse<long>> CreateAsync(CreateUpdateAllowanceItemDto inputDto)
         {
             try
             {
@@ -76,7 +76,7 @@ namespace Ettad.Inventory.Service.AllowanceItems
                 if (!validationResult.IsValid)
                 {
                     var errors = string.Join(", ", validationResult.Errors.Select(e => e.ErrorMessage));
-                    return APIOperationResponse<AllowanceItemDto>.Fail(ResponseType.BadRequest, errors);
+                    return APIOperationResponse<long>.Fail(ResponseType.BadRequest, errors);
                 }
 
                 // Map DTO to entity
@@ -86,20 +86,15 @@ namespace Ettad.Inventory.Service.AllowanceItems
 
                 // Add to repository
                 var createdAllowanceItem = await _allowanceItemRepository.AddAsync(allowanceItem);
-
-                // Reload with navigation properties
-                var result = await _allowanceItemRepository.FindOneAsync( a => a.Id == createdAllowanceItem.Id);
-
-                var dto = _mapper.Map<AllowanceItemDto>(result);
-                return APIOperationResponse<AllowanceItemDto>.Success(dto, "Allowance item created successfully");
+                return APIOperationResponse<long>.Success(createdAllowanceItem.Id, "Allowance item created successfully");
             }
             catch (Exception ex)
             {
-                return APIOperationResponse<AllowanceItemDto>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
+                return APIOperationResponse<long>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
             }
         }
 
-        public async Task<APIOperationResponse<AllowanceItemDto>> UpdateAsync(long id, CreateUpdateAllowanceItemDto inputDto)
+        public async Task<APIOperationResponse<bool>> UpdateAsync(long id, CreateUpdateAllowanceItemDto inputDto)
         {
             try
             {
@@ -108,13 +103,13 @@ namespace Ettad.Inventory.Service.AllowanceItems
                 if (!validationResult.IsValid)
                 {
                     var errors = string.Join(", ", validationResult.Errors.Select(e => e.ErrorMessage));
-                    return APIOperationResponse<AllowanceItemDto>.Fail(ResponseType.BadRequest, errors);
+                    return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, errors);
                 }
 
                 // Check if allowance item exists
                 var existingAllowanceItem = await _allowanceItemRepository.FindOneAsync(a => a.Id == id);
                 if (existingAllowanceItem == null)
-                    return APIOperationResponse<AllowanceItemDto>.Fail(ResponseType.NotFound, "Allowance item not found");
+                    return APIOperationResponse<bool>.Fail(ResponseType.NotFound, "Allowance item not found");
 
                 // Map updates to entity
                 _mapper.Map(inputDto, existingAllowanceItem);
@@ -123,16 +118,11 @@ namespace Ettad.Inventory.Service.AllowanceItems
 
                 // Update in repository
                 await _allowanceItemRepository.UpdateAsync(existingAllowanceItem);
-
-                // Reload with navigation properties
-                var result = await _allowanceItemRepository.FindOneAsync(a => a.Id == id);
-
-                var dto = _mapper.Map<AllowanceItemDto>(result);
-                return APIOperationResponse<AllowanceItemDto>.Success(dto, "Allowance item updated successfully");
+                return APIOperationResponse<bool>.Success(true, "Allowance item updated successfully");
             }
             catch (Exception ex)
             {
-                return APIOperationResponse<AllowanceItemDto>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
+                return APIOperationResponse<bool>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
             }
         }
 

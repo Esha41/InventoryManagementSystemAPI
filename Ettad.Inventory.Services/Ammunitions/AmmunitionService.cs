@@ -91,7 +91,7 @@ namespace Ettad.Inventory.Service.Ammunitions
             }
         }
 
-        public async Task<APIOperationResponse<AmmunitionDto>> CreateAsync(CreateUpdateAmmunitionDto inputDto)
+        public async Task<APIOperationResponse<long>> CreateAsync(CreateUpdateAmmunitionDto inputDto)
         {
             try
             {
@@ -100,7 +100,7 @@ namespace Ettad.Inventory.Service.Ammunitions
                 if (!validationResult.IsValid)
                 {
                     var errors = string.Join(", ", validationResult.Errors.Select(e => e.ErrorMessage));
-                    return APIOperationResponse<AmmunitionDto>.Fail(ResponseType.BadRequest, errors);
+                    return APIOperationResponse<long>.Fail(ResponseType.BadRequest, errors);
                 }
 
                 // Map DTO to entity
@@ -111,34 +111,15 @@ namespace Ettad.Inventory.Service.Ammunitions
 
                 // Add to repository
                 var createdAmmunition = await _ammunitionRepository.AddAsync(ammunition);
-
-                // Reload with navigation properties
-                var result = await _ammunitionRepository.FindOneAsync(
-                    a => a.Id == createdAmmunition.Id,
-                    false,
-                    nameof(Ammunition.Hcc),
-                    nameof(Ammunition.BulletDiameterUnit),
-                    nameof(Ammunition.CaseLengthUnit),
-                    nameof(Ammunition.NatureOption),
-                    nameof(Ammunition.PrimaryPurpos),
-                    nameof(Ammunition.ProjectileColor),
-                    nameof(Ammunition.ProjectailMaterial),
-                    nameof(Ammunition.CaseType),
-                    nameof(Ammunition.Propellant),
-                    nameof(Ammunition.Compatibility),
-                    nameof(Ammunition.HazardDivision)
-                );
-
-                var dto = _mapper.Map<AmmunitionDto>(result);
-                return APIOperationResponse<AmmunitionDto>.Success(dto, "Ammunition created successfully");
+                return APIOperationResponse<long>.Success(createdAmmunition.Id, "Ammunition created successfully");
             }
             catch (Exception ex)
             {
-                return APIOperationResponse<AmmunitionDto>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
+                return APIOperationResponse<long>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
             }
         }
 
-        public async Task<APIOperationResponse<AmmunitionDto>> UpdateAsync(long id, CreateUpdateAmmunitionDto inputDto)
+        public async Task<APIOperationResponse<bool>> UpdateAsync(long id, CreateUpdateAmmunitionDto inputDto)
         {
             try
             {
@@ -147,13 +128,13 @@ namespace Ettad.Inventory.Service.Ammunitions
                 if (!validationResult.IsValid)
                 {
                     var errors = string.Join(", ", validationResult.Errors.Select(e => e.ErrorMessage));
-                    return APIOperationResponse<AmmunitionDto>.Fail(ResponseType.BadRequest, errors);
+                    return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, errors);
                 }
 
                 // Check if ammunition exists
                 var existingAmmunition = await _ammunitionRepository.FindOneAsync(a => a.Id == id && !a.IsDeleted);
                 if (existingAmmunition == null)
-                    return APIOperationResponse<AmmunitionDto>.Fail(ResponseType.NotFound, "Ammunition not found");
+                    return APIOperationResponse<bool>.Fail(ResponseType.NotFound, "Ammunition not found");
 
                 // Map updates to entity
                 _mapper.Map(inputDto, existingAmmunition);
@@ -162,30 +143,11 @@ namespace Ettad.Inventory.Service.Ammunitions
 
                 // Update in repository
                 await _ammunitionRepository.UpdateAsync(existingAmmunition);
-
-                // Reload with navigation properties
-                var result = await _ammunitionRepository.FindOneAsync(
-                    a => a.Id == id,
-                    false,
-                    nameof(Ammunition.Hcc),
-                    nameof(Ammunition.BulletDiameterUnit),
-                    nameof(Ammunition.CaseLengthUnit),
-                    nameof(Ammunition.NatureOption),
-                    nameof(Ammunition.PrimaryPurpos),
-                    nameof(Ammunition.ProjectileColor),
-                    nameof(Ammunition.ProjectailMaterial),
-                    nameof(Ammunition.CaseType),
-                    nameof(Ammunition.Propellant),
-                    nameof(Ammunition.Compatibility),
-                    nameof(Ammunition.HazardDivision)
-                );
-
-                var dto = _mapper.Map<AmmunitionDto>(result);
-                return APIOperationResponse<AmmunitionDto>.Success(dto, "Ammunition updated successfully");
+                return APIOperationResponse<bool>.Success(true, "Ammunition updated successfully");
             }
             catch (Exception ex)
             {
-                return APIOperationResponse<AmmunitionDto>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
+                return APIOperationResponse<bool>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
             }
         }
 

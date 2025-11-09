@@ -8,8 +8,8 @@ namespace Ettad.Inventory.Service.AllowanceItems
     {
         Task<APIOperationResponse<AllowanceItemDto>> GetByIdAsync(long id);
         Task<APIOperationResponse<List<AllowanceItemDto>>> GetAllAsync();
-        Task<APIOperationResponse<AllowanceItemDto>> CreateAsync(CreateUpdateAllowanceItemDto inputDto);
-        Task<APIOperationResponse<AllowanceItemDto>> UpdateAsync(long id, CreateUpdateAllowanceItemDto inputDto);
+        Task<APIOperationResponse<long>> CreateAsync(CreateUpdateAllowanceItemDto inputDto);
+        Task<APIOperationResponse<bool>> UpdateAsync(long id, CreateUpdateAllowanceItemDto inputDto);
         Task<APIOperationResponse<bool>> DeleteAsync(long id);
         Task<APIOperationResponse<AllowanceItemByDepartmentDto>> GetByDepartmentAndYearAsync(long departmentId, int year);
         Task<APIOperationResponse<List<AllowanceItemByDepartmentDto>>> GetByDepartmentAsync(long departmentId);

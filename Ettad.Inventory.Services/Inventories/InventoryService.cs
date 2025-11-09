@@ -88,7 +88,7 @@ namespace Ettad.Inventory.Service.Inventories
             }
         }
 
-        public async Task<APIOperationResponse<InventoryDto>> CreateAsync(CreateInventoryDto inputDto)
+        public async Task<APIOperationResponse<long>> CreateAsync(CreateInventoryDto inputDto)
         {
             try
             {
@@ -97,7 +97,7 @@ namespace Ettad.Inventory.Service.Inventories
                 if (!validationResult.IsValid)
                 {
                     var errors = string.Join(", ", validationResult.Errors.Select(e => e.ErrorMessage));
-                    return APIOperationResponse<InventoryDto>.Fail(ResponseType.BadRequest, errors);
+                    return APIOperationResponse<long>.Fail(ResponseType.BadRequest, errors);
                 }
 
                 // Map DTO to entity
@@ -116,29 +116,15 @@ namespace Ettad.Inventory.Service.Inventories
 
                 // Add to repository
                 var createdInventory = await _inventoryRepository.AddAsync(inventory);
-
-                // Reload with navigation properties
-                var result = await _inventoryRepository.FindOneAsync(
-                    i => i.Id == createdInventory.Id,
-                    false,
-                    nameof(InventoryEntity.Depo),
-                    $"{nameof(InventoryEntity.InventoryDetails)}.{nameof(InventoryDetailEntity.Item)}",
-                    $"{nameof(InventoryEntity.InventoryDetails)}.{nameof(InventoryDetailEntity.Item)}.Hcc",
-                    $"{nameof(InventoryEntity.InventoryDetails)}.{nameof(InventoryDetailEntity.Supplier)}",
-                    $"{nameof(InventoryEntity.InventoryDetails)}.{nameof(InventoryDetailEntity.Manufacturer)}",
-                    $"{nameof(InventoryEntity.InventoryDetails)}.{nameof(InventoryDetailEntity.Country)}"
-                );
-
-                var dto = _mapper.Map<InventoryDto>(result);
-                return APIOperationResponse<InventoryDto>.Success(dto, "Inventory created successfully");
+                return APIOperationResponse<long>.Success(createdInventory.Id, "Inventory created successfully");
             }
             catch (Exception ex)
             {
-                return APIOperationResponse<InventoryDto>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
+                return APIOperationResponse<long>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
             }
         }
 
-        public async Task<APIOperationResponse<InventoryDto>> UpdateAsync(long id, UpdateInventoryDto inputDto)
+        public async Task<APIOperationResponse<bool>> UpdateAsync(long id, UpdateInventoryDto inputDto)
         {
             try
             {
@@ -147,7 +133,7 @@ namespace Ettad.Inventory.Service.Inventories
                 if (!validationResult.IsValid)
                 {
                     var errors = string.Join(", ", validationResult.Errors.Select(e => e.ErrorMessage));
-                    return APIOperationResponse<InventoryDto>.Fail(ResponseType.BadRequest, errors);
+                    return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, errors);
                 }
 
                 // Check if inventory exists
@@ -158,7 +144,7 @@ namespace Ettad.Inventory.Service.Inventories
                 );
 
                 if (existingInventory == null)
-                    return APIOperationResponse<InventoryDto>.Fail(ResponseType.NotFound, "Inventory not found");
+                    return APIOperationResponse<bool>.Fail(ResponseType.NotFound, "Inventory not found");
 
                 // Map updates to entity (excluding InventoryDetails)
                 _mapper.Map(inputDto, existingInventory);
@@ -204,25 +190,11 @@ namespace Ettad.Inventory.Service.Inventories
 
                 // Update in repository
                 await _inventoryRepository.UpdateAsync(existingInventory);
-
-                // Reload with navigation properties
-                var result = await _inventoryRepository.FindOneAsync(
-                    i => i.Id == id,
-                    false,
-                    nameof(InventoryEntity.Depo),
-                    $"{nameof(InventoryEntity.InventoryDetails)}.{nameof(InventoryDetailEntity.Item)}",
-                    $"{nameof(InventoryEntity.InventoryDetails)}.{nameof(InventoryDetailEntity.Item)}.Hcc",
-                    $"{nameof(InventoryEntity.InventoryDetails)}.{nameof(InventoryDetailEntity.Supplier)}",
-                    $"{nameof(InventoryEntity.InventoryDetails)}.{nameof(InventoryDetailEntity.Manufacturer)}",
-                    $"{nameof(InventoryEntity.InventoryDetails)}.{nameof(InventoryDetailEntity.Country)}"
-                );
-
-                var dto = _mapper.Map<InventoryDto>(result);
-                return APIOperationResponse<InventoryDto>.Success(dto, "Inventory updated successfully");
+                return APIOperationResponse<bool>.Success(true, "Inventory updated successfully");
             }
             catch (Exception ex)
             {
-                return APIOperationResponse<InventoryDto>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
+                return APIOperationResponse<bool>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
             }
         }
 
