@@ -8,6 +8,7 @@ using Ettad.ResponseHandler.Consts;
 using Ettad.ResponseHandler.Models;
 using Ettad.Application.Common.Interfaces;
 using Ettad.Data.Enums;
+using Microsoft.Extensions.Logging;
 
 namespace Ettad.Inventory.Service.AllowanceItems
 {
@@ -18,19 +19,22 @@ namespace Ettad.Inventory.Service.AllowanceItems
         private readonly IMapper _mapper;
         private readonly IValidator<CreateUpdateAllowanceItemDto> _validator;
         private readonly ICurrentUserService _currentUserService;
+        private readonly ILogger<AllowanceItemService> _logger;
 
         public AllowanceItemService(
             ICrossCuttingRepository<AllowanceItem> allowanceItemRepository,
             ICrossCuttingRepository<Department> departmentRepository,
             IMapper mapper,
             IValidator<CreateUpdateAllowanceItemDto> validator,
-            ICurrentUserService currentUserService)
+            ICurrentUserService currentUserService,
+            ILogger<AllowanceItemService> logger)
         {
             _allowanceItemRepository = allowanceItemRepository;
             _departmentRepository = departmentRepository;
             _mapper = mapper;
             _validator = validator;
             _currentUserService = currentUserService;
+            _logger = logger;
         }
 
         public async Task<APIOperationResponse<AllowanceItemDto>> GetByIdAsync(long id)
@@ -69,6 +73,9 @@ namespace Ettad.Inventory.Service.AllowanceItems
 
         public async Task<APIOperationResponse<AllowanceItemDto>> CreateAsync(CreateUpdateAllowanceItemDto inputDto)
         {
+            _logger.LogInformation("Creating allowance item. ItemId: {ItemId}, DepartmentId: {DepartmentId}, Year: {Year}, Quantity: {Quantity}, User: {UserId}", 
+                inputDto?.ItemId, inputDto?.DepartmentId, inputDto?.Year, inputDto?.Quantity, _currentUserService.UserId);
+            
             try
             {
                 // Validate input
@@ -76,6 +83,8 @@ namespace Ettad.Inventory.Service.AllowanceItems
                 if (!validationResult.IsValid)
                 {
                     var errors = string.Join(", ", validationResult.Errors.Select(e => e.ErrorMessage));
+                    _logger.LogWarning("Allowance item validation failed. Errors: {ValidationErrors}, User: {UserId}", 
+                        errors, _currentUserService.UserId);
                     return APIOperationResponse<AllowanceItemDto>.Fail(ResponseType.BadRequest, errors);
                 }
 
@@ -90,11 +99,16 @@ namespace Ettad.Inventory.Service.AllowanceItems
                 // Reload with navigation properties
                 var result = await _allowanceItemRepository.FindOneAsync( a => a.Id == createdAllowanceItem.Id);
 
+                _logger.LogInformation("Allowance item created successfully. AllowanceItemId: {AllowanceItemId}, ItemId: {ItemId}, User: {UserId}", 
+                    createdAllowanceItem.Id, inputDto.ItemId, _currentUserService.UserId);
+
                 var dto = _mapper.Map<AllowanceItemDto>(result);
                 return APIOperationResponse<AllowanceItemDto>.Success(dto, "Allowance item created successfully");
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Error creating allowance item. ItemId: {ItemId}, DepartmentId: {DepartmentId}, User: {UserId}", 
+                    inputDto?.ItemId, inputDto?.DepartmentId, _currentUserService.UserId);
                 return APIOperationResponse<AllowanceItemDto>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
             }
         }
@@ -138,19 +152,33 @@ namespace Ettad.Inventory.Service.AllowanceItems
 
         public async Task<APIOperationResponse<bool>> DeleteAsync(long id)
         {
+            _logger.LogInformation("Deleting allowance item. AllowanceItemId: {AllowanceItemId}, User: {UserId}", 
+                id, _currentUserService.UserId);
+            
             try
             {
                 var allowanceItem = await _allowanceItemRepository.FindOneAsync(a => a.Id == id && !a.IsDeleted);
                 if (allowanceItem == null)
+                {
+                    _logger.LogWarning("Allowance item not found for deletion. AllowanceItemId: {AllowanceItemId}, User: {UserId}", 
+                        id, _currentUserService.UserId);
                     return APIOperationResponse<bool>.Fail(ResponseType.NotFound, "Allowance item not found");
+                }
 
+                var itemId = allowanceItem.ItemId;
+                var quantity = allowanceItem.Quantity;
+                
                 // Soft delete - interceptor will handle IsDeleted, DeletionDate, and DeletedBy automatically
                 await _allowanceItemRepository.DeleteAsync(allowanceItem);
 
+                _logger.LogInformation("Allowance item deleted successfully. AllowanceItemId: {AllowanceItemId}, ItemId: {ItemId}, Quantity: {Quantity}, User: {UserId}", 
+                    id, itemId, quantity, _currentUserService.UserId);
                 return APIOperationResponse<bool>.Success(true, "Allowance item deleted successfully");
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Error deleting allowance item. AllowanceItemId: {AllowanceItemId}, User: {UserId}", 
+                    id, _currentUserService.UserId);
                 return APIOperationResponse<bool>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
             }
         }
@@ -227,6 +255,9 @@ namespace Ettad.Inventory.Service.AllowanceItems
 
         public async Task<APIOperationResponse<List<AllowanceItemDto>>> BulkCreateAsync(BulkCreateAllowanceItemDto inputDto)
         {
+            _logger.LogInformation("Bulk creating allowance items. DepartmentId: {DepartmentId}, Year: {Year}, ItemCount: {ItemCount}, User: {UserId}", 
+                inputDto?.DepartmentId, inputDto?.Year, inputDto?.Items?.Count ?? 0, _currentUserService.UserId);
+            
             try
             {
                 var bulkValidator = new BulkCreateAllowanceItemDtoValidator();
@@ -234,10 +265,14 @@ namespace Ettad.Inventory.Service.AllowanceItems
                 if (!validationResult.IsValid)
                 {
                     var errors = string.Join(", ", validationResult.Errors.Select(e => e.ErrorMessage));
+                    _logger.LogWarning("Bulk allowance items validation failed. Errors: {ValidationErrors}, User: {UserId}", 
+                        errors, _currentUserService.UserId);
                     return APIOperationResponse<List<AllowanceItemDto>>.Fail(ResponseType.BadRequest, errors);
                 }
 
                 var createdItems = new List<AllowanceItemDto>();
+                int createdCount = 0;
+                int updatedCount = 0;
 
                 foreach (var itemDto in inputDto.Items)
                 {
@@ -254,6 +289,8 @@ namespace Ettad.Inventory.Service.AllowanceItems
                     if (!itemValidationResult.IsValid)
                     {
                         var errors = string.Join(", ", itemValidationResult.Errors.Select(e => e.ErrorMessage));
+                        _logger.LogWarning("Item validation failed in bulk create. ItemId: {ItemId}, Errors: {Errors}", 
+                            itemDto.ItemId, errors);
                         return APIOperationResponse<List<AllowanceItemDto>>.Fail(ResponseType.BadRequest, $"Item {itemDto.ItemId}: {errors}");
                     }
 
@@ -272,6 +309,7 @@ namespace Ettad.Inventory.Service.AllowanceItems
                         existing.ModifiedBy = _currentUserService.UserId;
                         await _allowanceItemRepository.UpdateAsync(existing);
                         createdItems.Add(_mapper.Map<AllowanceItemDto>(existing));
+                        updatedCount++;
                     }
                     else
                     {
@@ -282,13 +320,19 @@ namespace Ettad.Inventory.Service.AllowanceItems
 
                         var created = await _allowanceItemRepository.AddAsync(allowanceItem);
                         createdItems.Add(_mapper.Map<AllowanceItemDto>(created));
+                        createdCount++;
                     }
                 }
+
+                _logger.LogInformation("Bulk allowance items operation completed. DepartmentId: {DepartmentId}, Year: {Year}, Created: {CreatedCount}, Updated: {UpdatedCount}, User: {UserId}", 
+                    inputDto.DepartmentId, inputDto.Year, createdCount, updatedCount, _currentUserService.UserId);
 
                 return APIOperationResponse<List<AllowanceItemDto>>.Success(createdItems, "Allowance items created successfully");
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Error in bulk create allowance items. DepartmentId: {DepartmentId}, Year: {Year}, User: {UserId}", 
+                    inputDto?.DepartmentId, inputDto?.Year, _currentUserService.UserId);
                 return APIOperationResponse<List<AllowanceItemDto>>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
             }
         }

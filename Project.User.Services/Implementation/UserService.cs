@@ -8,28 +8,41 @@ using Ettad.ResponseHandler.Consts;
 using Ettad.ResponseHandler.Models;
 using Ettad.User.Services.DTO;
 using Ettad.User.Services.Interfaces;
+using Microsoft.Extensions.Logging;
 
 public class UserService : IUserService
 {
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly RoleManager<ApplicationRole> _roleManager;
   //  private readonly CrossCuttingRepository<EmployeeContact> _employeeRepository;
-    private readonly ICurrentUserService _currentUserService ;
+    private readonly ICurrentUserService _currentUserService;
+    private readonly ILogger<UserService> _logger;
+    
     public UserService(UserManager<ApplicationUser> userManager, RoleManager<ApplicationRole> roleManager
-         , ICurrentUserService currentUserService)
+         , ICurrentUserService currentUserService, ILogger<UserService> logger)
     {
         _userManager = userManager;
         _roleManager = roleManager;
        // _employeeRepository = employeeRepository;
         _currentUserService = currentUserService;
+        _logger = logger;
     }
 
     public async Task<APIOperationResponse<UserDto>> GetByIdAsync(string id)
     {
+        _logger.LogInformation("Getting user by ID. TargetUserId: {TargetUserId}, RequestedBy: {RequestedBy}", 
+            id, _currentUserService.UserId);
+        
         var user = await _userManager.FindByIdAsync(id);
         if (user == null)
+        {
+            _logger.LogWarning("User not found. TargetUserId: {TargetUserId}, RequestedBy: {RequestedBy}", 
+                id, _currentUserService.UserId);
             return APIOperationResponse<UserDto>.Fail(ResponseType.NotFound, "User not found");
+        }
 
+        _logger.LogInformation("User retrieved successfully. TargetUserId: {TargetUserId}, Username: {Username}", 
+            id, user.UserName);
         return APIOperationResponse<UserDto>.Success(MapToDto(user));
     }
 
@@ -43,6 +56,8 @@ public class UserService : IUserService
 
     public async Task<APIOperationResponse<List<UserDto>>> GetAllAsync()
     {
+        _logger.LogInformation("Getting all users. RequestedBy: {RequestedBy}", _currentUserService.UserId);
+        
         // 1️⃣ Get all users (no org filter)
         var users = await _userManager.Users.ToListAsync();
 
@@ -67,14 +82,23 @@ public class UserService : IUserService
             mapped.Add(dto);
         }
 
+        _logger.LogInformation("Successfully retrieved {UserCount} users. RequestedBy: {RequestedBy}", 
+            mapped.Count, _currentUserService.UserId);
         return APIOperationResponse<List<UserDto>>.Success(mapped);
     }
 
 
     public async Task<APIOperationResponse<UserDto>> CreateAsync(CreateUserDto dto)
     {
+        _logger.LogInformation("Creating new user. Username: {Username}, IsLdapUser: {IsLdapUser}, CreatedBy: {CreatedBy}", 
+            dto?.UserName, dto?.IsLdapUser, _currentUserService.UserId);
+        
         if (dto == null)
+        {
+            _logger.LogWarning("User creation failed: Invalid request. CreatedBy: {CreatedBy}", 
+                _currentUserService.UserId);
             return APIOperationResponse<UserDto>.Fail(ResponseType.BadRequest, "Invalid request");
+        }
 
         // 1️⃣ Create the user object
         var user = new ApplicationUser
@@ -90,10 +114,12 @@ public class UserService : IUserService
         // 2️⃣ Create user in DB
         var result = await _userManager.CreateAsync(user, dto.Password);
         if (!result.Succeeded)
-            return APIOperationResponse<UserDto>.Fail(
-                ResponseType.BadRequest,
-                string.Join(",", result.Errors.Select(e => e.Description))
-            );
+        {
+            var errors = string.Join(",", result.Errors.Select(e => e.Description));
+            _logger.LogWarning("User creation failed: {Errors}. Username: {Username}, CreatedBy: {CreatedBy}", 
+                errors, dto.UserName, _currentUserService.UserId);
+            return APIOperationResponse<UserDto>.Fail(ResponseType.BadRequest, errors);
+        }
 
         // 3️⃣ Assign roles (if any)
         if (dto.RoleIds != null && dto.RoleIds.Any())
@@ -105,17 +131,23 @@ public class UserService : IUserService
 
             if (roleNames.Any())
             {
+                _logger.LogInformation("Assigning {RoleCount} roles to new user. Username: {Username}, Roles: {Roles}", 
+                    roleNames.Count, dto.UserName, string.Join(", ", roleNames));
+                
                 var addRolesResult = await _userManager.AddToRolesAsync(user, roleNames);
                 if (!addRolesResult.Succeeded)
                 {
-                    return APIOperationResponse<UserDto>.Fail(
-                        ResponseType.BadRequest,
-                        string.Join(",", addRolesResult.Errors.Select(e => e.Description))
-                    );
+                    var errors = string.Join(",", addRolesResult.Errors.Select(e => e.Description));
+                    _logger.LogWarning("Role assignment failed. Username: {Username}, Errors: {Errors}", 
+                        dto.UserName, errors);
+                    return APIOperationResponse<UserDto>.Fail(ResponseType.BadRequest, errors);
                 }
             }
         }
 
+        _logger.LogInformation("User created successfully. UserId: {UserId}, Username: {Username}, CreatedBy: {CreatedBy}", 
+            user.Id, user.UserName, _currentUserService.UserId);
+        
         // 4️⃣ Return created user
         var userDto = MapToDto(user);
         return APIOperationResponse<UserDto>.Success(userDto);
@@ -124,14 +156,27 @@ public class UserService : IUserService
 
     public async Task<APIOperationResponse<UserDto>> UpdateAsync(UpdateUserDto dto)
     {
+        _logger.LogInformation("Updating user. TargetUserId: {TargetUserId}, Username: {Username}, UpdatedBy: {UpdatedBy}", 
+            dto?.Id, dto?.UserName, _currentUserService.UserId);
+        
         if (dto == null)
+        {
+            _logger.LogWarning("User update failed: Invalid request. UpdatedBy: {UpdatedBy}", 
+                _currentUserService.UserId);
             return APIOperationResponse<UserDto>.Fail(ResponseType.BadRequest, "Invalid request");
+        }
 
         // 1️⃣ Find user
         var user = await _userManager.FindByIdAsync(dto.Id);
         if (user == null)
+        {
+            _logger.LogWarning("User update failed: User not found. TargetUserId: {TargetUserId}, UpdatedBy: {UpdatedBy}", 
+                dto.Id, _currentUserService.UserId);
             return APIOperationResponse<UserDto>.Fail(ResponseType.NotFound, "User not found");
+        }
 
+        var oldUsername = user.UserName;
+        
         // 2️⃣ Update basic fields
         user.UserName = dto.UserName ?? user.UserName;
         user.Email = dto.UserName ?? user.Email;
@@ -156,34 +201,49 @@ public class UserService : IUserService
             var rolesToRemove = currentRoles.Except(newRoleNames).ToList();
             if (rolesToRemove.Any())
             {
+                _logger.LogInformation("Removing {RoleCount} roles from user. UserId: {UserId}, Roles: {Roles}", 
+                    rolesToRemove.Count, dto.Id, string.Join(", ", rolesToRemove));
+                
                 var removeResult = await _userManager.RemoveFromRolesAsync(user, rolesToRemove);
                 if (!removeResult.Succeeded)
-                    return APIOperationResponse<UserDto>.Fail(
-                        ResponseType.InternalServerError,
-                        string.Join(",", removeResult.Errors.Select(e => e.Description))
-                    );
+                {
+                    var errors = string.Join(",", removeResult.Errors.Select(e => e.Description));
+                    _logger.LogWarning("Failed to remove roles. UserId: {UserId}, Errors: {Errors}", 
+                        dto.Id, errors);
+                    return APIOperationResponse<UserDto>.Fail(ResponseType.InternalServerError, errors);
+                }
             }
 
             // Add new roles
             var rolesToAdd = newRoleNames.Except(currentRoles).ToList();
             if (rolesToAdd.Any())
             {
+                _logger.LogInformation("Adding {RoleCount} roles to user. UserId: {UserId}, Roles: {Roles}", 
+                    rolesToAdd.Count, dto.Id, string.Join(", ", rolesToAdd));
+                
                 var addResult = await _userManager.AddToRolesAsync(user, rolesToAdd);
                 if (!addResult.Succeeded)
-                    return APIOperationResponse<UserDto>.Fail(
-                        ResponseType.InternalServerError,
-                        string.Join(",", addResult.Errors.Select(e => e.Description))
-                    );
+                {
+                    var errors = string.Join(",", addResult.Errors.Select(e => e.Description));
+                    _logger.LogWarning("Failed to add roles. UserId: {UserId}, Errors: {Errors}", 
+                        dto.Id, errors);
+                    return APIOperationResponse<UserDto>.Fail(ResponseType.InternalServerError, errors);
+                }
             }
         }
 
         // 4️⃣ Update user
         var updateResult = await _userManager.UpdateAsync(user);
         if (!updateResult.Succeeded)
-            return APIOperationResponse<UserDto>.Fail(
-                ResponseType.InternalServerError,
-                string.Join(",", updateResult.Errors.Select(e => e.Description))
-            );
+        {
+            var errors = string.Join(",", updateResult.Errors.Select(e => e.Description));
+            _logger.LogWarning("User update failed: {Errors}. UserId: {UserId}, UpdatedBy: {UpdatedBy}", 
+                errors, dto.Id, _currentUserService.UserId);
+            return APIOperationResponse<UserDto>.Fail(ResponseType.InternalServerError, errors);
+        }
+
+        _logger.LogInformation("User updated successfully. UserId: {UserId}, OldUsername: {OldUsername}, NewUsername: {NewUsername}, UpdatedBy: {UpdatedBy}", 
+            dto.Id, oldUsername, user.UserName, _currentUserService.UserId);
 
         // 5️⃣ Return updated user
         return APIOperationResponse<UserDto>.Success(MapToDto(user));
@@ -193,15 +253,29 @@ public class UserService : IUserService
 
     public async Task<APIOperationResponse<bool>> DeleteAsync(string id)
     {
+        _logger.LogInformation("Deleting user. TargetUserId: {TargetUserId}, DeletedBy: {DeletedBy}", 
+            id, _currentUserService.UserId);
+        
         var user = await _userManager.FindByIdAsync(id);
         if (user == null)
+        {
+            _logger.LogWarning("User deletion failed: User not found. TargetUserId: {TargetUserId}, DeletedBy: {DeletedBy}", 
+                id, _currentUserService.UserId);
             return APIOperationResponse<bool>.Fail(ResponseType.NotFound, "User not found");
+        }
 
+        var username = user.UserName;
         var result = await _userManager.DeleteAsync(user);
         if (!result.Succeeded)
-            return APIOperationResponse<bool>.Fail(ResponseType.InternalServerError,
-                string.Join(",", result.Errors.Select(e => e.Description)));
+        {
+            var errors = string.Join(",", result.Errors.Select(e => e.Description));
+            _logger.LogWarning("User deletion failed: {Errors}. TargetUserId: {TargetUserId}, Username: {Username}, DeletedBy: {DeletedBy}", 
+                errors, id, username, _currentUserService.UserId);
+            return APIOperationResponse<bool>.Fail(ResponseType.InternalServerError, errors);
+        }
 
+        _logger.LogInformation("User deleted successfully. TargetUserId: {TargetUserId}, Username: {Username}, DeletedBy: {DeletedBy}", 
+            id, username, _currentUserService.UserId);
         return APIOperationResponse<bool>.Success(true, "User deleted successfully");
     }
 
@@ -251,18 +325,28 @@ public class UserService : IUserService
 
     public async Task<APIOperationResponse<bool>> UpdateUserRolesAsync(string userId, UpdateUserRolesDto dto)
     {
+        _logger.LogInformation("Updating user roles. TargetUserId: {TargetUserId}, NewRoles: {NewRoles}, UpdatedBy: {UpdatedBy}", 
+            userId, string.Join(", ", dto?.RoleNames ?? new List<string>()), _currentUserService.UserId);
+        
         var user = await _userManager.FindByIdAsync(userId);
         if (user == null)
         {
+            _logger.LogWarning("User roles update failed: User not found. TargetUserId: {TargetUserId}, UpdatedBy: {UpdatedBy}", 
+                userId, _currentUserService.UserId);
             return APIOperationResponse<bool>.NotFound("User not found.");
         }
 
         var currentRoles = await _userManager.GetRolesAsync(user);
+        _logger.LogInformation("Current user roles. TargetUserId: {TargetUserId}, Username: {Username}, CurrentRoles: {CurrentRoles}", 
+            userId, user.UserName, string.Join(", ", currentRoles));
 
         // Remove all current roles
         var removalResult = await _userManager.RemoveFromRolesAsync(user, currentRoles);
         if (!removalResult.Succeeded)
         {
+            var errors = string.Join(",", removalResult.Errors.Select(e => e.Description));
+            _logger.LogWarning("Failed to remove existing user roles. TargetUserId: {TargetUserId}, Errors: {Errors}", 
+                userId, errors);
             return APIOperationResponse<bool>.Fail(ResponseType.InternalServerError, "Failed to remove existing user roles.");
         }
 
@@ -270,9 +354,14 @@ public class UserService : IUserService
         var additionResult = await _userManager.AddToRolesAsync(user, dto.RoleNames);
         if (!additionResult.Succeeded)
         {
+            var errors = string.Join(",", additionResult.Errors.Select(e => e.Description));
+            _logger.LogWarning("Failed to add new user roles. TargetUserId: {TargetUserId}, Errors: {Errors}", 
+                userId, errors);
             return APIOperationResponse<bool>.Fail(ResponseType.InternalServerError, "Failed to add new user roles.");
         }
 
+        _logger.LogInformation("User roles updated successfully. TargetUserId: {TargetUserId}, Username: {Username}, OldRoles: {OldRoles}, NewRoles: {NewRoles}, UpdatedBy: {UpdatedBy}", 
+            userId, user.UserName, string.Join(", ", currentRoles), string.Join(", ", dto.RoleNames), _currentUserService.UserId);
         return APIOperationResponse<bool>.Success(true, "User roles updated successfully.");
     }
 
