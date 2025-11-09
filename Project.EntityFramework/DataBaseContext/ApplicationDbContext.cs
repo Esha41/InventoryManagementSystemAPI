@@ -39,7 +39,6 @@ namespace Ettad.EntityFramework.DataBaseContext
         public DbSet<InventoryDetail> InventoryDetails { get; set; }
         public DbSet<Manufacturer> Manufacturers { get; set; }
         public DbSet<NatureOption> NatureOptions { get; set; }
-        public DbSet<Nsn> Nsn { get; set; }
         public DbSet<PrimaryPurpos> PrimaryPurposes { get; set; }
         public DbSet<ProjectailMaterial> ProjectailMaterials { get; set; }
         public DbSet<Propellant> Propellants { get; set; }

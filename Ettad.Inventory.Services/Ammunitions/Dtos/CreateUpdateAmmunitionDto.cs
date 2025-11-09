@@ -32,7 +32,7 @@
 
         public long? NatureOptionId { get; set; }
 
-        public long NsnId { get; set; }
+        public string Nsn { get; set; }
 
         public long? PrimaryPurposId { get; set; }
 

@@ -64,16 +64,6 @@ public static class MainEntities
     };
 
     [Category(CrudPermissionsGenerator.OrganizationSettings)]
-    public static readonly CrudOperation[] Nsns = new[]
-    {
-        CrudOperation.Page,
-        CrudOperation.View,
-        CrudOperation.Create,
-        CrudOperation.Edit,
-        CrudOperation.Delete,
-    };
-
-    [Category(CrudPermissionsGenerator.OrganizationSettings)]
     public static readonly CrudOperation[] PrimaryPurposes = new[]
     {
         CrudOperation.Page,

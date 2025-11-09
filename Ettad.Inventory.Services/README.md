@@ -71,7 +71,7 @@ The `CreateUpdateAmmunitionDtoValidator` enforces the following rules:
 - **CaseLengthUnitId**: Required, must be greater than 0
 - **Primer**: Required, max 100 characters
 - **TotalWeight**: Must be greater than 0
-- **NsnId**: Required, must be greater than 0
+- **Nsn**: Required, max 255 characters (must be unique)
 - **CaseTypeId**: Required, must be greater than 0
 - **PropellantId**: Required, must be greater than 0
 - **CompatibilityId**: Required, must be greater than 0

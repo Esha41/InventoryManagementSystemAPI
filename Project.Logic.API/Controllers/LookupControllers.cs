@@ -92,23 +92,6 @@ namespace Ettad.Lookups.Domain.API.Controllers
 
     #endregion
 
-    #region Nsn
-
-    [CheckAuthorize(
-        "Permissions.Nsns.Page",
-        "Permissions.Nsns.View",
-        "Permissions.Nsns.Create",
-        "Permissions.Nsns.Edit",
-        "Permissions.Nsns.Delete"
-    )]
-    public class NsnController : LookupController<Nsn, CreateUpdateNsnDto>
-    {
-        public NsnController(ILookupService<Nsn, CreateUpdateNsnDto> iLookupService, ILogger<LookupController<Nsn, CreateUpdateNsnDto>> logger)
-            : base(iLookupService, logger) { }
-    }
-
-    #endregion
-
     #region PrimaryPurpos
 
     [CheckAuthorize(
