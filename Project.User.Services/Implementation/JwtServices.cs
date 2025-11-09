@@ -152,7 +152,7 @@ namespace Ettad.User.Services.Implementation
             if (!string.IsNullOrWhiteSpace(user.Email))
                 claims.Add(new Claim(JwtRegisteredClaimNames.Email, user.Email));
 
-            claims.Add(new Claim( "OrgId", user.OrganizationId.ToString()));
+         
 
             var roleNames = await _userManager.GetRolesAsync(user);
 

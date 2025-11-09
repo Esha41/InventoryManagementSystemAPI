@@ -81,7 +81,6 @@ namespace Ettad.EntityFramework.DataBaseContext
                     EmailConfirmed = true,
                     Email = "administrator@localhost",
                     UserName = "administrator@localhost",
-                    OrganizationId=1,
                     MilitoryId="0000",
                     FullNameEN="Admin",
                     FullNameAR="SuperAdmin",
