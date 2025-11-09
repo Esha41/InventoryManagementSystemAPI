@@ -22,8 +22,6 @@ using Microsoft.OpenApi.Models;
 using Moujam.Casiher.Comman.Models;
 using Serilog;
 using Serilog.Events;
-using Ettad.CrossCutting.Comman.Monitoring;
-using Ettad.Workflow.Service;
 using Ettad.Inventory.Service;
 using System.Text;
 using System.Text.Json;
@@ -47,12 +45,16 @@ try
 {
     var builder = WebApplication.CreateBuilder(args);
 
+    // Ensure Log Database exists before Serilog starts
+    EnsureLogDatabaseExists(builder.Configuration);
+
     // Add Serilog to the application
     builder.Host.UseSerilog((context, services, configuration) => configuration
         .ReadFrom.Configuration(context.Configuration)
         .ReadFrom.Services(services)
         .Enrich.FromLogContext()
-        .WithUserEnricher(services));
+        .WithUserEnricher(services)
+        .WriteToDatabaseIfConfigured(context.Configuration));
 
     var configuration = builder.Configuration;
 
@@ -295,4 +297,109 @@ finally
 {
     Log.Information("Shutting down Ettad Backend API");
     Log.CloseAndFlush();
+}
+
+/// <summary>
+/// Extension method to configure database logging with sensible defaults
+/// Much cleaner than 80+ lines of JSON configuration!
+/// </summary>
+static class SerilogDatabaseExtensions
+{
+    public static LoggerConfiguration WriteToDatabaseIfConfigured(
+        this LoggerConfiguration loggerConfiguration, 
+        IConfiguration configuration)
+    {
+        var connectionString = configuration.GetConnectionString("LogConnection");
+        
+        if (string.IsNullOrEmpty(connectionString))
+        {
+            Log.Warning("LogConnection not found. Database logging disabled.");
+            return loggerConfiguration;
+        }
+
+        var columnOptions = new Serilog.Sinks.MSSqlServer.ColumnOptions
+        {
+            AdditionalColumns = new System.Collections.ObjectModel.Collection<Serilog.Sinks.MSSqlServer.SqlColumn>
+            {
+                new Serilog.Sinks.MSSqlServer.SqlColumn { ColumnName = "UserId", DataType = System.Data.SqlDbType.NVarChar, DataLength = 128, AllowNull = true },
+                new Serilog.Sinks.MSSqlServer.SqlColumn { ColumnName = "CorrelationId", DataType = System.Data.SqlDbType.NVarChar, DataLength = 128, AllowNull = true },
+                new Serilog.Sinks.MSSqlServer.SqlColumn { ColumnName = "RequestPath", DataType = System.Data.SqlDbType.NVarChar, DataLength = 500, AllowNull = true },
+                new Serilog.Sinks.MSSqlServer.SqlColumn { ColumnName = "SourceContext", DataType = System.Data.SqlDbType.NVarChar, DataLength = 200, AllowNull = true },
+                new Serilog.Sinks.MSSqlServer.SqlColumn { ColumnName = "MachineName", DataType = System.Data.SqlDbType.NVarChar, DataLength = 128, AllowNull = true },
+                new Serilog.Sinks.MSSqlServer.SqlColumn { ColumnName = "ThreadId", DataType = System.Data.SqlDbType.Int, AllowNull = true }
+            }
+        };
+
+        // Remove MessageTemplate to avoid duplication
+        columnOptions.Store.Remove(Serilog.Sinks.MSSqlServer.StandardColumn.MessageTemplate);
+        
+        // Keep only what we need
+        columnOptions.Store.Add(Serilog.Sinks.MSSqlServer.StandardColumn.LogEvent);
+
+        var sinkOptions = new Serilog.Sinks.MSSqlServer.MSSqlServerSinkOptions
+        {
+            TableName = "Logs",
+            SchemaName = "dbo",
+            AutoCreateSqlTable = true,
+            BatchPostingLimit = 1000,
+            BatchPeriod = TimeSpan.FromSeconds(5)
+        };
+
+        return loggerConfiguration.WriteTo.MSSqlServer(
+            connectionString: connectionString,
+            sinkOptions: sinkOptions,
+            columnOptions: columnOptions,
+            restrictedToMinimumLevel: LogEventLevel.Information
+        );
+    }
+}
+
+/// <summary>
+/// Ensures the Log Database exists before the application starts logging
+/// Similar to how EttadDb is created via context.Database.Migrate()
+/// </summary>
+static void EnsureLogDatabaseExists(IConfiguration configuration)
+{
+    try
+    {
+        var logConnectionString = configuration.GetConnectionString("LogConnection");
+        if (string.IsNullOrEmpty(logConnectionString))
+        {
+            Log.Warning("LogConnection string not found. Skipping log database creation.");
+            return;
+        }
+
+        // Parse connection string to get database name
+        var builder = new Microsoft.Data.SqlClient.SqlConnectionStringBuilder(logConnectionString);
+        var databaseName = builder.InitialCatalog;
+        var masterConnectionString = logConnectionString.Replace(databaseName, "master");
+
+        using (var connection = new Microsoft.Data.SqlClient.SqlConnection(masterConnectionString))
+        {
+            connection.Open();
+            
+            // Check if database exists
+            var checkDbCommand = connection.CreateCommand();
+            checkDbCommand.CommandText = $"SELECT database_id FROM sys.databases WHERE Name = '{databaseName}'";
+            var exists = checkDbCommand.ExecuteScalar();
+
+            if (exists == null)
+            {
+                // Create database
+                var createDbCommand = connection.CreateCommand();
+                createDbCommand.CommandText = $"CREATE DATABASE [{databaseName}]";
+                createDbCommand.ExecuteNonQuery();
+                
+                Log.Information("Log database '{DatabaseName}' created automatically", databaseName);
+            }
+            else
+            {
+                Log.Information("Log database '{DatabaseName}' already exists", databaseName);
+            }
+        }
+    }
+    catch (Exception ex)
+    {
+        Log.Warning(ex, "Failed to create log database automatically. It may need to be created manually.");
+    }
 }
