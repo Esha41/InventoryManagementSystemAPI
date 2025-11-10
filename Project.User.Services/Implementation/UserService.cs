@@ -1,13 +1,15 @@
-﻿using Microsoft.AspNetCore.Identity;
-using Microsoft.EntityFrameworkCore;
-using Ettad.Application.Common.Interfaces;
+﻿using Ettad.Application.Common.Interfaces;
 using Ettad.Comman.Idenitity;
 using Ettad.CrossCutting.Comman.Idenitity;
 using Ettad.CrossCutting.Data.Repository;
+using Ettad.Data.Entities;
+using Ettad.EntityFramework.DataBaseContext;
 using Ettad.ResponseHandler.Consts;
 using Ettad.ResponseHandler.Models;
 using Ettad.User.Services.DTO;
 using Ettad.User.Services.Interfaces;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 
 public class UserService : IUserService
 {
@@ -15,11 +17,13 @@ public class UserService : IUserService
     private readonly RoleManager<ApplicationRole> _roleManager;
   //  private readonly CrossCuttingRepository<EmployeeContact> _employeeRepository;
     private readonly ICurrentUserService _currentUserService ;
+    private readonly ApplicationDbContext _context;
     public UserService(UserManager<ApplicationUser> userManager, RoleManager<ApplicationRole> roleManager
-         , ICurrentUserService currentUserService)
+         , ICurrentUserService currentUserService,ApplicationDbContext context)
     {
         _userManager = userManager;
         _roleManager = roleManager;
+        _context = context;
        // _employeeRepository = employeeRepository;
         _currentUserService = currentUserService;
     }
@@ -48,6 +52,7 @@ public class UserService : IUserService
 
         // 2️⃣ Get all roles upfront to avoid repeated DB calls
         var allRoles = await _roleManager.Roles.ToListAsync();
+        var allDepartments = await _context.Departments.ToListAsync();
 
         var mapped = new List<UserDto>();
 
@@ -63,7 +68,14 @@ public class UserService : IUserService
                 .Where(r => roleNames.Contains(r.Name))
                 .Select(r => r.Id)
                 .ToList();
+            dto.DeparmentId = user.DepartmentId;
 
+            dto.DepartmentName = allDepartments
+           .FirstOrDefault(d => d.Id == user.DepartmentId)?.NameEn ?? string.Empty;
+            dto.FullNameAR = user.FullNameAR;
+            dto.FullNameEN = user.FullNameEN;
+            dto.RankId = user.RankId;
+            dto.MilitoryId= user.MilitoryId;
             mapped.Add(dto);
         }
 
@@ -80,11 +92,15 @@ public class UserService : IUserService
         var user = new ApplicationUser
         {
             UserName = dto.UserName,
-            Email = dto.UserName,
+            Email = dto.Email,
             IsLdapUser = dto.IsLdapUser,
             ExtraEmployeesView = dto.ExtraEmployeesView,
             EmployeeId = dto.EmployeeId,
-            OrganizationId = dto.OrganizationId ?? _currentUserService.OrganizationId
+            DepartmentId = dto.DepartmentId,            
+            MilitoryId= dto.MilitoryId,
+            RankId = dto.RankId,
+            FullNameEN = dto.FullNameEN,
+            FullNameAR = dto.FullNameAR
         };
 
         // 2️⃣ Create user in DB
@@ -133,12 +149,16 @@ public class UserService : IUserService
             return APIOperationResponse<UserDto>.Fail(ResponseType.NotFound, "User not found");
 
         // 2️⃣ Update basic fields
-        user.UserName = dto.UserName ?? user.UserName;
-        user.Email = dto.UserName ?? user.Email;
+        user.UserName = dto.UserName;
+        user.Email =  dto.Email;
         user.IsLdapUser = dto.IsLdapUser;
         user.ExtraEmployeesView = dto.ExtraEmployeesView;
         user.EmployeeId = dto.EmployeeId;
-        user.OrganizationId = dto.OrganizationId;
+        user.DepartmentId= dto.DepartmentId;        
+        user.MilitoryId = dto.MilitoryId;
+        user.RankId = dto.RankId;
+        user.FullNameEN = dto.FullNameEN;
+        user.FullNameAR = dto.FullNameAR;
 
         // 3️⃣ Update roles
         if (dto.RoleIds != null)
@@ -243,7 +263,8 @@ public class UserService : IUserService
         {
             RoleId = role.Id,
             RoleName = role.Name,
-            IsSelected = userRoleNames.Contains(role.Name)
+            IsSelected = userRoleNames.Contains(role.Name),
+            DeparmentId=user.DepartmentId
         }).ToList();
 
         return APIOperationResponse<List<UserRoleDto>>.Success(userRolesList);
@@ -284,7 +305,10 @@ public class UserService : IUserService
             Email = user.Email,
             IsLdapUser = user.IsLdapUser,
             ExtraEmployeesView = user.ExtraEmployeesView,
-            EmployeeId = user.EmployeeId,
-            OrganizationId = user.OrganizationId
+            EmployeeId = user.EmployeeId,           
+            FullNameEN=user.FullNameEN,
+            FullNameAR=user.FullNameAR,
+            RankId = user.RankId,
+            MilitoryId = user.MilitoryId
         };
 }
