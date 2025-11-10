@@ -78,6 +78,7 @@ namespace Ettad.EntityFramework.DataBaseContext
                 var administrator = new ApplicationUser
                 {
                     IsLdapUser = false,
+                    IsSuperAdmin = true,
                     EmailConfirmed = true,
                     Email = "administrator@localhost",
                     UserName = "administrator@localhost",

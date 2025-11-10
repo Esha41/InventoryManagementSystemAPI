@@ -7,6 +7,7 @@ namespace Ettad.Data.IGenericRepository_IUOW
         Task<T> GetByIdAsync(long Id);
         Task<IEnumerable<T>> GetAllAsync();
         Task<T> AddAsync(T entity);
+        Task<IEnumerable<T>> AddRangeAsync(IEnumerable<T> entities);
         Task<T> UpdateAsync(T entity);
         Task DeleteAsync(T entity);
         Task<T> GetLastOrDefaultAsync<TKey>(Expression<Func<T, TKey>> keySelector);

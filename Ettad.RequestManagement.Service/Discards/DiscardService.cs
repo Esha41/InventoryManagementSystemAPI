@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using AutoMapper;
 using FluentValidation;
 using Ettad.CrossCutting.Data.Repository;
@@ -8,6 +9,7 @@ using Ettad.RequestManagement.Service.Common;
 using Ettad.ResponseHandler.Consts;
 using Ettad.ResponseHandler.Models;
 using Ettad.Application.Common.Interfaces;
+using Ettad.Notification.Service;
 using Microsoft.AspNetCore.Identity;
 using Ettad.Comman.Idenitity;
 using Microsoft.Extensions.Logging;
@@ -23,6 +25,7 @@ namespace Ettad.RequestManagement.Service.Discards
         private readonly IValidator<CreateDiscardDto> _createValidator;
         private readonly ICurrentUserService _currentUserService;
         private readonly IRequestNoGeneratorService _requestNoGeneratorService;
+        private readonly INotificationHelperService _notificationHelperService;
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly ILogger<DiscardService> _logger;
 
@@ -34,6 +37,7 @@ namespace Ettad.RequestManagement.Service.Discards
             IValidator<CreateDiscardDto> createValidator,
             ICurrentUserService currentUserService,
             IRequestNoGeneratorService requestNoGeneratorService,
+            INotificationHelperService notificationHelperService,
             UserManager<ApplicationUser> userManager,
             ILogger<DiscardService> logger)
         {
@@ -44,6 +48,7 @@ namespace Ettad.RequestManagement.Service.Discards
             _createValidator = createValidator;
             _currentUserService = currentUserService;
             _requestNoGeneratorService = requestNoGeneratorService;
+            _notificationHelperService = notificationHelperService;
             _userManager = userManager;
             _logger = logger;
         }
@@ -187,6 +192,11 @@ namespace Ettad.RequestManagement.Service.Discards
                 // Add to repository
                 var createdDiscard = await _discardRepository.AddAsync(discard);
 
+                await NotifyDiscardAsync(
+                    "Discard Created",
+                    $"Discard request {createdDiscard.RequestNo} has been created.",
+                    createdDiscard.Id);
+
                 _logger.LogInformation("Discard created successfully. DiscardId: {DiscardId}, RequestNo: {RequestNo}, ItemCount: {ItemCount}, User: {UserId}", 
                     createdDiscard.Id, createdDiscard.RequestNo, createdDiscard.RequestItems?.Count ?? 0, _currentUserService.UserId);
                 
@@ -229,6 +239,11 @@ namespace Ettad.RequestManagement.Service.Discards
                 // Update in repository
                 await _discardRepository.UpdateAsync(existingDiscard);
 
+                await NotifyDiscardAsync(
+                    "Discard Priority Updated",
+                    $"Discard request {existingDiscard.RequestNo} priority changed to {priority}.",
+                    existingDiscard.Id);
+
                 _logger.LogInformation("Discard priority updated successfully. DiscardId: {DiscardId}, RequestNo: {RequestNo}, OldPriority: {OldPriority}, NewPriority: {NewPriority}, User: {UserId}", 
                     id, existingDiscard.RequestNo, oldPriority, priority, _currentUserService.UserId);
                 
@@ -258,6 +273,11 @@ namespace Ettad.RequestManagement.Service.Discards
                 // Soft delete - interceptor will handle IsDeleted, DeletionDate, and DeletedBy automatically
                 await _discardRepository.DeleteAsync(discard);
 
+                await NotifyDiscardAsync(
+                    "Discard Deleted",
+                    $"Discard request {discard.RequestNo} has been deleted.",
+                    discard.Id);
+
                 _logger.LogInformation("Discard deleted successfully. DiscardId: {DiscardId}, RequestNo: {RequestNo}, User: {UserId}", 
                     id, discard.RequestNo, _currentUserService.UserId);
                 
@@ -267,6 +287,28 @@ namespace Ettad.RequestManagement.Service.Discards
             {
                 _logger.LogError(ex, "Error deleting discard. DiscardId: {DiscardId}, User: {UserId}", id, _currentUserService.UserId);
                 return APIOperationResponse<bool>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
+            }
+        }
+
+        private async Task NotifyDiscardAsync(string title, string message, long entityId)
+        {
+            try
+            {
+                var userId = _currentUserService.UserId;
+                var userIds = string.IsNullOrWhiteSpace(userId) ? null : new List<string> { userId };
+
+                await _notificationHelperService.SendNotificationAsync(
+                    title,
+                    message,
+                    entityType: nameof(Discard),
+                    entityId: entityId,
+                    userIds: userIds,
+                    senderId: userId,
+                    includeSuperAdmins: true);
+            }
+            catch
+            {
+                // Suppress notification errors to avoid impacting main workflow
             }
         }
 

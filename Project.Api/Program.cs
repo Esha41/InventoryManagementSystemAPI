@@ -27,6 +27,7 @@ using System.Text;
 using System.Text.Json;
 using Ettad.EntityFramework.Interceptors;
 using Ettad.RequestManagement.Service;
+using Ettad.Notification.Service;
 using System.Reflection;
 
 // Configure Serilog
@@ -71,6 +72,7 @@ try
         .AddApplicationPart(typeof(Ettad.User.API.Controllers.UsersController).Assembly)
         .AddApplicationPart(typeof(Ettad.Lookups.Domain.API.Controllers.DepartmentController).Assembly)
         .AddApplicationPart(typeof(Ettad.RequestManagement.API.Controllers.OrderController).Assembly)
+        .AddApplicationPart(typeof(Ettad.Notification.API.Controllers.NotificationController).Assembly)
         .AddJsonOptions(options =>
         {
             options.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
@@ -94,6 +96,7 @@ try
     #region Register Modules
     builder.Services.AddInventoryServices();
     builder.Services.AddRequestServices();
+    builder.Services.AddNotificationServices();
     #endregion
 
     // Register soft delete interceptor (ICurrentUserService is already registered above)
@@ -257,6 +260,10 @@ try
     app.UseAuthentication();
 
     app.UseAuthorization();
+    
+    // Map SignalR hub
+    app.MapHub<Ettad.Notification.Service.Hubs.NotificationHub>("/notificationHub");
+    
     app.MapControllers();
     app.UseCors("AllowAll");
 

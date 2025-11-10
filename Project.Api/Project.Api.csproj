@@ -42,6 +42,8 @@
     <ProjectReference Include="..\Project.Module.User\Ettad.User.API.csproj" />
     <ProjectReference Include="..\Project.Repository\Ettad.Repository.csproj" />
     <ProjectReference Include="..\Project.User.Services\Ettad.User.Services.csproj" />
+    <ProjectReference Include="..\Ettad.Notification.Service\Ettad.Notification.Service.csproj" />
+    <ProjectReference Include="..\Ettad.Notification.API\Ettad.Notification.API.csproj" />
   </ItemGroup>
 
 </Project>

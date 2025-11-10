@@ -3,26 +3,15 @@ using Ettad.Comman.Idenitity;
 using Ettad.CrossCutting.Comman.Exception;
 using Ettad.CrossCutting.Comman.Idenitity;
 using Ettad.CrossCutting.Comman.Time;
-using Ettad.Data.Entities;
-using Ettad.Data.IGenericRepository_IUOW;
 using Ettad.EntityFramework.DataBaseContext;
 using Ettad.ResponseHandler.Consts;
 using Ettad.ResponseHandler.Models;
-using Ettad.Services.Helpers;
 using Ettad.User.Services.DTO;
 using Ettad.User.Services.Helpers;
 using Ettad.User.Services.Interfaces;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.AspNetCore.Identity.Data;
-using Microsoft.AspNetCore.Mvc.ApiExplorer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using static Microsoft.ApplicationInsights.MetricDimensionNames.TelemetryContext;
 using Microsoft.Extensions.Logging;
 
 namespace Ettad.User.Services.Implementation
