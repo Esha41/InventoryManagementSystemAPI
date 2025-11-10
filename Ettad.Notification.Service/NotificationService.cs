@@ -1,14 +1,14 @@
 using AutoMapper;
 using FluentValidation;
-using Microsoft.AspNetCore.Identity;
 using Ettad.Application.Common.Interfaces;
-using Ettad.Comman.Idenitity;
-using Ettad.CrossCutting.Comman.Idenitity;
 using Ettad.CrossCutting.Data.Repository;
 using Ettad.Data.Entities;
 using Ettad.Notification.Service.Dtos;
 using Ettad.ResponseHandler.Consts;
 using Ettad.ResponseHandler.Models;
+using Ettad.User.Services.Interfaces;
+using System.Collections.Generic;
+using System.Linq;
 using NotificationEntity = Ettad.Data.Entities.Notification;
 
 
@@ -18,25 +18,22 @@ namespace Ettad.Notification.Service
     {
         private readonly ICrossCuttingRepository<NotificationEntity> _notificationRepository;
         private readonly ICrossCuttingRepository<NotificationReceiver> _receiverRepository;
-        private readonly UserManager<ApplicationUser> _userManager;
-        private readonly RoleManager<ApplicationRole> _roleManager;
         private readonly IMapper _mapper;
         private readonly IValidator<CreateNotificationDto> _validator;
         private readonly ICurrentUserService _currentUserService;
+        private readonly IUserService _userService;
 
         public NotificationService(
             ICrossCuttingRepository<NotificationEntity> notificationRepository,
             ICrossCuttingRepository<NotificationReceiver> receiverRepository,
-            UserManager<ApplicationUser> userManager,
-            RoleManager<ApplicationRole> roleManager,
+            IUserService userService,
             IMapper mapper,
             IValidator<CreateNotificationDto> validator,
             ICurrentUserService currentUserService)
         {
             _notificationRepository = notificationRepository;
             _receiverRepository = receiverRepository;
-            _userManager = userManager;
-            _roleManager = roleManager;
+            _userService = userService;
             _mapper = mapper;
             _validator = validator;
             _currentUserService = currentUserService;
@@ -68,55 +65,31 @@ namespace Ettad.Notification.Service
                     CreatedBy = _currentUserService.UserId // Audit: who created the record (null for system jobs)
                 };
 
-                // Get all user IDs to notify
-                var userIdsToNotify = new HashSet<string>();
-
-                // Add individual user IDs
-                if (dto.UserIds != null && dto.UserIds.Any())
+                var recipientsResult = await ResolveRecipientsAsync(dto);
+                if (!recipientsResult.Succeeded)
                 {
-                    foreach (var userId in dto.UserIds)
-                    {
-                        userIdsToNotify.Add(userId);
-                    }
+                    return APIOperationResponse<long>.Fail(
+                        ResolveResponseType(recipientsResult.StatusCode),
+                        recipientsResult.Message ?? "Unable to resolve notification recipients.");
                 }
 
-                // Add users from roles
-                if (dto.RoleIds != null && dto.RoleIds.Any())
-                {
-                    foreach (var roleId in dto.RoleIds)
-                    {
-                        var role = await _roleManager.FindByIdAsync(roleId);
-                        if (role != null && !string.IsNullOrEmpty(role.Name))
-                        {
-                            var usersInRole = await _userManager.GetUsersInRoleAsync(role.Name);
-                            foreach (var user in usersInRole)
-                            {
-                                userIdsToNotify.Add(user.Id);
-                            }
-                        }
-                    }
-                }
+                var userIdsToNotify = recipientsResult.Data ?? new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
                 if (!userIdsToNotify.Any())
                 {
                     return APIOperationResponse<long>.Fail(ResponseType.BadRequest, "At least one user or role must be specified");
                 }
 
-                // Save notification first
-                var createdNotification = await _notificationRepository.AddAsync(notification);
-
-                // Create receiver records
-                foreach (var userId in userIdsToNotify)
-                {
-                    var receiver = new NotificationReceiver
+                notification.Receivers = userIdsToNotify
+                    .Select(userId => new NotificationReceiver
                     {
-                        NotificationId = createdNotification.Id,
                         UserId = userId,
                         IsRead = false
-                    };
+                    })
+                    .ToList();
 
-                    await _receiverRepository.AddAsync(receiver);
-                }
+                // Save notification with receivers in a single transaction
+                var createdNotification = await _notificationRepository.AddAsync(notification);
 
                 return APIOperationResponse<long>.Success(createdNotification.Id, "Notification created successfully");
             }
@@ -247,6 +220,66 @@ namespace Ettad.Notification.Service
             {
                 return APIOperationResponse<int>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
             }
+        }
+
+        private async Task<APIOperationResponse<HashSet<string>>> ResolveRecipientsAsync(CreateNotificationDto dto)
+        {
+            var recipients = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            if (dto.UserIds != null)
+            {
+                foreach (var userId in dto.UserIds.Where(id => !string.IsNullOrWhiteSpace(id)))
+                {
+                    recipients.Add(userId);
+                }
+            }
+
+            if (dto.RoleIds != null && dto.RoleIds.Any())
+            {
+                var usersByRole = await _userService.GetByRoleIdsAsync(dto.RoleIds);
+                if (!usersByRole.Succeeded)
+                {
+                    return APIOperationResponse<HashSet<string>>.Fail(
+                        ResolveResponseType(usersByRole.StatusCode),
+                        usersByRole.Message ?? "Unable to fetch users for the provided roles.");
+                }
+
+                if (usersByRole.Data != null)
+                {
+                    foreach (var user in usersByRole.Data.Where(u => !string.IsNullOrWhiteSpace(u.Id)))
+                    {
+                        recipients.Add(user.Id);
+                    }
+                }
+            }
+
+            if (dto.IncludeSuperAdmins)
+            {
+                var superAdminsResult = await _userService.GetSuperAdminsAsync();
+                if (!superAdminsResult.Succeeded)
+                {
+                    return APIOperationResponse<HashSet<string>>.Fail(
+                        ResolveResponseType(superAdminsResult.StatusCode),
+                        superAdminsResult.Message ?? "Unable to fetch super administrators.");
+                }
+
+                if (superAdminsResult.Data != null)
+                {
+                    foreach (var user in superAdminsResult.Data.Where(u => !string.IsNullOrWhiteSpace(u.Id)))
+                    {
+                        recipients.Add(user.Id);
+                    }
+                }
+            }
+
+            return APIOperationResponse<HashSet<string>>.Success(recipients);
+        }
+
+        private static ResponseType ResolveResponseType(int statusCode)
+        {
+            return Enum.IsDefined(typeof(ResponseType), statusCode)
+                ? (ResponseType)statusCode
+                : ResponseType.BadRequest;
         }
 
     }

@@ -30,8 +30,11 @@ namespace Ettad.Notification.Service.Validators
                 .When(x => x.EntityId.HasValue);
 
             RuleFor(x => x)
-                .Must(x => (x.UserIds != null && x.UserIds.Any()) || (x.RoleIds != null && x.RoleIds.Any()))
-                .WithMessage("At least one UserId or RoleId must be specified");
+                .Must(x =>
+                    (x.UserIds != null && x.UserIds.Any()) ||
+                    (x.RoleIds != null && x.RoleIds.Any()) ||
+                    x.IncludeSuperAdmins)
+                .WithMessage("At least one UserId, RoleId, or IncludeSuperAdmins must be specified");
         }
     }
 }

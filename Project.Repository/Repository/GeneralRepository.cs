@@ -29,6 +29,13 @@ namespace Ettad.Repository.Repository
             
             return entity;
         }
+
+        public async Task<IEnumerable<T>> AddRangeAsync(IEnumerable<T> entities)
+        {
+            await _entity.AddRangeAsync(entities);
+            _context.SaveChanges();
+            return entities;
+        }
         #endregion
 
         #region Get all entities async

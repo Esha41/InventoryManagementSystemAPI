@@ -12,7 +12,7 @@ namespace Ettad.Data.Entities
 
         #region Navigation Properties
         public Notification Notification { get; set; }
-        public ApplicationUser? User { get; set; }
+        public ApplicationUser User { get; set; }
         #endregion
     }
 }

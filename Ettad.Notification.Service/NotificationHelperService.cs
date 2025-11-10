@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.EntityFrameworkCore;
 using Ettad.Comman.Idenitity;
 using Ettad.CrossCutting.Comman.Idenitity;
 using Ettad.Notification.Service.Dtos;
@@ -33,7 +34,8 @@ namespace Ettad.Notification.Service
             long? entityId = null, 
             List<string>? userIds = null, 
             List<string>? roleIds = null,
-            string? senderId = null)
+            string? senderId = null,
+            bool includeSuperAdmins = false)
         {
             // Create notification DTO
             var createDto = new CreateNotificationDto
@@ -44,7 +46,8 @@ namespace Ettad.Notification.Service
                 EntityId = entityId,
                 UserIds = userIds,
                 RoleIds = roleIds,
-                SenderId = senderId
+                SenderId = senderId,
+                IncludeSuperAdmins = includeSuperAdmins
             };
 
             // Save notification to database
@@ -78,6 +81,19 @@ namespace Ettad.Notification.Service
                             userIdsToNotify.Add(user.Id);
                         }
                     }
+                }
+            }
+
+            if (includeSuperAdmins)
+            {
+                var superAdminIds = await _userManager.Users
+                    .Where(u => u.IsSuperAdmin)
+                    .Select(u => u.Id)
+                    .ToListAsync();
+
+                foreach (var superAdminId in superAdminIds)
+                {
+                    userIdsToNotify.Add(superAdminId);
                 }
             }
 

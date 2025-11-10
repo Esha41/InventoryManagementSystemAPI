@@ -276,6 +276,54 @@ public class UserService : IUserService
         return APIOperationResponse<bool>.Success(true, "User roles updated successfully.");
     }
 
+    public async Task<APIOperationResponse<List<UserDto>>> GetByRoleIdsAsync(IEnumerable<string> roleIds)
+    {
+        if (roleIds == null)
+        {
+            return APIOperationResponse<List<UserDto>>.Success(new List<UserDto>());
+        }
+
+        var distinctRoleIds = roleIds.Where(id => !string.IsNullOrWhiteSpace(id)).Distinct().ToList();
+        if (!distinctRoleIds.Any())
+        {
+            return APIOperationResponse<List<UserDto>>.Success(new List<UserDto>());
+        }
+
+        var roleNames = await _roleManager.Roles
+            .Where(r => distinctRoleIds.Contains(r.Id))
+            .Select(r => r.Name)
+            .ToListAsync();
+
+        if (!roleNames.Any())
+        {
+            return APIOperationResponse<List<UserDto>>.Success(new List<UserDto>());
+        }
+
+        var usersMap = new Dictionary<string, ApplicationUser>();
+
+        foreach (var roleName in roleNames.Where(name => !string.IsNullOrWhiteSpace(name)))
+        {
+            var usersInRole = await _userManager.GetUsersInRoleAsync(roleName);
+            foreach (var user in usersInRole)
+            {
+                usersMap[user.Id] = user;
+            }
+        }
+
+        var users = usersMap.Values.Select(MapToDto).ToList();
+        return APIOperationResponse<List<UserDto>>.Success(users);
+    }
+
+    public async Task<APIOperationResponse<List<UserDto>>> GetSuperAdminsAsync()
+    {
+        var superAdmins = await _userManager.Users
+            .Where(u => u.IsSuperAdmin)
+            .ToListAsync();
+
+        var result = superAdmins.Select(MapToDto).ToList();
+        return APIOperationResponse<List<UserDto>>.Success(result);
+    }
+
     private UserDto MapToDto(ApplicationUser user) =>
         new()
         {
@@ -283,6 +331,7 @@ public class UserService : IUserService
             UserName = user.UserName,
             Email = user.Email,
             IsLdapUser = user.IsLdapUser,
+            IsSuperAdmin = user.IsSuperAdmin,
             ExtraEmployeesView = user.ExtraEmployeesView,
             EmployeeId = user.EmployeeId,
             OrganizationId = user.OrganizationId

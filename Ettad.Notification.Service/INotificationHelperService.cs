@@ -14,7 +14,8 @@ namespace Ettad.Notification.Service
             long? entityId = null, 
             List<string>? userIds = null, 
             List<string>? roleIds = null,
-            string? senderId = null);
+            string? senderId = null,
+            bool includeSuperAdmins = false);
     }
 }
 

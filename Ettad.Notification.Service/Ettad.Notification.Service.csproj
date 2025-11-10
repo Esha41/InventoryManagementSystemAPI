@@ -19,6 +19,7 @@
     <ProjectReference Include="..\Project.Repository\Ettad.Repository.csproj" />
     <ProjectReference Include="..\Project.ResponseHandler\Ettad.CrossCutting.ResponseHandler.csproj" />
     <ProjectReference Include="..\Project.Comman\Ettad.CrossCutting.Comman.csproj" />
+    <ProjectReference Include="..\Project.User.Services\Ettad.User.Services.csproj" />
   </ItemGroup>
 
 </Project>

@@ -9,6 +9,7 @@ namespace Ettad.Notification.Service.Dtos
         public List<string>? UserIds { get; set; }
         public List<string>? RoleIds { get; set; }
         public string? SenderId { get; set; }
+        public bool IncludeSuperAdmins { get; set; }
     }
 }
 
