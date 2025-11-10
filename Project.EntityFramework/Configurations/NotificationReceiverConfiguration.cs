@@ -33,17 +33,8 @@ namespace Ettad.EntityFramework.Configurations
                 .OnDelete(DeleteBehavior.Restrict)
                 .IsRequired(false);
 
-            // Relationship to ApplicationRole (optional)
-            builder.HasOne(x => x.Role)
-                .WithMany()
-                .HasForeignKey(x => x.RoleId)
-                .OnDelete(DeleteBehavior.Restrict)
-                .IsRequired(false);
-
-
             builder.HasIndex(x => x.NotificationId);
             builder.HasIndex(x => x.UserId);
-            builder.HasIndex(x => x.RoleId);
             builder.HasIndex(x => x.IsRead);
         }
     }

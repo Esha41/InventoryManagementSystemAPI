@@ -32,7 +32,8 @@ namespace Ettad.Notification.Service
             string? entityType = null, 
             long? entityId = null, 
             List<string>? userIds = null, 
-            List<string>? roleIds = null)
+            List<string>? roleIds = null,
+            string? senderId = null)
         {
             // Create notification DTO
             var createDto = new CreateNotificationDto
@@ -42,7 +43,8 @@ namespace Ettad.Notification.Service
                 EntityType = entityType,
                 EntityId = entityId,
                 UserIds = userIds,
-                RoleIds = roleIds
+                RoleIds = roleIds,
+                SenderId = senderId
             };
 
             // Save notification to database
@@ -87,6 +89,7 @@ namespace Ettad.Notification.Service
                 Message = message,
                 EntityType = entityType,
                 EntityId = entityId,
+                SenderId = senderId,
                 CreationDate = DateTime.UtcNow,
                 IsRead = false
             };

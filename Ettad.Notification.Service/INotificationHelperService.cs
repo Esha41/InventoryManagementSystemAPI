@@ -13,7 +13,8 @@ namespace Ettad.Notification.Service
             string? entityType = null, 
             long? entityId = null, 
             List<string>? userIds = null, 
-            List<string>? roleIds = null);
+            List<string>? roleIds = null,
+            string? senderId = null);
     }
 }
 

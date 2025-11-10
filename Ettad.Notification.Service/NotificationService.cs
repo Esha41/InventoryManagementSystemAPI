@@ -55,14 +55,17 @@ namespace Ettad.Notification.Service
                 }
 
                 // Create notification entity
+                // CreatedBy: Audit trail - who/what created this record (could be null for system jobs)
+                // SenderId: Business field - who the notification appears to be from (null = system notification)
                 var notification = new NotificationEntity
                 {
                     Title = dto.Title,
                     Message = dto.Message,
                     EntityType = dto.EntityType,
                     EntityId = dto.EntityId,
+                    SenderId = dto.SenderId, // Don't default - let caller decide (null = system notification)
                     CreationDate = DateTime.UtcNow,
-                    CreatedBy = _currentUserService.UserId
+                    CreatedBy = _currentUserService.UserId // Audit: who created the record (null for system jobs)
                 };
 
                 // Get all user IDs to notify
@@ -103,42 +106,15 @@ namespace Ettad.Notification.Service
                 var createdNotification = await _notificationRepository.AddAsync(notification);
 
                 // Create receiver records
-                var receivers = new List<NotificationReceiver>();
                 foreach (var userId in userIdsToNotify)
                 {
                     var receiver = new NotificationReceiver
                     {
                         NotificationId = createdNotification.Id,
                         UserId = userId,
-                        RoleId = null,
                         IsRead = false
                     };
-                    // Validate receiver: either UserId or RoleId must be set, but not both
-                    ValidateReceiver(receiver);
-                    receivers.Add(receiver);
-                }
 
-                // Also create role-based receiver records for tracking
-                if (dto.RoleIds != null && dto.RoleIds.Any())
-                {
-                    foreach (var roleId in dto.RoleIds)
-                    {
-                        var roleReceiver = new NotificationReceiver
-                        {
-                            NotificationId = createdNotification.Id,
-                            UserId = null,
-                            RoleId = roleId,
-                            IsRead = false
-                        };
-                        // Validate receiver: either UserId or RoleId must be set, but not both
-                        ValidateReceiver(roleReceiver);
-                        receivers.Add(roleReceiver);
-                    }
-                }
-
-                // Save all receivers
-                foreach (var receiver in receivers)
-                {
                     await _receiverRepository.AddAsync(receiver);
                 }
 
@@ -176,7 +152,8 @@ namespace Ettad.Notification.Service
                 var notifications = await _notificationRepository.FindAsync(
                     n => notificationIds.Contains(n.Id) && !n.IsDeleted,
                     false,
-                    nameof(NotificationEntity.Receivers)
+                    nameof(NotificationEntity.Receivers),
+                    nameof(NotificationEntity.Sender)
                 );
 
                 // Map to DTOs with user-specific read status
@@ -272,25 +249,6 @@ namespace Ettad.Notification.Service
             }
         }
 
-        /// <summary>
-        /// Validates that a NotificationReceiver has exactly one of UserId or RoleId set (not both, not neither).
-        /// This replaces the database check constraint for better maintainability.
-        /// </summary>
-        private void ValidateReceiver(NotificationReceiver receiver)
-        {
-            var hasUserId = !string.IsNullOrEmpty(receiver.UserId);
-            var hasRoleId = !string.IsNullOrEmpty(receiver.RoleId);
-
-            if (!hasUserId && !hasRoleId)
-            {
-                throw new InvalidOperationException("NotificationReceiver must have either UserId or RoleId set, but both are null.");
-            }
-
-            if (hasUserId && hasRoleId)
-            {
-                throw new InvalidOperationException("NotificationReceiver cannot have both UserId and RoleId set. Only one should be provided.");
-            }
-        }
     }
 }
 

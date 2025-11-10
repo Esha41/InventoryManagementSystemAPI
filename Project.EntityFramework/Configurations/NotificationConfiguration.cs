@@ -26,6 +26,15 @@ namespace Ettad.EntityFramework.Configurations
             builder.Property(x => x.EntityId)
                 .IsRequired(false); // Nullable for system/broadcast notifications
 
+            builder.Property(x => x.SenderId)
+                .IsRequired(false);
+
+            builder.HasOne(x => x.Sender)
+                .WithMany()
+                .HasForeignKey(x => x.SenderId)
+                .OnDelete(DeleteBehavior.Restrict)
+                .IsRequired(false);
+
             builder.HasMany(x => x.Receivers)
                 .WithOne(x => x.Notification)
                 .HasForeignKey(x => x.NotificationId)
@@ -33,6 +42,7 @@ namespace Ettad.EntityFramework.Configurations
 
             builder.HasIndex(x => x.EntityType);
             builder.HasIndex(x => x.EntityId);
+            builder.HasIndex(x => x.SenderId);
             builder.HasIndex(x => x.CreationDate);
         }
     }

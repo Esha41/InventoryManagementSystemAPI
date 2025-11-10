@@ -8,6 +8,7 @@ namespace Ettad.Notification.Service.Dtos
         public long? EntityId { get; set; } // Optional: ID of the related entity row
         public List<string>? UserIds { get; set; }
         public List<string>? RoleIds { get; set; }
+        public string? SenderId { get; set; }
     }
 }
 
