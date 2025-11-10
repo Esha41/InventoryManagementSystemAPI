@@ -8,6 +8,8 @@ using Ettad.ResponseHandler.Consts;
 using Ettad.ResponseHandler.Models;
 using Ettad.Application.Common.Interfaces;
 using Ettad.RequestManagement.Service.Common;
+using Microsoft.AspNetCore.Identity;
+using Ettad.Comman.Idenitity;
 
 namespace Ettad.RequestManagement.Service.Orders
 {
@@ -21,6 +23,7 @@ namespace Ettad.RequestManagement.Service.Orders
         private readonly IValidator<UpdateOrderDto> _updateValidator;
         private readonly ICurrentUserService _currentUserService;
         private readonly IRequestNoGeneratorService _requestNoGeneratorService;
+        private readonly UserManager<ApplicationUser> _userManager;
 
         public OrderService(
             ICrossCuttingRepository<Order> orderRepository,
@@ -30,7 +33,8 @@ namespace Ettad.RequestManagement.Service.Orders
             IValidator<CreateOrderDto> createValidator,
             IValidator<UpdateOrderDto> updateValidator,
             ICurrentUserService currentUserService,
-            IRequestNoGeneratorService requestNoGeneratorService)
+            IRequestNoGeneratorService requestNoGeneratorService,
+            UserManager<ApplicationUser> userManager)
         {
             _orderRepository = orderRepository;
             _requestItemRepository = requestItemRepository;
@@ -40,6 +44,7 @@ namespace Ettad.RequestManagement.Service.Orders
             _updateValidator = updateValidator;
             _currentUserService = currentUserService;
             _requestNoGeneratorService = requestNoGeneratorService;
+            _userManager = userManager;
         }
 
         public async Task<APIOperationResponse<OrderDto>> GetByIdAsync(long id)
@@ -61,6 +66,13 @@ namespace Ettad.RequestManagement.Service.Orders
                     return APIOperationResponse<OrderDto>.Fail(ResponseType.NotFound, "Order not found");
 
                 var dto = _mapper.Map<OrderDto>(order);
+                
+                // Fallback: If RequesterName is null but we have a CreatedBy user, use that user's name
+                if (string.IsNullOrEmpty(dto.RequesterName) && !string.IsNullOrEmpty(order.CreatedBy))
+                {
+                    dto.RequesterName = await GetUserNameByIdAsync(order.CreatedBy);
+                }
+                
                 return APIOperationResponse<OrderDto>.Success(dto);
             }
             catch (Exception ex)
@@ -85,6 +97,17 @@ namespace Ettad.RequestManagement.Service.Orders
                 );
 
                 var dtos = _mapper.Map<List<OrderDto>>(orders);
+                
+                // Fallback: Populate RequesterName from CreatedBy user if not set
+                foreach (var dto in dtos)
+                {
+                    var order = orders.FirstOrDefault(o => o.Id == dto.Id);
+                    if (order != null && string.IsNullOrEmpty(dto.RequesterName) && !string.IsNullOrEmpty(order.CreatedBy))
+                    {
+                        dto.RequesterName = await GetUserNameByIdAsync(order.CreatedBy);
+                    }
+                }
+                
                 return APIOperationResponse<List<OrderDto>>.Success(dtos);
             }
             catch (Exception ex)
@@ -233,6 +256,35 @@ namespace Ettad.RequestManagement.Service.Orders
                 return APIOperationResponse<bool>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
             }
         }
+
+        /// <summary>
+        /// Get user name by user ID from Identity system
+        /// </summary>
+        private async Task<string> GetUserNameByIdAsync(string userId)
+        {
+            try
+            {
+                var user = await _userManager.FindByIdAsync(userId);
+                if (user != null)
+                {
+                    // Try FullNameEN first, then FullNameAR, then UserName
+                    if (!string.IsNullOrEmpty(user.FullNameEN))
+                        return user.FullNameEN;
+                    if (!string.IsNullOrEmpty(user.FullNameAR))
+                        return user.FullNameAR;
+                    if (!string.IsNullOrEmpty(user.UserName))
+                        return user.UserName;
+                }
+                
+                return "System User";
+            }
+            catch
+            {
+                return "System User";
+            }
+        }
     }
 }
+
+
 

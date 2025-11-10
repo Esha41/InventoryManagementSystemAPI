@@ -8,6 +8,8 @@ using Ettad.RequestManagement.Service.Common;
 using Ettad.ResponseHandler.Consts;
 using Ettad.ResponseHandler.Models;
 using Ettad.Application.Common.Interfaces;
+using Microsoft.AspNetCore.Identity;
+using Ettad.Comman.Idenitity;
 
 namespace Ettad.RequestManagement.Service.Discards
 {
@@ -20,6 +22,7 @@ namespace Ettad.RequestManagement.Service.Discards
         private readonly IValidator<CreateDiscardDto> _createValidator;
         private readonly ICurrentUserService _currentUserService;
         private readonly IRequestNoGeneratorService _requestNoGeneratorService;
+        private readonly UserManager<ApplicationUser> _userManager;
 
         public DiscardService(
             ICrossCuttingRepository<Discard> discardRepository,
@@ -28,7 +31,8 @@ namespace Ettad.RequestManagement.Service.Discards
             IMapper mapper,
             IValidator<CreateDiscardDto> createValidator,
             ICurrentUserService currentUserService,
-            IRequestNoGeneratorService requestNoGeneratorService)
+            IRequestNoGeneratorService requestNoGeneratorService,
+            UserManager<ApplicationUser> userManager)
         {
             _discardRepository = discardRepository;
             _requestItemRepository = requestItemRepository;
@@ -37,6 +41,7 @@ namespace Ettad.RequestManagement.Service.Discards
             _createValidator = createValidator;
             _currentUserService = currentUserService;
             _requestNoGeneratorService = requestNoGeneratorService;
+            _userManager = userManager;
         }
 
         public async Task<APIOperationResponse<DiscardDto>> GetByIdAsync(long id)
@@ -59,6 +64,13 @@ namespace Ettad.RequestManagement.Service.Discards
                     return APIOperationResponse<DiscardDto>.Fail(ResponseType.NotFound, "Discard not found");
 
                 var dto = _mapper.Map<DiscardDto>(discard);
+                
+                // Fallback: If RequesterName is null but we have a CreatedBy user, use that user's name
+                if (string.IsNullOrEmpty(dto.RequesterName) && !string.IsNullOrEmpty(discard.CreatedBy))
+                {
+                    dto.RequesterName = await GetUserNameByIdAsync(discard.CreatedBy);
+                }
+                
                 return APIOperationResponse<DiscardDto>.Success(dto);
             }
             catch (Exception ex)
@@ -84,6 +96,17 @@ namespace Ettad.RequestManagement.Service.Discards
                 );
 
                 var dtos = _mapper.Map<List<DiscardDto>>(discards);
+                
+                // Fallback: Populate RequesterName from CreatedBy user if not set
+                foreach (var dto in dtos)
+                {
+                    var discard = discards.FirstOrDefault(d => d.Id == dto.Id);
+                    if (discard != null && string.IsNullOrEmpty(dto.RequesterName) && !string.IsNullOrEmpty(discard.CreatedBy))
+                    {
+                        dto.RequesterName = await GetUserNameByIdAsync(discard.CreatedBy);
+                    }
+                }
+                
                 return APIOperationResponse<List<DiscardDto>>.Success(dtos);
             }
             catch (Exception ex)
@@ -187,6 +210,33 @@ namespace Ettad.RequestManagement.Service.Discards
             catch (Exception ex)
             {
                 return APIOperationResponse<bool>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Get user name by user ID from Identity system
+        /// </summary>
+        private async Task<string> GetUserNameByIdAsync(string userId)
+        {
+            try
+            {
+                var user = await _userManager.FindByIdAsync(userId);
+                if (user != null)
+                {
+                    // Try FullNameEN first, then FullNameAR, then UserName
+                    if (!string.IsNullOrEmpty(user.FullNameEN))
+                        return user.FullNameEN;
+                    if (!string.IsNullOrEmpty(user.FullNameAR))
+                        return user.FullNameAR;
+                    if (!string.IsNullOrEmpty(user.UserName))
+                        return user.UserName;
+                }
+                
+                return "System User";
+            }
+            catch
+            {
+                return "System User";
             }
         }
     }
