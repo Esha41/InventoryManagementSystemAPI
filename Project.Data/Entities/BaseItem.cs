@@ -12,6 +12,8 @@ namespace Ettad.Data.Entities
         public ItemType ItemType { get; set; }
        
         public string BatchNo { get; set; }
+
+        public string Nsn { get; set; }
         
         public long HccId  { get; set; }
         

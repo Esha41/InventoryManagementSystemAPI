@@ -370,10 +370,10 @@ namespace Ettad.User.Services.Implementation
             var usersInRole = await _userManager.GetUsersInRoleAsync(role.Name);
 
             
-            var orgId = _currentUserService.OrganizationId;
-            var usersInOrg = usersInRole.Where(u => u.OrganizationId == orgId);
+          
+            
 
-            var userDtos = usersInOrg.Select(u => new UserInRoleDto
+            var userDtos = usersInRole.Select(u => new UserInRoleDto
             {
                 Id = u.Id,
                 UserName = u.UserName
@@ -402,11 +402,7 @@ namespace Ettad.User.Services.Implementation
                     continue;
                 }
 
-                if (user.OrganizationId != orgId)
-                {
-                    errors.Add($"You do not have permission to modify user '{user.UserName}'.");
-                    continue;
-                }
+                
 
                 if (await _userManager.IsInRoleAsync(user, role.Name))
                 {

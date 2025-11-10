@@ -7,6 +7,7 @@ using Ettad.RequestManagement.Service.Orders.Dto;
 using Ettad.ResponseHandler.Consts;
 using Ettad.ResponseHandler.Models;
 using Ettad.Application.Common.Interfaces;
+using Ettad.RequestManagement.Service.Common;
 using Microsoft.Extensions.Logging;
 
 namespace Ettad.RequestManagement.Service.Orders
@@ -15,27 +16,33 @@ namespace Ettad.RequestManagement.Service.Orders
     {
         private readonly ICrossCuttingRepository<Order> _orderRepository;
         private readonly ICrossCuttingRepository<RequestItem> _requestItemRepository;
+        private readonly ICrossCuttingRepository<RequestPurpose> _requestPurposeRepository;
         private readonly IMapper _mapper;
         private readonly IValidator<CreateOrderDto> _createValidator;
         private readonly IValidator<UpdateOrderDto> _updateValidator;
         private readonly ICurrentUserService _currentUserService;
+        private readonly IRequestNoGeneratorService _requestNoGeneratorService;
         private readonly ILogger<OrderService> _logger;
 
         public OrderService(
             ICrossCuttingRepository<Order> orderRepository,
             ICrossCuttingRepository<RequestItem> requestItemRepository,
+            ICrossCuttingRepository<RequestPurpose> requestPurposeRepository,
             IMapper mapper,
             IValidator<CreateOrderDto> createValidator,
             IValidator<UpdateOrderDto> updateValidator,
             ICurrentUserService currentUserService,
-            ILogger<OrderService> logger)
+            ILogger<OrderService> logger,
+            IRequestNoGeneratorService requestNoGeneratorService)
         {
             _orderRepository = orderRepository;
             _requestItemRepository = requestItemRepository;
+            _requestPurposeRepository = requestPurposeRepository;
             _mapper = mapper;
             _createValidator = createValidator;
             _updateValidator = updateValidator;
             _currentUserService = currentUserService;
+            _requestNoGeneratorService = requestNoGeneratorService;
             _logger = logger;
         }
 
@@ -53,7 +60,7 @@ namespace Ettad.RequestManagement.Service.Orders
                     nameof(Order.Reciever),
                     nameof(Order.Depot),
                     nameof(Order.RequestPurpose),
-                    nameof(Order.RequestItems)
+                    $"{nameof(Order.RequestItems)}.{nameof(RequestItem.Item)}"
                 );
 
                 if (order == null)
@@ -88,7 +95,7 @@ namespace Ettad.RequestManagement.Service.Orders
                     nameof(Order.Reciever),
                     nameof(Order.Depot),
                     nameof(Order.RequestPurpose),
-                    nameof(Order.RequestItems)
+                    $"{nameof(Order.RequestItems)}.{nameof(RequestItem.Item)}"
                 );
 
                 var dtos = _mapper.Map<List<OrderDto>>(orders);
@@ -119,6 +126,15 @@ namespace Ettad.RequestManagement.Service.Orders
                     return APIOperationResponse<long>.Fail(ResponseType.BadRequest, errors);
                 }
 
+                // Ensure request purpose is for orders
+                var requestPurpose = await _requestPurposeRepository.FindOneAsync(
+                    rp => rp.Id == inputDto.RequestPurposeId && rp.RequestType == RequestType.Order && !rp.IsDeleted);
+
+                if (requestPurpose == null)
+                {
+                    return APIOperationResponse<long>.Fail(ResponseType.BadRequest, "Request purpose must be of type Order");
+                }
+
                 // Map DTO to entity (exclude RequestItems for now)
                 var order = _mapper.Map<Order>(inputDto);
                 order.RequestNo = inputDto.OrderNo; // Explicitly set RequestNo from OrderNo
@@ -126,6 +142,9 @@ namespace Ettad.RequestManagement.Service.Orders
                 order.Status = RequestStatus.New; // Always set initial status to New
                 order.CreationDate = DateTime.UtcNow;
                 order.CreatedBy = _currentUserService.UserId;
+
+                // Generate request number
+                order.RequestNo = await _requestNoGeneratorService.GenerateRequestNoAsync(RequestType.Order, inputDto.DepartmentId);
                 
                 // Initialize RequestItems collection if null
                 if (order.RequestItems == null)

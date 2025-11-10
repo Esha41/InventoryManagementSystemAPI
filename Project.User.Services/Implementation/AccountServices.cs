@@ -1,19 +1,22 @@
-using Microsoft.AspNetCore.Identity;
-using Microsoft.AspNetCore.Identity.Data;
-using Microsoft.AspNetCore.Mvc.ApiExplorer;
-using Microsoft.Extensions.Options;
 using Ettad.Application.Common.Interfaces;
 using Ettad.Comman.Idenitity;
 using Ettad.CrossCutting.Comman.Exception;
 using Ettad.CrossCutting.Comman.Idenitity;
 using Ettad.CrossCutting.Comman.Time;
+using Ettad.Data.Entities;
 using Ettad.Data.IGenericRepository_IUOW;
+using Ettad.EntityFramework.DataBaseContext;
 using Ettad.ResponseHandler.Consts;
 using Ettad.ResponseHandler.Models;
 using Ettad.Services.Helpers;
 using Ettad.User.Services.DTO;
 using Ettad.User.Services.Helpers;
 using Ettad.User.Services.Interfaces;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity.Data;
+using Microsoft.AspNetCore.Mvc.ApiExplorer;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -40,20 +43,21 @@ namespace Ettad.User.Services.Implementation
         private readonly IEmailSender _emailSender;
         private readonly ILogger<AccountServices> _logger;
 
+        private readonly ApplicationDbContext _context;
         public AccountServices(
             IJwtServices jwtServices,
             ISettingsProvider settingsProvider,
-//IUnitOfWork unitOfWork,
+            //IUnitOfWork unitOfWork,
             ILdapAuthenticator ldapAuthenticator,
             IDateTimeProvider dateTimeProvider,
             IOptions<JwtOptions> jwtOptions,
             IOptions<AdminUsersOptions> adminUsers, UserManager<ApplicationUser> userRepository,
-            SignInManager<ApplicationUser> signInManager, RoleManager<ApplicationRole> roleManager, ICurrentUserService currentUserService , IEmailSender emailSender,
-            ILogger<AccountServices> logger)
+            SignInManager<ApplicationUser> signInManager, RoleManager<ApplicationRole> roleManager, ICurrentUserService currentUserService, IEmailSender emailSender,
+            ILogger<AccountServices> logger, ApplicationDbContext context)
         {
             _jwtServices = jwtServices ?? throw new ArgumentNullException(nameof(jwtServices));
             _settingsProvider = settingsProvider ?? throw new ArgumentNullException(nameof(settingsProvider));
-           // _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
+            // _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
             _ldapAuthenticator = ldapAuthenticator ?? throw new ArgumentNullException(nameof(ldapAuthenticator));
             _dateTimeProvider = dateTimeProvider ?? throw new ArgumentNullException(nameof(dateTimeProvider));
             _jwtOptions = jwtOptions?.Value ?? new JwtOptions();
@@ -63,7 +67,9 @@ namespace Ettad.User.Services.Implementation
             _roleManager = roleManager;
             _currentUserService = currentUserService;
             _emailSender = emailSender;
+            _context = context;
             _logger = logger;
+            _context = context;
         }
 
         public async Task<APIOperationResponse<AuthenticatedResponse>> Login(
@@ -195,6 +201,7 @@ namespace Ettad.User.Services.Implementation
             var resolvedUsername = $"{loginInformation.Username.Trim()}@{ldapSettings.LdapDomain}";
             var user = await _userRepository.FindByNameAsync(resolvedUsername)
                        ?? throw new ApiException("server.invalidLogin");
+            
 
             return await CreateAndReturnAuthResponseAsync(user, cancellationToken);
         }
@@ -218,8 +225,23 @@ namespace Ettad.User.Services.Implementation
 
             await _userRepository.UpdateAsync(user);
 
+            var departmentName = string.Empty;
+            if (user.DepartmentId.HasValue)
+            {
+                departmentName = await _context.Departments
+                    .Where(d => d.Id == user.DepartmentId.Value)
+                    .Select(d => d.NameEn ?? d.NameAr ?? string.Empty)
+                    .FirstOrDefaultAsync(cancellationToken) ?? string.Empty;
+            }
+
             var authResponse = await _jwtServices.GenerateJWTokenAsync(user.Id);
             authResponse.RefreshToken = refreshToken;
+            authResponse.DepartmentId = user.DepartmentId;
+            authResponse.DepartmentName = string.IsNullOrWhiteSpace(departmentName) ? null : departmentName;
+            authResponse.EmployeeId = user.EmployeeId;           
+            authResponse.UserName = user.UserName;
+            authResponse.NameEn = user.FullNameEN;
+            authResponse.NameAr = user.FullNameAR;
             return authResponse;
         }
         public async Task<APIOperationResponse<List<ClaimDto>>> GetRoleClaimsOnlyAsync()

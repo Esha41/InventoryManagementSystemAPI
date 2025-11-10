@@ -11,16 +11,16 @@ namespace Ettad.EntityFramework.Configurations
         {
             builder.ToTable("Ammunitions");
 
+            builder.Property(x => x.BulletDiameter)
+                .IsRequired();
+
+            builder.Property(x => x.CaseLength)
+                .IsRequired();
+
             builder.HasOne(x => x.NatureOption)
                 .WithMany()
                 .IsRequired(false)
                 .HasForeignKey(x => x.NatureOptionId)
-                .OnDelete(DeleteBehavior.Restrict);
-
-            builder.HasOne(x => x.Nsn)
-                .WithMany()
-                .IsRequired(true)
-                .HasForeignKey(x => x.NsnId)
                 .OnDelete(DeleteBehavior.Restrict);
 
             builder.HasOne(x => x.PrimaryPurpos)
@@ -99,7 +99,7 @@ namespace Ettad.EntityFramework.Configurations
                     Primer = "Boxer",
                     TotalWeight = 12.0m,
                     NatureOptionId = 1,
-                    NsnId = 1,
+                    Nsn = "1305-01-000-0001",
                     PrimaryPurposId = 1,
                     ProjectileColorId = 1,
                     ProjectailMaterialId = 1,
@@ -129,7 +129,7 @@ namespace Ettad.EntityFramework.Configurations
                     Primer = "Berdan",
                     TotalWeight = 24.0m,
                     NatureOptionId = 2,
-                    NsnId = 2,
+                    Nsn = "1305-01-000-0002",
                     PrimaryPurposId = 2,
                     ProjectileColorId = 2,
                     ProjectailMaterialId = 2,
@@ -159,7 +159,7 @@ namespace Ettad.EntityFramework.Configurations
                     Primer = "Boxer",
                     TotalWeight = 7.5m,
                     NatureOptionId = 3,
-                    NsnId = 3,
+                    Nsn = "1305-01-000-0003",
                     PrimaryPurposId = 3,
                     ProjectileColorId = 3,
                     ProjectailMaterialId = 3,
@@ -189,7 +189,7 @@ namespace Ettad.EntityFramework.Configurations
                     Primer = "Berdan",
                     TotalWeight = 115.0m,
                     NatureOptionId = 1,
-                    NsnId = 1,
+                    Nsn = "1305-01-000-0004",
                     PrimaryPurposId = 1,
                     ProjectileColorId = 1,
                     ProjectailMaterialId = 1,
@@ -219,7 +219,7 @@ namespace Ettad.EntityFramework.Configurations
                     Primer = "Boxer",
                     TotalWeight = 23.0m,
                     NatureOptionId = 2,
-                    NsnId = 2,
+                    Nsn = "1305-01-000-0005",
                     PrimaryPurposId = 2,
                     ProjectileColorId = 2,
                     ProjectailMaterialId = 2,
@@ -249,7 +249,7 @@ namespace Ettad.EntityFramework.Configurations
                     Primer = "Boxer",
                     TotalWeight = 15.0m,
                     NatureOptionId = 3,
-                    NsnId = 3,
+                    Nsn = "1305-01-000-0006",
                     PrimaryPurposId = 3,
                     ProjectileColorId = 3,
                     ProjectailMaterialId = 3,
@@ -279,7 +279,7 @@ namespace Ettad.EntityFramework.Configurations
                     Primer = "Berdan",
                     TotalWeight = 130.0m,
                     NatureOptionId = 1,
-                    NsnId = 1,
+                    Nsn = "1305-01-000-0007",
                     PrimaryPurposId = 1,
                     ProjectileColorId = 1,
                     ProjectailMaterialId = 1,
@@ -309,7 +309,7 @@ namespace Ettad.EntityFramework.Configurations
                     Primer = "Berdan",
                     TotalWeight = 10.5m,
                     NatureOptionId = 2,
-                    NsnId = 2,
+                    Nsn = "1305-01-000-0008",
                     PrimaryPurposId = 2,
                     ProjectileColorId = 2,
                     ProjectailMaterialId = 2,
@@ -339,7 +339,7 @@ namespace Ettad.EntityFramework.Configurations
                     Primer = "Boxer",
                     TotalWeight = 11.0m,
                     NatureOptionId = 3,
-                    NsnId = 3,
+                    Nsn = "1305-01-000-0009",
                     PrimaryPurposId = 3,
                     ProjectileColorId = 3,
                     ProjectailMaterialId = 3,

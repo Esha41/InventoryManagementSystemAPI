@@ -31,10 +31,11 @@ namespace Ettad.RequestManagement.Service.Common
             var prefix = GetRequestTypePrefix(requestType);
 
             // Get the next sequential number for this request type
-            var nextNumber = await GetNextSequenceNumberAsync(requestType);
+            var currentYear = DateTime.UtcNow.Year;
+            var nextNumber = await GetNextSequenceNumberAsync(requestType, currentYear);
 
-            // Format: PREFIX-AutoNumber-DepartmentCode
-            return $"{prefix}-{nextNumber:D6}-{departmentCode}";
+            // Format: PREFIX-Year-AutoNumber-DepartmentCode
+            return $"{prefix}-{currentYear}-{nextNumber:D6}-{departmentCode}";
         }
 
         private string GetRequestTypePrefix(RequestType requestType)
@@ -48,7 +49,7 @@ namespace Ettad.RequestManagement.Service.Common
             };
         }
 
-        private async Task<int> GetNextSequenceNumberAsync(RequestType requestType)
+        private async Task<int> GetNextSequenceNumberAsync(RequestType requestType, int currentYear)
         {
             // Get all requests of this type that are not deleted
             var existingRequests = await _requestRepository.FindAsync(
@@ -58,7 +59,7 @@ namespace Ettad.RequestManagement.Service.Common
             if (existingRequests == null || !existingRequests.Any())
                 return 1;
 
-            // Extract numbers from existing RequestNo values
+            // Extract numbers from existing RequestNo values for the same year
             var numbers = new List<int>();
             var prefix = GetRequestTypePrefix(requestType);
 
@@ -67,15 +68,19 @@ namespace Ettad.RequestManagement.Service.Common
                 if (string.IsNullOrEmpty(request.RequestNo))
                     continue;
 
-                // Parse RequestNo format: PREFIX-Number-DepartmentCode
+                // Parse RequestNo format: PREFIX-Year-Number-DepartmentCode (new) or PREFIX-Number-DepartmentCode (legacy)
                 var parts = request.RequestNo.Split('-');
-                if (parts.Length >= 2 && parts[0] == prefix)
+                if (parts.Length >= 4 && parts[0] == prefix)
                 {
-                    if (int.TryParse(parts[1], out var number))
+                    if (int.TryParse(parts[1], out var year) && year == currentYear)
                     {
-                        numbers.Add(number);
+                        if (int.TryParse(parts[2], out var number))
+                        {
+                            numbers.Add(number);
+                        }
                     }
                 }
+                // Legacy format without year is ignored so numbering restarts per year
             }
 
             // Return the next number (max + 1, or 1 if no numbers found)

@@ -11,6 +11,13 @@ namespace Ettad.User.Services.DTO
         public string AccessToken { get; init; } = string.Empty;
         public string RefreshToken { get; set; } = string.Empty;
         public DateTime ExpiresAt { get; init; }
+        public long? DepartmentId { get; set; }
+        public string? DepartmentName { get; set; }
+        public int? EmployeeId { get; set; }
+        public int? OrganizationId { get; set; }
+        public string? UserName { get; set; }
+        public string? NameEn { get; set; }
+        public string? NameAr { get; set; }
     }
 
 }

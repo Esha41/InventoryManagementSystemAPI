@@ -33,41 +33,41 @@ namespace Ettad.EntityFramework.Configurations
                 new Depot
                 {
                     Id = 1,
-                    NameAr = "مستودع الرياض المركزي",
-                    NameEn = "Riyadh Central Depot",
-                    Location = "Riyadh",
-                    Latitude = 24.7136m,
-                    Longitude = 46.6753m,
+                    NameAr = "مستودع الدوحة المركزي",
+                    NameEn = "Doha Central Depot",
+                    Location = "Doha",
+                    Latitude = 25.2854m,
+                    Longitude = 51.5310m,
                     IsDeleted = false
                 },
                 new Depot
                 {
                     Id = 2,
-                    NameAr = "مستودع جدة الغربي",
-                    NameEn = "Jeddah West Depot",
-                    Location = "Jeddah",
-                    Latitude = 21.5433m,
-                    Longitude = 39.1728m,
+                    NameAr = "مستودع الريان الغربي",
+                    NameEn = "Al Rayyan West Depot",
+                    Location = "Al Rayyan",
+                    Latitude = 25.2866m,
+                    Longitude = 51.4244m,
                     IsDeleted = false
                 },
                 new Depot
                 {
                     Id = 3,
-                    NameAr = "مستودع الدمام الشرقي",
-                    NameEn = "Dammam East Depot",
-                    Location = "Dammam",
-                    Latitude = 26.4207m,
-                    Longitude = 50.0888m,
+                    NameAr = "مستودع الخور الشمالي",
+                    NameEn = "Al Khor North Depot",
+                    Location = "Al Khor",
+                    Latitude = 25.6800m,
+                    Longitude = 51.5059m,
                     IsDeleted = false
                 },
                 new Depot
                 {
                     Id = 4,
-                    NameAr = "مستودع الطائف الجنوبي",
-                    NameEn = "Taif South Depot",
-                    Location = "Taif",
-                    Latitude = 21.2703m,
-                    Longitude = 40.4150m,
+                    NameAr = "مستودع الوكرة الجنوبي",
+                    NameEn = "Al Wakrah South Depot",
+                    Location = "Al Wakrah",
+                    Latitude = 25.1657m,
+                    Longitude = 51.6034m,
                     IsDeleted = false
                 }
             );

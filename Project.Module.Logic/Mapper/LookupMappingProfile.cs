@@ -19,7 +19,6 @@ namespace Ettad.Module.lookup.Mapper
             CreateMap<CreateUpdateHccDto, Hcc>();
             CreateMap<CreateUpdateManufacturerDto, Manufacturer>();
             CreateMap<CreateUpdateNatureOptionDto, NatureOption>();
-            CreateMap<CreateUpdateNsnDto, Nsn>();
             CreateMap<CreateUpdatePrimaryPurposDto, PrimaryPurpos>();
             CreateMap<CreateUpdateProjectailMaterialDto, ProjectailMaterial>();
             CreateMap<CreateUpdatePropellantDto, Propellant>();
@@ -39,7 +38,6 @@ namespace Ettad.Module.lookup.Mapper
             CreateMap<HazardDivision, HazardDivisionDto>();
             CreateMap<Manufacturer, ManufacturerDto>();
             CreateMap<NatureOption, NatureOptionDto>();
-            CreateMap<Nsn, NsnDto>();
             CreateMap<PrimaryPurpos, PrimaryPurposDto>();
             CreateMap<ProjectailMaterial, ProjectailMaterialDto>();
             CreateMap<Propellant, PropellantDto>();

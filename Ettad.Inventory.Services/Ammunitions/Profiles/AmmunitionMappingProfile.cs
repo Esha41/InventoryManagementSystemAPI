@@ -23,7 +23,6 @@ namespace Ettad.Inventory.Service.Ammunitions.Profiles
                 .ForMember(dest => dest.BulletDiameterUnit, opt => opt.Ignore())
                 .ForMember(dest => dest.CaseLengthUnit, opt => opt.Ignore())
                 .ForMember(dest => dest.NatureOption, opt => opt.Ignore())
-                .ForMember(dest => dest.Nsn, opt => opt.Ignore())
                 .ForMember(dest => dest.PrimaryPurpos, opt => opt.Ignore())
                 .ForMember(dest => dest.ProjectileColor, opt => opt.Ignore())
                 .ForMember(dest => dest.ProjectailMaterial, opt => opt.Ignore())
