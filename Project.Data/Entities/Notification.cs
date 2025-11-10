@@ -13,7 +13,7 @@ namespace Ettad.Data.Entities
 
         #region Navigation Properties
 
-        public ApplicationUser? Sender { get; set; }
+        public ApplicationUser Sender { get; set; }
         public ICollection<NotificationReceiver> Receivers { get; set; } = new List<NotificationReceiver>();
 
         #endregion
