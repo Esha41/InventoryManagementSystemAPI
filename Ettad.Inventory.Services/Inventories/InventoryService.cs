@@ -7,6 +7,7 @@ using Ettad.Inventory.Service.Inventories.Dtos;
 using Ettad.ResponseHandler.Consts;
 using Ettad.ResponseHandler.Models;
 using Ettad.Application.Common.Interfaces;
+using Microsoft.Extensions.Logging;
 using InventoryEntity = Ettad.Data.Entities.Inventory;
 using InventoryDetailEntity = Ettad.Data.Entities.InventoryDetail;
 
@@ -20,6 +21,7 @@ namespace Ettad.Inventory.Service.Inventories
         private readonly IValidator<CreateInventoryDto> _createValidator;
         private readonly IValidator<UpdateInventoryDto> _updateValidator;
         private readonly ICurrentUserService _currentUserService;
+        private readonly ILogger<InventoryService> _logger;
 
         public InventoryService(
             ICrossCuttingRepository<InventoryEntity> inventoryRepository,
@@ -27,7 +29,8 @@ namespace Ettad.Inventory.Service.Inventories
             IMapper mapper,
             IValidator<CreateInventoryDto> createValidator,
             IValidator<UpdateInventoryDto> updateValidator,
-            ICurrentUserService currentUserService)
+            ICurrentUserService currentUserService,
+            ILogger<InventoryService> logger)
         {
             _inventoryRepository = inventoryRepository;
             _inventoryDetailRepository = inventoryDetailRepository;
@@ -35,10 +38,14 @@ namespace Ettad.Inventory.Service.Inventories
             _createValidator = createValidator;
             _updateValidator = updateValidator;
             _currentUserService = currentUserService;
+            _logger = logger;
         }
 
         public async Task<APIOperationResponse<InventoryDto>> GetByIdAsync(long id)
         {
+            _logger.LogInformation("Getting inventory by ID. InventoryId: {InventoryId}, User: {UserId}", 
+                id, _currentUserService.UserId);
+            
             try
             {
                 var inventory = await _inventoryRepository.FindOneAsync(
@@ -53,19 +60,30 @@ namespace Ettad.Inventory.Service.Inventories
                 );
 
                 if (inventory == null)
+                {
+                    _logger.LogWarning("Inventory not found. InventoryId: {InventoryId}, User: {UserId}", 
+                        id, _currentUserService.UserId);
                     return APIOperationResponse<InventoryDto>.Fail(ResponseType.NotFound, "Inventory not found");
+                }
 
+                _logger.LogInformation("Inventory retrieved successfully. InventoryId: {InventoryId}, DetailCount: {DetailCount}", 
+                    id, inventory.InventoryDetails?.Count ?? 0);
+                
                 var dto = _mapper.Map<InventoryDto>(inventory);
                 return APIOperationResponse<InventoryDto>.Success(dto);
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Error getting inventory by ID. InventoryId: {InventoryId}, User: {UserId}", 
+                    id, _currentUserService.UserId);
                 return APIOperationResponse<InventoryDto>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
             }
         }
 
         public async Task<APIOperationResponse<List<InventoryDto>>> GetAllAsync()
         {
+            _logger.LogInformation("Getting all inventories. User: {UserId}", _currentUserService.UserId);
+            
             try
             {
                 var inventories = await _inventoryRepository.FindAsync(
@@ -80,16 +98,22 @@ namespace Ettad.Inventory.Service.Inventories
                 );
 
                 var dtos = _mapper.Map<List<InventoryDto>>(inventories);
+                _logger.LogInformation("Successfully retrieved {InventoryCount} inventories. User: {UserId}", 
+                    dtos.Count, _currentUserService.UserId);
                 return APIOperationResponse<List<InventoryDto>>.Success(dtos);
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Error getting all inventories. User: {UserId}", _currentUserService.UserId);
                 return APIOperationResponse<List<InventoryDto>>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
             }
         }
 
         public async Task<APIOperationResponse<long>> CreateAsync(CreateInventoryDto inputDto)
         {
+            _logger.LogInformation("Creating new inventory. DepoId: {DepoId}, DetailCount: {DetailCount}, User: {UserId}", 
+                inputDto?.DepoId, inputDto?.InventoryDetails?.Count ?? 0, _currentUserService.UserId);
+            
             try
             {
                 // Validate input
@@ -97,6 +121,9 @@ namespace Ettad.Inventory.Service.Inventories
                 if (!validationResult.IsValid)
                 {
                     var errors = string.Join(", ", validationResult.Errors.Select(e => e.ErrorMessage));
+                    _logger.LogWarning("Inventory validation failed. Errors: {ValidationErrors}, User: {UserId}", 
+                        errors, _currentUserService.UserId);
+                   
                     return APIOperationResponse<long>.Fail(ResponseType.BadRequest, errors);
                 }
 
@@ -114,12 +141,21 @@ namespace Ettad.Inventory.Service.Inventories
                     })
                     .ToList();
 
+                _logger.LogInformation("Adding {DetailCount} inventory details. User: {UserId}", 
+                    inventory.InventoryDetails.Count, _currentUserService.UserId);
+
                 // Add to repository
                 var createdInventory = await _inventoryRepository.AddAsync(inventory);
+                _logger.LogInformation("Inventory created successfully. InventoryId: {InventoryId}, DetailCount: {DetailCount}, User: {UserId}",
+                       createdInventory.Id, inventory.InventoryDetails.Count, _currentUserService.UserId);
+
                 return APIOperationResponse<long>.Success(createdInventory.Id, "Inventory created successfully");
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Error creating inventory. DepoId: {DepoId}, User: {UserId}", 
+                    inputDto?.DepoId, _currentUserService.UserId);
+             
                 return APIOperationResponse<long>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
             }
         }
@@ -200,19 +236,30 @@ namespace Ettad.Inventory.Service.Inventories
 
         public async Task<APIOperationResponse<bool>> DeleteAsync(long id)
         {
+            _logger.LogInformation("Deleting inventory. InventoryId: {InventoryId}, User: {UserId}", 
+                id, _currentUserService.UserId);
+            
             try
             {
                 var inventory = await _inventoryRepository.FindOneAsync(i => i.Id == id && !i.IsDeleted);
                 if (inventory == null)
+                {
+                    _logger.LogWarning("Inventory not found for deletion. InventoryId: {InventoryId}, User: {UserId}", 
+                        id, _currentUserService.UserId);
                     return APIOperationResponse<bool>.Fail(ResponseType.NotFound, "Inventory not found");
+                }
 
                 // Soft delete - interceptor will handle IsDeleted, DeletionDate, and DeletedBy automatically
                 await _inventoryRepository.DeleteAsync(inventory);
 
+                _logger.LogInformation("Inventory deleted successfully. InventoryId: {InventoryId}, User: {UserId}", 
+                    id, _currentUserService.UserId);
                 return APIOperationResponse<bool>.Success(true, "Inventory deleted successfully");
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Error deleting inventory. InventoryId: {InventoryId}, User: {UserId}", 
+                    id, _currentUserService.UserId);
                 return APIOperationResponse<bool>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
             }
         }
