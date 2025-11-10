@@ -155,10 +155,7 @@ namespace Ettad.User.Services.Implementation
             if (!string.IsNullOrWhiteSpace(user.Email))
                 claims.Add(new Claim(JwtRegisteredClaimNames.Email, user.Email));
 
-            if (user.OrganizationId.HasValue)
-            {
-                claims.Add(new Claim("OrgId", user.OrganizationId.Value.ToString()));
-            }
+           
 
             if (user.DepartmentId.HasValue)
             {

@@ -207,8 +207,7 @@ namespace Ettad.User.Services.Implementation
             authResponse.RefreshToken = refreshToken;
             authResponse.DepartmentId = user.DepartmentId;
             authResponse.DepartmentName = string.IsNullOrWhiteSpace(departmentName) ? null : departmentName;
-            authResponse.EmployeeId = user.EmployeeId;
-            authResponse.OrganizationId = user.OrganizationId;
+            authResponse.EmployeeId = user.EmployeeId;           
             authResponse.UserName = user.UserName;
             authResponse.NameEn = user.FullNameEN;
             authResponse.NameAr = user.FullNameAR;
