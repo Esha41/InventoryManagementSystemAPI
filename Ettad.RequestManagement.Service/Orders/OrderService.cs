@@ -75,6 +75,7 @@ namespace Ettad.RequestManagement.Service.Orders
 
         public async Task<APIOperationResponse<List<OrderDto>>> GetAllAsync()
         {
+            //throw new NotImplementedException();
             _logger.LogInformation("Getting all orders. User: {UserId}", _currentUserService.UserId);
             
             try
