@@ -15,6 +15,7 @@ namespace Ettad.User.Services.Implementation
     using System.Text;
     using System.Threading.Tasks;
     using Microsoft.AspNetCore.Identity;
+    using Microsoft.EntityFrameworkCore;
     using Microsoft.Extensions.Options;
     using Microsoft.IdentityModel.Tokens;
     using Ettad.Comman.Idenitity;
@@ -60,7 +61,9 @@ namespace Ettad.User.Services.Implementation
             if (string.IsNullOrWhiteSpace(userId))
                 throw new ArgumentException("userId required", nameof(userId));
 
-            var user = await _userManager.FindByIdAsync(userId)
+            var user = await _userManager.Users
+                .Include(u => u.Department)
+                .FirstOrDefaultAsync(u => u.Id == userId)
                        ?? throw new Exception("server.invalidLogin");
 
             var now = _dateTimeProvider.UtcNow;
@@ -152,7 +155,47 @@ namespace Ettad.User.Services.Implementation
             if (!string.IsNullOrWhiteSpace(user.Email))
                 claims.Add(new Claim(JwtRegisteredClaimNames.Email, user.Email));
 
-         
+            if (user.OrganizationId.HasValue)
+            {
+                claims.Add(new Claim("OrgId", user.OrganizationId.Value.ToString()));
+            }
+
+            if (user.DepartmentId.HasValue)
+            {
+                claims.Add(new Claim("DepartmentId", user.DepartmentId.Value.ToString()));
+            }
+
+            if (user.EmployeeId.HasValue)
+            {
+                claims.Add(new Claim("EmployeeId", user.EmployeeId.Value.ToString()));
+            }
+
+            if (!string.IsNullOrWhiteSpace(user.FullNameEN))
+            {
+                claims.Add(new Claim("FullNameEN", user.FullNameEN));
+            }
+
+            if (!string.IsNullOrWhiteSpace(user.FullNameAR))
+            {
+                claims.Add(new Claim("FullNameAR", user.FullNameAR));
+            }
+
+            if (!string.IsNullOrWhiteSpace(user.UserName))
+            {
+                claims.Add(new Claim("UserName", user.UserName));
+            }
+
+            if (user.Department != null)
+            {
+                var departmentName = !string.IsNullOrWhiteSpace(user.Department.NameEn)
+                    ? user.Department.NameEn
+                    : user.Department.NameAr;
+
+                if (!string.IsNullOrWhiteSpace(departmentName))
+                {
+                    claims.Add(new Claim("DepartmentName", departmentName));
+                }
+            }
 
             var roleNames = await _userManager.GetRolesAsync(user);
 
