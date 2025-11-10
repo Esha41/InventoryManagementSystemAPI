@@ -272,7 +272,7 @@ public static class MainEntities
     {
         CrudOperation.Page,
         CrudOperation.View,
-        CrudOperation.Create,
+        //CrudOperation.Create,
         CrudOperation.Edit,
         CrudOperation.Delete
     };

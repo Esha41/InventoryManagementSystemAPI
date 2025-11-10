@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using AutoMapper;
 using FluentValidation;
 using Ettad.CrossCutting.Data.Repository;
@@ -8,6 +9,7 @@ using Ettad.RequestManagement.Service.Common;
 using Ettad.ResponseHandler.Consts;
 using Ettad.ResponseHandler.Models;
 using Ettad.Application.Common.Interfaces;
+using Ettad.Notification.Service;
 
 namespace Ettad.RequestManagement.Service.Discards
 {
@@ -20,6 +22,7 @@ namespace Ettad.RequestManagement.Service.Discards
         private readonly IValidator<CreateDiscardDto> _createValidator;
         private readonly ICurrentUserService _currentUserService;
         private readonly IRequestNoGeneratorService _requestNoGeneratorService;
+        private readonly INotificationHelperService _notificationHelperService;
 
         public DiscardService(
             ICrossCuttingRepository<Discard> discardRepository,
@@ -28,7 +31,8 @@ namespace Ettad.RequestManagement.Service.Discards
             IMapper mapper,
             IValidator<CreateDiscardDto> createValidator,
             ICurrentUserService currentUserService,
-            IRequestNoGeneratorService requestNoGeneratorService)
+            IRequestNoGeneratorService requestNoGeneratorService,
+            INotificationHelperService notificationHelperService)
         {
             _discardRepository = discardRepository;
             _requestItemRepository = requestItemRepository;
@@ -37,6 +41,7 @@ namespace Ettad.RequestManagement.Service.Discards
             _createValidator = createValidator;
             _currentUserService = currentUserService;
             _requestNoGeneratorService = requestNoGeneratorService;
+            _notificationHelperService = notificationHelperService;
         }
 
         public async Task<APIOperationResponse<DiscardDto>> GetByIdAsync(long id)
@@ -135,6 +140,11 @@ namespace Ettad.RequestManagement.Service.Discards
                 // Add to repository
                 var createdDiscard = await _discardRepository.AddAsync(discard);
 
+                await NotifyDiscardAsync(
+                    "Discard Created",
+                    $"Discard request {createdDiscard.RequestNo} has been created.",
+                    createdDiscard.Id);
+
                 return APIOperationResponse<long>.Success(createdDiscard.Id, "Discard created successfully");
             }
             catch (Exception ex)
@@ -163,6 +173,11 @@ namespace Ettad.RequestManagement.Service.Discards
                 // Update in repository
                 await _discardRepository.UpdateAsync(existingDiscard);
 
+                await NotifyDiscardAsync(
+                    "Discard Priority Updated",
+                    $"Discard request {existingDiscard.RequestNo} priority changed to {priority}.",
+                    existingDiscard.Id);
+
                 return APIOperationResponse<bool>.Success(true, "Discard priority updated successfully");
             }
             catch (Exception ex)
@@ -182,11 +197,38 @@ namespace Ettad.RequestManagement.Service.Discards
                 // Soft delete - interceptor will handle IsDeleted, DeletionDate, and DeletedBy automatically
                 await _discardRepository.DeleteAsync(discard);
 
+                await NotifyDiscardAsync(
+                    "Discard Deleted",
+                    $"Discard request {discard.RequestNo} has been deleted.",
+                    discard.Id);
+
                 return APIOperationResponse<bool>.Success(true, "Discard deleted successfully");
             }
             catch (Exception ex)
             {
                 return APIOperationResponse<bool>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
+            }
+        }
+
+        private async Task NotifyDiscardAsync(string title, string message, long entityId)
+        {
+            try
+            {
+                var userId = _currentUserService.UserId;
+                var userIds = string.IsNullOrWhiteSpace(userId) ? null : new List<string> { userId };
+
+                await _notificationHelperService.SendNotificationAsync(
+                    title,
+                    message,
+                    entityType: nameof(Discard),
+                    entityId: entityId,
+                    userIds: userIds,
+                    senderId: userId,
+                    includeSuperAdmins: true);
+            }
+            catch
+            {
+                // Suppress notification errors to avoid impacting main workflow
             }
         }
     }

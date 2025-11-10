@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using AutoMapper;
 using FluentValidation;
 using Ettad.CrossCutting.Data.Repository;
@@ -8,6 +9,7 @@ using Ettad.RequestManagement.Service.Common;
 using Ettad.ResponseHandler.Consts;
 using Ettad.ResponseHandler.Models;
 using Ettad.Application.Common.Interfaces;
+using Ettad.Notification.Service;
 
 namespace Ettad.RequestManagement.Service.Returns
 {
@@ -20,6 +22,7 @@ namespace Ettad.RequestManagement.Service.Returns
         private readonly IValidator<CreateReturnDto> _createValidator;
         private readonly ICurrentUserService _currentUserService;
         private readonly IRequestNoGeneratorService _requestNoGeneratorService;
+        private readonly INotificationHelperService _notificationHelperService;
 
         public ReturnService(
             ICrossCuttingRepository<Return> returnRepository,
@@ -28,7 +31,8 @@ namespace Ettad.RequestManagement.Service.Returns
             IMapper mapper,
             IValidator<CreateReturnDto> createValidator,
             ICurrentUserService currentUserService,
-            IRequestNoGeneratorService requestNoGeneratorService)
+            IRequestNoGeneratorService requestNoGeneratorService,
+            INotificationHelperService notificationHelperService)
         {
             _returnRepository = returnRepository;
             _requestItemRepository = requestItemRepository;
@@ -37,6 +41,7 @@ namespace Ettad.RequestManagement.Service.Returns
             _createValidator = createValidator;
             _currentUserService = currentUserService;
             _requestNoGeneratorService = requestNoGeneratorService;
+            _notificationHelperService = notificationHelperService;
         }
 
         public async Task<APIOperationResponse<ReturnDto>> GetByIdAsync(long id)
@@ -135,6 +140,11 @@ namespace Ettad.RequestManagement.Service.Returns
                 // Add to repository
                 var createdReturn = await _returnRepository.AddAsync(returnEntity);
 
+                await NotifyReturnAsync(
+                    "Return Created",
+                    $"Return request {createdReturn.RequestNo} has been created.",
+                    createdReturn.Id);
+
                 return APIOperationResponse<long>.Success(createdReturn.Id, "Return created successfully");
             }
             catch (Exception ex)
@@ -163,6 +173,11 @@ namespace Ettad.RequestManagement.Service.Returns
                 // Update in repository
                 await _returnRepository.UpdateAsync(existingReturn);
 
+                await NotifyReturnAsync(
+                    "Return Priority Updated",
+                    $"Return request {existingReturn.RequestNo} priority changed to {priority}.",
+                    existingReturn.Id);
+
                 return APIOperationResponse<bool>.Success(true, "Return priority updated successfully");
             }
             catch (Exception ex)
@@ -182,11 +197,38 @@ namespace Ettad.RequestManagement.Service.Returns
                 // Soft delete - interceptor will handle IsDeleted, DeletionDate, and DeletedBy automatically
                 await _returnRepository.DeleteAsync(returnEntity);
 
+                await NotifyReturnAsync(
+                    "Return Deleted",
+                    $"Return request {returnEntity.RequestNo} has been deleted.",
+                    returnEntity.Id);
+
                 return APIOperationResponse<bool>.Success(true, "Return deleted successfully");
             }
             catch (Exception ex)
             {
                 return APIOperationResponse<bool>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
+            }
+        }
+
+        private async Task NotifyReturnAsync(string title, string message, long entityId)
+        {
+            try
+            {
+                var userId = _currentUserService.UserId;
+                var userIds = string.IsNullOrWhiteSpace(userId) ? null : new List<string> { userId };
+
+                await _notificationHelperService.SendNotificationAsync(
+                    title,
+                    message,
+                    entityType: nameof(Return),
+                    entityId: entityId,
+                    userIds: userIds,
+                    senderId: userId,
+                    includeSuperAdmins: true);
+            }
+            catch
+            {
+                // Suppress notification errors to avoid impacting main workflow
             }
         }
     }

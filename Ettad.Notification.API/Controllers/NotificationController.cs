@@ -27,7 +27,7 @@ namespace Ettad.Notification.API.Controllers
 
         [HttpGet]
         [ProducesResponseType((int)HttpStatusCode.OK)]
-        [CheckAuthorize("Permissions.Notification.View")]
+        [CheckAuthorize("Permissions.NotificationsPage.View")]
         public async Task<IActionResult> GetUserNotifications([FromQuery] bool? isRead = null)
         {
             var userId = _currentUserService.UserId;
@@ -44,7 +44,7 @@ namespace Ettad.Notification.API.Controllers
 
         [HttpGet("unread-count")]
         [ProducesResponseType((int)HttpStatusCode.OK)]
-        [CheckAuthorize("Permissions.Notification.View")]
+        [CheckAuthorize("Permissions.NotificationsPage.View")]
         public async Task<IActionResult> GetUnreadCount()
         {
             var userId = _currentUserService.UserId;
@@ -59,9 +59,9 @@ namespace Ettad.Notification.API.Controllers
             return ProcessResponse(result);
         }
 
-        [HttpPut("{id}/read")]
+        [HttpPatch("{id}/read")]
         [ProducesResponseType((int)HttpStatusCode.OK)]
-        [CheckAuthorize("Permissions.Notification.Edit")]
+        [CheckAuthorize("Permissions.NotificationsPage.Edit")]
         public async Task<IActionResult> MarkAsRead(long id)
         {
             var userId = _currentUserService.UserId;
@@ -76,9 +76,9 @@ namespace Ettad.Notification.API.Controllers
             return ProcessResponse(result);
         }
 
-        [HttpPut("read-all")]
+        [HttpPatch("read-all")]
         [ProducesResponseType((int)HttpStatusCode.OK)]
-        [CheckAuthorize("Permissions.Notification.Edit")]
+        [CheckAuthorize("Permissions.NotificationsPage.Edit")]
         public async Task<IActionResult> MarkAllAsRead()
         {
             var userId = _currentUserService.UserId;
