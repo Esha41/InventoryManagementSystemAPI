@@ -20,7 +20,7 @@ namespace Ettad.Data.Entities.Workflows
         [Required]
         public int StepOrder { get; set; }
 
-        // Replaced ApproverType / ApproverEmployeeId
+      
         [Required]
         public string ApplicationRoleId { get; set; }           // Role responsible for this step
         public ApplicationRole ApplicationRole { get; set; }    // Navigation property
