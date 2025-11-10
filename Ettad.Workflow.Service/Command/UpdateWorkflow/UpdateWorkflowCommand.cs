@@ -20,7 +20,7 @@ namespace Ettad.Workflows.Service.Command.UpdateWorkflow
     {
         public int Id { get; set; }
         public string WorkflowName { get; set; }
-        public int WorkflowType { get; set; }      
+        public WorkflowType WorkflowType { get; set; }      
         public bool IsActive { get; set; } = true;
         public List<WorkflowStepCreateDto> WorkflowSteps { get; set; } = new();
     }
@@ -58,7 +58,6 @@ namespace Ettad.Workflows.Service.Command.UpdateWorkflow
             if (request.WorkflowSteps?.Any() == true && request.WorkflowSteps.GroupBy(x => x.StepOrder).Any(g => g.Count() > 1))
                 return APIOperationResponse<WorkflowDto>.BadRequest("Duplicate StepOrder found");
 
-            // Ensure edited steps are not already used in approval history
             foreach (var step in request.WorkflowSteps.Where(x => x.Id > 0))
             {
                 if (await _context.WorkflowStepApprovalLog.AnyAsync(x => x.WorkflowApprovalStepId == step.Id, cancellationToken))
@@ -98,37 +97,7 @@ namespace Ettad.Workflows.Service.Command.UpdateWorkflow
         }
 
 
-        // Check for duplicate active workflows and deactivate them if found
-        private async Task CheckAndDeactivateDuplicateWorkflows(UpdateWorkflowCommand request, int currentWorkflowId, CancellationToken cancellationToken)
-        {
-            var existingActiveWorkflows = await _context.Workflows
-                .Where(w =>
-                    w.IsActive &&
-                    !w.IsDeleted &&
-                    w.Id != currentWorkflowId)
-                .ToListAsync(cancellationToken);
-
-            if (existingActiveWorkflows.Any())
-            {
-                _logger.LogInformation(
-                    "Found {Count} active duplicate workflows. Deactivating them.",
-                    existingActiveWorkflows.Count);
-
-                foreach (var existingWorkflow in existingActiveWorkflows)
-                {
-                    existingWorkflow.IsActive = false;
-                    existingWorkflow.ModificationDate = DateTime.UtcNow;
-                    existingWorkflow.ModifiedBy = _currentUserService.UserName;
-                }
-
-                await _context.SaveChangesAsync(cancellationToken);
-
-                _logger.LogInformation(
-                    "Successfully deactivated {Count} duplicate workflows",
-                    existingActiveWorkflows.Count);
-            }
-        }
-
+ 
 
         // Update workflow steps
         private async Task UpdateWorkflowSteps(Ettad.Data.Entities.Workflows.Workflow workflow, List<WorkflowStepCreateDto> incomingSteps, CancellationToken cancellationToken)
@@ -179,20 +148,5 @@ namespace Ettad.Workflows.Service.Command.UpdateWorkflow
             }
         }
 
-
-        // Check if workflow step is referenced in approval history
-        private async Task<bool> IsWorkflowStepInApprovalHistory(int workflowStepId, CancellationToken cancellationToken)
-        {
-            return await _context.WorkflowStepApprovalLog
-                .AnyAsync(ah => ah.WorkflowApprovalStepId == workflowStepId, cancellationToken);
-        }
-
-        // Ensure unique step orders
-        private bool HasDuplicateStepOrder(List<WorkflowStepCreateDto> workflowSteps)
-        {
-            return workflowSteps
-                .GroupBy(s => s.StepOrder)
-                .Any(g => g.Count() > 1);
-        }
     }
 }

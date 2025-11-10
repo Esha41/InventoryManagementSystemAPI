@@ -46,16 +46,13 @@ namespace Ettad.Workflows.Service.Queries.GetWorkflow
             }
 
             var workflows = await workflowsQueryable
-                .Join(
-                    _context.WorkFlowTypes.Where(t => !t.IsDeleted), // join only active types
-                    w => w.WorkflowType,   // FK in Workflows table
-                    t => t.Id,             // PK in WorkFlowType table
-                    (w, t) => new WorkflowDto
+                .Select(
+                   w => new WorkflowDto
                     {
                         Id = w.Id,
                         WorkflowName = w.WorkflowName,
                         WorkflowType = w.WorkflowType,
-                        WorkflowTypeName = t.NameEn, // or NameAr if you prefer
+                       // WorkflowTypeName = t.NameEn, // or NameAr if you prefer
                         IsActive = w.IsActive,
                         IsDeleted = w.IsDeleted,
                         WorkflowSteps = w.WorkflowSteps.Select(step => new WorkflowStepDto
