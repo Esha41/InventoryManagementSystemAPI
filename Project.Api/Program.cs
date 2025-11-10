@@ -53,8 +53,7 @@ try
         .ReadFrom.Configuration(context.Configuration)
         .ReadFrom.Services(services)
         .Enrich.FromLogContext()
-        .WithUserEnricher(services)
-        .WriteToDatabaseIfConfigured(context.Configuration));
+        .WithUserEnricher(services));
 
     var configuration = builder.Configuration;
 
@@ -297,61 +296,6 @@ finally
 {
     Log.Information("Shutting down Ettad Backend API");
     Log.CloseAndFlush();
-}
-
-/// <summary>
-/// Extension method to configure database logging with sensible defaults
-/// Much cleaner than 80+ lines of JSON configuration!
-/// </summary>
-static class SerilogDatabaseExtensions
-{
-    public static LoggerConfiguration WriteToDatabaseIfConfigured(
-        this LoggerConfiguration loggerConfiguration, 
-        IConfiguration configuration)
-    {
-        var connectionString = configuration.GetConnectionString("LogConnection");
-        
-        if (string.IsNullOrEmpty(connectionString))
-        {
-            Log.Warning("LogConnection not found. Database logging disabled.");
-            return loggerConfiguration;
-        }
-
-        var columnOptions = new Serilog.Sinks.MSSqlServer.ColumnOptions
-        {
-            AdditionalColumns = new System.Collections.ObjectModel.Collection<Serilog.Sinks.MSSqlServer.SqlColumn>
-            {
-                new Serilog.Sinks.MSSqlServer.SqlColumn { ColumnName = "UserId", DataType = System.Data.SqlDbType.NVarChar, DataLength = 128, AllowNull = true },
-                new Serilog.Sinks.MSSqlServer.SqlColumn { ColumnName = "CorrelationId", DataType = System.Data.SqlDbType.NVarChar, DataLength = 128, AllowNull = true },
-                new Serilog.Sinks.MSSqlServer.SqlColumn { ColumnName = "RequestPath", DataType = System.Data.SqlDbType.NVarChar, DataLength = 500, AllowNull = true },
-                new Serilog.Sinks.MSSqlServer.SqlColumn { ColumnName = "SourceContext", DataType = System.Data.SqlDbType.NVarChar, DataLength = 200, AllowNull = true },
-                new Serilog.Sinks.MSSqlServer.SqlColumn { ColumnName = "MachineName", DataType = System.Data.SqlDbType.NVarChar, DataLength = 128, AllowNull = true },
-                new Serilog.Sinks.MSSqlServer.SqlColumn { ColumnName = "ThreadId", DataType = System.Data.SqlDbType.Int, AllowNull = true }
-            }
-        };
-
-        // Remove MessageTemplate to avoid duplication
-        columnOptions.Store.Remove(Serilog.Sinks.MSSqlServer.StandardColumn.MessageTemplate);
-        
-        // Keep only what we need
-        columnOptions.Store.Add(Serilog.Sinks.MSSqlServer.StandardColumn.LogEvent);
-
-        var sinkOptions = new Serilog.Sinks.MSSqlServer.MSSqlServerSinkOptions
-        {
-            TableName = "Logs",
-            SchemaName = "dbo",
-            AutoCreateSqlTable = true,
-            BatchPostingLimit = 1000,
-            BatchPeriod = TimeSpan.FromSeconds(5)
-        };
-
-        return loggerConfiguration.WriteTo.MSSqlServer(
-            connectionString: connectionString,
-            sinkOptions: sinkOptions,
-            columnOptions: columnOptions,
-            restrictedToMinimumLevel: LogEventLevel.Information
-        );
-    }
 }
 
 /// <summary>
