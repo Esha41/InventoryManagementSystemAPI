@@ -19,8 +19,7 @@ namespace Ettad.Comman.Idenitity
 
         // Navigation property
         [ForeignKey(nameof(DepartmentId))]
-        public Department Department { get; set; }
-        public int? OrganizationId { get; set; }
+        public Department Department { get; set; }      
         public string? FullNameEN { get; set; }
         public string? FullNameAR { get; set; }
         public long? RankId { get; set; }

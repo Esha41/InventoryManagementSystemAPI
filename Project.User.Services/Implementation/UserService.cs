@@ -92,12 +92,11 @@ public class UserService : IUserService
         var user = new ApplicationUser
         {
             UserName = dto.UserName,
-            Email = dto.UserName,
+            Email = dto.Email,
             IsLdapUser = dto.IsLdapUser,
             ExtraEmployeesView = dto.ExtraEmployeesView,
             EmployeeId = dto.EmployeeId,
-            DepartmentId = dto.DepartmentId,
-            OrganizationId = dto.OrganizationId ?? _currentUserService.OrganizationId,
+            DepartmentId = dto.DepartmentId,            
             MilitoryId= dto.MilitoryId,
             RankId = dto.RankId,
             FullNameEN = dto.FullNameEN,
@@ -150,13 +149,12 @@ public class UserService : IUserService
             return APIOperationResponse<UserDto>.Fail(ResponseType.NotFound, "User not found");
 
         // 2️⃣ Update basic fields
-        user.UserName = dto.UserName ?? user.UserName;
-        user.Email = dto.UserName ?? user.Email;
+        user.UserName = dto.UserName;
+        user.Email =  dto.Email;
         user.IsLdapUser = dto.IsLdapUser;
         user.ExtraEmployeesView = dto.ExtraEmployeesView;
         user.EmployeeId = dto.EmployeeId;
-        user.DepartmentId= dto.DepartmentId;
-        user.OrganizationId = dto.OrganizationId;
+        user.DepartmentId= dto.DepartmentId;        
         user.MilitoryId = dto.MilitoryId;
         user.RankId = dto.RankId;
         user.FullNameEN = dto.FullNameEN;
@@ -307,8 +305,7 @@ public class UserService : IUserService
             Email = user.Email,
             IsLdapUser = user.IsLdapUser,
             ExtraEmployeesView = user.ExtraEmployeesView,
-            EmployeeId = user.EmployeeId,
-            OrganizationId = user.OrganizationId,
+            EmployeeId = user.EmployeeId,           
             FullNameEN=user.FullNameEN,
             FullNameAR=user.FullNameAR,
             RankId = user.RankId,
