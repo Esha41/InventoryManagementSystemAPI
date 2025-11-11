@@ -9,6 +9,8 @@ using Ettad.User.Services.DTO;
 using Ettad.User.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
+using Ettad.Data.Enums;
+using System.Text.RegularExpressions;
 
 namespace Ettad.User.Services.Implementation;
 
@@ -27,7 +29,7 @@ public class SettingsProvider : ISettingsProvider
     {
         var settings = await _dbContext.Settings
             .AsNoTracking()
-            .Where(s => s.Group != null && s.Group == "LDAP")
+            .Where(s => s.Group != null && s.Group == General.Group)
             .ToListAsync(cancellationToken);
 
         if (settings.Count == 0)

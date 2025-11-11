@@ -62,11 +62,11 @@ namespace Ettad.User.Services.Implementation
         }
 
         public async Task<APIOperationResponse<AuthenticatedResponse>> Login(
-      LoginInformation loginInformation,
-      CancellationToken cancellationToken = default)
+    LoginInformation loginInformation,
+    CancellationToken cancellationToken = default)
         {
             _logger.LogInformation("Login attempt. Username: {Username}", loginInformation?.Username);
-            
+
             try
             {
                 if (string.IsNullOrWhiteSpace(loginInformation?.Username))
@@ -79,117 +79,30 @@ namespace Ettad.User.Services.Implementation
                 }
 
                 var ldapSettings = await _settingsProvider.GetLdapSettings(cancellationToken);
+                var existingUser = await _userRepository.FindByNameAsync(loginInformation.Username.Trim());
 
-                var isAdminLogin = true;
+                var isAdminLogin = existingUser != null;
 
-                _logger.LogInformation("Login type determined. Username: {Username}, IsAdminLogin: {IsAdminLogin}", 
+                _logger.LogInformation("Login type determined. Username: {Username}, IsAdminLogin: {IsAdminLogin}",
                     loginInformation.Username, isAdminLogin);
-
-                var users = await _userRepository.FindByNameAsync(loginInformation.Username.Trim());
-                isAdminLogin = users != null; 
-                //isAdminLogin= _adminUsers.AdminUserNames
-                //    .Any(a => loginInformation.Username.Contains(a, StringComparison.OrdinalIgnoreCase));
-
-                ApplicationUser? user;
 
                 if (isAdminLogin)
                 {
-                    user = await _userRepository.FindByNameAsync(loginInformation.Username.Trim());
-                    if (user == null)
-                    {
-                        _logger.LogWarning("Login failed: User not found. Username: {Username}", loginInformation.Username);
-                        return APIOperationResponse<AuthenticatedResponse>.Fail(
-                            ResponseType.Unauthorized,
-                            CommonErrorCodes.INVALID_EMAIL_OR_PASSWORD,
-                            "server.invalidLogin");
-                    }
-
-                    var signInResult = await _signInManager.CheckPasswordSignInAsync(user, loginInformation.Password, lockoutOnFailure: false);
-                    if (!signInResult.Succeeded)
-                    {
-                        _logger.LogWarning("Login failed: Invalid password. Username: {Username}, UserId: {UserId}", 
-                            loginInformation.Username, user.Id);
-                        return APIOperationResponse<AuthenticatedResponse>.Fail(
-                            ResponseType.Unauthorized,
-                            CommonErrorCodes.INVALID_EMAIL_OR_PASSWORD,
-                            "server.invalidLogin");
-                    }
-                    
-                    _logger.LogInformation("Admin login successful. Username: {Username}, UserId: {UserId}", 
-                        loginInformation.Username, user.Id);
+                    return await LoginWithAdmin(existingUser, loginInformation, cancellationToken);
                 }
                 else if (ldapSettings.IsActive)
                 {
-                    _logger.LogInformation("Attempting LDAP authentication. Username: {Username}", loginInformation.Username);
-                    
-                    var username = loginInformation.Username.Trim();
-                    var resolvedUsername = $"{username}@{ldapSettings.LdapDomain}";
-
-                    var loginSucceeded = await _ldapAuthenticator.ValidateAsync(
-                        username,
-                        loginInformation.Password,
-                        loginWithoutPassword: false,
-                        ldapSettings,
-                        cancellationToken);
-
-                    if (!loginSucceeded)
-                    {
-                        _logger.LogWarning("LDAP login failed: Authentication failed. Username: {Username}", 
-                            loginInformation.Username);
-                        return APIOperationResponse<AuthenticatedResponse>.Fail(
-                            ResponseType.Unauthorized,
-                            CommonErrorCodes.INVALID_EMAIL_OR_PASSWORD,
-                            "server.invalidLogin");
-                    }
-
-                    // Try to find the user (with or without domain)
-                    user = await _userRepository.FindByNameAsync(resolvedUsername)
-                        ?? await _userRepository.FindByNameAsync(username);
-
-                    // 👇 Auto-create user if not found
-                    if (user == null)
-                    {
-                        _logger.LogWarning(
-                            "LDAP login: User not found in system. Auto-creating user. Username: {Username}, ResolvedUsername: {ResolvedUsername}",
-                            loginInformation.Username, resolvedUsername);
-
-                        user = new ApplicationUser
-                        {
-                            UserName = resolvedUsername, // store with domain for consistency
-                            NormalizedUserName = resolvedUsername.ToUpperInvariant(),
-                            Email = $"{username}@{ldapSettings.LdapDomain}",
-                            EmailConfirmed = true,
-                            IsLdapUser=true,
-                            FullNameAR= username,
-                            FullNameEN= username,
-
-                            // Add any default fields like roles or department if applicable
-                        };
-
-                        await _userRepository.CreateAsync(user);
-                    }
-
-
-                    _logger.LogInformation("LDAP login successful. Username: {Username}, UserId: {UserId}", 
-                        loginInformation.Username, user.Id);
+                    return await LoginWithLdap(loginInformation, cancellationToken);
                 }
-
                 else
                 {
-                    _logger.LogWarning("Login failed: LDAP not configured and not admin login. Username: {Username}", 
+                    _logger.LogWarning("Login failed: LDAP not configured and user not found locally. Username: {Username}",
                         loginInformation.Username);
                     return APIOperationResponse<AuthenticatedResponse>.Fail(
                         ResponseType.Unauthorized,
                         CommonErrorCodes.INVALID_EMAIL_OR_PASSWORD,
                         "server.invalidLogin");
                 }
-
-                var authResponse = await CreateAndReturnAuthResponseAsync(user, cancellationToken);
-
-                _logger.LogInformation("Login completed successfully. Username: {Username}, UserId: {UserId}", 
-                    loginInformation.Username, user.Id);
-                
-                return APIOperationResponse<AuthenticatedResponse>.Success(authResponse);
             }
             catch (Exception ex)
             {
@@ -200,36 +113,93 @@ namespace Ettad.User.Services.Implementation
                     ex.Message);
             }
         }
-
-
-        public async Task<AuthenticatedResponse> LoginWithLdap(LoginInformation loginInformation, CancellationToken cancellationToken = default)
+        private async Task<APIOperationResponse<AuthenticatedResponse>> LoginWithAdmin(
+            ApplicationUser user,
+            LoginInformation loginInformation,
+            CancellationToken cancellationToken)
         {
-            var ldapSettings = await _settingsProvider.GetLdapSettings(cancellationToken);
+            _logger.LogInformation("Attempting admin login. Username: {Username}", loginInformation.Username);
 
-            if (!ldapSettings.IsActive)
-                throw new ApiException("server.invalidLdapSettings");
+            var signInResult = await _signInManager.CheckPasswordSignInAsync(user, loginInformation.Password, lockoutOnFailure: false);
+            if (!signInResult.Succeeded)
+            {
+                _logger.LogWarning("Admin login failed: Invalid password. Username: {Username}, UserId: {UserId}",
+                    loginInformation.Username, user.Id);
 
-            if (string.IsNullOrWhiteSpace(loginInformation?.Username))
-                throw new ApiException("server.invalidLogin");
+                return APIOperationResponse<AuthenticatedResponse>.Fail(
+                    ResponseType.Unauthorized,
+                    CommonErrorCodes.INVALID_EMAIL_OR_PASSWORD,
+                    "server.invalidLogin");
+            }
 
-            // 👇 Pass ldapSettings to authenticator
-            var loginSucceeded = await _ldapAuthenticator.ValidateAsync(
-                loginInformation.Username.Trim(),
-                loginInformation.Password,
-                loginWithoutPassword: false, // set to false since password is required here
-                ldapSettings,
-                cancellationToken);
+            _logger.LogInformation("Admin login successful. Username: {Username}, UserId: {UserId}",
+                loginInformation.Username, user.Id);
 
-            if (!loginSucceeded)
-                throw new ApiException("server.invalidLogin");
+            var authResponse = await CreateAndReturnAuthResponseAsync(user, cancellationToken);
+            return APIOperationResponse<AuthenticatedResponse>.Success(authResponse);
+        }
 
-            // Construct resolved username (domain-qualified)
-            var resolvedUsername = $"{loginInformation.Username.Trim()}@{ldapSettings.LdapDomain}";
 
-            var user = await _userRepository.FindByNameAsync(resolvedUsername)
-                ?? throw new ApiException("server.invalidLogin");
+        public async Task<APIOperationResponse<AuthenticatedResponse>> LoginWithLdap(
+     LoginInformation loginInformation,
+     CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                var ldapSettings = await _settingsProvider.GetLdapSettings(cancellationToken);
 
-            return await CreateAndReturnAuthResponseAsync(user, cancellationToken);
+                if (!ldapSettings.IsActive)
+                {
+                    return APIOperationResponse<AuthenticatedResponse>.Fail(
+                        ResponseType.BadRequest,
+                        CommonErrorCodes.INVALID_LDAP_SETTINGS,
+                        "server.invalidLdapSettings");
+                }
+
+                if (string.IsNullOrWhiteSpace(loginInformation?.Username))
+                {
+                    return APIOperationResponse<AuthenticatedResponse>.Fail(
+                        ResponseType.BadRequest,
+                        CommonErrorCodes.INVALID_EMAIL_OR_PASSWORD,
+                        "server.invalidLogin");
+                }
+
+                var loginSucceeded = await _ldapAuthenticator.ValidateAsync(
+                    loginInformation.Username.Trim(),
+                    loginInformation.Password,
+                    loginWithoutPassword: false,
+                    ldapSettings,
+                    cancellationToken);
+
+                if (!loginSucceeded)
+                {
+                    return APIOperationResponse<AuthenticatedResponse>.Fail(
+                        ResponseType.Unauthorized,
+                        CommonErrorCodes.INVALID_EMAIL_OR_PASSWORD,
+                        "server.invalidLogin");
+                }
+
+                var resolvedUsername = $"{loginInformation.Username.Trim()}@{ldapSettings.LdapDomain}";
+
+                var user = await _userRepository.FindByNameAsync(resolvedUsername);
+                if (user == null)
+                {
+                    return APIOperationResponse<AuthenticatedResponse>.Fail(
+                        ResponseType.Unauthorized,
+                        CommonErrorCodes.INVALID_EMAIL_OR_PASSWORD,
+                        "server.invalidLogin");
+                }
+
+                var response = await CreateAndReturnAuthResponseAsync(user, cancellationToken);
+                return APIOperationResponse<AuthenticatedResponse>.Success(response);
+            }
+            catch (Exception ex)
+            {
+                return APIOperationResponse<AuthenticatedResponse>.Fail(
+                    ResponseType.InternalServerError,
+                    CommonErrorCodes.SERVER_ERROR,
+                    ex.Message);
+            }
         }
 
 
