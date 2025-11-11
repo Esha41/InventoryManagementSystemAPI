@@ -149,25 +149,27 @@ namespace Ettad.User.Services.Implementation
                     // 👇 Auto-create user if not found
                     if (user == null)
                     {
-                        _logger.LogWarning("LDAP login failed: User not found in system. Username: {Username}, ResolvedUsername: {ResolvedUsername}", 
+                        _logger.LogWarning(
+                            "LDAP login: User not found in system. Auto-creating user. Username: {Username}, ResolvedUsername: {ResolvedUsername}",
                             loginInformation.Username, resolvedUsername);
-                        return APIOperationResponse<AuthenticatedResponse>.Fail(
-                            ResponseType.Unauthorized,
-                            CommonErrorCodes.INVALID_EMAIL_OR_PASSWORD,
-                            "server.invalidLogin");
+
                         user = new ApplicationUser
                         {
                             UserName = resolvedUsername, // store with domain for consistency
                             NormalizedUserName = resolvedUsername.ToUpperInvariant(),
                             Email = $"{username}@{ldapSettings.LdapDomain}",
                             EmailConfirmed = true,
-                           
-                            // set other defaults like roles or department if needed
+                            IsLdapUser=true,
+                            FullNameAR= username,
+                            FullNameEN= username,
+
+                            // Add any default fields like roles or department if applicable
                         };
 
                         await _userRepository.CreateAsync(user);
                     }
-                    
+
+
                     _logger.LogInformation("LDAP login successful. Username: {Username}, UserId: {UserId}", 
                         loginInformation.Username, user.Id);
                 }
@@ -266,7 +268,7 @@ namespace Ettad.User.Services.Implementation
             authResponse.EmployeeId = user.EmployeeId;           
             authResponse.UserName = user.UserName;
             authResponse.NameEn = user.FullNameEN;
-            authResponse.NameAr = user.FullNameAR;
+            authResponse.NameAr = user.FullNameAR;            
             return authResponse;
         }
         public async Task<APIOperationResponse<List<ClaimDto>>> GetRoleClaimsOnlyAsync()
