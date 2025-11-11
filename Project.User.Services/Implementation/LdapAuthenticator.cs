@@ -14,43 +14,43 @@ namespace Ettad.User.Services.Implementation
 {
     public class LdapAuthenticator : ILdapAuthenticator
     {
-        private readonly LdapOptions _options;
-
-        public LdapAuthenticator(IOptions<LdapOptions> options)
+        public Task<bool> ValidateAsync(
+            string username,
+            string? password,
+            bool loginWithoutPassword,
+            LdapOptions ldapOptions,
+            CancellationToken cancellationToken = default)
         {
-            _options = options.Value;
-        }
+            if (!ldapOptions.IsActive)
+                return Task.FromResult(false);
 
-        public Task<bool> ValidateAsync(string username, string? password, bool loginWithoutPassword, CancellationToken cancellationToken = default)
-        {
-            if (!_options.IsActive) return Task.FromResult(false);
-            if (string.IsNullOrWhiteSpace(_options.LdapServer) && string.IsNullOrWhiteSpace(_options.LdapDomain))
+            if (string.IsNullOrWhiteSpace(ldapOptions.LdapServer) &&
+                string.IsNullOrWhiteSpace(ldapOptions.LdapDomain))
                 throw new ApiException("server.invalidLdapSettings");
 
             try
             {
                 if (loginWithoutPassword)
                 {
-                    using var directory = new DirectoryEntry(_options.LdapServer);
+                    using var directory = new DirectoryEntry(ldapOptions.LdapServer);
                     using var searcher = new DirectorySearcher(directory)
                     {
-                        Filter = $"(&(objectClass=user)({_options.LdapEmpAttr}={username}))"
+                        Filter = $"(&(objectClass=user)({ldapOptions.LdapEmpAttr}={username}))"
                     };
                     var found = searcher.FindOne();
                     return Task.FromResult(found != null);
                 }
 
-                // validate credentials using PrincipalContext
-                using var context = string.IsNullOrWhiteSpace(_options.LdapUsername) || string.IsNullOrWhiteSpace(_options.LdapPassword)
-                    ? new PrincipalContext(ContextType.Domain, _options.LdapDomain)
-                    : new PrincipalContext(ContextType.Domain, _options.LdapDomain, _options.LdapUsername, _options.LdapPassword);
+                using var context = string.IsNullOrWhiteSpace(ldapOptions.LdapUsername) ||
+                                    string.IsNullOrWhiteSpace(ldapOptions.LdapPassword)
+                    ? new PrincipalContext(ContextType.Domain, ldapOptions.LdapDomain)
+                    : new PrincipalContext(ContextType.Domain, ldapOptions.LdapDomain, ldapOptions.LdapUsername, ldapOptions.LdapPassword);
 
                 var isValid = context.ValidateCredentials(username, password);
                 return Task.FromResult(isValid);
             }
             catch (Exception ex)
             {
-                // LDAP-specific failure should be mapped to a friendly ApiException so callers don't leak implementation details
                 throw new ApiException("server.invalidLdapSettings: " + ex.Message);
             }
         }
