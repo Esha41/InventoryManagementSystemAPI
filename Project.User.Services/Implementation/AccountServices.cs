@@ -214,23 +214,8 @@ namespace Ettad.User.Services.Implementation
 
             await _userRepository.UpdateAsync(user);
 
-            var departmentName = string.Empty;
-            if (user.DepartmentId.HasValue)
-            {
-                departmentName = await _context.Departments
-                    .Where(d => d.Id == user.DepartmentId.Value)
-                    .Select(d => d.NameEn ?? d.NameAr ?? string.Empty)
-                    .FirstOrDefaultAsync(cancellationToken) ?? string.Empty;
-            }
-
             var authResponse = await _jwtServices.GenerateJWTokenAsync(user.Id);
             authResponse.RefreshToken = refreshToken;
-            authResponse.DepartmentId = user.DepartmentId;
-            authResponse.DepartmentName = string.IsNullOrWhiteSpace(departmentName) ? null : departmentName;
-            authResponse.EmployeeId = user.EmployeeId;           
-            authResponse.UserName = user.UserName;
-            authResponse.NameEn = user.FullNameEN;
-            authResponse.NameAr = user.FullNameAR;
             return authResponse;
         }
         public async Task<APIOperationResponse<List<ClaimDto>>> GetRoleClaimsOnlyAsync()
