@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using AutoMapper;
 using FluentValidation;
 using Ettad.CrossCutting.Data.Repository;
@@ -8,6 +9,10 @@ using Ettad.RequestManagement.Service.Common;
 using Ettad.ResponseHandler.Consts;
 using Ettad.ResponseHandler.Models;
 using Ettad.Application.Common.Interfaces;
+using Ettad.Notification.Service;
+using Microsoft.AspNetCore.Identity;
+using Ettad.Comman.Idenitity;
+using Microsoft.Extensions.Logging;
 
 namespace Ettad.RequestManagement.Service.Returns
 {
@@ -20,6 +25,9 @@ namespace Ettad.RequestManagement.Service.Returns
         private readonly IValidator<CreateReturnDto> _createValidator;
         private readonly ICurrentUserService _currentUserService;
         private readonly IRequestNoGeneratorService _requestNoGeneratorService;
+        private readonly INotificationHelperService _notificationHelperService;
+        private readonly UserManager<ApplicationUser> _userManager;
+        private readonly ILogger<ReturnService> _logger;
 
         public ReturnService(
             ICrossCuttingRepository<Return> returnRepository,
@@ -28,7 +36,10 @@ namespace Ettad.RequestManagement.Service.Returns
             IMapper mapper,
             IValidator<CreateReturnDto> createValidator,
             ICurrentUserService currentUserService,
-            IRequestNoGeneratorService requestNoGeneratorService)
+            IRequestNoGeneratorService requestNoGeneratorService,
+            INotificationHelperService notificationHelperService,
+            UserManager<ApplicationUser> userManager,
+            ILogger<ReturnService> logger)
         {
             _returnRepository = returnRepository;
             _requestItemRepository = requestItemRepository;
@@ -37,10 +48,15 @@ namespace Ettad.RequestManagement.Service.Returns
             _createValidator = createValidator;
             _currentUserService = currentUserService;
             _requestNoGeneratorService = requestNoGeneratorService;
+            _notificationHelperService = notificationHelperService;
+            _userManager = userManager;
+            _logger = logger;
         }
 
         public async Task<APIOperationResponse<ReturnDto>> GetByIdAsync(long id)
         {
+            _logger.LogInformation("Getting return by ID: {ReturnId}. User: {UserId}", id, _currentUserService.UserId);
+            
             try
             {
                 var returnEntity = await _returnRepository.FindOneAsync(
@@ -56,19 +72,33 @@ namespace Ettad.RequestManagement.Service.Returns
                 );
 
                 if (returnEntity == null)
+                {
+                    _logger.LogWarning("Return not found. ReturnId: {ReturnId}, User: {UserId}", id, _currentUserService.UserId);
                     return APIOperationResponse<ReturnDto>.Fail(ResponseType.NotFound, "Return not found");
+                }
 
                 var dto = _mapper.Map<ReturnDto>(returnEntity);
+                
+                // Fallback: If RequesterName is null but we have a CreatedBy user, use that user's name
+                if (string.IsNullOrEmpty(dto.RequesterName) && !string.IsNullOrEmpty(returnEntity.CreatedBy))
+                {
+                    dto.RequesterName = await GetUserNameByIdAsync(returnEntity.CreatedBy);
+                }
+                
+                _logger.LogInformation("Successfully retrieved return. ReturnId: {ReturnId}, RequestNo: {RequestNo}", id, returnEntity.RequestNo);
                 return APIOperationResponse<ReturnDto>.Success(dto);
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Error getting return by ID. ReturnId: {ReturnId}, User: {UserId}", id, _currentUserService.UserId);
                 return APIOperationResponse<ReturnDto>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
             }
         }
 
         public async Task<APIOperationResponse<List<ReturnDto>>> GetAllAsync()
         {
+            _logger.LogInformation("Getting all returns. User: {UserId}", _currentUserService.UserId);
+            
             try
             {
                 var returns = await _returnRepository.FindAsync(
@@ -84,16 +114,32 @@ namespace Ettad.RequestManagement.Service.Returns
                 );
 
                 var dtos = _mapper.Map<List<ReturnDto>>(returns);
+                
+                // Fallback: Populate RequesterName from CreatedBy user if not set
+                foreach (var dto in dtos)
+                {
+                    var returnEntity = returns.FirstOrDefault(r => r.Id == dto.Id);
+                    if (returnEntity != null && string.IsNullOrEmpty(dto.RequesterName) && !string.IsNullOrEmpty(returnEntity.CreatedBy))
+                    {
+                        dto.RequesterName = await GetUserNameByIdAsync(returnEntity.CreatedBy);
+                    }
+                }
+                
+                _logger.LogInformation("Successfully retrieved {ReturnCount} returns. User: {UserId}", dtos.Count, _currentUserService.UserId);
                 return APIOperationResponse<List<ReturnDto>>.Success(dtos);
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Error getting all returns. User: {UserId}", _currentUserService.UserId);
                 return APIOperationResponse<List<ReturnDto>>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
             }
         }
 
         public async Task<APIOperationResponse<long>> CreateAsync(CreateReturnDto inputDto)
         {
+            _logger.LogInformation("Creating new return. DepartmentId: {DepartmentId}, RequestPurposeId: {RequestPurposeId}, User: {UserId}", 
+                inputDto.DepartmentId, inputDto.RequestPurposeId, _currentUserService.UserId);
+            
             try
             {
                 // Validate input
@@ -101,6 +147,8 @@ namespace Ettad.RequestManagement.Service.Returns
                 if (!validationResult.IsValid)
                 {
                     var errors = string.Join(", ", validationResult.Errors.Select(e => e.ErrorMessage));
+                    _logger.LogWarning("Return validation failed. DepartmentId: {DepartmentId}, Errors: {ValidationErrors}, User: {UserId}", 
+                        inputDto.DepartmentId, errors, _currentUserService.UserId);
                     return APIOperationResponse<long>.Fail(ResponseType.BadRequest, errors);
                 }
 
@@ -110,13 +158,19 @@ namespace Ettad.RequestManagement.Service.Returns
                 );
 
                 if (requestPurpose == null)
+                {
+                    _logger.LogWarning("Invalid request purpose for return. RequestPurposeId: {RequestPurposeId}, User: {UserId}", 
+                        inputDto.RequestPurposeId, _currentUserService.UserId);
                     return APIOperationResponse<long>.Fail(ResponseType.BadRequest, "Request purpose must be of type Return");
+                }
 
                 // Map DTO to entity
                 var returnEntity = _mapper.Map<Return>(inputDto);
                 
                 // Generate RequestNo
                 returnEntity.RequestNo = await _requestNoGeneratorService.GenerateRequestNoAsync(RequestType.Return, inputDto.DepartmentId);
+                
+                _logger.LogInformation("Generated RequestNo: {RequestNo} for return", returnEntity.RequestNo);
                 
                 returnEntity.RequestType = RequestType.Return;
                 returnEntity.Status = RequestStatus.New; // Always set to New when creating
@@ -132,19 +186,35 @@ namespace Ettad.RequestManagement.Service.Returns
                     })
                     .ToList();
 
+                _logger.LogInformation("Adding {ItemCount} return items to return. RequestNo: {RequestNo}", 
+                    returnEntity.RequestItems.Count, returnEntity.RequestNo);
+
                 // Add to repository
                 var createdReturn = await _returnRepository.AddAsync(returnEntity);
 
+                await NotifyReturnAsync(
+                    "Return Created",
+                    $"Return request {createdReturn.RequestNo} has been created.",
+                    createdReturn.Id);
+
+                _logger.LogInformation("Return created successfully. ReturnId: {ReturnId}, RequestNo: {RequestNo}, ItemCount: {ItemCount}, User: {UserId}", 
+                    createdReturn.Id, createdReturn.RequestNo, createdReturn.RequestItems?.Count ?? 0, _currentUserService.UserId);
+                
                 return APIOperationResponse<long>.Success(createdReturn.Id, "Return created successfully");
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Error creating return. DepartmentId: {DepartmentId}, User: {UserId}", 
+                    inputDto.DepartmentId, _currentUserService.UserId);
                 return APIOperationResponse<long>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
             }
         }
 
         public async Task<APIOperationResponse<bool>> ChangePriorityAsync(long id, RequestPriority priority)
         {
+            _logger.LogInformation("Changing return priority. ReturnId: {ReturnId}, NewPriority: {Priority}, User: {UserId}", 
+                id, priority, _currentUserService.UserId);
+            
             try
             {
                 // Check if return exists
@@ -153,8 +223,14 @@ namespace Ettad.RequestManagement.Service.Returns
                 );
 
                 if (existingReturn == null)
+                {
+                    _logger.LogWarning("Return not found for priority change. ReturnId: {ReturnId}, User: {UserId}", 
+                        id, _currentUserService.UserId);
                     return APIOperationResponse<bool>.Fail(ResponseType.NotFound, "Return not found");
+                }
 
+                var oldPriority = existingReturn.Priority;
+                
                 // Update priority
                 existingReturn.Priority = priority;
                 existingReturn.ModificationDate = DateTime.UtcNow;
@@ -163,32 +239,107 @@ namespace Ettad.RequestManagement.Service.Returns
                 // Update in repository
                 await _returnRepository.UpdateAsync(existingReturn);
 
+                await NotifyReturnAsync(
+                    "Return Priority Updated",
+                    $"Return request {existingReturn.RequestNo} priority changed to {priority}.",
+                    existingReturn.Id);
+
+                _logger.LogInformation("Return priority updated successfully. ReturnId: {ReturnId}, RequestNo: {RequestNo}, OldPriority: {OldPriority}, NewPriority: {NewPriority}, User: {UserId}", 
+                    id, existingReturn.RequestNo, oldPriority, priority, _currentUserService.UserId);
+                
                 return APIOperationResponse<bool>.Success(true, "Return priority updated successfully");
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Error changing return priority. ReturnId: {ReturnId}, Priority: {Priority}, User: {UserId}", 
+                    id, priority, _currentUserService.UserId);
                 return APIOperationResponse<bool>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
             }
         }
 
         public async Task<APIOperationResponse<bool>> DeleteAsync(long id)
         {
+            _logger.LogInformation("Deleting return. ReturnId: {ReturnId}, User: {UserId}", id, _currentUserService.UserId);
+            
             try
             {
                 var returnEntity = await _returnRepository.FindOneAsync(r => r.Id == id && !r.IsDeleted);
                 if (returnEntity == null)
+                {
+                    _logger.LogWarning("Return not found for deletion. ReturnId: {ReturnId}, User: {UserId}", id, _currentUserService.UserId);
                     return APIOperationResponse<bool>.Fail(ResponseType.NotFound, "Return not found");
+                }
 
                 // Soft delete - interceptor will handle IsDeleted, DeletionDate, and DeletedBy automatically
                 await _returnRepository.DeleteAsync(returnEntity);
 
+                await NotifyReturnAsync(
+                    "Return Deleted",
+                    $"Return request {returnEntity.RequestNo} has been deleted.",
+                    returnEntity.Id);
+
+                _logger.LogInformation("Return deleted successfully. ReturnId: {ReturnId}, RequestNo: {RequestNo}, User: {UserId}", 
+                    id, returnEntity.RequestNo, _currentUserService.UserId);
+                
                 return APIOperationResponse<bool>.Success(true, "Return deleted successfully");
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Error deleting return. ReturnId: {ReturnId}, User: {UserId}", id, _currentUserService.UserId);
                 return APIOperationResponse<bool>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
+            }
+        }
+
+        private async Task NotifyReturnAsync(string title, string message, long entityId)
+        {
+            try
+            {
+                var userId = _currentUserService.UserId;
+                var userIds = string.IsNullOrWhiteSpace(userId) ? null : new List<string> { userId };
+
+                await _notificationHelperService.SendNotificationAsync(
+                    title,
+                    message,
+                    entityType: nameof(Return),
+                    entityId: entityId,
+                    userIds: userIds,
+                    senderId: userId,
+                    includeSuperAdmins: true);
+            }
+            catch
+            {
+                // Suppress notification errors to avoid impacting main workflow
+            }
+        }
+
+        /// <summary>
+        /// Get user name by user ID from Identity system
+        /// </summary>
+        private async Task<string> GetUserNameByIdAsync(string userId)
+        {
+            try
+            {
+                var user = await _userManager.FindByIdAsync(userId);
+                if (user != null)
+                {
+                    // Try FullNameEN first, then FullNameAR, then UserName
+                    if (!string.IsNullOrEmpty(user.FullNameEN))
+                        return user.FullNameEN;
+                    if (!string.IsNullOrEmpty(user.FullNameAR))
+                        return user.FullNameAR;
+                    if (!string.IsNullOrEmpty(user.UserName))
+                        return user.UserName;
+                }
+                
+                return "System User";
+            }
+            catch
+            {
+                return "System User";
             }
         }
     }
 }
+
+
 

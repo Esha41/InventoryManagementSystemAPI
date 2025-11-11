@@ -57,6 +57,8 @@ namespace Ettad.EntityFramework.DataBaseContext
         public DbSet<ApplicationEntity> ApplicationEntities { get;set;}
         public DbSet<RoleApplicationEntity> RoleApplicationEntities { get; set; }
         public DbSet<WorkFlowType> WorkFlowTypes { get; set; }
+        public DbSet<Notification> Notifications { get; set; }
+        public DbSet<NotificationReceiver> NotificationReceivers { get; set; }
         public DbSet<Settings> Settings { get; set; }
        
         protected override void OnModelCreating(ModelBuilder modelBuilder)

@@ -3,26 +3,16 @@ using Ettad.Comman.Idenitity;
 using Ettad.CrossCutting.Comman.Exception;
 using Ettad.CrossCutting.Comman.Idenitity;
 using Ettad.CrossCutting.Comman.Time;
-using Ettad.Data.Entities;
-using Ettad.Data.IGenericRepository_IUOW;
 using Ettad.EntityFramework.DataBaseContext;
 using Ettad.ResponseHandler.Consts;
 using Ettad.ResponseHandler.Models;
-using Ettad.Services.Helpers;
 using Ettad.User.Services.DTO;
 using Ettad.User.Services.Helpers;
 using Ettad.User.Services.Interfaces;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.AspNetCore.Identity.Data;
-using Microsoft.AspNetCore.Mvc.ApiExplorer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using static Microsoft.ApplicationInsights.MetricDimensionNames.TelemetryContext;
+using Microsoft.Extensions.Logging;
 
 namespace Ettad.User.Services.Implementation
 {
@@ -40,20 +30,23 @@ namespace Ettad.User.Services.Implementation
         private readonly RoleManager<ApplicationRole> _roleManager;
         private readonly ICurrentUserService _currentUserService;
         private readonly IEmailSender _emailSender;
+        private readonly ILogger<AccountServices> _logger;
+
         private readonly ApplicationDbContext _context;
         public AccountServices(
             IJwtServices jwtServices,
             ISettingsProvider settingsProvider,
-//IUnitOfWork unitOfWork,
+            //IUnitOfWork unitOfWork,
             ILdapAuthenticator ldapAuthenticator,
             IDateTimeProvider dateTimeProvider,
             IOptions<JwtOptions> jwtOptions,
             IOptions<AdminUsersOptions> adminUsers, UserManager<ApplicationUser> userRepository,
-            SignInManager<ApplicationUser> signInManager, RoleManager<ApplicationRole> roleManager, ICurrentUserService currentUserService , IEmailSender emailSender,ApplicationDbContext context)
+            SignInManager<ApplicationUser> signInManager, RoleManager<ApplicationRole> roleManager, ICurrentUserService currentUserService, IEmailSender emailSender,
+            ILogger<AccountServices> logger, ApplicationDbContext context)
         {
             _jwtServices = jwtServices ?? throw new ArgumentNullException(nameof(jwtServices));
             _settingsProvider = settingsProvider ?? throw new ArgumentNullException(nameof(settingsProvider));
-           // _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
+            // _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
             _ldapAuthenticator = ldapAuthenticator ?? throw new ArgumentNullException(nameof(ldapAuthenticator));
             _dateTimeProvider = dateTimeProvider ?? throw new ArgumentNullException(nameof(dateTimeProvider));
             _jwtOptions = jwtOptions?.Value ?? new JwtOptions();
@@ -64,16 +57,21 @@ namespace Ettad.User.Services.Implementation
             _currentUserService = currentUserService;
             _emailSender = emailSender;
             _context = context;
+            _logger = logger;
+            _context = context;
         }
 
         public async Task<APIOperationResponse<AuthenticatedResponse>> Login(
       LoginInformation loginInformation,
       CancellationToken cancellationToken = default)
         {
+            _logger.LogInformation("Login attempt. Username: {Username}", loginInformation?.Username);
+            
             try
             {
                 if (string.IsNullOrWhiteSpace(loginInformation?.Username))
                 {
+                    _logger.LogWarning("Login failed: Empty username provided");
                     return APIOperationResponse<AuthenticatedResponse>.Fail(
                         ResponseType.BadRequest,
                         CommonErrorCodes.INVALID_EMAIL_OR_PASSWORD,
@@ -83,6 +81,9 @@ namespace Ettad.User.Services.Implementation
                 var ldapSettings = await _settingsProvider.GetLdapSettings(cancellationToken);
 
                 var isAdminLogin = true;
+
+                _logger.LogInformation("Login type determined. Username: {Username}, IsAdminLogin: {IsAdminLogin}", 
+                    loginInformation.Username, isAdminLogin);
 
                 var users = await _userRepository.FindByNameAsync(loginInformation.Username.Trim());
                 isAdminLogin = users != null; 
@@ -96,6 +97,7 @@ namespace Ettad.User.Services.Implementation
                     user = await _userRepository.FindByNameAsync(loginInformation.Username.Trim());
                     if (user == null)
                     {
+                        _logger.LogWarning("Login failed: User not found. Username: {Username}", loginInformation.Username);
                         return APIOperationResponse<AuthenticatedResponse>.Fail(
                             ResponseType.Unauthorized,
                             CommonErrorCodes.INVALID_EMAIL_OR_PASSWORD,
@@ -105,16 +107,21 @@ namespace Ettad.User.Services.Implementation
                     var signInResult = await _signInManager.CheckPasswordSignInAsync(user, loginInformation.Password, lockoutOnFailure: false);
                     if (!signInResult.Succeeded)
                     {
-
+                        _logger.LogWarning("Login failed: Invalid password. Username: {Username}, UserId: {UserId}", 
+                            loginInformation.Username, user.Id);
                         return APIOperationResponse<AuthenticatedResponse>.Fail(
                             ResponseType.Unauthorized,
                             CommonErrorCodes.INVALID_EMAIL_OR_PASSWORD,
                             "server.invalidLogin");
                     }
-
+                    
+                    _logger.LogInformation("Admin login successful. Username: {Username}, UserId: {UserId}", 
+                        loginInformation.Username, user.Id);
                 }
                 else if (ldapSettings.IsActive)
                 {
+                    _logger.LogInformation("Attempting LDAP authentication. Username: {Username}", loginInformation.Username);
+                    
                     var username = loginInformation.Username.Trim();
                     var resolvedUsername = $"{username}@{ldapSettings.LdapDomain}";
 
@@ -127,6 +134,8 @@ namespace Ettad.User.Services.Implementation
 
                     if (!loginSucceeded)
                     {
+                        _logger.LogWarning("LDAP login failed: Authentication failed. Username: {Username}", 
+                            loginInformation.Username);
                         return APIOperationResponse<AuthenticatedResponse>.Fail(
                             ResponseType.Unauthorized,
                             CommonErrorCodes.INVALID_EMAIL_OR_PASSWORD,
@@ -140,6 +149,12 @@ namespace Ettad.User.Services.Implementation
                     // 👇 Auto-create user if not found
                     if (user == null)
                     {
+                        _logger.LogWarning("LDAP login failed: User not found in system. Username: {Username}, ResolvedUsername: {ResolvedUsername}", 
+                            loginInformation.Username, resolvedUsername);
+                        return APIOperationResponse<AuthenticatedResponse>.Fail(
+                            ResponseType.Unauthorized,
+                            CommonErrorCodes.INVALID_EMAIL_OR_PASSWORD,
+                            "server.invalidLogin");
                         user = new ApplicationUser
                         {
                             UserName = resolvedUsername, // store with domain for consistency
@@ -152,10 +167,15 @@ namespace Ettad.User.Services.Implementation
 
                         await _userRepository.CreateAsync(user);
                     }
+                    
+                    _logger.LogInformation("LDAP login successful. Username: {Username}, UserId: {UserId}", 
+                        loginInformation.Username, user.Id);
                 }
 
                 else
                 {
+                    _logger.LogWarning("Login failed: LDAP not configured and not admin login. Username: {Username}", 
+                        loginInformation.Username);
                     return APIOperationResponse<AuthenticatedResponse>.Fail(
                         ResponseType.Unauthorized,
                         CommonErrorCodes.INVALID_EMAIL_OR_PASSWORD,
@@ -163,11 +183,15 @@ namespace Ettad.User.Services.Implementation
                 }
 
                 var authResponse = await CreateAndReturnAuthResponseAsync(user, cancellationToken);
+
+                _logger.LogInformation("Login completed successfully. Username: {Username}, UserId: {UserId}", 
+                    loginInformation.Username, user.Id);
+                
                 return APIOperationResponse<AuthenticatedResponse>.Success(authResponse);
             }
             catch (Exception ex)
             {
-                // Log exception here if needed
+                _logger.LogError(ex, "Login error occurred. Username: {Username}", loginInformation?.Username);
                 return APIOperationResponse<AuthenticatedResponse>.Fail(
                     ResponseType.InternalServerError,
                     CommonErrorCodes.SERVER_ERROR,
@@ -281,11 +305,19 @@ namespace Ettad.User.Services.Implementation
 
         public async Task<APIOperationResponse<string>> ForgotPasswordAsync(ForgotPasswordDto request)
         {
+            _logger.LogInformation("Password reset requested. Email: {Email}", request.Email);
+            
             var user = await _userRepository.FindByEmailAsync(request.Email.Trim());
             if (user == null)
+            {
+                _logger.LogWarning("Password reset failed: User not found. Email: {Email}", request.Email);
                 return APIOperationResponse<string>.Fail(ResponseType.NotFound, "User not found");
+            }
 
             var token = await _userRepository.GeneratePasswordResetTokenAsync(user);
+
+            _logger.LogInformation("Password reset token generated. Email: {Email}, UserId: {UserId}", 
+                request.Email, user.Id);
 
             // ?? Normally, you would send this token via Email/SMS using IEmailService
             // For now, just return it (not safe for production!)
@@ -307,23 +339,44 @@ namespace Ettad.User.Services.Implementation
             </body>
             </html>";
 
-            await _emailSender.SendEmailAsync(user.Email, "Reset Password", emailBody); ;
+            try
+            {
+                await _emailSender.SendEmailAsync(user.Email, "Reset Password", emailBody);
+                _logger.LogInformation("Password reset email sent successfully. Email: {Email}, UserId: {UserId}", 
+                    request.Email, user.Id);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to send password reset email. Email: {Email}, UserId: {UserId}", 
+                    request.Email, user.Id);
+            }
+            
             return APIOperationResponse<string>.Success(token);
         }
 
         public async Task<APIOperationResponse<string>> ResetPasswordAsync(ResetPasswordDto request)
         {
+            _logger.LogInformation("Password reset attempt. Email: {Email}", request.Email);
+            
             var user = await _userRepository.FindByEmailAsync(request.Email);
             if (user == null)
+            {
+                _logger.LogWarning("Password reset failed: User not found. Email: {Email}", request.Email);
                 return APIOperationResponse<string>.Fail(ResponseType.NotFound, "User not found");
+            }
 
             var result = await _userRepository.ResetPasswordAsync(user, request.Token, request.NewPassword);
             if (!result.Succeeded)
             {
                 var errors = string.Join(",", result.Errors.Select(e => e.Description));
+                _logger.LogWarning("Password reset failed: Validation errors. Email: {Email}, UserId: {UserId}, Errors: {Errors}", 
+                    request.Email, user.Id, errors);
                 return APIOperationResponse<string>.Fail(ResponseType.BadRequest, errors);
             }
 
+            _logger.LogInformation("Password reset successful. Email: {Email}, UserId: {UserId}", 
+                request.Email, user.Id);
+            
             return APIOperationResponse<string>.Success("Password has been reset successfully.");
         }
 

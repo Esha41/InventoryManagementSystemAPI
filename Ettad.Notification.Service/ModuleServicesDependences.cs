@@ -1,0 +1,30 @@
+using FluentValidation;
+using Microsoft.AspNetCore.SignalR;
+using Microsoft.Extensions.DependencyInjection;
+using System.Reflection;
+using Ettad.Notification.Service.Hubs;
+
+namespace Ettad.Notification.Service
+{
+    public static class ModuleServicesDependences
+    {
+        public static IServiceCollection AddNotificationServices(this IServiceCollection services)
+        {
+            // Register AutoMapper profiles from this assembly
+            services.AddAutoMapper(Assembly.GetExecutingAssembly());
+
+            // Register FluentValidation validators from this assembly
+            services.AddValidatorsFromAssembly(Assembly.GetExecutingAssembly());
+
+            // Register SignalR
+            services.AddSignalR();
+
+            // Register services
+            services.AddScoped<INotificationService, NotificationService>();
+            services.AddScoped<INotificationHelperService, NotificationHelperService>();
+
+            return services;
+        }
+    }
+}
+

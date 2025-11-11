@@ -22,13 +22,12 @@ using Microsoft.OpenApi.Models;
 using Moujam.Casiher.Comman.Models;
 using Serilog;
 using Serilog.Events;
-using Ettad.CrossCutting.Comman.Monitoring;
-using Ettad.Workflow.Service;
 using Ettad.Inventory.Service;
 using System.Text;
 using System.Text.Json;
 using Ettad.EntityFramework.Interceptors;
 using Ettad.RequestManagement.Service;
+using Ettad.Notification.Service;
 using System.Reflection;
 
 // Configure Serilog
@@ -46,6 +45,9 @@ Log.Information("Starting Ettad Backend API...");
 try
 {
     var builder = WebApplication.CreateBuilder(args);
+
+    // Ensure Log Database exists before Serilog starts
+    DatabaseHelper.EnsureLogDatabaseExists(builder.Configuration);
 
     // Add Serilog to the application
     builder.Host.UseSerilog((context, services, configuration) => configuration
@@ -70,6 +72,7 @@ try
         .AddApplicationPart(typeof(Ettad.User.API.Controllers.UsersController).Assembly)
         .AddApplicationPart(typeof(Ettad.Lookups.Domain.API.Controllers.DepartmentController).Assembly)
         .AddApplicationPart(typeof(Ettad.RequestManagement.API.Controllers.OrderController).Assembly)
+        .AddApplicationPart(typeof(Ettad.Notification.API.Controllers.NotificationController).Assembly)
         .AddJsonOptions(options =>
         {
             options.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
@@ -93,6 +96,7 @@ try
     #region Register Modules
     builder.Services.AddInventoryServices();
     builder.Services.AddRequestServices();
+    builder.Services.AddNotificationServices();
     #endregion
 
     // Register soft delete interceptor (ICurrentUserService is already registered above)
@@ -256,6 +260,10 @@ try
     app.UseAuthentication();
 
     app.UseAuthorization();
+    
+    // Map SignalR hub
+    app.MapHub<Ettad.Notification.Service.Hubs.NotificationHub>("/notificationHub");
+    
     app.MapControllers();
     app.UseCors("AllowAll");
 
@@ -295,4 +303,60 @@ finally
 {
     Log.Information("Shutting down Ettad Backend API");
     Log.CloseAndFlush();
+}
+
+/// <summary>
+/// Helper methods for database setup
+/// </summary>
+static class DatabaseHelper
+{
+    /// <summary>
+    /// Ensures the Log Database exists before the application starts logging
+    /// Similar to how EttadDb is created via context.Database.Migrate()
+    /// </summary>
+    public static void EnsureLogDatabaseExists(IConfiguration configuration)
+    {
+        try
+        {
+            var logConnectionString = configuration.GetConnectionString("LogConnection");
+            if (string.IsNullOrEmpty(logConnectionString))
+            {
+                Log.Warning("LogConnection string not found. Skipping log database creation.");
+                return;
+            }
+
+            // Parse connection string to get database name
+            var builder = new Microsoft.Data.SqlClient.SqlConnectionStringBuilder(logConnectionString);
+            var databaseName = builder.InitialCatalog;
+            var masterConnectionString = logConnectionString.Replace(databaseName, "master");
+
+            using (var connection = new Microsoft.Data.SqlClient.SqlConnection(masterConnectionString))
+            {
+                connection.Open();
+                
+                // Check if database exists
+                var checkDbCommand = connection.CreateCommand();
+                checkDbCommand.CommandText = $"SELECT database_id FROM sys.databases WHERE Name = '{databaseName}'";
+                var exists = checkDbCommand.ExecuteScalar();
+
+                if (exists == null)
+                {
+                    // Create database
+                    var createDbCommand = connection.CreateCommand();
+                    createDbCommand.CommandText = $"CREATE DATABASE [{databaseName}]";
+                    createDbCommand.ExecuteNonQuery();
+                    
+                    Log.Information("Log database '{DatabaseName}' created automatically", databaseName);
+                }
+                else
+                {
+                    Log.Information("Log database '{DatabaseName}' already exists", databaseName);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "Failed to create log database automatically. It may need to be created manually.");
+        }
+    }
 }
