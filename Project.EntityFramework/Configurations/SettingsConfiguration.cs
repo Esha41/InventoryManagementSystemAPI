@@ -36,14 +36,14 @@ namespace Ettad.EntityFramework.Configurations
        {
            Id = 1,
            Key = "LdapServer",
-           Value = "LDAP://10.80.74.5",
+           Value = "10.80.70.3",
            Group = "LDAP"
        },
        new Settings
        {
            Id = 2,
            Key = "LdapDomain",
-           Value = "example.com",
+           Value = "sddev.local",
            Group = "LDAP"
        },
        new Settings
@@ -57,14 +57,14 @@ namespace Ettad.EntityFramework.Configurations
        {
            Id = 4,
            Key = "LdapUsername",
-           Value = "ldapuser",
+           Value = "1000",
            Group = "LDAP"
        },
        new Settings
        {
            Id = 5,
            Key = "LdapPassword",
-           Value = "pass@123",
+           Value = "Qatar@2025",
            Group = "LDAP"
        }
    );

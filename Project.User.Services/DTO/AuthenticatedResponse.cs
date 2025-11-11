@@ -14,7 +14,6 @@ namespace Ettad.User.Services.DTO
         public long? DepartmentId { get; set; }
         public string? DepartmentName { get; set; }
         public int? EmployeeId { get; set; }
-        public int? OrganizationId { get; set; }
         public string? UserName { get; set; }
         public string? NameEn { get; set; }
         public string? NameAr { get; set; }

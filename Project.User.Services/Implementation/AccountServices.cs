@@ -1,4 +1,4 @@
-using Ettad.Application.Common.Interfaces;
+﻿using Ettad.Application.Common.Interfaces;
 using Ettad.Comman.Idenitity;
 using Ettad.CrossCutting.Comman.Exception;
 using Ettad.CrossCutting.Comman.Idenitity;
@@ -115,10 +115,14 @@ namespace Ettad.User.Services.Implementation
                 }
                 else if (ldapSettings.IsActive)
                 {
+                    var username = loginInformation.Username.Trim();
+                    var resolvedUsername = $"{username}@{ldapSettings.LdapDomain}";
+
                     var loginSucceeded = await _ldapAuthenticator.ValidateAsync(
-                        loginInformation.Username.Trim(),
+                        username,
                         loginInformation.Password,
                         loginWithoutPassword: false,
+                        ldapSettings,
                         cancellationToken);
 
                     if (!loginSucceeded)
@@ -129,16 +133,27 @@ namespace Ettad.User.Services.Implementation
                             "server.invalidLogin");
                     }
 
-                    var resolvedUsername = $"{loginInformation.Username.Trim()}@{ldapSettings.LdapDomain}";
-                    user = await _userRepository.FindByNameAsync(resolvedUsername);
+                    // Try to find the user (with or without domain)
+                    user = await _userRepository.FindByNameAsync(resolvedUsername)
+                        ?? await _userRepository.FindByNameAsync(username);
+
+                    // 👇 Auto-create user if not found
                     if (user == null)
                     {
-                        return APIOperationResponse<AuthenticatedResponse>.Fail(
-                            ResponseType.Unauthorized,
-                            CommonErrorCodes.INVALID_EMAIL_OR_PASSWORD,
-                            "server.invalidLogin");
+                        user = new ApplicationUser
+                        {
+                            UserName = resolvedUsername, // store with domain for consistency
+                            NormalizedUserName = resolvedUsername.ToUpperInvariant(),
+                            Email = $"{username}@{ldapSettings.LdapDomain}",
+                            EmailConfirmed = true,
+                           
+                            // set other defaults like roles or department if needed
+                        };
+
+                        await _userRepository.CreateAsync(user);
                     }
                 }
+
                 else
                 {
                     return APIOperationResponse<AuthenticatedResponse>.Fail(
@@ -164,19 +179,33 @@ namespace Ettad.User.Services.Implementation
         public async Task<AuthenticatedResponse> LoginWithLdap(LoginInformation loginInformation, CancellationToken cancellationToken = default)
         {
             var ldapSettings = await _settingsProvider.GetLdapSettings(cancellationToken);
-            if (!ldapSettings.IsActive) throw new ApiException("server.invalidLdapSettings");
-            if (string.IsNullOrWhiteSpace(loginInformation?.Username)) throw new ApiException("server.invalidLogin");
 
-            var loginSucceeded = await _ldapAuthenticator.ValidateAsync(loginInformation.Username.Trim(), loginInformation.Password, loginWithoutPassword: true, cancellationToken);
-            if (!loginSucceeded) throw new ApiException("server.invalidLogin");
+            if (!ldapSettings.IsActive)
+                throw new ApiException("server.invalidLdapSettings");
 
+            if (string.IsNullOrWhiteSpace(loginInformation?.Username))
+                throw new ApiException("server.invalidLogin");
+
+            // 👇 Pass ldapSettings to authenticator
+            var loginSucceeded = await _ldapAuthenticator.ValidateAsync(
+                loginInformation.Username.Trim(),
+                loginInformation.Password,
+                loginWithoutPassword: false, // set to false since password is required here
+                ldapSettings,
+                cancellationToken);
+
+            if (!loginSucceeded)
+                throw new ApiException("server.invalidLogin");
+
+            // Construct resolved username (domain-qualified)
             var resolvedUsername = $"{loginInformation.Username.Trim()}@{ldapSettings.LdapDomain}";
+
             var user = await _userRepository.FindByNameAsync(resolvedUsername)
-                       ?? throw new ApiException("server.invalidLogin");
-            
+                ?? throw new ApiException("server.invalidLogin");
 
             return await CreateAndReturnAuthResponseAsync(user, cancellationToken);
         }
+
 
         public Task<AuthenticatedResponse> LoginWithAzure(LoginWithAzureInformation loginInformation, CancellationToken cancellationToken = default)
         {
