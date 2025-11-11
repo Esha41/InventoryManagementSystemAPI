@@ -176,6 +176,12 @@ namespace Ettad.RequestManagement.Service.Discards
                 discard.Status = RequestStatus.New; // Always set to New when creating
                 discard.CreationDate = DateTime.UtcNow;
                 discard.CreatedBy = _currentUserService.UserId;
+                
+                // Automatically set RequesterId to current user if not provided
+                if (string.IsNullOrEmpty(discard.RequesterId))
+                {
+                    discard.RequesterId = _currentUserService.UserId;
+                }
 
                 // Map discard items
                 discard.RequestItems = inputDto.DiscardItems

@@ -14,5 +14,7 @@ namespace Ettad.Inventory.Service.AllowanceItems
         Task<APIOperationResponse<AllowanceItemByDepartmentDto>> GetByDepartmentAndYearAsync(long departmentId, int year);
         Task<APIOperationResponse<List<AllowanceItemByDepartmentDto>>> GetByDepartmentAsync(long departmentId);
         Task<APIOperationResponse<List<AllowanceItemDto>>> BulkCreateAsync(BulkCreateAllowanceItemDto inputDto);
+        Task<APIOperationResponse<AllowanceReserveDetailsDto>> GetReserveDetailsAsync(long departmentId, int year);
+        Task<APIOperationResponse<AllowanceReserveDetailsByItemDto>> GetReserveDetailsByItemAsync(long departmentId, int year);
     }
 }

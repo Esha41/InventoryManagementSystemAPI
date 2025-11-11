@@ -162,11 +162,6 @@ namespace Ettad.User.Services.Implementation
                 claims.Add(new Claim("DepartmentId", user.DepartmentId.Value.ToString()));
             }
 
-            if (user.EmployeeId.HasValue)
-            {
-                claims.Add(new Claim("EmployeeId", user.EmployeeId.Value.ToString()));
-            }
-
             if (!string.IsNullOrWhiteSpace(user.FullNameEN))
             {
                 claims.Add(new Claim("FullNameEN", user.FullNameEN));

@@ -15,7 +15,6 @@ namespace Ettad.User.Services.DTO
         public bool IsLdapUser { get; set; }
         public bool IsSuperAdmin { get; set; }
         public string ExtraEmployeesView { get; set; }
-        public int? EmployeeId { get; set; }
         public long? DeparmentId { get; set; }
         public string DepartmentName { get; set; }
         public int? OrganizationId { get; set; }

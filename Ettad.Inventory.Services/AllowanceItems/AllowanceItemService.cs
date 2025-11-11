@@ -16,6 +16,8 @@ namespace Ettad.Inventory.Service.AllowanceItems
     {
         private readonly ICrossCuttingRepository<AllowanceItem> _allowanceItemRepository;
         private readonly ICrossCuttingRepository<Department> _departmentRepository;
+        private readonly ICrossCuttingRepository<Order> _orderRepository;
+        private readonly ICrossCuttingRepository<RequestItem> _requestItemRepository;
         private readonly IMapper _mapper;
         private readonly IValidator<CreateUpdateAllowanceItemDto> _validator;
         private readonly ICurrentUserService _currentUserService;
@@ -24,6 +26,8 @@ namespace Ettad.Inventory.Service.AllowanceItems
         public AllowanceItemService(
             ICrossCuttingRepository<AllowanceItem> allowanceItemRepository,
             ICrossCuttingRepository<Department> departmentRepository,
+            ICrossCuttingRepository<Order> orderRepository,
+            ICrossCuttingRepository<RequestItem> requestItemRepository,
             IMapper mapper,
             IValidator<CreateUpdateAllowanceItemDto> validator,
             ICurrentUserService currentUserService,
@@ -31,6 +35,8 @@ namespace Ettad.Inventory.Service.AllowanceItems
         {
             _allowanceItemRepository = allowanceItemRepository;
             _departmentRepository = departmentRepository;
+            _orderRepository = orderRepository;
+            _requestItemRepository = requestItemRepository;
             _mapper = mapper;
             _validator = validator;
             _currentUserService = currentUserService;
@@ -332,6 +338,224 @@ namespace Ettad.Inventory.Service.AllowanceItems
                 _logger.LogError(ex, "Error in bulk create allowance items. DepartmentId: {DepartmentId}, Year: {Year}, User: {UserId}", 
                     inputDto?.DepartmentId, inputDto?.Year, _currentUserService.UserId);
                 return APIOperationResponse<List<AllowanceItemDto>>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
+            }
+        }
+
+        public async Task<APIOperationResponse<AllowanceReserveDetailsDto>> GetReserveDetailsAsync(long departmentId, int year)
+        {
+            _logger.LogInformation("Getting reserve details. DepartmentId: {DepartmentId}, Year: {Year}, User: {UserId}", 
+                departmentId, year, _currentUserService.UserId);
+            
+            try
+            {
+                // Validate department
+                var department = await _departmentRepository.FindOneAsync(d => d.Id == departmentId && !d.IsDeleted);
+                if (department == null)
+                {
+                    _logger.LogWarning("Department not found. DepartmentId: {DepartmentId}, User: {UserId}", 
+                        departmentId, _currentUserService.UserId);
+                    return APIOperationResponse<AllowanceReserveDetailsDto>.Fail(ResponseType.NotFound, "Department not found");
+                }
+
+                // Get all allowance items for the department and year
+                var allowanceItems = await _allowanceItemRepository.FindAsync(
+                    a => a.DepartmentId == departmentId && a.Year == year && !a.IsDeleted);
+
+                // Calculate total reserve (sum of all allowance quantities)
+                var totalReserve = allowanceItems.Sum(a => a.Quantity);
+
+                // Get all orders from allowance for this department and year
+                var ordersFromAllowance = await _orderRepository.FindAsync(
+                    o => o.DepartmentId == departmentId && 
+                         o.IsFromAllowance && 
+                         o.UsageDate.Year == year &&
+                         !o.IsDeleted);
+
+                // Calculate ordered quantity (New and UnderProcess orders)
+                var orderedOrderIds = ordersFromAllowance
+                    .Where(o => o.Status == RequestStatus.New || o.Status == RequestStatus.UnderProcess)
+                    .Select(o => o.Id)
+                    .ToList();
+
+                var orderedItems = await _requestItemRepository.FindAsync(
+                    ri => orderedOrderIds.Contains(ri.RequestId) && !ri.IsDeleted);
+                var orderedQuantity = (int)orderedItems.Sum(ri => ri.Quantity);
+
+                // Calculate utilized quantity (Approved orders)
+                var utilizedOrderIds = ordersFromAllowance
+                    .Where(o => o.Status == RequestStatus.Approved)
+                    .Select(o => o.Id)
+                    .ToList();
+
+                var utilizedItems = await _requestItemRepository.FindAsync(
+                    ri => utilizedOrderIds.Contains(ri.RequestId) && !ri.IsDeleted);
+                var utilizedQuantity = (int)utilizedItems.Sum(ri => ri.Quantity);
+
+                // Calculate available reserve
+                var availableReserve = totalReserve - orderedQuantity - utilizedQuantity;
+
+                var result = new AllowanceReserveDetailsDto
+                {
+                    DepartmentId = departmentId,
+                    Year = year,
+                    TotalReserve = totalReserve,
+                    AvailableReserve = Math.Max(0, availableReserve), // Ensure non-negative
+                    OrderedQuantity = orderedQuantity,
+                    UtilizedQuantity = utilizedQuantity
+                };
+
+                _logger.LogInformation("Reserve details calculated. DepartmentId: {DepartmentId}, Year: {Year}, Total: {Total}, Available: {Available}, Ordered: {Ordered}, Utilized: {Utilized}", 
+                    departmentId, year, totalReserve, availableReserve, orderedQuantity, utilizedQuantity);
+
+                return APIOperationResponse<AllowanceReserveDetailsDto>.Success(result);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting reserve details. DepartmentId: {DepartmentId}, Year: {Year}, User: {UserId}", 
+                    departmentId, year, _currentUserService.UserId);
+                return APIOperationResponse<AllowanceReserveDetailsDto>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
+            }
+        }
+
+        public async Task<APIOperationResponse<AllowanceReserveDetailsByItemDto>> GetReserveDetailsByItemAsync(long departmentId, int year)
+        {
+            _logger.LogInformation("Getting reserve details by item. DepartmentId: {DepartmentId}, Year: {Year}, User: {UserId}", 
+                departmentId, year, _currentUserService.UserId);
+            
+            try
+            {
+                // Validate department
+                var department = await _departmentRepository.FindOneAsync(d => d.Id == departmentId && !d.IsDeleted);
+                if (department == null)
+                {
+                    _logger.LogWarning("Department not found. DepartmentId: {DepartmentId}, User: {UserId}", 
+                        departmentId, _currentUserService.UserId);
+                    return APIOperationResponse<AllowanceReserveDetailsByItemDto>.Fail(ResponseType.NotFound, "Department not found");
+                }
+
+                // Get all allowance items for the department and year with item details
+                var allowanceItems = await _allowanceItemRepository.FindAsync(
+                    a => a.DepartmentId == departmentId && a.Year == year && !a.IsDeleted,
+                    false,
+                    nameof(AllowanceItem.Item));
+
+                if (!allowanceItems.Any())
+                {
+                    _logger.LogInformation("No allowance items found for department. DepartmentId: {DepartmentId}, Year: {Year}", 
+                        departmentId, year);
+                    
+                    return APIOperationResponse<AllowanceReserveDetailsByItemDto>.Success(new AllowanceReserveDetailsByItemDto
+                    {
+                        DepartmentId = departmentId,
+                        DepartmentCode = department.Code,
+                        DepartmentNameAr = department.NameAr,
+                        DepartmentNameEn = department.NameEn,
+                        Year = year,
+                        TotalReserve = 0,
+                        TotalAvailableReserve = 0,
+                        TotalOrderedQuantity = 0,
+                        TotalUtilizedQuantity = 0,
+                        Items = new List<AllowanceItemReserveDetailsDto>()
+                    });
+                }
+
+                // Get all orders from allowance for this department and year
+                var ordersFromAllowance = await _orderRepository.FindAsync(
+                    o => o.DepartmentId == departmentId && 
+                         o.IsFromAllowance && 
+                         o.UsageDate.Year == year &&
+                         !o.IsDeleted);
+
+                var allOrderIds = ordersFromAllowance.Select(o => o.Id).ToList();
+                
+                // Get all request items for these orders
+                var allRequestItems = await _requestItemRepository.FindAsync(
+                    ri => allOrderIds.Contains(ri.RequestId) && !ri.IsDeleted);
+
+                // Calculate per-item details
+                var itemDetailsList = new List<AllowanceItemReserveDetailsDto>();
+                int totalReserve = 0;
+                int totalAvailableReserve = 0;
+                int totalOrderedQuantity = 0;
+                int totalUtilizedQuantity = 0;
+
+                foreach (var allowanceItem in allowanceItems)
+                {
+                    var itemId = allowanceItem.ItemId;
+                    var itemTotalReserve = allowanceItem.Quantity;
+
+                    // Calculate ordered quantity for this item (New and UnderProcess orders)
+                    var orderedOrderIds = ordersFromAllowance
+                        .Where(o => o.Status == RequestStatus.New || o.Status == RequestStatus.UnderProcess)
+                        .Select(o => o.Id)
+                        .ToList();
+
+                    var itemOrderedQuantity = (int)allRequestItems
+                        .Where(ri => orderedOrderIds.Contains(ri.RequestId) && ri.ItemId == itemId)
+                        .Sum(ri => ri.Quantity);
+
+                    // Calculate utilized quantity for this item (Approved orders)
+                    var utilizedOrderIds = ordersFromAllowance
+                        .Where(o => o.Status == RequestStatus.Approved)
+                        .Select(o => o.Id)
+                        .ToList();
+
+                    var itemUtilizedQuantity = (int)allRequestItems
+                        .Where(ri => utilizedOrderIds.Contains(ri.RequestId) && ri.ItemId == itemId)
+                        .Sum(ri => ri.Quantity);
+
+                    // Calculate available reserve for this item
+                    var itemAvailableReserve = Math.Max(0, itemTotalReserve - itemOrderedQuantity - itemUtilizedQuantity);
+
+                    // Get item details
+                    var item = allowanceItem.Item;
+                    var itemName = item?.Name ?? "Unknown Item";
+                    var itemNo = item?.ItemNo ?? "";
+                    var batchNo = item?.BatchNo ?? "";
+
+                    itemDetailsList.Add(new AllowanceItemReserveDetailsDto
+                    {
+                        ItemId = itemId,
+                        ItemName = itemName,
+                        ItemNo = itemNo,
+                        BatchNo = batchNo,
+                        TotalReserve = itemTotalReserve,
+                        AvailableReserve = itemAvailableReserve,
+                        OrderedQuantity = itemOrderedQuantity,
+                        UtilizedQuantity = itemUtilizedQuantity
+                    });
+
+                    // Accumulate totals
+                    totalReserve += itemTotalReserve;
+                    totalAvailableReserve += itemAvailableReserve;
+                    totalOrderedQuantity += itemOrderedQuantity;
+                    totalUtilizedQuantity += itemUtilizedQuantity;
+                }
+
+                var result = new AllowanceReserveDetailsByItemDto
+                {
+                    DepartmentId = departmentId,
+                    DepartmentCode = department.Code,
+                    DepartmentNameAr = department.NameAr,
+                    DepartmentNameEn = department.NameEn,
+                    Year = year,
+                    TotalReserve = totalReserve,
+                    TotalAvailableReserve = totalAvailableReserve,
+                    TotalOrderedQuantity = totalOrderedQuantity,
+                    TotalUtilizedQuantity = totalUtilizedQuantity,
+                    Items = itemDetailsList
+                };
+
+                _logger.LogInformation("Reserve details by item calculated. DepartmentId: {DepartmentId}, Year: {Year}, ItemCount: {ItemCount}, TotalReserve: {Total}, TotalAvailable: {Available}", 
+                    departmentId, year, itemDetailsList.Count, totalReserve, totalAvailableReserve);
+
+                return APIOperationResponse<AllowanceReserveDetailsByItemDto>.Success(result);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting reserve details by item. DepartmentId: {DepartmentId}, Year: {Year}, User: {UserId}", 
+                    departmentId, year, _currentUserService.UserId);
+                return APIOperationResponse<AllowanceReserveDetailsByItemDto>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
             }
         }
     }

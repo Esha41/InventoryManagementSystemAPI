@@ -8,7 +8,7 @@ namespace Ettad.RequestManagement.Service.Returns.Dtos
         public RequestPriority Priority { get; set; }
         public string? Notes { get; set; }
         public long DepartmentId { get; set; }
-        public long? RequesterId { get; set; }
+        public string? RequesterId { get; set; }
         public long RequestPurposeId { get; set; }
         public List<CreateReturnItemDto> ReturnItems { get; set; } = new();
     }

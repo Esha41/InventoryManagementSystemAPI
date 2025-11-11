@@ -176,6 +176,12 @@ namespace Ettad.RequestManagement.Service.Returns
                 returnEntity.Status = RequestStatus.New; // Always set to New when creating
                 returnEntity.CreationDate = DateTime.UtcNow;
                 returnEntity.CreatedBy = _currentUserService.UserId;
+                
+                // Automatically set RequesterId to current user if not provided
+                if (string.IsNullOrEmpty(returnEntity.RequesterId))
+                {
+                    returnEntity.RequesterId = _currentUserService.UserId;
+                }
 
                 // Map return items
                 returnEntity.RequestItems = inputDto.ReturnItems

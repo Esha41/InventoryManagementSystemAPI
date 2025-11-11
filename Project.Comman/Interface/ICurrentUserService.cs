@@ -7,7 +7,7 @@ public interface ICurrentUserService
     string? UserId { get; }
     bool IsAdminRole { get; }
     string? UserName { get; }
-    long? EmployeeId { get; }
+    long? DepartmentId { get; }
     bool IsHrEmployee { get; }
     List<string>? Roles { get; }
     List<long> EntityIds { get; }

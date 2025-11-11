@@ -15,7 +15,20 @@ namespace Ettad.User.Services.Implementation
 
         public string? UserName => _httpContextAccessor.HttpContext?.User?.Identity?.Name;
         public string? UserId => _httpContextAccessor.HttpContext?.User?.FindFirstValue(ClaimTypes.NameIdentifier);
-        public long? EmployeeId => Convert.ToInt64(_httpContextAccessor.HttpContext?.User?.Claims.FirstOrDefault(item => item.Type == "employeeId")?.Value);
+        public long? DepartmentId
+        {
+            get
+            {
+                var departmentIdClaim = _httpContextAccessor.HttpContext?.User?.Claims.FirstOrDefault(item => item.Type == "DepartmentId")?.Value;
+                if (string.IsNullOrEmpty(departmentIdClaim))
+                    return null;
+                
+                if (long.TryParse(departmentIdClaim, out long departmentId))
+                    return departmentId;
+                
+                return null;
+            }
+        }
         public bool IsAdminRole => Convert.ToBoolean(_httpContextAccessor
             .HttpContext?
             .User?
