@@ -163,16 +163,6 @@ public static class MainEntities
         CrudOperation.Delete,
     };
 
-    [Category(CrudPermissionsGenerator.EmployeeData)]
-    public static readonly CrudOperation[] Employees = new[]
-    {
-        CrudOperation.Page,
-        CrudOperation.View,
-        CrudOperation.Create,
-        CrudOperation.Edit,
-        CrudOperation.Delete,
-    };
-
     [Category(CrudPermissionsGenerator.UserManagement)]
     public static readonly CrudOperation[] Roles = new[]
     {
@@ -455,16 +445,6 @@ public static class MainEntities
 
     [Category(CrudPermissionsGenerator.RequestManagement)]
     public static readonly CrudOperation[] RequestPurpose = new[]
-    {
-        CrudOperation.Page,
-        CrudOperation.View,
-        CrudOperation.Create,
-        CrudOperation.Edit,
-        CrudOperation.Delete
-    };
-
-    [Category(CrudPermissionsGenerator.EmployeeData)]
-    public static readonly CrudOperation[] Employee = new[]
     {
         CrudOperation.Page,
         CrudOperation.View,
