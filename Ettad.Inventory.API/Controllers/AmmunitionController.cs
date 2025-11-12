@@ -1,4 +1,5 @@
 ﻿using Ettad.CrossCutting.Common.Security;
+using Ettad.Data.Enums;
 using Ettad.Inventory.Service.Ammunitions;
 using Ettad.Inventory.Service.Ammunitions.Dtos;
 using Ettad.ResponseHandler.Models;
@@ -36,6 +37,15 @@ namespace Ettad.Inventory.API.Controllers
         public async Task<IActionResult> GetAll()
         {
             var result = await _ammunitionService.GetAllAsync();
+            return ProcessResponse(result);
+        }
+
+        [HttpGet("type/{ammunitionType}")]
+        [ProducesResponseType((int)HttpStatusCode.OK)]
+        [CheckAuthorize("Permissions.Ammunition.View", "Permissions.Ammunition.Page")]
+        public async Task<IActionResult> GetByType(AmmunitionsType ammunitionType)
+        {
+            var result = await _ammunitionService.GetByTypeAsync(ammunitionType);
             return ProcessResponse(result);
         }
 

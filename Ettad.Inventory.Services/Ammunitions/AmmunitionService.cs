@@ -95,6 +95,38 @@ namespace Ettad.Inventory.Service.Ammunitions
             }
         }
 
+        public async Task<APIOperationResponse<List<AmmunitionDto>>> GetByTypeAsync(AmmunitionsType ammunitionType)
+        {
+            _logger.LogInformation("Getting ammunitions by type. AmmunitionType: {AmmunitionType}, User: {UserId}", ammunitionType, _currentUserService.UserId);
+
+            try
+            {
+                var ammunitions = await _ammunitionRepository.FindAsync(
+                    a => !a.IsDeleted && a.AmmunitionType == ammunitionType,
+                    false,
+                    nameof(Ammunition.Hcc),
+                    nameof(Ammunition.BulletDiameterUnit),
+                    nameof(Ammunition.CaseLengthUnit),
+                    nameof(Ammunition.NatureOption),
+                    nameof(Ammunition.PrimaryPurpos),
+                    nameof(Ammunition.ProjectileColor),
+                    nameof(Ammunition.ProjectailMaterial),
+                    nameof(Ammunition.CaseType),
+                    nameof(Ammunition.Propellant),
+                    nameof(Ammunition.Compatibility),
+                    nameof(Ammunition.HazardDivision)
+                );
+
+                var dtos = _mapper.Map<List<AmmunitionDto>>(ammunitions);
+                return APIOperationResponse<List<AmmunitionDto>>.Success(dtos);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving ammunitions by type. AmmunitionType: {AmmunitionType}, User: {UserId}", ammunitionType, _currentUserService.UserId);
+                return APIOperationResponse<List<AmmunitionDto>>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
+            }
+        }
+
         public async Task<APIOperationResponse<long>> CreateAsync(CreateUpdateAmmunitionDto inputDto)
         {
             _logger.LogInformation("Creating new ammunition. Name: {Name}, ItemNo: {ItemNo}, User: {UserId}", 
