@@ -57,6 +57,15 @@ namespace Ettad.Inventory.API.Controllers
             return ProcessResponse(result);
         }
 
+        [HttpGet("reserve-details/{departmentId}/{year}")]
+        [ProducesResponseType((int)HttpStatusCode.OK)]
+        [CheckAuthorize("Permissions.AllowanceItem.View", "Permissions.AllowanceItem.Page")]
+        public async Task<IActionResult> GetReserveDetails(long departmentId, int year)
+        {
+            var result = await _allowanceItemService.GetReserveDetailsByItemAsync(departmentId, year);
+            return ProcessResponse(result);
+        }
+
         [HttpPost]
         [ProducesResponseType((int)HttpStatusCode.Created)]
         [CheckAuthorize("Permissions.AllowanceItem.Create")]

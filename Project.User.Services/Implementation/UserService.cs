@@ -121,7 +121,6 @@ public class UserService : IUserService
             Email = dto.Email,
             IsLdapUser = dto.IsLdapUser,
             ExtraEmployeesView = dto.ExtraEmployeesView,
-            EmployeeId = dto.EmployeeId,
             DepartmentId = dto.DepartmentId,            
             MilitoryId= dto.MilitoryId,
             RankId = dto.RankId,
@@ -200,7 +199,6 @@ public class UserService : IUserService
         user.Email =  dto.Email;
         user.IsLdapUser = dto.IsLdapUser;
         user.ExtraEmployeesView = dto.ExtraEmployeesView;
-        user.EmployeeId = dto.EmployeeId;
         user.DepartmentId= dto.DepartmentId;        
         user.MilitoryId = dto.MilitoryId;
         user.RankId = dto.RankId;
@@ -445,7 +443,6 @@ public class UserService : IUserService
             IsLdapUser = user.IsLdapUser,
             IsSuperAdmin = user.IsSuperAdmin,
             ExtraEmployeesView = user.ExtraEmployeesView,
-            EmployeeId = user.EmployeeId,           
             FullNameEN=user.FullNameEN,
             FullNameAR=user.FullNameAR,
             RankId = user.RankId,

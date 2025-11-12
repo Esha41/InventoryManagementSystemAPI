@@ -27,12 +27,12 @@ namespace Ettad.RequestManagement.Service.Orders.Validators
                 .GreaterThan(0).WithMessage("Department is required");
 
             RuleFor(x => x.RequesterId)
-                .GreaterThan(0).When(x => x.RequesterId.HasValue)
-                .WithMessage("Requester ID must be greater than 0 when provided");
+                .NotEmpty().When(x => !string.IsNullOrEmpty(x.RequesterId))
+                .WithMessage("Requester ID must be valid when provided");
 
             RuleFor(x => x.RecieverId)
-                .GreaterThan(0).When(x => x.RecieverId.HasValue)
-                .WithMessage("Receiver ID must be greater than 0 when provided");
+                .NotEmpty().When(x => !string.IsNullOrEmpty(x.RecieverId))
+                .WithMessage("Receiver ID must be valid when provided");
 
             RuleFor(x => x.DepotId)
                 .GreaterThan(0).When(x => x.DepotId.HasValue)

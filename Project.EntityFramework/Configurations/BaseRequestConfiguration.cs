@@ -34,6 +34,14 @@ namespace Ettad.EntityFramework.Configurations
             builder.Property(x => x.Status)
                 .IsRequired();
 
+            builder.Property(x => x.RequesterId)
+                .IsRequired(false)
+                .HasMaxLength(450); // Match AspNetUsers.Id length
+
+            builder.Property(x => x.RecieverId)
+                .IsRequired(false)
+                .HasMaxLength(450); // Match AspNetUsers.Id length
+
             builder.HasOne(x => x.Department)
                 .WithMany()
                 .HasForeignKey(x => x.DepartmentId)

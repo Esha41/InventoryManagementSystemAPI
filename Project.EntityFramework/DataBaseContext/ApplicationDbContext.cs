@@ -52,7 +52,7 @@ namespace Ettad.EntityFramework.DataBaseContext
         public DbSet<Order> Orders { get; set; }
         public DbSet<Discard> Discards { get; set; }
         public DbSet<Return> Returns { get; set; }
-        public DbSet<Employee> Employees { get; set; }
+     
 
         public DbSet<ApplicationEntity> ApplicationEntities { get;set;}
         public DbSet<RoleApplicationEntity> RoleApplicationEntities { get; set; }

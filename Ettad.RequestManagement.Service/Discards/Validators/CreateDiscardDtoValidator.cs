@@ -18,8 +18,8 @@ namespace Ettad.RequestManagement.Service.Discards.Validators
                 .GreaterThan(0).WithMessage("Request purpose is required");
 
             RuleFor(x => x.RequesterId)
-                .GreaterThan(0).When(x => x.RequesterId.HasValue)
-                .WithMessage("Requester ID must be greater than 0 when provided");
+                .NotEmpty().When(x => !string.IsNullOrEmpty(x.RequesterId))
+                .WithMessage("Requester ID must be valid when provided");
 
             RuleFor(x => x.Reason)
                 .MaximumLength(1000).WithMessage("Reason cannot exceed 1000 characters")

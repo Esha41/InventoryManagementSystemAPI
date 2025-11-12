@@ -11,6 +11,7 @@ using Ettad.RequestManagement.Service.Common;
 using Microsoft.AspNetCore.Identity;
 using Ettad.Comman.Idenitity;
 using Microsoft.Extensions.Logging;
+using Ettad.Notification.Service;
 
 namespace Ettad.RequestManagement.Service.Orders
 {
@@ -24,6 +25,7 @@ namespace Ettad.RequestManagement.Service.Orders
         private readonly IValidator<UpdateOrderDto> _updateValidator;
         private readonly ICurrentUserService _currentUserService;
         private readonly IRequestNoGeneratorService _requestNoGeneratorService;
+        private readonly INotificationHelperService _notificationHelperService;
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly ILogger<OrderService> _logger;
 
@@ -36,6 +38,7 @@ namespace Ettad.RequestManagement.Service.Orders
             IValidator<UpdateOrderDto> updateValidator,
             ICurrentUserService currentUserService,
             IRequestNoGeneratorService requestNoGeneratorService,
+            INotificationHelperService notificationHelperService,
             UserManager<ApplicationUser> userManager,
             ILogger<OrderService> logger)
         {
@@ -47,6 +50,7 @@ namespace Ettad.RequestManagement.Service.Orders
             _updateValidator = updateValidator;
             _currentUserService = currentUserService;
             _requestNoGeneratorService = requestNoGeneratorService;
+            _notificationHelperService = notificationHelperService;
             _userManager = userManager;
             _logger = logger;
         }
@@ -134,8 +138,8 @@ namespace Ettad.RequestManagement.Service.Orders
 
         public async Task<APIOperationResponse<long>> CreateAsync(CreateOrderDto inputDto)
         {
-            _logger.LogInformation("Creating new order. OrderNo: {OrderNo}, DepartmentId: {DepartmentId}, User: {UserId}", 
-                inputDto.OrderNo, inputDto.DepartmentId, _currentUserService.UserId);
+            _logger.LogInformation("Creating new order. OrderNo: {OrderNo}, DepartmentId: {DepartmentId}, IsFromAllowance: {IsFromAllowance}, User: {UserId}", 
+                inputDto.OrderNo, inputDto.DepartmentId, inputDto.IsFromAllowance, _currentUserService.UserId);
             
             try
             {
@@ -147,6 +151,33 @@ namespace Ettad.RequestManagement.Service.Orders
                     _logger.LogWarning("Order validation failed. OrderNo: {OrderNo}, Errors: {ValidationErrors}, User: {UserId}", 
                         inputDto.OrderNo, errors, _currentUserService.UserId);
                     return APIOperationResponse<long>.Fail(ResponseType.BadRequest, errors);
+                }
+
+                // Additional validation for orders from allowance
+                if (inputDto.IsFromAllowance)
+                {
+                    // Get current user's department
+                    var userDepartmentId = _currentUserService.DepartmentId;
+                    
+                    if (!userDepartmentId.HasValue || userDepartmentId.Value <= 0)
+                    {
+                        _logger.LogError("User has no department assigned. Cannot create order from allowance. User: {UserId}", 
+                            _currentUserService.UserId);
+                        return APIOperationResponse<long>.Fail(ResponseType.BadRequest, 
+                            "Department not found for current user. Cannot create order from allowance. Please contact your administrator.");
+                    }
+
+                    // Ensure the order's department matches the user's department for allowance orders
+                    if (inputDto.DepartmentId != userDepartmentId.Value)
+                    {
+                        _logger.LogWarning("Department mismatch for allowance order. OrderDepartmentId: {OrderDepartmentId}, UserDepartmentId: {UserDepartmentId}, User: {UserId}", 
+                            inputDto.DepartmentId, userDepartmentId.Value, _currentUserService.UserId);
+                        return APIOperationResponse<long>.Fail(ResponseType.BadRequest, 
+                            "Orders from allowance can only be created for your own department.");
+                    }
+
+                    _logger.LogInformation("Allowance order validation passed. DepartmentId: {DepartmentId}, User: {UserId}", 
+                        userDepartmentId.Value, _currentUserService.UserId);
                 }
 
                 // Ensure request purpose is for orders
@@ -165,6 +196,12 @@ namespace Ettad.RequestManagement.Service.Orders
                 order.Status = RequestStatus.New; // Always set initial status to New
                 order.CreationDate = DateTime.UtcNow;
                 order.CreatedBy = _currentUserService.UserId;
+                
+                // Automatically set RequesterId to current user if not provided
+                if (string.IsNullOrEmpty(order.RequesterId))
+                {
+                    order.RequesterId = _currentUserService.UserId;
+                }
 
                 // Generate request number
                 order.RequestNo = await _requestNoGeneratorService.GenerateRequestNoAsync(RequestType.Order, inputDto.DepartmentId);
@@ -193,8 +230,14 @@ namespace Ettad.RequestManagement.Service.Orders
                 // Add to repository (this will cascade save RequestItems)
                 var createdOrder = await _orderRepository.AddAsync(order);
 
-                _logger.LogInformation("Order created successfully. OrderId: {OrderId}, OrderNo: {OrderNo}, ItemCount: {ItemCount}, User: {UserId}", 
-                    createdOrder.Id, createdOrder.RequestNo, createdOrder.RequestItems?.Count ?? 0, _currentUserService.UserId);
+                // Send notification
+                await NotifyOrderAsync(
+                    "Order Created",
+                    $"Order request {createdOrder.RequestNo} has been created{(createdOrder.IsFromAllowance ? " from allowance" : "")}.",
+                    createdOrder.Id);
+
+                _logger.LogInformation("Order created successfully. OrderId: {OrderId}, OrderNo: {OrderNo}, ItemCount: {ItemCount}, IsFromAllowance: {IsFromAllowance}, User: {UserId}", 
+                    createdOrder.Id, createdOrder.RequestNo, createdOrder.RequestItems?.Count ?? 0, createdOrder.IsFromAllowance, _currentUserService.UserId);
                 
                 return APIOperationResponse<long>.Success(createdOrder.Id, "Order created successfully");
             }
@@ -307,6 +350,29 @@ namespace Ettad.RequestManagement.Service.Orders
             {
                 _logger.LogError(ex, "Error deleting order. OrderId: {OrderId}, User: {UserId}", id, _currentUserService.UserId);
                 return APIOperationResponse<bool>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
+            }
+        }
+
+        private async Task NotifyOrderAsync(string title, string message, long entityId)
+        {
+            try
+            {
+                var userId = _currentUserService.UserId;
+                var userIds = string.IsNullOrWhiteSpace(userId) ? null : new List<string> { userId };
+
+                await _notificationHelperService.SendNotificationAsync(
+                    title,
+                    message,
+                    entityType: nameof(Order),
+                    entityId: entityId,
+                    userIds: userIds,
+                    senderId: userId,
+                    includeSuperAdmins: true);
+            }
+            catch (Exception ex)
+            {
+                // Log but don't fail the operation
+                _logger.LogWarning(ex, "Failed to send notification for order. OrderId: {OrderId}", entityId);
             }
         }
 

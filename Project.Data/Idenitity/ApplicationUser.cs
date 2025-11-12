@@ -13,9 +13,6 @@ namespace Ettad.Comman.Idenitity
         public DateTime? RefreshTokenExpiryDate { get; set; }
         public string ExtraEmployeesView { get; set; } = string.Empty;
 
-        public int? EmployeeId { get; set; }
-        //  public Employee Employee { get; set; }
-
         public long? DepartmentId { get; set; }
 
         // Navigation property

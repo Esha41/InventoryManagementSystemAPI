@@ -12,8 +12,8 @@ namespace Ettad.RequestManagement.Service.Orders.Dto
         // Status is automatically set to 'New' in the service
         public string Notes { get; set; }
         public long DepartmentId { get; set; }
-        public long? RequesterId { get; set; }
-        public long? RecieverId { get; set; }
+        public string? RequesterId { get; set; }
+        public string? RecieverId { get; set; }
         public long? DepotId { get; set; }
         public long RequestPurposeId { get; set; }
         #endregion
