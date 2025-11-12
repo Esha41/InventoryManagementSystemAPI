@@ -124,6 +124,7 @@ namespace Ettad.Inventory.Service.Ammunitions
 
                 // Map DTO to entity
                 var ammunition = _mapper.Map<Ammunition>(inputDto);
+                ammunition.AmmunitionType = AmmunitionsType.Small;
                 ammunition.ItemType = ItemType.Ammunition;
                 ammunition.CreationDate = DateTime.UtcNow;
                 ammunition.CreatedBy = _currentUserService.UserId;
@@ -173,6 +174,7 @@ namespace Ettad.Inventory.Service.Ammunitions
 
                 // Map updates to entity
                 _mapper.Map(inputDto, existingAmmunition);
+                existingAmmunition.AmmunitionType = AmmunitionsType.Small;
                 existingAmmunition.ModificationDate = DateTime.UtcNow;
                 existingAmmunition.ModifiedBy = _currentUserService.UserId;
                 existingAmmunition.Nsn = string.IsNullOrWhiteSpace(inputDto.Nsn) ? null : inputDto.Nsn.Trim();

@@ -33,6 +33,13 @@ namespace Ettad.User.API.Controllers
             return ProcessResponse(response);
         }
 
+        [HttpGet("me")]
+        public async Task<IActionResult> GetCurrentUser()
+        {
+            var response = await _userService.GetCurrentUserAsync();
+            return ProcessResponse(response);
+        }
+
         [HttpGet]
         [CheckAuthorize("Permissions.SystemUsers.View", "Permissions.SystemUsers.page")]
 
