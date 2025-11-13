@@ -9,5 +9,6 @@ namespace Ettad.Module.lookup.Dtos
         public decimal Latitude { get; set; }
         public decimal Longitude { get; set; }
         public bool IsDeleted { get; set; }
+        public string Code { get; set; }
     }
 }

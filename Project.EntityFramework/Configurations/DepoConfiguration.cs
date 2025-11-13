@@ -12,6 +12,14 @@ namespace Ettad.EntityFramework.Configurations
 
             builder.ToTable("Depots");
 
+            builder.Property(x => x.Code)
+                .IsRequired()
+                .HasMaxLength(100);
+
+            builder.HasIndex(x => x.Code)
+                .IsUnique()
+                .HasFilter("[IsDeleted] = 0");
+
             builder.Property(x => x.NameAr)
                 .IsRequired()
                 .HasMaxLength(500);
@@ -33,6 +41,7 @@ namespace Ettad.EntityFramework.Configurations
                 new Depot
                 {
                     Id = 1,
+                    Code = "DEP-001",
                     NameAr = "مستودع الدوحة المركزي",
                     NameEn = "Doha Central Depot",
                     Location = "Doha",
@@ -43,6 +52,7 @@ namespace Ettad.EntityFramework.Configurations
                 new Depot
                 {
                     Id = 2,
+                    Code = "DEP-002",
                     NameAr = "مستودع الريان الغربي",
                     NameEn = "Al Rayyan West Depot",
                     Location = "Al Rayyan",
@@ -53,6 +63,7 @@ namespace Ettad.EntityFramework.Configurations
                 new Depot
                 {
                     Id = 3,
+                    Code = "DEP-003",
                     NameAr = "مستودع الخور الشمالي",
                     NameEn = "Al Khor North Depot",
                     Location = "Al Khor",
@@ -63,6 +74,7 @@ namespace Ettad.EntityFramework.Configurations
                 new Depot
                 {
                     Id = 4,
+                    Code = "DEP-004",
                     NameAr = "مستودع الوكرة الجنوبي",
                     NameEn = "Al Wakrah South Depot",
                     Location = "Al Wakrah",
