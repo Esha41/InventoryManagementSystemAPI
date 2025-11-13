@@ -95,6 +95,38 @@ namespace Ettad.Inventory.Service.Ammunitions
             }
         }
 
+        public async Task<APIOperationResponse<List<AmmunitionDto>>> GetByTypeAsync(AmmunitionsType ammunitionType)
+        {
+            _logger.LogInformation("Getting ammunitions by type. AmmunitionType: {AmmunitionType}, User: {UserId}", ammunitionType, _currentUserService.UserId);
+
+            try
+            {
+                var ammunitions = await _ammunitionRepository.FindAsync(
+                    a => !a.IsDeleted && a.AmmunitionType == ammunitionType,
+                    false,
+                    nameof(Ammunition.Hcc),
+                    nameof(Ammunition.BulletDiameterUnit),
+                    nameof(Ammunition.CaseLengthUnit),
+                    nameof(Ammunition.NatureOption),
+                    nameof(Ammunition.PrimaryPurpos),
+                    nameof(Ammunition.ProjectileColor),
+                    nameof(Ammunition.ProjectailMaterial),
+                    nameof(Ammunition.CaseType),
+                    nameof(Ammunition.Propellant),
+                    nameof(Ammunition.Compatibility),
+                    nameof(Ammunition.HazardDivision)
+                );
+
+                var dtos = _mapper.Map<List<AmmunitionDto>>(ammunitions);
+                return APIOperationResponse<List<AmmunitionDto>>.Success(dtos);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving ammunitions by type. AmmunitionType: {AmmunitionType}, User: {UserId}", ammunitionType, _currentUserService.UserId);
+                return APIOperationResponse<List<AmmunitionDto>>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
+            }
+        }
+
         public async Task<APIOperationResponse<long>> CreateAsync(CreateUpdateAmmunitionDto inputDto)
         {
             _logger.LogInformation("Creating new ammunition. Name: {Name}, ItemNo: {ItemNo}, User: {UserId}", 
@@ -124,6 +156,7 @@ namespace Ettad.Inventory.Service.Ammunitions
 
                 // Map DTO to entity
                 var ammunition = _mapper.Map<Ammunition>(inputDto);
+                ammunition.AmmunitionType = AmmunitionsType.Small;
                 ammunition.ItemType = ItemType.Ammunition;
                 ammunition.CreationDate = DateTime.UtcNow;
                 ammunition.CreatedBy = _currentUserService.UserId;
@@ -173,6 +206,7 @@ namespace Ettad.Inventory.Service.Ammunitions
 
                 // Map updates to entity
                 _mapper.Map(inputDto, existingAmmunition);
+                existingAmmunition.AmmunitionType = AmmunitionsType.Small;
                 existingAmmunition.ModificationDate = DateTime.UtcNow;
                 existingAmmunition.ModifiedBy = _currentUserService.UserId;
                 existingAmmunition.Nsn = string.IsNullOrWhiteSpace(inputDto.Nsn) ? null : inputDto.Nsn.Trim();

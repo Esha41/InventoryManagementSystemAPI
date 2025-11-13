@@ -23,13 +23,6 @@ namespace Ettad.RequestManagement.Service.Orders.Validators
             RuleFor(x => x.Notes)
                 .MaximumLength(1000).WithMessage("Notes cannot exceed 1000 characters");
 
-            RuleFor(x => x.DepartmentId)
-                .GreaterThan(0).WithMessage("Department is required");
-
-            RuleFor(x => x.RequesterId)
-                .NotEmpty().When(x => !string.IsNullOrEmpty(x.RequesterId))
-                .WithMessage("Requester ID must be valid when provided");
-
             RuleFor(x => x.RecieverId)
                 .NotEmpty().When(x => !string.IsNullOrEmpty(x.RecieverId))
                 .WithMessage("Receiver ID must be valid when provided");

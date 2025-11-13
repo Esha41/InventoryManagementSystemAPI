@@ -1,10 +1,13 @@
-﻿using Ettad.Module.lookup.Dtos;
+﻿using Ettad.Data.Enums;
+using Ettad.Module.lookup.Dtos;
 
 namespace Ettad.Inventory.Service.Ammunitions.Dtos
 {
     public class AmmunitionDto
     {
         public long Id { get; set; }
+
+        public AmmunitionsType AmmunitionType { get; set; }
 
         public string Name { get; set; }
 
@@ -51,7 +54,7 @@ namespace Ettad.Inventory.Service.Ammunitions.Dtos
         public long CompatibilityId { get; set; }
 
         public long HazardDivisionId { get; set; }
-
+        
         #region Navigation Properties
 
         public HccDto Hcc { get; set; }

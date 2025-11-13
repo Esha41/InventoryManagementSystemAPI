@@ -19,6 +19,7 @@ namespace Ettad.Inventory.Service.Ammunitions.Profiles
                 .ForMember(dest => dest.ModifiedBy, opt => opt.Ignore())
                 .ForMember(dest => dest.IsDeleted, opt => opt.Ignore())
                 .ForMember(dest => dest.ItemType, opt => opt.Ignore())
+                .ForMember(dest => dest.AmmunitionType, opt => opt.Ignore())
                 .ForMember(dest => dest.Hcc, opt => opt.Ignore())
                 .ForMember(dest => dest.BulletDiameterUnit, opt => opt.Ignore())
                 .ForMember(dest => dest.CaseLengthUnit, opt => opt.Ignore())

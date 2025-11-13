@@ -11,15 +11,8 @@ namespace Ettad.RequestManagement.Service.Returns.Validators
             RuleFor(x => x.Priority)
                 .IsInEnum().WithMessage("Priority must be a valid value (High, Medium, Low)");
 
-            RuleFor(x => x.DepartmentId)
-                .GreaterThan(0).WithMessage("Department is required");
-
             RuleFor(x => x.RequestPurposeId)
                 .GreaterThan(0).WithMessage("Request purpose is required");
-
-            RuleFor(x => x.RequesterId)
-                .NotEmpty().When(x => !string.IsNullOrEmpty(x.RequesterId))
-                .WithMessage("Requester ID must be valid when provided");
 
             RuleFor(x => x.Reason)
                 .MaximumLength(1000).WithMessage("Reason cannot exceed 1000 characters")

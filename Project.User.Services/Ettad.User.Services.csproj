@@ -7,6 +7,12 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="DataTransferObject\Job\**" />
+    <EmbeddedResource Remove="DataTransferObject\Job\**" />
+    <None Remove="DataTransferObject\Job\**" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="AutoMapper" Version="12.0.1" />
     <PackageReference Include="AutoMapper.Extensions.Microsoft.DependencyInjection" Version="12.0.1" />
     <PackageReference Include="System.DirectoryServices" Version="9.0.8" />
@@ -15,12 +21,9 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Project.Comman\Ettad.CrossCutting.Comman.csproj" />
+    <ProjectReference Include="..\Project.Module.Logic\Ettad.Module.lookup.csproj" />
     <ProjectReference Include="..\Project.Repository\Ettad.Repository.csproj" />
     <ProjectReference Include="..\Project.ResponseHandler\Ettad.CrossCutting.ResponseHandler.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Folder Include="DataTransferObject\Job\" />
   </ItemGroup>
 
 </Project>

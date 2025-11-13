@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Identity;
+﻿using Microsoft.AspNetCore.Identity;
 using Newtonsoft.Json;
 using Ettad.Comman.Idenitity;
 using Ettad.CrossCutting.Comman.Idenitity;
@@ -82,10 +82,8 @@ namespace Ettad.EntityFramework.DataBaseContext
                     EmailConfirmed = true,
                     Email = "administrator@localhost",
                     UserName = "administrator@localhost",
-                    MilitoryId="0000",
-                    FullNameEN="Admin",
-                    FullNameAR="SuperAdmin",
-                    RankId=1
+                    FullNameEN= "Super Admin",
+                    FullNameAR="مدير النظام",
                 };
                 if (userManager.Users.All(item => item.UserName != administrator.UserName))
                 {

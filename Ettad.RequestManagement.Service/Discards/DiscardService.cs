@@ -137,8 +137,17 @@ namespace Ettad.RequestManagement.Service.Discards
 
         public async Task<APIOperationResponse<long>> CreateAsync(CreateDiscardDto inputDto)
         {
+            var currentUserId = _currentUserService.UserId;
+            var departmentId = _currentUserService.DepartmentId;
+
+            if (!departmentId.HasValue || departmentId.Value <= 0)
+            {
+                _logger.LogWarning("Cannot create discard. No department assigned to current user. User: {UserId}", currentUserId);
+                return APIOperationResponse<long>.Fail(ResponseType.BadRequest, "Department not found for current user.");
+            }
+
             _logger.LogInformation("Creating new discard. DepartmentId: {DepartmentId}, RequestPurposeId: {RequestPurposeId}, User: {UserId}", 
-                inputDto.DepartmentId, inputDto.RequestPurposeId, _currentUserService.UserId);
+                departmentId.Value, inputDto.RequestPurposeId, currentUserId);
             
             try
             {
@@ -148,7 +157,7 @@ namespace Ettad.RequestManagement.Service.Discards
                 {
                     var errors = string.Join(", ", validationResult.Errors.Select(e => e.ErrorMessage));
                     _logger.LogWarning("Discard validation failed. DepartmentId: {DepartmentId}, Errors: {ValidationErrors}, User: {UserId}", 
-                        inputDto.DepartmentId, errors, _currentUserService.UserId);
+                        departmentId.Value, errors, currentUserId);
                     return APIOperationResponse<long>.Fail(ResponseType.BadRequest, errors);
                 }
 
@@ -166,22 +175,18 @@ namespace Ettad.RequestManagement.Service.Discards
 
                 // Map DTO to entity
                 var discard = _mapper.Map<Discard>(inputDto);
+                discard.DepartmentId = departmentId.Value;
                 
                 // Generate RequestNo
-                discard.RequestNo = await _requestNoGeneratorService.GenerateRequestNoAsync(RequestType.Discard, inputDto.DepartmentId);
+                discard.RequestNo = await _requestNoGeneratorService.GenerateRequestNoAsync(RequestType.Discard, departmentId.Value);
                 
                 _logger.LogInformation("Generated RequestNo: {RequestNo} for discard", discard.RequestNo);
                 
                 discard.RequestType = RequestType.Discard;
                 discard.Status = RequestStatus.New; // Always set to New when creating
                 discard.CreationDate = DateTime.UtcNow;
-                discard.CreatedBy = _currentUserService.UserId;
-                
-                // Automatically set RequesterId to current user if not provided
-                if (string.IsNullOrEmpty(discard.RequesterId))
-                {
-                    discard.RequesterId = _currentUserService.UserId;
-                }
+                discard.CreatedBy = currentUserId;
+                discard.RequesterId = currentUserId;
 
                 // Map discard items
                 discard.RequestItems = inputDto.DiscardItems
@@ -204,14 +209,14 @@ namespace Ettad.RequestManagement.Service.Discards
                     createdDiscard.Id);
 
                 _logger.LogInformation("Discard created successfully. DiscardId: {DiscardId}, RequestNo: {RequestNo}, ItemCount: {ItemCount}, User: {UserId}", 
-                    createdDiscard.Id, createdDiscard.RequestNo, createdDiscard.RequestItems?.Count ?? 0, _currentUserService.UserId);
+                    createdDiscard.Id, createdDiscard.RequestNo, createdDiscard.RequestItems?.Count ?? 0, currentUserId);
                 
                 return APIOperationResponse<long>.Success(createdDiscard.Id, "Discard created successfully");
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error creating discard. DepartmentId: {DepartmentId}, User: {UserId}", 
-                    inputDto.DepartmentId, _currentUserService.UserId);
+                    departmentId.Value, currentUserId);
                 return APIOperationResponse<long>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
             }
         }

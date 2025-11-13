@@ -1,8 +1,5 @@
-using System;
+using Ettad.Module.lookup.Dtos;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Ettad.User.Services.DTO
 {
@@ -16,15 +13,19 @@ namespace Ettad.User.Services.DTO
         public bool IsSuperAdmin { get; set; }
         public string ExtraEmployeesView { get; set; }
         public long? DeparmentId { get; set; }
-        public string DepartmentName { get; set; }
-        public int? OrganizationId { get; set; }
-        public List<string> RoleIds { get; set; } = new();
-        public string? FullNameEN { get; set; }
-        public string? FullNameAR { get; set; }
+        public List<UserRoleSummaryDto> Roles { get; set; } = new();
+        public string FullNameEN { get; set; }
+        public string FullNameAR { get; set; }
         public long? RankId { get; set; }
         public string? MilitoryId { get; set; }
+        public DepartmentDto? Department { get; set; }
+        public RankDto? Rank { get; set; }
+    }
         public string LdapUserName { get; set; }
 
+    public class UserRoleSummaryDto
+    {
+        public string Id { get; set; }
+        public string Name { get; set; }
     }
-
 }

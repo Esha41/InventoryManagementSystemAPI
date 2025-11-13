@@ -1,4 +1,5 @@
-﻿using Ettad.Inventory.Service.Ammunitions.Dtos;
+﻿using Ettad.Data.Enums;
+using Ettad.Inventory.Service.Ammunitions.Dtos;
 using Ettad.ResponseHandler.Models;
 
 namespace Ettad.Inventory.Service.Ammunitions
@@ -7,6 +8,7 @@ namespace Ettad.Inventory.Service.Ammunitions
     {
         Task<APIOperationResponse<AmmunitionDto>> GetByIdAsync(long id);
         Task<APIOperationResponse<List<AmmunitionDto>>> GetAllAsync();
+        Task<APIOperationResponse<List<AmmunitionDto>>> GetByTypeAsync(AmmunitionsType ammunitionType);
         Task<APIOperationResponse<long>> CreateAsync(CreateUpdateAmmunitionDto inputDto);
         Task<APIOperationResponse<bool>> UpdateAsync(long id, CreateUpdateAmmunitionDto inputDto);
         Task<APIOperationResponse<bool>> DeleteAsync(long id);

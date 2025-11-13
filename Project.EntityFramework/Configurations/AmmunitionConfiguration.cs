@@ -11,6 +11,9 @@ namespace Ettad.EntityFramework.Configurations
         {
             builder.ToTable("Ammunitions");
 
+            builder.Property(x => x.AmmunitionType)
+                .IsRequired();
+
             builder.Property(x => x.BulletDiameter)
                 .IsRequired();
 
@@ -108,7 +111,8 @@ namespace Ettad.EntityFramework.Configurations
                     CompatibilityId = 1,
                     HazardDivisionId = 1,
                     CreationDate = seedDate,
-                    IsDeleted = false
+                    IsDeleted = false,
+                    AmmunitionType = AmmunitionsType.Small
                 },
                 new Ammunition
                 {
@@ -138,7 +142,8 @@ namespace Ettad.EntityFramework.Configurations
                     CompatibilityId = 2,
                     HazardDivisionId = 2,
                     CreationDate = seedDate,
-                    IsDeleted = false
+                    IsDeleted = false,
+                    AmmunitionType = AmmunitionsType.Small
                 },
                 new Ammunition
                 {
@@ -168,7 +173,8 @@ namespace Ettad.EntityFramework.Configurations
                     CompatibilityId = 3,
                     HazardDivisionId = 3,
                     CreationDate = seedDate,
-                    IsDeleted = false
+                    IsDeleted = false,
+                    AmmunitionType = AmmunitionsType.Small
                 },
                 new Ammunition
                 {
@@ -198,7 +204,8 @@ namespace Ettad.EntityFramework.Configurations
                     CompatibilityId = 1,
                     HazardDivisionId = 1,
                     CreationDate = seedDate,
-                    IsDeleted = false
+                    IsDeleted = false,
+                    AmmunitionType = AmmunitionsType.Small
                 },
                 new Ammunition
                 {
@@ -228,7 +235,8 @@ namespace Ettad.EntityFramework.Configurations
                     CompatibilityId = 2,
                     HazardDivisionId = 2,
                     CreationDate = seedDate,
-                    IsDeleted = false
+                    IsDeleted = false,
+                    AmmunitionType = AmmunitionsType.Small
                 },
                 new Ammunition
                 {
@@ -258,7 +266,8 @@ namespace Ettad.EntityFramework.Configurations
                     CompatibilityId = 3,
                     HazardDivisionId = 3,
                     CreationDate = seedDate,
-                    IsDeleted = false
+                    IsDeleted = false,
+                    AmmunitionType = AmmunitionsType.Small
                 },
                 new Ammunition
                 {
@@ -288,7 +297,8 @@ namespace Ettad.EntityFramework.Configurations
                     CompatibilityId = 1,
                     HazardDivisionId = 1,
                     CreationDate = seedDate,
-                    IsDeleted = false
+                    IsDeleted = false,
+                    AmmunitionType = AmmunitionsType.Small
                 },
                 new Ammunition
                 {
@@ -318,7 +328,8 @@ namespace Ettad.EntityFramework.Configurations
                     CompatibilityId = 2,
                     HazardDivisionId = 2,
                     CreationDate = seedDate,
-                    IsDeleted = false
+                    IsDeleted = false,
+                    AmmunitionType = AmmunitionsType.Small
                 },
                 new Ammunition
                 {
@@ -348,7 +359,8 @@ namespace Ettad.EntityFramework.Configurations
                     CompatibilityId = 3,
                     HazardDivisionId = 3,
                     CreationDate = seedDate,
-                    IsDeleted = false
+                    IsDeleted = false,
+                    AmmunitionType = AmmunitionsType.Small
                 }
             );
         }
