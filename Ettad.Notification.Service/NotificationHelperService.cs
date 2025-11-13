@@ -112,7 +112,15 @@ namespace Ettad.Notification.Service
 
             foreach (var userId in userIdsToNotify)
             {
-                await _hubContext.Clients.Group($"user_{userId}").SendAsync("ReceiveNotification", notificationDto);
+                await _hubContext.Clients.Group($"user_{userId}")
+                    .SendAsync("NotificationReceived", notificationDto);
+
+                var unreadResult = await _notificationService.GetUnreadCountAsync(userId);
+                if (unreadResult.Succeeded)
+                {
+                    await _hubContext.Clients.Group($"user_{userId}")
+                        .SendAsync("UnreadCountUpdated", unreadResult.Data);
+                }
             }
         }
     }
