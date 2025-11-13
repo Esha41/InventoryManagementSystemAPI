@@ -124,7 +124,8 @@ public class UserService : IUserService
             MilitoryId= dto.MilitoryId,
             RankId = dto.RankId,
             FullNameEN = dto.FullNameEN,
-            FullNameAR = dto.FullNameAR
+            FullNameAR = dto.FullNameAR,
+            LdapUserName = dto.LdapUserName,
         };
 
         // 2️⃣ Create user in DB
@@ -204,7 +205,7 @@ public class UserService : IUserService
         user.RankId = dto.RankId;
         user.FullNameEN = dto.FullNameEN;
         user.FullNameAR = dto.FullNameAR;
-
+        user.LdapUserName= dto.LdapUserName;
         // 3️⃣ Update roles
         if (dto.RoleIds != null)
         {

@@ -25,5 +25,6 @@ namespace Ettad.Comman.Idenitity
         [ForeignKey(nameof(RankId))]
         public Rank Rank { get; set; }
         public string? MilitoryId { get; set; }
+        public string? LdapUserName { get; set; }
     }
 }
