@@ -20,9 +20,9 @@ namespace Ettad.User.Services.DTO
         public string? MilitoryId { get; set; }
         public DepartmentDto? Department { get; set; }
         public RankDto? Rank { get; set; }
-    }
-        public string LdapUserName { get; set; }
 
+        public string LdapUserName { get; set; }
+    }
     public class UserRoleSummaryDto
     {
         public string Id { get; set; }
