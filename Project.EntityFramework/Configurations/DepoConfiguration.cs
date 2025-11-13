@@ -14,7 +14,7 @@ namespace Ettad.EntityFramework.Configurations
 
             builder.Property(x => x.Code)
                 .IsRequired()
-                .HasMaxLength(100);
+                .HasMaxLength(255);
 
             builder.HasIndex(x => x.Code)
                 .IsUnique()
