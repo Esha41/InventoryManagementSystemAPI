@@ -217,15 +217,18 @@ try
         allowedOrigins = new[] { "http://localhost:4200" };
     }
 
+    const string corsPolicyName = "FrontendCors";
+
     builder.Services.AddCors(options =>
     {
-
-        options.AddPolicy("AllowAll",
-            policy => policy
+        options.AddPolicy(corsPolicyName, policy =>
+        {
+            policy
                 .WithOrigins(allowedOrigins)
                 .AllowAnyMethod()
                 .AllowAnyHeader()
-                .AllowCredentials());
+                .AllowCredentials();
+        });
     });
 
 
@@ -265,16 +268,16 @@ try
     app.UseStaticFiles();
     app.UseHttpsRedirection();
 
-    app.UseCors("FrontendCors");
+    app.UseCors(corsPolicyName);
 
     app.UseAuthentication();
 
     app.UseAuthorization();
 
-    app.MapControllers().RequireCors("FrontendCors");
+    app.MapControllers().RequireCors(corsPolicyName);
 
     app.MapHub<Ettad.Notification.Service.Hubs.NotificationHub>("/hubs/notification")
-        .RequireCors("FrontendCors");
+        .RequireCors(corsPolicyName);
 
     using (var scope = app.Services.CreateScope())
     {
