@@ -15,6 +15,7 @@ namespace Ettad.User.Services.DTO
         public long? RankId { get; set; }
         public string? MilitoryId { get; set; }
         public string? Email { get; set; }
+        public string LdapUserName { get; set; }
     }
 
 }

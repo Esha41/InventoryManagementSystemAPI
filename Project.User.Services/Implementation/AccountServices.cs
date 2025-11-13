@@ -168,6 +168,7 @@ namespace Ettad.User.Services.Implementation
                         "server.invalidLogin");
                 }
 
+                // 🧠 Step 1: Authenticate against LDAP
                 var loginSucceeded = await _ldapAuthenticator.ValidateAsync(
                     loginInformation.Username.Trim(),
                     loginInformation.Password,
@@ -178,7 +179,7 @@ namespace Ettad.User.Services.Implementation
                 if (!loginSucceeded)
                 {
                     _logger.LogWarning(
-                        "LDAP login failed: Invalid password. Username: {Username}",
+                        "LDAP login failed: Invalid credentials. Username: {Username}",
                         loginInformation.Username);
 
                     return APIOperationResponse<AuthenticatedResponse>.Fail(
@@ -189,28 +190,44 @@ namespace Ettad.User.Services.Implementation
 
                 var resolvedUsername = $"{loginInformation.Username.Trim()}@{ldapSettings.LdapDomain}";
 
-                // Check if user exists in the database
+                // 🧠 Step 2: Check if user exists by Username or LdapUsername
                 var user = await _userRepository.FindByNameAsync(resolvedUsername);
+
                 if (user == null)
                 {
-                    // Auto-create the user
+                    user = await _context.Users
+        .FirstOrDefaultAsync(u => u.LdapUserName == resolvedUsername, cancellationToken);
+
+                }
+
+                // 🧩 Step 3: If user does not exist, create new
+                if (user == null)
+                {
                     user = new ApplicationUser
                     {
                         UserName = resolvedUsername,
                         Email = resolvedUsername,
-                       FullNameAR=resolvedUsername,
-                       FullNameEN=resolvedUsername,
-                       IsLdapUser=true,
-                       LdapUserName=resolvedUsername,
+                        FullNameAR = resolvedUsername,
+                        FullNameEN = resolvedUsername,
+                        IsLdapUser = true,
+                        LdapUserName = loginInformation.Username.Trim()
                     };
 
-                    await _userRepository.CreateAsync(user); // Make sure this saves to DB
+                    await _userRepository.CreateAsync(user);
                     _logger.LogInformation(
                         "LDAP user auto-created. Username: {Username}, UserId: {UserId}",
                         user.UserName,
                         user.Id);
                 }
+                else
+                {
+                    _logger.LogInformation(
+                        "LDAP user already exists. Username: {Username}, UserId: {UserId}",
+                        user.UserName,
+                        user.Id);
+                }
 
+                // 🧠 Step 4: Build authenticated response
                 var response = await CreateAndReturnAuthResponseAsync(user, cancellationToken);
 
                 _logger.LogInformation(
@@ -233,6 +250,7 @@ namespace Ettad.User.Services.Implementation
                     ex.Message);
             }
         }
+
 
 
 
