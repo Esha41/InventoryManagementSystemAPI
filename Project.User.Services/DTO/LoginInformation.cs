@@ -6,5 +6,5 @@ using System.Threading.Tasks;
 
 namespace Ettad.User.Services.DTO
 {
-    public record LoginInformation(string Username, string Password);
+    public record LoginInformation(string Username, string Password,bool IsLdap);
 }

@@ -77,8 +77,7 @@ namespace Ettad.User.Services.Implementation
                         CommonErrorCodes.INVALID_EMAIL_OR_PASSWORD,
                         "server.invalidLogin");
                 }
-
-                var ldapSettings = await _settingsProvider.GetLdapSettings(cancellationToken);
+                             
                 var existingUser = await _userRepository.FindByNameAsync(loginInformation.Username.Trim());
 
                 var isAdminLogin = existingUser != null;
@@ -90,7 +89,7 @@ namespace Ettad.User.Services.Implementation
                 {
                     return await LoginWithAdmin(existingUser, loginInformation, cancellationToken);
                 }
-                else if (ldapSettings.IsActive)
+                else if (loginInformation.IsLdap)
                 {
                     return await LoginWithLdap(loginInformation, cancellationToken);
                 }
@@ -172,7 +171,7 @@ namespace Ettad.User.Services.Implementation
                 var loginSucceeded = await _ldapAuthenticator.ValidateAsync(
                     loginInformation.Username.Trim(),
                     loginInformation.Password,
-                    loginWithoutPassword: false,
+                    loginWithoutPassword: true,
                     ldapSettings,
                     cancellationToken);
 
@@ -202,6 +201,7 @@ namespace Ettad.User.Services.Implementation
                        FullNameAR=resolvedUsername,
                        FullNameEN=resolvedUsername,
                        IsLdapUser=true,
+                       LdapUserName=resolvedUsername,
                     };
 
                     await _userRepository.CreateAsync(user); // Make sure this saves to DB

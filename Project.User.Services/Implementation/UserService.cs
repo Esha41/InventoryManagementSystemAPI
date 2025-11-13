@@ -93,6 +93,8 @@ public class UserService : IUserService
             dto.FullNameEN = user.FullNameEN;
             dto.RankId = user.RankId;
             dto.MilitoryId= user.MilitoryId;
+            dto.IsLdapUser = user.IsLdapUser;
+            dto.LdapUserName = user.LdapUserName;
             mapped.Add(dto);
         }
 
