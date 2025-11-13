@@ -211,14 +211,21 @@ try
         });
     });
 
+    var allowedOrigins = configuration.GetSection("Cors:AllowedOrigins").Get<string[]>();
+    if (allowedOrigins == null || allowedOrigins.Length == 0)
+    {
+        allowedOrigins = new[] { "http://localhost:4200" };
+    }
+
     builder.Services.AddCors(options =>
     {
 
         options.AddPolicy("AllowAll",
             policy => policy
-                .AllowAnyOrigin()
+                .WithOrigins(allowedOrigins)
                 .AllowAnyMethod()
-                .AllowAnyHeader());
+                .AllowAnyHeader()
+                .AllowCredentials());
     });
 
 
@@ -258,15 +265,16 @@ try
     app.UseStaticFiles();
     app.UseHttpsRedirection();
 
+    app.UseCors("FrontendCors");
+
     app.UseAuthentication();
 
     app.UseAuthorization();
-    
-    // Map SignalR hub
-    app.MapHub<Ettad.Notification.Service.Hubs.NotificationHub>("/notificationHub");
-    
-    app.MapControllers();
-    app.UseCors("AllowAll");
+
+    app.MapControllers().RequireCors("FrontendCors");
+
+    app.MapHub<Ettad.Notification.Service.Hubs.NotificationHub>("/hubs/notification")
+        .RequireCors("FrontendCors");
 
     using (var scope = app.Services.CreateScope())
     {
