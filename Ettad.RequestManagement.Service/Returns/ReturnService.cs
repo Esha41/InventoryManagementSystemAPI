@@ -137,8 +137,17 @@ namespace Ettad.RequestManagement.Service.Returns
 
         public async Task<APIOperationResponse<long>> CreateAsync(CreateReturnDto inputDto)
         {
+            var currentUserId = _currentUserService.UserId;
+            var departmentId = _currentUserService.DepartmentId;
+
+            if (!departmentId.HasValue || departmentId.Value <= 0)
+            {
+                _logger.LogWarning("Cannot create return. No department assigned to current user. User: {UserId}", currentUserId);
+                return APIOperationResponse<long>.Fail(ResponseType.BadRequest, "Department not found for current user.");
+            }
+
             _logger.LogInformation("Creating new return. DepartmentId: {DepartmentId}, RequestPurposeId: {RequestPurposeId}, User: {UserId}", 
-                inputDto.DepartmentId, inputDto.RequestPurposeId, _currentUserService.UserId);
+                departmentId.Value, inputDto.RequestPurposeId, currentUserId);
             
             try
             {
@@ -148,7 +157,7 @@ namespace Ettad.RequestManagement.Service.Returns
                 {
                     var errors = string.Join(", ", validationResult.Errors.Select(e => e.ErrorMessage));
                     _logger.LogWarning("Return validation failed. DepartmentId: {DepartmentId}, Errors: {ValidationErrors}, User: {UserId}", 
-                        inputDto.DepartmentId, errors, _currentUserService.UserId);
+                        departmentId.Value, errors, currentUserId);
                     return APIOperationResponse<long>.Fail(ResponseType.BadRequest, errors);
                 }
 
@@ -166,22 +175,18 @@ namespace Ettad.RequestManagement.Service.Returns
 
                 // Map DTO to entity
                 var returnEntity = _mapper.Map<Return>(inputDto);
+                returnEntity.DepartmentId = departmentId.Value;
                 
                 // Generate RequestNo
-                returnEntity.RequestNo = await _requestNoGeneratorService.GenerateRequestNoAsync(RequestType.Return, inputDto.DepartmentId);
+                returnEntity.RequestNo = await _requestNoGeneratorService.GenerateRequestNoAsync(RequestType.Return, departmentId.Value);
                 
                 _logger.LogInformation("Generated RequestNo: {RequestNo} for return", returnEntity.RequestNo);
                 
                 returnEntity.RequestType = RequestType.Return;
                 returnEntity.Status = RequestStatus.New; // Always set to New when creating
                 returnEntity.CreationDate = DateTime.UtcNow;
-                returnEntity.CreatedBy = _currentUserService.UserId;
-                
-                // Automatically set RequesterId to current user if not provided
-                if (string.IsNullOrEmpty(returnEntity.RequesterId))
-                {
-                    returnEntity.RequesterId = _currentUserService.UserId;
-                }
+                returnEntity.CreatedBy = currentUserId;
+                returnEntity.RequesterId = currentUserId;
 
                 // Map return items
                 returnEntity.RequestItems = inputDto.ReturnItems
@@ -204,14 +209,14 @@ namespace Ettad.RequestManagement.Service.Returns
                     createdReturn.Id);
 
                 _logger.LogInformation("Return created successfully. ReturnId: {ReturnId}, RequestNo: {RequestNo}, ItemCount: {ItemCount}, User: {UserId}", 
-                    createdReturn.Id, createdReturn.RequestNo, createdReturn.RequestItems?.Count ?? 0, _currentUserService.UserId);
+                    createdReturn.Id, createdReturn.RequestNo, createdReturn.RequestItems?.Count ?? 0, currentUserId);
                 
                 return APIOperationResponse<long>.Success(createdReturn.Id, "Return created successfully");
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error creating return. DepartmentId: {DepartmentId}, User: {UserId}", 
-                    inputDto.DepartmentId, _currentUserService.UserId);
+                    departmentId.Value, currentUserId);
                 return APIOperationResponse<long>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
             }
         }

@@ -1,9 +1,9 @@
 ﻿using Ettad.Application.Common.Interfaces;
 using Ettad.Comman.Idenitity;
 using Ettad.CrossCutting.Comman.Idenitity;
-using Ettad.CrossCutting.Data.Repository;
 using Ettad.Data.Entities;
 using Ettad.EntityFramework.DataBaseContext;
+using Ettad.Module.lookup.Dtos;
 using Ettad.ResponseHandler.Consts;
 using Ettad.ResponseHandler.Models;
 using Ettad.User.Services.DTO;
@@ -11,6 +11,8 @@ using Ettad.User.Services.Interfaces;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using System.Collections.Generic;
+using System.Linq;
 
 public class UserService : IUserService
 {
@@ -39,7 +41,10 @@ public class UserService : IUserService
         _logger.LogInformation("Getting user by ID. TargetUserId: {TargetUserId}, RequestedBy: {RequestedBy}", 
             id, _currentUserService.UserId);
         
-        var user = await _userManager.FindByIdAsync(id);
+        var user = await _userManager.Users
+            .Include(u => u.Department)
+            .Include(u => u.Rank)
+            .FirstOrDefaultAsync(u => u.Id == id);
         if (user == null)
         {
             _logger.LogWarning("User not found. TargetUserId: {TargetUserId}, RequestedBy: {RequestedBy}", 
@@ -47,9 +52,12 @@ public class UserService : IUserService
             return APIOperationResponse<UserDto>.Fail(ResponseType.NotFound, "User not found");
         }
 
+        var dto = MapToDto(user);
+        await PopulateRolesAsync(dto, user);
+
         _logger.LogInformation("User retrieved successfully. TargetUserId: {TargetUserId}, Username: {Username}", 
             id, user.UserName);
-        return APIOperationResponse<UserDto>.Success(MapToDto(user));
+        return APIOperationResponse<UserDto>.Success(dto);
     }
 
     //public async Task<APIOperationResponse<List<UserDto>>> GetAllAsync() 
@@ -64,12 +72,14 @@ public class UserService : IUserService
     {
         _logger.LogInformation("Getting all users. RequestedBy: {RequestedBy}", _currentUserService.UserId);
         
-        // 1️⃣ Get all users (no org filter)
-        var users = await _userManager.Users.ToListAsync();
+        // 1️⃣ Get all users (no org filter) including related data
+        var users = await _userManager.Users
+            .Include(u => u.Department)
+            .Include(u => u.Rank)
+            .ToListAsync();
 
         // 2️⃣ Get all roles upfront to avoid repeated DB calls
         var allRoles = await _roleManager.Roles.ToListAsync();
-        var allDepartments = await _context.Departments.ToListAsync();
 
         var mapped = new List<UserDto>();
 
@@ -81,18 +91,7 @@ public class UserService : IUserService
             var roleNames = await _userManager.GetRolesAsync(user);
 
             // 4️⃣ Map role names → role IDs using pre-fetched roles
-            dto.RoleIds = allRoles
-                .Where(r => roleNames.Contains(r.Name))
-                .Select(r => r.Id)
-                .ToList();
-            dto.DeparmentId = user.DepartmentId;
-
-            dto.DepartmentName = allDepartments
-           .FirstOrDefault(d => d.Id == user.DepartmentId)?.NameEn ?? string.Empty;
-            dto.FullNameAR = user.FullNameAR;
-            dto.FullNameEN = user.FullNameEN;
-            dto.RankId = user.RankId;
-            dto.MilitoryId= user.MilitoryId;
+            PopulateRoles(dto, roleNames, allRoles);
             mapped.Add(dto);
         }
 
@@ -167,6 +166,7 @@ public class UserService : IUserService
         
         // 4️⃣ Return created user
         var userDto = MapToDto(user);
+        await PopulateRolesAsync(userDto, user);
         return APIOperationResponse<UserDto>.Success(userDto);
     }
 
@@ -266,7 +266,9 @@ public class UserService : IUserService
             dto.Id, oldUsername, user.UserName, _currentUserService.UserId);
 
         // 5️⃣ Return updated user
-        return APIOperationResponse<UserDto>.Success(MapToDto(user));
+        var updatedDto = MapToDto(user);
+        await PopulateRolesAsync(updatedDto, user);
+        return APIOperationResponse<UserDto>.Success(updatedDto);
     }
 
 
@@ -420,32 +422,173 @@ public class UserService : IUserService
             }
         }
 
-        var users = usersMap.Values.Select(MapToDto).ToList();
-        return APIOperationResponse<List<UserDto>>.Success(users);
+        var userIds = usersMap.Keys.ToList();
+        if (!userIds.Any())
+        {
+            return APIOperationResponse<List<UserDto>>.Success(new List<UserDto>());
+        }
+
+        var users = await _userManager.Users
+            .Where(u => userIds.Contains(u.Id))
+            .Include(u => u.Department)
+            .Include(u => u.Rank)
+            .ToListAsync();
+
+        var allRolesList = await _roleManager.Roles.ToListAsync();
+        var result = new List<UserDto>();
+
+        foreach (var user in users)
+        {
+            var dto = MapToDto(user);
+            var roleNamesForUser = await _userManager.GetRolesAsync(user);
+            PopulateRoles(dto, roleNamesForUser, allRolesList);
+            result.Add(dto);
+        }
+
+        return APIOperationResponse<List<UserDto>>.Success(result);
     }
 
     public async Task<APIOperationResponse<List<UserDto>>> GetSuperAdminsAsync()
     {
         var superAdmins = await _userManager.Users
             .Where(u => u.IsSuperAdmin)
+            .Include(u => u.Department)
+            .Include(u => u.Rank)
             .ToListAsync();
 
-        var result = superAdmins.Select(MapToDto).ToList();
+        var allRolesList = await _roleManager.Roles.ToListAsync();
+        var result = new List<UserDto>();
+
+        foreach (var user in superAdmins)
+        {
+            var dto = MapToDto(user);
+            var roleNames = await _userManager.GetRolesAsync(user);
+            PopulateRoles(dto, roleNames, allRolesList);
+            result.Add(dto);
+        }
+
         return APIOperationResponse<List<UserDto>>.Success(result);
     }
 
-    private UserDto MapToDto(ApplicationUser user) =>
-        new()
+    public async Task<APIOperationResponse<UserDto>> GetCurrentUserAsync()
+    {
+        var currentUserId = _currentUserService.UserId;
+
+        if (string.IsNullOrWhiteSpace(currentUserId))
+        {
+            _logger.LogWarning("Failed to retrieve current user info. No authenticated user context available.");
+            return APIOperationResponse<UserDto>.Fail(ResponseType.Unauthorized, "Current user context not found.");
+        }
+
+        var user = await _userManager.Users
+            .Include(u => u.Department)
+            .Include(u => u.Rank)
+            .FirstOrDefaultAsync(u => u.Id == currentUserId);
+
+        if (user == null)
+        {
+            _logger.LogWarning("Current user not found in identity store. UserId: {UserId}", currentUserId);
+            return APIOperationResponse<UserDto>.Fail(ResponseType.NotFound, "User not found.");
+        }
+
+        var dto = MapToDto(user);
+        await PopulateRolesAsync(dto, user);
+
+        _logger.LogInformation("Successfully retrieved current user info. UserId: {UserId}", currentUserId);
+        return APIOperationResponse<UserDto>.Success(dto);
+    }
+
+    private async Task PopulateRolesAsync(UserDto dto, ApplicationUser user)
+    {
+        var roleNames = await _userManager.GetRolesAsync(user);
+
+        if (roleNames == null || !roleNames.Any())
+        {
+            dto.Roles = new List<UserRoleSummaryDto>();
+            return;
+        }
+
+        var roles = await _roleManager.Roles
+            .Where(r => r.Name != null && roleNames.Contains(r.Name))
+            .Select(r => new { r.Id, r.Name })
+            .ToListAsync();
+
+        dto.Roles = roles
+            .Select(r => new UserRoleSummaryDto
+            {
+                Id = r.Id,
+                Name = r.Name ?? string.Empty
+            })
+            .ToList();
+    }
+
+    private static void PopulateRoles(
+        UserDto dto,
+        IList<string> roleNames,
+        List<ApplicationRole> allRoles)
+    {
+        if (roleNames == null || roleNames.Count == 0)
+        {
+            dto.Roles = new List<UserRoleSummaryDto>();
+            return;
+        }
+
+        dto.Roles = allRoles
+            .Where(r => r.Name != null && roleNames.Contains(r.Name))
+            .Select(r => new UserRoleSummaryDto
+            {
+                Id = r.Id,
+                Name = r.Name ?? string.Empty
+            })
+            .ToList();
+    }
+
+    private UserDto MapToDto(ApplicationUser user)
+    {
+        var dto = new UserDto
         {
             Id = user.Id,
-            UserName = user.UserName,
-            Email = user.Email,
+            UserName = user.UserName ?? string.Empty,
+            Email = user.Email ?? string.Empty,
             IsLdapUser = user.IsLdapUser,
             IsSuperAdmin = user.IsSuperAdmin,
-            ExtraEmployeesView = user.ExtraEmployeesView,
-            FullNameEN=user.FullNameEN,
-            FullNameAR=user.FullNameAR,
+            ExtraEmployeesView = user.ExtraEmployeesView ?? string.Empty,
+            DeparmentId = user.DepartmentId,
+            FullNameEN = user.FullNameEN ?? string.Empty,
+            FullNameAR = user.FullNameAR ?? string.Empty,
             RankId = user.RankId,
             MilitoryId = user.MilitoryId
+        };
+
+        if (user.Department != null)
+        {
+            dto.Department = MapDepartmentToDto(user.Department);
+        }
+
+        if (user.Rank != null)
+        {
+            dto.Rank = MapRankToDto(user.Rank);
+        }
+
+        return dto;
+    }
+
+    private static DepartmentDto MapDepartmentToDto(Department department) =>
+        new()
+        {
+            Id = department.Id,
+            Code = department.Code,
+            NameAr = department.NameAr,
+            NameEn = department.NameEn,
+            IsDeleted = department.IsDeleted
+        };
+
+    private static RankDto MapRankToDto(Rank rank) =>
+        new()
+        {
+            Id = rank.Id,
+            NameAr = rank.NameAr,
+            NameEn = rank.NameEn,
+            IsDeleted = rank.IsDeleted
         };
 }

@@ -4,6 +4,8 @@ namespace Ettad.Data.Entities
 {
     public class Ammunition : BaseItem
     {
+        public AmmunitionsType AmmunitionType { get; set; }
+
         public decimal BulletDiameter { get; set; }
 
         public long BulletDiameterUnitId { get; set; }
