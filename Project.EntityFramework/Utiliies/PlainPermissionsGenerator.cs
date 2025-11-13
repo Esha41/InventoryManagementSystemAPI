@@ -16,14 +16,8 @@ namespace Ettad.EntityFramework.Utiliies
 
     public static class PlainPermissionsGenerator
     {
-        public const string Roles = "Roles";
-        public const string Reports = "Reports";
-        public const string General = "General";
-        public const string DataImport = "DataImport";
-        public const string Permissions = "Permissions";
-        public const string Calculation = "Calculation";
-        public const string EmployeeView = "EmployeeView";
-        public const string Regularization = "Regularization";
+        public const string Dashboard = "Dashboard";
+        public const string SystemFeatures = "System Features";
 
         public static string GetCategory(this PlainPermissions source)
         {

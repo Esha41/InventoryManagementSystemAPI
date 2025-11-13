@@ -17,7 +17,6 @@ public class CrudPermissionsGenerator
     public const string Requests = "Requests";
     public const string Analytics = "Analytics";
     public const string Approvals = "Approvals";
-    public const string EmployeeData = "EmployeeData";
     public const string TimeScheduling = "TimeScheduling";
     public const string UserManagement = "UserManagement";
     public const string SettingsSupport = "SettingsSupport";

@@ -10,40 +10,16 @@ namespace Ettad.Data.Enums
 {
     public enum PlainPermissions
     {
-
-        [Category(PlainPermissionsGenerator.General)]
+        [Category(PlainPermissionsGenerator.Dashboard)]
         dashboard_view,
 
-        [Category(PlainPermissionsGenerator.General)]
-        request_create,
-        [Category(PlainPermissionsGenerator.General)]
-        request_view,
-        [Category(PlainPermissionsGenerator.General)]
-        request_manage,
-
-        [Category(PlainPermissionsGenerator.General)]
-        asset_create,
-        [Category(PlainPermissionsGenerator.General)]
-        asset_view,
-        [Category(PlainPermissionsGenerator.General)]
-        inventory_view,
-
-
-        [Category(PlainPermissionsGenerator.General)]
-        user_view,
-        [Category(PlainPermissionsGenerator.General)]
-        role_view,
-        [Category(PlainPermissionsGenerator.General)]
-        role_edit,
-
-
-        [Category(PlainPermissionsGenerator.General)]
+        [Category(PlainPermissionsGenerator.SystemFeatures)]
         CanChangePassword,
-        [Category(PlainPermissionsGenerator.General)]
+        [Category(PlainPermissionsGenerator.SystemFeatures)]
         CanGenerateReport,
-        [Category(PlainPermissionsGenerator.General)]
+        [Category(PlainPermissionsGenerator.SystemFeatures)]
         CanImportData,
-        [Category(PlainPermissionsGenerator.General)]
+        [Category(PlainPermissionsGenerator.SystemFeatures)]
         EmailLogs
     }
 

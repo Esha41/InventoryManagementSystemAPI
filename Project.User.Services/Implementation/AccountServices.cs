@@ -141,8 +141,8 @@ namespace Ettad.User.Services.Implementation
 
 
         public async Task<APIOperationResponse<AuthenticatedResponse>> LoginWithLdap(
-     LoginInformation loginInformation,
-     CancellationToken cancellationToken = default)
+    LoginInformation loginInformation,
+    CancellationToken cancellationToken = default)
         {
             try
             {
@@ -150,6 +150,9 @@ namespace Ettad.User.Services.Implementation
 
                 if (!ldapSettings.IsActive)
                 {
+                    _logger.LogWarning("LDAP login attempt failed: LDAP settings inactive. Username: {Username}",
+                        loginInformation?.Username);
+
                     return APIOperationResponse<AuthenticatedResponse>.Fail(
                         ResponseType.BadRequest,
                         CommonErrorCodes.INVALID_LDAP_SETTINGS,
@@ -158,6 +161,8 @@ namespace Ettad.User.Services.Implementation
 
                 if (string.IsNullOrWhiteSpace(loginInformation?.Username))
                 {
+                    _logger.LogWarning("LDAP login attempt failed: Username is empty.");
+
                     return APIOperationResponse<AuthenticatedResponse>.Fail(
                         ResponseType.BadRequest,
                         CommonErrorCodes.INVALID_EMAIL_OR_PASSWORD,
@@ -173,6 +178,10 @@ namespace Ettad.User.Services.Implementation
 
                 if (!loginSucceeded)
                 {
+                    _logger.LogWarning(
+                        "LDAP login failed: Invalid password. Username: {Username}",
+                        loginInformation.Username);
+
                     return APIOperationResponse<AuthenticatedResponse>.Fail(
                         ResponseType.Unauthorized,
                         CommonErrorCodes.INVALID_EMAIL_OR_PASSWORD,
@@ -181,26 +190,50 @@ namespace Ettad.User.Services.Implementation
 
                 var resolvedUsername = $"{loginInformation.Username.Trim()}@{ldapSettings.LdapDomain}";
 
+                // Check if user exists in the database
                 var user = await _userRepository.FindByNameAsync(resolvedUsername);
                 if (user == null)
                 {
-                    return APIOperationResponse<AuthenticatedResponse>.Fail(
-                        ResponseType.Unauthorized,
-                        CommonErrorCodes.INVALID_EMAIL_OR_PASSWORD,
-                        "server.invalidLogin");
+                    // Auto-create the user
+                    user = new ApplicationUser
+                    {
+                        UserName = resolvedUsername,
+                        Email = resolvedUsername,
+                       FullNameAR=resolvedUsername,
+                       FullNameEN=resolvedUsername,
+                       IsLdapUser=true,
+                    };
+
+                    await _userRepository.CreateAsync(user); // Make sure this saves to DB
+                    _logger.LogInformation(
+                        "LDAP user auto-created. Username: {Username}, UserId: {UserId}",
+                        user.UserName,
+                        user.Id);
                 }
 
                 var response = await CreateAndReturnAuthResponseAsync(user, cancellationToken);
+
+                _logger.LogInformation(
+                    "LDAP login successful. Username: {Username}, UserId: {UserId}",
+                    resolvedUsername,
+                    user.Id);
+
                 return APIOperationResponse<AuthenticatedResponse>.Success(response);
             }
             catch (Exception ex)
             {
+                _logger.LogError(
+                    ex,
+                    "LDAP login attempt threw exception. Username: {Username}",
+                    loginInformation?.Username);
+
                 return APIOperationResponse<AuthenticatedResponse>.Fail(
                     ResponseType.InternalServerError,
                     CommonErrorCodes.SERVER_ERROR,
                     ex.Message);
             }
         }
+
 
 
         public Task<AuthenticatedResponse> LoginWithAzure(LoginWithAzureInformation loginInformation, CancellationToken cancellationToken = default)
