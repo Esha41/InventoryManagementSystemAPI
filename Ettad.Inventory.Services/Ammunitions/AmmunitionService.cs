@@ -95,7 +95,7 @@ namespace Ettad.Inventory.Service.Ammunitions
             }
         }
 
-        public async Task<APIOperationResponse<List<AmmunitionDto>>> GetByTypeAsync(AmmunitionsType ammunitionType)
+        public async Task<APIOperationResponse<List<AmmunitionDto>>> GetByTypeAsync(AmmunitionType ammunitionType)
         {
             _logger.LogInformation("Getting ammunitions by type. AmmunitionType: {AmmunitionType}, User: {UserId}", ammunitionType, _currentUserService.UserId);
 
@@ -156,7 +156,7 @@ namespace Ettad.Inventory.Service.Ammunitions
 
                 // Map DTO to entity
                 var ammunition = _mapper.Map<Ammunition>(inputDto);
-                ammunition.AmmunitionType = AmmunitionsType.Small;
+                ammunition.AmmunitionType = AmmunitionType.Small;
                 ammunition.ItemType = ItemType.Ammunition;
                 ammunition.CreationDate = DateTime.UtcNow;
                 ammunition.CreatedBy = _currentUserService.UserId;
@@ -206,7 +206,7 @@ namespace Ettad.Inventory.Service.Ammunitions
 
                 // Map updates to entity
                 _mapper.Map(inputDto, existingAmmunition);
-                existingAmmunition.AmmunitionType = AmmunitionsType.Small;
+                existingAmmunition.AmmunitionType = AmmunitionType.Small;
                 existingAmmunition.ModificationDate = DateTime.UtcNow;
                 existingAmmunition.ModifiedBy = _currentUserService.UserId;
                 existingAmmunition.Nsn = string.IsNullOrWhiteSpace(inputDto.Nsn) ? null : inputDto.Nsn.Trim();

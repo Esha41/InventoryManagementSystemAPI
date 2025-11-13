@@ -43,7 +43,7 @@ namespace Ettad.Inventory.API.Controllers
         [HttpGet("type/{ammunitionType}")]
         [ProducesResponseType((int)HttpStatusCode.OK)]
         [CheckAuthorize("Permissions.Ammunition.View", "Permissions.Ammunition.Page")]
-        public async Task<IActionResult> GetByType(AmmunitionsType ammunitionType)
+        public async Task<IActionResult> GetByType(AmmunitionType ammunitionType)
         {
             var result = await _ammunitionService.GetByTypeAsync(ammunitionType);
             return ProcessResponse(result);

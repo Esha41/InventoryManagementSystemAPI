@@ -7,7 +7,7 @@ namespace Ettad.Inventory.Service.Ammunitions.Dtos
     {
         public long Id { get; set; }
 
-        public AmmunitionsType AmmunitionType { get; set; }
+        public AmmunitionType AmmunitionType { get; set; }
 
         public string Name { get; set; }
 
