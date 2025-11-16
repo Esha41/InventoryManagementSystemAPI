@@ -558,7 +558,8 @@ public class UserService : IUserService
             FullNameEN = user.FullNameEN ?? string.Empty,
             FullNameAR = user.FullNameAR ?? string.Empty,
             RankId = user.RankId,
-            MilitoryId = user.MilitoryId
+            MilitoryId = user.MilitoryId,
+            LdapUserName = user.LdapUserName ?? string.Empty,
         };
 
         if (user.Department != null)
