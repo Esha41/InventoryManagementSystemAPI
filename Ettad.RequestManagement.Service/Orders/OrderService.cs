@@ -12,6 +12,9 @@ using Microsoft.AspNetCore.Identity;
 using Ettad.Comman.Idenitity;
 using Microsoft.Extensions.Logging;
 using Ettad.Notification.Service;
+using AutoMapper.QueryableExtensions;
+using Ettad.CrossCutting.Comman.Models;
+using System.Linq;
 
 namespace Ettad.RequestManagement.Service.Orders
 {
@@ -135,6 +138,164 @@ namespace Ettad.RequestManagement.Service.Orders
                 return APIOperationResponse<List<OrderDto>>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
             }
         }
+
+		public async Task<APIOperationResponse<PaginatedList<OrderDto>>> GetAsync(
+			int? status,
+			long? departmentId,
+			int page,
+			int pageSize,
+			string? sortBy,
+			string? sortDir)
+		{
+			_logger.LogInformation("Querying orders with filters. status={Status}, departmentId={DepartmentId}, page={Page}, pageSize={PageSize}, sortBy={SortBy}, sortDir={SortDir}. User: {UserId}",
+				status, departmentId, page, pageSize, sortBy, sortDir, _currentUserService.UserId);
+
+			try
+			{
+				// If not admin, force department filter to user's department
+				if (!_currentUserService.IsAdminRole)
+				{
+					departmentId = _currentUserService.DepartmentId ?? departmentId;
+				}
+
+				if (page <= 0) page = 1;
+				if (pageSize <= 0 || pageSize > 200) pageSize = 20;
+
+				// Base query
+				var query = _orderRepository
+					.Find(o => !o.IsDeleted)
+					.AsQueryable();
+
+				// Filters
+				if (status.HasValue)
+				{
+					var reqStatus = (RequestStatus)status.Value;
+					query = query.Where(o => o.Status == reqStatus);
+				}
+				if (departmentId.HasValue && departmentId.Value > 0)
+				{
+					query = query.Where(o => o.DepartmentId == departmentId.Value);
+				}
+
+				// Projection to DTO (AutoMapper will generate proper SQL joins)
+				var projected = query.ProjectTo<OrderDto>(_mapper.ConfigurationProvider);
+
+				// Sorting
+				bool desc = string.Equals(sortDir, "desc", StringComparison.OrdinalIgnoreCase);
+				switch ((sortBy ?? "usageDate").Trim().ToLowerInvariant())
+				{
+					case "usagedate":
+						projected = desc ? projected.OrderByDescending(x => x.UsageDate) : projected.OrderBy(x => x.UsageDate);
+						break;
+					case "requestno":
+						projected = desc ? projected.OrderByDescending(x => x.RequestNo) : projected.OrderBy(x => x.RequestNo);
+						break;
+					case "status":
+						projected = desc ? projected.OrderByDescending(x => x.Status) : projected.OrderBy(x => x.Status);
+						break;
+					default:
+						projected = projected.OrderByDescending(x => x.UsageDate);
+						break;
+				}
+
+				// Pagination
+				var count = projected.Count();
+				var items = projected.Skip((page - 1) * pageSize).Take(pageSize).ToList();
+
+				// Fallback for RequesterName if needed (best-effort on page items only)
+				if (items.Any(i => string.IsNullOrEmpty(i.RequesterName)))
+				{
+					// fetch CreatedBy via entity query for only current page ids
+					var pageIds = items.Select(i => i.Id).ToList();
+					var entityPage = _orderRepository.Find(o => pageIds.Contains(o.Id)).ToList();
+					foreach (var dto in items)
+					{
+						if (string.IsNullOrEmpty(dto.RequesterName))
+						{
+							var entity = entityPage.FirstOrDefault(e => e.Id == dto.Id);
+							if (entity != null && !string.IsNullOrEmpty(entity.CreatedBy))
+							{
+								dto.RequesterName = await GetUserNameByIdAsync(entity.CreatedBy);
+							}
+						}
+					}
+				}
+
+				var paged = new PaginatedList<OrderDto>(items, count, page, pageSize);
+				_logger.LogInformation("Orders query succeeded. Count={Count}, Page={Page}, PageSize={PageSize}, User={UserId}", count, page, pageSize, _currentUserService.UserId);
+				return APIOperationResponse<PaginatedList<OrderDto>>.Success(paged);
+			}
+			catch (Exception ex)
+			{
+				_logger.LogError(ex, "Error querying orders with filters. User: {UserId}", _currentUserService.UserId);
+				return APIOperationResponse<PaginatedList<OrderDto>>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
+			}
+		}
+
+		public async Task<Ettad.ResponseHandler.Models.APIOperationResponse<Ettad.CrossCutting.Comman.Models.PaginatedList<RequestStatus>>> GetSummariesAsync(
+			int? status,
+			long? departmentId,
+			int page,
+			int pageSize,
+			string? sortBy,
+			string? sortDir)
+		{
+			_logger.LogInformation("Querying order statuses. status={Status}, departmentId={DepartmentId}, page={Page}, pageSize={PageSize}, sortBy={SortBy}, sortDir={SortDir}. User: {UserId}",
+				status, departmentId, page, pageSize, sortBy, sortDir, _currentUserService.UserId);
+
+			try
+			{
+				if (!_currentUserService.IsAdminRole)
+				{
+					departmentId = _currentUserService.DepartmentId ?? departmentId;
+				}
+
+				if (page <= 0) page = 1;
+				if (pageSize <= 0 || pageSize > 200) pageSize = 20;
+
+				var query = _orderRepository
+					.Find(o => !o.IsDeleted, false,
+						nameof(Order.Department),
+						nameof(Order.Requester),
+						$"{nameof(Order.RequestItems)}.{nameof(RequestItem.Item)}")
+					.AsQueryable();
+
+				if (status.HasValue)
+				{
+					var reqStatus = (RequestStatus)status.Value;
+					query = query.Where(o => o.Status == reqStatus);
+				}
+				if (departmentId.HasValue && departmentId.Value > 0)
+				{
+					query = query.Where(o => o.DepartmentId == departmentId.Value);
+				}
+
+				// Manual projection (to include nested items cleanly)
+				var projected = query.Select(o => o.Status);
+
+				bool desc = string.Equals(sortDir, "desc", StringComparison.OrdinalIgnoreCase);
+				switch ((sortBy ?? "status").Trim().ToLowerInvariant())
+				{
+					case "status":
+						projected = desc ? projected.OrderByDescending(x => x) : projected.OrderBy(x => x);
+						break;
+					default:
+						// Default sort has no meaning for statuses alone; keep as-is
+						break;
+				}
+
+				var count = projected.Count();
+				var items = projected.Skip((page - 1) * pageSize).Take(pageSize).ToList();
+
+				var paged = new Ettad.CrossCutting.Comman.Models.PaginatedList<RequestStatus>(items, count, page, pageSize);
+				return Ettad.ResponseHandler.Models.APIOperationResponse<Ettad.CrossCutting.Comman.Models.PaginatedList<RequestStatus>>.Success(paged);
+			}
+			catch (Exception ex)
+			{
+				_logger.LogError(ex, "Error querying order statuses. User: {UserId}", _currentUserService.UserId);
+				return Ettad.ResponseHandler.Models.APIOperationResponse<Ettad.CrossCutting.Comman.Models.PaginatedList<RequestStatus>>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
+			}
+		}
 
         public async Task<APIOperationResponse<long>> CreateAsync(CreateOrderDto inputDto)
         {
