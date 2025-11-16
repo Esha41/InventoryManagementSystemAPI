@@ -10,6 +10,7 @@ namespace Ettad.Inventory.Service.Inventories
         Task<APIOperationResponse<long>> CreateAsync(CreateInventoryDto inputDto);
         Task<APIOperationResponse<bool>> UpdateAsync(long id, UpdateInventoryDto inputDto);
         Task<APIOperationResponse<bool>> DeleteAsync(long id);
+        Task<APIOperationResponse<OrderSupplySuggestionDto>> SuggestSupplyForOrderAsync(long orderId);
     }
 }
 

@@ -38,10 +38,6 @@ namespace Ettad.EntityFramework.Configurations
                 .IsRequired(false)
                 .HasMaxLength(450); // Match AspNetUsers.Id length
 
-            builder.Property(x => x.RecieverId)
-                .IsRequired(false)
-                .HasMaxLength(450); // Match AspNetUsers.Id length
-
             builder.HasOne(x => x.Department)
                 .WithMany()
                 .HasForeignKey(x => x.DepartmentId)
@@ -57,18 +53,6 @@ namespace Ettad.EntityFramework.Configurations
             builder.HasOne(x => x.Requester)
                 .WithMany()
                 .HasForeignKey(x => x.RequesterId)
-                .IsRequired(false)
-                .OnDelete(DeleteBehavior.Restrict);
-
-            builder.HasOne(x => x.Reciever)
-                .WithMany()
-                .HasForeignKey(x => x.RecieverId)
-                .IsRequired(false)
-                .OnDelete(DeleteBehavior.Restrict);
-
-            builder.HasOne(x => x.Depot)
-                .WithMany()
-                .HasForeignKey(x => x.DepotId)
                 .IsRequired(false)
                 .OnDelete(DeleteBehavior.Restrict);
         }

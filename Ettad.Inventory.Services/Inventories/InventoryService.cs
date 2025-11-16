@@ -17,6 +17,8 @@ namespace Ettad.Inventory.Service.Inventories
     {
         private readonly ICrossCuttingRepository<InventoryEntity> _inventoryRepository;
         private readonly ICrossCuttingRepository<InventoryDetailEntity> _inventoryDetailRepository;
+        private readonly ICrossCuttingRepository<Order> _orderRepository;
+        private readonly ICrossCuttingRepository<RequestItem> _requestItemRepository;
         private readonly IMapper _mapper;
         private readonly IValidator<CreateInventoryDto> _createValidator;
         private readonly IValidator<UpdateInventoryDto> _updateValidator;
@@ -26,6 +28,8 @@ namespace Ettad.Inventory.Service.Inventories
         public InventoryService(
             ICrossCuttingRepository<InventoryEntity> inventoryRepository,
             ICrossCuttingRepository<InventoryDetailEntity> inventoryDetailRepository,
+            ICrossCuttingRepository<Order> orderRepository,
+            ICrossCuttingRepository<RequestItem> requestItemRepository,
             IMapper mapper,
             IValidator<CreateInventoryDto> createValidator,
             IValidator<UpdateInventoryDto> updateValidator,
@@ -34,6 +38,8 @@ namespace Ettad.Inventory.Service.Inventories
         {
             _inventoryRepository = inventoryRepository;
             _inventoryDetailRepository = inventoryDetailRepository;
+            _orderRepository = orderRepository;
+            _requestItemRepository = requestItemRepository;
             _mapper = mapper;
             _createValidator = createValidator;
             _updateValidator = updateValidator;
@@ -261,6 +267,144 @@ namespace Ettad.Inventory.Service.Inventories
                 _logger.LogError(ex, "Error deleting inventory. InventoryId: {InventoryId}, User: {UserId}", 
                     id, _currentUserService.UserId);
                 return APIOperationResponse<bool>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
+            }
+        }
+
+        public async Task<APIOperationResponse<OrderSupplySuggestionDto>> SuggestSupplyForOrderAsync(long orderId)
+        {
+            _logger.LogInformation("Generating supply suggestion for order. OrderId: {OrderId}, User: {UserId}", 
+                orderId, _currentUserService.UserId);
+
+            try
+            {
+                // Fetch the order with its items and depot
+                var order = await _orderRepository.FindOneAsync(
+                    o => o.Id == orderId && !o.IsDeleted,
+                    false,
+                    nameof(Order.RequestItems),
+                    $"{nameof(Order.RequestItems)}.{nameof(RequestItem.Item)}"
+                );
+
+                if (order == null)
+                {
+                    _logger.LogWarning("Order not found. OrderId: {OrderId}, User: {UserId}", 
+                        orderId, _currentUserService.UserId);
+                    return APIOperationResponse<OrderSupplySuggestionDto>.Fail(ResponseType.NotFound, "Order not found");
+                }
+
+                if (order.RequestItems == null || !order.RequestItems.Any())
+                {
+                    _logger.LogWarning("Order has no items. OrderId: {OrderId}, User: {UserId}", 
+                        orderId, _currentUserService.UserId);
+                    return APIOperationResponse<OrderSupplySuggestionDto>.Fail(ResponseType.BadRequest, "Order has no items to supply");
+                }
+
+                var suggestion = new OrderSupplySuggestionDto
+                {
+                    OrderId = order.Id,
+                    OrderNo = order.RequestNo,
+                    DepartmentId = order.DepartmentId,
+                    ItemSuggestions = new List<OrderItemSupplySuggestionDto>()
+                };
+
+                bool allItemsCanBeFulfilled = true;
+
+                _logger.LogInformation("Processing {ItemCount} items for supply suggestion. OrderId: {OrderId}", 
+                    order.RequestItems.Count, orderId);
+
+                // Process each request item
+                foreach (var requestItem in order.RequestItems)
+                {
+                    var itemSuggestion = new OrderItemSupplySuggestionDto
+                    {
+                        RequestItemId = requestItem.Id,
+                        ItemId = requestItem.ItemId,
+                        ItemName = requestItem.Item.Name,
+                        RequestedQuantity = requestItem.Quantity,
+                        SuggestedQuantity = 0,
+                        LotSuggestions = new List<SupplyLotSuggestionDto>()
+                    };
+
+                    // Query available inventory details for this item across all depots
+                    // Order by ExpiryDate ASC (FEFO - First Expiry First Out), with nulls last
+                    var availableLotsQuery = await _inventoryDetailRepository.FindAsync(
+                        id => id.ItemId == requestItem.ItemId &&
+                              id.ItemQuantity > 0,
+                        false,
+                        nameof(InventoryDetailEntity.Inventory),
+                        $"{nameof(InventoryDetailEntity.Inventory)}.{nameof(InventoryEntity.Depo)}",
+                        nameof(InventoryDetailEntity.Item),
+                        nameof(InventoryDetailEntity.Supplier),
+                        nameof(InventoryDetailEntity.Manufacturer)
+                    );
+
+                    // Sort in memory: items with expiry dates first (sorted by date), then items without expiry dates
+                    var availableLots = availableLotsQuery
+                        .Where(id => !id.Inventory.IsDeleted)
+                        .OrderBy(id => id.Item.ExpiryDate.HasValue ? 0 : 1)  // Non-null expiry dates first
+                        .ThenBy(id => id.Item.ExpiryDate)                    // Then sort by expiry date
+                        .ThenBy(id => id.Lot)                                // Then by lot number
+                        .ToList();
+
+                    _logger.LogInformation("Found {LotCount} available lots for item. ItemId: {ItemId}, OrderId: {OrderId}", 
+                        availableLots.Count, requestItem.ItemId, orderId);
+
+                    long remainingQuantity = requestItem.Quantity;
+
+                    // Allocate quantities from lots using FEFO logic
+                    foreach (var lot in availableLots)
+                    {
+                        if (remainingQuantity <= 0)
+                            break;
+
+                        long quantityToAllocate = Math.Min(remainingQuantity, lot.ItemQuantity);
+
+                        itemSuggestion.LotSuggestions.Add(new SupplyLotSuggestionDto
+                        {
+                            InventoryDetailId = lot.Id,
+                            ItemId = lot.ItemId,
+                            ItemName = lot.Item.Name,
+                            Lot = lot.Lot,
+                            AvailableQuantity = lot.ItemQuantity,
+                            SuggestedQuantity = quantityToAllocate,
+                            ExpiryDate = lot.Item.ExpiryDate,
+                            InventoryId = lot.InventoryId,
+                            Depot = _mapper.Map<Module.lookup.Dtos.DepotDto>(lot.Inventory.Depo),
+                            Supplier = lot.Supplier != null ? _mapper.Map<Module.lookup.Dtos.SupplierDto>(lot.Supplier) : null,
+                            Manufacturer = lot.Manufacturer != null ? _mapper.Map<Module.lookup.Dtos.ManufacturerDto>(lot.Manufacturer) : null
+                        });
+
+                        itemSuggestion.SuggestedQuantity += quantityToAllocate;
+                        remainingQuantity -= quantityToAllocate;
+                    }
+
+                    itemSuggestion.CanFulfillCompletely = (itemSuggestion.SuggestedQuantity >= itemSuggestion.RequestedQuantity);
+                    
+                    if (!itemSuggestion.CanFulfillCompletely)
+                    {
+                        allItemsCanBeFulfilled = false;
+                        _logger.LogWarning("Insufficient inventory for item. ItemId: {ItemId}, Requested: {Requested}, Available: {Available}, OrderId: {OrderId}", 
+                            requestItem.ItemId, requestItem.Quantity, itemSuggestion.SuggestedQuantity, orderId);
+                    }
+
+                    suggestion.ItemSuggestions.Add(itemSuggestion);
+                }
+
+                suggestion.CanFulfillCompletely = allItemsCanBeFulfilled;
+                suggestion.Message = allItemsCanBeFulfilled 
+                    ? "All items can be fulfilled from available inventory" 
+                    : "Some items cannot be fully fulfilled due to insufficient inventory";
+
+                _logger.LogInformation("Supply suggestion generated. OrderId: {OrderId}, CanFulfillCompletely: {CanFulfill}, ItemCount: {ItemCount}", 
+                    orderId, suggestion.CanFulfillCompletely, suggestion.ItemSuggestions.Count);
+
+                return APIOperationResponse<OrderSupplySuggestionDto>.Success(suggestion);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error generating supply suggestion. OrderId: {OrderId}, User: {UserId}", 
+                    orderId, _currentUserService.UserId);
+                return APIOperationResponse<OrderSupplySuggestionDto>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
             }
         }
     }

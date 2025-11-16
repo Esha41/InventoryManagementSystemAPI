@@ -66,8 +66,6 @@ namespace Ettad.RequestManagement.Service.Orders
                     false,
                     nameof(Order.Department),
                     nameof(Order.Requester),
-                    nameof(Order.Reciever),
-                    nameof(Order.Depot),
                     nameof(Order.RequestPurpose),
                     $"{nameof(Order.RequestItems)}.{nameof(RequestItem.Item)}"
                 );
@@ -108,8 +106,6 @@ namespace Ettad.RequestManagement.Service.Orders
                     false,
                     nameof(Order.Department),
                     nameof(Order.Requester),
-                    nameof(Order.Reciever),
-                    nameof(Order.Depot),
                     nameof(Order.RequestPurpose),
                     $"{nameof(Order.RequestItems)}.{nameof(RequestItem.Item)}"
                 );
@@ -386,6 +382,169 @@ namespace Ettad.RequestManagement.Service.Orders
             catch
             {
                 return "System User";
+            }
+        }
+
+        public async Task<APIOperationResponse<long>> AddOrderItemAsync(long orderId, CreateUpdateRequestItemDto itemDto)
+        {
+            _logger.LogInformation("Adding item to order. OrderId: {OrderId}, ItemId: {ItemId}, User: {UserId}", 
+                orderId, itemDto.ItemId, _currentUserService.UserId);
+
+            try
+            {
+                // Check if order exists
+                var order = await _orderRepository.FindOneAsync(
+                    o => o.Id == orderId && !o.IsDeleted,
+                    false,
+                    nameof(Order.RequestItems));
+
+                if (order == null)
+                {
+                    _logger.LogWarning("Order not found. OrderId: {OrderId}, User: {UserId}", 
+                        orderId, _currentUserService.UserId);
+                    return APIOperationResponse<long>.Fail(ResponseType.NotFound, "Order not found");
+                }
+
+                // Check if item already exists in order
+                var existingItem = order.RequestItems?.FirstOrDefault(ri => ri.ItemId == itemDto.ItemId && !ri.IsDeleted);
+                if (existingItem != null)
+                {
+                    _logger.LogWarning("Item already exists in order. OrderId: {OrderId}, ItemId: {ItemId}, User: {UserId}", 
+                        orderId, itemDto.ItemId, _currentUserService.UserId);
+                    return APIOperationResponse<long>.Fail(ResponseType.BadRequest, 
+                        "Item already exists in this order. Use update quantity instead.");
+                }
+
+                // Create new request item
+                var newItem = _mapper.Map<RequestItem>(itemDto);
+                newItem.RequestId = orderId;
+                newItem.CreationDate = DateTime.UtcNow;
+                newItem.CreatedBy = _currentUserService.UserId;
+
+                var createdItem = await _requestItemRepository.AddAsync(newItem);
+
+                _logger.LogInformation("Item added to order successfully. OrderId: {OrderId}, ItemId: {ItemId}, RequestItemId: {RequestItemId}, User: {UserId}", 
+                    orderId, itemDto.ItemId, createdItem.Id, _currentUserService.UserId);
+
+                return APIOperationResponse<long>.Success(createdItem.Id, "Item added to order successfully");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error adding item to order. OrderId: {OrderId}, ItemId: {ItemId}, User: {UserId}", 
+                    orderId, itemDto.ItemId, _currentUserService.UserId);
+                return APIOperationResponse<long>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
+            }
+        }
+
+        public async Task<APIOperationResponse<bool>> UpdateOrderItemQuantityAsync(long orderId, long itemId, long newQuantity)
+        {
+            _logger.LogInformation("Updating order item quantity. OrderId: {OrderId}, ItemId: {ItemId}, NewQuantity: {NewQuantity}, User: {UserId}", 
+                orderId, itemId, newQuantity, _currentUserService.UserId);
+
+            try
+            {
+                if (newQuantity <= 0)
+                {
+                    _logger.LogWarning("Invalid quantity. OrderId: {OrderId}, ItemId: {ItemId}, Quantity: {Quantity}", 
+                        orderId, itemId, newQuantity);
+                    return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, "Quantity must be greater than zero");
+                }
+
+                // Check if order exists
+                var order = await _orderRepository.FindOneAsync(o => o.Id == orderId && !o.IsDeleted);
+                if (order == null)
+                {
+                    _logger.LogWarning("Order not found. OrderId: {OrderId}, User: {UserId}", 
+                        orderId, _currentUserService.UserId);
+                    return APIOperationResponse<bool>.Fail(ResponseType.NotFound, "Order not found");
+                }
+
+                // Find the request item
+                var requestItem = await _requestItemRepository.FindOneAsync(
+                    ri => ri.Id == itemId && ri.RequestId == orderId && !ri.IsDeleted);
+
+                if (requestItem == null)
+                {
+                    _logger.LogWarning("Order item not found. OrderId: {OrderId}, ItemId: {ItemId}, User: {UserId}", 
+                        orderId, itemId, _currentUserService.UserId);
+                    return APIOperationResponse<bool>.Fail(ResponseType.NotFound, "Order item not found");
+                }
+
+                var oldQuantity = requestItem.Quantity;
+                requestItem.Quantity = newQuantity;
+                requestItem.ModificationDate = DateTime.UtcNow;
+                requestItem.ModifiedBy = _currentUserService.UserId;
+
+                await _requestItemRepository.UpdateAsync(requestItem);
+
+                _logger.LogInformation("Order item quantity updated. OrderId: {OrderId}, ItemId: {ItemId}, OldQuantity: {OldQuantity}, NewQuantity: {NewQuantity}, User: {UserId}", 
+                    orderId, itemId, oldQuantity, newQuantity, _currentUserService.UserId);
+
+                return APIOperationResponse<bool>.Success(true, "Order item quantity updated successfully");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating order item quantity. OrderId: {OrderId}, ItemId: {ItemId}, User: {UserId}", 
+                    orderId, itemId, _currentUserService.UserId);
+                return APIOperationResponse<bool>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
+            }
+        }
+
+        public async Task<APIOperationResponse<bool>> DeleteOrderItemAsync(long orderId, long itemId)
+        {
+            _logger.LogInformation("Deleting order item. OrderId: {OrderId}, ItemId: {ItemId}, User: {UserId}", 
+                orderId, itemId, _currentUserService.UserId);
+
+            try
+            {
+                // Check if order exists and get its items
+                var order = await _orderRepository.FindOneAsync(
+                    o => o.Id == orderId && !o.IsDeleted,
+                    false,
+                    nameof(Order.RequestItems));
+
+                if (order == null)
+                {
+                    _logger.LogWarning("Order not found. OrderId: {OrderId}, User: {UserId}", 
+                        orderId, _currentUserService.UserId);
+                    return APIOperationResponse<bool>.Fail(ResponseType.NotFound, "Order not found");
+                }
+
+                // Count active items in the order
+                var activeItemsCount = order.RequestItems?.Count(ri => !ri.IsDeleted) ?? 0;
+
+                if (activeItemsCount <= 1)
+                {
+                    _logger.LogWarning("Cannot delete last item from order. OrderId: {OrderId}, ItemId: {ItemId}, User: {UserId}", 
+                        orderId, itemId, _currentUserService.UserId);
+                    return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, 
+                        "Cannot delete the last item from an order. An order must have at least one item.");
+                }
+
+                // Find the request item to delete
+                var requestItem = await _requestItemRepository.FindOneAsync(
+                    ri => ri.Id == itemId && ri.RequestId == orderId && !ri.IsDeleted);
+
+                if (requestItem == null)
+                {
+                    _logger.LogWarning("Order item not found. OrderId: {OrderId}, ItemId: {ItemId}, User: {UserId}", 
+                        orderId, itemId, _currentUserService.UserId);
+                    return APIOperationResponse<bool>.Fail(ResponseType.NotFound, "Order item not found");
+                }
+
+                // Soft delete the item
+                await _requestItemRepository.DeleteAsync(requestItem);
+
+                _logger.LogInformation("Order item deleted successfully. OrderId: {OrderId}, ItemId: {ItemId}, User: {UserId}", 
+                    orderId, itemId, _currentUserService.UserId);
+
+                return APIOperationResponse<bool>.Success(true, "Order item deleted successfully");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error deleting order item. OrderId: {OrderId}, ItemId: {ItemId}, User: {UserId}", 
+                    orderId, itemId, _currentUserService.UserId);
+                return APIOperationResponse<bool>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
             }
         }
     }
