@@ -211,16 +211,30 @@ try
         });
     });
 
+    var allowedOrigins = configuration.GetSection("Cors:AllowedOrigins").Get<string[]>();
+    if (allowedOrigins == null || allowedOrigins.Length == 0)
+    {
+        allowedOrigins = new[] {
+        "http://localhost:4200",      // Angular dev server (ng serve)
+        "http://localhost:9090",      // IIS on localhost
+        "http://10.80.71.3:9090",     // IIS on server IP
+        "http://10.80.71.3"           // IIS default port
+    };
+    }
+
+    const string corsPolicyName = "FrontendCors";
+
     builder.Services.AddCors(options =>
     {
-
-        options.AddPolicy("AllowAll",
-            policy => policy
-                .AllowAnyOrigin()
+        options.AddPolicy(corsPolicyName, policy =>
+        {
+            policy
+                .WithOrigins(allowedOrigins) // must include frontend URL
                 .AllowAnyMethod()
-                .AllowAnyHeader());
+                .AllowAnyHeader()
+                .AllowCredentials(); // keep this if you use cookies/auth
+        });
     });
-
 
 
     #endregion
@@ -258,15 +272,16 @@ try
     app.UseStaticFiles();
     app.UseHttpsRedirection();
 
+    app.UseCors(corsPolicyName);
+
     app.UseAuthentication();
 
     app.UseAuthorization();
-    
-    // Map SignalR hub
-    app.MapHub<Ettad.Notification.Service.Hubs.NotificationHub>("/notificationHub");
-    
-    app.MapControllers();
-    app.UseCors("AllowAll");
+
+    app.MapControllers().RequireCors(corsPolicyName);
+
+    app.MapHub<Ettad.Notification.Service.Hubs.NotificationHub>("/hubs/notification")
+        .RequireCors(corsPolicyName);
 
     using (var scope = app.Services.CreateScope())
     {

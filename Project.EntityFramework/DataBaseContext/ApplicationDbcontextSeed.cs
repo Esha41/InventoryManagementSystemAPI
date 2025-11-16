@@ -1,55 +1,53 @@
-﻿using Microsoft.AspNetCore.Identity;
-using Newtonsoft.Json;
-using Ettad.Comman.Idenitity;
+﻿using Ettad.Comman.Idenitity;
 using Ettad.CrossCutting.Comman.Idenitity;
 using Ettad.Data.Entities.Settings;
 using Ettad.Data.Enums;
+using Ettad.EntityFramework.DataBaseContext.DataSeeding;
 using Ettad.EntityFramework.Utiliies;
 using Ettad.Infrastructure.Utilities;
+using Microsoft.AspNetCore.Identity;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Security.Claims;
-using System.Text;
 using System.Threading.Tasks;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace Ettad.EntityFramework.DataBaseContext
 {
     public abstract class ApplicationDbcontextSeed
     {
         public static async Task SeedDefaultUserAsync(
-  
-     ApplicationDbContext context,
-     UserManager<ApplicationUser> userManager,
-     RoleManager<ApplicationRole> roleManager)
+            ApplicationDbContext context,
+            UserManager<ApplicationUser> userManager,
+            RoleManager<ApplicationRole> roleManager)
         {
             try
             {
-                ApplicationRole administratorRole = new()
+                // ========================
+                // ADMINISTRATOR ROLE
+                // ========================
+                var administratorRole = new ApplicationRole
                 {
-                    IsDefaultRole = false,
-                    IsSuperAdmin = true,
                     Name = "Administrator",
+                    IsSuperAdmin = true,
+                    IsDefaultRole = false
                 };
+
                 var plainPermissions = PlainPermissionsGenerator.GetPlainPermissionsWithGroup();
                 var crudPermissions = await new CrudPermissionsGenerator(context).GenerateAllPermissions();
-                // Check if the role already exists
-                var existingRole = await roleManager.FindByNameAsync(administratorRole.Name);
 
-                if (existingRole == null)
+                var existingAdminRole = await roleManager.FindByNameAsync(administratorRole.Name);
+                if (existingAdminRole == null)
                 {
-                    // Create the role if it doesn't exist
                     await roleManager.CreateAsync(administratorRole);
-                    existingRole = await roleManager.FindByNameAsync(administratorRole.Name);
+                    existingAdminRole = await roleManager.FindByNameAsync(administratorRole.Name);
                 }
 
-                // Remove all existing claims for the role
-                var existingClaims = await roleManager.GetClaimsAsync(existingRole);
+                // Remove existing claims
+                var existingClaims = await roleManager.GetClaimsAsync(existingAdminRole);
                 foreach (var claim in existingClaims)
-                {
-                    await roleManager.RemoveClaimAsync(existingRole, claim);
-                }
+                    await roleManager.RemoveClaimAsync(existingAdminRole, claim);
 
                 // Add CRUD permissions
                 foreach (var crudModel in crudPermissions)
@@ -58,7 +56,7 @@ namespace Ettad.EntityFramework.DataBaseContext
                     {
                         if (!string.IsNullOrWhiteSpace(crudPermission.DisplayValue))
                         {
-                            await roleManager.AddClaimAsync(existingRole, new Claim("Permissions", crudPermission.DisplayValue));
+                            await roleManager.AddClaimAsync(existingAdminRole, new Claim("Permissions", crudPermission.DisplayValue));
                         }
                     }
                 }
@@ -69,12 +67,16 @@ namespace Ettad.EntityFramework.DataBaseContext
                     foreach (var plainPermission in plainModel.PermissionsList)
                     {
                         if (plainPermission.DisplayValue != "BasedOnEntity")
-                        {
-                            await roleManager.AddClaimAsync(existingRole, new Claim("Permissions", plainPermission.DisplayValue));
-                        }
+                            await roleManager.AddClaimAsync(existingAdminRole, new Claim("Permissions", plainPermission.DisplayValue));
                     }
                 }
 
+                // Ensure role claims are saved
+                await context.SaveChangesAsync();
+
+                // ========================
+                // ADMINISTRATOR USER
+                // ========================
                 var administrator = new ApplicationUser
                 {
                     IsLdapUser = false,
@@ -82,30 +84,51 @@ namespace Ettad.EntityFramework.DataBaseContext
                     EmailConfirmed = true,
                     Email = "administrator@localhost",
                     UserName = "administrator@localhost",
-                    FullNameEN= "Super Admin",
-                    FullNameAR="مدير النظام",
+                    FullNameEN = "Super Admin",
+                    FullNameAR = "مدير النظام"
                 };
-                if (userManager.Users.All(item => item.UserName != administrator.UserName))
+
+                if (userManager.Users.All(u => u.UserName != administrator.UserName))
                 {
                     await userManager.CreateAsync(administrator, "Administrator1!");
                     await userManager.AddToRolesAsync(administrator, new[] { administratorRole.Name });
+
+                    // Refresh security stamp to ensure claims are loaded on first login
+                    await userManager.UpdateSecurityStampAsync(administrator);
                 }
-            }
-            catch(Exception ex)
-            {
 
-            }
-        }
+                // ========================
+                // REQUESTOR ROLE
+                // ========================
+                var requestorRole = await roleManager.FindByNameAsync("Requestor");
+                if (requestorRole == null)
+                {
+                    requestorRole = new ApplicationRole
+                    {
+                        Name = "Requestor",
+                        IsSuperAdmin = false,
+                        IsDefaultRole = false
+                    };
+                    await roleManager.CreateAsync(requestorRole);
+                }
 
-        public static async Task SeedEmailConfigurationAsync(ApplicationDbContext context)
-        {
-            try
-            {
+                // Remove existing claims
+                existingClaims = await roleManager.GetClaimsAsync(requestorRole);
+                foreach (var claim in existingClaims)
+                    await roleManager.RemoveClaimAsync(requestorRole, claim);
+
+                // Add requestor permissions
+                foreach (var permission in RequestorPermissionConfig.AllowedPermissions)
+                {
+                    await roleManager.AddClaimAsync(requestorRole, new Claim("Permissions", permission));
+                }
+
                 await context.SaveChangesAsync();
             }
             catch (Exception ex)
             {
-                // log exception (avoid empty catch)
+                // log the exception
+                Console.WriteLine($"Seeding error: {ex.Message}");
                 throw;
             }
         }
