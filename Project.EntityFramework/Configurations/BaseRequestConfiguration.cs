@@ -71,6 +71,9 @@ namespace Ettad.EntityFramework.Configurations
                 .HasForeignKey(x => x.DepotId)
                 .IsRequired(false)
                 .OnDelete(DeleteBehavior.Restrict);
+
+			// Performance indexes
+			builder.HasIndex(x => new { x.Status, x.DepartmentId });
         }
     }
 }
