@@ -18,6 +18,8 @@ namespace Ettad.Data.Entities
 
         public long ItemQuantity { get; set; }
 
+        public bool IsLotEmpty { get; set; } = false;
+
         #region Navigation Properties
 
         public BaseItem Item { get; set; }

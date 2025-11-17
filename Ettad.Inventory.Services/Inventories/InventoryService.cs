@@ -19,6 +19,7 @@ namespace Ettad.Inventory.Service.Inventories
         private readonly ICrossCuttingRepository<InventoryDetailEntity> _inventoryDetailRepository;
         private readonly ICrossCuttingRepository<Order> _orderRepository;
         private readonly ICrossCuttingRepository<RequestItem> _requestItemRepository;
+        private readonly ICrossCuttingRepository<SupplyDetails> _supplyDetailsRepository;
         private readonly IMapper _mapper;
         private readonly IValidator<CreateInventoryDto> _createValidator;
         private readonly IValidator<UpdateInventoryDto> _updateValidator;
@@ -30,6 +31,7 @@ namespace Ettad.Inventory.Service.Inventories
             ICrossCuttingRepository<InventoryDetailEntity> inventoryDetailRepository,
             ICrossCuttingRepository<Order> orderRepository,
             ICrossCuttingRepository<RequestItem> requestItemRepository,
+            ICrossCuttingRepository<SupplyDetails> supplyDetailsRepository,
             IMapper mapper,
             IValidator<CreateInventoryDto> createValidator,
             IValidator<UpdateInventoryDto> updateValidator,
@@ -40,6 +42,7 @@ namespace Ettad.Inventory.Service.Inventories
             _inventoryDetailRepository = inventoryDetailRepository;
             _orderRepository = orderRepository;
             _requestItemRepository = requestItemRepository;
+            _supplyDetailsRepository = supplyDetailsRepository;
             _mapper = mapper;
             _createValidator = createValidator;
             _updateValidator = updateValidator;
@@ -325,53 +328,44 @@ namespace Ettad.Inventory.Service.Inventories
                         LotSuggestions = new List<SupplyLotSuggestionDto>()
                     };
 
-                    // Query available inventory details for this item across all depots
-                    // Order by ExpiryDate ASC (FEFO - First Expiry First Out), with nulls last
-                    var availableLotsQuery = await _inventoryDetailRepository.FindAsync(
-                        id => id.ItemId == requestItem.ItemId &&
-                              id.ItemQuantity > 0,
-                        false,
-                        nameof(InventoryDetailEntity.Inventory),
-                        $"{nameof(InventoryDetailEntity.Inventory)}.{nameof(InventoryEntity.Depo)}",
-                        nameof(InventoryDetailEntity.Item),
-                        nameof(InventoryDetailEntity.Supplier),
-                        nameof(InventoryDetailEntity.Manufacturer)
-                    );
+                    // Get available lots for the required quantity using our optimized method
+                    var availableLotsResponse = await GetAvailableLotsForQuantityAsync(requestItem.ItemId, requestItem.Quantity);
 
-                    // Sort in memory: items with expiry dates first (sorted by date), then items without expiry dates
-                    var availableLots = availableLotsQuery
-                        .Where(id => !id.Inventory.IsDeleted)
-                        .OrderBy(id => id.Item.ExpiryDate.HasValue ? 0 : 1)  // Non-null expiry dates first
-                        .ThenBy(id => id.Item.ExpiryDate)                    // Then sort by expiry date
-                        .ThenBy(id => id.Lot)                                // Then by lot number
-                        .ToList();
+                    if (!availableLotsResponse.Succeeded)
+                    {
+                        _logger.LogError("Failed to get available lots for item. ItemId: {ItemId}, Error: {Error}",
+                            requestItem.ItemId, availableLotsResponse.Message);
+                        return APIOperationResponse<OrderSupplySuggestionDto>.Fail((ResponseType)availableLotsResponse.StatusCode, availableLotsResponse.Message);
+                    }
 
-                    _logger.LogInformation("Found {LotCount} available lots for item. ItemId: {ItemId}, OrderId: {OrderId}", 
-                        availableLots.Count, requestItem.ItemId, orderId);
+                    var availableLots = availableLotsResponse.Data;
+
+                    _logger.LogInformation("Found {LotCount} available lots for item quantity. ItemId: {ItemId}, Required: {Required}, OrderId: {OrderId}",
+                        availableLots.Count, requestItem.ItemId, requestItem.Quantity, orderId);
 
                     long remainingQuantity = requestItem.Quantity;
 
-                    // Allocate quantities from lots using FEFO logic
-                    foreach (var lot in availableLots)
+                    // Allocate quantities from available lots using FEFO logic
+                    foreach (var lotDetail in availableLots)
                     {
                         if (remainingQuantity <= 0)
                             break;
 
-                        long quantityToAllocate = Math.Min(remainingQuantity, lot.ItemQuantity);
+                        long quantityToAllocate = Math.Min(remainingQuantity, lotDetail.RemainingQuantity);
 
                         itemSuggestion.LotSuggestions.Add(new SupplyLotSuggestionDto
                         {
-                            InventoryDetailId = lot.Id,
-                            ItemId = lot.ItemId,
-                            ItemName = lot.Item.Name,
-                            Lot = lot.Lot,
-                            AvailableQuantity = lot.ItemQuantity,
+                            InventoryDetailId = lotDetail.InventoryDetailId,
+                            ItemId = lotDetail.ItemId,
+                            ItemName = lotDetail.ItemName,
+                            Lot = lotDetail.Lot,
+                            AvailableQuantity = lotDetail.RemainingQuantity, // Use remaining quantity as available
                             SuggestedQuantity = quantityToAllocate,
-                            ExpiryDate = lot.Item.ExpiryDate,
-                            InventoryId = lot.InventoryId,
-                            Depot = _mapper.Map<Module.lookup.Dtos.DepotDto>(lot.Inventory.Depo),
-                            Supplier = lot.Supplier != null ? _mapper.Map<Module.lookup.Dtos.SupplierDto>(lot.Supplier) : null,
-                            Manufacturer = lot.Manufacturer != null ? _mapper.Map<Module.lookup.Dtos.ManufacturerDto>(lot.Manufacturer) : null
+                            ExpiryDate = lotDetail.ExpiryDate,
+                            InventoryId = lotDetail.InventoryId,
+                            Depot = lotDetail.Depot,
+                            Supplier = lotDetail.Supplier,
+                            Manufacturer = lotDetail.Manufacturer
                         });
 
                         itemSuggestion.SuggestedQuantity += quantityToAllocate;
@@ -379,11 +373,11 @@ namespace Ettad.Inventory.Service.Inventories
                     }
 
                     itemSuggestion.CanFulfillCompletely = (itemSuggestion.SuggestedQuantity >= itemSuggestion.RequestedQuantity);
-                    
+
                     if (!itemSuggestion.CanFulfillCompletely)
                     {
                         allItemsCanBeFulfilled = false;
-                        _logger.LogWarning("Insufficient inventory for item. ItemId: {ItemId}, Requested: {Requested}, Available: {Available}, OrderId: {OrderId}", 
+                        _logger.LogWarning("Insufficient available inventory for item. ItemId: {ItemId}, Requested: {Requested}, Available: {Available}, OrderId: {OrderId}",
                             requestItem.ItemId, requestItem.Quantity, itemSuggestion.SuggestedQuantity, orderId);
                     }
 
@@ -405,6 +399,224 @@ namespace Ettad.Inventory.Service.Inventories
                 _logger.LogError(ex, "Error generating supply suggestion. OrderId: {OrderId}, User: {UserId}", 
                     orderId, _currentUserService.UserId);
                 return APIOperationResponse<OrderSupplySuggestionDto>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
+            }
+        }
+
+        public async Task<APIOperationResponse<List<LotDetailDto>>> GetLotsByItemIdAsync(long itemId)
+        {
+            _logger.LogInformation("Getting lots for item. ItemId: {ItemId}, User: {UserId}",
+                itemId, _currentUserService.UserId);
+
+            try
+            {
+                // Get all inventory details for this item in ONE query
+                var inventoryDetails = await _inventoryDetailRepository.FindAsync(
+                    id => id.ItemId == itemId && id.ItemQuantity > 0,
+                    false,
+                    nameof(InventoryDetailEntity.Inventory),
+                    $"{nameof(InventoryDetailEntity.Inventory)}.{nameof(InventoryEntity.Depo)}",
+                    nameof(InventoryDetailEntity.Item),
+                    nameof(InventoryDetailEntity.Supplier),
+                    nameof(InventoryDetailEntity.Manufacturer),
+                    nameof(InventoryDetailEntity.Country)
+                );
+
+                var lots = inventoryDetails
+                    .Where(id => !id.Inventory.IsDeleted)
+                    .ToList();
+
+                _logger.LogInformation("Found {LotCount} lots for item. ItemId: {ItemId}",
+                    lots.Count, itemId);
+
+                if (lots.Count == 0)
+                {
+                    _logger.LogInformation("No lots found for item. ItemId: {ItemId}, User: {UserId}",
+                        itemId, _currentUserService.UserId);
+                    return APIOperationResponse<List<LotDetailDto>>.Success(new List<LotDetailDto>());
+                }
+
+                // Get ALL supply details for this item in ONE query (not per lot)
+                var allSupplyDetails = await _supplyDetailsRepository.FindAsync(
+                    sd => sd.ItemId == itemId
+                );
+
+                // Group supply details by lot for efficient lookup
+                var supplyDetailsByLot = allSupplyDetails
+                    .GroupBy(sd => sd.Lot)
+                    .ToDictionary(g => g.Key, g => g.Sum(sd => sd.Quantity));
+
+                _logger.LogInformation("Calculated usage for {LotCount} lots. ItemId: {ItemId}",
+                    supplyDetailsByLot.Count, itemId);
+
+                var lotDetails = new List<LotDetailDto>();
+
+                foreach (var lot in lots)
+                {
+                    // Get used quantity from the grouped data (O(1) lookup)
+                    long totalUsedQuantity = supplyDetailsByLot.TryGetValue(lot.Lot, out var usedQty) ? usedQty : 0;
+                    long remainingQuantity = lot.ItemQuantity - totalUsedQuantity;
+
+                    // A lot is empty if remaining quantity is 0 or less
+                    bool isEmptyLot = remainingQuantity <= 0;
+
+                    // Check if the lot is expired (expiry date is in the past)
+                    bool isExpired = lot.Item.ExpiryDate.HasValue && lot.Item.ExpiryDate.Value.Date < DateTime.UtcNow.Date;
+
+                    // Use AutoMapper to create the base mapping
+                    var lotDetail = _mapper.Map<LotDetailDto>(lot);
+
+                    // Set calculated properties
+                    lotDetail.UsedQuantity = totalUsedQuantity;
+                    lotDetail.RemainingQuantity = Math.Max(0, remainingQuantity);
+                    lotDetail.IsEmptyLot = isEmptyLot;
+                    lotDetail.IsExpired = isExpired;
+
+                    lotDetails.Add(lotDetail);
+                }
+
+                // Sort by expiry date (FEFO - First Expiry First Out), then by lot number
+                lotDetails = lotDetails
+                    .OrderBy(l => l.ExpiryDate.HasValue ? 0 : 1)  // Non-null expiry dates first
+                    .ThenBy(l => l.ExpiryDate)                    // Then sort by expiry date
+                    .ThenBy(l => l.Lot)                           // Then by lot number
+                    .ToList();
+
+                _logger.LogInformation("Successfully retrieved {LotCount} lots for item. ItemId: {ItemId}, User: {UserId}",
+                    lotDetails.Count, itemId, _currentUserService.UserId);
+
+                return APIOperationResponse<List<LotDetailDto>>.Success(lotDetails);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting lots for item. ItemId: {ItemId}, User: {UserId}",
+                    itemId, _currentUserService.UserId);
+                return APIOperationResponse<List<LotDetailDto>>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
+            }
+        }
+
+        public async Task<APIOperationResponse<List<LotDetailDto>>> GetAvailableLotsForQuantityAsync(long itemId, long requiredQuantity)
+        {
+            _logger.LogInformation("Getting available lots for quantity. ItemId: {ItemId}, RequiredQuantity: {RequiredQuantity}, User: {UserId}",
+                itemId, requiredQuantity, _currentUserService.UserId);
+
+            try
+            {
+                if (requiredQuantity <= 0)
+                {
+                    _logger.LogWarning("Invalid required quantity: {RequiredQuantity}. ItemId: {ItemId}, User: {UserId}",
+                        requiredQuantity, itemId, _currentUserService.UserId);
+                    return APIOperationResponse<List<LotDetailDto>>.Fail(ResponseType.BadRequest, "Required quantity must be greater than 0");
+                }
+
+                // Get all inventory details for this item in ONE query
+                var inventoryDetails = await _inventoryDetailRepository.FindAsync(
+                    id => id.ItemId == itemId && id.ItemQuantity > 0,
+                    false,
+                    nameof(InventoryDetailEntity.Inventory),
+                    $"{nameof(InventoryDetailEntity.Inventory)}.{nameof(InventoryEntity.Depo)}",
+                    nameof(InventoryDetailEntity.Item),
+                    nameof(InventoryDetailEntity.Supplier),
+                    nameof(InventoryDetailEntity.Manufacturer),
+                    nameof(InventoryDetailEntity.Country)
+                );
+
+                var lots = inventoryDetails
+                    .Where(id => !id.Inventory.IsDeleted)
+                    .ToList();
+
+                _logger.LogInformation("Found {LotCount} total lots for item. ItemId: {ItemId}",
+                    lots.Count, itemId);
+
+                if (lots.Count == 0)
+                {
+                    _logger.LogInformation("No lots found for item. ItemId: {ItemId}, User: {UserId}",
+                        itemId, _currentUserService.UserId);
+                    return APIOperationResponse<List<LotDetailDto>>.Success(new List<LotDetailDto>());
+                }
+
+                // Get ALL supply details for this item in ONE query
+                var allSupplyDetails = await _supplyDetailsRepository.FindAsync(sd => sd.ItemId == itemId);
+
+                // Group supply details by lot for efficient lookup
+                var supplyDetailsByLot = allSupplyDetails
+                    .GroupBy(sd => sd.Lot)
+                    .ToDictionary(g => g.Key, g => g.Sum(sd => sd.Quantity));
+
+                _logger.LogInformation("Calculated usage for {LotCount} lots. ItemId: {ItemId}",
+                    supplyDetailsByLot.Count, itemId);
+
+                // Filter and sort available lots (not expired, not empty, FEFO order)
+                var currentDate = DateTime.UtcNow.Date;
+                var availableLots = new List<LotDetailDto>();
+                long remainingQuantityNeeded = requiredQuantity;
+
+                // Sort lots by FEFO: items with expiry dates first (sorted by date), then items without expiry dates
+                var sortedLots = lots
+                    .OrderBy(l => l.Item.ExpiryDate.HasValue ? 0 : 1)  // Non-null expiry dates first
+                    .ThenBy(l => l.Item.ExpiryDate)                    // Then sort by expiry date
+                    .ThenBy(l => l.Lot)                                // Then by lot number
+                    .ToList();
+
+                foreach (var lot in sortedLots)
+                {
+                    // Skip expired lots
+                    bool isExpired = lot.Item.ExpiryDate.HasValue && lot.Item.ExpiryDate.Value.Date < currentDate;
+                    if (isExpired)
+                    {
+                        _logger.LogDebug("Skipping expired lot. Lot: {Lot}, ExpiryDate: {ExpiryDate}, ItemId: {ItemId}",
+                            lot.Lot, lot.Item.ExpiryDate, itemId);
+                        continue;
+                    }
+
+                    // Calculate used quantity and remaining quantity
+                    long totalUsedQuantity = supplyDetailsByLot.TryGetValue(lot.Lot, out var usedQty) ? usedQty : 0;
+                    long remainingQuantity = lot.ItemQuantity - totalUsedQuantity;
+
+                    // Skip empty lots
+                    if (remainingQuantity <= 0)
+                    {
+                        _logger.LogDebug("Skipping empty lot. Lot: {Lot}, RemainingQuantity: {RemainingQuantity}, ItemId: {ItemId}",
+                            lot.Lot, remainingQuantity, itemId);
+                        continue;
+                    }
+
+                    // Use AutoMapper to create the base mapping
+                    var lotDetail = _mapper.Map<LotDetailDto>(lot);
+
+                    // Set calculated properties
+                    lotDetail.UsedQuantity = totalUsedQuantity;
+                    lotDetail.RemainingQuantity = remainingQuantity;
+                    lotDetail.IsEmptyLot = false; // We already filtered out empty lots
+                    lotDetail.IsExpired = false;  // We already filtered out expired lots
+
+                    availableLots.Add(lotDetail);
+
+                    // Check if we have enough quantity now
+                    remainingQuantityNeeded -= remainingQuantity;
+                    if (remainingQuantityNeeded <= 0)
+                    {
+                        _logger.LogInformation("Found sufficient lots for required quantity. Required: {Required}, Found: {Found}, LotCount: {LotCount}",
+                            requiredQuantity, requiredQuantity - remainingQuantityNeeded, availableLots.Count);
+                        break; // We have enough, no need to check more lots
+                    }
+                }
+
+                if (remainingQuantityNeeded > 0)
+                {
+                    _logger.LogWarning("Insufficient available inventory for item. ItemId: {ItemId}, Required: {Required}, Available: {Available}",
+                        itemId, requiredQuantity, requiredQuantity - remainingQuantityNeeded);
+                }
+
+                _logger.LogInformation("Found {LotCount} available lots for quantity. ItemId: {ItemId}, RequiredQuantity: {RequiredQuantity}, User: {UserId}",
+                    availableLots.Count, itemId, requiredQuantity, _currentUserService.UserId);
+
+                return APIOperationResponse<List<LotDetailDto>>.Success(availableLots);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting available lots for quantity. ItemId: {ItemId}, RequiredQuantity: {RequiredQuantity}, User: {UserId}",
+                    itemId, requiredQuantity, _currentUserService.UserId);
+                return APIOperationResponse<List<LotDetailDto>>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
             }
         }
     }

@@ -11,6 +11,7 @@ namespace Ettad.Inventory.Service.Inventories
         Task<APIOperationResponse<bool>> UpdateAsync(long id, UpdateInventoryDto inputDto);
         Task<APIOperationResponse<bool>> DeleteAsync(long id);
         Task<APIOperationResponse<OrderSupplySuggestionDto>> SuggestSupplyForOrderAsync(long orderId);
+        Task<APIOperationResponse<List<LotDetailDto>>> GetLotsByItemIdAsync(long itemId);
+        Task<APIOperationResponse<List<LotDetailDto>>> GetAvailableLotsForQuantityAsync(long itemId, long requiredQuantity);
     }
 }
-

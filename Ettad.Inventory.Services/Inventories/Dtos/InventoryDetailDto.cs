@@ -23,6 +23,8 @@ namespace Ettad.Inventory.Service.Inventories.Dtos
 
         public long CurrentQuantity { get; set; }
 
+        public bool IsLotEmpty { get; set; }
+
         #region Navigation Properties
 
         public BaseItemDto Item { get; set; }
@@ -33,4 +35,3 @@ namespace Ettad.Inventory.Service.Inventories.Dtos
         #endregion
     }
 }
-

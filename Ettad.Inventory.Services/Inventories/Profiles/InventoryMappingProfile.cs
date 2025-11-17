@@ -14,6 +14,16 @@ namespace Ettad.Inventory.Service.Inventories.Profiles
             // Entity to DTO
             CreateMap<InventoryEntity, InventoryDto>();
             CreateMap<InventoryDetailEntity, InventoryDetailDto>();
+            CreateMap<InventoryDetailEntity, LotDetailDto>()
+                .ForMember(dest => dest.InventoryDetailId, opt => opt.MapFrom(src => src.Id))
+                .ForMember(dest => dest.ItemName, opt => opt.MapFrom(src => src.Item.Name))
+                .ForMember(dest => dest.OriginalQuantity, opt => opt.MapFrom(src => src.ItemQuantity))
+                .ForMember(dest => dest.UsedQuantity, opt => opt.Ignore()) // Will be set in service
+                .ForMember(dest => dest.RemainingQuantity, opt => opt.Ignore()) // Will be set in service
+                .ForMember(dest => dest.IsEmptyLot, opt => opt.Ignore()) // Will be set in service
+                .ForMember(dest => dest.IsExpired, opt => opt.Ignore()) // Will be set in service
+                .ForMember(dest => dest.ExpiryDate, opt => opt.MapFrom(src => src.Item.ExpiryDate))
+                .ForMember(dest => dest.Depot, opt => opt.MapFrom(src => src.Inventory.Depo));
             
             // Create DTO to Entity
             CreateMap<CreateInventoryDto, InventoryEntity>()
