@@ -64,23 +64,6 @@ namespace Ettad.RequestManagement.API.Controllers
         }
 
         /// <summary>
-        /// Update an existing order
-        /// </summary>
-        /// <param name="id">Order ID</param>
-        /// <param name="dto">Order update data</param>
-        /// <returns>Success result</returns>
-        [HttpPut("{id}")]
-        [ProducesResponseType(typeof(APIOperationResponse<bool>), (int)HttpStatusCode.OK)]
-        [ProducesResponseType((int)HttpStatusCode.BadRequest)]
-        [ProducesResponseType((int)HttpStatusCode.NotFound)]
-        [CheckAuthorize("Permissions.Order.Edit")]
-        public async Task<IActionResult> Update(long id, [FromBody] UpdateOrderDto dto)
-        {
-            var result = await _orderService.UpdateAsync(id, dto);
-            return ProcessResponse(result);
-        }
-
-        /// <summary>
         /// Delete an order (soft delete)
         /// </summary>
         /// <param name="id">Order ID</param>

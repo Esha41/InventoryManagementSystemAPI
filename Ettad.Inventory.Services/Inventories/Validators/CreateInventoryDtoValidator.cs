@@ -11,8 +11,8 @@ namespace Ettad.Inventory.Service.Inventories.Validators
                 .GreaterThan(0).WithMessage("Depot is required");
 
             RuleFor(x => x.InvoiceNumber)
-                .NotEmpty().WithMessage("Invoice number is required")
-                .MaximumLength(100).WithMessage("Invoice number cannot exceed 100 characters");
+                .MaximumLength(255).WithMessage("Invoice number cannot exceed 255 characters")
+                .When(x => !string.IsNullOrEmpty(x.InvoiceNumber));
 
             RuleFor(x => x.InvoiceDate)
                 .Must(date => !date.HasValue || date.Value <= DateTime.Now)

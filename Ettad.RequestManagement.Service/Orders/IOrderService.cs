@@ -8,7 +8,6 @@ namespace Ettad.RequestManagement.Service.Orders
         Task<APIOperationResponse<OrderDto>> GetByIdAsync(long id);
         Task<APIOperationResponse<List<OrderDto>>> GetAllAsync();
         Task<APIOperationResponse<long>> CreateAsync(CreateOrderDto inputDto);
-        Task<APIOperationResponse<bool>> UpdateAsync(long id, UpdateOrderDto inputDto);
         Task<APIOperationResponse<bool>> DeleteAsync(long id);
         
         // Order Item Management

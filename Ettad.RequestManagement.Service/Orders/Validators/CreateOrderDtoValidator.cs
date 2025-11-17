@@ -8,14 +8,9 @@ namespace Ettad.RequestManagement.Service.Orders.Validators
     {
         public CreateOrderDtoValidator()
         {
-            // BaseRequest Properties Validation
-            RuleFor(x => x.OrderNo)
-                .NotEmpty().WithMessage("Order number is required")
-                .MaximumLength(50).WithMessage("Order number cannot exceed 50 characters");
-
             RuleFor(x => x.Reason)
-                .NotEmpty().WithMessage("Reason is required")
-                .MaximumLength(500).WithMessage("Reason cannot exceed 500 characters");
+                .MaximumLength(500).WithMessage("Reason cannot exceed 500 characters")
+                .When(x => !string.IsNullOrEmpty(x.Reason));
 
             RuleFor(x => x.Priority)
                 .IsInEnum().WithMessage("Invalid priority");
