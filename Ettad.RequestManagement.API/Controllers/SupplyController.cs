@@ -1,6 +1,8 @@
 using Ettad.CrossCutting.Common.Security;
+using Ettad.Data.Enums;
 using Ettad.Inventory.Service.Inventories.Dtos;
 using Ettad.RequestManagement.Service.SupplyManagement;
+using Ettad.RequestManagement.Service.SupplyManagement.Dtos;
 using Ettad.ResponseHandler.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -33,6 +35,135 @@ namespace Ettad.RequestManagement.API.Controllers
         public async Task<IActionResult> GetSupplySuggestion(long orderId)
         {
             var result = await _supplyService.GetSupplySuggestionAsync(orderId);
+            return ProcessResponse(result);
+        }
+
+        /// <summary>
+        /// Get supply by ID with all details and calculated properties
+        /// </summary>
+        /// <param name="id">Supply ID</param>
+        /// <returns>Supply details</returns>
+        [HttpGet("{id}")]
+        [ProducesResponseType(typeof(APIOperationResponse<SupplyDto>), (int)HttpStatusCode.OK)]
+        [ProducesResponseType((int)HttpStatusCode.NotFound)]
+        [CheckAuthorize("Permissions.Supply.View", "Permissions.Supply.Page")]
+        public async Task<IActionResult> GetById(long id)
+        {
+            var result = await _supplyService.GetByIdAsync(id);
+            return ProcessResponse(result);
+        }
+
+        /// <summary>
+        /// Get all supplies with details and calculated properties
+        /// </summary>
+        /// <returns>List of supplies</returns>
+        [HttpGet]
+        [ProducesResponseType(typeof(APIOperationResponse<List<SupplyDto>>), (int)HttpStatusCode.OK)]
+        [CheckAuthorize("Permissions.Supply.View", "Permissions.Supply.Page")]
+        public async Task<IActionResult> GetAll()
+        {
+            var result = await _supplyService.GetAllAsync();
+            return ProcessResponse(result);
+        }
+
+        /// <summary>
+        /// Create a new supply with draft status
+        /// </summary>
+        /// <param name="dto">Supply creation data</param>
+        /// <returns>Created supply ID</returns>
+        [HttpPost]
+        [ProducesResponseType(typeof(APIOperationResponse<long>), (int)HttpStatusCode.Created)]
+        [ProducesResponseType((int)HttpStatusCode.BadRequest)]
+        [CheckAuthorize("Permissions.Supply.Create")]
+        public async Task<IActionResult> Create([FromBody] CreateSupplyDto dto)
+        {
+            var result = await _supplyService.CreateAsync(dto);
+            return ProcessResponse(result);
+        }
+
+        /// <summary>
+        /// Update supply information (receiver info, notes, etc.) - does not update details
+        /// </summary>
+        /// <param name="id">Supply ID</param>
+        /// <param name="dto">Supply update data</param>
+        /// <returns>Success result</returns>
+        [HttpPut("{id}")]
+        [ProducesResponseType(typeof(APIOperationResponse<bool>), (int)HttpStatusCode.OK)]
+        [ProducesResponseType((int)HttpStatusCode.BadRequest)]
+        [ProducesResponseType((int)HttpStatusCode.NotFound)]
+        [CheckAuthorize("Permissions.Supply.Edit")]
+        public async Task<IActionResult> UpdateSupplyInfo(long id, [FromBody] UpdateSupplyDto dto)
+        {
+            var result = await _supplyService.UpdateSupplyInfoAsync(id, dto);
+            return ProcessResponse(result);
+        }
+
+        /// <summary>
+        /// Add a new supply detail to an existing supply
+        /// </summary>
+        /// <param name="supplyId">Supply ID</param>
+        /// <param name="detailDto">Supply detail data</param>
+        /// <returns>Created detail ID</returns>
+        [HttpPost("{supplyId}/details")]
+        [ProducesResponseType(typeof(APIOperationResponse<long>), (int)HttpStatusCode.Created)]
+        [ProducesResponseType((int)HttpStatusCode.BadRequest)]
+        [ProducesResponseType((int)HttpStatusCode.NotFound)]
+        [CheckAuthorize("Permissions.Supply.Edit")]
+        public async Task<IActionResult> AddSupplyDetail(long supplyId, [FromBody] CreateSupplyDetailDto detailDto)
+        {
+            var result = await _supplyService.AddSupplyDetailAsync(supplyId, detailDto);
+            return ProcessResponse(result);
+        }
+
+        /// <summary>
+        /// Update an existing supply detail
+        /// </summary>
+        /// <param name="supplyId">Supply ID</param>
+        /// <param name="detailId">Supply Detail ID</param>
+        /// <param name="detailDto">Supply detail update data</param>
+        /// <returns>Success result</returns>
+        [HttpPut("{supplyId}/details/{detailId}")]
+        [ProducesResponseType(typeof(APIOperationResponse<bool>), (int)HttpStatusCode.OK)]
+        [ProducesResponseType((int)HttpStatusCode.BadRequest)]
+        [ProducesResponseType((int)HttpStatusCode.NotFound)]
+        [CheckAuthorize("Permissions.Supply.Edit")]
+        public async Task<IActionResult> UpdateSupplyDetail(long supplyId, long detailId, [FromBody] UpdateSupplyDetailDto detailDto)
+        {
+            var result = await _supplyService.UpdateSupplyDetailAsync(supplyId, detailId, detailDto);
+            return ProcessResponse(result);
+        }
+
+        /// <summary>
+        /// Delete a supply detail (cannot delete if it's the last detail)
+        /// </summary>
+        /// <param name="supplyId">Supply ID</param>
+        /// <param name="detailId">Supply Detail ID</param>
+        /// <returns>Success result</returns>
+        [HttpDelete("{supplyId}/details/{detailId}")]
+        [ProducesResponseType(typeof(APIOperationResponse<bool>), (int)HttpStatusCode.OK)]
+        [ProducesResponseType((int)HttpStatusCode.BadRequest)]
+        [ProducesResponseType((int)HttpStatusCode.NotFound)]
+        [CheckAuthorize("Permissions.Supply.Edit")]
+        public async Task<IActionResult> DeleteSupplyDetail(long supplyId, long detailId)
+        {
+            var result = await _supplyService.DeleteSupplyDetailAsync(supplyId, detailId);
+            return ProcessResponse(result);
+        }
+
+        /// <summary>
+        /// Update supply status with validation of status transitions
+        /// </summary>
+        /// <param name="id">Supply ID</param>
+        /// <param name="newStatus">New status value</param>
+        /// <returns>Success result</returns>
+        [HttpPut("{id}/status")]
+        [ProducesResponseType(typeof(APIOperationResponse<bool>), (int)HttpStatusCode.OK)]
+        [ProducesResponseType((int)HttpStatusCode.BadRequest)]
+        [ProducesResponseType((int)HttpStatusCode.NotFound)]
+        [CheckAuthorize("Permissions.Supply.Edit")]
+        public async Task<IActionResult> UpdateStatus(long id, [FromBody] SupplyStatus newStatus)
+        {
+            var result = await _supplyService.UpdateStatusAsync(id, newStatus);
             return ProcessResponse(result);
         }
     }

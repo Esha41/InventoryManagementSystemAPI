@@ -52,6 +52,8 @@ namespace Ettad.EntityFramework.DataBaseContext
         public DbSet<Order> Orders { get; set; }
         public DbSet<Discard> Discards { get; set; }
         public DbSet<Return> Returns { get; set; }
+        public DbSet<Supply> Supplies { get; set; }
+        public DbSet<SupplyDetail> SupplyDetails { get; set; }
      
 
         public DbSet<ApplicationEntity> ApplicationEntities { get;set;}

@@ -2,7 +2,7 @@ using Ettad.CrossCutting.Comman.Base;
 
 namespace Ettad.Data.Entities   
 {
-    public class SupplyDetail : BaseEntity<long>
+    public class SupplyDetail : FullAuditEntity<long>
     {
         public long SupplyId { get; set; }
         public long ItemId { get; set; }
