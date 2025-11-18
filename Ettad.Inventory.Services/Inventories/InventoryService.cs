@@ -203,15 +203,16 @@ namespace Ettad.Inventory.Service.Inventories
                     await _inventoryDetailRepository.DeleteAsync(detail);
                 }
 
-                // Update existing details and add new ones
+             
                 foreach (var detailDto in inputDto.InventoryDetails)
                 {
                     if (detailDto.Id.HasValue)
                     {
-                        // Update existing detail
+                     
                         var existingDetail = existingInventory.InventoryDetails.FirstOrDefault(d => d.Id == detailDto.Id.Value);
                         if (existingDetail != null)
                         {
+                  
                             _mapper.Map(detailDto, existingDetail);
                         }
                     }
@@ -224,8 +225,55 @@ namespace Ettad.Inventory.Service.Inventories
                     }
                 }
 
-                // Update in repository
-                await _inventoryRepository.UpdateAsync(existingInventory);
+               
+                existingInventory.DepoId = inputDto.DepoId;
+                existingInventory.InvoiceNumber = inputDto.InvoiceNumber;
+                existingInventory.InvoiceDate = inputDto.InvoiceDate;
+                existingInventory.RecievedDate = inputDto.RecievedDate;
+                existingInventory.Notes = inputDto.Notes;
+                existingInventory.ModificationDate = DateTime.UtcNow;
+                existingInventory.ModifiedBy = _currentUserService.UserId;
+
+                var parentUpdate = new InventoryEntity
+                {
+                    Id = existingInventory.Id,
+                    DepoId = existingInventory.DepoId,
+                    InvoiceNumber = existingInventory.InvoiceNumber,
+                    InvoiceDate = existingInventory.InvoiceDate,
+                    RecievedDate = existingInventory.RecievedDate,
+                    Notes = existingInventory.Notes,
+                    ModificationDate = existingInventory.ModificationDate,
+                    ModifiedBy = existingInventory.ModifiedBy,
+                    CreationDate = existingInventory.CreationDate,
+                    CreatedBy = existingInventory.CreatedBy,
+                    IsDeleted = existingInventory.IsDeleted
+                };
+                
+                await _inventoryRepository.UpdateAsync(parentUpdate);
+             
+                foreach (var detailDto in inputDto.InventoryDetails)
+                {
+                    if (detailDto.Id.HasValue)
+                    {
+                        var existingDetail = existingInventory.InventoryDetails.FirstOrDefault(d => d.Id == detailDto.Id.Value);
+                        if (existingDetail != null)
+                        {
+                 
+                            var detailUpdate = new InventoryDetailEntity
+                            {
+                                Id = existingDetail.Id,
+                                InventoryId = existingDetail.InventoryId,
+                                ItemId = existingDetail.ItemId,
+                                Lot = existingDetail.Lot,
+                                SupplierId = existingDetail.SupplierId,
+                                ManufacturerId = existingDetail.ManufacturerId,
+                                CountryId = existingDetail.CountryId,
+                                ItemQuantity = existingDetail.ItemQuantity
+                            };
+                            await _inventoryDetailRepository.UpdateAsync(detailUpdate);
+                        }
+                    }
+                }
                 return APIOperationResponse<bool>.Success(true, "Inventory updated successfully");
             }
             catch (Exception ex)
