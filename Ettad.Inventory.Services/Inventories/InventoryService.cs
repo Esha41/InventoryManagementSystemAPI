@@ -19,7 +19,7 @@ namespace Ettad.Inventory.Service.Inventories
         private readonly ICrossCuttingRepository<InventoryDetailEntity> _inventoryDetailRepository;
         private readonly ICrossCuttingRepository<Order> _orderRepository;
         private readonly ICrossCuttingRepository<RequestItem> _requestItemRepository;
-        private readonly ICrossCuttingRepository<SupplyDetails> _supplyDetailsRepository;
+        private readonly ICrossCuttingRepository<SupplyDetail> _supplyDetailsRepository;
         private readonly IMapper _mapper;
         private readonly IValidator<CreateInventoryDto> _createValidator;
         private readonly IValidator<UpdateInventoryDto> _updateValidator;
@@ -31,7 +31,7 @@ namespace Ettad.Inventory.Service.Inventories
             ICrossCuttingRepository<InventoryDetailEntity> inventoryDetailRepository,
             ICrossCuttingRepository<Order> orderRepository,
             ICrossCuttingRepository<RequestItem> requestItemRepository,
-            ICrossCuttingRepository<SupplyDetails> supplyDetailsRepository,
+            ICrossCuttingRepository<SupplyDetail> supplyDetailsRepository,
             IMapper mapper,
             IValidator<CreateInventoryDto> createValidator,
             IValidator<UpdateInventoryDto> updateValidator,
