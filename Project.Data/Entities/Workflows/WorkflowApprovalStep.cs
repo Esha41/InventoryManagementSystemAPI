@@ -23,7 +23,7 @@ namespace Ettad.Data.Entities.Workflows
         [Required]
         public WorkflowType RequestType { get; set; } // Using enum
 
-        public int? ApproverEmployeeId { get; set; }
+        public string? ApproverUserId { get; set; }
 
         public int IsDelegation { get; set; }
 
