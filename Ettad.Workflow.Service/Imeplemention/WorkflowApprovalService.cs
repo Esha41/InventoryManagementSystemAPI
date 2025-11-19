@@ -11,6 +11,8 @@ using System.Threading.Tasks;
 using Ettad.Data.Entities;
 using Ettad.Data.Enums;
 using Ettad.Application.Common.Interfaces;
+using Ettad.Notification.Service;
+using Microsoft.AspNetCore.Identity;
 
 namespace Ettad.Workflows.Service.Imeplemention
 {
@@ -18,11 +20,13 @@ namespace Ettad.Workflows.Service.Imeplemention
     {
         private readonly ApplicationDbContext _context;
         private readonly ICurrentUserService _currentUserService;
+        private readonly INotificationHelperService _notificationHelperService;
 
-        public WorkflowApprovalService(ApplicationDbContext context, ICurrentUserService currentUserService)
+        public WorkflowApprovalService(ApplicationDbContext context, ICurrentUserService currentUserService, INotificationHelperService notificationHelperService)
         {
             _context = context;
             _currentUserService = currentUserService;
+            _notificationHelperService = notificationHelperService;
         }
         public async Task<IEnumerable<WorkflowApprovalStepDto>> GetAllAsync()
         {
@@ -145,8 +149,9 @@ namespace Ettad.Workflows.Service.Imeplemention
 
         public async Task<IEnumerable<WorkflowApprovalWithOrderDto>> GetOrdersWithApprovalStepsAsync()
         {
+            var id = _currentUserService.UserId;
             // 1. Get current user's roles from database
-            var userRoleIds = await _context.UserRoles
+            var userRoleIds = await _context.Set<IdentityUserRole<string>>()
                 .Where(ur => ur.UserId == _currentUserService.UserId)
                 .Select(ur => ur.RoleId)
                 .ToListAsync();
@@ -216,7 +221,7 @@ namespace Ettad.Workflows.Service.Imeplemention
                     throw new InvalidOperationException($"WorkflowApprovalStep with Id {dto.WorkflowApprovalStepId} has already been processed");
 
                 // 2. Get user roles
-                var userRoles = await _context.UserRoles
+                var userRoles = await _context.Set<IdentityUserRole<string>>()
                     .Where(ur => ur.UserId == _currentUserService.UserId)
                     .Select(ur => ur.RoleId)
                     .ToListAsync();
@@ -255,7 +260,7 @@ namespace Ettad.Workflows.Service.Imeplemention
                 // 5. Insert log
                 var logEntry = new WorkflowStepApprovalLog
                 {
-                    WorkflowApprovalStepId = approvalStep.Id,                  
+                    WorkflowApprovalStepId = approvalStep.Id,
                     OldRequestStatus = oldStatus,
                     NewRequestStatus = approvalStep.Status,
                     Comments = dto.Comments,
@@ -273,6 +278,8 @@ namespace Ettad.Workflows.Service.Imeplemention
                 var baseRequest = await _context.BaseRequests
                     .FirstOrDefaultAsync(x => x.Id == approvalStep.TargetRequestId);
 
+                WorkflowStep? nextStep = null;
+
                 if (baseRequest != null)
                 {
                     if (dto.IsApproved)
@@ -284,7 +291,7 @@ namespace Ettad.Workflows.Service.Imeplemention
                             .ToListAsync();
 
                         var currentOrder = approvalStep.WorkflowStep.StepOrder;
-                        var nextStep = workflowSteps.FirstOrDefault(ws => ws.StepOrder > currentOrder);
+                        nextStep = workflowSteps.FirstOrDefault(ws => ws.StepOrder > currentOrder);
 
                         if (nextStep != null)
                         {
@@ -311,7 +318,6 @@ namespace Ettad.Workflows.Service.Imeplemention
                     }
                     else
                     {
-                        // Reject case
                         baseRequest.Status = RequestStatus.Rejected;
 
                         var otherSteps = await _context.WorkflowApprovalSteps
@@ -335,7 +341,51 @@ namespace Ettad.Workflows.Service.Imeplemention
 
                 await _context.SaveChangesAsync();
 
-                // 7. Return DTO
+                // -------------------------------------------------------------------
+                // 7. 🔔 SEND NOTIFICATIONS
+                // -------------------------------------------------------------------
+
+                // Fetch requestor (creator)
+                var requestorId = baseRequest.CreatedBy;
+
+                // Always notify requestor first
+                await _notificationHelperService.SendNotificationAsync(
+                    "Request Update",
+                    dto.IsApproved
+                        ? "Your request has been approved for a workflow step."
+                        : "Your request has been rejected.",
+                    entityType: "Request",
+                    entityId: baseRequest.Id,
+                    userIds: new List<string> { requestorId }, // notify creator
+                    senderId: _currentUserService.UserId
+                );
+
+                // If APPROVED → notify next step approvers
+                if (dto.IsApproved && nextStep != null)
+                {
+                    // Get all approver roles for next step
+                    var nextRoles = new List<string>
+            {
+                nextStep.ApplicationRoleId
+            };
+
+                    if (!string.IsNullOrEmpty(nextStep.HigherApprovalRoleId))
+                        nextRoles.Add(nextStep.HigherApprovalRoleId);
+
+                    await _notificationHelperService.SendNotificationAsync(
+                        "New Approval Required",
+                        "A request is awaiting your approval.",
+                        entityType: "Request",
+                        entityId: baseRequest.Id,
+                        userIds: null,
+                        roleIds: nextRoles, // notify roles
+                        senderId: _currentUserService.UserId
+                    );
+                }
+
+                // -------------------------------------------------------------------
+
+                // 8. Return DTO
                 return new WorkflowApprovalStepDto
                 {
                     Id = approvalStep.Id,
@@ -353,10 +403,10 @@ namespace Ettad.Workflows.Service.Imeplemention
             }
             catch (Exception)
             {
-                // Re-throw so controller ProcessResponse() handles it cleanly
                 throw;
             }
         }
+
 
     }
 }
