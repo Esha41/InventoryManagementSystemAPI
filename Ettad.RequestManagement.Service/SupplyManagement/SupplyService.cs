@@ -59,14 +59,14 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
 			_logger = logger;
 		}
 
-		public async Task<APIOperationResponse<OrderSupplySuggestionDto>> GetSupplySuggestionAsync(long orderId)
+		public async Task<APIOperationResponse<OrderSupplySuggestionDto>> GetSupplySuggestionAsync(long orderId, List<long>? depotIds = null)
 		{
-			_logger.LogInformation("Getting supply suggestion for order. OrderId: {OrderId}, User: {UserId}", 
-				orderId, _currentUserService.UserId);
+			_logger.LogInformation("Getting supply suggestion for order. OrderId: {OrderId}, DepotIds: {DepotIds}, User: {UserId}", 
+				orderId, depotIds != null ? string.Join(", ", depotIds) : "All", _currentUserService.UserId);
 
 			try
 			{
-				var result = await _inventoryService.SuggestSupplyForOrderAsync(orderId);
+				var result = await _inventoryService.SuggestSupplyForOrderAsync(orderId, depotIds);
 
 				if (result.Succeeded)
 				{

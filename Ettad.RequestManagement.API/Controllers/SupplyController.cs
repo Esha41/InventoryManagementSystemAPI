@@ -26,15 +26,16 @@ namespace Ettad.RequestManagement.API.Controllers
         /// Get supply suggestion for an order based on FEFO (First Expiry First Out) logic
         /// </summary>
         /// <param name="orderId">Order ID</param>
+        /// <param name="depotIds">Optional list of depot IDs to filter suggestions from specific depots</param>
         /// <returns>Supply suggestion with lot allocations</returns>
         [HttpGet("suggestion/{orderId}")]
         [ProducesResponseType(typeof(APIOperationResponse<OrderSupplySuggestionDto>), (int)HttpStatusCode.OK)]
         [ProducesResponseType((int)HttpStatusCode.NotFound)]
         [ProducesResponseType((int)HttpStatusCode.BadRequest)]
         [CheckAuthorize("Permissions.Supply.View", "Permissions.Order.View")]
-        public async Task<IActionResult> GetSupplySuggestion(long orderId)
+        public async Task<IActionResult> GetSupplySuggestion(long orderId, [FromQuery] List<long>? depotIds = null)
         {
-            var result = await _supplyService.GetSupplySuggestionAsync(orderId);
+            var result = await _supplyService.GetSupplySuggestionAsync(orderId, depotIds);
             return ProcessResponse(result);
         }
 

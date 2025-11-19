@@ -7,7 +7,7 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
 {
 	public interface ISupplyService
 	{
-		Task<APIOperationResponse<OrderSupplySuggestionDto>> GetSupplySuggestionAsync(long orderId);
+		Task<APIOperationResponse<OrderSupplySuggestionDto>> GetSupplySuggestionAsync(long orderId, List<long>? depotIds = null);
 		Task<APIOperationResponse<SupplyDto>> GetByIdAsync(long id);
 		Task<APIOperationResponse<List<SupplyDto>>> GetAllAsync();
 		Task<APIOperationResponse<long>> CreateAsync(CreateSupplyDto inputDto);

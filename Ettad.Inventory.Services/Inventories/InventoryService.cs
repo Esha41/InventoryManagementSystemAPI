@@ -273,10 +273,10 @@ namespace Ettad.Inventory.Service.Inventories
             }
         }
 
-        public async Task<APIOperationResponse<OrderSupplySuggestionDto>> SuggestSupplyForOrderAsync(long orderId)
+        public async Task<APIOperationResponse<OrderSupplySuggestionDto>> SuggestSupplyForOrderAsync(long orderId, List<long>? depotIds = null)
         {
-            _logger.LogInformation("Generating supply suggestion for order. OrderId: {OrderId}, User: {UserId}", 
-                orderId, _currentUserService.UserId);
+            _logger.LogInformation("Generating supply suggestion for order. OrderId: {OrderId}, DepotIds: {DepotIds}, User: {UserId}", 
+                orderId, depotIds != null ? string.Join(", ", depotIds) : "All", _currentUserService.UserId);
 
             try
             {
@@ -329,7 +329,7 @@ namespace Ettad.Inventory.Service.Inventories
                     };
 
                     // Get available lots for the required quantity using our optimized method
-                    var availableLotsResponse = await GetAvailableLotsForQuantityAsync(requestItem.ItemId, requestItem.Quantity);
+                    var availableLotsResponse = await GetAvailableLotsForQuantityAsync(requestItem.ItemId, requestItem.Quantity, depotIds);
 
                     if (!availableLotsResponse.Succeeded)
                     {
@@ -494,10 +494,10 @@ namespace Ettad.Inventory.Service.Inventories
             }
         }
 
-        public async Task<APIOperationResponse<List<LotDetailDto>>> GetAvailableLotsForQuantityAsync(long itemId, long requiredQuantity)
+        public async Task<APIOperationResponse<List<LotDetailDto>>> GetAvailableLotsForQuantityAsync(long itemId, long requiredQuantity, List<long>? depotIds = null)
         {
-            _logger.LogInformation("Getting available lots for quantity. ItemId: {ItemId}, RequiredQuantity: {RequiredQuantity}, User: {UserId}",
-                itemId, requiredQuantity, _currentUserService.UserId);
+            _logger.LogInformation("Getting available lots for quantity. ItemId: {ItemId}, RequiredQuantity: {RequiredQuantity}, DepotIds: {DepotIds}, User: {UserId}",
+                itemId, requiredQuantity, depotIds != null ? string.Join(", ", depotIds) : "All", _currentUserService.UserId);
 
             try
             {
@@ -523,6 +523,14 @@ namespace Ettad.Inventory.Service.Inventories
                 var lots = inventoryDetails
                     .Where(id => !id.Inventory.IsDeleted)
                     .ToList();
+
+                // Filter by depot IDs if provided
+                if (depotIds != null && depotIds.Any())
+                {
+                    lots = lots
+                        .Where(l => depotIds.Contains(l.Inventory.DepoId))
+                        .ToList();
+                }
 
                 _logger.LogInformation("Found {LotCount} total lots for item. ItemId: {ItemId}",
                     lots.Count, itemId);
