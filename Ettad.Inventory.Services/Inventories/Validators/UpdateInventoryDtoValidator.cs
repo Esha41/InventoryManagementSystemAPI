@@ -45,10 +45,6 @@ namespace Ettad.Inventory.Service.Inventories.Validators
             RuleFor(x => x.ItemQuantity)
                 .GreaterThan(0).WithMessage("Item quantity must be greater than 0");
 
-            RuleFor(x => x.CurrentQuantity)
-                .GreaterThanOrEqualTo(0).WithMessage("Current quantity cannot be negative")
-                .LessThanOrEqualTo(x => x.ItemQuantity).WithMessage("Current quantity cannot exceed item quantity");
-
             RuleFor(x => x.SupplierId)
                 .GreaterThan(0).When(x => x.SupplierId.HasValue)
                 .WithMessage("Supplier ID must be greater than 0 when provided");

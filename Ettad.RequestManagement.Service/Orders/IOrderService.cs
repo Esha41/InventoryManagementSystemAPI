@@ -7,6 +7,20 @@ namespace Ettad.RequestManagement.Service.Orders
     {
         Task<APIOperationResponse<OrderDto>> GetByIdAsync(long id);
         Task<APIOperationResponse<List<OrderDto>>> GetAllAsync();
+			Task<APIOperationResponse<Ettad.CrossCutting.Comman.Models.PaginatedList<OrderDto>>> GetAsync(
+				int? status,
+				long? departmentId,
+				int page,
+				int pageSize,
+				string? sortBy,
+				string? sortDir);
+			Task<APIOperationResponse<Ettad.CrossCutting.Comman.Models.PaginatedList<Ettad.Data.Enums.RequestStatus>>> GetSummariesAsync(
+				int? status,
+				long? departmentId,
+				int page,
+				int pageSize,
+				string? sortBy,
+				string? sortDir);
         Task<APIOperationResponse<long>> CreateAsync(CreateOrderDto inputDto);
         Task<APIOperationResponse<bool>> DeleteAsync(long id);
         

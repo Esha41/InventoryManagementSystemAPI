@@ -10,7 +10,7 @@ namespace Ettad.Inventory.Service.Inventories.Dtos
 
         public DateTime? RecievedDate { get; set; }
 
-        public string Notes { get; set; }
+        public string? Notes { get; set; }
 
         public List<UpdateInventoryDetailDto> InventoryDetails { get; set; } = new();
     }
@@ -30,8 +30,6 @@ namespace Ettad.Inventory.Service.Inventories.Dtos
         public long? CountryId { get; set; }
 
         public long ItemQuantity { get; set; }
-
-        public long CurrentQuantity { get; set; }
     }
 }
 
