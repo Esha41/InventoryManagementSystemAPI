@@ -8,7 +8,7 @@ namespace Ettad.Data.Entities
     {
         public long DepoId { get; set; }
 
-        public string InvoiceNumber { get; set; }
+        public string? InvoiceNumber { get; set; }
 
         public DateTime? InvoiceDate { get; set; }
 

@@ -19,6 +19,15 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 
                 // Seed ammunition data
                 await SeedAmmunitionDataAsync(context);
+                
+                // Seed weapon data
+                await SeedWeaponDataAsync(context);
+                
+                // Seed explosive data
+                await SeedExplosiveDataAsync(context);
+                
+                // Seed inventory data for depots
+                await SeedInventoryDataAsync(context);
             }
             catch (Exception)
             {
@@ -129,6 +138,406 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
 
             await context.Ammunitions.AddRangeAsync(ammunitions);
             await context.SaveChangesAsync();
+        }
+
+        private static async Task SeedWeaponDataAsync(ApplicationDbContext context)
+        {
+            // Check if weapons already exist
+            if (await context.Weapons.AnyAsync())
+            {
+                return; // Already seeded
+            }
+
+            var utcNow = DateTime.UtcNow;
+
+            var weapons = new[]
+            {
+                new Weapon
+                {
+                    Name = "M16A4 Assault Rifle",
+                    ItemNo = "WPN-001",
+                    BatchNo = "BATCH-001",
+                    HccId = 1,
+                    PartNo = "PN-WPN-001",
+                    ReadyForIssue = true,
+                    ExpiryDate = utcNow.AddYears(10),
+                    Nsn = "1005-01-000-0001",
+                    ItemType = ItemType.Weapon,
+                    CreationDate = utcNow,
+                    CreatedBy = "SYSTEM"
+                },
+                new Weapon
+                {
+                    Name = "M4 Carbine",
+                    ItemNo = "WPN-002",
+                    BatchNo = "BATCH-002",
+                    HccId = 2,
+                    PartNo = "PN-WPN-002",
+                    ReadyForIssue = true,
+                    ExpiryDate = utcNow.AddYears(10),
+                    Nsn = "1005-01-000-0002",
+                    ItemType = ItemType.Weapon,
+                    CreationDate = utcNow,
+                    CreatedBy = "SYSTEM"
+                },
+                new Weapon
+                {
+                    Name = "M249 Squad Automatic Weapon",
+                    ItemNo = "WPN-003",
+                    BatchNo = "BATCH-003",
+                    HccId = 3,
+                    PartNo = "PN-WPN-003",
+                    ReadyForIssue = true,
+                    ExpiryDate = utcNow.AddYears(10),
+                    Nsn = "1005-01-000-0003",
+                    ItemType = ItemType.Weapon,
+                    CreationDate = utcNow,
+                    CreatedBy = "SYSTEM"
+                },
+                new Weapon
+                {
+                    Name = "M240B Machine Gun",
+                    ItemNo = "WPN-004",
+                    BatchNo = "BATCH-004",
+                    HccId = 1,
+                    PartNo = "PN-WPN-004",
+                    ReadyForIssue = true,
+                    ExpiryDate = utcNow.AddYears(10),
+                    Nsn = "1005-01-000-0004",
+                    ItemType = ItemType.Weapon,
+                    CreationDate = utcNow,
+                    CreatedBy = "SYSTEM"
+                },
+                new Weapon
+                {
+                    Name = "M9 Pistol",
+                    ItemNo = "WPN-005",
+                    BatchNo = "BATCH-005",
+                    HccId = 2,
+                    PartNo = "PN-WPN-005",
+                    ReadyForIssue = true,
+                    ExpiryDate = utcNow.AddYears(10),
+                    Nsn = "1005-01-000-0005",
+                    ItemType = ItemType.Weapon,
+                    CreationDate = utcNow,
+                    CreatedBy = "SYSTEM"
+                },
+                new Weapon
+                {
+                    Name = "M24 Sniper Weapon System",
+                    ItemNo = "WPN-006",
+                    BatchNo = "BATCH-006",
+                    HccId = 3,
+                    PartNo = "PN-WPN-006",
+                    ReadyForIssue = true,
+                    ExpiryDate = utcNow.AddYears(10),
+                    Nsn = "1005-01-000-0006",
+                    ItemType = ItemType.Weapon,
+                    CreationDate = utcNow,
+                    CreatedBy = "SYSTEM"
+                },
+                new Weapon
+                {
+                    Name = "M2 Browning Machine Gun",
+                    ItemNo = "WPN-007",
+                    BatchNo = "BATCH-007",
+                    HccId = 1,
+                    PartNo = "PN-WPN-007",
+                    ReadyForIssue = true,
+                    ExpiryDate = utcNow.AddYears(10),
+                    Nsn = "1005-01-000-0007",
+                    ItemType = ItemType.Weapon,
+                    CreationDate = utcNow,
+                    CreatedBy = "SYSTEM"
+                },
+                new Weapon
+                {
+                    Name = "M203 Grenade Launcher",
+                    ItemNo = "WPN-008",
+                    BatchNo = "BATCH-008",
+                    HccId = 2,
+                    PartNo = "PN-WPN-008",
+                    ReadyForIssue = true,
+                    ExpiryDate = utcNow.AddYears(10),
+                    Nsn = "1005-01-000-0008",
+                    ItemType = ItemType.Weapon,
+                    CreationDate = utcNow,
+                    CreatedBy = "SYSTEM"
+                },
+                new Weapon
+                {
+                    Name = "M110 Semi-Automatic Sniper System",
+                    ItemNo = "WPN-009",
+                    BatchNo = "BATCH-009",
+                    HccId = 3,
+                    PartNo = "PN-WPN-009",
+                    ReadyForIssue = true,
+                    ExpiryDate = utcNow.AddYears(10),
+                    Nsn = "1005-01-000-0009",
+                    ItemType = ItemType.Weapon,
+                    CreationDate = utcNow,
+                    CreatedBy = "SYSTEM"
+                }
+            };
+
+            await context.Weapons.AddRangeAsync(weapons);
+            await context.SaveChangesAsync();
+        }
+
+        private static async Task SeedExplosiveDataAsync(ApplicationDbContext context)
+        {
+            // Check if explosives already exist
+            if (await context.Explosives.AnyAsync())
+            {
+                return; // Already seeded
+            }
+
+            var utcNow = DateTime.UtcNow;
+
+            var explosives = new[]
+            {
+                new Explosive
+                {
+                    Name = "M67 Fragmentation Grenade",
+                    ItemNo = "EXP-001",
+                    BatchNo = "BATCH-001",
+                    HccId = 1,
+                    PartNo = "PN-EXP-001",
+                    ReadyForIssue = true,
+                    ExpiryDate = utcNow.AddYears(5),
+                    Nsn = "1330-01-000-0001",
+                    ItemType = ItemType.Explosive,
+                    CreationDate = utcNow,
+                    CreatedBy = "SYSTEM"
+                },
+                new Explosive
+                {
+                    Name = "M84 Stun Grenade",
+                    ItemNo = "EXP-002",
+                    BatchNo = "BATCH-002",
+                    HccId = 2,
+                    PartNo = "PN-EXP-002",
+                    ReadyForIssue = true,
+                    ExpiryDate = utcNow.AddYears(5),
+                    Nsn = "1330-01-000-0002",
+                    ItemType = ItemType.Explosive,
+                    CreationDate = utcNow,
+                    CreatedBy = "SYSTEM"
+                },
+                new Explosive
+                {
+                    Name = "M18 Smoke Grenade",
+                    ItemNo = "EXP-003",
+                    BatchNo = "BATCH-003",
+                    HccId = 3,
+                    PartNo = "PN-EXP-003",
+                    ReadyForIssue = true,
+                    ExpiryDate = utcNow.AddYears(5),
+                    Nsn = "1330-01-000-0003",
+                    ItemType = ItemType.Explosive,
+                    CreationDate = utcNow,
+                    CreatedBy = "SYSTEM"
+                },
+                new Explosive
+                {
+                    Name = "C4 Explosive",
+                    ItemNo = "EXP-004",
+                    BatchNo = "BATCH-004",
+                    HccId = 1,
+                    PartNo = "PN-EXP-004",
+                    ReadyForIssue = true,
+                    ExpiryDate = utcNow.AddYears(3),
+                    Nsn = "1330-01-000-0004",
+                    ItemType = ItemType.Explosive,
+                    CreationDate = utcNow,
+                    CreatedBy = "SYSTEM"
+                },
+                new Explosive
+                {
+                    Name = "M112 Demolition Charge",
+                    ItemNo = "EXP-005",
+                    BatchNo = "BATCH-005",
+                    HccId = 2,
+                    PartNo = "PN-EXP-005",
+                    ReadyForIssue = true,
+                    ExpiryDate = utcNow.AddYears(3),
+                    Nsn = "1330-01-000-0005",
+                    ItemType = ItemType.Explosive,
+                    CreationDate = utcNow,
+                    CreatedBy = "SYSTEM"
+                },
+                new Explosive
+                {
+                    Name = "M26A2 Fragmentation Grenade",
+                    ItemNo = "EXP-006",
+                    BatchNo = "BATCH-006",
+                    HccId = 3,
+                    PartNo = "PN-EXP-006",
+                    ReadyForIssue = true,
+                    ExpiryDate = utcNow.AddYears(5),
+                    Nsn = "1330-01-000-0006",
+                    ItemType = ItemType.Explosive,
+                    CreationDate = utcNow,
+                    CreatedBy = "SYSTEM"
+                },
+                new Explosive
+                {
+                    Name = "AN-M14 TH3 Incendiary Grenade",
+                    ItemNo = "EXP-007",
+                    BatchNo = "BATCH-007",
+                    HccId = 1,
+                    PartNo = "PN-EXP-007",
+                    ReadyForIssue = true,
+                    ExpiryDate = utcNow.AddYears(4),
+                    Nsn = "1330-01-000-0007",
+                    ItemType = ItemType.Explosive,
+                    CreationDate = utcNow,
+                    CreatedBy = "SYSTEM"
+                },
+                new Explosive
+                {
+                    Name = "M72 LAW Rocket",
+                    ItemNo = "EXP-008",
+                    BatchNo = "BATCH-008",
+                    HccId = 2,
+                    PartNo = "PN-EXP-008",
+                    ReadyForIssue = true,
+                    ExpiryDate = utcNow.AddYears(5),
+                    Nsn = "1410-01-000-0008",
+                    ItemType = ItemType.Explosive,
+                    CreationDate = utcNow,
+                    CreatedBy = "SYSTEM"
+                },
+                new Explosive
+                {
+                    Name = "M18A1 Claymore Mine",
+                    ItemNo = "EXP-009",
+                    BatchNo = "BATCH-009",
+                    HccId = 3,
+                    PartNo = "PN-EXP-009",
+                    ReadyForIssue = true,
+                    ExpiryDate = utcNow.AddYears(5),
+                    Nsn = "1345-01-000-0009",
+                    ItemType = ItemType.Explosive,
+                    CreationDate = utcNow,
+                    CreatedBy = "SYSTEM"
+                }
+            };
+
+            await context.Explosives.AddRangeAsync(explosives);
+            await context.SaveChangesAsync();
+        }
+
+        private static async Task SeedInventoryDataAsync(ApplicationDbContext context)
+        {
+            var utcNow = DateTime.UtcNow;
+
+            // Get seeded items
+            var ammunitions = await context.Ammunitions.Where(a => !a.IsDeleted).Take(3).ToListAsync();
+            var weapons = await context.Weapons.Where(w => !w.IsDeleted).Take(2).ToListAsync();
+            var explosives = await context.Explosives.Where(e => !e.IsDeleted).Take(2).ToListAsync();
+
+            // Get depots (specifically the first one - Doha Central Depot)
+            var depots = await context.Depots.Where(d => !d.IsDeleted).Take(2).ToListAsync();
+
+            if (depots.Count == 0)
+            {
+                return; // No depots to seed
+            }
+
+            if (ammunitions.Count == 0 && weapons.Count == 0 && explosives.Count == 0)
+            {
+                return; // No items to seed
+            }
+
+            // Get first supplier, manufacturer, and country if they exist (make nullable)
+            var firstSupplier = await context.Suppliers.Where(s => !s.IsDeleted).FirstOrDefaultAsync();
+            var firstManufacturer = await context.Manufacturers.Where(m => !m.IsDeleted).FirstOrDefaultAsync();
+            var firstCountry = await context.Countries.Where(c => !c.IsDeleted).FirstOrDefaultAsync();
+
+            var inventories = new List<Inventory>();
+            var random = new Random();
+
+            // Create inventory for each depot
+            foreach (var depot in depots)
+            {
+                // Check if inventory already exists for this depot
+                var existingInventory = await context.Inventories
+                    .Where(i => i.DepoId == depot.Id && !i.IsDeleted)
+                    .FirstOrDefaultAsync();
+
+                if (existingInventory != null)
+                {
+                    continue; // Skip if inventory already exists for this depot
+                }
+
+                var inventoryDetails = new List<InventoryDetail>();
+
+                // Add ammunition items
+                foreach (var ammo in ammunitions)
+                {
+                    inventoryDetails.Add(new InventoryDetail
+                    {
+                        ItemId = ammo.Id,
+                        Lot = 1,
+                        ItemQuantity = random.Next(100, 1000),
+                        SupplierId = firstSupplier?.Id,
+                        ManufacturerId = firstManufacturer?.Id,
+                        CountryId = firstCountry?.Id
+                    });
+                }
+
+                // Add weapon items
+                foreach (var weapon in weapons)
+                {
+                    inventoryDetails.Add(new InventoryDetail
+                    {
+                        ItemId = weapon.Id,
+                        Lot = 1,
+                        ItemQuantity = random.Next(10, 50),
+                        SupplierId = firstSupplier?.Id,
+                        ManufacturerId = firstManufacturer?.Id,
+                        CountryId = firstCountry?.Id
+                    });
+                }
+
+                // Add explosive items
+                foreach (var explosive in explosives)
+                {
+                    inventoryDetails.Add(new InventoryDetail
+                    {
+                        ItemId = explosive.Id,
+                        Lot = 1,
+                        ItemQuantity = random.Next(20, 100),
+                        SupplierId = firstSupplier?.Id,
+                        ManufacturerId = firstManufacturer?.Id,
+                        CountryId = firstCountry?.Id
+                    });
+                }
+
+                if (inventoryDetails.Count > 0)
+                {
+                    var inventory = new Inventory
+                    {
+                        DepoId = depot.Id,
+                        InvoiceNumber = $"INV-{depot.Code}-{DateTime.UtcNow:yyyyMMdd}",
+                        InvoiceDate = utcNow.AddDays(-30),
+                        RecievedDate = utcNow.AddDays(-25),
+                        Notes = $"Initial inventory for {depot.NameEn}",
+                        InventoryDetails = inventoryDetails,
+                        CreationDate = utcNow,
+                        CreatedBy = "SYSTEM"
+                    };
+
+                    inventories.Add(inventory);
+                }
+            }
+
+            if (inventories.Count > 0)
+            {
+                await context.Inventories.AddRangeAsync(inventories);
+                await context.SaveChangesAsync();
+            }
         }
     }
 }
