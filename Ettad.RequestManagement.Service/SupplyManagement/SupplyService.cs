@@ -27,6 +27,7 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
 		private readonly IValidator<UpdateSupplyDto> _updateValidator;
 		private readonly IValidator<CreateSupplyDetailDto> _createDetailValidator;
 		private readonly IValidator<UpdateSupplyDetailDto> _updateDetailValidator;
+		private readonly IValidator<SubmitSupplyDto> _submitValidator;
 		private readonly ILogger<SupplyService> _logger;
 
 		public SupplyService(
@@ -42,6 +43,7 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
 			IValidator<UpdateSupplyDto> updateValidator,
 			IValidator<CreateSupplyDetailDto> createDetailValidator,
 			IValidator<UpdateSupplyDetailDto> updateDetailValidator,
+			IValidator<SubmitSupplyDto> submitValidator,
 			ILogger<SupplyService> logger)
 		{
 			_inventoryService = inventoryService;
@@ -56,6 +58,7 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
 			_updateValidator = updateValidator;
 			_createDetailValidator = createDetailValidator;
 			_updateDetailValidator = updateDetailValidator;
+			_submitValidator = submitValidator;
 			_logger = logger;
 		}
 
@@ -316,14 +319,17 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
 					})
 					.ToList();
 
-				// Set Order navigation property for fulfillment calculation
-				supply.Order = order;
+                // Set Order navigation property for fulfillment calculation, and set it to null after
+                supply.Order = order;
 
 				// Calculate fulfillment status based on supplied quantities vs requested quantities
 				supply.FulfillmentStatus = CalculateFulfillmentStatus(supply);
 
-				// Add to repository
-				var createdSupply = await _supplyRepository.AddAsync(supply);
+                // Clear Order navigation property to avoid unintended data persistence
+				supply.Order = null;
+
+                // Add to repository
+                var createdSupply = await _supplyRepository.AddAsync(supply);
 
 				_logger.LogInformation("Supply created successfully. SupplyId: {SupplyId}, OrderId: {OrderId}, DetailCount: {DetailCount}, User: {UserId}",
 					createdSupply.Id, supply.OrderId, supply.SupplyDetails.Count, _currentUserService.UserId);
@@ -732,14 +738,22 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
 			}
 		}
 
-		public async Task<APIOperationResponse<bool>> UpdateSubmissionStatusAsync(long id, SupplySubmissionStatus newStatus)
+		public async Task<APIOperationResponse<bool>> SubmitSupplyAsync(long id, SubmitSupplyDto inputDto)
 		{
-			_logger.LogInformation("Updating supply submission status. SupplyId: {SupplyId}, NewStatus: {NewStatus}, User: {UserId}", 
-				id, newStatus, _currentUserService.UserId);
+			_logger.LogInformation("Submitting supply. SupplyId: {SupplyId}, User: {UserId}",
+				id, _currentUserService.UserId);
 
 			try
 			{
-				// Check if supply exists
+				var validationResult = await _submitValidator.ValidateAsync(inputDto);
+				if (!validationResult.IsValid)
+				{
+					var errors = string.Join(", ", validationResult.Errors.Select(e => e.ErrorMessage));
+					_logger.LogWarning("Supply submission validation failed. Errors: {ValidationErrors}, User: {UserId}",
+						errors, _currentUserService.UserId);
+					return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, errors);
+				}
+
 				var supply = await _supplyRepository.FindOneAsync(
 					s => s.Id == id && !s.IsDeleted,
 					false,
@@ -750,44 +764,46 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
 
 				if (supply == null)
 				{
-					_logger.LogWarning("Supply not found. SupplyId: {SupplyId}, User: {UserId}", 
+					_logger.LogWarning("Supply not found. SupplyId: {SupplyId}, User: {UserId}",
 						id, _currentUserService.UserId);
 					return APIOperationResponse<bool>.Fail(ResponseType.NotFound, "Supply not found");
 				}
 
-				// Business Rule: If Submitted and Fully supplied, cannot modify ever
-				if (supply.SubmissionStatus == SupplySubmissionStatus.Submitted && supply.FulfillmentStatus == SupplyFulfillmentStatus.Fully)
+				if (supply.SubmissionStatus == SupplySubmissionStatus.Submitted)
 				{
-					_logger.LogWarning("Cannot update submission status. Supply is Submitted and Fully supplied. SupplyId: {SupplyId}, User: {UserId}", 
+					_logger.LogWarning("Supply already submitted. SupplyId: {SupplyId}, User: {UserId}",
 						id, _currentUserService.UserId);
-					return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, 
-						"Cannot modify submission status. Supply is Submitted and Fully supplied and cannot be modified.");
+					return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, "Supply is already submitted.");
 				}
 
-				// Validate status transition: Can only transition from Draft to Submitted
-				if (supply.SubmissionStatus == SupplySubmissionStatus.Submitted && newStatus == SupplySubmissionStatus.Draft)
+				if (supply.SupplyDetails == null || !supply.SupplyDetails.Any(sd => !sd.IsDeleted))
 				{
-					_logger.LogWarning("Invalid status transition. Cannot change from Submitted to Draft. SupplyId: {SupplyId}, User: {UserId}", 
+					_logger.LogWarning("Cannot submit supply without details. SupplyId: {SupplyId}, User: {UserId}",
 						id, _currentUserService.UserId);
-					return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, 
-						"Cannot change submission status from Submitted to Draft.");
+					return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, "Supply must have at least one detail before submission.");
 				}
 
-				var oldStatus = supply.SubmissionStatus;
-				supply.SubmissionStatus = newStatus;
+				// Update receiver information and submission metadata
+				supply.RecieverName = inputDto.RecieverName;
+				supply.ReceiverRankId = inputDto.ReceiverRankId;
+				supply.RecieverMilitaryId = inputDto.RecieverMilitaryId;
+				supply.Notes = inputDto.Notes;
+				supply.SupplyDate = DateTime.UtcNow;
+				supply.SubmissionStatus = SupplySubmissionStatus.Submitted;
+				supply.FulfillmentStatus = CalculateFulfillmentStatus(supply);
 				supply.ModificationDate = DateTime.UtcNow;
 				supply.ModifiedBy = _currentUserService.UserId;
 
 				await _supplyRepository.UpdateAsync(supply);
-				_logger.LogInformation("Supply submission status updated successfully. SupplyId: {SupplyId}, OldStatus: {OldStatus}, NewStatus: {NewStatus}, User: {UserId}", 
-					id, oldStatus, newStatus, _currentUserService.UserId);
+				_logger.LogInformation("Supply submitted successfully. SupplyId: {SupplyId}, User: {UserId}",
+					id, _currentUserService.UserId);
 
-				return APIOperationResponse<bool>.Success(true, "Supply submission status updated successfully");
+				return APIOperationResponse<bool>.Success(true, "Supply submitted successfully");
 			}
 			catch (Exception ex)
 			{
-				_logger.LogError(ex, "Error updating supply submission status. SupplyId: {SupplyId}, NewStatus: {NewStatus}, User: {UserId}", 
-					id, newStatus, _currentUserService.UserId);
+				_logger.LogError(ex, "Error submitting supply. SupplyId: {SupplyId}, User: {UserId}",
+					id, _currentUserService.UserId);
 				return APIOperationResponse<bool>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
 			}
 		}

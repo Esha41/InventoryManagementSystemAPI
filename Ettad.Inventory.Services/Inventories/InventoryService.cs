@@ -682,5 +682,58 @@ namespace Ettad.Inventory.Service.Inventories
                 return APIOperationResponse<List<LotDetailDto>>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
             }
         }
+
+        public async Task<APIOperationResponse<LotDetailDto>> GetLotByNumberAsync(int lotNumber)
+        {
+            _logger.LogInformation("Getting lot details by lot number. Lot: {Lot}, User: {UserId}",
+                lotNumber, _currentUserService.UserId);
+
+            try
+            {
+                var inventoryDetail = await _inventoryDetailRepository.FindOneAsync(
+                    id => id.Lot == lotNumber,
+                    false,
+                    nameof(InventoryDetailEntity.Inventory),
+                    $"{nameof(InventoryDetailEntity.Inventory)}.{nameof(InventoryEntity.Depo)}",
+                    nameof(InventoryDetailEntity.Item),
+                    nameof(InventoryDetailEntity.Supplier),
+                    nameof(InventoryDetailEntity.Manufacturer),
+                    nameof(InventoryDetailEntity.Country)
+                );
+
+                if (inventoryDetail == null || inventoryDetail.Inventory == null || inventoryDetail.Inventory.IsDeleted)
+                {
+                    _logger.LogWarning("Lot not found or inventory deleted. Lot: {Lot}, User: {UserId}",
+                        lotNumber, _currentUserService.UserId);
+                    return APIOperationResponse<LotDetailDto>.Fail(ResponseType.NotFound, "Lot not found");
+                }
+
+                // Get all supply details for this lot to calculate usage
+                var supplyDetails = await _supplyDetailsRepository.FindAsync(
+                    sd => sd.Lot == lotNumber && !sd.IsDeleted
+                );
+
+                long totalUsedQuantity = supplyDetails.Sum(sd => sd.Quantity);
+                long remainingQuantity = inventoryDetail.ItemQuantity - totalUsedQuantity;
+
+                var lotDetail = _mapper.Map<LotDetailDto>(inventoryDetail);
+                lotDetail.UsedQuantity = totalUsedQuantity;
+                lotDetail.RemainingQuantity = Math.Max(0, remainingQuantity);
+                lotDetail.IsEmptyLot = remainingQuantity <= 0;
+                lotDetail.IsExpired = inventoryDetail.Item?.ExpiryDate.HasValue == true &&
+                                      inventoryDetail.Item.ExpiryDate.Value.Date < DateTime.UtcNow.Date;
+
+                _logger.LogInformation("Lot details retrieved successfully. Lot: {Lot}, Remaining: {Remaining}, User: {UserId}",
+                    lotNumber, lotDetail.RemainingQuantity, _currentUserService.UserId);
+
+                return APIOperationResponse<LotDetailDto>.Success(lotDetail);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting lot details by lot number. Lot: {Lot}, User: {UserId}",
+                    lotNumber, _currentUserService.UserId);
+                return APIOperationResponse<LotDetailDto>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
+            }
+        }
     }
 }

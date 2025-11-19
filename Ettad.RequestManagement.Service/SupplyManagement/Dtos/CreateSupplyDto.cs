@@ -19,4 +19,3 @@ namespace Ettad.RequestManagement.Service.SupplyManagement.Dtos
         public string? Notes { get; set; }
     }
 }
-

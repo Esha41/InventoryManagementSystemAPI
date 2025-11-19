@@ -109,6 +109,19 @@ namespace Ettad.Inventory.API.Controllers
             var result = await _inventoryService.GetAvailableLotsForQuantityAsync(itemId, quantity);
             return ProcessResponse(result);
         }
+
+        /// <summary>
+        /// Get detailed information about a specific lot using the lot number
+        /// </summary>
+        [HttpGet("lot/{lotNumber}")]
+        [ProducesResponseType((int)HttpStatusCode.OK)]
+        [ProducesResponseType((int)HttpStatusCode.NotFound)]
+        [CheckAuthorize("Permissions.Inventory.View", "Permissions.Inventory.Page")]
+        public async Task<IActionResult> GetLotByNumber(int lotNumber)
+        {
+            var result = await _inventoryService.GetLotByNumberAsync(lotNumber);
+            return ProcessResponse(result);
+        }
     }
 }
 

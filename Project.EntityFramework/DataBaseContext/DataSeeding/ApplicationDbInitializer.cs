@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Ettad.EntityFramework.DataBaseContext;
 using Ettad.Data.Entities;
 using Ettad.Data.Enums;
+using System.Collections.Generic;
 
 namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
 {
@@ -19,6 +20,9 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 
                 // Seed ammunition data
                 await SeedAmmunitionDataAsync(context);
+
+                // Seed inventory data based on seeded depots and ammunitions
+                await SeedInventoryDataAsync(context);
             }
             catch (Exception)
             {
@@ -128,6 +132,78 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
             };
 
             await context.Ammunitions.AddRangeAsync(ammunitions);
+            await context.SaveChangesAsync();
+        }
+
+        private static async Task SeedInventoryDataAsync(ApplicationDbContext context)
+        {
+            // Avoid reseeding if inventories already exist
+            if (await context.Inventories.AnyAsync())
+            {
+                return;
+            }
+
+            // Ensure we have depots and ammunitions to seed inventories
+            var depots = await context.Depots.Where(d => !d.IsDeleted).ToListAsync();
+            var ammunitions = await context.Ammunitions.ToListAsync();
+
+            if (!depots.Any() || !ammunitions.Any())
+            {
+                return;
+            }
+
+            var utcNow = DateTime.UtcNow;
+            var random = new Random(2025);
+            var inventories = new List<Inventory>();
+            int invoiceSequence = 1;
+            int lotSequence = 1000;
+
+            foreach (var depot in depots)
+            {
+                // Create multiple inventories per depot
+                var inventoriesPerDepot = Math.Min(3, Math.Max(2, ammunitions.Count / 2));
+
+                for (int i = 0; i < inventoriesPerDepot; i++)
+                {
+                    var inventory = new Inventory
+                    {
+                        DepoId = depot.Id,
+                        InvoiceNumber = $"INV-{invoiceSequence:0000}",
+                        InvoiceDate = utcNow.AddDays(-random.Next(30, 120)),
+                        RecievedDate = utcNow.AddDays(-random.Next(5, 60)),
+                        Notes = $"Seeded inventory for depot {depot.Code}",
+                        CreationDate = utcNow,
+                        CreatedBy = "SYSTEM",
+                        InventoryDetails = new List<InventoryDetail>()
+                    };
+
+                    invoiceSequence++;
+
+                    // Take a random subset of ammunitions for this inventory
+                    var ammoSelection = ammunitions
+                        .OrderBy(_ => random.Next())
+                        .Take(Math.Min(3, ammunitions.Count))
+                        .ToList();
+
+                    foreach (var ammo in ammoSelection)
+                    {
+                        inventory.InventoryDetails.Add(new InventoryDetail
+                        {
+                            ItemId = ammo.Id,
+                            Lot = ++lotSequence,
+                            ItemQuantity = random.Next(150, 600),
+                            SupplierId = null,
+                            ManufacturerId = null,
+                            CountryId = null,
+                            IsLotEmpty = false
+                        });
+                    }
+
+                    inventories.Add(inventory);
+                }
+            }
+
+            await context.Inventories.AddRangeAsync(inventories);
             await context.SaveChangesAsync();
         }
     }

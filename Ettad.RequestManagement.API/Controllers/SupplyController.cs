@@ -152,19 +152,19 @@ namespace Ettad.RequestManagement.API.Controllers
         }
 
         /// <summary>
-        /// Update supply submission status (Draft to Submitted)
+        /// Submit a supply (requires receiver information)
         /// </summary>
         /// <param name="id">Supply ID</param>
-        /// <param name="newStatus">New submission status value</param>
+        /// <param name="dto">Submission data</param>
         /// <returns>Success result</returns>
-        [HttpPut("{id}/submission-status")]
+        [HttpPost("{id}/submit")]
         [ProducesResponseType(typeof(APIOperationResponse<bool>), (int)HttpStatusCode.OK)]
         [ProducesResponseType((int)HttpStatusCode.BadRequest)]
         [ProducesResponseType((int)HttpStatusCode.NotFound)]
         [CheckAuthorize("Permissions.Supply.Edit")]
-        public async Task<IActionResult> UpdateSubmissionStatus(long id, [FromBody] SupplySubmissionStatus newStatus)
+        public async Task<IActionResult> Submit(long id, [FromBody] SubmitSupplyDto dto)
         {
-            var result = await _supplyService.UpdateSubmissionStatusAsync(id, newStatus);
+            var result = await _supplyService.SubmitSupplyAsync(id, dto);
             return ProcessResponse(result);
         }
 

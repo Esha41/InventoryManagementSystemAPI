@@ -13,5 +13,6 @@ namespace Ettad.Inventory.Service.Inventories
         Task<APIOperationResponse<OrderSupplySuggestionDto>> SuggestSupplyForOrderAsync(long orderId, List<long>? depotIds = null);
         Task<APIOperationResponse<List<LotDetailDto>>> GetLotsByItemIdAsync(long itemId);
         Task<APIOperationResponse<List<LotDetailDto>>> GetAvailableLotsForQuantityAsync(long itemId, long requiredQuantity, List<long>? depotIds = null);
+        Task<APIOperationResponse<LotDetailDto>> GetLotByNumberAsync(int lotNumber);
     }
 }
