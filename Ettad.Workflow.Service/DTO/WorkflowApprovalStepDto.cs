@@ -55,8 +55,6 @@ namespace Ettad.Workflows.Service.DTO
 
         public int IsDelegation { get; set; } = 0;
 
-        public DateTime? ApprovedDate { get; set; }
-
         public string? Comments { get; set; }
 
         public bool IsCurrent { get; set; } = false;

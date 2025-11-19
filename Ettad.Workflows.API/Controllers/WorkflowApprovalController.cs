@@ -1,3 +1,4 @@
+using Ettad.Data.Enums;
 using Ettad.ResponseHandler.Consts;
 using Ettad.ResponseHandler.Models;
 using Ettad.Workflows.Service.DTO;
@@ -66,14 +67,21 @@ namespace Ettad.Workflows.API.Controllers
         {
             try
             {
-                var result = await _service.ApproveOrRejectAsync(dto);
+                var result = await _service.ApproveOrReject(dto);
+
+                // Determine success message based on action
+                string successMessage = dto.Action == RequestStatus.Approved
+                    ? "Request approved successfully."
+                    : dto.Action == RequestStatus.Rejected
+                    ? "Request rejected successfully."
+                    : "Workflow step processed successfully.";
 
                 // Wrap into API Response
                 var response = new APIOperationResponse<WorkflowApprovalStepDto>
                 {
                     StatusCode = (int)ResponseType.Success,
                     Data = result,
-                    Message = "Workflow step processed successfully."
+                    Message = successMessage
                 };
 
                 return ProcessResponse(response);

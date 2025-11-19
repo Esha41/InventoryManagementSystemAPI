@@ -1,18 +1,20 @@
-﻿using Ettad.Data.Entities.Workflows;
+﻿using Ettad.Application.Common.Interfaces;
+using Ettad.Data.Entities;
+using Ettad.Data.Entities.Workflows;
+using Ettad.Data.Enums;
 using Ettad.EntityFramework.DataBaseContext;
+using Ettad.Notification.Service;
+using Ettad.ResponseHandler.Consts;
+using Ettad.ResponseHandler.Models;
 using Ettad.Workflows.Service.DTO;
 using Ettad.Workflows.Service.Interface;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using Ettad.Data.Entities;
-using Ettad.Data.Enums;
-using Ettad.Application.Common.Interfaces;
-using Ettad.Notification.Service;
-using Microsoft.AspNetCore.Identity;
 
 namespace Ettad.Workflows.Service.Imeplemention
 {
@@ -74,8 +76,7 @@ namespace Ettad.Workflows.Service.Imeplemention
                 TargetRequestId = dto.TargetRequestId,
                 RequestType = dto.RequestType,
                 ApproverUserId = dto.ApproverUserId,
-                IsDelegation = dto.IsDelegation,
-                ApprovedDate = dto.ApprovedDate,
+                IsDelegation = dto.IsDelegation,               
                 Status = dto.Status,
                 Comments = dto.Comments,
                 IsCurrent = dto.IsCurrent,
@@ -149,12 +150,16 @@ namespace Ettad.Workflows.Service.Imeplemention
 
         public async Task<IEnumerable<WorkflowApprovalWithOrderDto>> GetOrdersWithApprovalStepsAsync()
         {
-            var id = _currentUserService.UserId;
-            // 1. Get current user's roles from database
+            var currentUserId = _currentUserService.UserId;
+
+            // 1. Get all role IDs of current user
             var userRoleIds = await _context.Set<IdentityUserRole<string>>()
-                .Where(ur => ur.UserId == _currentUserService.UserId)
+                .Where(ur => ur.UserId == currentUserId)
                 .Select(ur => ur.RoleId)
                 .ToListAsync();
+
+            if (!userRoleIds.Any())
+                return Enumerable.Empty<WorkflowApprovalWithOrderDto>();
 
             // 2. Query workflow approval steps joined with workflow steps and base requests
             var query = from ws in _context.WorkflowApprovalSteps
@@ -162,12 +167,17 @@ namespace Ettad.Workflows.Service.Imeplemention
                             on ws.TargetRequestId equals br.Id
                         join wfs in _context.WorkflowSteps
                             on ws.WorkflowStepId equals wfs.Id
-                        // Filter workflow steps where the user has permission
-                        where userRoleIds.Contains(wfs.ApplicationRoleId)
-                           || (!string.IsNullOrEmpty(wfs.HigherApprovalRoleId) && userRoleIds.Contains(wfs.HigherApprovalRoleId))
+                        where
+                            // Step assigned directly to this user
+                            ws.ApproverUserId == currentUserId
+                            // OR user role matches main approver
+                            || userRoleIds.Contains(wfs.ApplicationRoleId)
+                            // OR user role matches higher approval
+                            || (!string.IsNullOrEmpty(wfs.HigherApprovalRoleId) && userRoleIds.Contains(wfs.HigherApprovalRoleId))
+
                         select new WorkflowApprovalWithOrderDto
                         {
-                            // WorkflowStep properties (wfs)
+                            // WorkflowStep properties
                             WorkflowId = wfs.WorkflowId,
                             StepOrder = wfs.StepOrder,
                             ApplicationRoleId = wfs.ApplicationRoleId,
@@ -176,7 +186,8 @@ namespace Ettad.Workflows.Service.Imeplemention
                             HigherApprovalRoleId = wfs.HigherApprovalRoleId,
                             HigherApplicationEntityId = wfs.HigherApplicationEntityId,
                             ReserveQty = wfs.ReserveQty,
-                            // WorkflowApprovalStep properties (ws)
+
+                            // WorkflowApprovalStep properties
                             WorkflowStepId = ws.WorkflowStepId,
                             TargetRequestId = ws.TargetRequestId,
                             RequestType = ws.RequestType,
@@ -185,7 +196,8 @@ namespace Ettad.Workflows.Service.Imeplemention
                             Comments = ws.Comments,
                             IsCurrent = ws.IsCurrent,
                             ApproverUserId = ws.ApproverUserId,
-                            // BaseRequest properties (br)
+
+                            // BaseRequest properties
                             BaseRequestId = br.Id,
                             RequestNo = br.RequestNo,
                             BaseRequestType = br.RequestType,
@@ -198,213 +210,431 @@ namespace Ettad.Workflows.Service.Imeplemention
                             RecieverId = br.RecieverId,
                             DepotId = br.DepotId,
                             RequestPurposeId = br.RequestPurposeId,
-                            WorkflowApprovalStepId = ws.Id,
+
+                            WorkflowApprovalStepId = ws.Id
                         };
 
             return await query.ToListAsync();
         }
 
-
-        public async Task<WorkflowApprovalStepDto> ApproveOrRejectAsync(ApproveRejectWorkflowApprovalDto dto)
+        public async Task<APIOperationResponse<bool>> ProcessActionAsync(ApproveRejectWorkflowApprovalDto model)
         {
+            await using var transaction = await _context.Database.BeginTransactionAsync();
+
             try
             {
-                // 1. Load approval step including workflow step
-                var approvalStep = await _context.WorkflowApprovalSteps
-                    .Include(x => x.WorkflowStep)
-                    .FirstOrDefaultAsync(x => x.Id == dto.WorkflowApprovalStepId);
+                // Get current step
+                var currentStep = await GetCurrentApprovalStepByRequestIdAsync(model.BaseRequestID);
+                if (currentStep == null)
+                    return APIOperationResponse<bool>.Fail(ResponseType.NotFound, "No current workflow step found for this request.");
 
-                if (approvalStep == null)
-                    throw new KeyNotFoundException($"WorkflowApprovalStep with Id {dto.WorkflowApprovalStepId} not found");
+                // Store original status before modification
+                var oldStatus = currentStep.Status;
 
-                if (approvalStep.Status != RequestStatus.New && approvalStep.Status != RequestStatus.UnderProcess)
-                    throw new InvalidOperationException($"WorkflowApprovalStep with Id {dto.WorkflowApprovalStepId} has already been processed");
+                // Set comments
+                currentStep.Comments = model.Comments;
 
-                // 2. Get user roles
-                var userRoles = await _context.Set<IdentityUserRole<string>>()
-                    .Where(ur => ur.UserId == _currentUserService.UserId)
-                    .Select(ur => ur.RoleId)
-                    .ToListAsync();
-
-                // 3. Permission check
-                if (!_currentUserService.IsSuperAdmin && approvalStep.WorkflowStep != null)
+                // Call respective method
+                switch (model.Action)
                 {
-                    var step = approvalStep.WorkflowStep;
+                    case RequestStatus.Approved:
+                        await ApproveStepAsync(currentStep, model);
+                        break;
 
-                    var allowedRoles = new List<string>
-            {
-                step.ApplicationRoleId
-            };
+                    case RequestStatus.Rejected:
+                        await RejectStepAsync(currentStep, model);
+                        break;
 
-                    if (!string.IsNullOrEmpty(step.HigherApprovalRoleId))
-                        allowedRoles.Add(step.HigherApprovalRoleId);
+                    //case RequestStatus.Returned:
+                    //    await ReturnStepAsync(currentStep, model);
+                    //    break;
 
-                    bool hasPermission = userRoles.Any(role => allowedRoles.Contains(role));
-
-                    if (!hasPermission)
-                        throw new UnauthorizedAccessException("User does not have permission to approve/reject this workflow step.");
+                    default:
+                        return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, "Invalid workflow action.");
                 }
 
-                // Save old status for log
-                var oldStatus = approvalStep.Status;
-
-                // 4. Approve or reject the step
-                approvalStep.Status = dto.IsApproved ? RequestStatus.Approved : RequestStatus.Rejected;
-                approvalStep.ApprovedDate = DateTime.UtcNow;
-                approvalStep.ApproverUserId = _currentUserService.UserId;
-                approvalStep.Comments = dto.Comments;
-                approvalStep.IsCurrent = false;
-                approvalStep.ModificationDate = DateTime.UtcNow;
-                approvalStep.ModifiedBy = _currentUserService.UserId;
-
-                // 5. Insert log
-                var logEntry = new WorkflowStepApprovalLog
-                {
-                    WorkflowApprovalStepId = approvalStep.Id,
-                    OldRequestStatus = oldStatus,
-                    NewRequestStatus = approvalStep.Status,
-                    Comments = dto.Comments,
-                    ChangedBy = _currentUserService.UserId,
-                    ChangedAt = DateTime.UtcNow,
-                    CreationDate = DateTime.UtcNow,
-                    CreatedBy = _currentUserService.UserId,
-                    ModificationDate = DateTime.UtcNow,
-                    ModifiedBy = _currentUserService.UserId
-                };
-
-                _context.WorkflowStepApprovalLog.Add(logEntry);
-
-                // 6. Update Base Request
-                var baseRequest = await _context.BaseRequests
-                    .FirstOrDefaultAsync(x => x.Id == approvalStep.TargetRequestId);
-
-                WorkflowStep? nextStep = null;
-
-                if (baseRequest != null)
-                {
-                    if (dto.IsApproved)
-                    {
-                        // Get ordered workflow steps
-                        var workflowSteps = await _context.WorkflowSteps
-                            .Where(ws => ws.WorkflowId == approvalStep.WorkflowStep.WorkflowId)
-                            .OrderBy(ws => ws.StepOrder)
-                            .ToListAsync();
-
-                        var currentOrder = approvalStep.WorkflowStep.StepOrder;
-                        nextStep = workflowSteps.FirstOrDefault(ws => ws.StepOrder > currentOrder);
-
-                        if (nextStep != null)
-                        {
-                            // Create next step
-                            var nextApproval = new WorkflowApprovalStep
-                            {
-                                WorkflowStepId = nextStep.Id,
-                                TargetRequestId = approvalStep.TargetRequestId,
-                                RequestType = approvalStep.RequestType,
-                                Status = RequestStatus.New,
-                                IsCurrent = true,
-                                CreationDate = DateTime.UtcNow,
-                                CreatedBy = _currentUserService.UserId
-                            };
-
-                            _context.WorkflowApprovalSteps.Add(nextApproval);
-
-                            baseRequest.Status = RequestStatus.UnderProcess;
-                        }
-                        else
-                        {
-                            baseRequest.Status = RequestStatus.Approved;
-                        }
-                    }
-                    else
-                    {
-                        baseRequest.Status = RequestStatus.Rejected;
-
-                        var otherSteps = await _context.WorkflowApprovalSteps
-                            .Where(x => x.TargetRequestId == approvalStep.TargetRequestId &&
-                                        x.IsCurrent &&
-                                        (x.Status == RequestStatus.New || x.Status == RequestStatus.UnderProcess) &&
-                                        x.Id != approvalStep.Id)
-                            .ToListAsync();
-
-                        foreach (var step in otherSteps)
-                        {
-                            step.IsCurrent = false;
-                            step.ModifiedBy = _currentUserService.UserId;
-                            step.ModificationDate = DateTime.UtcNow;
-                        }
-                    }
-
-                    baseRequest.ModifiedBy = _currentUserService.UserId;
-                    baseRequest.ModificationDate = DateTime.UtcNow;
-                }
+                // Log action with original status
+                await LogStepActionAsync(currentStep.Id, oldStatus, model.Action, model.Comments, _currentUserService.UserName);
 
                 await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
 
-                // -------------------------------------------------------------------
-                // 7. 🔔 SEND NOTIFICATIONS
-                // -------------------------------------------------------------------
-
-                // Fetch requestor (creator)
-                var requestorId = baseRequest.CreatedBy;
-
-                // Always notify requestor first
-                await _notificationHelperService.SendNotificationAsync(
-                    "Request Update",
-                    dto.IsApproved
-                        ? "Your request has been approved for a workflow step."
-                        : "Your request has been rejected.",
-                    entityType: "Request",
-                    entityId: baseRequest.Id,
-                    userIds: new List<string> { requestorId }, // notify creator
-                    senderId: _currentUserService.UserId
-                );
-
-                // If APPROVED → notify next step approvers
-                if (dto.IsApproved && nextStep != null)
-                {
-                    // Get all approver roles for next step
-                    var nextRoles = new List<string>
-            {
-                nextStep.ApplicationRoleId
-            };
-
-                    if (!string.IsNullOrEmpty(nextStep.HigherApprovalRoleId))
-                        nextRoles.Add(nextStep.HigherApprovalRoleId);
-
-                    await _notificationHelperService.SendNotificationAsync(
-                        "New Approval Required",
-                        "A request is awaiting your approval.",
-                        entityType: "Request",
-                        entityId: baseRequest.Id,
-                        userIds: null,
-                        roleIds: nextRoles, // notify roles
-                        senderId: _currentUserService.UserId
-                    );
-                }
-
-                // -------------------------------------------------------------------
-
-                // 8. Return DTO
-                return new WorkflowApprovalStepDto
-                {
-                    Id = approvalStep.Id,
-                    WorkflowStepId = approvalStep.WorkflowStepId,
-                    TargetRequestId = approvalStep.TargetRequestId,
-                    RequestType = approvalStep.RequestType,
-                    ApproverUserId = approvalStep.ApproverUserId,
-                    IsDelegation = approvalStep.IsDelegation,
-                    ApprovedDate = approvalStep.ApprovedDate,
-                    Status = approvalStep.Status,
-                    Comments = approvalStep.Comments,
-                    IsCurrent = approvalStep.IsCurrent,
-                    ChangedBy = approvalStep.ModifiedBy
-                };
+                return APIOperationResponse<bool>.Success(true);
             }
-            catch (Exception)
+            catch
             {
+                await transaction.RollbackAsync();
                 throw;
             }
+        }
+
+        public async Task<WorkflowApprovalStepDto> ApproveAsync(ApproveRejectWorkflowApprovalDto dto)
+        {
+            // Get the step ID before processing
+            var currentStep = await GetCurrentApprovalStepByRequestIdAsync(dto.BaseRequestID);
+            if (currentStep == null)
+            {
+                throw new KeyNotFoundException("No current workflow step found for this request.");
+            }
+
+            var stepId = currentStep.Id;
+
+            var result = await ProcessActionAsync(dto);
+            if (!result.Succeeded)
+            {
+                throw new InvalidOperationException(result.Message ?? "Approval failed");
+            }
+
+            // Get the updated step after processing by ID
+            var updatedStep = await _context.WorkflowApprovalSteps
+                .Include(x => x.WorkflowStep)
+                .FirstOrDefaultAsync(x => x.Id == stepId);
+
+            if (updatedStep == null)
+            {
+                throw new KeyNotFoundException("Approval step not found after processing");
+            }
+
+            return MapToDto(updatedStep);
+        }
+
+        public async Task<WorkflowApprovalStepDto> RejectAsync(ApproveRejectWorkflowApprovalDto dto)
+        {
+            // Get the step ID before processing
+            var currentStep = await GetCurrentApprovalStepByRequestIdAsync(dto.BaseRequestID);
+            if (currentStep == null)
+            {
+                throw new KeyNotFoundException("No current workflow step found for this request.");
+            }
+
+            var stepId = currentStep.Id;
+
+            var result = await ProcessActionAsync(dto);
+            if (!result.Succeeded)
+            {
+                throw new InvalidOperationException(result.Message ?? "Rejection failed");
+            }
+
+            // Get the updated step after processing by ID
+            var updatedStep = await _context.WorkflowApprovalSteps
+                .Include(x => x.WorkflowStep)
+                .FirstOrDefaultAsync(x => x.Id == stepId);
+
+            if (updatedStep == null)
+            {
+                throw new KeyNotFoundException("Approval step not found after processing");
+            }
+
+            return MapToDto(updatedStep);
+        }
+
+        public async Task<WorkflowApprovalStepDto> ApproveOrReject(ApproveRejectWorkflowApprovalDto dto)
+        {
+            // Validate action
+            if (dto.Action != RequestStatus.Approved && dto.Action != RequestStatus.Rejected)
+            {
+                throw new InvalidOperationException($"Invalid action: {dto.Action}. Only 'Approved' or 'Rejected' actions are allowed.");
+            }
+
+            // Get the step ID before processing
+            var currentStep = await GetCurrentApprovalStepByRequestIdAsync(dto.BaseRequestID);
+            if (currentStep == null)
+            {
+                throw new KeyNotFoundException($"No current workflow step found for request ID {dto.BaseRequestID}. The request may have already been processed or does not exist.");
+            }
+
+            var stepId = currentStep.Id;
+            var actionName = dto.Action == RequestStatus.Approved ? "approve" : "reject";
+
+            try
+            {
+                var result = await ProcessActionAsync(dto);
+                if (!result.Succeeded)
+                {
+                    var errorMessage = result.Message ?? $"Failed to {actionName} the workflow step.";
+                    throw new InvalidOperationException(errorMessage);
+                }
+
+                // Get the updated step after processing by ID
+                var updatedStep = await _context.WorkflowApprovalSteps
+                    .Include(x => x.WorkflowStep)
+                    .FirstOrDefaultAsync(x => x.Id == stepId);
+
+                if (updatedStep == null)
+                {
+                    throw new KeyNotFoundException($"Workflow approval step with ID {stepId} was not found after processing. The step may have been removed.");
+                }
+
+                return MapToDto(updatedStep);
+            }
+            catch (Exception ex) when (!(ex is KeyNotFoundException || ex is InvalidOperationException))
+            {
+                // Wrap unexpected exceptions with context
+                throw new InvalidOperationException($"An error occurred while attempting to {actionName} the workflow step: {ex.Message}", ex);
+            }
+        }
+
+        private WorkflowApprovalStepDto MapToDto(WorkflowApprovalStep entity)
+        {
+            return new WorkflowApprovalStepDto
+            {
+                Id = entity.Id,
+                WorkflowStepId = entity.WorkflowStepId,
+                TargetRequestId = entity.TargetRequestId,
+                RequestType = entity.RequestType,
+                ApproverUserId = entity.ApproverUserId,
+                IsDelegation = entity.IsDelegation,
+                ApprovedDate = entity.ApprovedDate,
+                Status = entity.Status,
+                Comments = entity.Comments,
+                IsCurrent = entity.IsCurrent,
+                ChangedBy = entity.ModifiedBy,
+            };
+        }
+
+        // Approve step
+        private async Task ApproveStepAsync(WorkflowApprovalStep step, ApproveRejectWorkflowApprovalDto model)
+        {
+            // Prevent double approval/rejection
+            if (step.Status == RequestStatus.Approved || step.Status == RequestStatus.Rejected)
+            {
+                throw new Exception("This step has already been processed.");
+            }
+
+            // Only current step can be processed
+            if (!step.IsCurrent)
+            {
+                throw new Exception("This step is not active anymore.");
+            }
+
+            step.Status = RequestStatus.Approved;
+            step.ApproverUserId = _currentUserService.UserId;
+            step.ApprovedDate = DateTime.UtcNow;
+            step.IsCurrent = false;
+            step.ModifiedBy = _currentUserService.UserId;
+            step.ModificationDate = DateTime.UtcNow;
+
+            var baseRequest = await _context.BaseRequests
+                .FirstOrDefaultAsync(x => x.Id == step.TargetRequestId);
+
+            if (baseRequest == null)
+                return;
+
+            // ⭐ Higher approval only when SendToHigherApproval = true
+            if (model.SendToHigherApproval == true)
+            {
+                bool created = await HandleHigherApprovalAsync(step, baseRequest);
+
+                if (created)
+                {
+                    // STOP here — do NOT send requester notification
+                    return;
+                }
+            }
+
+            // ⭐ Continue normal workflow
+            var workflowSteps = await _context.WorkflowSteps
+                .Where(ws => ws.WorkflowId == step.WorkflowStep.WorkflowId)
+                .OrderBy(ws => ws.StepOrder)
+                .ToListAsync();
+
+            var nextStep = workflowSteps.FirstOrDefault(ws => ws.StepOrder > step.WorkflowStep.StepOrder);
+
+            if (nextStep != null)
+            {
+                var nextApproval = new WorkflowApprovalStep
+                {
+                    WorkflowStepId = nextStep.Id,
+                    TargetRequestId = step.TargetRequestId,
+                    RequestType = step.RequestType,
+                    Status = RequestStatus.New,
+                    IsCurrent = true,
+                    CreatedBy = _currentUserService.UserId,
+                    CreationDate = DateTime.UtcNow
+                };
+
+                _context.WorkflowApprovalSteps.Add(nextApproval);
+                baseRequest.Status = RequestStatus.UnderProcess;
+
+                // Send notification to next step approvers
+                var nextRoles = new List<string> { nextStep.ApplicationRoleId };
+                if (!string.IsNullOrEmpty(nextStep.HigherApprovalRoleId))
+                    nextRoles.Add(nextStep.HigherApprovalRoleId);
+
+                await _notificationHelperService.SendNotificationAsync(
+                    "New Approval Required",
+                    "A request awaits your approval.",
+                    "Request",
+                    baseRequest.Id,
+                    null,
+                    nextRoles,
+                    _currentUserService.UserId
+                );
+            }
+            else
+            {
+                // ⭐ Final approval — now notify requester
+                baseRequest.Status = RequestStatus.Approved;
+
+                var approver = await _context.Users.FirstOrDefaultAsync(u => u.Id == _currentUserService.UserId);
+
+                await _notificationHelperService.SendNotificationAsync(
+                    "Request Approved",
+                    $"Approved by {approver?.UserName}",
+                    "Request",
+                    baseRequest.Id,
+                    new List<string> { baseRequest.CreatedBy },
+                    null,
+                    _currentUserService.UserId
+                );
+            }
+
+            baseRequest.ModifiedBy = _currentUserService.UserId;
+            baseRequest.ModificationDate = DateTime.UtcNow;
+        }
+
+
+        // Reject step
+        private async Task RejectStepAsync(WorkflowApprovalStep step, ApproveRejectWorkflowApprovalDto model)
+        {
+            // Prevent double approval/rejection
+            if (step.Status == RequestStatus.Approved || step.Status == RequestStatus.Rejected)
+            {
+                throw new Exception("This step has already been processed.");
+            }
+
+            // Only current step can be processed
+            if (!step.IsCurrent)
+            {
+                throw new Exception("This step is not active anymore.");
+            }
+
+            step.Status = RequestStatus.Rejected;
+            step.ApproverUserId = _currentUserService.UserId;
+            step.ApprovedDate = DateTime.UtcNow;
+            step.IsCurrent = false;
+            step.ModifiedBy = _currentUserService.UserId;
+            step.ModificationDate = DateTime.UtcNow;
+
+            var baseRequest = await _context.BaseRequests.FirstOrDefaultAsync(x => x.Id == step.TargetRequestId);
+            if (baseRequest == null) return;
+
+            // Close other current steps
+            var otherSteps = await _context.WorkflowApprovalSteps
+                .Where(x => x.TargetRequestId == step.TargetRequestId &&
+                            x.IsCurrent &&
+                            (x.Status == RequestStatus.New || x.Status == RequestStatus.UnderProcess) &&
+                            x.Id != step.Id)
+                .ToListAsync();
+
+            foreach (var s in otherSteps)
+            {
+                s.IsCurrent = false;
+                s.ModifiedBy = _currentUserService.UserId;
+                s.ModificationDate = DateTime.UtcNow;
+            }
+
+            baseRequest.Status = RequestStatus.Rejected;
+
+            // Notify requester
+            var approver = await _context.Users.FirstOrDefaultAsync(u => u.Id == _currentUserService.UserId);
+            await _notificationHelperService.SendNotificationAsync(
+                "Request Rejected",
+                $"Rejected by {approver?.UserName}",
+                "Request",
+                baseRequest.Id,
+                new List<string> { baseRequest.CreatedBy },
+                null,
+                _currentUserService.UserId
+            );
+
+            baseRequest.ModifiedBy = _currentUserService.UserId;
+            baseRequest.ModificationDate = DateTime.UtcNow;
+        }
+
+        // Return for review
+       
+        // Helper: get current approval step by request ID
+        public async Task<WorkflowApprovalStep> GetCurrentApprovalStepByRequestIdAsync(int requestId)
+        {
+            var step = await _context.WorkflowApprovalSteps
+                .Include(x => x.WorkflowStep)
+                .FirstOrDefaultAsync(x => x.TargetRequestId == requestId && x.IsCurrent);
+
+            if (step == null)
+                return null;
+
+            // Permission check
+            var workflowStep = step.WorkflowStep;
+            var userRoles = await _context.Set<IdentityUserRole<string>>()
+                .Where(ur => ur.UserId == _currentUserService.UserId)
+                .Select(ur => ur.RoleId)
+                .ToListAsync();
+
+            var allowedRoles = new List<string> { workflowStep.ApplicationRoleId };
+            if (!string.IsNullOrEmpty(workflowStep.HigherApprovalRoleId))
+                allowedRoles.Add(workflowStep.HigherApprovalRoleId);
+
+            if (!_currentUserService.IsSuperAdmin && !userRoles.Any(r => allowedRoles.Contains(r)))
+                throw new UnauthorizedAccessException("User cannot approve/reject this step");
+
+            return step;
+        }
+
+        // Helper: log step action
+        private async Task LogStepActionAsync(int stepId, RequestStatus oldStatus, RequestStatus newStatus, string comments, string changedBy)
+        {
+            _context.WorkflowStepApprovalLog.Add(new WorkflowStepApprovalLog
+            {
+                WorkflowApprovalStepId = stepId,
+                OldRequestStatus = oldStatus,
+                NewRequestStatus = newStatus,
+                Comments = comments,
+                ChangedBy = changedBy,
+                ChangedAt = DateTime.UtcNow,
+                CreatedBy = changedBy,
+                CreationDate = DateTime.UtcNow,
+                ModifiedBy = changedBy,
+                ModificationDate = DateTime.UtcNow
+            });
+
+            await Task.CompletedTask;
+        }
+        private async Task<bool> HandleHigherApprovalAsync(WorkflowApprovalStep step, BaseRequest baseRequest)
+        {
+            // If not configured for higher approval → skip
+            if (!step.WorkflowStep.RequireHigherApproval ||
+                string.IsNullOrEmpty(step.WorkflowStep.HigherApprovalRoleId))
+                return false;
+
+            // Create new higher approval step
+            var higherApproval = new WorkflowApprovalStep
+            {
+                WorkflowStepId = step.WorkflowStepId,
+                TargetRequestId = step.TargetRequestId,
+                RequestType = step.RequestType,
+                Status = RequestStatus.New,
+                IsCurrent = true,
+                CreatedBy = _currentUserService.UserId,
+                CreationDate = DateTime.UtcNow
+            };
+
+            _context.WorkflowApprovalSteps.Add(higherApproval);
+
+            baseRequest.Status = RequestStatus.UnderProcess;
+
+            // Send notification
+            await _notificationHelperService.SendNotificationAsync(
+                "Higher Approval Required",
+                "A request requires higher approval.",
+                "Request",
+                baseRequest.Id,
+                null,
+                new List<string> { step.WorkflowStep.HigherApprovalRoleId },
+                _currentUserService.UserId
+            );
+
+            return true;
         }
 
 

@@ -1,4 +1,6 @@
-﻿using Ettad.Workflows.Service.DTO;
+﻿using Ettad.Data.Entities.Workflows;
+using Ettad.ResponseHandler.Models;
+using Ettad.Workflows.Service.DTO;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -15,6 +17,11 @@ namespace Ettad.Workflows.Service.Interface
         Task<WorkflowApprovalStepDto> UpdateAsync(int id, UpdateWorkflowApprovalStepDto dto);
         Task<bool> DeleteAsync(int id);
         Task<IEnumerable<WorkflowApprovalWithOrderDto>> GetOrdersWithApprovalStepsAsync();
-        Task<WorkflowApprovalStepDto> ApproveOrRejectAsync(ApproveRejectWorkflowApprovalDto dto);
+        Task<WorkflowApprovalStepDto> ApproveAsync(ApproveRejectWorkflowApprovalDto dto);
+        Task<WorkflowApprovalStepDto> RejectAsync(ApproveRejectWorkflowApprovalDto dto);
+        Task<WorkflowApprovalStepDto> ApproveOrReject(ApproveRejectWorkflowApprovalDto dto);
+        Task<WorkflowApprovalStep> GetCurrentApprovalStepByRequestIdAsync(int requestId);
+        Task<APIOperationResponse<bool>> ProcessActionAsync(ApproveRejectWorkflowApprovalDto model);
+
     }
 }
