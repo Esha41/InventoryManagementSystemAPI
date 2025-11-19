@@ -22,7 +22,10 @@ namespace Ettad.EntityFramework.Configurations
                 .IsRequired(false)
                 .HasMaxLength(255);
 
-            builder.Property(x => x.Status)
+            builder.Property(x => x.SubmissionStatus)
+                .IsRequired();
+
+            builder.Property(x => x.FulfillmentStatus)
                 .IsRequired();
 
             builder.Property(x => x.Notes)

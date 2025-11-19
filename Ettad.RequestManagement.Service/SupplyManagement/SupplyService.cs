@@ -187,7 +187,7 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
 					return APIOperationResponse<long>.Fail(ResponseType.BadRequest, errors);
 				}
 
-				// Check if order exists
+				// Check if order exists and load RequestItems for fulfillment calculation
 				var order = await _orderRepository.FindOneAsync(
 					o => o.Id == inputDto.OrderId && !o.IsDeleted,
 					false,
@@ -208,6 +208,58 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
 					return APIOperationResponse<long>.Fail(ResponseType.BadRequest, "Order has no request items");
                 }
 
+				// Check if there's a Draft supply for this order - if yes, suggest updating instead
+				var existingDraftSupply = await _supplyRepository.FindOneAsync(
+					s => s.OrderId == inputDto.OrderId && !s.IsDeleted && s.SubmissionStatus == SupplySubmissionStatus.Draft
+				);
+
+				if (existingDraftSupply != null)
+				{
+					_logger.LogWarning("Draft supply already exists for order. OrderId: {OrderId}, SupplyId: {SupplyId}, User: {UserId}", 
+						inputDto.OrderId, existingDraftSupply.Id, _currentUserService.UserId);
+					return APIOperationResponse<long>.Fail(ResponseType.BadRequest, 
+						$"A Draft supply already exists for this order (Supply ID: {existingDraftSupply.Id}). Please update the existing supply instead of creating a new one.");
+				}
+
+				// Get all existing supplies for this order (excluding deleted)
+				var existingSupplies = await _supplyRepository.FindAsync(
+					s => s.OrderId == inputDto.OrderId && !s.IsDeleted,
+					false,
+					nameof(Supply.SupplyDetails)
+				);
+
+				// Calculate already supplied quantities per item
+				var alreadySuppliedQuantities = await CalculateAlreadySuppliedQuantitiesAsync(inputDto.OrderId);
+
+				// Business Rule: Can have multiple supplies if order is partially supplied AND status is Submitted
+				// Validate fulfillment status consistency - all supplies should have same fulfillment status
+				if (existingSupplies.Any())
+				{
+					var existingFulfillmentStatuses = existingSupplies.Select(s => s.FulfillmentStatus).Distinct().ToList();
+					if (existingFulfillmentStatuses.Count > 1)
+					{
+						var statusesStr = string.Join(", ", existingFulfillmentStatuses);
+						_logger.LogWarning("Inconsistent supply fulfillment statuses found. OrderId: {OrderId}, Statuses: {Statuses}, User: {UserId}", 
+							inputDto.OrderId, statusesStr, _currentUserService.UserId);
+						return APIOperationResponse<long>.Fail(ResponseType.BadRequest, 
+							$"Inconsistent supply fulfillment statuses found for this order: {statusesStr}. All supplies must have the same fulfillment status (Partial or Fully).");
+					}
+
+					var existingFulfillmentStatus = existingFulfillmentStatuses.First();
+					
+					// Check if all existing supplies are Submitted
+					var allSubmitted = existingSupplies.All(s => s.SubmissionStatus == SupplySubmissionStatus.Submitted);
+					
+					// Can only create new supply if: Partial fulfillment AND all existing supplies are Submitted
+					if (existingFulfillmentStatus != SupplyFulfillmentStatus.Partial || !allSubmitted)
+					{
+						_logger.LogWarning("Cannot create new supply. OrderId: {OrderId}, FulfillmentStatus: {FulfillmentStatus}, AllSubmitted: {AllSubmitted}, User: {UserId}", 
+							inputDto.OrderId, existingFulfillmentStatus, allSubmitted, _currentUserService.UserId);
+						return APIOperationResponse<long>.Fail(ResponseType.BadRequest, 
+							$"Cannot create new supply. Order fulfillment status is '{existingFulfillmentStatus}'. New supplies can only be created when order is Partially fulfilled and all existing supplies are Submitted.");
+					}
+				}
+
                 // Validate lot and quantity for each supply detail
                 var validationErrors = new List<string>();
 				foreach (var detailDto in inputDto.SupplyDetails)
@@ -220,10 +272,14 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
 						continue;
 					}
 
-					// Check if quantity exceeds requested quantity
-					if (detailDto.Quantity > requestItem.Quantity)
+					// Calculate total supplied quantity (existing + new)
+					var alreadySupplied = alreadySuppliedQuantities.TryGetValue(detailDto.ItemId, out var supplied) ? supplied : 0;
+					var totalSuppliedAfterThis = alreadySupplied + detailDto.Quantity;
+
+					// Check if total supplied quantity exceeds requested quantity
+					if (totalSuppliedAfterThis > requestItem.Quantity)
 					{
-						validationErrors.Add($"Quantity for item {detailDto.ItemId} ({detailDto.Quantity}) cannot exceed requested quantity ({requestItem.Quantity})");
+						validationErrors.Add($"Total quantity for item {detailDto.ItemId} ({totalSuppliedAfterThis}) cannot exceed requested quantity ({requestItem.Quantity}). Already supplied: {alreadySupplied}, New: {detailDto.Quantity}");
 						continue;
 					}
 
@@ -245,7 +301,7 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
 
 				// Map DTO to entity
 				var supply = _mapper.Map<Supply>(inputDto);
-				supply.Status = SupplyStatus.Draft; // Always start with Draft status
+				supply.SubmissionStatus = SupplySubmissionStatus.Draft; // Always start with Draft submission status
 				supply.CreationDate = DateTime.UtcNow;
 				supply.CreatedBy = _currentUserService.UserId;
 
@@ -259,6 +315,12 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
 						return detail;
 					})
 					.ToList();
+
+				// Set Order navigation property for fulfillment calculation
+				supply.Order = order;
+
+				// Calculate fulfillment status based on supplied quantities vs requested quantities
+				supply.FulfillmentStatus = CalculateFulfillmentStatus(supply);
 
 				// Add to repository
 				var createdSupply = await _supplyRepository.AddAsync(supply);
@@ -302,13 +364,22 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
 					return APIOperationResponse<bool>.Fail(ResponseType.NotFound, "Supply not found");
 				}
 
-				// Check if supply is in draft status (only draft can be modified)
-				if (supply.Status != SupplyStatus.Draft)
+				// Business Rule: Can modify if Draft submission status AND Fully fulfilled
+				// Or if Draft submission status (regardless of fulfillment)
+				if (supply.SubmissionStatus != SupplySubmissionStatus.Draft)
 				{
-					_logger.LogWarning("Cannot update supply info. Supply is not in Draft status. SupplyId: {SupplyId}, Status: {Status}, User: {UserId}", 
-						id, supply.Status, _currentUserService.UserId);
+					_logger.LogWarning("Cannot update supply info. Supply is not in Draft submission status. SupplyId: {SupplyId}, SubmissionStatus: {SubmissionStatus}, FulfillmentStatus: {FulfillmentStatus}, User: {UserId}", 
+						id, supply.SubmissionStatus, supply.FulfillmentStatus, _currentUserService.UserId);
 					return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, 
-						"Supply info can only be updated when status is Draft");
+						"Supply info can only be updated when submission status is Draft");
+				}
+				
+				// Additional check: If Fully fulfilled and Draft, can modify
+				// If Submitted, cannot modify (already checked above)
+				if (supply.FulfillmentStatus == SupplyFulfillmentStatus.Fully && supply.SubmissionStatus == SupplySubmissionStatus.Draft)
+				{
+					_logger.LogInformation("Updating Fully fulfilled Draft supply. SupplyId: {SupplyId}, User: {UserId}", 
+						id, _currentUserService.UserId);
 				}
 
 				// Map updates to entity
@@ -363,13 +434,13 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
 					return APIOperationResponse<long>.Fail(ResponseType.NotFound, "Supply not found");
 				}
 
-				// Check if supply is in draft status
-				if (supply.Status != SupplyStatus.Draft)
+				// Business Rule: Can modify details only if Draft submission status
+				if (supply.SubmissionStatus != SupplySubmissionStatus.Draft)
 				{
-					_logger.LogWarning("Cannot add supply detail. Supply is not in Draft status. SupplyId: {SupplyId}, Status: {Status}, User: {UserId}", 
-						supplyId, supply.Status, _currentUserService.UserId);
+					_logger.LogWarning("Cannot add supply detail. Supply is not in Draft submission status. SupplyId: {SupplyId}, SubmissionStatus: {SubmissionStatus}, User: {UserId}", 
+						supplyId, supply.SubmissionStatus, _currentUserService.UserId);
 					return APIOperationResponse<long>.Fail(ResponseType.BadRequest, 
-						"Supply details can only be added when status is Draft");
+						"Supply details can only be added when submission status is Draft");
 				}
 
 				// Find the corresponding request item
@@ -382,18 +453,24 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
 						$"Item {detailDto.ItemId} is not found in the order");
 				}
 
-				// Calculate total quantity already supplied for this item
-				var existingQuantity = supply.SupplyDetails?
+				// Calculate total quantity already supplied for this item (from this supply + other supplies)
+				var existingQuantityInThisSupply = supply.SupplyDetails?
 					.Where(sd => sd.ItemId == detailDto.ItemId && !sd.IsDeleted)
 					.Sum(sd => sd.Quantity) ?? 0;
 
+				// Get already supplied quantities from other supplies for this order (excluding this supply)
+				var alreadySuppliedFromOtherSupplies = await CalculateAlreadySuppliedQuantitiesAsync(supply.OrderId, supplyId);
+				var alreadySuppliedFromOthers = alreadySuppliedFromOtherSupplies.TryGetValue(detailDto.ItemId, out var othersSupplied) ? othersSupplied : 0;
+
+				var totalSuppliedAfterAdding = alreadySuppliedFromOthers + existingQuantityInThisSupply + detailDto.Quantity;
+
 				// Check if adding this quantity would exceed requested quantity
-				if (existingQuantity + detailDto.Quantity > requestItem.Quantity)
+				if (totalSuppliedAfterAdding > requestItem.Quantity)
 				{
-					_logger.LogWarning("Quantity exceeds requested quantity. SupplyId: {SupplyId}, ItemId: {ItemId}, Existing: {Existing}, Adding: {Adding}, Requested: {Requested}, User: {UserId}", 
-						supplyId, detailDto.ItemId, existingQuantity, detailDto.Quantity, requestItem.Quantity, _currentUserService.UserId);
+					_logger.LogWarning("Quantity exceeds requested quantity. SupplyId: {SupplyId}, ItemId: {ItemId}, AlreadyFromOthers: {Others}, ExistingInThis: {Existing}, Adding: {Adding}, Requested: {Requested}, User: {UserId}", 
+						supplyId, detailDto.ItemId, alreadySuppliedFromOthers, existingQuantityInThisSupply, detailDto.Quantity, requestItem.Quantity, _currentUserService.UserId);
 					return APIOperationResponse<long>.Fail(ResponseType.BadRequest, 
-						$"Total quantity for item {detailDto.ItemId} ({existingQuantity + detailDto.Quantity}) cannot exceed requested quantity ({requestItem.Quantity})");
+						$"Total quantity for item {detailDto.ItemId} ({totalSuppliedAfterAdding}) cannot exceed requested quantity ({requestItem.Quantity}). Already supplied from other supplies: {alreadySuppliedFromOthers}, In this supply: {existingQuantityInThisSupply}, Adding: {detailDto.Quantity}");
 				}
 
 				// Validate lot exists and has sufficient quantity
@@ -413,6 +490,24 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
 				detail.CreatedBy = _currentUserService.UserId;
 
 				var createdDetail = await _supplyDetailRepository.AddAsync(detail);
+
+				// Recalculate fulfillment status after adding detail
+				// Reload supply with details to recalculate
+				var updatedSupply = await _supplyRepository.FindOneAsync(
+					s => s.Id == supplyId && !s.IsDeleted,
+					false,
+					nameof(Supply.Order),
+					$"{nameof(Supply.Order)}.{nameof(Order.RequestItems)}",
+					nameof(Supply.SupplyDetails)
+				);
+				if (updatedSupply != null)
+				{
+					updatedSupply.FulfillmentStatus = CalculateFulfillmentStatus(updatedSupply);
+					updatedSupply.ModificationDate = DateTime.UtcNow;
+					updatedSupply.ModifiedBy = _currentUserService.UserId;
+					await _supplyRepository.UpdateAsync(updatedSupply);
+				}
+
 				_logger.LogInformation("Supply detail added successfully. SupplyId: {SupplyId}, DetailId: {DetailId}, ItemId: {ItemId}, User: {UserId}", 
 					supplyId, createdDetail.Id, detailDto.ItemId, _currentUserService.UserId);
 
@@ -459,13 +554,13 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
 					return APIOperationResponse<bool>.Fail(ResponseType.NotFound, "Supply not found");
 				}
 
-				// Check if supply is in draft status
-				if (supply.Status != SupplyStatus.Draft)
+				// Business Rule: Can modify details only if Draft submission status
+				if (supply.SubmissionStatus != SupplySubmissionStatus.Draft)
 				{
-					_logger.LogWarning("Cannot update supply detail. Supply is not in Draft status. SupplyId: {SupplyId}, Status: {Status}, User: {UserId}", 
-						supplyId, supply.Status, _currentUserService.UserId);
+					_logger.LogWarning("Cannot update supply detail. Supply is not in Draft submission status. SupplyId: {SupplyId}, SubmissionStatus: {SubmissionStatus}, User: {UserId}", 
+						supplyId, supply.SubmissionStatus, _currentUserService.UserId);
 					return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, 
-						"Supply details can only be updated when status is Draft");
+						"Supply details can only be updated when submission status is Draft");
 				}
 
 				// Find the supply detail
@@ -488,17 +583,23 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
 				}
 
 				// Calculate total quantity already supplied for this item (excluding current detail)
-				var existingQuantity = supply.SupplyDetails?
+				var existingQuantityInThisSupply = supply.SupplyDetails?
 					.Where(sd => sd.ItemId == detailDto.ItemId && sd.Id != detailId && !sd.IsDeleted)
 					.Sum(sd => sd.Quantity) ?? 0;
 
+				// Get already supplied quantities from other supplies for this order (excluding this supply)
+				var alreadySuppliedFromOtherSupplies = await CalculateAlreadySuppliedQuantitiesAsync(supply.OrderId, supplyId);
+				var alreadySuppliedFromOthers = alreadySuppliedFromOtherSupplies.TryGetValue(detailDto.ItemId, out var othersSupplied) ? othersSupplied : 0;
+
+				var totalSuppliedAfterUpdating = alreadySuppliedFromOthers + existingQuantityInThisSupply + detailDto.Quantity;
+
 				// Check if updating this quantity would exceed requested quantity
-				if (existingQuantity + detailDto.Quantity > requestItem.Quantity)
+				if (totalSuppliedAfterUpdating > requestItem.Quantity)
 				{
-					_logger.LogWarning("Quantity exceeds requested quantity. SupplyId: {SupplyId}, ItemId: {ItemId}, Existing: {Existing}, Updating: {Updating}, Requested: {Requested}, User: {UserId}", 
-						supplyId, detailDto.ItemId, existingQuantity, detailDto.Quantity, requestItem.Quantity, _currentUserService.UserId);
+					_logger.LogWarning("Quantity exceeds requested quantity. SupplyId: {SupplyId}, ItemId: {ItemId}, AlreadyFromOthers: {Others}, ExistingInThis: {Existing}, Updating: {Updating}, Requested: {Requested}, User: {UserId}", 
+						supplyId, detailDto.ItemId, alreadySuppliedFromOthers, existingQuantityInThisSupply, detailDto.Quantity, requestItem.Quantity, _currentUserService.UserId);
 					return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, 
-						$"Total quantity for item {detailDto.ItemId} ({existingQuantity + detailDto.Quantity}) cannot exceed requested quantity ({requestItem.Quantity})");
+						$"Total quantity for item {detailDto.ItemId} ({totalSuppliedAfterUpdating}) cannot exceed requested quantity ({requestItem.Quantity}). Already supplied from other supplies: {alreadySuppliedFromOthers}, In this supply: {existingQuantityInThisSupply}, Updating: {detailDto.Quantity}");
 				}
 
 				// Validate lot exists and has sufficient quantity
@@ -517,6 +618,24 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
 				detail.ModifiedBy = _currentUserService.UserId;
 
 				await _supplyDetailRepository.UpdateAsync(detail);
+
+				// Recalculate fulfillment status after updating detail
+				// Reload supply with details to recalculate
+				var updatedSupply = await _supplyRepository.FindOneAsync(
+					s => s.Id == supplyId && !s.IsDeleted,
+					false,
+					nameof(Supply.Order),
+					$"{nameof(Supply.Order)}.{nameof(Order.RequestItems)}",
+					nameof(Supply.SupplyDetails)
+				);
+				if (updatedSupply != null)
+				{
+					updatedSupply.FulfillmentStatus = CalculateFulfillmentStatus(updatedSupply);
+					updatedSupply.ModificationDate = DateTime.UtcNow;
+					updatedSupply.ModifiedBy = _currentUserService.UserId;
+					await _supplyRepository.UpdateAsync(updatedSupply);
+				}
+
 				_logger.LogInformation("Supply detail updated successfully. SupplyId: {SupplyId}, DetailId: {DetailId}, User: {UserId}", 
 					supplyId, detailId, _currentUserService.UserId);
 
@@ -551,13 +670,13 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
 					return APIOperationResponse<bool>.Fail(ResponseType.NotFound, "Supply not found");
 				}
 
-				// Check if supply is in draft status
-				if (supply.Status != SupplyStatus.Draft)
+				// Business Rule: Can modify details only if Draft submission status
+				if (supply.SubmissionStatus != SupplySubmissionStatus.Draft)
 				{
-					_logger.LogWarning("Cannot delete supply detail. Supply is not in Draft status. SupplyId: {SupplyId}, Status: {Status}, User: {UserId}", 
-						supplyId, supply.Status, _currentUserService.UserId);
+					_logger.LogWarning("Cannot delete supply detail. Supply is not in Draft submission status. SupplyId: {SupplyId}, SubmissionStatus: {SubmissionStatus}, User: {UserId}", 
+						supplyId, supply.SubmissionStatus, _currentUserService.UserId);
 					return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, 
-						"Supply details can only be deleted when status is Draft");
+						"Supply details can only be deleted when submission status is Draft");
 				}
 
 				// Count active details in the supply
@@ -582,6 +701,24 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
 
 				// Soft delete the detail
 				await _supplyDetailRepository.DeleteAsync(detail);
+
+				// Recalculate fulfillment status after deleting detail
+				// Reload supply with details to recalculate
+				var updatedSupply = await _supplyRepository.FindOneAsync(
+					s => s.Id == supplyId && !s.IsDeleted,
+					false,
+					nameof(Supply.Order),
+					$"{nameof(Supply.Order)}.{nameof(Order.RequestItems)}",
+					nameof(Supply.SupplyDetails)
+				);
+				if (updatedSupply != null)
+				{
+					updatedSupply.FulfillmentStatus = CalculateFulfillmentStatus(updatedSupply);
+					updatedSupply.ModificationDate = DateTime.UtcNow;
+					updatedSupply.ModifiedBy = _currentUserService.UserId;
+					await _supplyRepository.UpdateAsync(updatedSupply);
+				}
+
 				_logger.LogInformation("Supply detail deleted successfully. SupplyId: {SupplyId}, DetailId: {DetailId}, User: {UserId}", 
 					supplyId, detailId, _currentUserService.UserId);
 
@@ -595,9 +732,9 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
 			}
 		}
 
-		public async Task<APIOperationResponse<bool>> UpdateStatusAsync(long id, SupplyStatus newStatus)
+		public async Task<APIOperationResponse<bool>> UpdateSubmissionStatusAsync(long id, SupplySubmissionStatus newStatus)
 		{
-			_logger.LogInformation("Updating supply status. SupplyId: {SupplyId}, NewStatus: {NewStatus}, User: {UserId}", 
+			_logger.LogInformation("Updating supply submission status. SupplyId: {SupplyId}, NewStatus: {NewStatus}, User: {UserId}", 
 				id, newStatus, _currentUserService.UserId);
 
 			try
@@ -618,45 +755,77 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
 					return APIOperationResponse<bool>.Fail(ResponseType.NotFound, "Supply not found");
 				}
 
-				// Validate status transition
-				var validationResult = ValidateStatusTransition(supply.Status, newStatus);
-				if (!validationResult.IsValid)
+				// Business Rule: If Submitted and Fully supplied, cannot modify ever
+				if (supply.SubmissionStatus == SupplySubmissionStatus.Submitted && supply.FulfillmentStatus == SupplyFulfillmentStatus.Fully)
 				{
-					_logger.LogWarning("Invalid status transition. SupplyId: {SupplyId}, CurrentStatus: {CurrentStatus}, NewStatus: {NewStatus}, Error: {Error}, User: {UserId}", 
-						id, supply.Status, newStatus, validationResult.ErrorMessage, _currentUserService.UserId);
-					return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, validationResult.ErrorMessage);
+					_logger.LogWarning("Cannot update submission status. Supply is Submitted and Fully supplied. SupplyId: {SupplyId}, User: {UserId}", 
+						id, _currentUserService.UserId);
+					return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, 
+						"Cannot modify submission status. Supply is Submitted and Fully supplied and cannot be modified.");
 				}
 
-				// Auto-calculate status if transitioning to Completed
-				if (newStatus == SupplyStatus.Completed)
+				// Validate status transition: Can only transition from Draft to Submitted
+				if (supply.SubmissionStatus == SupplySubmissionStatus.Submitted && newStatus == SupplySubmissionStatus.Draft)
 				{
-					var calculatedStatus = CalculateSupplyStatus(supply);
-					if (calculatedStatus != SupplyStatus.Completed)
-					{
-						_logger.LogWarning("Cannot set status to Completed. Supply is not fully fulfilled. SupplyId: {SupplyId}, CalculatedStatus: {CalculatedStatus}, User: {UserId}", 
-							id, calculatedStatus, _currentUserService.UserId);
-						return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, 
-							$"Cannot set status to Completed. Supply is currently {calculatedStatus}. All items must be fully supplied.");
-					}
+					_logger.LogWarning("Invalid status transition. Cannot change from Submitted to Draft. SupplyId: {SupplyId}, User: {UserId}", 
+						id, _currentUserService.UserId);
+					return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, 
+						"Cannot change submission status from Submitted to Draft.");
 				}
 
-				var oldStatus = supply.Status;
-				supply.Status = newStatus;
+				var oldStatus = supply.SubmissionStatus;
+				supply.SubmissionStatus = newStatus;
 				supply.ModificationDate = DateTime.UtcNow;
 				supply.ModifiedBy = _currentUserService.UserId;
 
 				await _supplyRepository.UpdateAsync(supply);
-				_logger.LogInformation("Supply status updated successfully. SupplyId: {SupplyId}, OldStatus: {OldStatus}, NewStatus: {NewStatus}, User: {UserId}", 
+				_logger.LogInformation("Supply submission status updated successfully. SupplyId: {SupplyId}, OldStatus: {OldStatus}, NewStatus: {NewStatus}, User: {UserId}", 
 					id, oldStatus, newStatus, _currentUserService.UserId);
 
-				return APIOperationResponse<bool>.Success(true, "Supply status updated successfully");
+				return APIOperationResponse<bool>.Success(true, "Supply submission status updated successfully");
 			}
 			catch (Exception ex)
 			{
-				_logger.LogError(ex, "Error updating supply status. SupplyId: {SupplyId}, NewStatus: {NewStatus}, User: {UserId}", 
+				_logger.LogError(ex, "Error updating supply submission status. SupplyId: {SupplyId}, NewStatus: {NewStatus}, User: {UserId}", 
 					id, newStatus, _currentUserService.UserId);
 				return APIOperationResponse<bool>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
 			}
+		}
+
+
+		/// <summary>
+		/// Calculates already supplied quantities per item for an order
+		/// </summary>
+		/// <param name="orderId">The order ID</param>
+		/// <param name="excludeSupplyId">Optional supply ID to exclude from calculation (to avoid double counting)</param>
+		private async Task<Dictionary<long, long>> CalculateAlreadySuppliedQuantitiesAsync(long orderId, long? excludeSupplyId = null)
+		{
+			// Get all existing supplies for this order (excluding deleted)
+			var existingSupplies = await _supplyRepository.FindAsync(
+				s => s.OrderId == orderId && !s.IsDeleted,
+				false,
+				nameof(Supply.SupplyDetails)
+			);
+
+			// Get all supply details for these supplies (excluding the specified supply if provided)
+			var supplyIds = existingSupplies
+				.Where(s => !excludeSupplyId.HasValue || s.Id != excludeSupplyId.Value)
+				.Select(s => s.Id)
+				.ToList();
+
+			if (!supplyIds.Any())
+			{
+				return new Dictionary<long, long>();
+			}
+
+			var existingSupplyDetails = await _supplyDetailRepository.FindAsync(
+				sd => supplyIds.Contains(sd.SupplyId) && !sd.IsDeleted
+			);
+
+			// Calculate already supplied quantities per item
+			return existingSupplyDetails
+				.GroupBy(sd => sd.ItemId)
+				.ToDictionary(g => g.Key, g => g.Sum(sd => sd.Quantity));
 		}
 
 		/// <summary>
@@ -704,49 +873,18 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
 		}
 
 		/// <summary>
-		/// Validates status transition rules
+		/// Calculates the supply fulfillment status based on supplied quantities vs requested quantities
 		/// </summary>
-		private (bool IsValid, string ErrorMessage) ValidateStatusTransition(SupplyStatus currentStatus, SupplyStatus newStatus)
-		{
-			// Same status is always valid
-			if (currentStatus == newStatus)
-				return (true, string.Empty);
-
-			 
-			var validTransitions = new Dictionary<SupplyStatus, List<SupplyStatus>>
-			{
-				{ SupplyStatus.Draft, new List<SupplyStatus> { SupplyStatus.Partial, SupplyStatus.Completed, SupplyStatus.Cancelled } },
-				{ SupplyStatus.Partial, new List<SupplyStatus> { SupplyStatus.Completed, SupplyStatus.Cancelled } },
-				{ SupplyStatus.Completed, new List<SupplyStatus>() }, // Cannot transition from Completed
-				{ SupplyStatus.Cancelled, new List<SupplyStatus>() } // Cannot transition from Cancelled
-			};
-
-			if (!validTransitions.ContainsKey(currentStatus))
-			{
-				return (false, $"Unknown current status: {currentStatus}");
-			}
-
-			if (!validTransitions[currentStatus].Contains(newStatus))
-			{
-				return (false, $"Cannot transition from {currentStatus} to {newStatus}. Valid transitions: {string.Join(", ", validTransitions[currentStatus])}");
-			}
-
-			return (true, string.Empty);
-		}
-
-		/// <summary>
-		/// Calculates the supply status based on supplied quantities vs requested quantities
-		/// </summary>
-		private SupplyStatus CalculateSupplyStatus(Supply supply)
+		private SupplyFulfillmentStatus CalculateFulfillmentStatus(Supply supply)
 		{
 			if (supply.SupplyDetails == null || !supply.SupplyDetails.Any(sd => !sd.IsDeleted))
 			{
-				return SupplyStatus.Draft;
+				return SupplyFulfillmentStatus.Partial;
 			}
 
 			if (supply.Order?.RequestItems == null || !supply.Order.RequestItems.Any(ri => !ri.IsDeleted))
 			{
-				return SupplyStatus.Draft;
+				return SupplyFulfillmentStatus.Partial;
 			}
 
 			// Group supply details by item
@@ -773,11 +911,9 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
 			}
 
 			if (allCompleted && anySupplied)
-				return SupplyStatus.Completed;
-			else if (anySupplied)
-				return SupplyStatus.Partial;
+				return SupplyFulfillmentStatus.Fully;
 			else
-				return SupplyStatus.Draft;
+				return SupplyFulfillmentStatus.Partial;
 		}
 
 		/// <summary>

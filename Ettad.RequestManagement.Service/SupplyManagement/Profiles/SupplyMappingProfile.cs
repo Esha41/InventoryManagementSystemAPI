@@ -32,7 +32,8 @@ namespace Ettad.RequestManagement.Service.SupplyManagement.Profiles
                 .ForMember(dest => dest.IsDeleted, opt => opt.Ignore())
                 .ForMember(dest => dest.DeletionDate, opt => opt.Ignore())
                 .ForMember(dest => dest.DeletedBy, opt => opt.Ignore())
-                .ForMember(dest => dest.Status, opt => opt.Ignore()) // Set in service
+                .ForMember(dest => dest.SubmissionStatus, opt => opt.Ignore()) // Set in service
+                .ForMember(dest => dest.FulfillmentStatus, opt => opt.Ignore()) // Set in service
                 .ForMember(dest => dest.Order, opt => opt.Ignore())
                 .ForMember(dest => dest.ReceiverRank, opt => opt.Ignore())
                 .ForMember(dest => dest.SupplyDetails, opt => opt.Ignore()); // Handle separately
@@ -47,7 +48,8 @@ namespace Ettad.RequestManagement.Service.SupplyManagement.Profiles
             CreateMap<UpdateSupplyDto, Supply>()
                 .ForMember(dest => dest.Id, opt => opt.Ignore())
                 .ForMember(dest => dest.OrderId, opt => opt.Ignore())
-                .ForMember(dest => dest.Status, opt => opt.Ignore())
+                .ForMember(dest => dest.SubmissionStatus, opt => opt.Ignore())
+                .ForMember(dest => dest.FulfillmentStatus, opt => opt.Ignore())
                 .ForMember(dest => dest.CreationDate, opt => opt.Ignore())
                 .ForMember(dest => dest.CreatedBy, opt => opt.Ignore())
                 .ForMember(dest => dest.ModificationDate, opt => opt.Ignore())

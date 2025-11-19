@@ -10,7 +10,8 @@ namespace Ettad.Data.Entities
         public string? RecieverName { get; set; }
         public long? ReceiverRankId { get; set; }
         public string? RecieverMilitaryId { get; set; }
-        public SupplyStatus Status { get; set; }
+        public SupplySubmissionStatus SubmissionStatus { get; set; }
+        public SupplyFulfillmentStatus FulfillmentStatus { get; set; }
         public string? Notes { get; set; }
 
         #region Navigation Properties

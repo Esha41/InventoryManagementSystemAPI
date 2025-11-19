@@ -15,7 +15,7 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
 		Task<APIOperationResponse<long>> AddSupplyDetailAsync(long supplyId, CreateSupplyDetailDto detailDto);
 		Task<APIOperationResponse<bool>> UpdateSupplyDetailAsync(long supplyId, long detailId, UpdateSupplyDetailDto detailDto);
 		Task<APIOperationResponse<bool>> DeleteSupplyDetailAsync(long supplyId, long detailId);
-		Task<APIOperationResponse<bool>> UpdateStatusAsync(long id, SupplyStatus newStatus);
+		Task<APIOperationResponse<bool>> UpdateSubmissionStatusAsync(long id, SupplySubmissionStatus newStatus);
 	}
 }
 

@@ -3,6 +3,7 @@ using FluentValidation;
 using Microsoft.EntityFrameworkCore;
 using Ettad.CrossCutting.Data.Repository;
 using Ettad.Data.Entities;
+using Ettad.Data.Enums;
 using Ettad.Inventory.Service.Inventories.Dtos;
 using Ettad.ResponseHandler.Consts;
 using Ettad.ResponseHandler.Models;
@@ -20,6 +21,7 @@ namespace Ettad.Inventory.Service.Inventories
         private readonly ICrossCuttingRepository<Order> _orderRepository;
         private readonly ICrossCuttingRepository<RequestItem> _requestItemRepository;
         private readonly ICrossCuttingRepository<SupplyDetail> _supplyDetailsRepository;
+        private readonly ICrossCuttingRepository<Supply> _supplyRepository;
         private readonly IMapper _mapper;
         private readonly IValidator<CreateInventoryDto> _createValidator;
         private readonly IValidator<UpdateInventoryDto> _updateValidator;
@@ -32,6 +34,7 @@ namespace Ettad.Inventory.Service.Inventories
             ICrossCuttingRepository<Order> orderRepository,
             ICrossCuttingRepository<RequestItem> requestItemRepository,
             ICrossCuttingRepository<SupplyDetail> supplyDetailsRepository,
+            ICrossCuttingRepository<Supply> supplyRepository,
             IMapper mapper,
             IValidator<CreateInventoryDto> createValidator,
             IValidator<UpdateInventoryDto> updateValidator,
@@ -43,6 +46,7 @@ namespace Ettad.Inventory.Service.Inventories
             _orderRepository = orderRepository;
             _requestItemRepository = requestItemRepository;
             _supplyDetailsRepository = supplyDetailsRepository;
+            _supplyRepository = supplyRepository;
             _mapper = mapper;
             _createValidator = createValidator;
             _updateValidator = updateValidator;
@@ -302,6 +306,28 @@ namespace Ettad.Inventory.Service.Inventories
                     return APIOperationResponse<OrderSupplySuggestionDto>.Fail(ResponseType.BadRequest, "Order has no items to supply");
                 }
 
+				// Get all existing supplies for this order (excluding deleted)
+				var existingSuppliesForOrder = await _supplyRepository.FindAsync(
+					s => s.OrderId == orderId && !s.IsDeleted,
+					false,
+					nameof(Supply.SupplyDetails)
+				);
+
+                // Get all supply details for these supplies
+                var supplyIds = existingSuppliesForOrder.Select(s => s.Id).ToList();
+                var existingSupplyDetails = supplyIds.Any()
+                    ? await _supplyDetailsRepository.FindAsync(
+                        sd => supplyIds.Contains(sd.SupplyId) && !sd.IsDeleted)
+                    : new List<SupplyDetail>();
+
+                // Calculate already supplied quantities per item
+                var suppliedQuantitiesByItem = existingSupplyDetails
+                    .GroupBy(sd => sd.ItemId)
+                    .ToDictionary(g => g.Key, g => g.Sum(sd => sd.Quantity));
+
+                _logger.LogInformation("Found existing supplies for order. OrderId: {OrderId}, SuppliedItemsCount: {Count}", 
+                    orderId, suppliedQuantitiesByItem.Count);
+
                 var suggestion = new OrderSupplySuggestionDto
                 {
                     OrderId = order.Id,
@@ -311,13 +337,31 @@ namespace Ettad.Inventory.Service.Inventories
                 };
 
                 bool allItemsCanBeFulfilled = true;
+                bool hasItemsNeedingSupply = false;
 
                 _logger.LogInformation("Processing {ItemCount} items for supply suggestion. OrderId: {OrderId}", 
                     order.RequestItems.Count, orderId);
 
                 // Process each request item
-                foreach (var requestItem in order.RequestItems)
+                foreach (var requestItem in order.RequestItems.Where(ri => !ri.IsDeleted))
                 {
+                    // Calculate already supplied quantity for this item
+                    var alreadySuppliedQuantity = suppliedQuantitiesByItem.TryGetValue(requestItem.ItemId, out var supplied) ? supplied : 0;
+                    var remainingQuantityNeeded = requestItem.Quantity - alreadySuppliedQuantity;
+
+                    _logger.LogInformation("Item supply status. ItemId: {ItemId}, Requested: {Requested}, AlreadySupplied: {Supplied}, RemainingNeeded: {Remaining}, OrderId: {OrderId}",
+                        requestItem.ItemId, requestItem.Quantity, alreadySuppliedQuantity, remainingQuantityNeeded, orderId);
+
+                    // Skip items that are already fully supplied
+                    if (remainingQuantityNeeded <= 0)
+                    {
+                        _logger.LogInformation("Item already fully supplied. ItemId: {ItemId}, Requested: {Requested}, Supplied: {Supplied}, OrderId: {OrderId}",
+                            requestItem.ItemId, requestItem.Quantity, alreadySuppliedQuantity, orderId);
+                        continue;
+                    }
+
+                    hasItemsNeedingSupply = true;
+
                     var itemSuggestion = new OrderItemSupplySuggestionDto
                     {
                         RequestItemId = requestItem.Id,
@@ -328,8 +372,8 @@ namespace Ettad.Inventory.Service.Inventories
                         LotSuggestions = new List<SupplyLotSuggestionDto>()
                     };
 
-                    // Get available lots for the required quantity using our optimized method
-                    var availableLotsResponse = await GetAvailableLotsForQuantityAsync(requestItem.ItemId, requestItem.Quantity, depotIds);
+                    // Get available lots for the remaining quantity needed
+                    var availableLotsResponse = await GetAvailableLotsForQuantityAsync(requestItem.ItemId, remainingQuantityNeeded, depotIds);
 
                     if (!availableLotsResponse.Succeeded)
                     {
@@ -340,10 +384,10 @@ namespace Ettad.Inventory.Service.Inventories
 
                     var availableLots = availableLotsResponse.Data;
 
-                    _logger.LogInformation("Found {LotCount} available lots for item quantity. ItemId: {ItemId}, Required: {Required}, OrderId: {OrderId}",
-                        availableLots.Count, requestItem.ItemId, requestItem.Quantity, orderId);
+                    _logger.LogInformation("Found {LotCount} available lots for item. ItemId: {ItemId}, RemainingNeeded: {Remaining}, OrderId: {OrderId}",
+                        availableLots.Count, requestItem.ItemId, remainingQuantityNeeded, orderId);
 
-                    long remainingQuantity = requestItem.Quantity;
+                    long remainingQuantity = remainingQuantityNeeded;
 
                     // Allocate quantities from available lots using FEFO logic
                     foreach (var lotDetail in availableLots)
@@ -359,7 +403,7 @@ namespace Ettad.Inventory.Service.Inventories
                             ItemId = lotDetail.ItemId,
                             ItemName = lotDetail.ItemName,
                             Lot = lotDetail.Lot,
-                            AvailableQuantity = lotDetail.RemainingQuantity, // Use remaining quantity as available
+                            AvailableQuantity = lotDetail.RemainingQuantity,
                             SuggestedQuantity = quantityToAllocate,
                             ExpiryDate = lotDetail.ExpiryDate,
                             InventoryId = lotDetail.InventoryId,
@@ -372,21 +416,32 @@ namespace Ettad.Inventory.Service.Inventories
                         remainingQuantity -= quantityToAllocate;
                     }
 
-                    itemSuggestion.CanFulfillCompletely = (itemSuggestion.SuggestedQuantity >= itemSuggestion.RequestedQuantity);
+                    // Check if we can fulfill the remaining quantity needed
+                    itemSuggestion.CanFulfillCompletely = (itemSuggestion.SuggestedQuantity >= remainingQuantityNeeded);
 
                     if (!itemSuggestion.CanFulfillCompletely)
                     {
                         allItemsCanBeFulfilled = false;
-                        _logger.LogWarning("Insufficient available inventory for item. ItemId: {ItemId}, Requested: {Requested}, Available: {Available}, OrderId: {OrderId}",
-                            requestItem.ItemId, requestItem.Quantity, itemSuggestion.SuggestedQuantity, orderId);
+                        _logger.LogWarning("Insufficient available inventory for remaining quantity. ItemId: {ItemId}, RemainingNeeded: {Remaining}, Available: {Available}, OrderId: {OrderId}",
+                            requestItem.ItemId, remainingQuantityNeeded, itemSuggestion.SuggestedQuantity, orderId);
                     }
 
                     suggestion.ItemSuggestions.Add(itemSuggestion);
                 }
 
+                // If order is fully supplied, return empty suggestion
+                if (!hasItemsNeedingSupply)
+                {
+                    suggestion.CanFulfillCompletely = true;
+                    suggestion.Message = "Order is already fully supplied. No suggestions needed.";
+                    _logger.LogInformation("Order is fully supplied. OrderId: {OrderId}, User: {UserId}", 
+                        orderId, _currentUserService.UserId);
+                    return APIOperationResponse<OrderSupplySuggestionDto>.Success(suggestion);
+                }
+
                 suggestion.CanFulfillCompletely = allItemsCanBeFulfilled;
                 suggestion.Message = allItemsCanBeFulfilled 
-                    ? "All items can be fulfilled from available inventory" 
+                    ? "All remaining items can be fulfilled from available inventory" 
                     : "Some items cannot be fully fulfilled due to insufficient inventory";
 
                 _logger.LogInformation("Supply suggestion generated. OrderId: {OrderId}, CanFulfillCompletely: {CanFulfill}, ItemCount: {ItemCount}", 
