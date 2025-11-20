@@ -32,7 +32,7 @@ namespace Ettad.EntityFramework.Configurations
                    .IsRequired();
 
             // Optional properties
-            builder.Property(x => x.ApproverEmployeeId)
+            builder.Property(x => x.ApproverUserId)
                    .IsRequired(false);
 
             builder.Property(x => x.Comments)
