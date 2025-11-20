@@ -23,6 +23,9 @@ namespace Ettad.RequestManagement.Service.Orders
         private readonly ICrossCuttingRepository<Order> _orderRepository;
         private readonly ICrossCuttingRepository<RequestItem> _requestItemRepository;
         private readonly ICrossCuttingRepository<RequestPurpose> _requestPurposeRepository;
+        private readonly ICrossCuttingRepository<AllowanceItem> _allowanceItemRepository;
+        private readonly ICrossCuttingRepository<Supply> _supplyRepository;
+        private readonly ICrossCuttingRepository<SupplyDetail> _supplyDetailRepository;
         private readonly IMapper _mapper;
         private readonly IValidator<CreateOrderDto> _createValidator;
         private readonly ICurrentUserService _currentUserService;
@@ -35,6 +38,9 @@ namespace Ettad.RequestManagement.Service.Orders
             ICrossCuttingRepository<Order> orderRepository,
             ICrossCuttingRepository<RequestItem> requestItemRepository,
             ICrossCuttingRepository<RequestPurpose> requestPurposeRepository,
+            ICrossCuttingRepository<AllowanceItem> allowanceItemRepository,
+            ICrossCuttingRepository<Supply> supplyRepository,
+            ICrossCuttingRepository<SupplyDetail> supplyDetailRepository,
             IMapper mapper,
             IValidator<CreateOrderDto> createValidator,
             ICurrentUserService currentUserService,
@@ -46,6 +52,9 @@ namespace Ettad.RequestManagement.Service.Orders
             _orderRepository = orderRepository;
             _requestItemRepository = requestItemRepository;
             _requestPurposeRepository = requestPurposeRepository;
+            _allowanceItemRepository = allowanceItemRepository;
+            _supplyRepository = supplyRepository;
+            _supplyDetailRepository = supplyDetailRepository;
             _mapper = mapper;
             _createValidator = createValidator;
             _currentUserService = currentUserService;
@@ -320,8 +329,12 @@ namespace Ettad.RequestManagement.Service.Orders
                 // Additional validation for orders from allowance
                 if (inputDto.IsFromAllowance)
                 {
-                    _logger.LogInformation("Allowance order validation passed. DepartmentId: {DepartmentId}, User: {UserId}", 
-                        departmentId.Value, currentUserId);
+                    var allowanceValidationResult = await ValidateAllowanceForOrderAsync(inputDto.RequestItems, departmentId.Value);
+                    if (!allowanceValidationResult.IsValid)
+                    {
+                        var errorMessage = string.Join("; ", allowanceValidationResult.Errors);
+                        return APIOperationResponse<long>.Fail(ResponseType.BadRequest, errorMessage);
+                    }
                 }
 
                 // Ensure request purpose is for orders
@@ -634,8 +647,184 @@ namespace Ettad.RequestManagement.Service.Orders
                 return APIOperationResponse<bool>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
             }
         }
+
+        public async Task<APIOperationResponse<AllowanceVerificationDto>> VerifyItemAllowanceAsync(long itemId, long requestedQuantity)
+        {
+            try
+            {
+                var departmentId = _currentUserService.DepartmentId;
+                if (!departmentId.HasValue || departmentId.Value <= 0)
+                {
+                    return APIOperationResponse<AllowanceVerificationDto>.Fail(ResponseType.BadRequest, 
+                        "Department not found for current user. Cannot verify allowance.");
+                }
+
+                var currentYear = DateTime.UtcNow.Year;
+                var verification = await CalculateAllowanceAvailabilityAsync(itemId, departmentId.Value, currentYear);
+                verification.RequestedQuantity = requestedQuantity;
+
+                return APIOperationResponse<AllowanceVerificationDto>.Success(verification);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error verifying item allowance. ItemId: {ItemId}", itemId);
+                return APIOperationResponse<AllowanceVerificationDto>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Validates allowance for all items in an order
+        /// </summary>
+        private async Task<(bool IsValid, List<string> Errors)> ValidateAllowanceForOrderAsync(
+            List<CreateUpdateRequestItemDto> requestItems, 
+            long departmentId)
+        {
+            var errors = new List<string>();
+            var currentYear = DateTime.UtcNow.Year;
+
+            if (requestItems == null || !requestItems.Any())
+            {
+                errors.Add("Order must have at least one item");
+                return (false, errors);
+            }
+
+            // Get all unique item IDs
+            var itemIds = requestItems.Select(ri => ri.ItemId).Distinct().ToList();
+
+            // Get all allowance items for this department and year in one query
+            var allowanceItems = await _allowanceItemRepository.FindAsync(
+                ai => ai.DepartmentId == departmentId && 
+                      ai.Year == currentYear && 
+                      !ai.IsDeleted
+            );
+
+            var allowanceByItemId = allowanceItems.ToDictionary(ai => ai.ItemId, ai => ai.Quantity);
+
+            // Validate each item
+            foreach (var requestItem in requestItems)
+            {
+                // Check if item exists in allowance
+                if (!allowanceByItemId.ContainsKey(requestItem.ItemId))
+                {
+                    errors.Add($"Item {requestItem.ItemId} is not found in the department's allowance for year {currentYear}");
+                    continue;
+                }
+
+                // Calculate allowance availability
+                var verification = await CalculateAllowanceAvailabilityAsync(requestItem.ItemId, departmentId, currentYear);
+
+                // Check if requested quantity can be fulfilled
+                if (!verification.CanFulfillRequest || verification.AvailableQuantity < requestItem.Quantity)
+                {
+                    errors.Add($"Item {requestItem.ItemId}: Requested quantity ({requestItem.Quantity}) exceeds available allowance. " +
+                              $"Available: {verification.AvailableQuantity}, " +
+                              $"Original Allowance: {verification.OriginalAllowanceQuantity}, " +
+                              $"Reserved: {verification.ReservedByOrdersUnderProcessing}, " +
+                              $"Used: {verification.UsedQuantity}");
+                }
+            }
+
+            return (errors.Count == 0, errors);
+        }
+
+        /// <summary>
+        /// Calculates allowance availability details for a specific item
+        /// </summary>
+        private async Task<AllowanceVerificationDto> CalculateAllowanceAvailabilityAsync(
+            long itemId, 
+            long departmentId, 
+            int year)
+        {
+            var verification = new AllowanceVerificationDto
+            {
+                ItemId = itemId,
+                DepartmentId = departmentId,
+                Year = year
+            };
+
+            // Get original allowance quantity
+            var allowanceItem = await _allowanceItemRepository.FindOneAsync(
+                ai => ai.ItemId == itemId && 
+                      ai.DepartmentId == departmentId && 
+                      ai.Year == year && 
+                      !ai.IsDeleted
+            );
+
+            if (allowanceItem == null)
+            {
+                verification.ItemExistsInAllowance = false;
+                verification.OriginalAllowanceQuantity = 0;
+                verification.ReservedByOrdersUnderProcessing = 0;
+                verification.UsedQuantity = 0;
+                return verification;
+            }
+
+            verification.ItemExistsInAllowance = true;
+            verification.OriginalAllowanceQuantity = allowanceItem.Quantity;
+
+            // Get all orders for this department that are from allowance
+            var departmentOrders = await _orderRepository.FindAsync(
+                o => o.DepartmentId == departmentId && 
+                     o.IsFromAllowance && 
+                     o.CreationDate.Year == year &&
+                     !o.IsDeleted
+            );
+
+            var orderIds = departmentOrders.Select(o => o.Id).ToList();
+
+            if (!orderIds.Any())
+            {
+                verification.ReservedByOrdersUnderProcessing = 0;
+                verification.UsedQuantity = 0;
+                return verification;
+            }
+
+            // Get all supplies for these orders
+            var supplies = await _supplyRepository.FindAsync(
+                s => orderIds.Contains(s.OrderId) && !s.IsDeleted,
+                false,
+                nameof(Supply.SupplyDetails)
+            );
+
+            // Separate Draft and Submitted supplies
+            var draftSupplies = supplies.Where(s => s.SubmissionStatus == SupplySubmissionStatus.Draft).ToList();
+            var submittedSupplies = supplies.Where(s => s.SubmissionStatus == SupplySubmissionStatus.Submitted).ToList();
+
+            // Calculate ReservedByOrdersUnderProcessing from Draft supplies
+            var draftSupplyIds = draftSupplies.Select(s => s.Id).ToList();
+            if (draftSupplyIds.Any())
+            {
+                var draftSupplyDetails = await _supplyDetailRepository.FindAsync(
+                    sd => draftSupplyIds.Contains(sd.SupplyId) && 
+                          sd.ItemId == itemId && 
+                          !sd.IsDeleted
+                );
+
+                verification.ReservedByOrdersUnderProcessing = draftSupplyDetails.Sum(sd => sd.Quantity);
+            }
+            else
+            {
+                verification.ReservedByOrdersUnderProcessing = 0;
+            }
+
+            // Calculate UsedQuantity from Submitted supplies
+            var submittedSupplyIds = submittedSupplies.Select(s => s.Id).ToList();
+            if (submittedSupplyIds.Any())
+            {
+                var submittedSupplyDetails = await _supplyDetailRepository.FindAsync(
+                    sd => submittedSupplyIds.Contains(sd.SupplyId) && 
+                          sd.ItemId == itemId && 
+                          !sd.IsDeleted
+                );
+
+                verification.UsedQuantity = submittedSupplyDetails.Sum(sd => sd.Quantity);
+            }
+            else
+            {
+                verification.UsedQuantity = 0;
+            }
+
+            return verification;
+        }
     }
 }
-
-
-
