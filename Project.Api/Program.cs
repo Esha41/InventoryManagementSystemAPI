@@ -7,13 +7,19 @@ using Ettad.CrossCutting.Comman.Monitoring;
 using Ettad.CrossCutting.Data.Repository;
 using Ettad.EntityFramework.DataBaseContext;
 using Ettad.EntityFramework.DataBaseContext.DataSeeding;
+using Ettad.EntityFramework.Interceptors;
+using Ettad.Inventory.Service;
 using Ettad.Lookups.Services.Contracts;
 using Ettad.Lookups.Services.Implementation;
+using Ettad.Notification.Service;
 using Ettad.Repository;
+using Ettad.RequestManagement.Service;
 using Ettad.User.Services.DTO;
 using Ettad.User.Services.Helpers;
 using Ettad.User.Services.Interfaces;
 using Ettad.Workflow.Service;
+using Ettad.Workflows.Service.Imeplemention;
+using Ettad.Workflows.Service.Interface;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -22,13 +28,9 @@ using Microsoft.OpenApi.Models;
 using Moujam.Casiher.Comman.Models;
 using Serilog;
 using Serilog.Events;
-using Ettad.Inventory.Service;
+using System.Reflection;
 using System.Text;
 using System.Text.Json;
-using Ettad.EntityFramework.Interceptors;
-using Ettad.RequestManagement.Service;
-using Ettad.Notification.Service;
-using System.Reflection;
 
 // Configure Serilog
 Log.Logger = new LoggerConfiguration()
@@ -73,6 +75,7 @@ try
         .AddApplicationPart(typeof(Ettad.Lookups.Domain.API.Controllers.DepartmentController).Assembly)
         .AddApplicationPart(typeof(Ettad.RequestManagement.API.Controllers.OrderController).Assembly)
         .AddApplicationPart(typeof(Ettad.Notification.API.Controllers.NotificationController).Assembly)
+        .AddApplicationPart(typeof(Ettad.Workflows.API.Controllers.WorkflowApprovalController).Assembly)
         .AddJsonOptions(options =>
         {
             options.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
@@ -87,7 +90,7 @@ try
     builder.Services.AddScoped(typeof(ILookupService<,>), typeof(LookupService<,>));
 
     builder.Services.AddScoped<IEmailSender, EmailSender>();
-
+    builder.Services.AddScoped<IWorkflowApprovalService, WorkflowApprovalService>();
     builder.Services.AddScoped<IFileStorageService, FileStorageService>();
 
     builder.Services.Configure<JwtOptions>(

@@ -18,6 +18,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Project.Data\Ettad.Data.csproj" />
     <ProjectReference Include="..\Project.User.Services\Ettad.User.Services.csproj" />
+    <ProjectReference Include="..\Ettad.Notification.Service\Ettad.Notification.Service.csproj" />
   </ItemGroup>
 
 </Project>
