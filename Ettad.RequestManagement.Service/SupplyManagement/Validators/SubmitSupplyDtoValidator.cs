@@ -17,10 +17,6 @@ namespace Ettad.RequestManagement.Service.SupplyManagement.Validators
             RuleFor(x => x.RecieverMilitaryId)
                 .NotEmpty().WithMessage("Receiver military ID is required.")
                 .MaximumLength(255).WithMessage("Receiver military ID cannot exceed 255 characters.");
-
-            RuleFor(x => x.Notes)
-                .NotEmpty().WithMessage("Notes are required.")
-                .MaximumLength(2000).WithMessage("Notes cannot exceed 2000 characters.");
         }
     }
 }
