@@ -13,6 +13,7 @@ using Ettad.Notification.Service;
 using Microsoft.AspNetCore.Identity;
 using Ettad.Comman.Idenitity;
 using Microsoft.Extensions.Logging;
+using Ettad.Workflows.Service.Interface;
 
 namespace Ettad.RequestManagement.Service.Returns
 {
@@ -21,6 +22,7 @@ namespace Ettad.RequestManagement.Service.Returns
         private readonly ICrossCuttingRepository<Return> _returnRepository;
         private readonly ICrossCuttingRepository<RequestItem> _requestItemRepository;
         private readonly ICrossCuttingRepository<RequestPurpose> _requestPurposeRepository;
+        private readonly IWorkflowApprovalService _workflowApprovalService;
         private readonly IMapper _mapper;
         private readonly IValidator<CreateReturnDto> _createValidator;
         private readonly ICurrentUserService _currentUserService;
@@ -33,6 +35,7 @@ namespace Ettad.RequestManagement.Service.Returns
             ICrossCuttingRepository<Return> returnRepository,
             ICrossCuttingRepository<RequestItem> requestItemRepository,
             ICrossCuttingRepository<RequestPurpose> requestPurposeRepository,
+            IWorkflowApprovalService workflowApprovalService,
             IMapper mapper,
             IValidator<CreateReturnDto> createValidator,
             ICurrentUserService currentUserService,
@@ -44,6 +47,7 @@ namespace Ettad.RequestManagement.Service.Returns
             _returnRepository = returnRepository;
             _requestItemRepository = requestItemRepository;
             _requestPurposeRepository = requestPurposeRepository;
+            _workflowApprovalService = workflowApprovalService;
             _mapper = mapper;
             _createValidator = createValidator;
             _currentUserService = currentUserService;
@@ -198,6 +202,22 @@ namespace Ettad.RequestManagement.Service.Returns
 
                 // Add to repository
                 var createdReturn = await _returnRepository.AddAsync(returnEntity);
+
+                // Start workflow for the return
+                var workflowStarted = await _workflowApprovalService.StartWorkflowAsync(
+                    createdReturn.Id,
+                    WorkflowType.Return);
+
+                if (workflowStarted)
+                {
+                    _logger.LogInformation("Workflow started successfully for return. ReturnId: {ReturnId}, User: {UserId}",
+                        createdReturn.Id, currentUserId);
+                }
+                else
+                {
+                    _logger.LogWarning("Failed to start workflow for return. ReturnId: {ReturnId}, User: {UserId}",
+                        createdReturn.Id, currentUserId);
+                }
 
                 await NotifyReturnAsync(
                     "Return Created",

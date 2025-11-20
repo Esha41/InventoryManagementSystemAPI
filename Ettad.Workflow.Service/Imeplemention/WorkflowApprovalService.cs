@@ -247,7 +247,7 @@ namespace Ettad.Workflows.Service.Imeplemention
                 }
 
                 // Log action with original status
-                await LogStepActionAsync(currentStep.Id, oldStatus, model.Action, model.Comments, _currentUserService.UserName);
+                await LogStepActionAsync(currentStep.Id, currentStep.WorkflowStepId, oldStatus, model.Action, model.Comments, _currentUserService.UserName);
 
                 await _context.SaveChangesAsync();
                 await transaction.CommitAsync();
@@ -575,11 +575,12 @@ namespace Ettad.Workflows.Service.Imeplemention
         }
 
         // Helper: log step action
-        private async Task LogStepActionAsync(int stepId, RequestStatus oldStatus, RequestStatus newStatus, string comments, string changedBy)
+        private async Task LogStepActionAsync(int stepId, int? workflowStepId, RequestStatus oldStatus, RequestStatus newStatus, string comments, string changedBy)
         {
             _context.WorkflowStepApprovalLog.Add(new WorkflowStepApprovalLog
             {
                 WorkflowApprovalStepId = stepId,
+                WorkflowStepId = workflowStepId,
                 OldRequestStatus = oldStatus,
                 NewRequestStatus = newStatus,
                 Comments = comments,
@@ -628,6 +629,77 @@ namespace Ettad.Workflows.Service.Imeplemention
             );
 
             return true;
+        }
+
+        /// <summary>
+        /// Start workflow for a newly created order
+        /// Gets the appropriate workflow based on workflow type and creates the first approval step
+        /// </summary>
+        /// <param name="orderId">The order ID</param>
+        /// <param name="workflowType">The workflow type to use (Order or OrderFromReAl)</param>
+        /// <returns>True if workflow was started successfully, false otherwise</returns>
+        public async Task<bool> StartWorkflowAsync(long orderId, WorkflowType workflowType)
+        {
+            try
+            {
+                // Get workflow after creating order
+                var workflow = await _context.Workflows
+                    .Include(w => w.WorkflowSteps)
+                    .FirstOrDefaultAsync(w => w.IsActive && !w.IsDeleted && w.WorkflowType == workflowType);
+
+                if (workflow != null)
+                {
+                    // Create a new row in WorkflowApprovalSteps
+                    if (workflow.WorkflowSteps != null && workflow.WorkflowSteps.Any())
+                    {
+                        // Get the first workflow step (lowest StepOrder)
+                        var firstWorkflowStep = workflow.WorkflowSteps
+                            .OrderBy(ws => ws.StepOrder)
+                            .FirstOrDefault();
+
+                        if (firstWorkflowStep != null)
+                        {
+                            var workflowApprovalStep = new WorkflowApprovalStep
+                            {
+                                WorkflowStepId = firstWorkflowStep.Id,
+                                TargetRequestId = (int)orderId,
+                                RequestType = workflowType,
+                                Status = RequestStatus.New,
+                                IsCurrent = true,
+                                CreationDate = DateTime.UtcNow,
+                                CreatedBy = _currentUserService.UserId
+                            };
+
+                            _context.WorkflowApprovalSteps.Add(workflowApprovalStep);
+                            await _context.SaveChangesAsync();
+
+                            // Notify the approver after creating the workflow approval step
+                            var approverRoles = new List<string> { firstWorkflowStep.ApplicationRoleId };
+                            if (!string.IsNullOrEmpty(firstWorkflowStep.HigherApprovalRoleId))
+                                approverRoles.Add(firstWorkflowStep.HigherApprovalRoleId);
+
+                            await _notificationHelperService.SendNotificationAsync(
+                                "New Approval Required",
+                                "A request awaits your approval.",
+                                "Request",
+                                orderId,
+                                null,
+                                approverRoles,
+                                _currentUserService.UserId
+                            );
+
+                            return true;
+                        }
+                    }
+                }
+
+                return false;
+            }
+            catch (Exception)
+            {
+                // Don't throw - allow order creation to succeed even if workflow initialization fails
+                return false;
+            }
         }
 
 
