@@ -9,6 +9,6 @@
         public int? AnnualDiscard { get; set; } 
         public string UsageLocation { get; set; }
         public int? NumberOfOfficer { get; set; }
-        public int? NumberOfOtherRank { get; set; }
+        public int? NumberOfOtherRank { get; set; } 
     }
 }

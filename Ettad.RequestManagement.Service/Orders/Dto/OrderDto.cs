@@ -15,8 +15,6 @@ namespace Ettad.RequestManagement.Service.Orders.Dto
         public string Notes { get; set; }
         public long DepartmentId { get; set; }
         public string? RequesterId { get; set; }
-        public string? RecieverId { get; set; }
-        public long? DepotId { get; set; }
         public long RequestPurposeId { get; set; }
         #endregion
 
@@ -35,9 +33,6 @@ namespace Ettad.RequestManagement.Service.Orders.Dto
         public string DepartmentNameAr { get; set; }
         public string DepartmentNameEn { get; set; }
         public string RequesterName { get; set; }
-        public string RecieverName { get; set; }
-        public string DepotNameAr { get; set; }
-        public string DepotNameEn { get; set; }
         public string RequestPurposeNameAr { get; set; }
         public string RequestPurposeNameEn { get; set; }
         public ICollection<OrderRequestItemDto> RequestItems { get; set; }

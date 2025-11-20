@@ -112,7 +112,7 @@ namespace Ettad.EntityFramework.Configurations
                     HazardDivisionId = 1,
                     CreationDate = seedDate,
                     IsDeleted = false,
-                    AmmunitionType = AmmunitionsType.Small
+                    AmmunitionType = AmmunitionType.Small
                 },
                 new Ammunition
                 {
@@ -143,7 +143,7 @@ namespace Ettad.EntityFramework.Configurations
                     HazardDivisionId = 2,
                     CreationDate = seedDate,
                     IsDeleted = false,
-                    AmmunitionType = AmmunitionsType.Small
+                    AmmunitionType = AmmunitionType.Small
                 },
                 new Ammunition
                 {
@@ -174,7 +174,7 @@ namespace Ettad.EntityFramework.Configurations
                     HazardDivisionId = 3,
                     CreationDate = seedDate,
                     IsDeleted = false,
-                    AmmunitionType = AmmunitionsType.Small
+                    AmmunitionType = AmmunitionType.Small
                 },
                 new Ammunition
                 {
@@ -205,7 +205,7 @@ namespace Ettad.EntityFramework.Configurations
                     HazardDivisionId = 1,
                     CreationDate = seedDate,
                     IsDeleted = false,
-                    AmmunitionType = AmmunitionsType.Small
+                    AmmunitionType = AmmunitionType.Small
                 },
                 new Ammunition
                 {
@@ -236,7 +236,7 @@ namespace Ettad.EntityFramework.Configurations
                     HazardDivisionId = 2,
                     CreationDate = seedDate,
                     IsDeleted = false,
-                    AmmunitionType = AmmunitionsType.Small
+                    AmmunitionType = AmmunitionType.Small
                 },
                 new Ammunition
                 {
@@ -267,7 +267,7 @@ namespace Ettad.EntityFramework.Configurations
                     HazardDivisionId = 3,
                     CreationDate = seedDate,
                     IsDeleted = false,
-                    AmmunitionType = AmmunitionsType.Small
+                    AmmunitionType = AmmunitionType.Small
                 },
                 new Ammunition
                 {
@@ -298,7 +298,7 @@ namespace Ettad.EntityFramework.Configurations
                     HazardDivisionId = 1,
                     CreationDate = seedDate,
                     IsDeleted = false,
-                    AmmunitionType = AmmunitionsType.Small
+                    AmmunitionType = AmmunitionType.Small
                 },
                 new Ammunition
                 {
@@ -329,7 +329,7 @@ namespace Ettad.EntityFramework.Configurations
                     HazardDivisionId = 2,
                     CreationDate = seedDate,
                     IsDeleted = false,
-                    AmmunitionType = AmmunitionsType.Small
+                    AmmunitionType = AmmunitionType.Small
                 },
                 new Ammunition
                 {
@@ -360,7 +360,7 @@ namespace Ettad.EntityFramework.Configurations
                     HazardDivisionId = 3,
                     CreationDate = seedDate,
                     IsDeleted = false,
-                    AmmunitionType = AmmunitionsType.Small
+                    AmmunitionType = AmmunitionType.Small
                 }
             );
         }

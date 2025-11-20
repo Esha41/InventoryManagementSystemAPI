@@ -30,4 +30,3 @@ namespace Ettad.Inventory.Service.Inventories.Dtos
         public long ItemQuantity { get; set; }
     }
 }
-

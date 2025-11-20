@@ -27,8 +27,6 @@ namespace Ettad.RequestManagement.Service.Discards.Profiles
                 .ForMember(dest => dest.DeletedBy, opt => opt.Ignore())
                 .ForMember(dest => dest.Department, opt => opt.Ignore())
                 .ForMember(dest => dest.Requester, opt => opt.Ignore())
-                .ForMember(dest => dest.Reciever, opt => opt.Ignore())
-                .ForMember(dest => dest.Depot, opt => opt.Ignore())
                 .ForMember(dest => dest.RequestPurpose, opt => opt.Ignore())
                 .ForMember(dest => dest.RequestItems, opt => opt.Ignore()) // Handle separately
                 .ForMember(dest => dest.RequestType, opt => opt.MapFrom(src => RequestType.Discard)) // Always set to Discard by backend

@@ -11,6 +11,16 @@ namespace Ettad.EntityFramework.Configurations
             builder.ToTable("InventoryDetails");
             builder.HasKey(x => x.Id);
 
+            builder.Property(x => x.Lot)
+                .IsRequired();
+
+            builder.Property(x => x.ItemQuantity)
+                .IsRequired();
+
+            builder.Property(x => x.IsLotEmpty)
+                .IsRequired()
+                .HasDefaultValue(false);
+
             builder.HasOne(x => x.Inventory)
                 .WithMany(x => x.InventoryDetails)
                 .IsRequired()
@@ -39,12 +49,6 @@ namespace Ettad.EntityFramework.Configurations
                 .WithMany()
                 .IsRequired(false)
                 .HasForeignKey(x => x.CountryId)
-                .OnDelete(DeleteBehavior.Restrict);
-
-            builder.HasOne(x => x.Manufacturer)
-                .WithMany()
-                .IsRequired(false)
-                .HasForeignKey(x => x.ManufacturerId)
                 .OnDelete(DeleteBehavior.Restrict);
         }
     }

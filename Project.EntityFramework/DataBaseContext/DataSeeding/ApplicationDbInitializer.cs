@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Ettad.EntityFramework.DataBaseContext;
 using Ettad.Data.Entities;
 using Ettad.Data.Enums;
+using System.Collections.Generic;
 
 namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
 {
@@ -23,10 +24,7 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 // Seed weapon data
                 await SeedWeaponDataAsync(context);
                 
-                // Seed explosive data
-                await SeedExplosiveDataAsync(context);
-                
-                // Seed inventory data for depots
+                // Seed inventory data based on seeded depots and ammunitions
                 await SeedInventoryDataAsync(context);
             }
             catch (Exception)
@@ -430,114 +428,74 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
 
         private static async Task SeedInventoryDataAsync(ApplicationDbContext context)
         {
+            // Avoid reseeding if inventories already exist
+            if (await context.Inventories.AnyAsync())
+            {
+                return;
+            }
+
+            // Ensure we have depots and ammunitions to seed inventories
+            var depots = await context.Depots.Where(d => !d.IsDeleted).ToListAsync();
+            var ammunitions = await context.Ammunitions.ToListAsync();
+
+            if (!depots.Any() || !ammunitions.Any())
+            {
+                return;
+            }
+
             var utcNow = DateTime.UtcNow;
-
-            // Get seeded items
-            var ammunitions = await context.Ammunitions.Where(a => !a.IsDeleted).Take(3).ToListAsync();
-            var weapons = await context.Weapons.Where(w => !w.IsDeleted).Take(2).ToListAsync();
-            var explosives = await context.Explosives.Where(e => !e.IsDeleted).Take(2).ToListAsync();
-
-            // Get depots (specifically the first one - Doha Central Depot)
-            var depots = await context.Depots.Where(d => !d.IsDeleted).Take(2).ToListAsync();
-
-            if (depots.Count == 0)
-            {
-                return; // No depots to seed
-            }
-
-            if (ammunitions.Count == 0 && weapons.Count == 0 && explosives.Count == 0)
-            {
-                return; // No items to seed
-            }
-
-            // Get first supplier, manufacturer, and country if they exist (make nullable)
-            var firstSupplier = await context.Suppliers.Where(s => !s.IsDeleted).FirstOrDefaultAsync();
-            var firstManufacturer = await context.Manufacturers.Where(m => !m.IsDeleted).FirstOrDefaultAsync();
-            var firstCountry = await context.Countries.Where(c => !c.IsDeleted).FirstOrDefaultAsync();
-
+            var random = new Random(2025);
             var inventories = new List<Inventory>();
-            var random = new Random();
+            int invoiceSequence = 1;
+            int lotSequence = 1000;
 
-            // Create inventory for each depot
             foreach (var depot in depots)
             {
-                // Check if inventory already exists for this depot
-                var existingInventory = await context.Inventories
-                    .Where(i => i.DepoId == depot.Id && !i.IsDeleted)
-                    .FirstOrDefaultAsync();
+                // Create multiple inventories per depot
+                var inventoriesPerDepot = Math.Min(3, Math.Max(2, ammunitions.Count / 2));
 
-                if (existingInventory != null)
-                {
-                    continue; // Skip if inventory already exists for this depot
-                }
-
-                var inventoryDetails = new List<InventoryDetail>();
-
-                // Add ammunition items
-                foreach (var ammo in ammunitions)
-                {
-                    inventoryDetails.Add(new InventoryDetail
-                    {
-                        ItemId = ammo.Id,
-                        Lot = 1,
-                        ItemQuantity = random.Next(100, 1000),
-                        SupplierId = firstSupplier?.Id,
-                        ManufacturerId = firstManufacturer?.Id,
-                        CountryId = firstCountry?.Id
-                    });
-                }
-
-                // Add weapon items
-                foreach (var weapon in weapons)
-                {
-                    inventoryDetails.Add(new InventoryDetail
-                    {
-                        ItemId = weapon.Id,
-                        Lot = 1,
-                        ItemQuantity = random.Next(10, 50),
-                        SupplierId = firstSupplier?.Id,
-                        ManufacturerId = firstManufacturer?.Id,
-                        CountryId = firstCountry?.Id
-                    });
-                }
-
-                // Add explosive items
-                foreach (var explosive in explosives)
-                {
-                    inventoryDetails.Add(new InventoryDetail
-                    {
-                        ItemId = explosive.Id,
-                        Lot = 1,
-                        ItemQuantity = random.Next(20, 100),
-                        SupplierId = firstSupplier?.Id,
-                        ManufacturerId = firstManufacturer?.Id,
-                        CountryId = firstCountry?.Id
-                    });
-                }
-
-                if (inventoryDetails.Count > 0)
+                for (int i = 0; i < inventoriesPerDepot; i++)
                 {
                     var inventory = new Inventory
                     {
                         DepoId = depot.Id,
-                        InvoiceNumber = $"INV-{depot.Code}-{DateTime.UtcNow:yyyyMMdd}",
-                        InvoiceDate = utcNow.AddDays(-30),
-                        RecievedDate = utcNow.AddDays(-25),
-                        Notes = $"Initial inventory for {depot.NameEn}",
-                        InventoryDetails = inventoryDetails,
+                        InvoiceNumber = $"INV-{invoiceSequence:0000}",
+                        InvoiceDate = utcNow.AddDays(-random.Next(30, 120)),
+                        RecievedDate = utcNow.AddDays(-random.Next(5, 60)),
+                        Notes = $"Seeded inventory for depot {depot.Code}",
                         CreationDate = utcNow,
-                        CreatedBy = "SYSTEM"
+                        CreatedBy = "SYSTEM",
+                        InventoryDetails = new List<InventoryDetail>()
                     };
+
+                    invoiceSequence++;
+
+                    // Take a random subset of ammunitions for this inventory
+                    var ammoSelection = ammunitions
+                        .OrderBy(_ => random.Next())
+                        .Take(Math.Min(3, ammunitions.Count))
+                        .ToList();
+
+                    foreach (var ammo in ammoSelection)
+                    {
+                        inventory.InventoryDetails.Add(new InventoryDetail
+                        {
+                            ItemId = ammo.Id,
+                            Lot = ++lotSequence,
+                            ItemQuantity = random.Next(150, 600),
+                            SupplierId = null,
+                            ManufacturerId = null,
+                            CountryId = null,
+                            IsLotEmpty = false
+                        });
+                    }
 
                     inventories.Add(inventory);
                 }
             }
 
-            if (inventories.Count > 0)
-            {
-                await context.Inventories.AddRangeAsync(inventories);
-                await context.SaveChangesAsync();
-            }
+            await context.Inventories.AddRangeAsync(inventories);
+            await context.SaveChangesAsync();
         }
     }
 }

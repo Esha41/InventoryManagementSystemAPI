@@ -1,15 +1,10 @@
 ﻿using Ettad.Data.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Ettad.EntityFramework.Configurations
 {
-    public class WorkflowTypeConfiguration : IEntityTypeConfiguration<WorkFlowType>
+    internal class WorkflowTypeConfiguration : IEntityTypeConfiguration<WorkFlowType>
     {
         public void Configure(EntityTypeBuilder<WorkFlowType> builder)
         {

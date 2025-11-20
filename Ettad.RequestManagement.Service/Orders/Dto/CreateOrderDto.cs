@@ -5,14 +5,9 @@ namespace Ettad.RequestManagement.Service.Orders.Dto
     public class CreateOrderDto
     {
         #region BaseRequest Properties
-        public string OrderNo { get; set; }
-        // RequestType is automatically set to 'Order' in the service
-        public string Reason { get; set; }
+        public string? Reason { get; set; }
         public RequestPriority Priority { get; set; }
-        // Status is automatically set to 'New' in the service
-        public string Notes { get; set; }
-        public string? RecieverId { get; set; }
-        public long? DepotId { get; set; }
+        public string? Notes { get; set; }
         public long RequestPurposeId { get; set; }
         #endregion
 

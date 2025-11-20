@@ -79,6 +79,49 @@ namespace Ettad.Inventory.API.Controllers
             var result = await _inventoryService.DeleteAsync(id);
             return ProcessResponse(result);
         }
+
+        /// <summary>
+        /// Get all lots for a specific item with usage tracking
+        /// </summary>
+        [HttpGet("item/{itemId}/lots")]
+        [ProducesResponseType((int)HttpStatusCode.OK)]
+        [CheckAuthorize("Permissions.Inventory.View", "Permissions.Inventory.Page")]
+        public async Task<IActionResult> GetLotsByItemId(long itemId)
+        {
+            var result = await _inventoryService.GetLotsByItemIdAsync(itemId);
+            return ProcessResponse(result);
+        }
+
+        /// <summary>
+        /// Get available lots for a specific item and quantity (excludes expired and empty lots)
+        /// </summary>
+        [HttpGet("item/{itemId}/available-lots")]
+        [ProducesResponseType((int)HttpStatusCode.OK)]
+        [ProducesResponseType((int)HttpStatusCode.BadRequest)]
+        [CheckAuthorize("Permissions.Inventory.View", "Permissions.Inventory.Page")]
+        public async Task<IActionResult> GetAvailableLotsForQuantity(long itemId, [FromQuery] long quantity)
+        {
+            if (quantity <= 0)
+            {
+                return BadRequest("Quantity must be greater than 0");
+            }
+
+            var result = await _inventoryService.GetAvailableLotsForQuantityAsync(itemId, quantity);
+            return ProcessResponse(result);
+        }
+
+        /// <summary>
+        /// Get detailed information about a specific lot using the lot number
+        /// </summary>
+        [HttpGet("lot/{lotNumber}")]
+        [ProducesResponseType((int)HttpStatusCode.OK)]
+        [ProducesResponseType((int)HttpStatusCode.NotFound)]
+        [CheckAuthorize("Permissions.Inventory.View", "Permissions.Inventory.Page")]
+        public async Task<IActionResult> GetLotByNumber(int lotNumber)
+        {
+            var result = await _inventoryService.GetLotByNumberAsync(lotNumber);
+            return ProcessResponse(result);
+        }
     }
 }
 

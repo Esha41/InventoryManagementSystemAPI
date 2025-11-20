@@ -10,11 +10,6 @@ using Ettad.Workflows.Service.DTO;
 using Ettad.Workflows.Service.Interface;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Ettad.Workflows.Service.Imeplemention
 {
@@ -207,8 +202,6 @@ namespace Ettad.Workflows.Service.Imeplemention
                             Notes = br.Notes,
                             DepartmentId = br.DepartmentId,
                             RequesterId = br.RequesterId,
-                            RecieverId = br.RecieverId,
-                            DepotId = br.DepotId,
                             RequestPurposeId = br.RequestPurposeId,
 
                             WorkflowApprovalStepId = ws.Id

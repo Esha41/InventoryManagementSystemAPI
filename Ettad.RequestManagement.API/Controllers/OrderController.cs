@@ -64,23 +64,6 @@ namespace Ettad.RequestManagement.API.Controllers
         }
 
         /// <summary>
-        /// Update an existing order
-        /// </summary>
-        /// <param name="id">Order ID</param>
-        /// <param name="dto">Order update data</param>
-        /// <returns>Success result</returns>
-        [HttpPut("{id}")]
-        [ProducesResponseType(typeof(APIOperationResponse<bool>), (int)HttpStatusCode.OK)]
-        [ProducesResponseType((int)HttpStatusCode.BadRequest)]
-        [ProducesResponseType((int)HttpStatusCode.NotFound)]
-        [CheckAuthorize("Permissions.Order.Edit")]
-        public async Task<IActionResult> Update(long id, [FromBody] UpdateOrderDto dto)
-        {
-            var result = await _orderService.UpdateAsync(id, dto);
-            return ProcessResponse(result);
-        }
-
-        /// <summary>
         /// Delete an order (soft delete)
         /// </summary>
         /// <param name="id">Order ID</param>
@@ -92,6 +75,58 @@ namespace Ettad.RequestManagement.API.Controllers
         public async Task<IActionResult> Delete(long id)
         {
             var result = await _orderService.DeleteAsync(id);
+            return ProcessResponse(result);
+        }
+
+        /// <summary>
+        /// Add a new item to an existing order
+        /// </summary>
+        /// <param name="orderId">Order ID</param>
+        /// <param name="itemDto">Item data to add</param>
+        /// <returns>Created item ID</returns>
+        [HttpPost("{orderId}/items")]
+        [ProducesResponseType(typeof(APIOperationResponse<long>), (int)HttpStatusCode.Created)]
+        [ProducesResponseType((int)HttpStatusCode.BadRequest)]
+        [ProducesResponseType((int)HttpStatusCode.NotFound)]
+        [CheckAuthorize("Permissions.Order.Edit")]
+        public async Task<IActionResult> AddOrderItem(long orderId, [FromBody] CreateUpdateRequestItemDto itemDto)
+        {
+            var result = await _orderService.AddOrderItemAsync(orderId, itemDto);
+            return ProcessResponse(result);
+        }
+
+        /// <summary>
+        /// Update the quantity of an existing order item
+        /// </summary>
+        /// <param name="orderId">Order ID</param>
+        /// <param name="itemId">Request Item ID</param>
+        /// <param name="newQuantity">New quantity value</param>
+        /// <returns>Success result</returns>
+        [HttpPut("{orderId}/items/{itemId}/quantity")]
+        [ProducesResponseType(typeof(APIOperationResponse<bool>), (int)HttpStatusCode.OK)]
+        [ProducesResponseType((int)HttpStatusCode.BadRequest)]
+        [ProducesResponseType((int)HttpStatusCode.NotFound)]
+        [CheckAuthorize("Permissions.Order.Edit")]
+        public async Task<IActionResult> UpdateOrderItemQuantity(long orderId, long itemId, [FromBody] long newQuantity)
+        {
+            var result = await _orderService.UpdateOrderItemQuantityAsync(orderId, itemId, newQuantity);
+            return ProcessResponse(result);
+        }
+
+        /// <summary>
+        /// Delete an item from an order (cannot delete if it's the last item)
+        /// </summary>
+        /// <param name="orderId">Order ID</param>
+        /// <param name="itemId">Request Item ID</param>
+        /// <returns>Success result</returns>
+        [HttpDelete("{orderId}/items/{itemId}")]
+        [ProducesResponseType(typeof(APIOperationResponse<bool>), (int)HttpStatusCode.OK)]
+        [ProducesResponseType((int)HttpStatusCode.BadRequest)]
+        [ProducesResponseType((int)HttpStatusCode.NotFound)]
+        [CheckAuthorize("Permissions.Order.Edit")]
+        public async Task<IActionResult> DeleteOrderItem(long orderId, long itemId)
+        {
+            var result = await _orderService.DeleteOrderItemAsync(orderId, itemId);
             return ProcessResponse(result);
         }
     }

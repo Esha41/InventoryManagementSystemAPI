@@ -13,8 +13,6 @@ namespace Ettad.RequestManagement.Service.Orders.Profile
                 .ForMember(dest => dest.RequestNo, opt => opt.MapFrom(src => src.RequestNo))
                 .ForMember(dest => dest.DepartmentNameAr, opt => opt.MapFrom(src => src.Department != null ? src.Department.NameAr : null))
                 .ForMember(dest => dest.DepartmentNameEn, opt => opt.MapFrom(src => src.Department != null ? src.Department.NameEn : null))
-                .ForMember(dest => dest.DepotNameAr, opt => opt.MapFrom(src => src.Depot != null ? src.Depot.NameAr : null))
-                .ForMember(dest => dest.DepotNameEn, opt => opt.MapFrom(src => src.Depot != null ? src.Depot.NameEn : null))
                 .ForMember(dest => dest.RequestPurposeNameAr, opt => opt.MapFrom(src => src.RequestPurpose != null ? src.RequestPurpose.NameAr : null))
                 .ForMember(dest => dest.RequestPurposeNameEn, opt => opt.MapFrom(src => src.RequestPurpose != null ? src.RequestPurpose.NameEn : null));
 
@@ -40,7 +38,6 @@ namespace Ettad.RequestManagement.Service.Orders.Profile
 
             // Create DTO to Entity (RequestItems handled manually in service)
             CreateMap<CreateOrderDto, Order>()
-                .ForMember(dest => dest.RequestNo, opt => opt.MapFrom(src => src.OrderNo))
                 .ForMember(dest => dest.Id, opt => opt.Ignore())
                 .ForMember(dest => dest.CreationDate, opt => opt.Ignore())
                 .ForMember(dest => dest.CreatedBy, opt => opt.Ignore())
@@ -51,25 +48,6 @@ namespace Ettad.RequestManagement.Service.Orders.Profile
                 .ForMember(dest => dest.DeletedBy, opt => opt.Ignore())
                 .ForMember(dest => dest.Department, opt => opt.Ignore())
                 .ForMember(dest => dest.Requester, opt => opt.Ignore())
-                .ForMember(dest => dest.Reciever, opt => opt.Ignore())
-                .ForMember(dest => dest.Depot, opt => opt.Ignore())
-                .ForMember(dest => dest.RequestPurpose, opt => opt.Ignore())
-                .ForMember(dest => dest.RequestItems, opt => opt.Ignore());
-
-            // Update DTO to Entity (RequestItems handled manually in service)
-            CreateMap<UpdateOrderDto, Order>()
-                .ForMember(dest => dest.Id, opt => opt.Ignore())
-                .ForMember(dest => dest.CreationDate, opt => opt.Ignore())
-                .ForMember(dest => dest.CreatedBy, opt => opt.Ignore())
-                .ForMember(dest => dest.ModificationDate, opt => opt.Ignore())
-                .ForMember(dest => dest.ModifiedBy, opt => opt.Ignore())
-                .ForMember(dest => dest.IsDeleted, opt => opt.Ignore())
-                .ForMember(dest => dest.DeletionDate, opt => opt.Ignore())
-                .ForMember(dest => dest.DeletedBy, opt => opt.Ignore())
-                .ForMember(dest => dest.Department, opt => opt.Ignore())
-                .ForMember(dest => dest.Requester, opt => opt.Ignore())
-                .ForMember(dest => dest.Reciever, opt => opt.Ignore())
-                .ForMember(dest => dest.Depot, opt => opt.Ignore())
                 .ForMember(dest => dest.RequestPurpose, opt => opt.Ignore())
                 .ForMember(dest => dest.RequestItems, opt => opt.Ignore());
         }

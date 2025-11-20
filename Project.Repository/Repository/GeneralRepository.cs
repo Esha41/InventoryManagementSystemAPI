@@ -152,10 +152,7 @@ namespace Ettad.Repository.Repository
             }
             catch (Exception exception)
             {
-                IEnumerable<T> items1 = new List<T>();
-                if (items.GetEnumerator().Current == null)
-                    return items1;
-                return items1;
+                return new List<T>();
             }
         }
     }

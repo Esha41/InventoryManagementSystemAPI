@@ -64,8 +64,6 @@ namespace Ettad.RequestManagement.Service.Discards
                     false,
                     nameof(BaseRequest.Department),
                     nameof(BaseRequest.Requester),
-                    nameof(BaseRequest.Reciever),
-                    nameof(BaseRequest.Depot),
                     nameof(BaseRequest.RequestPurpose),
                     $"{nameof(BaseRequest.RequestItems)}.{nameof(RequestItem.Item)}",
                     $"{nameof(BaseRequest.RequestItems)}.{nameof(RequestItem.Item)}.{nameof(BaseItem.Hcc)}"
@@ -106,8 +104,6 @@ namespace Ettad.RequestManagement.Service.Discards
                     false,
                     nameof(BaseRequest.Department),
                     nameof(BaseRequest.Requester),
-                    nameof(BaseRequest.Reciever),
-                    nameof(BaseRequest.Depot),
                     nameof(BaseRequest.RequestPurpose),
                     $"{nameof(BaseRequest.RequestItems)}.{nameof(RequestItem.Item)}",
                     $"{nameof(BaseRequest.RequestItems)}.{nameof(RequestItem.Item)}.{nameof(BaseItem.Hcc)}"

@@ -1,6 +1,6 @@
 namespace Ettad.Data.Enums
 {
-    public enum AmmunitionsType
+    public enum AmmunitionType
     {
         Small = 1,
         Medium = 2,

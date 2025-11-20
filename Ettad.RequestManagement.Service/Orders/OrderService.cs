@@ -25,7 +25,6 @@ namespace Ettad.RequestManagement.Service.Orders
         private readonly ICrossCuttingRepository<RequestPurpose> _requestPurposeRepository;
         private readonly IMapper _mapper;
         private readonly IValidator<CreateOrderDto> _createValidator;
-        private readonly IValidator<UpdateOrderDto> _updateValidator;
         private readonly ICurrentUserService _currentUserService;
         private readonly IRequestNoGeneratorService _requestNoGeneratorService;
         private readonly INotificationHelperService _notificationHelperService;
@@ -38,7 +37,6 @@ namespace Ettad.RequestManagement.Service.Orders
             ICrossCuttingRepository<RequestPurpose> requestPurposeRepository,
             IMapper mapper,
             IValidator<CreateOrderDto> createValidator,
-            IValidator<UpdateOrderDto> updateValidator,
             ICurrentUserService currentUserService,
             IRequestNoGeneratorService requestNoGeneratorService,
             INotificationHelperService notificationHelperService,
@@ -50,7 +48,6 @@ namespace Ettad.RequestManagement.Service.Orders
             _requestPurposeRepository = requestPurposeRepository;
             _mapper = mapper;
             _createValidator = createValidator;
-            _updateValidator = updateValidator;
             _currentUserService = currentUserService;
             _requestNoGeneratorService = requestNoGeneratorService;
             _notificationHelperService = notificationHelperService;
@@ -69,8 +66,6 @@ namespace Ettad.RequestManagement.Service.Orders
                     false,
                     nameof(Order.Department),
                     nameof(Order.Requester),
-                    nameof(Order.Reciever),
-                    nameof(Order.Depot),
                     nameof(Order.RequestPurpose),
                     $"{nameof(Order.RequestItems)}.{nameof(RequestItem.Item)}"
                 );
@@ -111,8 +106,6 @@ namespace Ettad.RequestManagement.Service.Orders
                     false,
                     nameof(Order.Department),
                     nameof(Order.Requester),
-                    nameof(Order.Reciever),
-                    nameof(Order.Depot),
                     nameof(Order.RequestPurpose),
                     $"{nameof(Order.RequestItems)}.{nameof(RequestItem.Item)}"
                 );
@@ -309,8 +302,8 @@ namespace Ettad.RequestManagement.Service.Orders
                     "Department not found for current user. Cannot create order.");
             }
 
-            _logger.LogInformation("Creating new order. OrderNo: {OrderNo}, DepartmentId: {DepartmentId}, IsFromAllowance: {IsFromAllowance}, User: {UserId}", 
-                inputDto.OrderNo, departmentId.Value, inputDto.IsFromAllowance, currentUserId);
+            _logger.LogInformation("Creating new order. DepartmentId: {DepartmentId}, IsFromAllowance: {IsFromAllowance}, User: {UserId}",
+                departmentId.Value, inputDto.IsFromAllowance, currentUserId);
             
             try
             {
@@ -319,8 +312,8 @@ namespace Ettad.RequestManagement.Service.Orders
                 if (!validationResult.IsValid)
                 {
                     var errors = string.Join(", ", validationResult.Errors.Select(e => e.ErrorMessage));
-                    _logger.LogWarning("Order validation failed. OrderNo: {OrderNo}, Errors: {ValidationErrors}, User: {UserId}", 
-                        inputDto.OrderNo, errors, currentUserId);
+                    _logger.LogWarning("Order validation failed. Errors: {ValidationErrors}, User: {UserId}",
+                        errors, currentUserId);
                     return APIOperationResponse<long>.Fail(ResponseType.BadRequest, errors);
                 }
 
@@ -342,7 +335,6 @@ namespace Ettad.RequestManagement.Service.Orders
 
                 // Map DTO to entity (exclude RequestItems for now)
                 var order = _mapper.Map<Order>(inputDto);
-                order.RequestNo = inputDto.OrderNo; // Explicitly set RequestNo from OrderNo
                 order.RequestType = RequestType.Order; // Always set request type to Order
                 order.Status = RequestStatus.New; // Always set initial status to New
                 order.CreationDate = DateTime.UtcNow;
@@ -363,8 +355,8 @@ namespace Ettad.RequestManagement.Service.Orders
                 if (inputDto.RequestItems != null && inputDto.RequestItems.Any())
                 {
                     var requestItems = _mapper.Map<List<RequestItem>>(inputDto.RequestItems);
-                    _logger.LogInformation("Adding {ItemCount} request items to order. OrderNo: {OrderNo}", 
-                        requestItems.Count, inputDto.OrderNo);
+                    _logger.LogInformation("Adding {ItemCount} request items to order.",
+                        requestItems.Count);
                     
                     foreach (var item in requestItems)
                     {
@@ -390,8 +382,8 @@ namespace Ettad.RequestManagement.Service.Orders
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error creating order. OrderNo: {OrderNo}, User: {UserId}", 
-                    inputDto.OrderNo, currentUserId);
+                _logger.LogError(ex, "Error creating order. User: {UserId}",
+                    currentUserId);
                 
                 var errorMessage = $"An error occurred: {ex.Message}";
                 if (ex.InnerException != null)
@@ -399,76 +391,6 @@ namespace Ettad.RequestManagement.Service.Orders
                     errorMessage += $" | Inner Exception: {ex.InnerException.Message}";
                 }
                 return APIOperationResponse<long>.Fail(ResponseType.InternalServerError, errorMessage);
-            }
-        }
-
-        public async Task<APIOperationResponse<bool>> UpdateAsync(long id, UpdateOrderDto inputDto)
-        {
-            _logger.LogInformation("Updating order. OrderId: {OrderId}, User: {UserId}", id, _currentUserService.UserId);
-            
-            try
-            {
-                // Validate input
-                var validationResult = await _updateValidator.ValidateAsync(inputDto);
-                if (!validationResult.IsValid)
-                {
-                    var errors = string.Join(", ", validationResult.Errors.Select(e => e.ErrorMessage));
-                    _logger.LogWarning("Order update validation failed. OrderId: {OrderId}, Errors: {ValidationErrors}, User: {UserId}", 
-                        id, errors, _currentUserService.UserId);
-                    return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, errors);
-                }
-
-                // Check if order exists
-                var existingOrder = await _orderRepository.FindOneAsync(o => o.Id == id && !o.IsDeleted);
-                if (existingOrder == null)
-                {
-                    _logger.LogWarning("Order not found for update. OrderId: {OrderId}, User: {UserId}", id, _currentUserService.UserId);
-                    return APIOperationResponse<bool>.Fail(ResponseType.NotFound, "Order not found");
-                }
-
-                // Map updates to entity
-                _mapper.Map(inputDto, existingOrder);
-                existingOrder.ModificationDate = DateTime.UtcNow;
-                existingOrder.ModifiedBy = _currentUserService.UserId;
-
-                // Handle request items update
-                if (inputDto.RequestItems != null)
-                {
-                    // Get existing request items
-                    var existingItems = await _requestItemRepository.FindAsync(ri => ri.RequestId == id && !ri.IsDeleted);
-                    
-                    _logger.LogInformation("Updating request items. OrderId: {OrderId}, ExistingItemsCount: {ExistingCount}, NewItemsCount: {NewCount}", 
-                        id, existingItems.Count(), inputDto.RequestItems.Count);
-                    
-                    // Soft delete all existing items
-                    foreach (var existingItem in existingItems)
-                    {
-                        await _requestItemRepository.DeleteAsync(existingItem);
-                    }
-
-                    // Add new items
-                    var newItems = _mapper.Map<List<RequestItem>>(inputDto.RequestItems);
-                    foreach (var item in newItems)
-                    {
-                        item.RequestId = id;
-                        item.CreationDate = DateTime.UtcNow;
-                        item.CreatedBy = _currentUserService.UserId;
-                        await _requestItemRepository.AddAsync(item);
-                    }
-                }
-
-                // Update in repository
-                await _orderRepository.UpdateAsync(existingOrder);
-
-                _logger.LogInformation("Order updated successfully. OrderId: {OrderId}, OrderNo: {OrderNo}, User: {UserId}", 
-                    id, existingOrder.RequestNo, _currentUserService.UserId);
-                
-                return APIOperationResponse<bool>.Success(true, "Order updated successfully");
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error updating order. OrderId: {OrderId}, User: {UserId}", id, _currentUserService.UserId);
-                return APIOperationResponse<bool>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
             }
         }
 
@@ -547,6 +469,169 @@ namespace Ettad.RequestManagement.Service.Orders
             catch
             {
                 return "System User";
+            }
+        }
+
+        public async Task<APIOperationResponse<long>> AddOrderItemAsync(long orderId, CreateUpdateRequestItemDto itemDto)
+        {
+            _logger.LogInformation("Adding item to order. OrderId: {OrderId}, ItemId: {ItemId}, User: {UserId}", 
+                orderId, itemDto.ItemId, _currentUserService.UserId);
+
+            try
+            {
+                // Check if order exists
+                var order = await _orderRepository.FindOneAsync(
+                    o => o.Id == orderId && !o.IsDeleted,
+                    false,
+                    nameof(Order.RequestItems));
+
+                if (order == null)
+                {
+                    _logger.LogWarning("Order not found. OrderId: {OrderId}, User: {UserId}", 
+                        orderId, _currentUserService.UserId);
+                    return APIOperationResponse<long>.Fail(ResponseType.NotFound, "Order not found");
+                }
+
+                // Check if item already exists in order
+                var existingItem = order.RequestItems?.FirstOrDefault(ri => ri.ItemId == itemDto.ItemId && !ri.IsDeleted);
+                if (existingItem != null)
+                {
+                    _logger.LogWarning("Item already exists in order. OrderId: {OrderId}, ItemId: {ItemId}, User: {UserId}", 
+                        orderId, itemDto.ItemId, _currentUserService.UserId);
+                    return APIOperationResponse<long>.Fail(ResponseType.BadRequest, 
+                        "Item already exists in this order. Use update quantity instead.");
+                }
+
+                // Create new request item
+                var newItem = _mapper.Map<RequestItem>(itemDto);
+                newItem.RequestId = orderId;
+                newItem.CreationDate = DateTime.UtcNow;
+                newItem.CreatedBy = _currentUserService.UserId;
+
+                var createdItem = await _requestItemRepository.AddAsync(newItem);
+
+                _logger.LogInformation("Item added to order successfully. OrderId: {OrderId}, ItemId: {ItemId}, RequestItemId: {RequestItemId}, User: {UserId}", 
+                    orderId, itemDto.ItemId, createdItem.Id, _currentUserService.UserId);
+
+                return APIOperationResponse<long>.Success(createdItem.Id, "Item added to order successfully");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error adding item to order. OrderId: {OrderId}, ItemId: {ItemId}, User: {UserId}", 
+                    orderId, itemDto.ItemId, _currentUserService.UserId);
+                return APIOperationResponse<long>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
+            }
+        }
+
+        public async Task<APIOperationResponse<bool>> UpdateOrderItemQuantityAsync(long orderId, long itemId, long newQuantity)
+        {
+            _logger.LogInformation("Updating order item quantity. OrderId: {OrderId}, ItemId: {ItemId}, NewQuantity: {NewQuantity}, User: {UserId}", 
+                orderId, itemId, newQuantity, _currentUserService.UserId);
+
+            try
+            {
+                if (newQuantity <= 0)
+                {
+                    _logger.LogWarning("Invalid quantity. OrderId: {OrderId}, ItemId: {ItemId}, Quantity: {Quantity}", 
+                        orderId, itemId, newQuantity);
+                    return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, "Quantity must be greater than zero");
+                }
+
+                // Check if order exists
+                var order = await _orderRepository.FindOneAsync(o => o.Id == orderId && !o.IsDeleted);
+                if (order == null)
+                {
+                    _logger.LogWarning("Order not found. OrderId: {OrderId}, User: {UserId}", 
+                        orderId, _currentUserService.UserId);
+                    return APIOperationResponse<bool>.Fail(ResponseType.NotFound, "Order not found");
+                }
+
+                // Find the request item
+                var requestItem = await _requestItemRepository.FindOneAsync(
+                    ri => ri.Id == itemId && ri.RequestId == orderId && !ri.IsDeleted);
+
+                if (requestItem == null)
+                {
+                    _logger.LogWarning("Order item not found. OrderId: {OrderId}, ItemId: {ItemId}, User: {UserId}", 
+                        orderId, itemId, _currentUserService.UserId);
+                    return APIOperationResponse<bool>.Fail(ResponseType.NotFound, "Order item not found");
+                }
+
+                var oldQuantity = requestItem.Quantity;
+                requestItem.Quantity = newQuantity;
+                requestItem.ModificationDate = DateTime.UtcNow;
+                requestItem.ModifiedBy = _currentUserService.UserId;
+
+                await _requestItemRepository.UpdateAsync(requestItem);
+
+                _logger.LogInformation("Order item quantity updated. OrderId: {OrderId}, ItemId: {ItemId}, OldQuantity: {OldQuantity}, NewQuantity: {NewQuantity}, User: {UserId}", 
+                    orderId, itemId, oldQuantity, newQuantity, _currentUserService.UserId);
+
+                return APIOperationResponse<bool>.Success(true, "Order item quantity updated successfully");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating order item quantity. OrderId: {OrderId}, ItemId: {ItemId}, User: {UserId}", 
+                    orderId, itemId, _currentUserService.UserId);
+                return APIOperationResponse<bool>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
+            }
+        }
+
+        public async Task<APIOperationResponse<bool>> DeleteOrderItemAsync(long orderId, long itemId)
+        {
+            _logger.LogInformation("Deleting order item. OrderId: {OrderId}, ItemId: {ItemId}, User: {UserId}", 
+                orderId, itemId, _currentUserService.UserId);
+
+            try
+            {
+                // Check if order exists and get its items
+                var order = await _orderRepository.FindOneAsync(
+                    o => o.Id == orderId && !o.IsDeleted,
+                    false,
+                    nameof(Order.RequestItems));
+
+                if (order == null)
+                {
+                    _logger.LogWarning("Order not found. OrderId: {OrderId}, User: {UserId}", 
+                        orderId, _currentUserService.UserId);
+                    return APIOperationResponse<bool>.Fail(ResponseType.NotFound, "Order not found");
+                }
+
+                // Count active items in the order
+                var activeItemsCount = order.RequestItems?.Count(ri => !ri.IsDeleted) ?? 0;
+
+                if (activeItemsCount <= 1)
+                {
+                    _logger.LogWarning("Cannot delete last item from order. OrderId: {OrderId}, ItemId: {ItemId}, User: {UserId}", 
+                        orderId, itemId, _currentUserService.UserId);
+                    return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, 
+                        "Cannot delete the last item from an order. An order must have at least one item.");
+                }
+
+                // Find the request item to delete
+                var requestItem = await _requestItemRepository.FindOneAsync(
+                    ri => ri.Id == itemId && ri.RequestId == orderId && !ri.IsDeleted);
+
+                if (requestItem == null)
+                {
+                    _logger.LogWarning("Order item not found. OrderId: {OrderId}, ItemId: {ItemId}, User: {UserId}", 
+                        orderId, itemId, _currentUserService.UserId);
+                    return APIOperationResponse<bool>.Fail(ResponseType.NotFound, "Order item not found");
+                }
+
+                // Soft delete the item
+                await _requestItemRepository.DeleteAsync(requestItem);
+
+                _logger.LogInformation("Order item deleted successfully. OrderId: {OrderId}, ItemId: {ItemId}, User: {UserId}", 
+                    orderId, itemId, _currentUserService.UserId);
+
+                return APIOperationResponse<bool>.Success(true, "Order item deleted successfully");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error deleting order item. OrderId: {OrderId}, ItemId: {ItemId}, User: {UserId}", 
+                    orderId, itemId, _currentUserService.UserId);
+                return APIOperationResponse<bool>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
             }
         }
     }
