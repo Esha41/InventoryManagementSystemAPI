@@ -55,6 +55,21 @@ namespace Ettad.RequestManagement.API.Controllers
         }
 
         /// <summary>
+        /// Get supply by Order ID with all details and calculated properties
+        /// </summary>
+        /// <param name="orderId">Order ID</param>
+        /// <returns>Supply details</returns>
+        [HttpGet("{orderId}/getByOrderId")]
+        [ProducesResponseType(typeof(APIOperationResponse<SupplyDto>), (int)HttpStatusCode.OK)]
+        [ProducesResponseType((int)HttpStatusCode.NotFound)]
+        [CheckAuthorize("Permissions.Supply.View", "Permissions.Supply.Page")]
+        public async Task<IActionResult> GetByOrderId(long orderId)
+        {
+            var result = await _supplyService.GetByOrderIdAsync(orderId);
+            return ProcessResponse(result);
+        }
+
+        /// <summary>
         /// Get all supplies with details and calculated properties
         /// </summary>
         /// <returns>List of supplies</returns>

@@ -134,7 +134,48 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
 			}
 		}
 
-		public async Task<APIOperationResponse<List<SupplyDto>>> GetAllAsync()
+		public async Task<APIOperationResponse<SupplyDto>> GetByOrderIdAsync(long orderId)
+		{
+            _logger.LogInformation("Getting supply by Order ID. OrderID: {OrderID}, User: {UserId}",
+                orderId, _currentUserService.UserId);
+
+            try
+            {
+                var supply = await _supplyRepository.FindOneAsync(
+                    s => s.OrderId == orderId && !s.IsDeleted,
+                    false,
+                    nameof(Supply.Order),
+                    $"{nameof(Supply.Order)}.{nameof(Order.RequestItems)}",
+                    $"{nameof(Supply.Order)}.{nameof(Order.RequestItems)}.{nameof(RequestItem.Item)}",
+                    nameof(Supply.ReceiverRank),
+                    $"{nameof(Supply.SupplyDetails)}.{nameof(SupplyDetail.Item)}"
+                );
+
+                if (supply == null)
+                {
+                    _logger.LogWarning("Supply not found. OrderID: {OrderID}, User: {UserId}",
+                        orderId, _currentUserService.UserId);
+                    return APIOperationResponse<SupplyDto>.Fail(ResponseType.NotFound, "Supply not found");
+                }
+
+                var dto = _mapper.Map<SupplyDto>(supply);
+                PopulateSupplyDetailCalculatedProperties(dto, supply);
+
+                _logger.LogInformation("Supply retrieved successfully. OrderID: {OrderID}, OrderId: {OrderId}",
+                    orderId, supply.OrderId);
+
+                return APIOperationResponse<SupplyDto>.Success(dto);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting supply by Order ID. OrderID: {OrderID}, User: {UserId}",
+                    orderId, _currentUserService.UserId);
+                return APIOperationResponse<SupplyDto>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
+            }
+        }
+
+
+        public async Task<APIOperationResponse<List<SupplyDto>>> GetAllAsync()
 		{
 			_logger.LogInformation("Getting all supplies. User: {UserId}", _currentUserService.UserId);
 
