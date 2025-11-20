@@ -203,6 +203,7 @@ namespace Ettad.Workflows.Service.Imeplemention
                             DepartmentId = br.DepartmentId,
                             RequesterId = br.RequesterId,
                             RequestPurposeId = br.RequestPurposeId,
+                            RequestDate =br.CreationDate,
 
                             WorkflowApprovalStepId = ws.Id
                         };
@@ -702,6 +703,113 @@ namespace Ettad.Workflows.Service.Imeplemention
             }
         }
 
+        public async Task<IEnumerable<BaseRequestDto>> GetAllBaseRequestsAsync()
+        {
+            var currentUserId = _currentUserService.UserId;
+            List<long> allowedRequestIds;
+
+            // If superadmin, get all request IDs
+            if (_currentUserService.IsSuperAdmin)
+            {
+                allowedRequestIds = await _context.BaseRequests
+                    .Where(br => !br.IsDeleted)
+                    .Select(br => br.Id)
+                    .ToListAsync();
+            }
+            else
+            {
+                // Get all role IDs of current user
+                var userRoleIds = await _context.Set<IdentityUserRole<string>>()
+                    .Where(ur => ur.UserId == currentUserId)
+                    .Select(ur => ur.RoleId)
+                    .ToListAsync();
+
+                if (!userRoleIds.Any())
+                    return Enumerable.Empty<BaseRequestDto>();
+
+                // Get request IDs that the user has permission to approve
+                allowedRequestIds = await (from ws in _context.WorkflowApprovalSteps
+                                          join br in _context.BaseRequests
+                                              on (long)ws.TargetRequestId equals br.Id
+                                          join wfs in _context.WorkflowSteps
+                                              on ws.WorkflowStepId equals wfs.Id
+                                          where
+                                              !br.IsDeleted &&
+                                              (
+                                                  // Step assigned directly to this user
+                                                  ws.ApproverUserId == currentUserId
+                                                  // OR user role matches main approver
+                                                  || userRoleIds.Contains(wfs.ApplicationRoleId)
+                                                  // OR user role matches higher approval
+                                                  || (!string.IsNullOrEmpty(wfs.HigherApprovalRoleId) && userRoleIds.Contains(wfs.HigherApprovalRoleId))
+                                              )
+                                          select br.Id)
+                                          .Distinct()
+                                          .ToListAsync();
+            }
+
+            if (!allowedRequestIds.Any())
+                return Enumerable.Empty<BaseRequestDto>();
+
+            // Get BaseRequests that the user has permission to approve
+            var baseRequests = await _context.BaseRequests
+                .Where(br => !br.IsDeleted && allowedRequestIds.Contains(br.Id))
+                .Select(br => new BaseRequestDto
+                {
+                    Id = br.Id,
+                    RequestNo = br.RequestNo,
+                    RequestType = br.RequestType,
+                    Reason = br.Reason,
+                    Priority = br.Priority,
+                    Status = br.Status,
+                    RequestDate = br.CreationDate
+                })
+                .ToListAsync();
+
+            // Get all approval history for these requests
+            var approvalHistoryData = await (from log in _context.WorkflowStepApprovalLog
+                                            join was in _context.WorkflowApprovalSteps
+                                                on log.WorkflowApprovalStepId equals was.Id
+                                            join wfs in _context.WorkflowSteps
+                                                on log.WorkflowStepId equals wfs.Id into wfsJoin
+                                            from wfs in wfsJoin.DefaultIfEmpty()
+                                            where allowedRequestIds.Contains((long)was.TargetRequestId)
+                                            select new
+                                            {
+                                                RequestId = (long)was.TargetRequestId,
+                                                History = new ApprovalHistoryDto
+                                                {
+                                                    Id = log.Id,
+                                                    WorkflowApprovalStepId = log.WorkflowApprovalStepId,
+                                                    WorkflowStepId = log.WorkflowStepId,
+                                                    OldRequestStatus = log.OldRequestStatus,
+                                                    NewRequestStatus = log.NewRequestStatus,
+                                                    Comments = log.Comments,
+                                                    ChangedBy = log.ChangedBy,
+                                                    ChangedAt = log.ChangedAt,
+                                                    StepOrder = wfs != null ? wfs.StepOrder : (int?)null,
+                                                    ApplicationRoleId = wfs != null ? wfs.ApplicationRoleId : null
+                                                }
+                                            })
+                                            .OrderBy(h => h.History.ChangedAt)
+                                            .ToListAsync();
+
+            // Group approval history by request ID
+            var historyByRequestId = approvalHistoryData
+                .GroupBy(h => h.RequestId)
+                .ToDictionary(g => g.Key, g => g.Select(x => x.History).ToList());
+
+            // Assign approval history to each request
+            foreach (var request in baseRequests)
+            {
+                if (historyByRequestId.TryGetValue(request.Id, out var history))
+                {
+                    request.ApprovalHistory = history;
+                }
+            }
+
+            return baseRequests;
+        }
 
     }
 }

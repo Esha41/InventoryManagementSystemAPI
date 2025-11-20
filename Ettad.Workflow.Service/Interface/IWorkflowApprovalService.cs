@@ -24,6 +24,7 @@ namespace Ettad.Workflows.Service.Interface
         Task<WorkflowApprovalStep> GetCurrentApprovalStepByRequestIdAsync(int requestId);
         Task<APIOperationResponse<bool>> ProcessActionAsync(ApproveRejectWorkflowApprovalDto model);
         Task<bool> StartWorkflowAsync(long orderId, WorkflowType workflowType);
+        Task<IEnumerable<BaseRequestDto>> GetAllBaseRequestsAsync();
 
     }
 }

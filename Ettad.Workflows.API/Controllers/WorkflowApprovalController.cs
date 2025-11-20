@@ -69,6 +69,14 @@ namespace Ettad.Workflows.API.Controllers
             return Ok(result);
         }
 
+        [HttpGet("AllBaseRequests")]
+        [CheckAuthorize("Permissions.RequestReciver.Page", "Permissions.RequestReciver.View")]
+        public async Task<IActionResult> GetAllBaseRequests()
+        {
+            var result = await _service.GetAllBaseRequestsAsync();
+            return Ok(result);
+        }
+
         [HttpPost("approve-reject")]
         [CheckAuthorize("Permissions.RequestReciver.Create", "Permissions.RequestReciver.Edit")]
         public async Task<IActionResult> ApproveOrReject([FromBody] ApproveRejectWorkflowApprovalDto dto)
