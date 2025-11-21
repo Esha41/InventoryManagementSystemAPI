@@ -13,6 +13,7 @@ using Ettad.Notification.Service;
 using Microsoft.AspNetCore.Identity;
 using Ettad.Comman.Idenitity;
 using Microsoft.Extensions.Logging;
+using Ettad.Workflows.Service.Interface;
 
 namespace Ettad.RequestManagement.Service.Discards
 {
@@ -21,6 +22,7 @@ namespace Ettad.RequestManagement.Service.Discards
         private readonly ICrossCuttingRepository<Discard> _discardRepository;
         private readonly ICrossCuttingRepository<RequestItem> _requestItemRepository;
         private readonly ICrossCuttingRepository<RequestPurpose> _requestPurposeRepository;
+        private readonly IWorkflowApprovalService _workflowApprovalService;
         private readonly IMapper _mapper;
         private readonly IValidator<CreateDiscardDto> _createValidator;
         private readonly ICurrentUserService _currentUserService;
@@ -33,6 +35,7 @@ namespace Ettad.RequestManagement.Service.Discards
             ICrossCuttingRepository<Discard> discardRepository,
             ICrossCuttingRepository<RequestItem> requestItemRepository,
             ICrossCuttingRepository<RequestPurpose> requestPurposeRepository,
+            IWorkflowApprovalService workflowApprovalService,
             IMapper mapper,
             IValidator<CreateDiscardDto> createValidator,
             ICurrentUserService currentUserService,
@@ -44,6 +47,7 @@ namespace Ettad.RequestManagement.Service.Discards
             _discardRepository = discardRepository;
             _requestItemRepository = requestItemRepository;
             _requestPurposeRepository = requestPurposeRepository;
+            _workflowApprovalService = workflowApprovalService;
             _mapper = mapper;
             _createValidator = createValidator;
             _currentUserService = currentUserService;
@@ -198,6 +202,22 @@ namespace Ettad.RequestManagement.Service.Discards
 
                 // Add to repository
                 var createdDiscard = await _discardRepository.AddAsync(discard);
+
+                // Start workflow for the discard
+                var workflowStarted = await _workflowApprovalService.StartWorkflowAsync(
+                    createdDiscard.Id,
+                    WorkflowType.Discard);
+
+                if (workflowStarted)
+                {
+                    _logger.LogInformation("Workflow started successfully for discard. DiscardId: {DiscardId}, User: {UserId}",
+                        createdDiscard.Id, currentUserId);
+                }
+                else
+                {
+                    _logger.LogWarning("Failed to start workflow for discard. DiscardId: {DiscardId}, User: {UserId}",
+                        createdDiscard.Id, currentUserId);
+                }
 
                 await NotifyDiscardAsync(
                     "Discard Created",

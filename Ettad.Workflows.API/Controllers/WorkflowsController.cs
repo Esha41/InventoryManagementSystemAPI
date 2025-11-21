@@ -7,6 +7,7 @@ using Ettad.Workflows.Service.Queries.GetWorkflow;
 using Ettad.Workflows.Service.Queries.GetWorkflowById;
 using Ettad.CrossCutting.Comman.Models;
 using Ettad.ResponseHandler.Models;
+using Ettad.Data.Enums;
 
 namespace Ettad.Workflows.API.Controllers
 {
@@ -41,6 +42,14 @@ namespace Ettad.Workflows.API.Controllers
         public async Task<IActionResult> GetAllWorkflowsList()
         {
             var query = new GetWorkflowsQuery();
+            var result = await _mediator.Send(query);
+            return Ok(result);
+        }
+
+        [HttpGet("by-type/{workflowType}")]
+        public async Task<IActionResult> GetWorkflowsByType(WorkflowType workflowType)
+        {
+            var query = new GetWorkflowsByTypeQuery(workflowType);
             var result = await _mediator.Send(query);
             return Ok(result);
         }

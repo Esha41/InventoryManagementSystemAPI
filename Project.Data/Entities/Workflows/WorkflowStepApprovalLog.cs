@@ -18,6 +18,8 @@ namespace Ettad.Data.Entities.Workflows
         [ForeignKey("WorkflowApprovalStep")]
         public int WorkflowApprovalStepId { get; set; }
 
+        [ForeignKey("WorkflowStep")]
+        public int? WorkflowStepId { get; set; }
 
         public RequestStatus OldRequestStatus { get; set; }
 

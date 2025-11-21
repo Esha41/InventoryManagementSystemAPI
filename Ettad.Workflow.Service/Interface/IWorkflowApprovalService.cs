@@ -1,4 +1,5 @@
 ﻿using Ettad.Data.Entities.Workflows;
+using Ettad.Data.Enums;
 using Ettad.ResponseHandler.Models;
 using Ettad.Workflows.Service.DTO;
 using System;
@@ -22,6 +23,8 @@ namespace Ettad.Workflows.Service.Interface
         Task<WorkflowApprovalStepDto> ApproveOrReject(ApproveRejectWorkflowApprovalDto dto);
         Task<WorkflowApprovalStep> GetCurrentApprovalStepByRequestIdAsync(int requestId);
         Task<APIOperationResponse<bool>> ProcessActionAsync(ApproveRejectWorkflowApprovalDto model);
+        Task<bool> StartWorkflowAsync(long orderId, WorkflowType workflowType);
+        Task<IEnumerable<BaseRequestDto>> GetAllBaseRequestsAsync();
 
     }
 }

@@ -8,9 +8,10 @@ namespace Ettad.Data.Enums
 {
     public enum WorkflowType
     {
-        Supply = 1,
+        Order = 1,
         Return = 2,
-        Discard = 3
+        Discard = 3,
+        OrderFromReAl=4
 
     }
 }
