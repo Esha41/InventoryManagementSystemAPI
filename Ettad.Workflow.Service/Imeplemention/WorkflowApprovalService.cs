@@ -753,6 +753,9 @@ namespace Ettad.Workflows.Service.Imeplemention
 
             // Get BaseRequests that the user has permission to approve
             var baseRequests = await _context.BaseRequests
+                .Include(br => br.Requester)
+                .Include(br => br.Department)
+                .Include(br => br.RequestPurpose)
                 .Where(br => !br.IsDeleted && allowedRequestIds.Contains(br.Id))
                 .Select(br => new BaseRequestDto
                 {
@@ -762,7 +765,15 @@ namespace Ettad.Workflows.Service.Imeplemention
                     Reason = br.Reason,
                     Priority = br.Priority,
                     Status = br.Status,
-                    RequestDate = br.CreationDate
+                    RequestDate = br.CreationDate,
+                    Notes = br.Notes,
+                    DepartmentId = br.DepartmentId,
+                    RequesterId = br.RequesterId,
+                    RequestPurposeId = br.RequestPurposeId,
+                    DepartmentName = br.Department != null ? br.Department.NameEn : null,
+                    RequesterName = br.Requester != null ? (br.Requester.FullNameEN ?? br.Requester.FullNameAR ?? br.Requester.UserName) : null,
+                    RequesterUserName = br.Requester != null ? br.Requester.UserName : null,
+                    RequestPurposeName = br.RequestPurpose != null ? br.RequestPurpose.NameEn : null
                 })
                 .ToListAsync();
 

@@ -13,6 +13,14 @@ namespace Ettad.Workflows.Service.DTO
         public RequestPriority Priority { get; set; }
         public RequestStatus Status { get; set; }
         public DateTime RequestDate { get; set; }
+        public string? Notes { get; set; }
+        public long DepartmentId { get; set; }
+        public string? RequesterId { get; set; }
+        public long RequestPurposeId { get; set; }
+        public string? DepartmentName { get; set; }
+        public string? RequesterName { get; set; }
+        public string? RequesterUserName { get; set; }
+        public string? RequestPurposeName { get; set; }
         public List<ApprovalHistoryDto> ApprovalHistory { get; set; } = new List<ApprovalHistoryDto>();
     }
 
