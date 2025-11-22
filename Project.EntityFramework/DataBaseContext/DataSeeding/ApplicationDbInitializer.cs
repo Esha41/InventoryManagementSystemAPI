@@ -24,8 +24,14 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 // Seed weapon data
                 await SeedWeaponDataAsync(context);
                 
+                // Seed explosive data
+                await SeedExplosiveDataAsync(context);
+                
                 // Seed inventory data based on seeded depots and ammunitions
                 await SeedInventoryDataAsync(context);
+                
+                // Seed allowance data for all departments and all items
+                await SeedAllowanceDataAsync(context);
             }
             catch (Exception)
             {
@@ -495,6 +501,72 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
             }
 
             await context.Inventories.AddRangeAsync(inventories);
+            await context.SaveChangesAsync();
+        }
+
+        private static async Task SeedAllowanceDataAsync(ApplicationDbContext context)
+        {
+            // Check if allowances already exist
+            if (await context.AllowanceItems.AnyAsync())
+            {
+                return; // Already seeded
+            }
+
+            // Get all departments
+            var departments = await context.Departments
+                .Where(d => !d.IsDeleted)
+                .ToListAsync();
+
+            if (!departments.Any())
+            {
+                return; // No departments to seed allowances for
+            }
+
+            // Get all Ammunition items only
+            var ammunitions = await context.Ammunitions
+                .Where(a => !a.IsDeleted)
+                .ToListAsync();
+
+            if (!ammunitions.Any())
+            {
+                return; // No ammunition items to create allowances for
+            }
+
+            // Define different quantities for each ammunition item by ItemNo
+            var ammunitionQuantities = new Dictionary<string, int>
+            {
+                { "AMM-001", 150 }, // 9mm NATO Ball Ammunition - 150 units
+                { "AMM-002", 200 }, // 7.62mm NATO Match Ammunition - 200 units
+                { "AMM-003", 120 }  // 5.56mm NATO Tracer Round - 120 units
+            };
+
+            var utcNow = DateTime.UtcNow;
+            var currentYear = utcNow.Year;
+            var allowanceItems = new List<AllowanceItem>();
+
+            // Create allowances for each department and each ammunition item
+            foreach (var department in departments)
+            {
+                foreach (var ammunition in ammunitions)
+                {
+                    // Get quantity from dictionary, default to 100 if not found
+                    var quantity = ammunitionQuantities.TryGetValue(ammunition.ItemNo, out int qty) 
+                        ? qty 
+                        : 100;
+
+                    allowanceItems.Add(new AllowanceItem
+                    {
+                        ItemId = ammunition.Id,
+                        DepartmentId = department.Id,
+                        Year = currentYear,
+                        Quantity = quantity,
+                        CreationDate = utcNow,
+                        CreatedBy = "SYSTEM"
+                    });
+                }
+            }
+
+            await context.AllowanceItems.AddRangeAsync(allowanceItems);
             await context.SaveChangesAsync();
         }
     }

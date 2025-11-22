@@ -129,6 +129,22 @@ namespace Ettad.RequestManagement.API.Controllers
             var result = await _orderService.DeleteOrderItemAsync(orderId, itemId);
             return ProcessResponse(result);
         }
+
+        /// <summary>
+        /// Verify if an item can be fulfilled from department's allowance
+        /// </summary>
+        /// <param name="itemId">Item ID to verify</param>
+        /// <param name="requestedQuantity">Requested quantity</param>
+        /// <returns>Allowance verification details</returns>
+        [HttpGet("verify-allowance")]
+        [ProducesResponseType(typeof(APIOperationResponse<AllowanceVerificationDto>), (int)HttpStatusCode.OK)]
+        [ProducesResponseType((int)HttpStatusCode.BadRequest)]
+        [CheckAuthorize("Permissions.Order.View", "Permissions.Order.Create")]
+        public async Task<IActionResult> VerifyItemAllowance([FromQuery] long itemId, [FromQuery] long requestedQuantity)
+        {
+            var result = await _orderService.VerifyItemAllowanceAsync(itemId, requestedQuantity);
+            return ProcessResponse(result);
+        }
     }
 }
 
