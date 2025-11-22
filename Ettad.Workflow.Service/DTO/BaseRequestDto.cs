@@ -36,6 +36,10 @@ namespace Ettad.Workflows.Service.DTO
         public DateTime ChangedAt { get; set; }
         public int? StepOrder { get; set; }
         public string? ApplicationRoleId { get; set; }
+        public string? ApplicationRoleName { get; set; }
+        public bool RequireHigherApproval { get; set; }
+        public string? HigherApprovalRoleId { get; set; }
+        public bool IsPending { get; set; } // True if this step hasn't been completed yet
     }
 }
 
