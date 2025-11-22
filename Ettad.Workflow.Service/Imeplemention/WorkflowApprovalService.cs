@@ -799,7 +799,9 @@ namespace Ettad.Workflows.Service.Imeplemention
                                                     ChangedBy = log.ChangedBy,
                                                     ChangedAt = log.ChangedAt,
                                                     StepOrder = wfs != null ? wfs.StepOrder : (int?)null,
-                                                    ApplicationRoleId = wfs != null ? wfs.ApplicationRoleId : null
+                                                    ApplicationRoleId = wfs != null ? wfs.ApplicationRoleId : null,
+                                                    RequireHigherApproval = wfs != null ? wfs.RequireHigherApproval : false,
+                                                    HigherApprovalRoleId = wfs != null ? wfs.HigherApprovalRoleId : null
                                                 }
                                             })
                                             .OrderBy(h => h.History.ChangedAt)
@@ -810,13 +812,151 @@ namespace Ettad.Workflows.Service.Imeplemention
                 .GroupBy(h => h.RequestId)
                 .ToDictionary(g => g.Key, g => g.Select(x => x.History).ToList());
 
-            // Assign approval history to each request
+            // Get all active workflows with their steps, grouped by WorkflowType
+            var workflowsByType = await _context.Workflows
+                .Include(w => w.WorkflowSteps)
+                    .ThenInclude(ws => ws.ApplicationRole)
+                .Where(w => w.IsActive && !w.IsDeleted)
+                .GroupBy(w => w.WorkflowType)
+                .ToDictionaryAsync(g => g.Key, g => g.FirstOrDefault());
+
+            // Get pending workflow approval steps for these requests
+            var pendingStepsData = await (from was in _context.WorkflowApprovalSteps
+                                         join wfs in _context.WorkflowSteps
+                                             .Include(ws => ws.ApplicationRole)
+                                             on was.WorkflowStepId equals wfs.Id
+                                         where allowedRequestIds.Contains((long)was.TargetRequestId) &&
+                                               (was.Status == RequestStatus.New || was.Status == RequestStatus.UnderProcess)
+                                         select new
+                                         {
+                                             RequestId = (long)was.TargetRequestId,
+                                             WorkflowStepId = was.WorkflowStepId,
+                                             WorkflowApprovalStepId = was.Id,
+                                             Status = was.Status,
+                                             Comments = was.Comments,
+                                             CreationDate = was.CreationDate,
+                                             StepOrder = wfs.StepOrder,
+                                             ApplicationRoleId = wfs.ApplicationRoleId,
+                                             ApplicationRoleName = wfs.ApplicationRole != null ? wfs.ApplicationRole.Name : null,
+                                             RequireHigherApproval = wfs.RequireHigherApproval,
+                                             HigherApprovalRoleId = wfs.HigherApprovalRoleId
+                                         })
+                                         .ToListAsync();
+
+            // Group pending steps by request ID
+            var pendingStepsByRequestId = pendingStepsData
+                .GroupBy(p => p.RequestId)
+                .ToDictionary(g => g.Key, g => g.ToList());
+
+            // Assign approval history and merge with all workflow steps for each request
             foreach (var request in baseRequests)
             {
+                var combinedHistory = new List<ApprovalHistoryDto>();
+
+                // Get completed approval history
                 if (historyByRequestId.TryGetValue(request.Id, out var history))
                 {
-                    request.ApprovalHistory = history;
+                    combinedHistory.AddRange(history);
                 }
+
+                // Check if request has been rejected - if so, don't show any pending/future steps
+                bool isRejected = request.Status == RequestStatus.Rejected;
+                
+                // Also check if any step in the history has been rejected
+                if (!isRejected && combinedHistory.Any(h => h.NewRequestStatus == RequestStatus.Rejected))
+                {
+                    isRejected = true;
+                }
+
+                // Only show pending/future steps if request is not rejected
+                if (!isRejected)
+                {
+                    // Get the workflow for this request type
+                    var workflowType = (WorkflowType)request.RequestType;
+                    if (workflowsByType.TryGetValue(workflowType, out var workflow) && workflow != null)
+                    {
+                        // Get all workflow steps
+                        var allWorkflowSteps = workflow.WorkflowSteps.OrderBy(ws => ws.StepOrder).ToList();
+
+                        // Create a set of workflow step IDs that have been completed or are pending
+                        var completedOrPendingStepIds = new HashSet<int>();
+                        foreach (var h in combinedHistory)
+                        {
+                            if (h.WorkflowStepId.HasValue)
+                                completedOrPendingStepIds.Add(h.WorkflowStepId.Value);
+                        }
+
+                        // Get pending steps for this request and add them
+                        if (pendingStepsByRequestId.TryGetValue(request.Id, out var requestPendingSteps))
+                        {
+                            // Only add the next pending step (the one with the lowest step order that hasn't been completed)
+                            var nextPendingStep = requestPendingSteps
+                                .OrderBy(p => p.StepOrder)
+                                .FirstOrDefault();
+                            
+                            if (nextPendingStep != null)
+                            {
+                                completedOrPendingStepIds.Add(nextPendingStep.WorkflowStepId);
+                                
+                                var pendingStep = new ApprovalHistoryDto
+                                {
+                                    Id = nextPendingStep.WorkflowApprovalStepId,
+                                    WorkflowApprovalStepId = nextPendingStep.WorkflowApprovalStepId,
+                                    WorkflowStepId = nextPendingStep.WorkflowStepId,
+                                    OldRequestStatus = nextPendingStep.Status,
+                                    NewRequestStatus = nextPendingStep.Status,
+                                    Comments = nextPendingStep.Comments,
+                                    ChangedBy = null,
+                                    ChangedAt = nextPendingStep.CreationDate,
+                                    StepOrder = nextPendingStep.StepOrder,
+                                    ApplicationRoleId = nextPendingStep.ApplicationRoleId,
+                                    ApplicationRoleName = nextPendingStep.ApplicationRoleName,
+                                    RequireHigherApproval = nextPendingStep.RequireHigherApproval,
+                                    HigherApprovalRoleId = nextPendingStep.HigherApprovalRoleId,
+                                    IsPending = true
+                                };
+                                combinedHistory.Add(pendingStep);
+                            }
+                        }
+                        else
+                        {
+                            // If no pending steps exist, find the next workflow step that should be started
+                            var nextWorkflowStep = allWorkflowSteps
+                                .Where(ws => !completedOrPendingStepIds.Contains(ws.Id))
+                                .OrderBy(ws => ws.StepOrder)
+                                .FirstOrDefault();
+                            
+                            if (nextWorkflowStep != null)
+                            {
+                                var futureStep = new ApprovalHistoryDto
+                                {
+                                    Id = 0, // No approval step ID yet
+                                    WorkflowApprovalStepId = 0,
+                                    WorkflowStepId = nextWorkflowStep.Id,
+                                    OldRequestStatus = RequestStatus.New,
+                                    NewRequestStatus = RequestStatus.New,
+                                    Comments = null,
+                                    ChangedBy = null,
+                                    ChangedAt = DateTime.MinValue, // Will be sorted last
+                                    StepOrder = nextWorkflowStep.StepOrder,
+                                    ApplicationRoleId = nextWorkflowStep.ApplicationRoleId,
+                                    ApplicationRoleName = nextWorkflowStep.ApplicationRole != null ? nextWorkflowStep.ApplicationRole.Name : null,
+                                    RequireHigherApproval = nextWorkflowStep.RequireHigherApproval,
+                                    HigherApprovalRoleId = nextWorkflowStep.HigherApprovalRoleId,
+                                    IsPending = true
+                                };
+                                combinedHistory.Add(futureStep);
+                            }
+                        }
+                    }
+                }
+
+                // Sort: completed steps first (by step order and date), then pending steps last
+                request.ApprovalHistory = combinedHistory
+                    .OrderBy(h => h.IsPending ? 1 : 0) // Pending steps (1) come after completed steps (0)
+                    .ThenBy(h => h.StepOrder ?? int.MaxValue)
+                    .ThenBy(h => h.ChangedAt == DateTime.MinValue ? DateTime.MaxValue : h.ChangedAt)                    
+                    .ToList();
             }
 
             return baseRequests;
