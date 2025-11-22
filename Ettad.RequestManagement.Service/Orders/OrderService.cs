@@ -14,6 +14,7 @@ using Microsoft.Extensions.Logging;
 using Ettad.Notification.Service;
 using AutoMapper.QueryableExtensions;
 using Ettad.CrossCutting.Comman.Models;
+using Ettad.Workflows.Service.Interface;
 using System.Linq;
 
 namespace Ettad.RequestManagement.Service.Orders
@@ -26,6 +27,7 @@ namespace Ettad.RequestManagement.Service.Orders
         private readonly ICrossCuttingRepository<AllowanceItem> _allowanceItemRepository;
         private readonly ICrossCuttingRepository<Supply> _supplyRepository;
         private readonly ICrossCuttingRepository<SupplyDetail> _supplyDetailRepository;
+        private readonly IWorkflowApprovalService _workflowApprovalService;
         private readonly IMapper _mapper;
         private readonly IValidator<CreateOrderDto> _createValidator;
         private readonly ICurrentUserService _currentUserService;
@@ -41,6 +43,7 @@ namespace Ettad.RequestManagement.Service.Orders
             ICrossCuttingRepository<AllowanceItem> allowanceItemRepository,
             ICrossCuttingRepository<Supply> supplyRepository,
             ICrossCuttingRepository<SupplyDetail> supplyDetailRepository,
+            IWorkflowApprovalService workflowApprovalService,
             IMapper mapper,
             IValidator<CreateOrderDto> createValidator,
             ICurrentUserService currentUserService,
@@ -55,6 +58,7 @@ namespace Ettad.RequestManagement.Service.Orders
             _allowanceItemRepository = allowanceItemRepository;
             _supplyRepository = supplyRepository;
             _supplyDetailRepository = supplyDetailRepository;
+            _workflowApprovalService = workflowApprovalService;
             _mapper = mapper;
             _createValidator = createValidator;
             _currentUserService = currentUserService;
@@ -381,6 +385,26 @@ namespace Ettad.RequestManagement.Service.Orders
 
                 // Add to repository (this will cascade save RequestItems)
                 var createdOrder = await _orderRepository.AddAsync(order);
+
+                // Determine workflow type based on order type
+                // If order is from reserved/allowance, use WorkflowType.OrderFromReAl (4), otherwise use WorkflowType.Order (1)
+                var workflowType = createdOrder.IsFromAllowance ? WorkflowType.OrderFromReAl : WorkflowType.Order;
+
+                // Start workflow for the order
+                var workflowStarted = await _workflowApprovalService.StartWorkflowAsync(
+                    createdOrder.Id, 
+                    workflowType);
+
+                if (workflowStarted)
+                {
+                    _logger.LogInformation("Workflow started successfully for order. OrderId: {OrderId}, IsFromAllowance: {IsFromAllowance}, User: {UserId}",
+                        createdOrder.Id, createdOrder.IsFromAllowance, currentUserId);
+                }
+                else
+                {
+                    _logger.LogWarning("Failed to start workflow for order. OrderId: {OrderId}, IsFromAllowance: {IsFromAllowance}, User: {UserId}",
+                        createdOrder.Id, createdOrder.IsFromAllowance, currentUserId);
+                }
 
                 // Send notification
                 await NotifyOrderAsync(

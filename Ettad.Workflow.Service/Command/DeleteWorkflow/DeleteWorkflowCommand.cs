@@ -51,6 +51,7 @@ namespace Ettad.Workflows.Service.Command.DeleteWorkflow
 
                 // Soft delete the workflow
                 entity.IsDeleted = true;
+                entity.IsActive = false;
                 entity.ModifiedBy = _currentUserService.UserName;
                 entity.ModificationDate = DateTime.UtcNow;
 

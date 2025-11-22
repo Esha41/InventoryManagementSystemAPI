@@ -37,5 +37,6 @@ namespace Ettad.Workflows.Service.DTO
         public string? RequesterId { get; set; }
         public long RequestPurposeId { get; set; }
         public long WorkflowApprovalStepId { get; set; }
+        public DateTime RequestDate { get; set; }
     }
 }
