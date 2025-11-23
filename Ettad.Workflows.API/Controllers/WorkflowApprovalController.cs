@@ -21,14 +21,14 @@ namespace Ettad.Workflows.API.Controllers
         }
 
         [HttpGet]
-        [CheckAuthorize("Permissions.RequestReciver.Page", "Permissions.RequestReciver.View")]
+        [CheckAuthorize("Permissions.RequestReciever.Page", "Permissions.RequestReciever.View")]
         public async Task<IActionResult> GetAll()
         {
             return Ok(await _service.GetAllAsync());
         }
 
         [HttpGet("{id}")]
-        [CheckAuthorize("Permissions.RequestReciver.Page", "Permissions.RequestReciver.View")]
+        [CheckAuthorize("Permissions.RequestReciever.Page", "Permissions.RequestReciever.View")]
         public async Task<IActionResult> Get(int id)
         {
             var result = await _service.GetByIdAsync(id);
@@ -37,14 +37,14 @@ namespace Ettad.Workflows.API.Controllers
         }
 
         [HttpPost]
-        [CheckAuthorize("Permissions.RequestReciver.Create")]
+        [CheckAuthorize("Permissions.RequestReciever.Create")]
         public async Task<IActionResult> Create([FromBody] CreateWorkflowApprovalStepDto dto)
         {
             return Ok(await _service.CreateAsync(dto));
         }
 
         [HttpPut("{id}")]
-        [CheckAuthorize("Permissions.RequestReciver.Edit")]
+        [CheckAuthorize("Permissions.RequestReciever.Edit")]
         public async Task<IActionResult> Update(int id, [FromBody] UpdateWorkflowApprovalStepDto dto)
         {
             var result = await _service.UpdateAsync(id, dto);
@@ -53,7 +53,7 @@ namespace Ettad.Workflows.API.Controllers
         }
 
         [HttpDelete("{id}")]
-        [CheckAuthorize("Permissions.RequestReciver.Delete")]
+        [CheckAuthorize("Permissions.RequestReciever.Delete")]
         public async Task<IActionResult> Delete(int id)
         {
             var deleted = await _service.DeleteAsync(id);
@@ -62,7 +62,7 @@ namespace Ettad.Workflows.API.Controllers
         }
 
         [HttpGet("AllOrders")]
-     //   [CheckAuthorize("Permissions.RequestReciver.Page", "Permissions.RequestReciver.View")]
+     //   [CheckAuthorize("Permissions.RequestReciever.Page", "Permissions.RequestReciever.View")]
         public async Task<IActionResult> GetOrdersWithApprovalSteps()
         {
             var result = await _service.GetOrdersWithApprovalStepsAsync();
@@ -70,7 +70,7 @@ namespace Ettad.Workflows.API.Controllers
         }
 
         [HttpGet("AllBaseRequests")]
-        [CheckAuthorize("Permissions.RequestReciver.Page", "Permissions.RequestReciver.View")]
+        [CheckAuthorize("Permissions.RequestReciever.Page", "Permissions.RequestReciever.View")]
         public async Task<IActionResult> GetAllBaseRequests()
         {
             var result = await _service.GetAllBaseRequestsAsync();
@@ -78,7 +78,7 @@ namespace Ettad.Workflows.API.Controllers
         }
 
         [HttpPost("approve-reject")]
-        [CheckAuthorize("Permissions.RequestReciver.Create", "Permissions.RequestReciver.Edit")]
+        [CheckAuthorize("Permissions.RequestReciever.Create", "Permissions.RequestReciever.Edit")]
         public async Task<IActionResult> ApproveOrReject([FromBody] ApproveRejectWorkflowApprovalDto dto)
         {
             try

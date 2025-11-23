@@ -45,7 +45,7 @@ namespace Ettad.EntityFramework.Configurations
                 {
                     Id = 1,
                     Code = "ORE",
-                    NameAr = "الجهة الطالبة للطلب",
+                    NameAr = "القوة الطالبة",
                     NameEn = "Order Requesting Entity",
                     IsDeleted = false
                 },
@@ -53,7 +53,7 @@ namespace Ettad.EntityFramework.Configurations
                 {
                     Id = 2,
                     Code = "MT",
-                    NameAr = "التدريب العسكري",
+                    NameAr = "مديرية التدريب العسكري",
                     NameEn = "Military Training",
                     IsDeleted = false
                 },
@@ -61,16 +61,16 @@ namespace Ettad.EntityFramework.Configurations
                 {
                     Id = 3,
                     Code = "DoA",
-                    NameAr = "مدير التسليح",
-                    NameEn = "Director of Armament",
+                    NameAr = "مديرية التسليح",
+                    NameEn = "Directorate of Armament",
                     IsDeleted = false
                 },
                 new ApplicationEntity
                 {
                     Id = 4,
-                    Code = "MO",
-                    NameAr = "العمليات العسكرية",
-                    NameEn = "Military Operations",
+                    Code = "OE",
+                    NameAr = "العمليات",
+                    NameEn = "Operation Entity",
                     IsDeleted = false
                 },
                 new ApplicationEntity
@@ -93,7 +93,7 @@ namespace Ettad.EntityFramework.Configurations
                 {
                     Id = 7,
                     Code = "CoS",
-                    NameAr = "رئيس الأركان",
+                    NameAr = "مكتب رئيس الأركان",
                     NameEn = "Chief of Staff",
                     IsDeleted = false
                 },
@@ -101,7 +101,7 @@ namespace Ettad.EntityFramework.Configurations
                 {
                     Id = 8,
                     Code = "Inventory",
-                    NameAr = "المخزون",
+                    NameAr = "مستودعات الأسلحة والذخيرة المركزيه",
                     NameEn = "Inventory",
                     IsDeleted = false
                 }              

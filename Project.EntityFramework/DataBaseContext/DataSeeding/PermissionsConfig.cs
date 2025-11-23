@@ -1,14 +1,10 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using Newtonsoft.Json;
 
 namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
 {
-    public static class RequestorPermissionConfig
+    public static class PermissionConfig
     {
-        public static List<string> AllowedPermissions = new()
+        public static List<string> ReadLookups = new()
         {
             "Permissions.Departments.Page",
             "Permissions.Departments.View",
@@ -40,36 +36,411 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
             "Permissions.Colors.View",
             "Permissions.Supplier.Page",
             "Permissions.Supplier.View",
+            "Permissions.RequestPurpose.Page",
+            "Permissions.RequestPurpose.View",
+        };
+
+        public static List<string> WriteLookups = new()
+        {
+            "Permissions.Departments.Create",
+            "Permissions.Departments.Edit",
+            "Permissions.Departments.Delete",
+            "Permissions.Propellants.Create",
+            "Permissions.Propellants.Edit",
+            "Permissions.Propellants.Delete",
+            "Permissions.Units.Create",
+            "Permissions.Units.Edit",
+            "Permissions.Units.Delete",
+            "Permissions.ProjectailMaterials.Create",
+            "Permissions.ProjectailMaterials.Edit",
+            "Permissions.ProjectailMaterials.Delete",
+            "Permissions.NatureOptions.Create",
+            "Permissions.NatureOptions.Edit",
+            "Permissions.NatureOptions.Delete",
+            "Permissions.PrimaryPurposes.Create",
+            "Permissions.PrimaryPurposes.Edit",
+            "Permissions.PrimaryPurposes.Delete",
+            "Permissions.Manufacturers.Create",
+            "Permissions.Manufacturers.Edit",
+            "Permissions.Manufacturers.Delete",
+            "Permissions.Hccs.Create",
+            "Permissions.Hccs.Edit",
+            "Permissions.Hccs.Delete",
+            "Permissions.Depots.Create",
+            "Permissions.Depots.Edit",
+            "Permissions.Depots.Delete",
+            "Permissions.HazardDivisions.Create",
+            "Permissions.HazardDivisions.Edit",
+            "Permissions.HazardDivisions.Delete",
+            "Permissions.Countries.Create",
+            "Permissions.Countries.Edit",
+            "Permissions.Countries.Delete",
+            "Permissions.CaseTypes.Create",
+            "Permissions.CaseTypes.Edit",
+            "Permissions.CaseTypes.Delete",
+            "Permissions.Compatibilities.Create",
+            "Permissions.Compatibilities.Edit",
+            "Permissions.Compatibilities.Delete",
+            "Permissions.Colors.Create",
+            "Permissions.Colors.Edit",
+            "Permissions.Colors.Delete",
+            "Permissions.Supplier.Create",
+            "Permissions.Supplier.Edit",
+            "Permissions.Supplier.Delete",
+            "Permissions.RequestPurpose.Create",
+            "Permissions.RequestPurpose.Edit",
+            "Permissions.RequestPurpose.Delete",
+        };
+
+        public static List<string> ReadItems = new()
+        {
             "Permissions.Ammunition.Page",
             "Permissions.Ammunition.View",
+        };
+
+        public static List<string> WriteItems = new()
+        {
+            "Permissions.Ammunition.Create",
+            "Permissions.Ammunition.Edit",
+            "Permissions.Ammunition.Delete",
+        };
+
+        public static List<string> ReadInventory = new()
+        {
+            "Permissions.Inventory.Page",
+            "Permissions.Inventory.View",
+        };
+
+        public static List<string> WriteInventory = new()
+        {
+            "Permissions.Inventory.Create",
+            "Permissions.Inventory.Edit",
+            "Permissions.Inventory.Delete",
+        };
+
+        public static List<string> ReadAllowanceItem = new()
+        {
             "Permissions.AllowanceItem.Page",
             "Permissions.AllowanceItem.View",
+        };
+
+        public static List<string> Notifications = new()
+        {
             "Permissions.NotificationsPage.Page",
             "Permissions.NotificationsPage.View",
-            "Permissions.NewRequest.Page",
-            "Permissions.NewRequest.View",
-            "Permissions.NewRequest.Create",
-            "Permissions.ReturnRequest.Page",
-            "Permissions.ReturnRequest.View",
-            "Permissions.ReturnRequest.Create",
+        };
+
+        public static List<string> Dashboard = new()
+        {
+            "dashboard_view"
+        };
+
+        public static List<string> ReadOrderDiscardReturn = new()
+        {
+            "Permissions.Discard.Page",
+            "Permissions.Discard.View",
+
+            "Permissions.Return.Page",
+            "Permissions.Return.View",
+
+            "Permissions.Order.Page",
+            "Permissions.Order.View",
+        };
+
+        public static List<string> WriteOrder = new()
+        {
+            "Permissions.Order.Create",
+            "Permissions.Order.Edit",
+        };
+
+        public static List<string> WriteOrderDiscardReturn = new()
+        {
             "Permissions.Discard.Page",
             "Permissions.Discard.View",
             "Permissions.Discard.Create",
+            "Permissions.Discard.Edit",
+
             "Permissions.Return.Page",
             "Permissions.Return.View",
             "Permissions.Return.Create",
-            "Permissions.ViewRequest.Page",
-            "Permissions.ViewRequest.View",
-            "Permissions.Request.Page",
-            "Permissions.Request.View",
-            "Permissions.Request.Create",
-            "Permissions.RequestPurpose.Page",
-            "Permissions.RequestPurpose.View",
+            "Permissions.Return.Edit",
+
             "Permissions.Order.Page",
             "Permissions.Order.View",
             "Permissions.Order.Create",
-            "dashboard_view"
+            "Permissions.Order.Edit",
         };
+
+        public static List<string> RequestReciever = new()
+        {
+            "Permissions.RequestReciever.Page",
+            "Permissions.RequestReciever.View",
+            "Permissions.RequestReciever.Create",
+            "Permissions.RequestReciever.Edit",
+        };
+
+
+        #region Actual grouping for roles baesd on application entities
+
+        #region Order Requesting Entity
+
+        public static List<string> Requester_OrderRequestingEntity =
+            ReadLookups
+                .Concat(ReadAllowanceItem)
+                .Concat(ReadInventory)
+                .Concat(ReadItems)
+                .Concat(Dashboard)
+                .Concat(Notifications)
+                .Concat(ReadOrderDiscardReturn)
+                .Concat(WriteOrderDiscardReturn)
+                .ToList();
+
+        public static List<string> SupplyOfficer_OrderRequestingEntity =
+            ReadLookups
+                .Concat(ReadAllowanceItem)
+                .Concat(ReadInventory)
+                .Concat(ReadItems)
+                .Concat(Dashboard)
+                .Concat(Notifications)
+                .Concat(ReadOrderDiscardReturn)
+                .Concat(RequestReciever)
+                .ToList();
+
+        public static List<string> RequestingEntityCommander_OrderRequestingEntity = 
+            ReadLookups
+                .Concat(ReadAllowanceItem)
+                .Concat(ReadInventory)
+                .Concat(ReadItems)
+                .Concat(Dashboard)
+                .Concat(Notifications)
+                .Concat(ReadOrderDiscardReturn)
+                .ToList();
+
+        #endregion
+
+        #region Military Training Entity
+
+        public static List<string> MilitaryTrainingOfficer_MilitaryTrainingEntity =
+            ReadLookups
+                .Concat(ReadItems)
+                .Concat(Dashboard)
+                .Concat(Notifications)
+                .Concat(ReadOrderDiscardReturn)
+                .Concat(RequestReciever)
+                .ToList();
+
+        public static List<string> MilitaryTrainingAuditor_MilitaryTrainingEntity =
+            ReadLookups
+                .Concat(Dashboard)
+                .Concat(ReadItems)
+                .Concat(Notifications)
+                .Concat(ReadOrderDiscardReturn)
+                .Concat(RequestReciever)
+                .ToList();
+
+        public static List<string> HeadOfMiltaryTraining_MilitaryTrainingEntity =
+            ReadLookups
+                .Concat(Dashboard)
+                .Concat(ReadItems)
+                .Concat(Notifications)
+                .Concat(ReadOrderDiscardReturn)
+                .Concat(RequestReciever)
+                .ToList();
+
+        #endregion
+
+        #region Directorate of Ammunition entity
+
+        public static List<string> Auditor_DirectorateOfAmmunitionEntity =
+            ReadLookups
+                .Concat(ReadItems)
+                .Concat(ReadAllowanceItem)
+                .Concat(ReadInventory)
+                .Concat(Dashboard)
+                .Concat(Notifications)
+                .Concat(ReadOrderDiscardReturn)
+                .Concat(RequestReciever)
+                .ToList();
+
+        public static List<string> HeadOfDivision_DirectorateOfAmmunitionEntity =
+            ReadLookups
+                .Concat(ReadItems)
+                .Concat(ReadAllowanceItem)
+                .Concat(ReadInventory)
+                .Concat(Dashboard)
+                .Concat(Notifications)
+                .Concat(ReadOrderDiscardReturn)
+                .Concat(RequestReciever)
+                .ToList();
+
+        public static List<string> DirectorOfArmament_DirectorateOfAmmunitionEntity =
+            ReadLookups
+                .Concat(ReadItems)
+                .Concat(ReadAllowanceItem)
+                .Concat(ReadInventory)
+                .Concat(Dashboard)
+                .Concat(Notifications)
+                .Concat(ReadOrderDiscardReturn)
+                .Concat(RequestReciever)
+                .ToList();
+
+        public static List<string> HeadOfLogistics_DirectorateOfAmmunitionEntity =
+            ReadLookups
+                .Concat(ReadItems)
+                .Concat(ReadAllowanceItem)
+                .Concat(ReadInventory)
+                .Concat(Dashboard)
+                .Concat(Notifications)
+                .Concat(ReadOrderDiscardReturn)
+                .Concat(RequestReciever)
+                .ToList();
+
+        #endregion
+
+        #region Military Operations Entity
+
+        public static List<string> Officer_MilitaryOperationsEntity =
+            ReadLookups
+                .Concat(Dashboard)
+                .Concat(ReadItems)
+                .Concat(Notifications)
+                .Concat(ReadOrderDiscardReturn)
+                .Concat(RequestReciever)
+                .ToList();
+
+        public static List<string> Auditor_MilitaryOperationsEntity =
+            ReadLookups
+                .Concat(Dashboard)
+                .Concat(ReadItems)
+                .Concat(Notifications)
+                .Concat(ReadOrderDiscardReturn)
+                .Concat(RequestReciever)
+                .ToList();
+
+        public static List<string> HeadOfMilitaryOperations_MilitaryOperationsEntity =
+            ReadLookups
+                .Concat(ReadItems)
+                .Concat(ReadAllowanceItem)
+                .Concat(ReadInventory)
+                .Concat(Dashboard)
+                .Concat(Notifications)
+                .Concat(ReadOrderDiscardReturn)
+                .Concat(RequestReciever)
+                .ToList();
+
+        #endregion
+
+        #region Chief of Staff (CoS) Entity
+
+        public static List<string> Auditor_ChiefOfStaffEntity =
+            ReadLookups
+                .Concat(ReadItems)
+                .Concat(ReadAllowanceItem)
+                .Concat(ReadInventory)
+                .Concat(Dashboard)
+                .Concat(Notifications)
+                .Concat(ReadOrderDiscardReturn)
+                .Concat(RequestReciever)
+                .ToList();
+
+        public static List<string> DeputyChiefOfStaff_ChiefOfStaffEntity =
+            ReadLookups
+                .Concat(ReadItems)
+                .Concat(ReadAllowanceItem)
+                .Concat(ReadInventory)
+                .Concat(Dashboard)
+                .Concat(Notifications)
+                .Concat(ReadOrderDiscardReturn)
+                .Concat(RequestReciever)
+                .ToList();
+
+        public static List<string> ChiefOfStaff_ChiefOfStaffEntity =
+            ReadLookups
+                .Concat(ReadItems)
+                .Concat(ReadAllowanceItem)
+                .Concat(ReadInventory)
+                .Concat(Dashboard)
+                .Concat(Notifications)
+                .Concat(ReadOrderDiscardReturn)
+                .Concat(RequestReciever)
+                .ToList();
+
+        #endregion
+
+        #region Inventory Entity
+
+        public static List<string> AuditorOfAuditDepo_InventoryEntity =
+            ReadLookups
+                .Concat(WriteLookups)
+                .Concat(ReadItems)
+                .Concat(WriteItems)
+                .Concat(ReadInventory)
+                .Concat(WriteItems)
+                .Concat(ReadAllowanceItem)
+                .Concat(WriteOrder)
+                .Concat(ReadOrderDiscardReturn)
+                .Concat(RequestReciever)
+                .Concat(Dashboard)
+                .Concat(Notifications)
+                .ToList();
+
+        public static List<string> HeadOfAuditDepo_InventoryEntity =
+            ReadLookups
+                .Concat(WriteLookups)
+                .Concat(ReadItems)
+                .Concat(ReadInventory)
+                .Concat(WriteItems)
+                .Concat(ReadAllowanceItem)
+                .Concat(WriteOrder)
+                .Concat(ReadOrderDiscardReturn)
+                .Concat(RequestReciever)
+                .Concat(Dashboard)
+                .Concat(Notifications)
+                .ToList();
+
+        public static List<string> DepoDivisionAuditor_InventoryEntity =
+            ReadLookups
+                .Concat(WriteLookups)
+                .Concat(ReadItems)
+                .Concat(WriteItems)
+                .Concat(ReadInventory)
+                .Concat(WriteItems)
+                .Concat(ReadAllowanceItem)
+                .Concat(ReadOrderDiscardReturn)
+                .Concat(RequestReciever)
+                .Concat(Dashboard)
+                .Concat(Notifications)
+                .ToList();
+
+        public static List<string> DepoCommander_InventoryEntity =
+            ReadLookups
+                .Concat(WriteLookups)
+                .Concat(ReadItems)
+                .Concat(ReadInventory)
+                .Concat(ReadAllowanceItem)
+                .Concat(ReadOrderDiscardReturn)
+                .Concat(RequestReciever)
+                .Concat(Dashboard)
+                .Concat(Notifications)
+                .ToList();
+
+        public static List<string> DepoOfficer_InventoryEntity =
+            ReadLookups
+                .Concat(WriteLookups)
+                .Concat(ReadItems)
+                .Concat(WriteItems)
+                .Concat(ReadInventory)
+                .Concat(WriteItems)
+                .Concat(ReadAllowanceItem)
+                .Concat(ReadOrderDiscardReturn)
+                .Concat(RequestReciever)
+                .Concat(Dashboard)
+                .Concat(Notifications)
+                .ToList();
+
+        #endregion
+
+        #endregion
     }
 
     // You can later add other roles here
@@ -77,7 +448,6 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
     {
         public static List<string> AllowedPermissions = new()
         {
-            // Manager permissions
         };
     }
 }

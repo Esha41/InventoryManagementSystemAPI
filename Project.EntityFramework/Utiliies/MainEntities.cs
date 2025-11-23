@@ -13,7 +13,7 @@ public enum CrudOperation
 
 public static class MainEntities
 {
-    [Category(CrudPermissionsGenerator.OrganizationSettings)]
+    [Category(CrudPermissionsGenerator.General)]
     public static readonly CrudOperation[] Departments = new[]
     {
         CrudOperation.Page,
@@ -23,7 +23,7 @@ public static class MainEntities
         CrudOperation.Delete,
     };
 
-    [Category(CrudPermissionsGenerator.OrganizationSettings)]
+    [Category(CrudPermissionsGenerator.General)]
     public static readonly CrudOperation[] Propellants = new[]
     {
         CrudOperation.Page,
@@ -33,7 +33,7 @@ public static class MainEntities
         CrudOperation.Delete,
     };
 
-    [Category(CrudPermissionsGenerator.OrganizationSettings)]
+    [Category(CrudPermissionsGenerator.General)]
     public static readonly CrudOperation[] Units = new[]
     {
         CrudOperation.Page,
@@ -43,7 +43,7 @@ public static class MainEntities
         CrudOperation.Delete,
     };
 
-    [Category(CrudPermissionsGenerator.OrganizationSettings)]
+    [Category(CrudPermissionsGenerator.General)]
     public static readonly CrudOperation[] ProjectailMaterials = new[]
     {
         CrudOperation.Page,
@@ -53,7 +53,7 @@ public static class MainEntities
         CrudOperation.Delete,
     };
 
-    [Category(CrudPermissionsGenerator.OrganizationSettings)]
+    [Category(CrudPermissionsGenerator.General)]
     public static readonly CrudOperation[] NatureOptions = new[]
     {
         CrudOperation.Page,
@@ -63,7 +63,7 @@ public static class MainEntities
         CrudOperation.Delete,
     };
 
-    [Category(CrudPermissionsGenerator.OrganizationSettings)]
+    [Category(CrudPermissionsGenerator.General)]
     public static readonly CrudOperation[] PrimaryPurposes = new[]
     {
         CrudOperation.Page,
@@ -73,7 +73,7 @@ public static class MainEntities
         CrudOperation.Delete,
     };
 
-    [Category(CrudPermissionsGenerator.OrganizationSettings)]
+    [Category(CrudPermissionsGenerator.General)]
     public static readonly CrudOperation[] Manufacturers = new[]
     {
         CrudOperation.Page,
@@ -83,7 +83,7 @@ public static class MainEntities
         CrudOperation.Delete,
     };
 
-    [Category(CrudPermissionsGenerator.OrganizationSettings)]
+    [Category(CrudPermissionsGenerator.General)]
     public static readonly CrudOperation[] Hccs = new[]
     {
         CrudOperation.Page,
@@ -93,7 +93,7 @@ public static class MainEntities
         CrudOperation.Delete,
     };
 
-    [Category(CrudPermissionsGenerator.OrganizationSettings)]
+    [Category(CrudPermissionsGenerator.General)]
     public static readonly CrudOperation[] Depots = new[]
     {
         CrudOperation.Page,
@@ -103,7 +103,7 @@ public static class MainEntities
         CrudOperation.Delete,
     };
 
-    [Category(CrudPermissionsGenerator.OrganizationSettings)]
+    [Category(CrudPermissionsGenerator.General)]
     public static readonly CrudOperation[] HazardDivisions = new[]
     {
         CrudOperation.Page,
@@ -113,7 +113,7 @@ public static class MainEntities
         CrudOperation.Delete,
     };
 
-    [Category(CrudPermissionsGenerator.OrganizationSettings)]
+    [Category(CrudPermissionsGenerator.General)]
     public static readonly CrudOperation[] Countries = new[]
     {
         CrudOperation.Page,
@@ -123,7 +123,7 @@ public static class MainEntities
         CrudOperation.Delete,
     };
 
-    [Category(CrudPermissionsGenerator.OrganizationSettings)]
+    [Category(CrudPermissionsGenerator.General)]
     public static readonly CrudOperation[] CaseTypes = new[]
     {
         CrudOperation.Page,
@@ -133,7 +133,7 @@ public static class MainEntities
         CrudOperation.Delete,
     };
 
-    [Category(CrudPermissionsGenerator.OrganizationSettings)]
+    [Category(CrudPermissionsGenerator.General)]
     public static readonly CrudOperation[] Compatibilities = new[]
     {
         CrudOperation.Page,
@@ -143,7 +143,7 @@ public static class MainEntities
         CrudOperation.Delete,
     };
 
-    [Category(CrudPermissionsGenerator.OrganizationSettings)]
+    [Category(CrudPermissionsGenerator.General)]
     public static readonly CrudOperation[] Colors = new[]
     {
         CrudOperation.Page,
@@ -153,7 +153,7 @@ public static class MainEntities
         CrudOperation.Delete,
     };
 
-    [Category(CrudPermissionsGenerator.OrganizationSettings)]
+    [Category(CrudPermissionsGenerator.General)]
     public static readonly CrudOperation[] Supplier = new[]
     {
         CrudOperation.Page,
@@ -185,29 +185,6 @@ public static class MainEntities
 
     [Category(CrudPermissionsGenerator.UserManagement)]
     public static readonly CrudOperation[] AzureSetup = new[]
-    {
-        CrudOperation.Page,
-        CrudOperation.View,
-        CrudOperation.Edit
-    };
-
-    [Category(CrudPermissionsGenerator.SettingsSupport)]
-    public static readonly CrudOperation[] AuditLogs = new[]
-    {
-        CrudOperation.Page,
-        CrudOperation.View
-    };
-
-    [Category(CrudPermissionsGenerator.SettingsSupport)]
-    public static readonly CrudOperation[] Translations = new[]
-    {
-        CrudOperation.Page,
-        CrudOperation.View,
-        CrudOperation.Edit
-    };
-
-    [Category(CrudPermissionsGenerator.SettingsSupport)]
-    public static readonly CrudOperation[] ApplicationSettings = new[]
     {
         CrudOperation.Page,
         CrudOperation.View,
@@ -248,16 +225,6 @@ public static class MainEntities
     // DASHBOARD
     // ==============================
     [Category(CrudPermissionsGenerator.Dashboard)]
-    public static readonly CrudOperation[] Dashboard = new[]
-    {
-        CrudOperation.Page,
-        CrudOperation.View,
-        CrudOperation.Create,
-        CrudOperation.Edit,
-        CrudOperation.Delete
-    };
-
-    [Category(CrudPermissionsGenerator.Dashboard)]
     public static readonly CrudOperation[] NotificationsPage = new[]
     {
         CrudOperation.Page,
@@ -280,25 +247,25 @@ public static class MainEntities
     // ==============================
     // REQUEST MANAGEMENT
     // ==============================
-    [Category(CrudPermissionsGenerator.Requests)]
-    public static readonly CrudOperation[] NewRequest = new[]
-    {
-        CrudOperation.Page,
-        CrudOperation.View,
-        CrudOperation.Create,
-        CrudOperation.Edit,
-        CrudOperation.Delete
-    };
+    //[Category(CrudPermissionsGenerator.Requests)]
+    //public static readonly CrudOperation[] NewRequest = new[]
+    //{
+    //    CrudOperation.Page,
+    //    CrudOperation.View,
+    //    CrudOperation.Create,
+    //    CrudOperation.Edit,
+    //    CrudOperation.Delete
+    //};
 
-    [Category(CrudPermissionsGenerator.Requests)]
-    public static readonly CrudOperation[] ReturnRequest = new[]
-    {
-        CrudOperation.Page,
-        CrudOperation.View,
-        CrudOperation.Create,
-        CrudOperation.Edit,
-        CrudOperation.Delete
-    };
+    //[Category(CrudPermissionsGenerator.Requests)]
+    //public static readonly CrudOperation[] ReturnRequest = new[]
+    //{
+    //    CrudOperation.Page,
+    //    CrudOperation.View,
+    //    CrudOperation.Create,
+    //    CrudOperation.Edit,
+    //    CrudOperation.Delete
+    //};
 
     [Category(CrudPermissionsGenerator.Requests)]
     public static readonly CrudOperation[] Discard = new[]
@@ -434,7 +401,7 @@ public static class MainEntities
     };
 
     [Category(CrudPermissionsGenerator.RequestManagement)]
-    public static readonly CrudOperation[] RequestReciver = new[]
+    public static readonly CrudOperation[] RequestReciever = new[]
     {
         CrudOperation.Page,
         CrudOperation.View,
