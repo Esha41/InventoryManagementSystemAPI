@@ -816,6 +816,8 @@ namespace Ettad.Workflows.Service.Imeplemention
             var workflowsByType = await _context.Workflows
                 .Include(w => w.WorkflowSteps)
                     .ThenInclude(ws => ws.ApplicationRole)
+                .Include(w => w.WorkflowSteps)
+                    .ThenInclude(ws => ws.HigherApprovalRole)
                 .Where(w => w.IsActive && !w.IsDeleted)
                 .GroupBy(w => w.WorkflowType)
                 .ToDictionaryAsync(g => g.Key, g => g.FirstOrDefault());
@@ -824,6 +826,7 @@ namespace Ettad.Workflows.Service.Imeplemention
             var pendingStepsData = await (from was in _context.WorkflowApprovalSteps
                                          join wfs in _context.WorkflowSteps
                                              .Include(ws => ws.ApplicationRole)
+                                             .Include(ws => ws.HigherApprovalRole)
                                              on was.WorkflowStepId equals wfs.Id
                                          where allowedRequestIds.Contains((long)was.TargetRequestId) &&
                                                (was.Status == RequestStatus.New || was.Status == RequestStatus.UnderProcess)
@@ -839,7 +842,8 @@ namespace Ettad.Workflows.Service.Imeplemention
                                              ApplicationRoleId = wfs.ApplicationRoleId,
                                              ApplicationRoleName = wfs.ApplicationRole != null ? wfs.ApplicationRole.Name : null,
                                              RequireHigherApproval = wfs.RequireHigherApproval,
-                                             HigherApprovalRoleId = wfs.HigherApprovalRoleId
+                                             HigherApprovalRoleId = wfs.HigherApprovalRoleId,
+                                             HigherApprovalRoleName = wfs.HigherApprovalRole != null ? wfs.HigherApprovalRole.Name : null
                                          })
                                          .ToListAsync();
 
@@ -898,6 +902,20 @@ namespace Ettad.Workflows.Service.Imeplemention
                             {
                                 completedOrPendingStepIds.Add(nextPendingStep.WorkflowStepId);
                                 
+                                // Check if this is a higher approval step
+                                // A higher approval step exists when:
+                                // 1. RequireHigherApproval is true
+                                // 2. There's already an approved step with the same WorkflowStepId for this request
+                                bool isHigherApprovalStep = nextPendingStep.RequireHigherApproval &&
+                                    combinedHistory.Any(h => 
+                                        h.WorkflowStepId == nextPendingStep.WorkflowStepId && 
+                                        h.NewRequestStatus == RequestStatus.Approved);
+                                
+                                // Use HigherApprovalRoleName if this is a higher approval step, otherwise use ApplicationRoleName
+                                string roleNameToUse = isHigherApprovalStep && !string.IsNullOrEmpty(nextPendingStep.HigherApprovalRoleName)
+                                    ? nextPendingStep.HigherApprovalRoleName
+                                    : nextPendingStep.ApplicationRoleName;
+                                
                                 var pendingStep = new ApprovalHistoryDto
                                 {
                                     Id = nextPendingStep.WorkflowApprovalStepId,
@@ -909,8 +927,8 @@ namespace Ettad.Workflows.Service.Imeplemention
                                     ChangedBy = null,
                                     ChangedAt = nextPendingStep.CreationDate,
                                     StepOrder = nextPendingStep.StepOrder,
-                                    ApplicationRoleId = nextPendingStep.ApplicationRoleId,
-                                    ApplicationRoleName = nextPendingStep.ApplicationRoleName,
+                                    ApplicationRoleId = isHigherApprovalStep ? nextPendingStep.HigherApprovalRoleId : nextPendingStep.ApplicationRoleId,
+                                    ApplicationRoleName = roleNameToUse,
                                     RequireHigherApproval = nextPendingStep.RequireHigherApproval,
                                     HigherApprovalRoleId = nextPendingStep.HigherApprovalRoleId,
                                     IsPending = true

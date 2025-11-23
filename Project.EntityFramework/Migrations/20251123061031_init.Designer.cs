@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Ettad.EntityFramework.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20251120135551_Init")]
-    partial class Init
+    [Migration("20251123061031_init")]
+    partial class init
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -271,7 +271,7 @@ namespace Ettad.EntityFramework.Migrations
                         {
                             Id = 1L,
                             Code = "ORE",
-                            CreationDate = new DateTime(2025, 11, 20, 16, 55, 51, 123, DateTimeKind.Unspecified).AddTicks(3884),
+                            CreationDate = new DateTime(2025, 11, 23, 9, 10, 31, 363, DateTimeKind.Unspecified).AddTicks(7492),
                             IsDeleted = false,
                             NameAr = "الجهة الطالبة للطلب",
                             NameEn = "Order Requesting Entity"
@@ -280,7 +280,7 @@ namespace Ettad.EntityFramework.Migrations
                         {
                             Id = 2L,
                             Code = "MT",
-                            CreationDate = new DateTime(2025, 11, 20, 16, 55, 51, 123, DateTimeKind.Unspecified).AddTicks(3902),
+                            CreationDate = new DateTime(2025, 11, 23, 9, 10, 31, 363, DateTimeKind.Unspecified).AddTicks(7512),
                             IsDeleted = false,
                             NameAr = "التدريب العسكري",
                             NameEn = "Military Training"
@@ -289,7 +289,7 @@ namespace Ettad.EntityFramework.Migrations
                         {
                             Id = 3L,
                             Code = "DoA",
-                            CreationDate = new DateTime(2025, 11, 20, 16, 55, 51, 123, DateTimeKind.Unspecified).AddTicks(3904),
+                            CreationDate = new DateTime(2025, 11, 23, 9, 10, 31, 363, DateTimeKind.Unspecified).AddTicks(7513),
                             IsDeleted = false,
                             NameAr = "مدير التسليح",
                             NameEn = "Director of Armament"
@@ -298,7 +298,7 @@ namespace Ettad.EntityFramework.Migrations
                         {
                             Id = 4L,
                             Code = "MO",
-                            CreationDate = new DateTime(2025, 11, 20, 16, 55, 51, 123, DateTimeKind.Unspecified).AddTicks(3906),
+                            CreationDate = new DateTime(2025, 11, 23, 9, 10, 31, 363, DateTimeKind.Unspecified).AddTicks(7515),
                             IsDeleted = false,
                             NameAr = "العمليات العسكرية",
                             NameEn = "Military Operations"
@@ -307,7 +307,7 @@ namespace Ettad.EntityFramework.Migrations
                         {
                             Id = 5L,
                             Code = "DCoS",
-                            CreationDate = new DateTime(2025, 11, 20, 16, 55, 51, 123, DateTimeKind.Unspecified).AddTicks(3907),
+                            CreationDate = new DateTime(2025, 11, 23, 9, 10, 31, 363, DateTimeKind.Unspecified).AddTicks(7516),
                             IsDeleted = false,
                             NameAr = "نائب رئيس الأركان",
                             NameEn = "Deputy Chief of Staff"
@@ -316,7 +316,7 @@ namespace Ettad.EntityFramework.Migrations
                         {
                             Id = 6L,
                             Code = "Function",
-                            CreationDate = new DateTime(2025, 11, 20, 16, 55, 51, 123, DateTimeKind.Unspecified).AddTicks(3909),
+                            CreationDate = new DateTime(2025, 11, 23, 9, 10, 31, 363, DateTimeKind.Unspecified).AddTicks(7517),
                             IsDeleted = false,
                             NameAr = "وظيفة",
                             NameEn = "Function"
@@ -325,7 +325,7 @@ namespace Ettad.EntityFramework.Migrations
                         {
                             Id = 7L,
                             Code = "CoS",
-                            CreationDate = new DateTime(2025, 11, 20, 16, 55, 51, 123, DateTimeKind.Unspecified).AddTicks(3910),
+                            CreationDate = new DateTime(2025, 11, 23, 9, 10, 31, 363, DateTimeKind.Unspecified).AddTicks(7519),
                             IsDeleted = false,
                             NameAr = "رئيس الأركان",
                             NameEn = "Chief of Staff"
@@ -334,7 +334,7 @@ namespace Ettad.EntityFramework.Migrations
                         {
                             Id = 8L,
                             Code = "Inventory",
-                            CreationDate = new DateTime(2025, 11, 20, 16, 55, 51, 123, DateTimeKind.Unspecified).AddTicks(3911),
+                            CreationDate = new DateTime(2025, 11, 23, 9, 10, 31, 363, DateTimeKind.Unspecified).AddTicks(7520),
                             IsDeleted = false,
                             NameAr = "المخزون",
                             NameEn = "Inventory"
@@ -539,7 +539,7 @@ namespace Ettad.EntityFramework.Migrations
                         new
                         {
                             Id = 1L,
-                            CreationDate = new DateTime(2025, 11, 20, 16, 55, 51, 124, DateTimeKind.Unspecified).AddTicks(1895),
+                            CreationDate = new DateTime(2025, 11, 23, 9, 10, 31, 364, DateTimeKind.Unspecified).AddTicks(7016),
                             IsDeleted = false,
                             NameAr = "نحاسي",
                             NameEn = "Brass"
@@ -547,7 +547,7 @@ namespace Ettad.EntityFramework.Migrations
                         new
                         {
                             Id = 2L,
-                            CreationDate = new DateTime(2025, 11, 20, 16, 55, 51, 124, DateTimeKind.Unspecified).AddTicks(1919),
+                            CreationDate = new DateTime(2025, 11, 23, 9, 10, 31, 364, DateTimeKind.Unspecified).AddTicks(7037),
                             IsDeleted = false,
                             NameAr = "فولاذي",
                             NameEn = "Steel"
@@ -555,7 +555,7 @@ namespace Ettad.EntityFramework.Migrations
                         new
                         {
                             Id = 3L,
-                            CreationDate = new DateTime(2025, 11, 20, 16, 55, 51, 124, DateTimeKind.Unspecified).AddTicks(1920),
+                            CreationDate = new DateTime(2025, 11, 23, 9, 10, 31, 364, DateTimeKind.Unspecified).AddTicks(7039),
                             IsDeleted = false,
                             NameAr = "ألومنيوم",
                             NameEn = "Aluminum"
@@ -563,7 +563,7 @@ namespace Ettad.EntityFramework.Migrations
                         new
                         {
                             Id = 4L,
-                            CreationDate = new DateTime(2025, 11, 20, 16, 55, 51, 124, DateTimeKind.Unspecified).AddTicks(1921),
+                            CreationDate = new DateTime(2025, 11, 23, 9, 10, 31, 364, DateTimeKind.Unspecified).AddTicks(7040),
                             IsDeleted = false,
                             NameAr = "بلاستيك",
                             NameEn = "Plastic"
@@ -571,7 +571,7 @@ namespace Ettad.EntityFramework.Migrations
                         new
                         {
                             Id = 5L,
-                            CreationDate = new DateTime(2025, 11, 20, 16, 55, 51, 124, DateTimeKind.Unspecified).AddTicks(1923),
+                            CreationDate = new DateTime(2025, 11, 23, 9, 10, 31, 364, DateTimeKind.Unspecified).AddTicks(7042),
                             IsDeleted = false,
                             NameAr = "مختلط",
                             NameEn = "Composite"
@@ -698,7 +698,7 @@ namespace Ettad.EntityFramework.Migrations
                         new
                         {
                             Id = 1L,
-                            CreationDate = new DateTime(2025, 11, 20, 16, 55, 51, 124, DateTimeKind.Unspecified).AddTicks(4818),
+                            CreationDate = new DateTime(2025, 11, 23, 9, 10, 31, 365, DateTimeKind.Unspecified).AddTicks(207),
                             IsDeleted = false,
                             NameAr = "المجموعة أ",
                             NameEn = "Group A"
@@ -706,7 +706,7 @@ namespace Ettad.EntityFramework.Migrations
                         new
                         {
                             Id = 2L,
-                            CreationDate = new DateTime(2025, 11, 20, 16, 55, 51, 124, DateTimeKind.Unspecified).AddTicks(4835),
+                            CreationDate = new DateTime(2025, 11, 23, 9, 10, 31, 365, DateTimeKind.Unspecified).AddTicks(222),
                             IsDeleted = false,
                             NameAr = "المجموعة ب",
                             NameEn = "Group B"
@@ -714,7 +714,7 @@ namespace Ettad.EntityFramework.Migrations
                         new
                         {
                             Id = 3L,
-                            CreationDate = new DateTime(2025, 11, 20, 16, 55, 51, 124, DateTimeKind.Unspecified).AddTicks(4836),
+                            CreationDate = new DateTime(2025, 11, 23, 9, 10, 31, 365, DateTimeKind.Unspecified).AddTicks(224),
                             IsDeleted = false,
                             NameAr = "المجموعة ج",
                             NameEn = "Group C"
@@ -722,7 +722,7 @@ namespace Ettad.EntityFramework.Migrations
                         new
                         {
                             Id = 4L,
-                            CreationDate = new DateTime(2025, 11, 20, 16, 55, 51, 124, DateTimeKind.Unspecified).AddTicks(4838),
+                            CreationDate = new DateTime(2025, 11, 23, 9, 10, 31, 365, DateTimeKind.Unspecified).AddTicks(225),
                             IsDeleted = false,
                             NameAr = "المجموعة د",
                             NameEn = "Group D"
@@ -730,7 +730,7 @@ namespace Ettad.EntityFramework.Migrations
                         new
                         {
                             Id = 5L,
-                            CreationDate = new DateTime(2025, 11, 20, 16, 55, 51, 124, DateTimeKind.Unspecified).AddTicks(4839),
+                            CreationDate = new DateTime(2025, 11, 23, 9, 10, 31, 365, DateTimeKind.Unspecified).AddTicks(227),
                             IsDeleted = false,
                             NameAr = "المجموعة هـ",
                             NameEn = "Group E"
@@ -881,7 +881,7 @@ namespace Ettad.EntityFramework.Migrations
                         {
                             Id = 1L,
                             Code = "LOG",
-                            CreationDate = new DateTime(2025, 11, 20, 16, 55, 51, 124, DateTimeKind.Unspecified).AddTicks(7994),
+                            CreationDate = new DateTime(2025, 11, 23, 9, 10, 31, 365, DateTimeKind.Unspecified).AddTicks(3805),
                             IsDeleted = false,
                             NameAr = "قسم اللوجستيات",
                             NameEn = "Logistics Department"
@@ -890,7 +890,7 @@ namespace Ettad.EntityFramework.Migrations
                         {
                             Id = 2L,
                             Code = "OPS",
-                            CreationDate = new DateTime(2025, 11, 20, 16, 55, 51, 124, DateTimeKind.Unspecified).AddTicks(8010),
+                            CreationDate = new DateTime(2025, 11, 23, 9, 10, 31, 365, DateTimeKind.Unspecified).AddTicks(3822),
                             IsDeleted = false,
                             NameAr = "قسم العمليات",
                             NameEn = "Operations Department"
@@ -899,7 +899,7 @@ namespace Ettad.EntityFramework.Migrations
                         {
                             Id = 3L,
                             Code = "INV",
-                            CreationDate = new DateTime(2025, 11, 20, 16, 55, 51, 124, DateTimeKind.Unspecified).AddTicks(8012),
+                            CreationDate = new DateTime(2025, 11, 23, 9, 10, 31, 365, DateTimeKind.Unspecified).AddTicks(3823),
                             IsDeleted = false,
                             NameAr = "قسم المخزون",
                             NameEn = "Inventory Department"
@@ -908,7 +908,7 @@ namespace Ettad.EntityFramework.Migrations
                         {
                             Id = 4L,
                             Code = "ARM",
-                            CreationDate = new DateTime(2025, 11, 20, 16, 55, 51, 124, DateTimeKind.Unspecified).AddTicks(8013),
+                            CreationDate = new DateTime(2025, 11, 23, 9, 10, 31, 365, DateTimeKind.Unspecified).AddTicks(3825),
                             IsDeleted = false,
                             NameAr = "قسم التسليح",
                             NameEn = "Armament Department"
@@ -917,7 +917,7 @@ namespace Ettad.EntityFramework.Migrations
                         {
                             Id = 5L,
                             Code = "MNT",
-                            CreationDate = new DateTime(2025, 11, 20, 16, 55, 51, 124, DateTimeKind.Unspecified).AddTicks(8015),
+                            CreationDate = new DateTime(2025, 11, 23, 9, 10, 31, 365, DateTimeKind.Unspecified).AddTicks(3826),
                             IsDeleted = false,
                             NameAr = "قسم الصيانة",
                             NameEn = "Maintenance Department"
@@ -992,7 +992,7 @@ namespace Ettad.EntityFramework.Migrations
                         {
                             Id = 1L,
                             Code = "DEP-001",
-                            CreationDate = new DateTime(2025, 11, 20, 16, 55, 51, 124, DateTimeKind.Unspecified).AddTicks(9598),
+                            CreationDate = new DateTime(2025, 11, 23, 9, 10, 31, 365, DateTimeKind.Unspecified).AddTicks(5606),
                             IsDeleted = false,
                             Latitude = 25.2854m,
                             Location = "Doha",
@@ -1004,7 +1004,7 @@ namespace Ettad.EntityFramework.Migrations
                         {
                             Id = 2L,
                             Code = "DEP-002",
-                            CreationDate = new DateTime(2025, 11, 20, 16, 55, 51, 124, DateTimeKind.Unspecified).AddTicks(9609),
+                            CreationDate = new DateTime(2025, 11, 23, 9, 10, 31, 365, DateTimeKind.Unspecified).AddTicks(5619),
                             IsDeleted = false,
                             Latitude = 25.2866m,
                             Location = "Al Rayyan",
@@ -1016,7 +1016,7 @@ namespace Ettad.EntityFramework.Migrations
                         {
                             Id = 3L,
                             Code = "DEP-003",
-                            CreationDate = new DateTime(2025, 11, 20, 16, 55, 51, 124, DateTimeKind.Unspecified).AddTicks(9611),
+                            CreationDate = new DateTime(2025, 11, 23, 9, 10, 31, 365, DateTimeKind.Unspecified).AddTicks(5621),
                             IsDeleted = false,
                             Latitude = 25.6800m,
                             Location = "Al Khor",
@@ -1028,7 +1028,7 @@ namespace Ettad.EntityFramework.Migrations
                         {
                             Id = 4L,
                             Code = "DEP-004",
-                            CreationDate = new DateTime(2025, 11, 20, 16, 55, 51, 124, DateTimeKind.Unspecified).AddTicks(9613),
+                            CreationDate = new DateTime(2025, 11, 23, 9, 10, 31, 365, DateTimeKind.Unspecified).AddTicks(5623),
                             IsDeleted = false,
                             Latitude = 25.1657m,
                             Location = "Al Wakrah",
@@ -1087,7 +1087,7 @@ namespace Ettad.EntityFramework.Migrations
                         new
                         {
                             Id = 1L,
-                            CreationDate = new DateTime(2025, 11, 20, 16, 55, 51, 125, DateTimeKind.Unspecified).AddTicks(2780),
+                            CreationDate = new DateTime(2025, 11, 23, 9, 10, 31, 365, DateTimeKind.Unspecified).AddTicks(9095),
                             IsDeleted = false,
                             NameAr = "القسم 1.1 - مواد متفجرة",
                             NameEn = "Division 1.1 - Explosives"
@@ -1095,7 +1095,7 @@ namespace Ettad.EntityFramework.Migrations
                         new
                         {
                             Id = 2L,
-                            CreationDate = new DateTime(2025, 11, 20, 16, 55, 51, 125, DateTimeKind.Unspecified).AddTicks(2799),
+                            CreationDate = new DateTime(2025, 11, 23, 9, 10, 31, 365, DateTimeKind.Unspecified).AddTicks(9116),
                             IsDeleted = false,
                             NameAr = "القسم 1.2 - مواد قابلة للانفجار",
                             NameEn = "Division 1.2 - Projection Hazard"
@@ -1103,7 +1103,7 @@ namespace Ettad.EntityFramework.Migrations
                         new
                         {
                             Id = 3L,
-                            CreationDate = new DateTime(2025, 11, 20, 16, 55, 51, 125, DateTimeKind.Unspecified).AddTicks(2801),
+                            CreationDate = new DateTime(2025, 11, 23, 9, 10, 31, 365, DateTimeKind.Unspecified).AddTicks(9118),
                             IsDeleted = false,
                             NameAr = "القسم 1.3 - مواد قابلة للاشتعال",
                             NameEn = "Division 1.3 - Fire Hazard"
@@ -1111,7 +1111,7 @@ namespace Ettad.EntityFramework.Migrations
                         new
                         {
                             Id = 4L,
-                            CreationDate = new DateTime(2025, 11, 20, 16, 55, 51, 125, DateTimeKind.Unspecified).AddTicks(2802),
+                            CreationDate = new DateTime(2025, 11, 23, 9, 10, 31, 365, DateTimeKind.Unspecified).AddTicks(9119),
                             IsDeleted = false,
                             NameAr = "القسم 1.4 - مواد منخفضة المخاطر",
                             NameEn = "Division 1.4 - Minor Hazard"
@@ -1119,7 +1119,7 @@ namespace Ettad.EntityFramework.Migrations
                         new
                         {
                             Id = 5L,
-                            CreationDate = new DateTime(2025, 11, 20, 16, 55, 51, 125, DateTimeKind.Unspecified).AddTicks(2803),
+                            CreationDate = new DateTime(2025, 11, 23, 9, 10, 31, 365, DateTimeKind.Unspecified).AddTicks(9121),
                             IsDeleted = false,
                             NameAr = "القسم 1.5 - مواد غير حساسة",
                             NameEn = "Division 1.5 - Very Insensitive"
@@ -1175,7 +1175,7 @@ namespace Ettad.EntityFramework.Migrations
                         new
                         {
                             Id = 1L,
-                            CreationDate = new DateTime(2025, 11, 20, 16, 55, 51, 125, DateTimeKind.Unspecified).AddTicks(4315),
+                            CreationDate = new DateTime(2025, 11, 23, 9, 10, 31, 366, DateTimeKind.Unspecified).AddTicks(621),
                             IsDeleted = false,
                             NameAr = "HCC-A1",
                             NameEn = "HCC-A1"
@@ -1183,7 +1183,7 @@ namespace Ettad.EntityFramework.Migrations
                         new
                         {
                             Id = 2L,
-                            CreationDate = new DateTime(2025, 11, 20, 16, 55, 51, 125, DateTimeKind.Unspecified).AddTicks(4327),
+                            CreationDate = new DateTime(2025, 11, 23, 9, 10, 31, 366, DateTimeKind.Unspecified).AddTicks(630),
                             IsDeleted = false,
                             NameAr = "HCC-B2",
                             NameEn = "HCC-B2"
@@ -1191,7 +1191,7 @@ namespace Ettad.EntityFramework.Migrations
                         new
                         {
                             Id = 3L,
-                            CreationDate = new DateTime(2025, 11, 20, 16, 55, 51, 125, DateTimeKind.Unspecified).AddTicks(4328),
+                            CreationDate = new DateTime(2025, 11, 23, 9, 10, 31, 366, DateTimeKind.Unspecified).AddTicks(632),
                             IsDeleted = false,
                             NameAr = "HCC-C3",
                             NameEn = "HCC-C3"
@@ -1199,7 +1199,7 @@ namespace Ettad.EntityFramework.Migrations
                         new
                         {
                             Id = 4L,
-                            CreationDate = new DateTime(2025, 11, 20, 16, 55, 51, 125, DateTimeKind.Unspecified).AddTicks(4329),
+                            CreationDate = new DateTime(2025, 11, 23, 9, 10, 31, 366, DateTimeKind.Unspecified).AddTicks(633),
                             IsDeleted = false,
                             NameAr = "HCC-D4",
                             NameEn = "HCC-D4"
@@ -1207,7 +1207,7 @@ namespace Ettad.EntityFramework.Migrations
                         new
                         {
                             Id = 5L,
-                            CreationDate = new DateTime(2025, 11, 20, 16, 55, 51, 125, DateTimeKind.Unspecified).AddTicks(4330),
+                            CreationDate = new DateTime(2025, 11, 23, 9, 10, 31, 366, DateTimeKind.Unspecified).AddTicks(634),
                             IsDeleted = false,
                             NameAr = "HCC-E5",
                             NameEn = "HCC-E5"
@@ -1364,7 +1364,7 @@ namespace Ettad.EntityFramework.Migrations
                         new
                         {
                             Id = 1L,
-                            CreationDate = new DateTime(2025, 11, 20, 16, 55, 51, 126, DateTimeKind.Unspecified).AddTicks(1642),
+                            CreationDate = new DateTime(2025, 11, 23, 9, 10, 31, 366, DateTimeKind.Unspecified).AddTicks(8758),
                             IsDeleted = false,
                             NameAr = "مصنع الذخائر الملكي",
                             NameEn = "Royal Ordnance Factory"
@@ -1372,7 +1372,7 @@ namespace Ettad.EntityFramework.Migrations
                         new
                         {
                             Id = 2L,
-                            CreationDate = new DateTime(2025, 11, 20, 16, 55, 51, 126, DateTimeKind.Unspecified).AddTicks(1663),
+                            CreationDate = new DateTime(2025, 11, 23, 9, 10, 31, 366, DateTimeKind.Unspecified).AddTicks(8777),
                             IsDeleted = false,
                             NameAr = "شركة رايثيون",
                             NameEn = "Raytheon Company"
@@ -1380,7 +1380,7 @@ namespace Ettad.EntityFramework.Migrations
                         new
                         {
                             Id = 3L,
-                            CreationDate = new DateTime(2025, 11, 20, 16, 55, 51, 126, DateTimeKind.Unspecified).AddTicks(1665),
+                            CreationDate = new DateTime(2025, 11, 23, 9, 10, 31, 366, DateTimeKind.Unspecified).AddTicks(8779),
                             IsDeleted = false,
                             NameAr = "مؤسسة الصناعات العسكرية الوطنية",
                             NameEn = "National Military Industries"
@@ -1388,7 +1388,7 @@ namespace Ettad.EntityFramework.Migrations
                         new
                         {
                             Id = 4L,
-                            CreationDate = new DateTime(2025, 11, 20, 16, 55, 51, 126, DateTimeKind.Unspecified).AddTicks(1666),
+                            CreationDate = new DateTime(2025, 11, 23, 9, 10, 31, 366, DateTimeKind.Unspecified).AddTicks(8780),
                             IsDeleted = false,
                             NameAr = "شركة لوكهيد مارتن",
                             NameEn = "Lockheed Martin"
@@ -1396,7 +1396,7 @@ namespace Ettad.EntityFramework.Migrations
                         new
                         {
                             Id = 5L,
-                            CreationDate = new DateTime(2025, 11, 20, 16, 55, 51, 126, DateTimeKind.Unspecified).AddTicks(1667),
+                            CreationDate = new DateTime(2025, 11, 23, 9, 10, 31, 366, DateTimeKind.Unspecified).AddTicks(8781),
                             IsDeleted = false,
                             NameAr = "مجموعة بي إيه إي سيستمز",
                             NameEn = "BAE Systems"
@@ -1452,7 +1452,7 @@ namespace Ettad.EntityFramework.Migrations
                         new
                         {
                             Id = 1L,
-                            CreationDate = new DateTime(2025, 11, 20, 16, 55, 51, 126, DateTimeKind.Unspecified).AddTicks(3131),
+                            CreationDate = new DateTime(2025, 11, 23, 9, 10, 31, 367, DateTimeKind.Unspecified).AddTicks(334),
                             IsDeleted = false,
                             NameAr = "قتالية",
                             NameEn = "Combat"
@@ -1460,7 +1460,7 @@ namespace Ettad.EntityFramework.Migrations
                         new
                         {
                             Id = 2L,
-                            CreationDate = new DateTime(2025, 11, 20, 16, 55, 51, 126, DateTimeKind.Unspecified).AddTicks(3142),
+                            CreationDate = new DateTime(2025, 11, 23, 9, 10, 31, 367, DateTimeKind.Unspecified).AddTicks(347),
                             IsDeleted = false,
                             NameAr = "تدريبية",
                             NameEn = "Training"
@@ -1468,7 +1468,7 @@ namespace Ettad.EntityFramework.Migrations
                         new
                         {
                             Id = 3L,
-                            CreationDate = new DateTime(2025, 11, 20, 16, 55, 51, 126, DateTimeKind.Unspecified).AddTicks(3144),
+                            CreationDate = new DateTime(2025, 11, 23, 9, 10, 31, 367, DateTimeKind.Unspecified).AddTicks(349),
                             IsDeleted = false,
                             NameAr = "تعليمية",
                             NameEn = "Educational"
@@ -1476,7 +1476,7 @@ namespace Ettad.EntityFramework.Migrations
                         new
                         {
                             Id = 4L,
-                            CreationDate = new DateTime(2025, 11, 20, 16, 55, 51, 126, DateTimeKind.Unspecified).AddTicks(3145),
+                            CreationDate = new DateTime(2025, 11, 23, 9, 10, 31, 367, DateTimeKind.Unspecified).AddTicks(350),
                             IsDeleted = false,
                             NameAr = "وهمية",
                             NameEn = "Dummy"
@@ -1484,7 +1484,7 @@ namespace Ettad.EntityFramework.Migrations
                         new
                         {
                             Id = 5L,
-                            CreationDate = new DateTime(2025, 11, 20, 16, 55, 51, 126, DateTimeKind.Unspecified).AddTicks(3146),
+                            CreationDate = new DateTime(2025, 11, 23, 9, 10, 31, 367, DateTimeKind.Unspecified).AddTicks(352),
                             IsDeleted = false,
                             NameAr = "عرض",
                             NameEn = "Display"
@@ -1635,7 +1635,7 @@ namespace Ettad.EntityFramework.Migrations
                         new
                         {
                             Id = 1L,
-                            CreationDate = new DateTime(2025, 11, 20, 16, 55, 51, 127, DateTimeKind.Unspecified).AddTicks(725),
+                            CreationDate = new DateTime(2025, 11, 23, 9, 10, 31, 367, DateTimeKind.Unspecified).AddTicks(9331),
                             IsDeleted = false,
                             NameAr = "قتالي",
                             NameEn = "Combat"
@@ -1643,7 +1643,7 @@ namespace Ettad.EntityFramework.Migrations
                         new
                         {
                             Id = 2L,
-                            CreationDate = new DateTime(2025, 11, 20, 16, 55, 51, 127, DateTimeKind.Unspecified).AddTicks(749),
+                            CreationDate = new DateTime(2025, 11, 23, 9, 10, 31, 367, DateTimeKind.Unspecified).AddTicks(9355),
                             IsDeleted = false,
                             NameAr = "تدريبي",
                             NameEn = "Training"
@@ -1651,7 +1651,7 @@ namespace Ettad.EntityFramework.Migrations
                         new
                         {
                             Id = 3L,
-                            CreationDate = new DateTime(2025, 11, 20, 16, 55, 51, 127, DateTimeKind.Unspecified).AddTicks(751),
+                            CreationDate = new DateTime(2025, 11, 23, 9, 10, 31, 367, DateTimeKind.Unspecified).AddTicks(9356),
                             IsDeleted = false,
                             NameAr = "دفاعي",
                             NameEn = "Defense"
@@ -1659,7 +1659,7 @@ namespace Ettad.EntityFramework.Migrations
                         new
                         {
                             Id = 4L,
-                            CreationDate = new DateTime(2025, 11, 20, 16, 55, 51, 127, DateTimeKind.Unspecified).AddTicks(752),
+                            CreationDate = new DateTime(2025, 11, 23, 9, 10, 31, 367, DateTimeKind.Unspecified).AddTicks(9358),
                             IsDeleted = false,
                             NameAr = "استطلاعي",
                             NameEn = "Reconnaissance"
@@ -1667,7 +1667,7 @@ namespace Ettad.EntityFramework.Migrations
                         new
                         {
                             Id = 5L,
-                            CreationDate = new DateTime(2025, 11, 20, 16, 55, 51, 127, DateTimeKind.Unspecified).AddTicks(753),
+                            CreationDate = new DateTime(2025, 11, 23, 9, 10, 31, 367, DateTimeKind.Unspecified).AddTicks(9359),
                             IsDeleted = false,
                             NameAr = "هجومي",
                             NameEn = "Offensive"
@@ -1723,7 +1723,7 @@ namespace Ettad.EntityFramework.Migrations
                         new
                         {
                             Id = 1L,
-                            CreationDate = new DateTime(2025, 11, 20, 16, 55, 51, 127, DateTimeKind.Unspecified).AddTicks(2109),
+                            CreationDate = new DateTime(2025, 11, 23, 9, 10, 31, 368, DateTimeKind.Unspecified).AddTicks(955),
                             IsDeleted = false,
                             NameAr = "فولاذ",
                             NameEn = "Steel"
@@ -1731,7 +1731,7 @@ namespace Ettad.EntityFramework.Migrations
                         new
                         {
                             Id = 2L,
-                            CreationDate = new DateTime(2025, 11, 20, 16, 55, 51, 127, DateTimeKind.Unspecified).AddTicks(2120),
+                            CreationDate = new DateTime(2025, 11, 23, 9, 10, 31, 368, DateTimeKind.Unspecified).AddTicks(966),
                             IsDeleted = false,
                             NameAr = "نحاس",
                             NameEn = "Brass"
@@ -1739,7 +1739,7 @@ namespace Ettad.EntityFramework.Migrations
                         new
                         {
                             Id = 3L,
-                            CreationDate = new DateTime(2025, 11, 20, 16, 55, 51, 127, DateTimeKind.Unspecified).AddTicks(2122),
+                            CreationDate = new DateTime(2025, 11, 23, 9, 10, 31, 368, DateTimeKind.Unspecified).AddTicks(968),
                             IsDeleted = false,
                             NameAr = "رصاص",
                             NameEn = "Lead"
@@ -1747,7 +1747,7 @@ namespace Ettad.EntityFramework.Migrations
                         new
                         {
                             Id = 4L,
-                            CreationDate = new DateTime(2025, 11, 20, 16, 55, 51, 127, DateTimeKind.Unspecified).AddTicks(2123),
+                            CreationDate = new DateTime(2025, 11, 23, 9, 10, 31, 368, DateTimeKind.Unspecified).AddTicks(969),
                             IsDeleted = false,
                             NameAr = "تنغستن",
                             NameEn = "Tungsten"
@@ -1755,7 +1755,7 @@ namespace Ettad.EntityFramework.Migrations
                         new
                         {
                             Id = 5L,
-                            CreationDate = new DateTime(2025, 11, 20, 16, 55, 51, 127, DateTimeKind.Unspecified).AddTicks(2124),
+                            CreationDate = new DateTime(2025, 11, 23, 9, 10, 31, 368, DateTimeKind.Unspecified).AddTicks(971),
                             IsDeleted = false,
                             NameAr = "يورانيوم منضب",
                             NameEn = "Depleted Uranium"
@@ -1811,7 +1811,7 @@ namespace Ettad.EntityFramework.Migrations
                         new
                         {
                             Id = 1L,
-                            CreationDate = new DateTime(2025, 11, 20, 16, 55, 51, 127, DateTimeKind.Unspecified).AddTicks(3439),
+                            CreationDate = new DateTime(2025, 11, 23, 9, 10, 31, 368, DateTimeKind.Unspecified).AddTicks(2610),
                             IsDeleted = false,
                             NameAr = "بارود أحادي القاعدة",
                             NameEn = "Single-base Powder"
@@ -1819,7 +1819,7 @@ namespace Ettad.EntityFramework.Migrations
                         new
                         {
                             Id = 2L,
-                            CreationDate = new DateTime(2025, 11, 20, 16, 55, 51, 127, DateTimeKind.Unspecified).AddTicks(3449),
+                            CreationDate = new DateTime(2025, 11, 23, 9, 10, 31, 368, DateTimeKind.Unspecified).AddTicks(2623),
                             IsDeleted = false,
                             NameAr = "بارود ثنائي القاعدة",
                             NameEn = "Double-base Powder"
@@ -1827,7 +1827,7 @@ namespace Ettad.EntityFramework.Migrations
                         new
                         {
                             Id = 3L,
-                            CreationDate = new DateTime(2025, 11, 20, 16, 55, 51, 127, DateTimeKind.Unspecified).AddTicks(3533),
+                            CreationDate = new DateTime(2025, 11, 23, 9, 10, 31, 368, DateTimeKind.Unspecified).AddTicks(2624),
                             IsDeleted = false,
                             NameAr = "بارود ثلاثي القاعدة",
                             NameEn = "Triple-base Powder"
@@ -1835,7 +1835,7 @@ namespace Ettad.EntityFramework.Migrations
                         new
                         {
                             Id = 4L,
-                            CreationDate = new DateTime(2025, 11, 20, 16, 55, 51, 127, DateTimeKind.Unspecified).AddTicks(3534),
+                            CreationDate = new DateTime(2025, 11, 23, 9, 10, 31, 368, DateTimeKind.Unspecified).AddTicks(2625),
                             IsDeleted = false,
                             NameAr = "نيتروسليلوز",
                             NameEn = "Nitrocellulose"
@@ -1843,7 +1843,7 @@ namespace Ettad.EntityFramework.Migrations
                         new
                         {
                             Id = 5L,
-                            CreationDate = new DateTime(2025, 11, 20, 16, 55, 51, 127, DateTimeKind.Unspecified).AddTicks(3535),
+                            CreationDate = new DateTime(2025, 11, 23, 9, 10, 31, 368, DateTimeKind.Unspecified).AddTicks(2627),
                             IsDeleted = false,
                             NameAr = "كورديت",
                             NameEn = "Cordite"
@@ -1897,7 +1897,7 @@ namespace Ettad.EntityFramework.Migrations
                         new
                         {
                             Id = 1L,
-                            CreationDate = new DateTime(2025, 11, 20, 16, 55, 51, 127, DateTimeKind.Unspecified).AddTicks(4945),
+                            CreationDate = new DateTime(2025, 11, 23, 9, 10, 31, 368, DateTimeKind.Unspecified).AddTicks(4125),
                             IsDeleted = false,
                             NameAr = "عقيد",
                             NameEn = "Colonel"
@@ -1905,7 +1905,7 @@ namespace Ettad.EntityFramework.Migrations
                         new
                         {
                             Id = 2L,
-                            CreationDate = new DateTime(2025, 11, 20, 16, 55, 51, 127, DateTimeKind.Unspecified).AddTicks(4954),
+                            CreationDate = new DateTime(2025, 11, 23, 9, 10, 31, 368, DateTimeKind.Unspecified).AddTicks(4136),
                             IsDeleted = false,
                             NameAr = "مقدم",
                             NameEn = "Lieutenant Colonel"
@@ -1913,7 +1913,7 @@ namespace Ettad.EntityFramework.Migrations
                         new
                         {
                             Id = 3L,
-                            CreationDate = new DateTime(2025, 11, 20, 16, 55, 51, 127, DateTimeKind.Unspecified).AddTicks(4956),
+                            CreationDate = new DateTime(2025, 11, 23, 9, 10, 31, 368, DateTimeKind.Unspecified).AddTicks(4138),
                             IsDeleted = false,
                             NameAr = "رائد",
                             NameEn = "Major"
@@ -1921,7 +1921,7 @@ namespace Ettad.EntityFramework.Migrations
                         new
                         {
                             Id = 4L,
-                            CreationDate = new DateTime(2025, 11, 20, 16, 55, 51, 127, DateTimeKind.Unspecified).AddTicks(4957),
+                            CreationDate = new DateTime(2025, 11, 23, 9, 10, 31, 368, DateTimeKind.Unspecified).AddTicks(4139),
                             IsDeleted = false,
                             NameAr = "نقيب",
                             NameEn = "Captain"
@@ -1929,7 +1929,7 @@ namespace Ettad.EntityFramework.Migrations
                         new
                         {
                             Id = 5L,
-                            CreationDate = new DateTime(2025, 11, 20, 16, 55, 51, 127, DateTimeKind.Unspecified).AddTicks(4959),
+                            CreationDate = new DateTime(2025, 11, 23, 9, 10, 31, 368, DateTimeKind.Unspecified).AddTicks(4140),
                             IsDeleted = false,
                             NameAr = "ملازم أول",
                             NameEn = "First Lieutenant"
@@ -1937,7 +1937,7 @@ namespace Ettad.EntityFramework.Migrations
                         new
                         {
                             Id = 6L,
-                            CreationDate = new DateTime(2025, 11, 20, 16, 55, 51, 127, DateTimeKind.Unspecified).AddTicks(4960),
+                            CreationDate = new DateTime(2025, 11, 23, 9, 10, 31, 368, DateTimeKind.Unspecified).AddTicks(4141),
                             IsDeleted = false,
                             NameAr = "ملازم",
                             NameEn = "Second Lieutenant"
@@ -1945,7 +1945,7 @@ namespace Ettad.EntityFramework.Migrations
                         new
                         {
                             Id = 7L,
-                            CreationDate = new DateTime(2025, 11, 20, 16, 55, 51, 127, DateTimeKind.Unspecified).AddTicks(4961),
+                            CreationDate = new DateTime(2025, 11, 23, 9, 10, 31, 368, DateTimeKind.Unspecified).AddTicks(4143),
                             IsDeleted = false,
                             NameAr = "رقيب أول",
                             NameEn = "Master Sergeant"
@@ -1953,7 +1953,7 @@ namespace Ettad.EntityFramework.Migrations
                         new
                         {
                             Id = 8L,
-                            CreationDate = new DateTime(2025, 11, 20, 16, 55, 51, 127, DateTimeKind.Unspecified).AddTicks(4962),
+                            CreationDate = new DateTime(2025, 11, 23, 9, 10, 31, 368, DateTimeKind.Unspecified).AddTicks(4144),
                             IsDeleted = false,
                             NameAr = "رقيب",
                             NameEn = "Sergeant"
@@ -1961,7 +1961,7 @@ namespace Ettad.EntityFramework.Migrations
                         new
                         {
                             Id = 9L,
-                            CreationDate = new DateTime(2025, 11, 20, 16, 55, 51, 127, DateTimeKind.Unspecified).AddTicks(4963),
+                            CreationDate = new DateTime(2025, 11, 23, 9, 10, 31, 368, DateTimeKind.Unspecified).AddTicks(4145),
                             IsDeleted = false,
                             NameAr = "عريف",
                             NameEn = "Corporal"
@@ -1969,7 +1969,7 @@ namespace Ettad.EntityFramework.Migrations
                         new
                         {
                             Id = 10L,
-                            CreationDate = new DateTime(2025, 11, 20, 16, 55, 51, 127, DateTimeKind.Unspecified).AddTicks(4964),
+                            CreationDate = new DateTime(2025, 11, 23, 9, 10, 31, 368, DateTimeKind.Unspecified).AddTicks(4146),
                             IsDeleted = false,
                             NameAr = "جندي",
                             NameEn = "Private"
@@ -2082,7 +2082,7 @@ namespace Ettad.EntityFramework.Migrations
                         new
                         {
                             Id = 1L,
-                            CreationDate = new DateTime(2025, 11, 20, 16, 55, 51, 127, DateTimeKind.Unspecified).AddTicks(8479),
+                            CreationDate = new DateTime(2025, 11, 23, 9, 10, 31, 368, DateTimeKind.Unspecified).AddTicks(8423),
                             IsDeleted = false,
                             NameAr = "طلب عادي",
                             NameEn = "Normal Order",
@@ -2091,7 +2091,7 @@ namespace Ettad.EntityFramework.Migrations
                         new
                         {
                             Id = 2L,
-                            CreationDate = new DateTime(2025, 11, 20, 16, 55, 51, 127, DateTimeKind.Unspecified).AddTicks(8499),
+                            CreationDate = new DateTime(2025, 11, 23, 9, 10, 31, 368, DateTimeKind.Unspecified).AddTicks(8446),
                             IsDeleted = false,
                             NameAr = "طلب خدمة",
                             NameEn = "Duty Order",
@@ -2100,7 +2100,7 @@ namespace Ettad.EntityFramework.Migrations
                         new
                         {
                             Id = 3L,
-                            CreationDate = new DateTime(2025, 11, 20, 16, 55, 51, 127, DateTimeKind.Unspecified).AddTicks(8500),
+                            CreationDate = new DateTime(2025, 11, 23, 9, 10, 31, 368, DateTimeKind.Unspecified).AddTicks(8448),
                             IsDeleted = false,
                             NameAr = "طلب عملية",
                             NameEn = "Operation Order",
@@ -2109,7 +2109,7 @@ namespace Ettad.EntityFramework.Migrations
                         new
                         {
                             Id = 4L,
-                            CreationDate = new DateTime(2025, 11, 20, 16, 55, 51, 127, DateTimeKind.Unspecified).AddTicks(8501),
+                            CreationDate = new DateTime(2025, 11, 23, 9, 10, 31, 368, DateTimeKind.Unspecified).AddTicks(8449),
                             IsDeleted = false,
                             NameAr = "طلب تدريبي",
                             NameEn = "Training Order",
@@ -2118,7 +2118,7 @@ namespace Ettad.EntityFramework.Migrations
                         new
                         {
                             Id = 5L,
-                            CreationDate = new DateTime(2025, 11, 20, 16, 55, 51, 127, DateTimeKind.Unspecified).AddTicks(8503),
+                            CreationDate = new DateTime(2025, 11, 23, 9, 10, 31, 368, DateTimeKind.Unspecified).AddTicks(8451),
                             IsDeleted = false,
                             NameAr = "إرجاع عادي",
                             NameEn = "Normal Return",
@@ -2127,7 +2127,7 @@ namespace Ettad.EntityFramework.Migrations
                         new
                         {
                             Id = 6L,
-                            CreationDate = new DateTime(2025, 11, 20, 16, 55, 51, 127, DateTimeKind.Unspecified).AddTicks(8504),
+                            CreationDate = new DateTime(2025, 11, 23, 9, 10, 31, 368, DateTimeKind.Unspecified).AddTicks(8452),
                             IsDeleted = false,
                             NameAr = "إرجاع بعد انتهاء الخدمة",
                             NameEn = "Return After Service",
@@ -2136,7 +2136,7 @@ namespace Ettad.EntityFramework.Migrations
                         new
                         {
                             Id = 7L,
-                            CreationDate = new DateTime(2025, 11, 20, 16, 55, 51, 127, DateTimeKind.Unspecified).AddTicks(8505),
+                            CreationDate = new DateTime(2025, 11, 23, 9, 10, 31, 368, DateTimeKind.Unspecified).AddTicks(8453),
                             IsDeleted = false,
                             NameAr = "إرجاع بعد العملية",
                             NameEn = "Return After Operation",
@@ -2145,7 +2145,7 @@ namespace Ettad.EntityFramework.Migrations
                         new
                         {
                             Id = 8L,
-                            CreationDate = new DateTime(2025, 11, 20, 16, 55, 51, 127, DateTimeKind.Unspecified).AddTicks(8506),
+                            CreationDate = new DateTime(2025, 11, 23, 9, 10, 31, 368, DateTimeKind.Unspecified).AddTicks(8455),
                             IsDeleted = false,
                             NameAr = "إرجاع بعد التدريب",
                             NameEn = "Return After Training",
@@ -2154,7 +2154,7 @@ namespace Ettad.EntityFramework.Migrations
                         new
                         {
                             Id = 9L,
-                            CreationDate = new DateTime(2025, 11, 20, 16, 55, 51, 127, DateTimeKind.Unspecified).AddTicks(8507),
+                            CreationDate = new DateTime(2025, 11, 23, 9, 10, 31, 368, DateTimeKind.Unspecified).AddTicks(8456),
                             IsDeleted = false,
                             NameAr = "تسديد تالف",
                             NameEn = "Damaged Discard",
@@ -2163,7 +2163,7 @@ namespace Ettad.EntityFramework.Migrations
                         new
                         {
                             Id = 10L,
-                            CreationDate = new DateTime(2025, 11, 20, 16, 55, 51, 127, DateTimeKind.Unspecified).AddTicks(8508),
+                            CreationDate = new DateTime(2025, 11, 23, 9, 10, 31, 368, DateTimeKind.Unspecified).AddTicks(8457),
                             IsDeleted = false,
                             NameAr = "تسديد منتهي الصلاحية",
                             NameEn = "Expired Discard",
@@ -2172,7 +2172,7 @@ namespace Ettad.EntityFramework.Migrations
                         new
                         {
                             Id = 11L,
-                            CreationDate = new DateTime(2025, 11, 20, 16, 55, 51, 127, DateTimeKind.Unspecified).AddTicks(8509),
+                            CreationDate = new DateTime(2025, 11, 23, 9, 10, 31, 368, DateTimeKind.Unspecified).AddTicks(8459),
                             IsDeleted = false,
                             NameAr = "تسديد غير مستخدم",
                             NameEn = "Unused Discard",
@@ -2264,7 +2264,7 @@ namespace Ettad.EntityFramework.Migrations
                         new
                         {
                             Id = 1,
-                            CreationDate = new DateTime(2025, 11, 20, 16, 55, 51, 128, DateTimeKind.Unspecified).AddTicks(374),
+                            CreationDate = new DateTime(2025, 11, 23, 9, 10, 31, 369, DateTimeKind.Unspecified).AddTicks(738),
                             Group = "LDAP",
                             Key = "LdapServer",
                             Value = "10.80.70.3"
@@ -2272,7 +2272,7 @@ namespace Ettad.EntityFramework.Migrations
                         new
                         {
                             Id = 2,
-                            CreationDate = new DateTime(2025, 11, 20, 16, 55, 51, 128, DateTimeKind.Unspecified).AddTicks(388),
+                            CreationDate = new DateTime(2025, 11, 23, 9, 10, 31, 369, DateTimeKind.Unspecified).AddTicks(753),
                             Group = "LDAP",
                             Key = "LdapDomain",
                             Value = "sddev.local"
@@ -2280,7 +2280,7 @@ namespace Ettad.EntityFramework.Migrations
                         new
                         {
                             Id = 3,
-                            CreationDate = new DateTime(2025, 11, 20, 16, 55, 51, 128, DateTimeKind.Unspecified).AddTicks(390),
+                            CreationDate = new DateTime(2025, 11, 23, 9, 10, 31, 369, DateTimeKind.Unspecified).AddTicks(754),
                             Group = "LDAP",
                             Key = "LdapEmpAttr",
                             Value = "sAMAccountName"
@@ -2288,7 +2288,7 @@ namespace Ettad.EntityFramework.Migrations
                         new
                         {
                             Id = 4,
-                            CreationDate = new DateTime(2025, 11, 20, 16, 55, 51, 128, DateTimeKind.Unspecified).AddTicks(391),
+                            CreationDate = new DateTime(2025, 11, 23, 9, 10, 31, 369, DateTimeKind.Unspecified).AddTicks(755),
                             Group = "LDAP",
                             Key = "LdapUsername",
                             Value = "1000"
@@ -2296,7 +2296,7 @@ namespace Ettad.EntityFramework.Migrations
                         new
                         {
                             Id = 5,
-                            CreationDate = new DateTime(2025, 11, 20, 16, 55, 51, 128, DateTimeKind.Unspecified).AddTicks(392),
+                            CreationDate = new DateTime(2025, 11, 23, 9, 10, 31, 369, DateTimeKind.Unspecified).AddTicks(757),
                             Group = "LDAP",
                             Key = "LdapPassword",
                             Value = "Qatar@2025"
@@ -2352,7 +2352,7 @@ namespace Ettad.EntityFramework.Migrations
                         new
                         {
                             Id = 1L,
-                            CreationDate = new DateTime(2025, 11, 20, 16, 55, 51, 128, DateTimeKind.Unspecified).AddTicks(1697),
+                            CreationDate = new DateTime(2025, 11, 23, 9, 10, 31, 369, DateTimeKind.Unspecified).AddTicks(2214),
                             IsDeleted = false,
                             NameAr = "شركة الإمدادات العسكرية المتقدمة",
                             NameEn = "Advanced Military Supplies Co."
@@ -2360,7 +2360,7 @@ namespace Ettad.EntityFramework.Migrations
                         new
                         {
                             Id = 2L,
-                            CreationDate = new DateTime(2025, 11, 20, 16, 55, 51, 128, DateTimeKind.Unspecified).AddTicks(1707),
+                            CreationDate = new DateTime(2025, 11, 23, 9, 10, 31, 369, DateTimeKind.Unspecified).AddTicks(2223),
                             IsDeleted = false,
                             NameAr = "المؤسسة العامة للتسليح",
                             NameEn = "General Armament Corporation"
@@ -2368,7 +2368,7 @@ namespace Ettad.EntityFramework.Migrations
                         new
                         {
                             Id = 3L,
-                            CreationDate = new DateTime(2025, 11, 20, 16, 55, 51, 128, DateTimeKind.Unspecified).AddTicks(1708),
+                            CreationDate = new DateTime(2025, 11, 23, 9, 10, 31, 369, DateTimeKind.Unspecified).AddTicks(2224),
                             IsDeleted = false,
                             NameAr = "شركة الصناعات الدفاعية",
                             NameEn = "Defense Industries Company"
@@ -2376,7 +2376,7 @@ namespace Ettad.EntityFramework.Migrations
                         new
                         {
                             Id = 4L,
-                            CreationDate = new DateTime(2025, 11, 20, 16, 55, 51, 128, DateTimeKind.Unspecified).AddTicks(1709),
+                            CreationDate = new DateTime(2025, 11, 23, 9, 10, 31, 369, DateTimeKind.Unspecified).AddTicks(2226),
                             IsDeleted = false,
                             NameAr = "مجموعة التجهيزات العسكرية",
                             NameEn = "Military Equipment Group"
@@ -2384,7 +2384,7 @@ namespace Ettad.EntityFramework.Migrations
                         new
                         {
                             Id = 5L,
-                            CreationDate = new DateTime(2025, 11, 20, 16, 55, 51, 128, DateTimeKind.Unspecified).AddTicks(1710),
+                            CreationDate = new DateTime(2025, 11, 23, 9, 10, 31, 369, DateTimeKind.Unspecified).AddTicks(2227),
                             IsDeleted = false,
                             NameAr = "شركة التوريدات الاستراتيجية",
                             NameEn = "Strategic Supplies Corporation"
@@ -2557,7 +2557,7 @@ namespace Ettad.EntityFramework.Migrations
                         new
                         {
                             Id = 1L,
-                            CreationDate = new DateTime(2025, 11, 20, 16, 55, 51, 128, DateTimeKind.Unspecified).AddTicks(7223),
+                            CreationDate = new DateTime(2025, 11, 23, 9, 10, 31, 370, DateTimeKind.Unspecified).AddTicks(1614),
                             IsDeleted = false,
                             NameAr = "قطعة",
                             NameEn = "Piece"
@@ -2565,7 +2565,7 @@ namespace Ettad.EntityFramework.Migrations
                         new
                         {
                             Id = 2L,
-                            CreationDate = new DateTime(2025, 11, 20, 16, 55, 51, 128, DateTimeKind.Unspecified).AddTicks(7246),
+                            CreationDate = new DateTime(2025, 11, 23, 9, 10, 31, 370, DateTimeKind.Unspecified).AddTicks(1639),
                             IsDeleted = false,
                             NameAr = "صندوق",
                             NameEn = "Box"
@@ -2573,7 +2573,7 @@ namespace Ettad.EntityFramework.Migrations
                         new
                         {
                             Id = 3L,
-                            CreationDate = new DateTime(2025, 11, 20, 16, 55, 51, 128, DateTimeKind.Unspecified).AddTicks(7248),
+                            CreationDate = new DateTime(2025, 11, 23, 9, 10, 31, 370, DateTimeKind.Unspecified).AddTicks(1641),
                             IsDeleted = false,
                             NameAr = "طن",
                             NameEn = "Ton"
@@ -2581,7 +2581,7 @@ namespace Ettad.EntityFramework.Migrations
                         new
                         {
                             Id = 4L,
-                            CreationDate = new DateTime(2025, 11, 20, 16, 55, 51, 128, DateTimeKind.Unspecified).AddTicks(7249),
+                            CreationDate = new DateTime(2025, 11, 23, 9, 10, 31, 370, DateTimeKind.Unspecified).AddTicks(1643),
                             IsDeleted = false,
                             NameAr = "كيلوغرام",
                             NameEn = "Kilogram"
@@ -2589,7 +2589,7 @@ namespace Ettad.EntityFramework.Migrations
                         new
                         {
                             Id = 5L,
-                            CreationDate = new DateTime(2025, 11, 20, 16, 55, 51, 128, DateTimeKind.Unspecified).AddTicks(7250),
+                            CreationDate = new DateTime(2025, 11, 23, 9, 10, 31, 370, DateTimeKind.Unspecified).AddTicks(1644),
                             IsDeleted = false,
                             NameAr = "حاوية",
                             NameEn = "Container"
@@ -2645,7 +2645,7 @@ namespace Ettad.EntityFramework.Migrations
                         new
                         {
                             Id = 1L,
-                            CreationDate = new DateTime(2025, 11, 20, 16, 55, 51, 129, DateTimeKind.Unspecified).AddTicks(9532),
+                            CreationDate = new DateTime(2025, 11, 23, 9, 10, 31, 371, DateTimeKind.Unspecified).AddTicks(8818),
                             IsDeleted = false,
                             NameAr = "Request",
                             NameEn = "Request"
@@ -2653,7 +2653,7 @@ namespace Ettad.EntityFramework.Migrations
                         new
                         {
                             Id = 2L,
-                            CreationDate = new DateTime(2025, 11, 20, 16, 55, 51, 129, DateTimeKind.Unspecified).AddTicks(9555),
+                            CreationDate = new DateTime(2025, 11, 23, 9, 10, 31, 371, DateTimeKind.Unspecified).AddTicks(8841),
                             IsDeleted = false,
                             NameAr = "Discard",
                             NameEn = "Discard"
@@ -2661,7 +2661,7 @@ namespace Ettad.EntityFramework.Migrations
                         new
                         {
                             Id = 3L,
-                            CreationDate = new DateTime(2025, 11, 20, 16, 55, 51, 129, DateTimeKind.Unspecified).AddTicks(9557),
+                            CreationDate = new DateTime(2025, 11, 23, 9, 10, 31, 371, DateTimeKind.Unspecified).AddTicks(8843),
                             IsDeleted = false,
                             NameAr = "Return",
                             NameEn = "Return"
