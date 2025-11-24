@@ -26,5 +26,10 @@ namespace Ettad.Comman.Idenitity
         public Rank Rank { get; set; }
         public string? MilitoryId { get; set; }
         public string? LdapUserName { get; set; }
+        
+        // Soft delete properties
+        public bool IsDeleted { get; set; } = false;
+        public DateTime? DeletionDate { get; set; }
+        public string? DeletedBy { get; set; }
     }
 }

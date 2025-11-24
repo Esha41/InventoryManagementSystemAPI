@@ -101,7 +101,8 @@ namespace Ettad.User.Services.Implementation
 
             // In many flows the Azure token is validated previously by middleware.
             // Here we simply produce an application JWT for the local user identity.
-            var user = await _userManager.FindByNameAsync(information.Username)
+            var user = await _userManager.Users
+                .FirstOrDefaultAsync(u => u.UserName == information.Username && !u.IsDeleted)
                        ?? throw new ApiException("server.invalidLogin");
 
             // Optionally add an azure-specific claim:
@@ -116,7 +117,8 @@ namespace Ettad.User.Services.Implementation
             if (userRefreshToken == null || string.IsNullOrWhiteSpace(userRefreshToken.UserId) || string.IsNullOrWhiteSpace(userRefreshToken.RefreshToken))
                 throw new ApiException("server.invalidRefreshRequest");
 
-            var user = await _userManager.FindByIdAsync(userRefreshToken.UserId)
+            var user = await _userManager.Users
+                .FirstOrDefaultAsync(u => u.Id == userRefreshToken.UserId && !u.IsDeleted)
                        ?? throw new ApiException("server.invalidRefreshRequest");
 
             // Verify refresh token match and expiry
