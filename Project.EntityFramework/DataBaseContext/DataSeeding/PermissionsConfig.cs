@@ -193,6 +193,7 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 .Concat(Notifications)
                 .Concat(ReadOrderDiscardReturn)
                 .Concat(WriteOrderDiscardReturn)
+                .Concat(RequestReciever)
                 .ToList();
 
         public static List<string> SupplyOfficer_OrderRequestingEntity =
@@ -214,6 +215,7 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 .Concat(Dashboard)
                 .Concat(Notifications)
                 .Concat(ReadOrderDiscardReturn)
+                .Concat(RequestReciever)
                 .ToList();
 
         #endregion
@@ -259,6 +261,7 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 .Concat(Dashboard)
                 .Concat(Notifications)
                 .Concat(ReadOrderDiscardReturn)
+                .Concat(WriteOrder)
                 .Concat(RequestReciever)
                 .ToList();
 
@@ -270,6 +273,7 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 .Concat(Dashboard)
                 .Concat(Notifications)
                 .Concat(ReadOrderDiscardReturn)
+                .Concat(WriteOrder)
                 .Concat(RequestReciever)
                 .ToList();
 
@@ -281,6 +285,7 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 .Concat(Dashboard)
                 .Concat(Notifications)
                 .Concat(ReadOrderDiscardReturn)
+                .Concat(WriteOrder)
                 .Concat(RequestReciever)
                 .ToList();
 
@@ -305,6 +310,7 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 .Concat(ReadItems)
                 .Concat(Notifications)
                 .Concat(ReadOrderDiscardReturn)
+                .Concat(WriteOrder)
                 .Concat(RequestReciever)
                 .ToList();
 
@@ -314,6 +320,7 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 .Concat(ReadItems)
                 .Concat(Notifications)
                 .Concat(ReadOrderDiscardReturn)
+                .Concat(WriteOrder)
                 .Concat(RequestReciever)
                 .ToList();
 
@@ -325,6 +332,7 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 .Concat(Dashboard)
                 .Concat(Notifications)
                 .Concat(ReadOrderDiscardReturn)
+                .Concat(ReadInventory)
                 .Concat(RequestReciever)
                 .ToList();
 
@@ -375,7 +383,7 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 .Concat(ReadItems)
                 .Concat(WriteItems)
                 .Concat(ReadInventory)
-                .Concat(WriteItems)
+                .Concat(WriteInventory)
                 .Concat(ReadAllowanceItem)
                 .Concat(WriteOrder)
                 .Concat(ReadOrderDiscardReturn)
@@ -389,7 +397,7 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 .Concat(WriteLookups)
                 .Concat(ReadItems)
                 .Concat(ReadInventory)
-                .Concat(WriteItems)
+                .Concat(WriteInventory)
                 .Concat(ReadAllowanceItem)
                 .Concat(WriteOrder)
                 .Concat(ReadOrderDiscardReturn)
@@ -404,7 +412,7 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 .Concat(ReadItems)
                 .Concat(WriteItems)
                 .Concat(ReadInventory)
-                .Concat(WriteItems)
+                .Concat(WriteInventory)
                 .Concat(ReadAllowanceItem)
                 .Concat(ReadOrderDiscardReturn)
                 .Concat(RequestReciever)
@@ -417,6 +425,7 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 .Concat(WriteLookups)
                 .Concat(ReadItems)
                 .Concat(ReadInventory)
+                .Concat(WriteInventory)
                 .Concat(ReadAllowanceItem)
                 .Concat(ReadOrderDiscardReturn)
                 .Concat(RequestReciever)
@@ -430,7 +439,7 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 .Concat(ReadItems)
                 .Concat(WriteItems)
                 .Concat(ReadInventory)
-                .Concat(WriteItems)
+                .Concat(WriteInventory)
                 .Concat(ReadAllowanceItem)
                 .Concat(ReadOrderDiscardReturn)
                 .Concat(RequestReciever)

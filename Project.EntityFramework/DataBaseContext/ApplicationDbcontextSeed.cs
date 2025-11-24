@@ -32,6 +32,7 @@ namespace Ettad.EntityFramework.DataBaseContext
                 var administratorRole = new ApplicationRole
                 {
                     Name = "Administrator",
+                    NameAr = "مسؤول النظام",
                     IsSuperAdmin = true,
                     IsDefaultRole = false
                 };
@@ -98,34 +99,6 @@ namespace Ettad.EntityFramework.DataBaseContext
                     // Refresh security stamp to ensure claims are loaded on first login
                     await userManager.UpdateSecurityStampAsync(administrator);
                 }
-
-                // ========================
-                // ORDER REQUESTOR ROLE
-                // ========================
-                var requestorRole = await roleManager.FindByNameAsync("Order Requestor");
-                if (requestorRole == null)
-                {
-                    requestorRole = new ApplicationRole
-                    {
-                        Name = "Order Requestor",
-                        IsSuperAdmin = false,
-                        IsDefaultRole = false
-                    };
-                    await roleManager.CreateAsync(requestorRole);
-                }
-
-                // Remove existing claims
-                existingClaims = await roleManager.GetClaimsAsync(requestorRole);
-                foreach (var claim in existingClaims)
-                    await roleManager.RemoveClaimAsync(requestorRole, claim);
-
-                // Add requestor permissions
-                foreach (var permission in PermissionConfig.Requester)
-                {
-                    await roleManager.AddClaimAsync(requestorRole, new Claim("Permissions", permission));
-                }
-
-                await context.SaveChangesAsync();
 
                 // ========================
                 // SEED APPLICATION ENTITIES AND ROLES
@@ -216,7 +189,7 @@ namespace Ettad.EntityFramework.DataBaseContext
                 if (entityRoles.ContainsKey(entity.NameEn))
                 {
                     var rolesForEntity = entityRoles[entity.NameEn];
-                    
+
                     foreach (var (roleNameEn, roleNameAr) in rolesForEntity)
                     {
                         // Format role name with entity name: "Role Name (Entity Name)"
@@ -245,6 +218,9 @@ namespace Ettad.EntityFramework.DataBaseContext
 
                         if (existingRole != null)
                         {
+                            // Assign permissions to role based on PermissionConfig
+                            await AssignPermissionsToRoleAsync(roleManager, existingRole, roleNameEn, entity.NameEn);
+
                             // Check if role-entity link already exists
                             var existingLink = await context.RoleApplicationEntities
                                 .FirstOrDefaultAsync(r => r.RoleId == existingRole.Id && r.ApplicationEntityId == entity.Id);
@@ -272,83 +248,163 @@ namespace Ettad.EntityFramework.DataBaseContext
             }
         }
 
-        private static async Task SeedApplicationEntitiesAsync(ApplicationDbContext context)
+        private static async Task AssignPermissionsToRoleAsync(
+            RoleManager<ApplicationRole> roleManager,
+            ApplicationRole role,
+            string roleNameEn,
+            string entityNameEn)
         {
-            // Check if ApplicationEntities already exist
-            if (await context.ApplicationEntities.AnyAsync())
+            // Get permissions for this role from PermissionConfig
+            List<string> permissions = GetPermissionsForRole(roleNameEn, entityNameEn);
+
+            if (permissions == null || !permissions.Any())
             {
-                return; // Already seeded via configuration
+                return; // No permissions configured for this role
             }
 
-            var utcNow = DateTime.UtcNow;
-
-            // Seed ApplicationEntities based on the image
-            var applicationEntities = new[]
+            // Remove existing claims
+            var existingClaims = await roleManager.GetClaimsAsync(role);
+            foreach (var claim in existingClaims)
             {
-                new ApplicationEntity
-                {
-                    Id = 1,
-                    Code = "ORE",
-                    NameAr = "القوة الطالبة",
-                    NameEn = "Order Requesting Entity",
-                    IsDeleted = false,
-                    CreationDate = utcNow,
-                    CreatedBy = "SYSTEM"
-                },
-                new ApplicationEntity
-                {
-                    Id = 2,
-                    Code = "MT",
-                    NameAr = "مديرية التدريب العسكري",
-                    NameEn = "Military Training",
-                    IsDeleted = false,
-                    CreationDate = utcNow,
-                    CreatedBy = "SYSTEM"
-                },
-                new ApplicationEntity
-                {
-                    Id = 3,
-                    Code = "DoA",
-                    NameAr = "مديرية التسليح",
-                    NameEn = "Directorate of Armament",
-                    IsDeleted = false,
-                    CreationDate = utcNow,
-                    CreatedBy = "SYSTEM"
-                },
-                new ApplicationEntity
-                {
-                    Id = 4,
-                    Code = "MO",
-                    NameAr = "العمليات",
-                    NameEn = "Military Operation",
-                    IsDeleted = false,
-                    CreationDate = utcNow,
-                    CreatedBy = "SYSTEM"
-                },
-                new ApplicationEntity
-                {
-                    Id = 5,
-                    Code = "CoS",
-                    NameAr = "مكتب رئيس الأركان",
-                    NameEn = "Chief of Staff",
-                    IsDeleted = false,
-                    CreationDate = utcNow,
-                    CreatedBy = "SYSTEM"
-                },
-                new ApplicationEntity
-                {
-                    Id = 6,
-                    Code = "Inventory",
-                    NameAr = "مستودعات الأسلحة والذخيرة المركزيه",
-                    NameEn = "Inventory",
-                    IsDeleted = false,
-                    CreationDate = utcNow,
-                    CreatedBy = "SYSTEM"
-                }
+                await roleManager.RemoveClaimAsync(role, claim);
+            }
+
+            // Add permissions as claims
+            foreach (var permission in permissions)
+            {
+                await roleManager.AddClaimAsync(role, new Claim("Permissions", permission));
+            }
+        }
+
+        private static List<string> GetPermissionsForRole(string roleNameEn, string entityNameEn)
+        {
+            // Map role names and entity names to PermissionConfig properties
+            var permissionMap = new Dictionary<(string RoleName, string EntityName), Func<List<string>>>
+            {
+                // Order Requesting Entity
+                { ("Order Requester", "Order Requesting Entity"), () => PermissionConfig.Requester_OrderRequestingEntity },
+                { ("Supply Officer", "Order Requesting Entity"), () => PermissionConfig.SupplyOfficer_OrderRequestingEntity },
+                { ("Requesting Entity Commander", "Order Requesting Entity"), () => PermissionConfig.RequestingEntityCommander_OrderRequestingEntity },
+
+                // Military Training Entity
+                { ("Military Training Officer", "Military Training"), () => PermissionConfig.MilitaryTrainingOfficer_MilitaryTrainingEntity },
+                { ("Military Training Auditor", "Military Training"), () => PermissionConfig.MilitaryTrainingAuditor_MilitaryTrainingEntity },
+                { ("Head of Military Training", "Military Training"), () => PermissionConfig.HeadOfMiltaryTraining_MilitaryTrainingEntity },
+
+                // Directorate of Armament Entity
+                { ("Auditor of Ammunition Division", "Directorate of Armament"), () => PermissionConfig.Auditor_DirectorateOfAmmunitionEntity },
+                { ("Head of Ammunition Division", "Directorate of Armament"), () => PermissionConfig.HeadOfDivision_DirectorateOfAmmunitionEntity },
+                { ("Director of the Armament Entity", "Directorate of Armament"), () => PermissionConfig.DirectorOfArmament_DirectorateOfAmmunitionEntity },
+                { ("Head of the Armament Entity", "Directorate of Armament"), () => PermissionConfig.HeadOfLogistics_DirectorateOfAmmunitionEntity },
+
+                // Military Operations Entity
+                { ("Officer", "Military Operation"), () => PermissionConfig.Officer_MilitaryOperationsEntity },
+                { ("Auditor", "Military Operation"), () => PermissionConfig.Auditor_MilitaryOperationsEntity },
+                { ("Chief of Operations", "Military Operation"), () => PermissionConfig.HeadOfMilitaryOperations_MilitaryOperationsEntity },
+
+                // Chief of Staff Entity
+                { ("Auditor", "Chief of Staff"), () => PermissionConfig.Auditor_ChiefOfStaffEntity },
+                { ("Deputy Chief of Staff for Operations", "Chief of Staff"), () => PermissionConfig.DeputyChiefOfStaff_ChiefOfStaffEntity },
+                { ("Chief of Staff", "Chief of Staff"), () => PermissionConfig.ChiefOfStaff_ChiefOfStaffEntity },
+
+                // Inventory Entity
+                { ("Auditor of Audit Depo", "Inventory"), () => PermissionConfig.AuditorOfAuditDepo_InventoryEntity },
+                { ("Head of Audit Depo", "Inventory"), () => PermissionConfig.HeadOfAuditDepo_InventoryEntity },
+                { ("Depo Division Auditor", "Inventory"), () => PermissionConfig.DepoDivisionAuditor_InventoryEntity },
+                { ("Head of Depo Division", "Inventory"), () => PermissionConfig.DepoCommander_InventoryEntity },
+                { ("Depo Commander", "Inventory"), () => PermissionConfig.DepoCommander_InventoryEntity },
+                { ("Depo Officer", "Inventory"), () => PermissionConfig.DepoOfficer_InventoryEntity }
             };
 
-            await context.ApplicationEntities.AddRangeAsync(applicationEntities);
-            await context.SaveChangesAsync();
+            var key = (roleNameEn, entityNameEn);
+            if (permissionMap.TryGetValue(key, out var permissionGetter))
+            {
+                return permissionGetter();
+            }
+
+            return null;
+        }
+
+        private static async Task SeedApplicationEntitiesAsync(ApplicationDbContext context)
+        {
+            try
+            {
+                // Check if ApplicationEntities already exist
+                if (await context.ApplicationEntities.AnyAsync())
+                {
+                    return; // Already seeded via configuration
+                }
+
+                var utcNow = DateTime.UtcNow;
+
+                // Seed ApplicationEntities based on the image
+                var applicationEntities = new[]
+                {
+                    new ApplicationEntity
+                    {
+                        Code = "ORE",
+                        NameAr = "القوة الطالبة",
+                        NameEn = "Order Requesting Entity",
+                        IsDeleted = false,
+                        CreationDate = utcNow,
+                        CreatedBy = "SYSTEM"
+                    },
+                    new ApplicationEntity
+                    {
+                        Code = "MT",
+                        NameAr = "مديرية التدريب العسكري",
+                        NameEn = "Military Training",
+                        IsDeleted = false,
+                        CreationDate = utcNow,
+                        CreatedBy = "SYSTEM"
+                    },
+                    new ApplicationEntity
+                    {
+                        Code = "DoA",
+                        NameAr = "مديرية التسليح",
+                        NameEn = "Directorate of Armament",
+                        IsDeleted = false,
+                        CreationDate = utcNow,
+                        CreatedBy = "SYSTEM"
+                    },
+                    new ApplicationEntity
+                    {
+                        Code = "MO",
+                        NameAr = "العمليات",
+                        NameEn = "Military Operation",
+                        IsDeleted = false,
+                        CreationDate = utcNow,
+                        CreatedBy = "SYSTEM"
+                    },
+                    new ApplicationEntity
+                    {
+                        Code = "CoS",
+                        NameAr = "مكتب رئيس الأركان",
+                        NameEn = "Chief of Staff",
+                        IsDeleted = false,
+                        CreationDate = utcNow,
+                        CreatedBy = "SYSTEM"
+                    },
+                    new ApplicationEntity
+                    {
+                        Code = "Inventory",
+                        NameAr = "مستودعات الأسلحة والذخيرة المركزيه",
+                        NameEn = "Inventory",
+                        IsDeleted = false,
+                        CreationDate = utcNow,
+                        CreatedBy = "SYSTEM"
+                    }
+                };
+
+                await context.ApplicationEntities.AddRangeAsync(applicationEntities);
+                await context.SaveChangesAsync();
+            }
+            catch (Exception ex)
+            {
+                // log the exception
+                Console.WriteLine($"Seeding ApplicationEntities error: {ex.Message}");
+                throw;
+            }
         }
     }
 }
