@@ -34,6 +34,12 @@ namespace Ettad.EntityFramework.Migrations
                         .IsConcurrencyToken()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<string>("DeletedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("DeletionDate")
+                        .HasColumnType("datetime2");
+
                     b.Property<long?>("DepartmentId")
                         .HasColumnType("bigint");
 
@@ -52,6 +58,9 @@ namespace Ettad.EntityFramework.Migrations
 
                     b.Property<string>("FullNameEN")
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
 
                     b.Property<bool>("IsLdapUser")
                         .HasColumnType("bit");
