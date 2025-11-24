@@ -222,19 +222,19 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
 
         #region Military Training Entity
 
-        public static List<string> MilitaryTrainingOfficer_MilitaryTrainingEntity =
+        public static List<string> MilitaryTrainingAuditor_MilitaryTrainingEntity =
             ReadLookups
-                .Concat(ReadItems)
                 .Concat(Dashboard)
+                .Concat(ReadItems)
                 .Concat(Notifications)
                 .Concat(ReadOrderDiscardReturn)
                 .Concat(RequestReciever)
                 .ToList();
 
-        public static List<string> MilitaryTrainingAuditor_MilitaryTrainingEntity =
+        public static List<string> MilitaryTrainingOfficer_MilitaryTrainingEntity =
             ReadLookups
-                .Concat(Dashboard)
                 .Concat(ReadItems)
+                .Concat(Dashboard)
                 .Concat(Notifications)
                 .Concat(ReadOrderDiscardReturn)
                 .Concat(RequestReciever)
@@ -304,7 +304,7 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
 
         #region Military Operations Entity
 
-        public static List<string> Officer_MilitaryOperationsEntity =
+        public static List<string> Auditor_MilitaryOperationsEntity =
             ReadLookups
                 .Concat(Dashboard)
                 .Concat(ReadItems)
@@ -314,7 +314,7 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 .Concat(RequestReciever)
                 .ToList();
 
-        public static List<string> Auditor_MilitaryOperationsEntity =
+        public static List<string> Officer_MilitaryOperationsEntity =
             ReadLookups
                 .Concat(Dashboard)
                 .Concat(ReadItems)
@@ -332,15 +332,14 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 .Concat(Dashboard)
                 .Concat(Notifications)
                 .Concat(ReadOrderDiscardReturn)
-                .Concat(ReadInventory)
                 .Concat(RequestReciever)
                 .ToList();
 
         #endregion
 
-        #region Chief of Staff (CoS) Entity
+        #region Chief of Staff (CoS) Office Entity
 
-        public static List<string> Auditor_ChiefOfStaffEntity =
+        public static List<string> Auditor_ChiefOfStaffOfficeEntity =
             ReadLookups
                 .Concat(ReadItems)
                 .Concat(ReadAllowanceItem)
@@ -351,7 +350,7 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 .Concat(RequestReciever)
                 .ToList();
 
-        public static List<string> DeputyChiefOfStaff_ChiefOfStaffEntity =
+        public static List<string> DeputyChiefOfStaff_ChiefOfStaffOfficeEntity =
             ReadLookups
                 .Concat(ReadItems)
                 .Concat(ReadAllowanceItem)
@@ -362,7 +361,7 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 .Concat(RequestReciever)
                 .ToList();
 
-        public static List<string> ChiefOfStaff_ChiefOfStaffEntity =
+        public static List<string> ChiefOfStaff_ChiefOfStaffOfficeEntity =
             ReadLookups
                 .Concat(ReadItems)
                 .Concat(ReadAllowanceItem)
@@ -397,7 +396,6 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 .Concat(WriteLookups)
                 .Concat(ReadItems)
                 .Concat(ReadInventory)
-                .Concat(WriteInventory)
                 .Concat(ReadAllowanceItem)
                 .Concat(WriteOrder)
                 .Concat(ReadOrderDiscardReturn)
@@ -406,7 +404,19 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 .Concat(Notifications)
                 .ToList();
 
-        public static List<string> DepoDivisionAuditor_InventoryEntity =
+        public static List<string> DepoCommander_InventoryEntity =
+            ReadLookups
+                .Concat(WriteLookups)
+                .Concat(ReadItems)
+                .Concat(ReadInventory)
+                .Concat(ReadAllowanceItem)
+                .Concat(ReadOrderDiscardReturn)
+                .Concat(RequestReciever)
+                .Concat(Dashboard)
+                .Concat(Notifications)
+                .ToList();
+
+        public static List<string> AuditorOfDepoDivision_InventoryEntity =
             ReadLookups
                 .Concat(WriteLookups)
                 .Concat(ReadItems)
@@ -420,12 +430,12 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 .Concat(Notifications)
                 .ToList();
 
-        public static List<string> DepoCommander_InventoryEntity =
+        public static List<string> HeadOfDepoDivision_InventoryEntity =
             ReadLookups
                 .Concat(WriteLookups)
                 .Concat(ReadItems)
+                .Concat(WriteItems)
                 .Concat(ReadInventory)
-                .Concat(WriteInventory)
                 .Concat(ReadAllowanceItem)
                 .Concat(ReadOrderDiscardReturn)
                 .Concat(RequestReciever)
@@ -439,7 +449,6 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 .Concat(ReadItems)
                 .Concat(WriteItems)
                 .Concat(ReadInventory)
-                .Concat(WriteInventory)
                 .Concat(ReadAllowanceItem)
                 .Concat(ReadOrderDiscardReturn)
                 .Concat(RequestReciever)

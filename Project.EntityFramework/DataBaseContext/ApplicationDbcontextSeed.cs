@@ -4,6 +4,7 @@ using Ettad.Data.Entities;
 using Ettad.Data.Entities.Settings;
 using Ettad.Data.Enums;
 using Ettad.EntityFramework.DataBaseContext.DataSeeding;
+using Ettad.EntityFramework.DataBaseContext.DataSeeding.Workflows;
 using Ettad.EntityFramework.Utiliies;
 using Ettad.Infrastructure.Utilities;
 using Microsoft.AspNetCore.Identity;
@@ -104,6 +105,8 @@ namespace Ettad.EntityFramework.DataBaseContext
                 // SEED APPLICATION ENTITIES AND ROLES
                 // ========================
                 await SeedApplicationEntitiesAndRolesAsync(context, roleManager);
+                await SeedWorkflows.SeedNormalOrderWorkflowAsync(context);
+                await SeedWorkflows.SeedOrderFromAllowanceWorkflowAsync(context);
             }
             catch (Exception ex)
             {
@@ -140,19 +143,19 @@ namespace Ettad.EntityFramework.DataBaseContext
                         ("Auditor of Ammunition Division", "مدقق شعبة الذخيرة"),
                         ("Head of Ammunition Division", "رئيس شعبة الذخيرة"),
                         ("Director of the Armament Entity", "مدير مديرية التسليح"),
-                        ("Head of the Armament Entity", "رئيس الهيئة")
+                        ("Head of Logistics", "رئيس الهيئة")
                     }
                 },
                 {
                     "Military Operation", new List<(string, string)>
                     {
-                        ("Officer", "ضابط هيئة العمليات"),
                         ("Auditor", "مدقق هيئة العمليات"),
+                        ("Officer", "ضابط هيئة العمليات"),
                         ("Chief of Operations", "رئيس هيئة العمليات")
                     }
                 },
                 {
-                    "Chief of Staff", new List<(string, string)>
+                    "Chief of Staff Office", new List<(string, string)>
                     {
                         ("Auditor", "مدقق"),
                         ("Deputy Chief of Staff for Operations", "نائب رئيس الأركان للعمليات المشتركة"),
@@ -172,9 +175,9 @@ namespace Ettad.EntityFramework.DataBaseContext
                     {
                         ("Auditor of Audit Depo", "مدقق شعبة المراقبة"),
                         ("Head of Audit Depo", "رئيس شعبة المراقبة"),
-                        ("Depo Division Auditor", "مدقق شعبة المستودعات"),
-                        ("Head of Depo Division", "رئيس شعبة المستودعات"),
                         ("Depo Commander", "قائد المستودعات"),
+                        ("Auditor of Depo Division", "مدقق شعبة المستودعات"),
+                        ("Head of Depo Division", "رئيس شعبة المستودعات"),
                         ("Depo Officer", "ضابط المستودع")
                     }
                 }
@@ -287,32 +290,32 @@ namespace Ettad.EntityFramework.DataBaseContext
                 { ("Requesting Entity Commander", "Order Requesting Entity"), () => PermissionConfig.RequestingEntityCommander_OrderRequestingEntity },
 
                 // Military Training Entity
-                { ("Military Training Officer", "Military Training"), () => PermissionConfig.MilitaryTrainingOfficer_MilitaryTrainingEntity },
                 { ("Military Training Auditor", "Military Training"), () => PermissionConfig.MilitaryTrainingAuditor_MilitaryTrainingEntity },
+                { ("Military Training Officer", "Military Training"), () => PermissionConfig.MilitaryTrainingOfficer_MilitaryTrainingEntity },
                 { ("Head of Military Training", "Military Training"), () => PermissionConfig.HeadOfMiltaryTraining_MilitaryTrainingEntity },
 
                 // Directorate of Armament Entity
                 { ("Auditor of Ammunition Division", "Directorate of Armament"), () => PermissionConfig.Auditor_DirectorateOfAmmunitionEntity },
                 { ("Head of Ammunition Division", "Directorate of Armament"), () => PermissionConfig.HeadOfDivision_DirectorateOfAmmunitionEntity },
                 { ("Director of the Armament Entity", "Directorate of Armament"), () => PermissionConfig.DirectorOfArmament_DirectorateOfAmmunitionEntity },
-                { ("Head of the Armament Entity", "Directorate of Armament"), () => PermissionConfig.HeadOfLogistics_DirectorateOfAmmunitionEntity },
+                { ("Head of Logistics", "Directorate of Armament"), () => PermissionConfig.HeadOfLogistics_DirectorateOfAmmunitionEntity },
 
                 // Military Operations Entity
-                { ("Officer", "Military Operation"), () => PermissionConfig.Officer_MilitaryOperationsEntity },
                 { ("Auditor", "Military Operation"), () => PermissionConfig.Auditor_MilitaryOperationsEntity },
+                { ("Officer", "Military Operation"), () => PermissionConfig.Officer_MilitaryOperationsEntity },
                 { ("Chief of Operations", "Military Operation"), () => PermissionConfig.HeadOfMilitaryOperations_MilitaryOperationsEntity },
 
                 // Chief of Staff Entity
-                { ("Auditor", "Chief of Staff"), () => PermissionConfig.Auditor_ChiefOfStaffEntity },
-                { ("Deputy Chief of Staff for Operations", "Chief of Staff"), () => PermissionConfig.DeputyChiefOfStaff_ChiefOfStaffEntity },
-                { ("Chief of Staff", "Chief of Staff"), () => PermissionConfig.ChiefOfStaff_ChiefOfStaffEntity },
+                { ("Auditor", "Chief of Staff Office"), () => PermissionConfig.Auditor_ChiefOfStaffOfficeEntity },
+                { ("Deputy Chief of Staff for Operations", "Chief of Staff Office"), () => PermissionConfig.DeputyChiefOfStaff_ChiefOfStaffOfficeEntity },
+                { ("Chief of Staff", "Chief of Staff Office"), () => PermissionConfig.ChiefOfStaff_ChiefOfStaffOfficeEntity },
 
                 // Inventory Entity
                 { ("Auditor of Audit Depo", "Inventory"), () => PermissionConfig.AuditorOfAuditDepo_InventoryEntity },
                 { ("Head of Audit Depo", "Inventory"), () => PermissionConfig.HeadOfAuditDepo_InventoryEntity },
-                { ("Depo Division Auditor", "Inventory"), () => PermissionConfig.DepoDivisionAuditor_InventoryEntity },
-                { ("Head of Depo Division", "Inventory"), () => PermissionConfig.DepoCommander_InventoryEntity },
                 { ("Depo Commander", "Inventory"), () => PermissionConfig.DepoCommander_InventoryEntity },
+                { ("Auditor of Depo Division", "Inventory"), () => PermissionConfig.AuditorOfDepoDivision_InventoryEntity },
+                { ("Head of Depo Division", "Inventory"), () => PermissionConfig.HeadOfDepoDivision_InventoryEntity },
                 { ("Depo Officer", "Inventory"), () => PermissionConfig.DepoOfficer_InventoryEntity }
             };
 
@@ -380,7 +383,7 @@ namespace Ettad.EntityFramework.DataBaseContext
                     {
                         Code = "CoS",
                         NameAr = "مكتب رئيس الأركان",
-                        NameEn = "Chief of Staff",
+                        NameEn = "Chief of Staff Office",
                         IsDeleted = false,
                         CreationDate = utcNow,
                         CreatedBy = "SYSTEM"

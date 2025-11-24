@@ -9,7 +9,7 @@ namespace Ettad.Workflows.Service.DTO
         public int WorkflowId { get; set; }
         public int StepOrder { get; set; }
         public string ApplicationRoleId { get; set; }
-        public int ApplicationEntityId { get; set; }
+        public long ApplicationEntityId { get; set; }
         public bool RequireHigherApproval { get; set; }
         public string? HigherApprovalRoleId { get; set; }
         public long? HigherApplicationEntityId { get; set; }

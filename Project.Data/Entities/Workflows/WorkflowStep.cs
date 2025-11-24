@@ -27,7 +27,7 @@ namespace Ettad.Data.Entities.Workflows
 
         [Required]
         [ForeignKey("ApplicationEntity")]
-        public int ApplicationEntityId { get; set; }                       // Reference to the entity being approved
+        public long ApplicationEntityId { get; set; }                       // Reference to the entity being approved
 
         [Required]
         public bool MustApprove { get; set; } = true;
