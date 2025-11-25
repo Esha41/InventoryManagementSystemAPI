@@ -65,7 +65,63 @@ namespace Ettad.Repository.Repository
         #region Delete entity async
         public async Task DeleteAsync(T entity)
         {
-            _entity.Remove(entity);
+            var entry = _context.Entry(entity);
+            
+            
+            if (entry.State == EntityState.Detached)
+            {
+               
+                var entityType = _context.Model.FindEntityType(typeof(T));
+                if (entityType != null)
+                {
+                    var key = entityType.FindPrimaryKey();
+                    if (key != null && key.Properties.Count == 1)
+                    {
+                        var keyProperty = key.Properties[0];
+                        var propertyInfo = typeof(T).GetProperty(keyProperty.Name);
+                        
+                        if (propertyInfo != null)
+                        {
+                            var keyValue = propertyInfo.GetValue(entity);
+                            
+                            if (keyValue != null)
+                            {
+                          
+                                try
+                                {
+                                    var trackedEntity = await _context.FindAsync<T>(keyValue);
+                                    if (trackedEntity != null)
+                                    {
+                                        
+                                        _context.Entry(trackedEntity).State = EntityState.Deleted;
+                                        _context.SaveChanges();
+                                        return;
+                                    }
+                                }
+                                catch
+                                {
+                                  
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                try
+                {
+                    _entity.Remove(entity);
+                }
+                catch (InvalidOperationException)
+                {
+                    entry.State = EntityState.Deleted;
+                }
+            }
+            else
+            {
+                
+                entry.State = EntityState.Deleted;
+            }
+            
             _context.SaveChanges();
         }
         #endregion
