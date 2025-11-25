@@ -7,6 +7,8 @@ using Ettad.EntityFramework.Utiliies;
 using Ettad.Infrastructure.Utilities;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using System.Collections.Generic;
+using System.Linq;
 using System.Security.Claims;
 using System.Text.RegularExpressions;
 
@@ -135,7 +137,7 @@ namespace Ettad.EntityFramework.DataBaseContext
                     "Order Requesting Entity", new List<(string, string)>
                     {
                         ("Order Requester", "مقدم الطلب"),
-                        ("Supply Officer", "ضابط الامداد"),
+                        ("Supply Officer", "ضابط الإمداد"),
                         ("Requesting Entity Commander", "قائد القوات")
                     }
                 },
@@ -330,6 +332,25 @@ namespace Ettad.EntityFramework.DataBaseContext
             return null;
         }
 
+        private static readonly DepartmentRoleTemplate[] DepartmentOrderRoleTemplates =
+        {
+            new(
+                "Order Requester (Order Requesting Entity)",
+                "requester",
+                "Requester",
+                "مقدم الطلب"),
+            new(
+                "Supply Officer (Order Requesting Entity)",
+                "supply.officer",
+                "Supply Officer",
+                "ضابط الإمداد"),
+            new(
+                "Requesting Entity Commander (Order Requesting Entity)",
+                "commander",
+                "Requesting Entity Commander",
+                "قائد القوات")
+        };
+
         private static async Task SeedDefaultUsersForRolesAsync(
             ApplicationDbContext context,
             UserManager<ApplicationUser> userManager,
@@ -337,18 +358,11 @@ namespace Ettad.EntityFramework.DataBaseContext
         {
             try
             {
-                // Get all roles except Administrator (which already has a user)
+                var departmentRoleNames = new HashSet<string>(DepartmentOrderRoleTemplates.Select(t => t.RoleName));
 
-                var excludedRoles = new[]
-                {
-                    "Administrator",
-                    "Order Requester (Order Requesting Entity)",
-                    "Supply Officer (Order Requesting Entity)",
-                    "Requesting Entity Commander (Order Requesting Entity)",
-                };
-
+                // Get all roles except Administrator (which already has a user) and department-specific requester roles
                 var allRoles = await roleManager.Roles
-                    .Where(r => !excludedRoles.Contains(r.Name) && !r.IsSuperAdmin)
+                    .Where(r => r.Name != "Administrator" && !departmentRoleNames.Contains(r.Name) && !r.IsSuperAdmin)
                     .ToListAsync();
 
                 const string defaultPassword = "Password1!";
@@ -402,11 +416,87 @@ namespace Ettad.EntityFramework.DataBaseContext
                         Console.WriteLine($"Failed to create user {username}: {string.Join(", ", createResult.Errors.Select(e => e.Description))}");
                     }
                 }
+
+                await SeedDepartmentRoleUsersAsync(context, userManager, roleManager, defaultPassword);
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"Seeding default users error: {ex.Message}");
                 throw;
+            }
+        }
+
+        private static async Task SeedDepartmentRoleUsersAsync(
+            ApplicationDbContext context,
+            UserManager<ApplicationUser> userManager,
+            RoleManager<ApplicationRole> roleManager,
+            string defaultPassword)
+        {
+            var departments = await context.Departments
+                .Where(d => !d.IsDeleted)
+                .ToListAsync();
+
+            if (!departments.Any())
+            {
+                return;
+            }
+
+            var roleLookup = new Dictionary<string, ApplicationRole>();
+            foreach (var template in DepartmentOrderRoleTemplates)
+            {
+                var role = await roleManager.FindByNameAsync(template.RoleName);
+                if (role != null)
+                {
+                    roleLookup[template.RoleName] = role;
+                }
+            }
+
+            foreach (var department in departments)
+            {
+                foreach (var template in DepartmentOrderRoleTemplates)
+                {
+                    if (!roleLookup.TryGetValue(template.RoleName, out var role))
+                    {
+                        continue;
+                    }
+
+                    var username = GenerateDepartmentUsername(template.UsernamePrefix, department);
+                    var existingUser = await userManager.FindByNameAsync(username);
+                    if (existingUser != null)
+                    {
+                        continue;
+                    }
+
+                    var user = new ApplicationUser
+                    {
+                        IsLdapUser = false,
+                        IsSuperAdmin = false,
+                        EmailConfirmed = true,
+                        Email = username,
+                        UserName = username,
+                        FullNameEN = $"{template.DisplayNameEn} ({department.NameEn})",
+                        FullNameAR = $"{template.DisplayNameAr} ({department.NameAr})",
+                        DepartmentId = department.Id
+                    };
+
+                    var createResult = await userManager.CreateAsync(user, defaultPassword);
+                    if (createResult.Succeeded)
+                    {
+                        var addToRoleResult = await userManager.AddToRolesAsync(user, new[] { role.Name });
+                        if (!addToRoleResult.Succeeded)
+                        {
+                            Console.WriteLine($"Failed to add user {username} to role {role.Name}: {string.Join(", ", addToRoleResult.Errors.Select(e => e.Description))}");
+                        }
+                        else
+                        {
+                            await userManager.UpdateSecurityStampAsync(user);
+                        }
+                    }
+                    else
+                    {
+                        Console.WriteLine($"Failed to create user {username}: {string.Join(", ", createResult.Errors.Select(e => e.Description))}");
+                    }
+                }
             }
         }
 
@@ -431,6 +521,30 @@ namespace Ettad.EntityFramework.DataBaseContext
             return $"{username}@localhost";
         }
 
+        private static string GenerateDepartmentUsername(string prefix, Department department)
+        {
+            var normalizedPrefix = NormalizeForUsername(prefix);
+            var normalizedDept = NormalizeForUsername(department.Code ?? department.NameEn);
+            var username = $"{normalizedPrefix}.{normalizedDept}";
+            username = Regex.Replace(username, @"\.+", ".");
+            username = username.Trim('.');
+            return $"{username}@localhost";
+        }
+
+        private static string NormalizeForUsername(string value)
+        {
+            var normalized = value.ToLowerInvariant();
+            normalized = Regex.Replace(normalized, @"[^a-z0-9]+", ".");
+            normalized = normalized.Trim('.');
+
+            if (string.IsNullOrWhiteSpace(normalized))
+            {
+                normalized = "user";
+            }
+
+            return normalized;
+        }
+
         private static (string? RoleNameEn, string? EntityNameEn) ParseRoleName(string fullRoleName)
         {
             // Parse "Role Name (Entity Name)" format
@@ -445,6 +559,12 @@ namespace Ettad.EntityFramework.DataBaseContext
             
             return (fullRoleName, null);
         }
+
+        private record DepartmentRoleTemplate(
+            string RoleName,
+            string UsernamePrefix,
+            string DisplayNameEn,
+            string DisplayNameAr);
 
         private static async Task SeedApplicationEntitiesAsync(ApplicationDbContext context)
         {
