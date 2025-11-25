@@ -76,6 +76,7 @@ try
         .AddApplicationPart(typeof(Ettad.RequestManagement.API.Controllers.OrderController).Assembly)
         .AddApplicationPart(typeof(Ettad.Notification.API.Controllers.NotificationController).Assembly)
         .AddApplicationPart(typeof(Ettad.Workflows.API.Controllers.WorkflowApprovalController).Assembly)
+        .AddApplicationPart(typeof(Ettad.Modules.EmailSystem.API.Controllers.EmailSettingsController).Assembly)
         .AddJsonOptions(options =>
         {
             options.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;

@@ -1,5 +1,4 @@
 using Microsoft.Extensions.Logging;
-using Ettad.Services.Helpers;
 using Ettad.User.Services.Interfaces;
 using System;
 using System.Collections.Generic;
@@ -14,35 +13,47 @@ namespace Ettad.User.Services.Helpers
     public class EmailSender : IEmailSender
     {
         private readonly ILogger<EmailSender> _logger;
-        private readonly IHelpureService _helpureService;
+        private readonly ISettingsProvider _settingsProvider;
 
-        public EmailSender( ILogger<EmailSender> logger , IHelpureService helpureService)
+        public EmailSender(ILogger<EmailSender> logger, ISettingsProvider settingsProvider)
         {
             _logger = logger;
-            _helpureService = helpureService;
+            _settingsProvider = settingsProvider;
         }
 
         public async Task SendEmailAsync(string email, string subject, string message)
         {
             try
             {
-                var emailConfig = await _helpureService.GetEmailConfigrationAsync(1);
-                if (emailConfig == null)
-                    throw new InvalidOperationException("Email configuration not found.");
+                _logger.LogInformation("Attempting to send email to {Email} with subject: {Subject}", email, subject);
+                
+                var emailConfig = await _settingsProvider.getEmailSettings();
+                
+                // Check if email notifications are disabled
+                if (emailConfig.DisableAuthentication)
+                {
+                    _logger.LogWarning("Email notifications are disabled in settings. Skipping email send.");
+                    return;
+                }
 
+                // Check if email configuration is valid
                 if (string.IsNullOrEmpty(emailConfig.HostIp) || emailConfig.Port == 0 ||
                     string.IsNullOrEmpty(emailConfig.Username) || string.IsNullOrEmpty(emailConfig.Password))
                 {
-                    throw new InvalidOperationException("Invalid email configuration settings.");
+                    _logger.LogError("Email configuration not found or invalid: HostIp={HostIp}, Port={Port}, Username={Username}, Password={HasPassword}", 
+                        emailConfig.HostIp ?? "null", emailConfig.Port, emailConfig.Username ?? "null", !string.IsNullOrEmpty(emailConfig.Password));
+                    throw new InvalidOperationException("Email configuration not found or invalid. Please configure email settings via /api/EmailSettings endpoint.");
                 }
 
-                using var client = new SmtpClient(emailConfig.HostIp)
+                _logger.LogInformation("Email configuration retrieved. Host: {Host}, Port: {Port}, Username: {Username}", 
+                    emailConfig.HostIp, emailConfig.Port, emailConfig.Username);
+
+                using var client = new SmtpClient(emailConfig.HostIp, emailConfig.Port)
                 {
-                    Port = emailConfig.Port,
                     Credentials = new NetworkCredential(emailConfig.Username, emailConfig.Password),
-                    EnableSsl = true,
+                    EnableSsl = emailConfig.SSL,
                     UseDefaultCredentials = false,
-                    Timeout = 10000 // 10 ?????
+                    Timeout = 10000
                 };
 
                 var mailMessage = new MailMessage
