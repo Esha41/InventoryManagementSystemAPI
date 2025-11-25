@@ -149,7 +149,7 @@ namespace Ettad.User.Services.Implementation
                             RoleId = newRole.Id,
                             ApplicationEntityId = entityId,
                             CreatedBy = "system", // replace with current user if available
-                            CreatedDate = DateTime.UtcNow
+                            CreationDate = DateTime.UtcNow
                         });
                     }
                 }
@@ -206,7 +206,7 @@ namespace Ettad.User.Services.Implementation
                         RoleId = role.Id,
                         ApplicationEntityId = entityId,
                         CreatedBy = "system", // replace with current user if available
-                        CreatedDate = DateTime.UtcNow
+                        CreationDate = DateTime.UtcNow
                     });
                 }
 

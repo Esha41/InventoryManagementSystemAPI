@@ -9,6 +9,6 @@ namespace Ettad.User.Services.DTO
     public class RoleApplicationEntityDto
     {
         public string RoleId { get; set; }
-        public int ApplicationEntityId { get; set; }
+        public long ApplicationEntityId { get; set; }
     }
 }

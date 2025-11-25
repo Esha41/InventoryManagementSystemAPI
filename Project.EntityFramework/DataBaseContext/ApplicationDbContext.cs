@@ -56,7 +56,6 @@ namespace Ettad.EntityFramework.DataBaseContext
         public DbSet<Return> Returns { get; set; }
         public DbSet<Supply> Supplies { get; set; }
         public DbSet<SupplyDetail> SupplyDetails { get; set; }
-     
 
         public DbSet<ApplicationEntity> ApplicationEntities { get;set;}
         public DbSet<RoleApplicationEntity> RoleApplicationEntities { get; set; }
@@ -70,58 +69,7 @@ namespace Ettad.EntityFramework.DataBaseContext
             modelBuilder.ApplyConfigurationsFromAssembly(typeof(ApplicationDbContext).Assembly);
 
             base.OnModelCreating(modelBuilder);
-
-            //SeedRoles(modelBuilder);
-            //SeedTranslations(modelBuilder);
-            //SeedDefaultUserAsync();
-            // SeedDefaultUserAsync();
         }
-
-        //private void SeedRoles(ModelBuilder modelBuilder)
-        //{
-        //    var roles = new List<IdentityRole>
-        //    {
-        //        new IdentityRole
-        //        {
-        //            Id = Guid.NewGuid().ToString(),
-        //            Name = "User",
-        //            NormalizedName = "USER"
-        //        },
-        //        new IdentityRole
-        //        {
-        //            Id = Guid.NewGuid().ToString(),
-        //            Name = "Admin",
-        //            NormalizedName = "ADMIN"
-        //        }
-        //    };
-
-        //    modelBuilder.Entity<IdentityRole>().HasData(roles);
-        //}
-
-
-
-        //private void SeedTranslations(ModelBuilder modelBuilder)
-        //{
-
-
-        //    modelBuilder.Entity<OrganizationTranslation>().HasData(
-        //        new OrganizationTranslation
-        //        {
-        //            Id = 1, 
-        //            OrganizationId = 1, 
-        //            LanguageCode = "en",
-        //            JsonData = TranslationData.English 
-        //        },
-        //        new OrganizationTranslation
-        //        {
-        //            Id = 2, 
-        //            OrganizationId = 1,
-        //            LanguageCode = "ar",
-        //            JsonData = TranslationData.Arabic 
-        //        }
-        //    );
-        //}
-
 
         public async Task<bool> TableExistsAsync(string tableName)
         {
@@ -135,8 +83,5 @@ namespace Ettad.EntityFramework.DataBaseContext
                 .OfType<System.Data.DataRow>()
                 .Any(row => row["TABLE_NAME"].ToString().ToLower() == tableName.ToLower());
         }
-
-
-
     }
 }

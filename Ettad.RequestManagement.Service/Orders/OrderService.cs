@@ -387,8 +387,8 @@ namespace Ettad.RequestManagement.Service.Orders
                 var createdOrder = await _orderRepository.AddAsync(order);
 
                 // Determine workflow type based on order type
-                // If order is from reserved/allowance, use WorkflowType.OrderFromReAl (4), otherwise use WorkflowType.Order (1)
-                var workflowType = createdOrder.IsFromAllowance ? WorkflowType.OrderFromReAl : WorkflowType.Order;
+                // If order is from reserved/allowance, use WorkflowType.OrderFromAllowance (4), otherwise use WorkflowType.NoramlOrder (1)
+                var workflowType = createdOrder.IsFromAllowance ? WorkflowType.OrderFromAllowance : WorkflowType.NoramlOrder;
 
                 // Start workflow for the order
                 var workflowStarted = await _workflowApprovalService.StartWorkflowAsync(
