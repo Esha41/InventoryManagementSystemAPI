@@ -338,8 +338,17 @@ namespace Ettad.EntityFramework.DataBaseContext
             try
             {
                 // Get all roles except Administrator (which already has a user)
+
+                var excludedRoles = new[]
+                {
+                    "Administrator",
+                    "Order Requester (Order Requesting Entity)",
+                    "Supply Officer (Order Requesting Entity)",
+                    "Requesting Entity Commander (Order Requesting Entity)",
+                };
+
                 var allRoles = await roleManager.Roles
-                    .Where(r => r.Name != "Administrator" && !r.IsSuperAdmin)
+                    .Where(r => !excludedRoles.Contains(r.Name) && !r.IsSuperAdmin)
                     .ToListAsync();
 
                 const string defaultPassword = "Password1!";
@@ -482,7 +491,7 @@ namespace Ettad.EntityFramework.DataBaseContext
                     new ApplicationEntity
                     {
                         Code = "MO",
-                        NameAr = "العمليات",
+                        NameAr = "هئية العمليات",
                         NameEn = "Military Operation",
                         IsDeleted = false,
                         CreationDate = utcNow,
