@@ -78,7 +78,8 @@ namespace Ettad.User.Services.Implementation
                         "server.invalidLogin");
                 }
                              
-                var existingUser = await _userRepository.FindByNameAsync(loginInformation.Username.Trim());
+                var existingUser = await _userRepository.Users
+                    .FirstOrDefaultAsync(u => u.UserName == loginInformation.Username.Trim() && !u.IsDeleted, cancellationToken);
 
                 var isAdminLogin = existingUser != null;
 
@@ -118,6 +119,17 @@ namespace Ettad.User.Services.Implementation
             CancellationToken cancellationToken)
         {
             _logger.LogInformation("Attempting admin login. Username: {Username}", loginInformation.Username);
+
+            // Check if user is soft-deleted
+            if (user.IsDeleted)
+            {
+                _logger.LogWarning("Admin login failed: User is deleted. Username: {Username}, UserId: {UserId}",
+                    loginInformation.Username, user.Id);
+                return APIOperationResponse<AuthenticatedResponse>.Fail(
+                    ResponseType.Unauthorized,
+                    CommonErrorCodes.INVALID_EMAIL_OR_PASSWORD,
+                    "server.invalidLogin");
+            }
 
             var signInResult = await _signInManager.CheckPasswordSignInAsync(user, loginInformation.Password, lockoutOnFailure: false);
             if (!signInResult.Succeeded)
@@ -190,14 +202,14 @@ namespace Ettad.User.Services.Implementation
 
                 var resolvedUsername = $"{loginInformation.Username.Trim()}@{ldapSettings.LdapDomain}";
 
-                // 🧠 Step 2: Check if user exists by Username or LdapUsername
-                var user = await _userRepository.FindByNameAsync(resolvedUsername);
+                // 🧠 Step 2: Check if user exists by Username or LdapUserName (excluding soft-deleted users)
+                var user = await _userRepository.Users
+                    .FirstOrDefaultAsync(u => u.UserName == resolvedUsername && !u.IsDeleted, cancellationToken);
 
                 if (user == null)
                 {
                     user = await _context.Users
-        .FirstOrDefaultAsync(u => u.LdapUserName == resolvedUsername, cancellationToken);
-
+                        .FirstOrDefaultAsync(u => u.LdapUserName == resolvedUsername && !u.IsDeleted, cancellationToken);
                 }
 
                 // 🧩 Step 3: If user does not exist, create new
@@ -221,6 +233,17 @@ namespace Ettad.User.Services.Implementation
                 }
                 else
                 {
+                    // Check if existing user is soft-deleted
+                    if (user.IsDeleted)
+                    {
+                        _logger.LogWarning("LDAP login failed: User is deleted. Username: {Username}, UserId: {UserId}",
+                            user.UserName, user.Id);
+                        return APIOperationResponse<AuthenticatedResponse>.Fail(
+                            ResponseType.Unauthorized,
+                            CommonErrorCodes.INVALID_EMAIL_OR_PASSWORD,
+                            "server.invalidLogin");
+                    }
+
                     _logger.LogInformation(
                         "LDAP user already exists. Username: {Username}, UserId: {UserId}",
                         user.UserName,
@@ -315,7 +338,8 @@ namespace Ettad.User.Services.Implementation
         {
             _logger.LogInformation("Password reset requested. Email: {Email}", request.Email);
             
-            var user = await _userRepository.FindByEmailAsync(request.Email.Trim());
+            var user = await _userRepository.Users
+                .FirstOrDefaultAsync(u => u.Email == request.Email.Trim() && !u.IsDeleted);
             if (user == null)
             {
                 _logger.LogWarning("Password reset failed: User not found. Email: {Email}", request.Email);
@@ -366,7 +390,8 @@ namespace Ettad.User.Services.Implementation
         {
             _logger.LogInformation("Password reset attempt. Email: {Email}", request.Email);
             
-            var user = await _userRepository.FindByEmailAsync(request.Email);
+            var user = await _userRepository.Users
+                .FirstOrDefaultAsync(u => u.Email == request.Email && !u.IsDeleted);
             if (user == null)
             {
                 _logger.LogWarning("Password reset failed: User not found. Email: {Email}", request.Email);

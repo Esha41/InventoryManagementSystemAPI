@@ -44,7 +44,7 @@ public class UserService : IUserService
         var user = await _userManager.Users
             .Include(u => u.Department)
             .Include(u => u.Rank)
-            .FirstOrDefaultAsync(u => u.Id == id);
+            .FirstOrDefaultAsync(u => u.Id == id && !u.IsDeleted);
         if (user == null)
         {
             _logger.LogWarning("User not found. TargetUserId: {TargetUserId}, RequestedBy: {RequestedBy}", 
@@ -72,8 +72,9 @@ public class UserService : IUserService
     {
         _logger.LogInformation("Getting all users. RequestedBy: {RequestedBy}", _currentUserService.UserId);
         
-        // 1️⃣ Get all users (no org filter) including related data
+
         var users = await _userManager.Users
+            .Where(u => !u.IsDeleted)
             .Include(u => u.Department)
             .Include(u => u.Rank)
             .ToListAsync();
@@ -185,7 +186,8 @@ public class UserService : IUserService
         }
 
         // 1️⃣ Find user
-        var user = await _userManager.FindByIdAsync(dto.Id);
+        var user = await _userManager.Users
+            .FirstOrDefaultAsync(u => u.Id == dto.Id && !u.IsDeleted);
         if (user == null)
         {
             _logger.LogWarning("User update failed: User not found. TargetUserId: {TargetUserId}, UpdatedBy: {UpdatedBy}", 
@@ -276,28 +278,36 @@ public class UserService : IUserService
 
     public async Task<APIOperationResponse<bool>> DeleteAsync(string id)
     {
-        _logger.LogInformation("Deleting user. TargetUserId: {TargetUserId}, DeletedBy: {DeletedBy}", 
+        _logger.LogInformation("Soft deleting user. TargetUserId: {TargetUserId}, DeletedBy: {DeletedBy}", 
             id, _currentUserService.UserId);
         
-        var user = await _userManager.FindByIdAsync(id);
+        var user = await _userManager.Users
+            .FirstOrDefaultAsync(u => u.Id == id && !u.IsDeleted);
+        
         if (user == null)
         {
-            _logger.LogWarning("User deletion failed: User not found. TargetUserId: {TargetUserId}, DeletedBy: {DeletedBy}", 
+            _logger.LogWarning("User deletion failed: User not found or already deleted. TargetUserId: {TargetUserId}, DeletedBy: {DeletedBy}", 
                 id, _currentUserService.UserId);
             return APIOperationResponse<bool>.Fail(ResponseType.NotFound, "User not found");
         }
 
         var username = user.UserName;
-        var result = await _userManager.DeleteAsync(user);
+
+        // Soft delete: Set IsDeleted flag instead of actually deleting
+        user.IsDeleted = true;
+        user.DeletionDate = DateTime.UtcNow;
+        user.DeletedBy = _currentUserService.UserId;
+
+        var result = await _userManager.UpdateAsync(user);
         if (!result.Succeeded)
         {
             var errors = string.Join(",", result.Errors.Select(e => e.Description));
-            _logger.LogWarning("User deletion failed: {Errors}. TargetUserId: {TargetUserId}, Username: {Username}, DeletedBy: {DeletedBy}", 
+            _logger.LogWarning("User soft deletion failed: {Errors}. TargetUserId: {TargetUserId}, Username: {Username}, DeletedBy: {DeletedBy}", 
                 errors, id, username, _currentUserService.UserId);
             return APIOperationResponse<bool>.Fail(ResponseType.InternalServerError, errors);
         }
 
-        _logger.LogInformation("User deleted successfully. TargetUserId: {TargetUserId}, Username: {Username}, DeletedBy: {DeletedBy}", 
+        _logger.LogInformation("User soft deleted successfully. TargetUserId: {TargetUserId}, Username: {Username}, DeletedBy: {DeletedBy}", 
             id, username, _currentUserService.UserId);
         return APIOperationResponse<bool>.Success(true, "User deleted successfully");
     }
@@ -329,7 +339,8 @@ public class UserService : IUserService
     //}
     public async Task<APIOperationResponse<List<UserRoleDto>>> GetUserRolesAsync(string userId)
     {
-        var user = await _userManager.FindByIdAsync(userId);
+        var user = await _userManager.Users
+            .FirstOrDefaultAsync(u => u.Id == userId && !u.IsDeleted);
         if (user == null)
             return APIOperationResponse<List<UserRoleDto>>.NotFound("User not found.");
 
@@ -352,7 +363,8 @@ public class UserService : IUserService
         _logger.LogInformation("Updating user roles. TargetUserId: {TargetUserId}, NewRoles: {NewRoles}, UpdatedBy: {UpdatedBy}", 
             userId, string.Join(", ", dto?.RoleNames ?? new List<string>()), _currentUserService.UserId);
         
-        var user = await _userManager.FindByIdAsync(userId);
+        var user = await _userManager.Users
+            .FirstOrDefaultAsync(u => u.Id == userId && !u.IsDeleted);
         if (user == null)
         {
             _logger.LogWarning("User roles update failed: User not found. TargetUserId: {TargetUserId}, UpdatedBy: {UpdatedBy}", 
@@ -430,7 +442,7 @@ public class UserService : IUserService
         }
 
         var users = await _userManager.Users
-            .Where(u => userIds.Contains(u.Id))
+            .Where(u => userIds.Contains(u.Id) && !u.IsDeleted)
             .Include(u => u.Department)
             .Include(u => u.Rank)
             .ToListAsync();
@@ -452,7 +464,7 @@ public class UserService : IUserService
     public async Task<APIOperationResponse<List<UserDto>>> GetSuperAdminsAsync()
     {
         var superAdmins = await _userManager.Users
-            .Where(u => u.IsSuperAdmin)
+            .Where(u => u.IsSuperAdmin && !u.IsDeleted)
             .Include(u => u.Department)
             .Include(u => u.Rank)
             .ToListAsync();
@@ -482,9 +494,10 @@ public class UserService : IUserService
         }
 
         var user = await _userManager.Users
+            .Where(u => u.Id == currentUserId && !u.IsDeleted)
             .Include(u => u.Department)
             .Include(u => u.Rank)
-            .FirstOrDefaultAsync(u => u.Id == currentUserId);
+            .FirstOrDefaultAsync();
 
         if (user == null)
         {
