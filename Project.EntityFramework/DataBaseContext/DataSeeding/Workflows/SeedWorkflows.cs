@@ -45,27 +45,60 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding.Workflows
                 throw;
             }
         }
+      
+        public static async Task SeedDiscardWorkflowAsync(ApplicationDbContext context)
+        {
+            try
+            {
+                await SeedWorkflowAsync(
+                    context,
+                    WorkflowType.Discard,
+                    "Discard Workflow",
+                    GetDiscardSteps);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Seeding Discard workflow error: {ex.Message}");
+                throw;
+            }
+        }
+    
+        public static async Task SeedReturnWorkflowAsync(ApplicationDbContext context)
+        {
+            try
+            {
+                await SeedWorkflowAsync(
+                    context,
+                    WorkflowType.Return,
+                    "Return Workflow",
+                    GetReturnSteps);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Seeding Return workflow error: {ex.Message}");
+                throw;
+            }
+        }
 
         private static List<WorkflowStepSeedDefinition> GetNormalOrderSteps()
         {
             return new List<WorkflowStepSeedDefinition>
             {
-                new(1, "Order Requester (Order Requesting Entity)", "Order Requesting Entity"),
-                new(2, "Supply Officer (Order Requesting Entity)", "Order Requesting Entity"),
-                new(3, "Requesting Entity Commander (Order Requesting Entity)", "Order Requesting Entity"),
-                new(4, "Military Training Auditor (Military Training)", "Military Training"),
-                new(5, "Military Training Officer (Military Training)", "Military Training"),
-                new(6, "Head of Military Training (Military Training)", "Military Training"),
-                new(7, "Auditor of Ammunition Division (Directorate of Armament)", "Directorate of Armament"),
-                new(8, "Head of Ammunition Division (Directorate of Armament)", "Directorate of Armament"),
-                new(9, "Director of the Armament Entity (Directorate of Armament)", "Directorate of Armament"),
+                new(1, "Supply Officer (Order Requesting Entity)", "Order Requesting Entity"),
+                new(2, "Requesting Entity Commander (Order Requesting Entity)", "Order Requesting Entity"),
+                new(3, "Military Training Auditor (Military Training)", "Military Training"),
+                new(4, "Military Training Officer (Military Training)", "Military Training"),
+                new(5, "Head of Military Training (Military Training)", "Military Training"),
+                new(6, "Auditor of Ammunition Division (Directorate of Armament)", "Directorate of Armament"),
+                new(7, "Head of Ammunition Division (Directorate of Armament)", "Directorate of Armament"),
+                new(8, "Director of the Armament Entity (Directorate of Armament)", "Directorate of Armament"),
                 // new(000, "Head of Logistics (Directorate of Armament)", "Directorate of Armament"), this will only be notified
-                new(10, "Auditor (Military Operation)", "Military Operation"),
-                new(11, "Officer (Military Operation)", "Military Operation"),
-                new(12, "Chief of Operations (Military Operation)", "Military Operation"),
-                new(13, "Auditor (Chief of Staff Office)", "Chief of Staff Office"),
+                new(9, "Auditor (Military Operation)", "Military Operation"),
+                new(10, "Officer (Military Operation)", "Military Operation"),
+                new(11, "Chief of Operations (Military Operation)", "Military Operation"),
+                new(12, "Auditor (Chief of Staff Office)", "Chief of Staff Office"),
                 new (
-                    14,
+                    13,
                     "Deputy Chief of Staff for Operations (Chief of Staff Office)",
                     "Chief of Staff Office",
                     MustApprove: true,
@@ -73,12 +106,12 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding.Workflows
                     ReserveQty: false,
                     HigherApprovalRoleName: "Chief of Staff (Chief of Staff Office)",
                     HigherApplicationEntityName: "Chief of Staff Office"),
-                new(15, "Auditor of Audit Depo (Inventory)", "Inventory"),
-                new(16, "Head of Audit Depo (Inventory)", "Inventory"),
-                new(17, "Depo Commander (Inventory)", "Inventory"),
-                new(18, "Auditor of Depo Division (Inventory)", "Inventory"),
-                new(19, "Head of Depo Division (Inventory)", "Inventory"),
-                new(20, "Depo Officer (Inventory)", "Inventory")
+                new(14, "Auditor of Audit Depo (Inventory)", "Inventory"),
+                new(15, "Head of Audit Depo (Inventory)", "Inventory"),
+                new(16, "Depo Commander (Inventory)", "Inventory"),
+                new(17, "Auditor of Depo Division (Inventory)", "Inventory"),
+                new(18, "Head of Depo Division (Inventory)", "Inventory"),
+                new(19, "Depo Officer (Inventory)", "Inventory")
             };
         }
 
@@ -86,19 +119,18 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding.Workflows
         {
             return new List<WorkflowStepSeedDefinition>
             {
-                new(1, "Order Requester (Order Requesting Entity)", "Order Requesting Entity"),
-                new(2, "Supply Officer (Order Requesting Entity)", "Order Requesting Entity"),
-                new(3, "Requesting Entity Commander (Order Requesting Entity)", "Order Requesting Entity"),
-                new(4, "Auditor of Ammunition Division (Directorate of Armament)", "Directorate of Armament"),
-                new(5, "Head of Ammunition Division (Directorate of Armament)", "Directorate of Armament"),
-                new(6, "Director of the Armament Entity (Directorate of Armament)", "Directorate of Armament"),
+                new(1, "Supply Officer (Order Requesting Entity)", "Order Requesting Entity"),
+                new(2, "Requesting Entity Commander (Order Requesting Entity)", "Order Requesting Entity"),
+                new(3, "Auditor of Ammunition Division (Directorate of Armament)", "Directorate of Armament"),
+                new(4, "Head of Ammunition Division (Directorate of Armament)", "Directorate of Armament"),
+                new(5, "Director of the Armament Entity (Directorate of Armament)", "Directorate of Armament"),
                 // new(000, "Head of Logistics (Directorate of Armament)", "Directorate of Armament"), this will only be notified
-                new(7, "Auditor (Military Operation)", "Military Operation"),
-                new(8, "Officer (Military Operation)", "Military Operation"),
-                new(9, "Chief of Operations (Military Operation)", "Military Operation"),
-                new(10, "Auditor (Chief of Staff Office)", "Chief of Staff Office"),
+                new(6, "Auditor (Military Operation)", "Military Operation"),
+                new(7, "Officer (Military Operation)", "Military Operation"),
+                new(8, "Chief of Operations (Military Operation)", "Military Operation"),
+                new(9, "Auditor (Chief of Staff Office)", "Chief of Staff Office"),
                 new (
-                    11,
+                    10,
                     "Deputy Chief of Staff for Operations (Chief of Staff Office)",
                     "Chief of Staff Office",
                     MustApprove: true,
@@ -106,12 +138,57 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding.Workflows
                     ReserveQty: false,
                     HigherApprovalRoleName: "Chief of Staff (Chief of Staff Office)",
                     HigherApplicationEntityName: "Chief of Staff Office"),
-                new(12, "Auditor of Audit Depo (Inventory)", "Inventory"),
-                new(13, "Head of Audit Depo (Inventory)", "Inventory"),
-                new(14, "Depo Commander (Inventory)", "Inventory"),
-                new(15, "Auditor of Depo Division (Inventory)", "Inventory"),
-                new(16, "Head of Depo Division (Inventory)", "Inventory"),
-                new(17, "Depo Officer (Inventory)", "Inventory")
+                new(11, "Auditor of Audit Depo (Inventory)", "Inventory"),
+                new(12, "Head of Audit Depo (Inventory)", "Inventory"),
+                new(13, "Depo Commander (Inventory)", "Inventory"),
+                new(14, "Auditor of Depo Division (Inventory)", "Inventory"),
+                new(15, "Head of Depo Division (Inventory)", "Inventory"),
+                new(16, "Depo Officer (Inventory)", "Inventory")
+            };
+        }
+
+        private static List<WorkflowStepSeedDefinition> GetDiscardSteps()
+        {
+            return new List<WorkflowStepSeedDefinition>
+            {
+                new(1, "Supply Officer (Order Requesting Entity)", "Order Requesting Entity"),
+                new(2, "Requesting Entity Commander (Order Requesting Entity)", "Order Requesting Entity"),
+                new(3, "Auditor of Ammunition Division (Directorate of Armament)", "Directorate of Armament"),
+                new(4, "Head of Ammunition Division (Directorate of Armament)", "Directorate of Armament"),
+                new(5, "Director of the Armament Entity (Directorate of Armament)", "Directorate of Armament"),
+                new(6, "Head of Logistics (Directorate of Armament)", "Directorate of Armament"),
+                new(7, "Auditor of Audit Depo (Inventory)", "Inventory"),
+                new(8, "Head of Audit Depo (Inventory)", "Inventory"),
+                new(9, "Head of Logistics (Directorate of Armament)", "Directorate of Armament"),
+                new(10, "Auditor (Military Operation)", "Military Operation"),
+                new(11, "Officer (Military Operation)", "Military Operation"),
+                new(12, "Chief of Operations (Military Operation)", "Military Operation"),
+                new(13, "Auditor (Chief of Staff Office)", "Chief of Staff Office"),
+                new(14, "Deputy Chief of Staff for Operations (Chief of Staff Office)", "Chief of Staff Office"),
+                new(15, "Chief of Staff (Chief of Staff Office)", "Chief of Staff Office"),
+                new(16, "Officer (Military Operation)", "Military Operation"),
+                new(17, "Director of the Armament Entity (Directorate of Armament)", "Directorate of Armament"),
+                new(18, "Auditor of Depo Division (Inventory)", "Inventory"),
+                new(19, "Depo Officer (Inventory)", "Inventory"),
+            };
+        }
+
+        private static List<WorkflowStepSeedDefinition> GetReturnSteps()
+        {
+            return new List<WorkflowStepSeedDefinition>
+            {
+                new(1, "Supply Officer (Order Requesting Entity)", "Order Requesting Entity"),
+                new(2, "Requesting Entity Commander (Order Requesting Entity)", "Order Requesting Entity"),
+                new(3, "Auditor of Ammunition Division (Directorate of Armament)", "Directorate of Armament"),
+                new(4, "Head of Ammunition Division (Directorate of Armament)", "Directorate of Armament"),
+                new(5, "Director of the Armament Entity (Directorate of Armament)", "Directorate of Armament"),
+                new(6, "Head of Logistics (Directorate of Armament)", "Directorate of Armament"),
+                new(7, "Director of the Armament Entity (Directorate of Armament)", "Directorate of Armament"),
+                new(8, "Auditor of Audit Depo (Inventory)", "Inventory"),
+                new(9, "Head of Audit Depo (Inventory)", "Inventory"),
+                new(10, "Auditor of Depo Division (Inventory)", "Inventory"),
+                new(11, "Depo Commander (Inventory)", "Inventory"),
+                new(12, "Depo Officer (Inventory)", "Inventory"),
             };
         }
 

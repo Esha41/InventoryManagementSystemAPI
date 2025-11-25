@@ -171,13 +171,22 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
             "Permissions.Order.Edit",
         };
 
-        public static List<string> RequestReciever = new()
+        public static List<string> ReadRequestReciever = new()
         {
-            "Permissions.RequestReciever.Page",
-            "Permissions.RequestReciever.View",
+            "Permissions.Workflows.Page",
+            "Permissions.Workflows.View",
+        };  
+
+        public static List<string> WriteRequestReciever = new()
+        {
             "Permissions.RequestReciever.Create",
             "Permissions.RequestReciever.Edit",
-        };
+        };  
+
+        public static List<string> RequestReciever =
+            ReadRequestReciever
+                .Concat(WriteRequestReciever)
+                .ToList();
 
 
         #region Actual grouping for roles baesd on application entities
@@ -193,7 +202,7 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 .Concat(Notifications)
                 .Concat(ReadOrderDiscardReturn)
                 .Concat(WriteOrderDiscardReturn)
-                .Concat(RequestReciever)
+                .Concat(ReadRequestReciever)
                 .ToList();
 
         public static List<string> SupplyOfficer_OrderRequestingEntity =

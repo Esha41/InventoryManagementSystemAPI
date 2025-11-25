@@ -1,20 +1,13 @@
 ﻿using Ettad.Comman.Idenitity;
 using Ettad.CrossCutting.Comman.Idenitity;
 using Ettad.Data.Entities;
-using Ettad.Data.Entities.Settings;
-using Ettad.Data.Enums;
 using Ettad.EntityFramework.DataBaseContext.DataSeeding;
 using Ettad.EntityFramework.DataBaseContext.DataSeeding.Workflows;
 using Ettad.EntityFramework.Utiliies;
 using Ettad.Infrastructure.Utilities;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using Newtonsoft.Json;
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Security.Claims;
-using System.Threading.Tasks;
 
 namespace Ettad.EntityFramework.DataBaseContext
 {
@@ -107,6 +100,8 @@ namespace Ettad.EntityFramework.DataBaseContext
                 await SeedApplicationEntitiesAndRolesAsync(context, roleManager);
                 await SeedWorkflows.SeedNormalOrderWorkflowAsync(context);
                 await SeedWorkflows.SeedOrderFromAllowanceWorkflowAsync(context);
+                await SeedWorkflows.SeedDiscardWorkflowAsync(context);
+                await SeedWorkflows.SeedReturnWorkflowAsync(context);
             }
             catch (Exception ex)
             {
