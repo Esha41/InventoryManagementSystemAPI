@@ -92,6 +92,19 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
             "Permissions.RequestPurpose.Delete",
         };
 
+        public static List<string> ReadDepo = new()
+        {
+            "Permissions.Depots.Page",
+            "Permissions.Depots.View",
+        };
+
+        public static List<string> WriteDepo = new()
+        {
+            "Permissions.Depots.Create",
+            "Permissions.Depots.Edit",
+            "Permissions.Depots.Delete",
+        };
+
         public static List<string> ReadItems = new()
         {
             "Permissions.Ammunition.Page",
@@ -173,8 +186,8 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
 
         public static List<string> ReadRequestReciever = new()
         {
-            "Permissions.Workflows.Page",
-            "Permissions.Workflows.View",
+            "Permissions.RequestReciever.Page",
+            "Permissions.RequestReciever.View",
         };  
 
         public static List<string> WriteRequestReciever = new()

@@ -8,6 +8,7 @@ using Ettad.Infrastructure.Utilities;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
+using System.Text.RegularExpressions;
 
 namespace Ettad.EntityFramework.DataBaseContext
 {
@@ -98,6 +99,12 @@ namespace Ettad.EntityFramework.DataBaseContext
                 // SEED APPLICATION ENTITIES AND ROLES
                 // ========================
                 await SeedApplicationEntitiesAndRolesAsync(context, roleManager);
+                
+                // ========================
+                // SEED DEFAULT USERS FOR ALL ROLES
+                // ========================
+                await SeedDefaultUsersForRolesAsync(context, userManager, roleManager);
+                
                 await SeedWorkflows.SeedNormalOrderWorkflowAsync(context);
                 await SeedWorkflows.SeedOrderFromAllowanceWorkflowAsync(context);
                 await SeedWorkflows.SeedDiscardWorkflowAsync(context);
@@ -144,15 +151,15 @@ namespace Ettad.EntityFramework.DataBaseContext
                 {
                     "Military Operation", new List<(string, string)>
                     {
-                        ("Auditor", "مدقق هيئة العمليات"),
-                        ("Officer", "ضابط هيئة العمليات"),
+                        ("Auditor of Military Operation", "مدقق هيئة العمليات"),
+                        ("Officer of Military Operation", "ضابط هيئة العمليات"),
                         ("Chief of Operations", "رئيس هيئة العمليات")
                     }
                 },
                 {
                     "Chief of Staff Office", new List<(string, string)>
                     {
-                        ("Auditor", "مدقق"),
+                        ("Auditor of Chief of Staff Office", "مدقق مكتب رئيس الأركان"),
                         ("Deputy Chief of Staff for Operations", "نائب رئيس الأركان للعمليات المشتركة"),
                         ("Chief of Staff", "رئيس الأركان")
                     }
@@ -296,12 +303,12 @@ namespace Ettad.EntityFramework.DataBaseContext
                 { ("Head of Logistics", "Directorate of Armament"), () => PermissionConfig.HeadOfLogistics_DirectorateOfAmmunitionEntity },
 
                 // Military Operations Entity
-                { ("Auditor", "Military Operation"), () => PermissionConfig.Auditor_MilitaryOperationsEntity },
-                { ("Officer", "Military Operation"), () => PermissionConfig.Officer_MilitaryOperationsEntity },
+                { ("Auditor of Military Operation", "Military Operation"), () => PermissionConfig.Auditor_MilitaryOperationsEntity },
+                { ("Officer of Military Operation", "Military Operation"), () => PermissionConfig.Officer_MilitaryOperationsEntity },
                 { ("Chief of Operations", "Military Operation"), () => PermissionConfig.HeadOfMilitaryOperations_MilitaryOperationsEntity },
 
                 // Chief of Staff Entity
-                { ("Auditor", "Chief of Staff Office"), () => PermissionConfig.Auditor_ChiefOfStaffOfficeEntity },
+                { ("Auditor of Chief of Staff Office", "Chief of Staff Office"), () => PermissionConfig.Auditor_ChiefOfStaffOfficeEntity },
                 { ("Deputy Chief of Staff for Operations", "Chief of Staff Office"), () => PermissionConfig.DeputyChiefOfStaff_ChiefOfStaffOfficeEntity },
                 { ("Chief of Staff", "Chief of Staff Office"), () => PermissionConfig.ChiefOfStaff_ChiefOfStaffOfficeEntity },
 
@@ -321,6 +328,113 @@ namespace Ettad.EntityFramework.DataBaseContext
             }
 
             return null;
+        }
+
+        private static async Task SeedDefaultUsersForRolesAsync(
+            ApplicationDbContext context,
+            UserManager<ApplicationUser> userManager,
+            RoleManager<ApplicationRole> roleManager)
+        {
+            try
+            {
+                // Get all roles except Administrator (which already has a user)
+                var allRoles = await roleManager.Roles
+                    .Where(r => r.Name != "Administrator" && !r.IsSuperAdmin)
+                    .ToListAsync();
+
+                const string defaultPassword = "Password1!";
+
+                foreach (var role in allRoles)
+                {
+                    // Generate username from role name
+                    // Example: "Order Requester (Order Requesting Entity)" -> "order.requester.order.requesting.entity@localhost"
+                    var username = GenerateUsernameFromRoleName(role.Name);
+                    var email = username;
+
+                    // Check if user already exists
+                    var existingUser = await userManager.FindByNameAsync(username);
+                    if (existingUser != null)
+                    {
+                        continue; // User already exists, skip
+                    }
+
+                    // Extract role name and entity name for display names
+                    var (roleNameEn, entityNameEn) = ParseRoleName(role.Name);
+
+                    // Create new user
+                    var user = new ApplicationUser
+                    {
+                        IsLdapUser = false,
+                        IsSuperAdmin = false,
+                        EmailConfirmed = true,
+                        Email = email,
+                        UserName = username,
+                        FullNameEN = roleNameEn ?? role.Name,
+                        FullNameAR = role.NameAr ?? roleNameEn ?? role.Name
+                    };
+
+                    var createResult = await userManager.CreateAsync(user, defaultPassword);
+                    if (createResult.Succeeded)
+                    {
+                        // Assign user to role
+                        var addToRoleResult = await userManager.AddToRolesAsync(user, new[] { role.Name });
+                        if (!addToRoleResult.Succeeded)
+                        {
+                            Console.WriteLine($"Failed to add user {username} to role {role.Name}: {string.Join(", ", addToRoleResult.Errors.Select(e => e.Description))}");
+                        }
+                        else
+                        {
+                            // Refresh security stamp to ensure claims are loaded on first login
+                            await userManager.UpdateSecurityStampAsync(user);
+                        }
+                    }
+                    else
+                    {
+                        Console.WriteLine($"Failed to create user {username}: {string.Join(", ", createResult.Errors.Select(e => e.Description))}");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Seeding default users error: {ex.Message}");
+                throw;
+            }
+        }
+
+        private static string GenerateUsernameFromRoleName(string roleName)
+        {
+            // Remove parentheses and their contents, then clean up
+            var cleaned = Regex.Replace(roleName, @"\s*\([^)]*\)", "");
+            
+            // Convert to lowercase and replace spaces/special chars with dots
+            var username = cleaned
+                .ToLowerInvariant()
+                .Replace(" ", ".")
+                .Replace("-", ".")
+                .Replace("_", ".");
+            
+            // Remove multiple consecutive dots
+            username = Regex.Replace(username, @"\.+", ".");
+            
+            // Remove leading/trailing dots
+            username = username.Trim('.');
+            
+            return $"{username}@localhost";
+        }
+
+        private static (string? RoleNameEn, string? EntityNameEn) ParseRoleName(string fullRoleName)
+        {
+            // Parse "Role Name (Entity Name)" format
+            var match = Regex.Match(fullRoleName, @"^(.+?)\s*\((.+?)\)$");
+            
+            if (match.Success)
+            {
+                var roleName = match.Groups[1].Value.Trim();
+                var entityName = match.Groups[2].Value.Trim();
+                return (roleName, entityName);
+            }
+            
+            return (fullRoleName, null);
         }
 
         private static async Task SeedApplicationEntitiesAsync(ApplicationDbContext context)
