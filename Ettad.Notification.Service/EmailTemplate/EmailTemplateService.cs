@@ -5,6 +5,7 @@ using Microsoft.Extensions.Configuration;
 using Ettad.CrossCutting.Data.Repository;
 using Ettad.Data.Entities;
 using Ettad.Data.Enums;
+using System.Net;
 
 namespace Ettad.Notification.Service.EmailTemplate
 {
@@ -32,83 +33,125 @@ namespace Ettad.Notification.Service.EmailTemplate
             long notificationId = 0,
             DateTime? updateDate = null)
         {
-            var now = updateDate ?? DateTime.UtcNow;
-            var emailBody = new System.Text.StringBuilder();
-            
-            emailBody.AppendLine("<html><body style='font-family: Arial, sans-serif; line-height: 1.6; color: #1F3A5F; margin: 0; padding: 0; background-color: #F7F7F7;'>");
-            emailBody.AppendLine("<div style='max-width: 800px; margin: 0 auto; padding: 20px; background-color: #ffffff;'>");
-            
-            // Logo Section - Embed as base64 to avoid email client blocking
+            try
+            {
+                // Load HTML template from file
+                var template = await LoadEmailTemplateAsync();
+                
+                var now = updateDate ?? DateTime.UtcNow;
+                
+                // Replace parameters in template
+                template = template.Replace("{{TITLE}}", WebUtility.HtmlEncode(title));
+                template = template.Replace("{{MESSAGE}}", WebUtility.HtmlEncode(message));
+                template = template.Replace("{{UPDATE_DATE}}", WebUtility.HtmlEncode(now.ToString("MMM dd, yyyy")));
+                template = template.Replace("{{TIME}}", WebUtility.HtmlEncode(now.ToString("h:mm tt")));
+                
+                // Logo Section
+                var logoSection = GetLogoSection();
+                template = template.Replace("{{LOGO_SECTION}}", logoSection);
+                
+                // View Details Link
+                var viewDetailsLink = GetViewDetailsLink(entityType, entityId);
+                template = template.Replace("{{VIEW_DETAILS_LINK}}", viewDetailsLink);
+                
+                // Entity Details
+                var entityDetails = await GetEntityDetailsSectionAsync(entityType, entityId);
+                template = template.Replace("{{ENTITY_DETAILS}}", entityDetails);
+                
+                return template;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to render email template. Title: {Title}", title);
+                throw;
+            }
+        }
+
+        private async Task<string> LoadEmailTemplateAsync()
+        {
+            try
+            {
+                var templatePath = Path.Combine(_webHostEnvironment.WebRootPath ?? "wwwroot", "Templates", "EmailTemplate.html");
+                
+                if (File.Exists(templatePath))
+                {
+                    return await File.ReadAllTextAsync(templatePath);
+                }
+                else
+                {
+                    _logger.LogWarning("Email template file not found at path: {TemplatePath}. Using fallback template.", templatePath);
+                    return GetFallbackTemplate();
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to load email template file. Using fallback template.");
+                return GetFallbackTemplate();
+            }
+        }
+
+        private string GetLogoSection()
+        {
             var logoBase64 = GetLogoAsBase64();
             if (!string.IsNullOrEmpty(logoBase64))
             {
-                emailBody.AppendLine("<div style='text-align: center; margin-bottom: 30px; padding-bottom: 20px; border-bottom: 2px solid #6B6B6B;'>");
-                emailBody.AppendLine($"<img src='data:image/png;base64,{logoBase64}' alt='ETTAD Logo' style='max-width: 200px; height: auto;' />");
-                emailBody.AppendLine("</div>");
+                return $"<div style='text-align: center; margin-bottom: 30px; padding-bottom: 20px; border-bottom: 2px solid #6B6B6B;'><img src='data:image/png;base64,{logoBase64}' alt='ETTAD Logo' style='max-width: 200px; height: auto;' /></div>";
             }
-            
-            // Header with title
-            emailBody.AppendLine("<div style='margin-bottom: 20px; padding-bottom: 15px; border-bottom: 2px solid #6B6B6B;'>");
-            emailBody.AppendLine($"<h1 style='margin: 0; color: #1F3A5F; font-size: 24px; font-weight: 600;'>{title}</h1>");
-            emailBody.AppendLine("</div>");
-            
-            // Introductory message
-            emailBody.AppendLine($"<p style='font-size: 16px; color: #6B6B6B; margin-bottom: 30px;'>{message}</p>");
-            
-            // Summary Cards Section
-            emailBody.AppendLine("<div style='display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-bottom: 30px;'>");
-            
-            // UPDATE DATE Card
-            emailBody.AppendLine("<div style='background-color: #F7F7F7; border: 1px solid #6B6B6B; border-radius: 8px; padding: 15px;'>");
-            emailBody.AppendLine("<div style='color: #6B6B6B; font-size: 12px; font-weight: 600; text-transform: uppercase; margin-bottom: 8px;'>UPDATE DATE</div>");
-            emailBody.AppendLine($"<div style='color: #1F3A5F; font-size: 14px; font-weight: 500;'>{now:MMM dd, yyyy}</div>");
-            emailBody.AppendLine("</div>");
-            
-            // TIME Card
-            emailBody.AppendLine("<div style='background-color: #F7F7F7; border: 1px solid #6B6B6B; border-radius: 8px; padding: 15px;'>");
-            emailBody.AppendLine("<div style='color: #6B6B6B; font-size: 12px; font-weight: 600; text-transform: uppercase; margin-bottom: 8px;'>TIME</div>");
-            emailBody.AppendLine($"<div style='color: #1F3A5F; font-size: 14px; font-weight: 500;'>{now:h:mm tt}</div>");
-            emailBody.AppendLine("</div>");
-            
-            emailBody.AppendLine("</div>"); // End summary cards grid
-            
-            // View Details Link
+            return string.Empty;
+        }
+
+        private string GetViewDetailsLink(string? entityType, long? entityId)
+        {
             if (!string.IsNullOrEmpty(entityType) && entityId.HasValue)
             {
                 var frontendUrl = "http://localhost:4200"; // Default frontend URL, can be configured
                 var detailsUrl = $"{frontendUrl}/{entityType.ToLower()}/{entityId.Value}";
-                
-                emailBody.AppendLine("<div style='text-align: center; margin: 30px 0;'>");
-                emailBody.AppendLine($"<a href='{detailsUrl}' style='display: inline-block; padding: 12px 30px; background-color: #2F5DFF; color: #ffffff; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 14px;'>View Details</a>");
-                emailBody.AppendLine("</div>");
+                return $"<div style='text-align: center; margin: 30px 0;'><a href='{detailsUrl}' style='display: inline-block; padding: 12px 30px; background-color: #2F5DFF; color: #ffffff; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 14px;'>View Details</a></div>";
             }
+            return string.Empty;
+        }
 
-            // Fetch and include full entity details if available
-            if (!string.IsNullOrEmpty(entityType) && entityId.HasValue)
+        private async Task<string> GetEntityDetailsSectionAsync(string? entityType, long? entityId)
+        {
+            if (string.IsNullOrEmpty(entityType) || !entityId.HasValue)
             {
-                var entityDetails = await GetEntityDetailsAsync(entityType, entityId.Value);
-                if (entityDetails != null)
-                {
-                    emailBody.AppendLine($"<div style='margin-top: 30px;'>");
-                    emailBody.AppendLine($"<h2 style='color: #1F3A5F; font-size: 18px; font-weight: 600; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 1px solid #6B6B6B;'>{entityType} details</h2>");
-                    emailBody.AppendLine(entityDetails);
-                    emailBody.AppendLine("</div>");
-                }
-                else
-                {
-                    // Fallback if entity details couldn't be fetched
-                    emailBody.AppendLine("<div style='margin-top: 20px; padding: 15px; background-color: #F7F7F7; border-left: 4px solid #2F5DFF; border-radius: 4px;'>");
-                    emailBody.AppendLine($"<strong>Related Entity:</strong> {entityType}<br>");
-                    emailBody.AppendLine($"<strong>Entity ID:</strong> {entityId.Value}");
-                    emailBody.AppendLine("</div>");
-                }
+                return string.Empty;
             }
 
-            emailBody.AppendLine("<hr style='border: none; border-top: 1px solid #6B6B6B; margin: 30px 0 20px 0;'>");
-            emailBody.AppendLine("<p style='color: #6B6B6B; font-size: 12px; text-align: center; margin: 0;'>This is an automated notification email.</p>");
-            emailBody.AppendLine("</div></body></html>");
+            var entityDetails = await GetEntityDetailsAsync(entityType, entityId.Value);
+            if (entityDetails != null)
+            {
+                var section = new System.Text.StringBuilder();
+                section.AppendLine($"<div style='margin-top: 30px;'>");
+                section.AppendLine($"<h2 style='color: #1F3A5F; font-size: 18px; font-weight: 600; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 1px solid #6B6B6B;'>{WebUtility.HtmlEncode(entityType)} details</h2>");
+                section.AppendLine(entityDetails);
+                section.AppendLine("</div>");
+                return section.ToString();
+            }
+            else
+            {
+                // Fallback if entity details couldn't be fetched
+                return $"<div style='margin-top: 20px; padding: 15px; background-color: #F7F7F7; border-left: 4px solid #2F5DFF; border-radius: 4px;'><strong>Related Entity:</strong> {WebUtility.HtmlEncode(entityType)}<br><strong>Entity ID:</strong> {entityId.Value}</div>";
+            }
+        }
 
-            return emailBody.ToString();
+        private string GetFallbackTemplate()
+        {
+            return @"<!DOCTYPE html>
+<html>
+<head>
+    <meta charset=""UTF-8"">
+</head>
+<body style=""font-family: Arial, sans-serif; line-height: 1.6; color: #1F3A5F; margin: 0; padding: 0; background-color: #F7F7F7;"">
+    <div style=""max-width: 800px; margin: 0 auto; padding: 20px; background-color: #ffffff;"">
+        <h1 style=""color: #1F3A5F;"">{{TITLE}}</h1>
+        <p style=""color: #6B6B6B;"">{{MESSAGE}}</p>
+        <p><strong>Date:</strong> {{UPDATE_DATE}} <strong>Time:</strong> {{TIME}}</p>
+        {{VIEW_DETAILS_LINK}}
+        {{ENTITY_DETAILS}}
+    </div>
+</body>
+</html>";
         }
 
         private async Task<string?> GetEntityDetailsAsync(string entityType, long entityId)
