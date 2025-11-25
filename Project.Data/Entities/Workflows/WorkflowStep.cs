@@ -48,6 +48,7 @@ namespace Ettad.Data.Entities.Workflows
         // Navigation properties
         public virtual Workflow Workflow { get; set; }       
         public virtual ICollection<WorkflowApprovalStep> ApprovalSteps { get; set; } = new List<WorkflowApprovalStep>();
+        public virtual ICollection<WorkflowStepNotifier> Notifiers { get; set; } = new List<WorkflowStepNotifier>();
     }
 
 }

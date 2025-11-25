@@ -6,10 +6,12 @@ using Ettad.EntityFramework.DataBaseContext;
 using Ettad.Notification.Service;
 using Ettad.ResponseHandler.Consts;
 using Ettad.ResponseHandler.Models;
+using Ettad.Workflow.Service.Interface;
 using Ettad.Workflows.Service.DTO;
 using Ettad.Workflows.Service.Interface;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace Ettad.Workflows.Service.Imeplemention
 {
@@ -18,13 +20,23 @@ namespace Ettad.Workflows.Service.Imeplemention
         private readonly ApplicationDbContext _context;
         private readonly ICurrentUserService _currentUserService;
         private readonly INotificationHelperService _notificationHelperService;
+        private readonly IWorkflowStepNotifierService _workflowStepNotifierService;
+        private readonly ILogger<WorkflowApprovalService> _logger;
 
-        public WorkflowApprovalService(ApplicationDbContext context, ICurrentUserService currentUserService, INotificationHelperService notificationHelperService)
+        public WorkflowApprovalService(
+            ApplicationDbContext context, 
+            ICurrentUserService currentUserService, 
+            INotificationHelperService notificationHelperService,
+            IWorkflowStepNotifierService workflowStepNotifierService,
+            ILogger<WorkflowApprovalService> logger)
         {
             _context = context;
             _currentUserService = currentUserService;
             _notificationHelperService = notificationHelperService;
+            _workflowStepNotifierService = workflowStepNotifierService;
+            _logger = logger;
         }
+     
         public async Task<IEnumerable<WorkflowApprovalStepDto>> GetAllAsync()
         {
             return await _context.WorkflowApprovalSteps
@@ -253,6 +265,9 @@ namespace Ettad.Workflows.Service.Imeplemention
                 await _context.SaveChangesAsync();
                 await transaction.CommitAsync();
 
+                // 🔔 Send notifications to step notifiers (after transaction commits successfully)
+                await SendNotificationsToStepNotifiersAsync(currentStep.WorkflowStepId, model);
+
                 return APIOperationResponse<bool>.Success(true);
             }
             catch
@@ -464,6 +479,9 @@ namespace Ettad.Workflows.Service.Imeplemention
                     nextRoles,
                     _currentUserService.UserId
                 );
+
+                // 🔔 Also notify next step notifiers if configured
+                await SendNotificationsToStepNotifiersOnWorkflowStartAsync(nextStep.Id, baseRequest.Id);
             }
             else
             {
@@ -633,6 +651,132 @@ namespace Ettad.Workflows.Service.Imeplemention
         }
 
         /// <summary>
+        /// Send notifications to all configured notifiers for a workflow step when an action is taken
+        /// </summary>
+        private async Task SendNotificationsToStepNotifiersAsync(int workflowStepId, ApproveRejectWorkflowApprovalDto model)
+        {
+            try
+            {
+                // Get notifiers for this step
+                var notifiersResult = await _workflowStepNotifierService.GetNotifierIdsByStepIdAsync(workflowStepId);
+                
+                if (!notifiersResult.Succeeded || 
+                    (notifiersResult.Data.UserIds.Count == 0 && notifiersResult.Data.RoleIds.Count == 0))
+                {
+                    // No notifiers configured for this step - this is fine, just return
+                    return;
+                }
+
+                var (userIds, roleIds) = notifiersResult.Data;
+
+                // Get the base request for context
+                var baseRequest = await _context.BaseRequests
+                    .FirstOrDefaultAsync(x => x.Id == model.BaseRequestID);
+
+                if (baseRequest == null)
+                {
+                    return;
+                }
+
+                // Get the approver name for the message
+                var approver = await _context.Users.FirstOrDefaultAsync(u => u.Id == _currentUserService.UserId);
+                var approverName = approver?.FullNameEN ?? approver?.FullNameAR ?? approver?.UserName ?? "System";
+
+                // Determine action message and title
+                var (title, message) = model.Action switch
+                {
+                    RequestStatus.Approved => (
+                        $"Request #{baseRequest.RequestNo} Approved",
+                        $"Request #{baseRequest.RequestNo} has been approved by {approverName}" +
+                        (string.IsNullOrWhiteSpace(model.Comments) ? "." : $". Comments: {model.Comments}")
+                    ),
+                    RequestStatus.Rejected => (
+                        $"Request #{baseRequest.RequestNo} Rejected",
+                        $"Request #{baseRequest.RequestNo} has been rejected by {approverName}" +
+                        (string.IsNullOrWhiteSpace(model.Comments) ? "." : $". Comments: {model.Comments}")
+                    ),
+                    //RequestStatus.Returned => (
+                    //    "Request {baseRequest.RequestNo} Returned",
+                    //    $"Request #{baseRequest.RequestNo} has been returned by {approverName}" +
+                    //    (string.IsNullOrWhiteSpace(model.Comments) ? "." : $". Comments: {model.Comments}")
+                    //),
+                    _ => (
+                        $"Request #{baseRequest.RequestNo} Action Taken",
+                        $"An action has been taken on request #{baseRequest.RequestNo} by {approverName}"
+                    )
+                };
+
+                // Send notification to all notifiers
+                await _notificationHelperService.SendNotificationAsync(
+                    title: title,
+                    message: message,
+                    entityType: "Request",
+                    entityId: baseRequest.Id,
+                    userIds: userIds.Any() ? userIds : null,
+                    roleIds: roleIds.Any() ? roleIds : null,
+                    senderId: _currentUserService.UserId
+                );
+            }
+            catch (Exception ex)
+            {
+                // Log error but don't fail the workflow action - notifications are non-critical
+                _logger.LogError(ex,
+                    "Error sending notifications to step notifiers for workflow step {WorkflowStepId}, RequestId: {RequestId}",
+                    workflowStepId,
+                    model.BaseRequestID);
+            }
+        }
+
+        /// <summary>
+        /// Send notifications to step notifiers when a workflow starts (first step becomes active)
+        /// </summary>
+        private async Task SendNotificationsToStepNotifiersOnWorkflowStartAsync(int workflowStepId, long requestId)
+        {
+            try
+            {
+                // Get notifiers for this step
+                var notifiersResult = await _workflowStepNotifierService.GetNotifierIdsByStepIdAsync(workflowStepId);
+                
+                if (!notifiersResult.Succeeded || 
+                    (notifiersResult.Data.UserIds.Count == 0 && notifiersResult.Data.RoleIds.Count == 0))
+                {
+                    // No notifiers configured for this step - this is fine, just return
+                    return;
+                }
+
+                var (userIds, roleIds) = notifiersResult.Data;
+
+                // Get the base request for context
+                var baseRequest = await _context.BaseRequests
+                    .FirstOrDefaultAsync(x => x.Id == requestId);
+
+                if (baseRequest == null)
+                {
+                    return;
+                }
+
+                // Send notification to all notifiers
+                await _notificationHelperService.SendNotificationAsync(
+                    title: "Request Management",
+                    message: $"Request #{baseRequest.RequestNo} has reached a workflow step that requires your attention.",
+                    entityType: "Request",
+                    entityId: baseRequest.Id,
+                    userIds: userIds.Any() ? userIds : null,
+                    roleIds: roleIds.Any() ? roleIds : null,
+                    senderId: _currentUserService.UserId
+                );
+            }
+            catch (Exception ex)
+            {
+                // Log error but don't fail workflow start - notifications are non-critical
+                _logger.LogError(ex,
+                    "Error sending start notifications to step notifiers for workflow step {WorkflowStepId}, RequestId: {RequestId}",
+                    workflowStepId,
+                    requestId);
+            }
+        }
+
+        /// <summary>
         /// Start workflow for a newly created order
         /// Gets the appropriate workflow based on workflow type and creates the first approval step
         /// </summary>
@@ -674,7 +818,7 @@ namespace Ettad.Workflows.Service.Imeplemention
                             _context.WorkflowApprovalSteps.Add(workflowApprovalStep);
                             await _context.SaveChangesAsync();
 
-                            // Notify the approver after creating the workflow approval step
+                            // Notify the approver roles after creating the workflow approval step
                             var approverRoles = new List<string> { firstWorkflowStep.ApplicationRoleId };
                             if (!string.IsNullOrEmpty(firstWorkflowStep.HigherApprovalRoleId))
                                 approverRoles.Add(firstWorkflowStep.HigherApprovalRoleId);
@@ -688,6 +832,9 @@ namespace Ettad.Workflows.Service.Imeplemention
                                 approverRoles,
                                 _currentUserService.UserId
                             );
+
+                            // 🔔 Also notify step notifiers if configured
+                            await SendNotificationsToStepNotifiersOnWorkflowStartAsync(firstWorkflowStep.Id, orderId);
 
                             return true;
                         }

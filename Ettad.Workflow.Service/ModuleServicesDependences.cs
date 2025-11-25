@@ -1,6 +1,8 @@
 using Microsoft.Extensions.DependencyInjection;
 using Ettad.Services.Helpers;
 using Ettad.Services.Mapper;
+using Ettad.Workflow.Service.Interface;
+using Ettad.Workflow.Service.Imeplemention;
 using System.Reflection;
 
 namespace Ettad.Workflow.Service
@@ -11,6 +13,9 @@ namespace Ettad.Workflow.Service
         {
             service.AddAutoMapper(typeof(MappingProfile));
             service.AddTransient<IHelpureService, HelpureService>();
+            
+            // Register WorkflowStepNotifierService
+            service.AddScoped<IWorkflowStepNotifierService, WorkflowStepNotifierService>();
 
             // Register MediatR from multiple assemblies
             service.AddMediatR(cfg =>
