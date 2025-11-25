@@ -324,7 +324,7 @@ namespace Ettad.RequestManagement.Service.Discards
                 var userId = _currentUserService.UserId;
                 var userIds = string.IsNullOrWhiteSpace(userId) ? null : new List<string> { userId };
 
-                await _notificationHelperService.SendNotificationAsync(
+                await _notificationHelperService.SendNotificationAndEmailAsync(
                     title,
                     message,
                     entityType: nameof(Discard),

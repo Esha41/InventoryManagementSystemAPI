@@ -466,7 +466,7 @@ namespace Ettad.RequestManagement.Service.Orders
                 var userId = _currentUserService.UserId;
                 var userIds = string.IsNullOrWhiteSpace(userId) ? null : new List<string> { userId };
 
-                await _notificationHelperService.SendNotificationAsync(
+                await _notificationHelperService.SendNotificationAndEmailAsync(
                     title,
                     message,
                     entityType: nameof(Order),
@@ -478,7 +478,7 @@ namespace Ettad.RequestManagement.Service.Orders
             catch (Exception ex)
             {
                 // Log but don't fail the operation
-                _logger.LogWarning(ex, "Failed to send notification for order. OrderId: {OrderId}", entityId);
+                _logger.LogWarning(ex, "Failed to send notification and email for order. OrderId: {OrderId}", entityId);
             }
         }
 

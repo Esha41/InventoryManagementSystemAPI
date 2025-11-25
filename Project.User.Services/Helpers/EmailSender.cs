@@ -29,10 +29,13 @@ namespace Ettad.User.Services.Helpers
                 
                 var emailConfig = await _settingsProvider.getEmailSettings();
                 
+                _logger.LogInformation("Email configuration retrieved. HostIp: {HostIp}, Port: {Port}, Username: {Username}, SSL: {SSL}, DisableAuthentication: {DisableAuth}", 
+                    emailConfig.HostIp ?? "null", emailConfig.Port, emailConfig.Username ?? "null", emailConfig.SSL, emailConfig.DisableAuthentication);
+                
                 // Check if email notifications are disabled
                 if (emailConfig.DisableAuthentication)
                 {
-                    _logger.LogWarning("Email notifications are disabled in settings. Skipping email send.");
+                    _logger.LogWarning("Email notifications are disabled in settings (EmailEnabled=false or not set). Skipping email send to {Email}.", email);
                     return;
                 }
 
@@ -40,13 +43,12 @@ namespace Ettad.User.Services.Helpers
                 if (string.IsNullOrEmpty(emailConfig.HostIp) || emailConfig.Port == 0 ||
                     string.IsNullOrEmpty(emailConfig.Username) || string.IsNullOrEmpty(emailConfig.Password))
                 {
-                    _logger.LogError("Email configuration not found or invalid: HostIp={HostIp}, Port={Port}, Username={Username}, Password={HasPassword}", 
+                    _logger.LogError("Email configuration not found or invalid: HostIp={HostIp}, Port={Port}, Username={Username}, Password={HasPassword}. Please configure email settings via /api/EmailSettings endpoint.", 
                         emailConfig.HostIp ?? "null", emailConfig.Port, emailConfig.Username ?? "null", !string.IsNullOrEmpty(emailConfig.Password));
                     throw new InvalidOperationException("Email configuration not found or invalid. Please configure email settings via /api/EmailSettings endpoint.");
                 }
 
-                _logger.LogInformation("Email configuration retrieved. Host: {Host}, Port: {Port}, Username: {Username}", 
-                    emailConfig.HostIp, emailConfig.Port, emailConfig.Username);
+                _logger.LogInformation("Email configuration is valid. Proceeding to send email to {Email}", email);
 
                 using var client = new SmtpClient(emailConfig.HostIp, emailConfig.Port)
                 {
