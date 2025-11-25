@@ -706,52 +706,107 @@ namespace Ettad.Workflows.Service.Imeplemention
         public async Task<IEnumerable<BaseRequestDto>> GetAllBaseRequestsAsync()
         {
             var currentUserId = _currentUserService.UserId;
+            
+            // Get current user's department ID
+            var currentUser = await _context.Users
+                .FirstOrDefaultAsync(u => u.Id == currentUserId);
+            
+            var currentUserDepartmentId = currentUser?.DepartmentId;
             List<long> allowedRequestIds;
+
+            // Get all role IDs and role names of current user
+            var userRoles = await (from ur in _context.Set<IdentityUserRole<string>>()
+                                  join r in _context.Roles on ur.RoleId equals r.Id
+                                  where ur.UserId == currentUserId
+                                  select new { RoleId = ur.RoleId, RoleName = r.Name })
+                                  .ToListAsync();
+
+            var userRoleIds = userRoles.Select(r => r.RoleId).ToList();
+            var userRoleNames = userRoles.Select(r => r.RoleName).ToList();
+
+            // Check if user has roles that require department matching
+            var requiresDepartmentCheck = userRoleNames.Any(rn => 
+                rn == "Supply Officer (Order Requesting Entity)" || 
+                rn == "Requesting Entity Commander (Order Requesting Entity)");
 
             // If superadmin, get all request IDs
             if (_currentUserService.IsSuperAdmin)
             {
-                allowedRequestIds = await _context.BaseRequests
-                    .Where(br => !br.IsDeleted)
-                    .Select(br => br.Id)
-                    .ToListAsync();
+                // Only filter by department if superadmin has one of the specific roles
+                if (requiresDepartmentCheck)
+                {
+                    if (!currentUserDepartmentId.HasValue)
+                    {
+                        return Enumerable.Empty<BaseRequestDto>();
+                    }
+                    
+                    allowedRequestIds = await _context.BaseRequests
+                        .Where(br => !br.IsDeleted && br.DepartmentId == currentUserDepartmentId.Value)
+                        .Select(br => br.Id)
+                        .ToListAsync();
+                }
+                else
+                {
+                    // Superadmin without those roles - get all requests
+                    allowedRequestIds = await _context.BaseRequests
+                        .Where(br => !br.IsDeleted)
+                        .Select(br => br.Id)
+                        .ToListAsync();
+                }
             }
             else
             {
-                // Get all role IDs of current user
-                var userRoleIds = await _context.Set<IdentityUserRole<string>>()
-                    .Where(ur => ur.UserId == currentUserId)
-                    .Select(ur => ur.RoleId)
-                    .ToListAsync();
-
                 if (!userRoleIds.Any())
                     return Enumerable.Empty<BaseRequestDto>();
 
                 // Get request IDs that the user has permission to approve
-                allowedRequestIds = await (from ws in _context.WorkflowApprovalSteps
-                                          join br in _context.BaseRequests
-                                              on (long)ws.TargetRequestId equals br.Id
-                                          join wfs in _context.WorkflowSteps
-                                              on ws.WorkflowStepId equals wfs.Id
-                                          where
-                                              !br.IsDeleted &&
-                                              (
-                                                  // Step assigned directly to this user
-                                                  ws.ApproverUserId == currentUserId
-                                                  // OR user role matches main approver
-                                                  || userRoleIds.Contains(wfs.ApplicationRoleId)
-                                                  // OR user role matches higher approval
-                                                  || (!string.IsNullOrEmpty(wfs.HigherApprovalRoleId) && userRoleIds.Contains(wfs.HigherApprovalRoleId))
-                                              )
-                                          select br.Id)
-                                          .Distinct()
-                                          .ToListAsync();
+                var baseQuery = from ws in _context.WorkflowApprovalSteps
+                            join br in _context.BaseRequests
+                                on (long)ws.TargetRequestId equals br.Id
+                            join wfs in _context.WorkflowSteps
+                                on ws.WorkflowStepId equals wfs.Id
+                            where
+                                !br.IsDeleted &&
+                                (
+                                    // Step assigned directly to this user
+                                    ws.ApproverUserId == currentUserId
+                                    // OR user role matches main approver
+                                    || userRoleIds.Contains(wfs.ApplicationRoleId)
+                                    // OR user role matches higher approval
+                                    || (!string.IsNullOrEmpty(wfs.HigherApprovalRoleId) && userRoleIds.Contains(wfs.HigherApprovalRoleId))
+                                )
+                            select new { RequestId = br.Id, DepartmentId = br.DepartmentId };
+                
+                // Apply department filter only if user has one of the specific roles
+                if (requiresDepartmentCheck)
+                {
+                    if (!currentUserDepartmentId.HasValue)
+                    {
+                        return Enumerable.Empty<BaseRequestDto>();
+                    }
+                    
+                    // Filter by matching department IDs: requester's department must match approver's (current user's) department
+                    allowedRequestIds = await baseQuery
+                        .Where(x => x.DepartmentId == currentUserDepartmentId.Value)
+                        .Select(x => x.RequestId)
+                        .Distinct()
+                        .ToListAsync();
+                }
+                else
+                {
+                    // No department filter - get all requests user can approve
+                    allowedRequestIds = await baseQuery
+                        .Select(x => x.RequestId)
+                        .Distinct()
+                        .ToListAsync();
+                }
             }
 
             if (!allowedRequestIds.Any())
                 return Enumerable.Empty<BaseRequestDto>();
 
             // Get BaseRequests that the user has permission to approve
+            // Note: Department ID filtering is already applied in the allowedRequestIds query above
             var baseRequests = await _context.BaseRequests
                 .Include(br => br.Requester)
                 .Include(br => br.Department)
