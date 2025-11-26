@@ -1,10 +1,5 @@
 using Ettad.EntityFramework.Utiliies;
-using System;
-using System.Collections.Generic;
 using System.ComponentModel;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Ettad.Data.Enums
 {
@@ -20,7 +15,25 @@ namespace Ettad.Data.Enums
         [Category(PlainPermissionsGenerator.SystemFeatures)]
         CanImportData,
         [Category(PlainPermissionsGenerator.SystemFeatures)]
-        EmailLogs
+        EmailLogs,
+
+        [Category(PlainPermissionsGenerator.Workflow)]
+        UpdateRequestAndSuggestLots,
+
+        [Category(PlainPermissionsGenerator.Workflow)]
+        UpdateRequestAndSupply,
+
+        [Category(PlainPermissionsGenerator.Workflow)]
+        SubmitSupply,
+
+        [Category(PlainPermissionsGenerator.Workflow)]
+        SetSupplyPickupDate,
+
+        [Category(PlainPermissionsGenerator.Workflow)]
+        ConfirmSupplyPickupDate,
+
+        [Category(PlainPermissionsGenerator.Workflow)]
+        CannotRejectRequest,
     }
 
 }

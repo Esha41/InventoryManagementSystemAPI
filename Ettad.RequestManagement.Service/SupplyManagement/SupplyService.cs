@@ -1,14 +1,17 @@
 using AutoMapper;
 using FluentValidation;
 using Ettad.Application.Common.Interfaces;
+using Ettad.Comman.Idenitity;
 using Ettad.CrossCutting.Data.Repository;
 using Ettad.Data.Entities;
 using Ettad.Data.Enums;
 using Ettad.Inventory.Service.Inventories;
 using Ettad.Inventory.Service.Inventories.Dtos;
+using Ettad.Notification.Service;
 using Ettad.RequestManagement.Service.SupplyManagement.Dtos;
 using Ettad.ResponseHandler.Consts;
 using Ettad.ResponseHandler.Models;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Logging;
 
 namespace Ettad.RequestManagement.Service.SupplyManagement
@@ -28,9 +31,13 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
 		private readonly IValidator<CreateSupplyDetailDto> _createDetailValidator;
 		private readonly IValidator<UpdateSupplyDetailDto> _updateDetailValidator;
 		private readonly IValidator<SubmitSupplyDto> _submitValidator;
+		private readonly IValidator<SetSupplyPickupDateDto> _setPickupDateValidator;
+		private readonly IValidator<ConfirmSupplyPickupDateDto> _confirmPickupDateValidator;
+		private readonly INotificationHelperService _notificationHelperService;
+		private readonly UserManager<ApplicationUser> _userManager;
 		private readonly ILogger<SupplyService> _logger;
 
-		public SupplyService(
+	public SupplyService(
 			IInventoryService inventoryService,
 			ICrossCuttingRepository<Supply> supplyRepository,
 			ICrossCuttingRepository<SupplyDetail> supplyDetailRepository,
@@ -44,6 +51,10 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
 			IValidator<CreateSupplyDetailDto> createDetailValidator,
 			IValidator<UpdateSupplyDetailDto> updateDetailValidator,
 			IValidator<SubmitSupplyDto> submitValidator,
+			IValidator<SetSupplyPickupDateDto> setPickupDateValidator,
+			IValidator<ConfirmSupplyPickupDateDto> confirmPickupDateValidator,
+			INotificationHelperService notificationHelperService,
+			UserManager<ApplicationUser> userManager,
 			ILogger<SupplyService> logger)
 		{
 			_inventoryService = inventoryService;
@@ -59,6 +70,10 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
 			_createDetailValidator = createDetailValidator;
 			_updateDetailValidator = updateDetailValidator;
 			_submitValidator = submitValidator;
+			_setPickupDateValidator = setPickupDateValidator;
+			_confirmPickupDateValidator = confirmPickupDateValidator;
+			_notificationHelperService = notificationHelperService;
+			_userManager = userManager;
 			_logger = logger;
 		}
 
@@ -829,7 +844,6 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
 				supply.ReceiverRankId = inputDto.ReceiverRankId;
 				supply.RecieverMilitaryId = inputDto.RecieverMilitaryId;
 				supply.Notes = inputDto.Notes;
-				supply.SupplyDate = DateTime.UtcNow;
 				supply.SubmissionStatus = SupplySubmissionStatus.Submitted;
 				supply.FulfillmentStatus = CalculateFulfillmentStatus(supply);
 				supply.ModificationDate = DateTime.UtcNow;
@@ -1009,6 +1023,179 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
 				detailDto.IsFullyFulfilled = detailDto.TotalSuppliedQuantity >= detailDto.RequestedQuantity;
 			}
 		}
+
+		public async Task<APIOperationResponse<bool>> SetSupplyPickupDateAsync(long id, SetSupplyPickupDateDto inputDto)
+		{
+			try
+			{
+				// Validate input
+				var validationResult = await _setPickupDateValidator.ValidateAsync(inputDto);
+				if (!validationResult.IsValid)
+				{
+					var errors = string.Join(", ", validationResult.Errors.Select(e => e.ErrorMessage));
+					return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, errors);
+				}
+
+				// Check if supply exists and load Order with Requester
+				var supply = await _supplyRepository.FindOneAsync(
+					s => s.Id == id && !s.IsDeleted,
+					false,
+					nameof(Supply.Order),
+					$"{nameof(Supply.Order)}.{nameof(Order.Requester)}"
+				);
+				if (supply == null)
+				{
+					return APIOperationResponse<bool>.Fail(ResponseType.NotFound, "Supply not found");
+				}
+
+				// Business Rule: Can only update if submission status is Draft
+				if (supply.SubmissionStatus != SupplySubmissionStatus.Draft)
+				{
+					return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, 
+						"Supply pickup date can only be set when submission status is Draft");
+				}
+
+				// Update only the SupplyDate field
+				supply.SupplyDate = inputDto.SupplyDate;
+				supply.ModificationDate = DateTime.UtcNow;
+				supply.ModifiedBy = _currentUserService.UserId;
+
+				await _supplyRepository.UpdateAsync(supply);
+
+				// Notify the order requester
+				if (supply.Order?.RequesterId != null)
+				{
+					try
+					{
+						// Get current user details for contact information
+						var currentUser = await _userManager.FindByIdAsync(_currentUserService.UserId ?? string.Empty);
+						var currentUserName = currentUser?.FullNameEN ?? currentUser?.UserName ?? "the administrator";
+						var currentUserEmail = currentUser?.Email;
+						var currentUserPhone = currentUser?.PhoneNumber;
+
+						// Build contact information string
+						var contactParts = new List<string>();
+						if (!string.IsNullOrEmpty(currentUserEmail))
+							contactParts.Add($"email: {currentUserEmail}");
+						if (!string.IsNullOrEmpty(currentUserPhone))
+							contactParts.Add($"phone: {currentUserPhone}");
+
+						var contactInfo = contactParts.Any()
+							? $"If this date is not suitable, please contact {currentUserName} ({string.Join(" or ", contactParts)}) to arrange an alternative."
+							: $"If this date is not suitable, please contact {currentUserName} to arrange an alternative.";
+
+						await _notificationHelperService.SendNotificationAsync(
+							title: "Supply Pickup Date Set",
+							message: $"The supply pickup date for Order #{supply.Order.RequestNo} has been set to {inputDto.SupplyDate:yyyy-MM-dd}. {contactInfo}",
+							entityType: "Supply",
+							entityId: supply.Id,
+							userIds: new List<string> { supply.Order.RequesterId },
+							senderId: _currentUserService.UserId
+						);
+					}
+					catch (Exception ex)
+					{
+						// Log error but don't fail the operation - notifications are non-critical
+						_logger.LogError(ex, "Error sending notification to requester. SupplyId: {SupplyId}, RequesterId: {RequesterId}",
+							id, supply.Order.RequesterId);
+					}
+				}
+
+				return APIOperationResponse<bool>.Success(true, "Supply pickup date set successfully");
+			}
+			catch (Exception ex)
+			{
+				_logger.LogError(ex, "Error setting supply pickup date. SupplyId: {SupplyId}, User: {UserId}",
+					id, _currentUserService.UserId);
+				return APIOperationResponse<bool>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
+			}
+		}
+
+		public async Task<APIOperationResponse<bool>> ConfirmSupplyPickupDateAsync(long id, ConfirmSupplyPickupDateDto inputDto)
+		{
+			try
+			{
+				// Validate input
+				var validationResult = await _confirmPickupDateValidator.ValidateAsync(inputDto);
+				if (!validationResult.IsValid)
+				{
+					var errors = string.Join(", ", validationResult.Errors.Select(e => e.ErrorMessage));
+					return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, errors);
+				}
+
+				// Check if supply exists and load Order with Requester
+				var supply = await _supplyRepository.FindOneAsync(
+					s => s.Id == id && !s.IsDeleted,
+					false,
+					nameof(Supply.Order),
+					$"{nameof(Supply.Order)}.{nameof(Order.Requester)}"
+				);
+				if (supply == null)
+				{
+					return APIOperationResponse<bool>.Fail(ResponseType.NotFound, "Supply not found");
+				}
+
+				// Business Rule: Can only update if submission status is Draft
+				if (supply.SubmissionStatus != SupplySubmissionStatus.Draft)
+				{
+					return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, 
+						"Supply pickup date can only be confirmed when submission status is Draft");
+				}
+
+				// Update only the SupplyDate field
+				supply.SupplyDate = inputDto.SupplyDate;
+				supply.ModificationDate = DateTime.UtcNow;
+				supply.ModifiedBy = _currentUserService.UserId;
+
+				await _supplyRepository.UpdateAsync(supply);
+
+				// Notify the order requester
+				if (supply.Order?.RequesterId != null)
+				{
+					try
+					{
+						// Get current user details for contact information
+						var currentUser = await _userManager.FindByIdAsync(_currentUserService.UserId ?? string.Empty);
+						var currentUserName = currentUser?.FullNameEN ?? currentUser?.UserName ?? "the administrator";
+						var currentUserEmail = currentUser?.Email;
+						var currentUserPhone = currentUser?.PhoneNumber;
+
+						// Build contact information string
+						var contactParts = new List<string>();
+						if (!string.IsNullOrEmpty(currentUserEmail))
+							contactParts.Add($"email: {currentUserEmail}");
+						if (!string.IsNullOrEmpty(currentUserPhone))
+							contactParts.Add($"phone: {currentUserPhone}");
+
+						var contactInfo = contactParts.Any()
+							? $"If this date is not suitable, please contact {currentUserName} ({string.Join(" or ", contactParts)}) to arrange an alternative."
+							: $"If this date is not suitable, please contact {currentUserName} to arrange an alternative.";
+
+						await _notificationHelperService.SendNotificationAsync(
+							title: "Supply Pickup Date Confirmed",
+							message: $"The supply pickup date for Order #{supply.Order.RequestNo} has been confirmed to {inputDto.SupplyDate:yyyy-MM-dd}. {contactInfo}",
+							entityType: "Supply",
+							entityId: supply.Id,
+							userIds: new List<string> { supply.Order.RequesterId },
+							senderId: _currentUserService.UserId
+						);
+					}
+					catch (Exception ex)
+					{
+						// Log error but don't fail the operation - notifications are non-critical
+						_logger.LogError(ex, "Error sending notification to requester. SupplyId: {SupplyId}, RequesterId: {RequesterId}",
+							id, supply.Order.RequesterId);
+					}
+				}
+
+				return APIOperationResponse<bool>.Success(true, "Supply pickup date confirmed successfully");
+			}
+			catch (Exception ex)
+			{
+				_logger.LogError(ex, "Error confirming supply pickup date. SupplyId: {SupplyId}, User: {UserId}",
+					id, _currentUserService.UserId);
+				return APIOperationResponse<bool>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
+			}
+		}
 	}
 }
-
