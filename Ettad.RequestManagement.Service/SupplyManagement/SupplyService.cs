@@ -1024,7 +1024,7 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
 			}
 		}
 
-		public async Task<APIOperationResponse<bool>> SetSupplyPickupDateAsync(long id, SetSupplyPickupDateDto inputDto)
+		public async Task<APIOperationResponse<bool>> SetSupplyPickupDateAsync(long orderId, SetSupplyPickupDateDto inputDto)
 		{
 			try
 			{
@@ -1038,21 +1038,14 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
 
 				// Check if supply exists and load Order with Requester
 				var supply = await _supplyRepository.FindOneAsync(
-					s => s.Id == id && !s.IsDeleted,
+					s => s.OrderId == orderId && !s.IsDeleted && s.SubmissionStatus == SupplySubmissionStatus.Draft,
 					false,
 					nameof(Supply.Order),
 					$"{nameof(Supply.Order)}.{nameof(Order.Requester)}"
 				);
 				if (supply == null)
 				{
-					return APIOperationResponse<bool>.Fail(ResponseType.NotFound, "Supply not found");
-				}
-
-				// Business Rule: Can only update if submission status is Draft
-				if (supply.SubmissionStatus != SupplySubmissionStatus.Draft)
-				{
-					return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, 
-						"Supply pickup date can only be set when submission status is Draft");
+					return APIOperationResponse<bool>.Fail(ResponseType.NotFound, "Draft supply not found for this order");
 				}
 
 				// Update only the SupplyDate field
@@ -1097,7 +1090,7 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
 					{
 						// Log error but don't fail the operation - notifications are non-critical
 						_logger.LogError(ex, "Error sending notification to requester. SupplyId: {SupplyId}, RequesterId: {RequesterId}",
-							id, supply.Order.RequesterId);
+							supply.Id, supply.Order.RequesterId);
 					}
 				}
 
@@ -1105,13 +1098,13 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
 			}
 			catch (Exception ex)
 			{
-				_logger.LogError(ex, "Error setting supply pickup date. SupplyId: {SupplyId}, User: {UserId}",
-					id, _currentUserService.UserId);
+				_logger.LogError(ex, "Error setting supply pickup date. OrderId: {OrderId}, User: {UserId}",
+					orderId, _currentUserService.UserId);
 				return APIOperationResponse<bool>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
 			}
 		}
 
-		public async Task<APIOperationResponse<bool>> ConfirmSupplyPickupDateAsync(long id, ConfirmSupplyPickupDateDto inputDto)
+		public async Task<APIOperationResponse<bool>> ConfirmSupplyPickupDateAsync(long orderId, ConfirmSupplyPickupDateDto inputDto)
 		{
 			try
 			{
@@ -1125,21 +1118,14 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
 
 				// Check if supply exists and load Order with Requester
 				var supply = await _supplyRepository.FindOneAsync(
-					s => s.Id == id && !s.IsDeleted,
+					s => s.OrderId == orderId && !s.IsDeleted && s.SubmissionStatus == SupplySubmissionStatus.Draft,
 					false,
 					nameof(Supply.Order),
 					$"{nameof(Supply.Order)}.{nameof(Order.Requester)}"
 				);
 				if (supply == null)
 				{
-					return APIOperationResponse<bool>.Fail(ResponseType.NotFound, "Supply not found");
-				}
-
-				// Business Rule: Can only update if submission status is Draft
-				if (supply.SubmissionStatus != SupplySubmissionStatus.Draft)
-				{
-					return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, 
-						"Supply pickup date can only be confirmed when submission status is Draft");
+					return APIOperationResponse<bool>.Fail(ResponseType.NotFound, "Draft supply not found for this order");
 				}
 
 				// Update only the SupplyDate field
@@ -1184,7 +1170,7 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
 					{
 						// Log error but don't fail the operation - notifications are non-critical
 						_logger.LogError(ex, "Error sending notification to requester. SupplyId: {SupplyId}, RequesterId: {RequesterId}",
-							id, supply.Order.RequesterId);
+							supply.Id, supply.Order.RequesterId);
 					}
 				}
 
@@ -1192,8 +1178,8 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
 			}
 			catch (Exception ex)
 			{
-				_logger.LogError(ex, "Error confirming supply pickup date. SupplyId: {SupplyId}, User: {UserId}",
-					id, _currentUserService.UserId);
+				_logger.LogError(ex, "Error confirming supply pickup date. OrderId: {OrderId}, User: {UserId}",
+					orderId, _currentUserService.UserId);
 				return APIOperationResponse<bool>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
 			}
 		}

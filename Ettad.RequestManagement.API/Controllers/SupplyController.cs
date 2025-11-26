@@ -42,7 +42,7 @@ namespace Ettad.RequestManagement.API.Controllers
         /// <summary>
         /// Get supply by ID with all details and calculated properties
         /// </summary>
-        /// <param name="id">Supply ID</param>
+        /// <param name="orderId">Order ID</param>
         /// <returns>Supply details</returns>
         [HttpGet("{id}")]
         [ProducesResponseType(typeof(APIOperationResponse<SupplyDto>), (int)HttpStatusCode.OK)]
@@ -189,31 +189,31 @@ namespace Ettad.RequestManagement.API.Controllers
         /// <param name="id">Supply ID</param>
         /// <param name="dto">Supply pickup date data</param>
         /// <returns>Success result</returns>
-        [HttpPut("{id}/set-pickup-date")]
+        [HttpPut("order/{orderId}/set-pickup-date")]
         [ProducesResponseType(typeof(APIOperationResponse<bool>), (int)HttpStatusCode.OK)]
         [ProducesResponseType((int)HttpStatusCode.BadRequest)]
         [ProducesResponseType((int)HttpStatusCode.NotFound)]
         [CheckAuthorize("SetSupplyPickupDate")]
-        public async Task<IActionResult> SetSupplyPickupDate(long id, [FromBody] SetSupplyPickupDateDto dto)
+        public async Task<IActionResult> SetSupplyPickupDate(long orderId, [FromBody] SetSupplyPickupDateDto dto)
         {
-            var result = await _supplyService.SetSupplyPickupDateAsync(id, dto);
+            var result = await _supplyService.SetSupplyPickupDateAsync(orderId, dto);
             return ProcessResponse(result);
         }
 
         /// <summary>
         /// Confirm supply pickup date
         /// </summary>
-        /// <param name="id">Supply ID</param>
+        /// <param name="orderId">Order ID</param>
         /// <param name="dto">Supply pickup date confirmation data</param>
         /// <returns>Success result</returns>
-        [HttpPut("{id}/confirm-pickup-date")]
+        [HttpPut("order/{orderId}/confirm-pickup-date")]
         [ProducesResponseType(typeof(APIOperationResponse<bool>), (int)HttpStatusCode.OK)]
         [ProducesResponseType((int)HttpStatusCode.BadRequest)]
         [ProducesResponseType((int)HttpStatusCode.NotFound)]
         [CheckAuthorize("ConfirmSupplyPickupDate")]
-        public async Task<IActionResult> ConfirmSupplyPickupDate(long id, [FromBody] ConfirmSupplyPickupDateDto dto)
+        public async Task<IActionResult> ConfirmSupplyPickupDate(long orderId, [FromBody] ConfirmSupplyPickupDateDto dto)
         {
-            var result = await _supplyService.ConfirmSupplyPickupDateAsync(id, dto);
+            var result = await _supplyService.ConfirmSupplyPickupDateAsync(orderId, dto);
             return ProcessResponse(result);
         }
 
