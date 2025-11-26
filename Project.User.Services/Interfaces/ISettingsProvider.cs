@@ -11,7 +11,7 @@ namespace Ettad.User.Services.Interfaces
     public interface ISettingsProvider
     {
         Task<LdapOptions> GetLdapSettings(CancellationToken cancellationToken = default);
-        Task<EmailConfiguration> getEmailSettings();
-
+        Task<EmailConfiguration> getEmailSettings(CancellationToken cancellationToken = default);
+        Task<bool> SaveEmailSettings(EmailSettingsDto emailSettings, CancellationToken cancellationToken = default);
     }
 }

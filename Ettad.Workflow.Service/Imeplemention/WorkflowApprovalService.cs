@@ -455,7 +455,7 @@ namespace Ettad.Workflows.Service.Imeplemention
                 if (!string.IsNullOrEmpty(nextStep.HigherApprovalRoleId))
                     nextRoles.Add(nextStep.HigherApprovalRoleId);
 
-                await _notificationHelperService.SendNotificationAsync(
+                await _notificationHelperService.SendNotificationAndEmailAsync(
                     "New Approval Required",
                     "A request awaits your approval.",
                     "Request",
@@ -472,7 +472,7 @@ namespace Ettad.Workflows.Service.Imeplemention
 
                 var approver = await _context.Users.FirstOrDefaultAsync(u => u.Id == _currentUserService.UserId);
 
-                await _notificationHelperService.SendNotificationAsync(
+                await _notificationHelperService.SendNotificationAndEmailAsync(
                     "Request Approved",
                     $"Approved by {approver?.UserName}",
                     "Request",
@@ -532,7 +532,7 @@ namespace Ettad.Workflows.Service.Imeplemention
 
             // Notify requester
             var approver = await _context.Users.FirstOrDefaultAsync(u => u.Id == _currentUserService.UserId);
-            await _notificationHelperService.SendNotificationAsync(
+            await _notificationHelperService.SendNotificationAndEmailAsync(
                 "Request Rejected",
                 $"Rejected by {approver?.UserName}",
                 "Request",
@@ -619,7 +619,7 @@ namespace Ettad.Workflows.Service.Imeplemention
             baseRequest.Status = RequestStatus.UnderProcess;
 
             // Send notification
-            await _notificationHelperService.SendNotificationAsync(
+            await _notificationHelperService.SendNotificationAndEmailAsync(
                 "Higher Approval Required",
                 "A request requires higher approval.",
                 "Request",
@@ -679,7 +679,7 @@ namespace Ettad.Workflows.Service.Imeplemention
                             if (!string.IsNullOrEmpty(firstWorkflowStep.HigherApprovalRoleId))
                                 approverRoles.Add(firstWorkflowStep.HigherApprovalRoleId);
 
-                            await _notificationHelperService.SendNotificationAsync(
+                            await _notificationHelperService.SendNotificationAndEmailAsync(
                                 "New Approval Required",
                                 "A request awaits your approval.",
                                 "Request",

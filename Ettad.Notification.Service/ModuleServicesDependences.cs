@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.DependencyInjection;
 using System.Reflection;
 using Ettad.Notification.Service.Hubs;
+using Ettad.Notification.Service.EmailTemplate;
 
 namespace Ettad.Notification.Service
 {
@@ -22,6 +23,7 @@ namespace Ettad.Notification.Service
             // Register services
             services.AddScoped<INotificationService, NotificationService>();
             services.AddScoped<INotificationHelperService, NotificationHelperService>();
+            services.AddScoped<IEmailTemplateService, EmailTemplateService>();
 
             return services;
         }
