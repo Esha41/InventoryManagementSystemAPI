@@ -184,6 +184,7 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
             "Permissions.Order.View",
             "Permissions.Order.Create",
             "Permissions.Order.Edit",
+            "Permissions.Order.Delete",
         };
 
         public static List<string> ReadRequestReciever = new()
@@ -209,6 +210,15 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
             "Permissions.Supply.Create",
             "Permissions.Supply.Edit",
             "Permissions.Supply.Delete",
+        };
+
+        public static List<string> Rank = new()
+        {
+            "Permissions.Rank.View",
+            "Permissions.Rank.Page",
+            "Permissions.Rank.Create",
+            "Permissions.Rank.Edit",
+            "Permissions.Rank.Delete",
         };
 
         public static List<string> RequestReciever =
