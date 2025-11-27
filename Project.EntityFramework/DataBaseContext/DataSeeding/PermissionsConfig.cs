@@ -142,6 +142,7 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
         {
             "Permissions.NotificationsPage.Page",
             "Permissions.NotificationsPage.View",
+            "Permissions.NotificationsPage.Edit",
         };
 
         public static List<string> Dashboard = new()
