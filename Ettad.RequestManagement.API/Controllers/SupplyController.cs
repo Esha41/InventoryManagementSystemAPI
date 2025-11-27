@@ -176,7 +176,7 @@ namespace Ettad.RequestManagement.API.Controllers
         [ProducesResponseType(typeof(APIOperationResponse<bool>), (int)HttpStatusCode.OK)]
         [ProducesResponseType((int)HttpStatusCode.BadRequest)]
         [ProducesResponseType((int)HttpStatusCode.NotFound)]
-        [CheckAuthorize("Permissions.Supply.Edit")]
+        [CheckAuthorize("SubmitSupply")]
         public async Task<IActionResult> Submit(long id, [FromBody] SubmitSupplyDto dto)
         {
             var result = await _supplyService.SubmitSupplyAsync(id, dto);

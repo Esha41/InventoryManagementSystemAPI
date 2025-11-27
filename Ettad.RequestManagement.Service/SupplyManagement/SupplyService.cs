@@ -133,6 +133,12 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
 					return APIOperationResponse<SupplyDto>.Fail(ResponseType.NotFound, "Supply not found");
 				}
 
+				// Filter out soft-deleted request items
+				if (supply.Order?.RequestItems != null)
+				{
+					supply.Order.RequestItems = supply.Order.RequestItems.Where(ri => !ri.IsDeleted).ToList();
+				}
+
 				var dto = _mapper.Map<SupplyDto>(supply);
 				PopulateSupplyDetailCalculatedProperties(dto, supply);
 				
@@ -171,6 +177,12 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
                     _logger.LogWarning("Supply not found. OrderID: {OrderID}, User: {UserId}",
                         orderId, _currentUserService.UserId);
                     return APIOperationResponse<SupplyDto>.Fail(ResponseType.NotFound, "Supply not found");
+                }
+
+                // Filter out soft-deleted request items
+                if (supply.Order?.RequestItems != null)
+                {
+                    supply.Order.RequestItems = supply.Order.RequestItems.Where(ri => !ri.IsDeleted).ToList();
                 }
 
                 var dto = _mapper.Map<SupplyDto>(supply);
@@ -553,22 +565,15 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
 
 				var createdDetail = await _supplyDetailRepository.AddAsync(detail);
 
-				// Recalculate fulfillment status after adding detail
-				// Reload supply with details to recalculate
-				var updatedSupply = await _supplyRepository.FindOneAsync(
-					s => s.Id == supplyId && !s.IsDeleted,
-					false,
-					nameof(Supply.Order),
-					$"{nameof(Supply.Order)}.{nameof(Order.RequestItems)}",
-					nameof(Supply.SupplyDetails)
-				);
-				if (updatedSupply != null)
-				{
-					updatedSupply.FulfillmentStatus = CalculateFulfillmentStatus(updatedSupply);
-					updatedSupply.ModificationDate = DateTime.UtcNow;
-					updatedSupply.ModifiedBy = _currentUserService.UserId;
-					await _supplyRepository.UpdateAsync(updatedSupply);
-				}
+				// Add the new detail to the already loaded supply's collection for fulfillment calculation
+				supply.SupplyDetails ??= new List<SupplyDetail>();
+				supply.SupplyDetails.Add(createdDetail);
+
+				// Recalculate fulfillment status using already loaded supply
+				supply.FulfillmentStatus = CalculateFulfillmentStatus(supply);
+				supply.ModificationDate = DateTime.UtcNow;
+				supply.ModifiedBy = _currentUserService.UserId;
+				await _supplyRepository.UpdateAsync(supply);
 
 				_logger.LogInformation("Supply detail added successfully. SupplyId: {SupplyId}, DetailId: {DetailId}, ItemId: {ItemId}, User: {UserId}", 
 					supplyId, createdDetail.Id, detailDto.ItemId, _currentUserService.UserId);
@@ -682,21 +687,11 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
 				await _supplyDetailRepository.UpdateAsync(detail);
 
 				// Recalculate fulfillment status after updating detail
-				// Reload supply with details to recalculate
-				var updatedSupply = await _supplyRepository.FindOneAsync(
-					s => s.Id == supplyId && !s.IsDeleted,
-					false,
-					nameof(Supply.Order),
-					$"{nameof(Supply.Order)}.{nameof(Order.RequestItems)}",
-					nameof(Supply.SupplyDetails)
-				);
-				if (updatedSupply != null)
-				{
-					updatedSupply.FulfillmentStatus = CalculateFulfillmentStatus(updatedSupply);
-					updatedSupply.ModificationDate = DateTime.UtcNow;
-					updatedSupply.ModifiedBy = _currentUserService.UserId;
-					await _supplyRepository.UpdateAsync(updatedSupply);
-				}
+				// Use the already loaded supply to avoid tracking conflicts
+				supply.FulfillmentStatus = CalculateFulfillmentStatus(supply);
+				supply.ModificationDate = DateTime.UtcNow;
+				supply.ModifiedBy = _currentUserService.UserId;
+				await _supplyRepository.UpdateAsync(supply);
 
 				_logger.LogInformation("Supply detail updated successfully. SupplyId: {SupplyId}, DetailId: {DetailId}, User: {UserId}", 
 					supplyId, detailId, _currentUserService.UserId);
@@ -722,6 +717,8 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
 				var supply = await _supplyRepository.FindOneAsync(
 					s => s.Id == supplyId && !s.IsDeleted,
 					false,
+					nameof(Supply.Order),
+					$"{nameof(Supply.Order)}.{nameof(Order.RequestItems)}",
 					nameof(Supply.SupplyDetails)
 				);
 
@@ -764,22 +761,14 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
 				// Soft delete the detail
 				await _supplyDetailRepository.DeleteAsync(detail);
 
-				// Recalculate fulfillment status after deleting detail
-				// Reload supply with details to recalculate
-				var updatedSupply = await _supplyRepository.FindOneAsync(
-					s => s.Id == supplyId && !s.IsDeleted,
-					false,
-					nameof(Supply.Order),
-					$"{nameof(Supply.Order)}.{nameof(Order.RequestItems)}",
-					nameof(Supply.SupplyDetails)
-				);
-				if (updatedSupply != null)
-				{
-					updatedSupply.FulfillmentStatus = CalculateFulfillmentStatus(updatedSupply);
-					updatedSupply.ModificationDate = DateTime.UtcNow;
-					updatedSupply.ModifiedBy = _currentUserService.UserId;
-					await _supplyRepository.UpdateAsync(updatedSupply);
-				}
+				// Mark the detail as deleted in the loaded collection for fulfillment calculation
+				detail.IsDeleted = true;
+
+				// Recalculate fulfillment status using already loaded supply
+				supply.FulfillmentStatus = CalculateFulfillmentStatus(supply);
+				supply.ModificationDate = DateTime.UtcNow;
+				supply.ModifiedBy = _currentUserService.UserId;
+				await _supplyRepository.UpdateAsync(supply);
 
 				_logger.LogInformation("Supply detail deleted successfully. SupplyId: {SupplyId}, DetailId: {DetailId}, User: {UserId}", 
 					supplyId, detailId, _currentUserService.UserId);
