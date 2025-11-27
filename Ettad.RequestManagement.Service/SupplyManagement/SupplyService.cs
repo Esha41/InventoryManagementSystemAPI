@@ -749,26 +749,35 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
 						"Cannot delete the last detail from a supply. A supply must have at least one detail.");
 				}
 
-				// Find the supply detail to delete
-				var detail = supply.SupplyDetails?.FirstOrDefault(sd => sd.Id == detailId && !sd.IsDeleted);
-				if (detail == null)
-				{
-					_logger.LogWarning("Supply detail not found. SupplyId: {SupplyId}, DetailId: {DetailId}, User: {UserId}", 
-						supplyId, detailId, _currentUserService.UserId);
-					return APIOperationResponse<bool>.Fail(ResponseType.NotFound, "Supply detail not found");
-				}
+			// Find the supply detail to delete
+			var detail = supply.SupplyDetails?.FirstOrDefault(sd => sd.Id == detailId && !sd.IsDeleted);
+			if (detail == null)
+			{
+				_logger.LogWarning("Supply detail not found. SupplyId: {SupplyId}, DetailId: {DetailId}, User: {UserId}", 
+					supplyId, detailId, _currentUserService.UserId);
+				return APIOperationResponse<bool>.Fail(ResponseType.NotFound, "Supply detail not found");
+			}
 
-				// Soft delete the detail
-				await _supplyDetailRepository.DeleteAsync(detail);
+			// Soft delete the detail
+			await _supplyDetailRepository.DeleteAsync(detail);
 
-				// Mark the detail as deleted in the loaded collection for fulfillment calculation
-				detail.IsDeleted = true;
+			// Reload the supply to avoid tracking conflicts and get updated state
+			var updatedSupply = await _supplyRepository.FindOneAsync(
+				s => s.Id == supplyId && !s.IsDeleted,
+				false,
+				nameof(Supply.Order),
+				$"{nameof(Supply.Order)}.{nameof(Order.RequestItems)}",
+				nameof(Supply.SupplyDetails)
+			);
 
-				// Recalculate fulfillment status using already loaded supply
-				supply.FulfillmentStatus = CalculateFulfillmentStatus(supply);
-				supply.ModificationDate = DateTime.UtcNow;
-				supply.ModifiedBy = _currentUserService.UserId;
-				await _supplyRepository.UpdateAsync(supply);
+			if (updatedSupply != null)
+			{
+				// Recalculate fulfillment status with the reloaded supply
+				updatedSupply.FulfillmentStatus = CalculateFulfillmentStatus(updatedSupply);
+				updatedSupply.ModificationDate = DateTime.UtcNow;
+				updatedSupply.ModifiedBy = _currentUserService.UserId;
+				await _supplyRepository.UpdateAsync(updatedSupply);
+			}
 
 				_logger.LogInformation("Supply detail deleted successfully. SupplyId: {SupplyId}, DetailId: {DetailId}, User: {UserId}", 
 					supplyId, detailId, _currentUserService.UserId);

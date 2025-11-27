@@ -89,6 +89,12 @@ namespace Ettad.RequestManagement.Service.Orders
                     return APIOperationResponse<OrderDto>.Fail(ResponseType.NotFound, "Order not found");
                 }
 
+                // Filter out soft-deleted request items
+                if (order.RequestItems != null)
+                {
+                    order.RequestItems = order.RequestItems.Where(ri => !ri.IsDeleted).ToList();
+                }
+
                 var dto = _mapper.Map<OrderDto>(order);
                 
                 // Fallback: If RequesterName is null but we have a CreatedBy user, use that user's name
@@ -122,6 +128,15 @@ namespace Ettad.RequestManagement.Service.Orders
                     nameof(Order.RequestPurpose),
                     $"{nameof(Order.RequestItems)}.{nameof(RequestItem.Item)}"
                 );
+
+                // Filter out soft-deleted request items from all orders
+                foreach (var order in orders)
+                {
+                    if (order.RequestItems != null)
+                    {
+                        order.RequestItems = order.RequestItems.Where(ri => !ri.IsDeleted).ToList();
+                    }
+                }
 
                 var dtos = _mapper.Map<List<OrderDto>>(orders);
                 
