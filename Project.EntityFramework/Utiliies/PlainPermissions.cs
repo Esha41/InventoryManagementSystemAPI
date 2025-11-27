@@ -8,6 +8,9 @@ namespace Ettad.Data.Enums
         [Category(PlainPermissionsGenerator.Dashboard)]
         dashboard_view,
 
+        [Category(PlainPermissionsGenerator.Dashboard)]
+        InventoryDashboard,
+
         [Category(PlainPermissionsGenerator.SystemFeatures)]
         CanChangePassword,
         [Category(PlainPermissionsGenerator.SystemFeatures)]

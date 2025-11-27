@@ -1,4 +1,5 @@
-﻿using Newtonsoft.Json;
+﻿using Ettad.Data.Enums;
+using Newtonsoft.Json;
 
 namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
 {
@@ -194,7 +195,20 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
         {
             "Permissions.RequestReciever.Create",
             "Permissions.RequestReciever.Edit",
-        };  
+        };
+
+        public static List<string> ReadSupply = new()
+        {
+            "Permissions.Supply.View",
+            "Permissions.Supply.Page",
+        };
+
+        public static List<string> WriteSupply = new()
+        {
+            "Permissions.Supply.Create",
+            "Permissions.Supply.Edit",
+            "Permissions.Supply.Delete",
+        };
 
         public static List<string> RequestReciever =
             ReadRequestReciever
@@ -297,6 +311,14 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 .Concat(ReadOrderDiscardReturn)
                 .Concat(WriteOrder)
                 .Concat(RequestReciever)
+                .Concat(ReadSupply)
+                .Concat(WriteSupply)
+                .Concat(new List<string> 
+                    { 
+                        PlainPermissions.UpdateRequestAndSuggestLots.ToString(),
+                        PlainPermissions.InventoryDashboard.ToString(),
+                    }
+                )
                 .ToList();
 
         public static List<string> DirectorOfArmament_DirectorateOfAmmunitionEntity =
@@ -320,6 +342,12 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 .Concat(Notifications)
                 .Concat(ReadOrderDiscardReturn)
                 .Concat(RequestReciever)
+                .Concat(ReadSupply)
+                .Concat(new List<string>
+                    {
+                        PlainPermissions.InventoryDashboard.ToString(),
+                    }
+                )
                 .ToList();
 
         #endregion
@@ -411,6 +439,15 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 .Concat(RequestReciever)
                 .Concat(Dashboard)
                 .Concat(Notifications)
+                .Concat(ReadSupply)
+                .Concat(WriteSupply)
+                .Concat(new List<string>
+                    {
+                        PlainPermissions.UpdateRequestAndSupply.ToString(),
+                        PlainPermissions.InventoryDashboard.ToString(),
+                        PlainPermissions.CannotRejectRequest.ToString(),
+                    }
+                )
                 .ToList();
 
         public static List<string> HeadOfAuditDepo_InventoryEntity =
@@ -424,6 +461,15 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 .Concat(RequestReciever)
                 .Concat(Dashboard)
                 .Concat(Notifications)
+                .Concat(ReadSupply)
+                .Concat(WriteSupply)
+                .Concat(new List<string>
+                    {
+                        PlainPermissions.UpdateRequestAndSupply.ToString(),
+                        PlainPermissions.InventoryDashboard.ToString(),
+                        PlainPermissions.CannotRejectRequest.ToString(),
+                    }
+                )
                 .ToList();
 
         public static List<string> DepoCommander_InventoryEntity =
@@ -436,6 +482,13 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 .Concat(RequestReciever)
                 .Concat(Dashboard)
                 .Concat(Notifications)
+                .Concat(ReadSupply)
+                .Concat(new List<string>
+                    {
+                        PlainPermissions.UpdateRequestAndSupply.ToString(),
+                        PlainPermissions.InventoryDashboard.ToString(),
+                    }
+                )
                 .ToList();
 
         public static List<string> AuditorOfDepoDivision_InventoryEntity =
@@ -450,6 +503,14 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 .Concat(RequestReciever)
                 .Concat(Dashboard)
                 .Concat(Notifications)
+                .Concat(ReadSupply)
+                .Concat(new List<string>
+                    {
+                        PlainPermissions.SetSupplyPickupDate.ToString(),
+                        PlainPermissions.InventoryDashboard.ToString(),
+                        PlainPermissions.CannotRejectRequest.ToString(),
+                    }
+                )
                 .ToList();
 
         public static List<string> HeadOfDepoDivision_InventoryEntity =
@@ -463,6 +524,14 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 .Concat(RequestReciever)
                 .Concat(Dashboard)
                 .Concat(Notifications)
+                .Concat(ReadSupply)
+                .Concat(new List<string>
+                    {
+                        PlainPermissions.ConfirmSupplyPickupDate.ToString(),
+                        PlainPermissions.InventoryDashboard.ToString(),
+                        PlainPermissions.CannotRejectRequest.ToString(),
+                    }
+                )
                 .ToList();
 
         public static List<string> DepoOfficer_InventoryEntity =
@@ -476,6 +545,14 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 .Concat(RequestReciever)
                 .Concat(Dashboard)
                 .Concat(Notifications)
+                .Concat(ReadSupply)
+                .Concat(new List<string>
+                    {
+                        PlainPermissions.SubmitSupply.ToString(),
+                        PlainPermissions.InventoryDashboard.ToString(),
+                        PlainPermissions.CannotRejectRequest.ToString(),
+                    }
+                )
                 .ToList();
 
         #endregion
