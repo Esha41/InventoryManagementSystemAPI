@@ -5,6 +5,7 @@ using Ettad.Comman.Idenitity;
 using Ettad.CrossCutting.Data.Repository;
 using Ettad.Data.Entities;
 using Ettad.Data.Enums;
+using Ettad.EntityFramework.DataBaseContext;
 using Ettad.Inventory.Service.Inventories;
 using Ettad.Inventory.Service.Inventories.Dtos;
 using Ettad.Notification.Service;
@@ -12,12 +13,14 @@ using Ettad.RequestManagement.Service.SupplyManagement.Dtos;
 using Ettad.ResponseHandler.Consts;
 using Ettad.ResponseHandler.Models;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
 namespace Ettad.RequestManagement.Service.SupplyManagement
 {
 	public class SupplyService : ISupplyService
 	{
+		private readonly ApplicationDbContext _context;
 		private readonly IInventoryService _inventoryService;
 		private readonly ICrossCuttingRepository<Supply> _supplyRepository;
 		private readonly ICrossCuttingRepository<SupplyDetail> _supplyDetailRepository;
@@ -38,6 +41,7 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
 		private readonly ILogger<SupplyService> _logger;
 
 	public SupplyService(
+			ApplicationDbContext context,
 			IInventoryService inventoryService,
 			ICrossCuttingRepository<Supply> supplyRepository,
 			ICrossCuttingRepository<SupplyDetail> supplyDetailRepository,
@@ -57,6 +61,7 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
 			UserManager<ApplicationUser> userManager,
 			ILogger<SupplyService> logger)
 		{
+			_context = context;
 			_inventoryService = inventoryService;
 			_supplyRepository = supplyRepository;
 			_supplyDetailRepository = supplyDetailRepository;
@@ -792,6 +797,177 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
 			}
 		}
 
+		/// <summary>
+		/// Replace all supply details with new ones in a single atomic operation.
+		/// This avoids the "cannot delete last detail" constraint by handling everything in one transaction.
+		/// </summary>
+		public async Task<APIOperationResponse<bool>> ReplaceSupplyDetailsAsync(long supplyId, List<CreateSupplyDetailDto> newDetails)
+		{
+			_logger.LogInformation("Replacing supply details. SupplyId: {SupplyId}, NewDetailCount: {NewDetailCount}, User: {UserId}", 
+				supplyId, newDetails?.Count ?? 0, _currentUserService.UserId);
+
+			// Use explicit transaction for atomic operation
+			using var transaction = await _context.Database.BeginTransactionAsync();
+			
+			try
+			{
+				// Validate input
+				if (newDetails == null || !newDetails.Any())
+				{
+					return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, "At least one supply detail is required");
+				}
+
+				// Validate each new detail
+				foreach (var detailDto in newDetails)
+				{
+					var validationResult = await _createDetailValidator.ValidateAsync(detailDto);
+					if (!validationResult.IsValid)
+					{
+						var errors = string.Join(", ", validationResult.Errors.Select(e => e.ErrorMessage));
+						_logger.LogWarning("Supply detail validation failed. Errors: {ValidationErrors}, User: {UserId}", 
+							errors, _currentUserService.UserId);
+						return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, errors);
+					}
+				}
+
+				// Check if supply exists and get order (repository uses AsNoTracking internally)
+				var supply = await _supplyRepository.FindOneAsync(
+					s => s.Id == supplyId && !s.IsDeleted,
+					false, // includeSoftDeleted = false
+					nameof(Supply.Order),
+					$"{nameof(Supply.Order)}.{nameof(Order.RequestItems)}",
+					nameof(Supply.SupplyDetails)
+				);
+
+				if (supply == null)
+				{
+					_logger.LogWarning("Supply not found. SupplyId: {SupplyId}, User: {UserId}", 
+						supplyId, _currentUserService.UserId);
+					return APIOperationResponse<bool>.Fail(ResponseType.NotFound, "Supply not found");
+				}
+
+				// Business Rule: Can modify details only if Draft submission status
+				if (supply.SubmissionStatus != SupplySubmissionStatus.Draft)
+				{
+					_logger.LogWarning("Cannot replace supply details. Supply is not in Draft status. SupplyId: {SupplyId}, Status: {Status}, User: {UserId}", 
+						supplyId, supply.SubmissionStatus, _currentUserService.UserId);
+					return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, 
+						"Supply details can only be modified when submission status is Draft");
+				}
+
+				// Cache request items for later use
+				var requestItems = supply.Order?.RequestItems?.Where(ri => !ri.IsDeleted).ToList() ?? new List<RequestItem>();
+
+				// Calculate already supplied quantities from other supplies (cache for reuse)
+				var alreadySuppliedFromOtherSupplies = await CalculateAlreadySuppliedQuantitiesAsync(supply.OrderId, supplyId);
+				
+				// Validate new details against order items and quantities
+				var newQuantitiesByItem = newDetails
+					.GroupBy(d => d.ItemId)
+					.ToDictionary(g => g.Key, g => g.Sum(d => d.Quantity));
+
+				foreach (var (itemId, newQuantity) in newQuantitiesByItem)
+				{
+					var requestItem = requestItems.FirstOrDefault(ri => ri.ItemId == itemId);
+					if (requestItem == null)
+					{
+						return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, 
+							$"Item {itemId} is not found in the order");
+					}
+
+					var alreadySuppliedFromOthers = alreadySuppliedFromOtherSupplies.GetValueOrDefault(itemId, 0);
+					var totalAfterReplacement = alreadySuppliedFromOthers + newQuantity;
+
+					if (totalAfterReplacement > requestItem.Quantity)
+					{
+						return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, 
+							$"Total quantity for item {itemId} ({totalAfterReplacement}) cannot exceed requested quantity ({requestItem.Quantity})");
+					}
+				}
+
+				// Validate lot availability for all new details
+				foreach (var detailDto in newDetails)
+				{
+					var lotValidation = await ValidateLotAndQuantityAsync(detailDto.ItemId, detailDto.Lot, detailDto.Quantity);
+					if (!lotValidation.IsValid)
+					{
+						var errorMessage = string.Join("; ", lotValidation.Errors);
+						return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, errorMessage);
+					}
+				}
+
+				// Get existing detail IDs to delete
+				var existingDetailIds = supply.SupplyDetails?
+					.Where(sd => !sd.IsDeleted)
+					.Select(sd => sd.Id)
+					.ToList() ?? new List<long>();
+
+				// Soft delete existing details by attaching stub entities
+				foreach (var detailId in existingDetailIds)
+				{
+					var detailEntity = new SupplyDetail { Id = detailId };
+					_context.Attach(detailEntity);
+					detailEntity.IsDeleted = true;
+					detailEntity.DeletionDate = DateTime.UtcNow;
+					detailEntity.DeletedBy = _currentUserService.UserId;
+					_context.Entry(detailEntity).Property(x => x.IsDeleted).IsModified = true;
+					_context.Entry(detailEntity).Property(x => x.DeletionDate).IsModified = true;
+					_context.Entry(detailEntity).Property(x => x.DeletedBy).IsModified = true;
+				}
+
+				// Detach to avoid tracking conflicts before adding new entities
+				foreach (var entry in _context.ChangeTracker.Entries<SupplyDetail>().ToList())
+				{
+					entry.State = EntityState.Detached;
+				}
+
+				// Add new details
+				var createdDetails = new List<SupplyDetail>();
+				foreach (var detailDto in newDetails)
+				{
+					var newDetail = _mapper.Map<SupplyDetail>(detailDto);
+					newDetail.SupplyId = supplyId;
+					newDetail.CreationDate = DateTime.UtcNow;
+					newDetail.CreatedBy = _currentUserService.UserId;
+					_context.Set<SupplyDetail>().Add(newDetail);
+					createdDetails.Add(newDetail);
+				}
+
+				// Calculate fulfillment status using cached data
+				var fulfillmentStatus = CalculateFulfillmentStatusFromNewDetails(
+					requestItems,
+					newDetails,
+					alreadySuppliedFromOtherSupplies
+				);
+
+				// Update supply properties
+				var supplyToUpdate = new Supply { Id = supplyId };
+				_context.Attach(supplyToUpdate);
+				supplyToUpdate.FulfillmentStatus = fulfillmentStatus;
+				supplyToUpdate.ModificationDate = DateTime.UtcNow;
+				supplyToUpdate.ModifiedBy = _currentUserService.UserId;
+				_context.Entry(supplyToUpdate).Property(x => x.FulfillmentStatus).IsModified = true;
+				_context.Entry(supplyToUpdate).Property(x => x.ModificationDate).IsModified = true;
+				_context.Entry(supplyToUpdate).Property(x => x.ModifiedBy).IsModified = true;
+
+				// Save all changes in single transaction
+				await _context.SaveChangesAsync();
+				await transaction.CommitAsync();
+
+				_logger.LogInformation("Supply details replaced successfully. SupplyId: {SupplyId}, OldCount: {OldCount}, NewCount: {NewCount}, User: {UserId}", 
+					supplyId, existingDetailIds.Count, createdDetails.Count, _currentUserService.UserId);
+
+				return APIOperationResponse<bool>.Success(true, "Supply details replaced successfully");
+			}
+			catch (Exception ex)
+			{
+				await transaction.RollbackAsync();
+				_logger.LogError(ex, "Error replacing supply details. SupplyId: {SupplyId}, User: {UserId}", 
+					supplyId, _currentUserService.UserId);
+				return APIOperationResponse<bool>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
+			}
+		}
+
 		public async Task<APIOperationResponse<bool>> SubmitSupplyAsync(long id, SubmitSupplyDto inputDto)
 		{
 			_logger.LogInformation("Submitting supply. SupplyId: {SupplyId}, User: {UserId}",
@@ -974,6 +1150,55 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
 					anySupplied = true;
 
 				if (suppliedQuantity < requestItem.Quantity)
+				{
+					allCompleted = false;
+				}
+			}
+
+			if (allCompleted && anySupplied)
+				return SupplyFulfillmentStatus.Fully;
+			else
+				return SupplyFulfillmentStatus.Partial;
+		}
+
+		/// <summary>
+		/// Calculates fulfillment status from new supply details without loading the entity.
+		/// Used when replacing supply details to avoid entity tracking conflicts.
+		/// </summary>
+		private SupplyFulfillmentStatus CalculateFulfillmentStatusFromNewDetails(
+			List<RequestItem> requestItems,
+			List<CreateSupplyDetailDto> newDetails,
+			Dictionary<long, long> alreadySuppliedFromOtherSupplies)
+		{
+			if (newDetails == null || !newDetails.Any())
+			{
+				return SupplyFulfillmentStatus.Partial;
+			}
+
+			if (requestItems == null || !requestItems.Any())
+			{
+				return SupplyFulfillmentStatus.Partial;
+			}
+
+			// Group new supply details by item
+			var supplyByItem = newDetails
+				.GroupBy(d => d.ItemId)
+				.ToDictionary(g => g.Key, g => g.Sum(d => d.Quantity));
+
+			// Check each request item
+			bool allCompleted = true;
+			bool anySupplied = false;
+
+			foreach (var requestItem in requestItems)
+			{
+				var suppliedFromThis = supplyByItem.TryGetValue(requestItem.ItemId, out var qty) ? qty : 0;
+				var suppliedFromOthers = alreadySuppliedFromOtherSupplies.TryGetValue(requestItem.ItemId, out var otherQty) ? otherQty : 0;
+				var totalSupplied = suppliedFromThis + suppliedFromOthers;
+
+				if (totalSupplied > 0)
+					anySupplied = true;
+
+				if (totalSupplied < requestItem.Quantity)
 				{
 					allCompleted = false;
 				}
