@@ -167,6 +167,23 @@ namespace Ettad.RequestManagement.API.Controllers
         }
 
         /// <summary>
+        /// Replace all supply details with new ones in a single atomic operation
+        /// </summary>
+        /// <param name="supplyId">Supply ID</param>
+        /// <param name="details">List of new supply details</param>
+        /// <returns>Success result</returns>
+        [HttpPut("{supplyId}/details")]
+        [ProducesResponseType(typeof(APIOperationResponse<bool>), (int)HttpStatusCode.OK)]
+        [ProducesResponseType((int)HttpStatusCode.BadRequest)]
+        [ProducesResponseType((int)HttpStatusCode.NotFound)]
+        [CheckAuthorize("Permissions.Supply.Edit")]
+        public async Task<IActionResult> ReplaceSupplyDetails(long supplyId, [FromBody] List<CreateSupplyDetailDto> details)
+        {
+            var result = await _supplyService.ReplaceSupplyDetailsAsync(supplyId, details);
+            return ProcessResponse(result);
+        }
+
+        /// <summary>
         /// Submit a supply (requires receiver information)
         /// </summary>
         /// <param name="id">Supply ID</param>

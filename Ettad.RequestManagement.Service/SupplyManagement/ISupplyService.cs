@@ -16,6 +16,7 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
 		Task<APIOperationResponse<long>> AddSupplyDetailAsync(long supplyId, CreateSupplyDetailDto detailDto);
 		Task<APIOperationResponse<bool>> UpdateSupplyDetailAsync(long supplyId, long detailId, UpdateSupplyDetailDto detailDto);
 		Task<APIOperationResponse<bool>> DeleteSupplyDetailAsync(long supplyId, long detailId);
+		Task<APIOperationResponse<bool>> ReplaceSupplyDetailsAsync(long supplyId, List<CreateSupplyDetailDto> newDetails);
 		Task<APIOperationResponse<bool>> SubmitSupplyAsync(long id, SubmitSupplyDto inputDto);
 		Task<APIOperationResponse<bool>> SetSupplyPickupDateAsync(long orderId, SetSupplyPickupDateDto inputDto);
 		Task<APIOperationResponse<bool>> ConfirmSupplyPickupDateAsync(long orderId, ConfirmSupplyPickupDateDto inputDto);
