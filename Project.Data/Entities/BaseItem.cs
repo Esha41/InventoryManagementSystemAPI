@@ -17,10 +17,6 @@ namespace Ettad.Data.Entities
         
         public string PartNo { get; set; }
 
-        public bool ReadyForIssue { get; set; } = true;
-
-        public DateTime? ExpiryDate { get; set; }
-
         #region Navigation Properties
 
         public Hcc Hcc { get; set; }

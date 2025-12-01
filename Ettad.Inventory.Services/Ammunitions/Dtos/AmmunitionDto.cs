@@ -17,10 +17,6 @@ namespace Ettad.Inventory.Service.Ammunitions.Dtos
 
         public string PartNo { get; set; }
 
-        public bool ReadyForIssue { get; set; } = true;
-
-        public DateTime? ExpiryDate { get; set; }
-
         public decimal BulletDiameter { get; set; }
 
         public long BulletDiameterUnitId { get; set; }

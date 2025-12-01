@@ -20,6 +20,10 @@ namespace Ettad.Data.Entities
 
         public string? BatchNo { get; set; }
 
+        public bool ReadyForIssue { get; set; } = true;
+
+        public DateTime? ExpiryDate { get; set; }
+
         public bool IsLotEmpty { get; set; } = false;
 
         #region Navigation Properties

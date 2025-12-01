@@ -21,10 +21,6 @@ namespace Ettad.Inventory.Service.Ammunitions.Validators
             RuleFor(x => x.PartNo)
                 .MaximumLength(100).WithMessage("Part number cannot exceed 100 characters");
 
-            RuleFor(x => x.ExpiryDate)
-                .Must(date => !date.HasValue || date.Value > DateTime.Now)
-                .WithMessage("Expiry date must be in the future");
-
             RuleFor(x => x.BulletDiameter)
                 .GreaterThan(0).WithMessage("Bullet diameter must be greater than 0");
 

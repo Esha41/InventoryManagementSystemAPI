@@ -49,6 +49,10 @@ namespace Ettad.Inventory.Service.Inventories.Validators
                 .MaximumLength(500).When(x => !string.IsNullOrEmpty(x.BatchNo))
                 .WithMessage("Batch number cannot exceed 500 characters");
 
+            RuleFor(x => x.ExpiryDate)
+                .Must(date => !date.HasValue || date.Value > DateTime.Now)
+                .WithMessage("Expiry date must be in the future");
+
             RuleFor(x => x.SupplierId)
                 .GreaterThan(0).When(x => x.SupplierId.HasValue)
                 .WithMessage("Supplier ID must be greater than 0 when provided");

@@ -21,6 +21,13 @@ namespace Ettad.EntityFramework.Configurations
                 .IsRequired(false)
                 .HasMaxLength(500);
 
+            builder.Property(x => x.ReadyForIssue)
+                .IsRequired()
+                .HasDefaultValue(true);
+
+            builder.Property(x => x.ExpiryDate)
+                .IsRequired(false);
+
             builder.Property(x => x.IsLotEmpty)
                 .IsRequired()
                 .HasDefaultValue(false);

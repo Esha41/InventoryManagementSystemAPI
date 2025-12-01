@@ -12,6 +12,7 @@ namespace Ettad.Inventory.Service.Inventories.Dtos
         public string ItemName { get; set; }
         public int Lot { get; set; }
         public string? BatchNo { get; set; }
+        public bool ReadyForIssue { get; set; }
         public long OriginalQuantity { get; set; }
         public long UsedQuantity { get; set; }
         public long ReservedQuantityByOrdersOnProcessing { get; set; }

@@ -12,8 +12,6 @@ namespace Ettad.Inventory.Service.Common.Dtos
         public ItemType ItemType { get; set; }
         public long HccId { get; set; }
         public string PartNo { get; set; }
-        public bool ReadyForIssue { get; set; }
-        public DateTime? ExpiryDate { get; set; }
         public bool IsDeleted { get; set; }
 
         #region Navigation Properties

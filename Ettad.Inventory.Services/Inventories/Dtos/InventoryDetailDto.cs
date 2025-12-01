@@ -23,6 +23,10 @@ namespace Ettad.Inventory.Service.Inventories.Dtos
 
         public string? BatchNo { get; set; }
 
+        public DateTime? ExpiryDate { get; set; }
+
+        public bool ReadyForIssue { get; set; }
+
         public long UsedQuantity { get; set; }
         public long ReservedQuantityByOrdersOnProcessing { get; set; }
         public long RemainingQuantity { get; set; }

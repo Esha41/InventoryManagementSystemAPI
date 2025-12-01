@@ -593,7 +593,7 @@ namespace Ettad.Inventory.Service.Inventories
                     bool isEmptyLot = remainingQuantity <= 0;
 
                     // Check if the lot is expired (expiry date is in the past)
-                    bool isExpired = lot.Item.ExpiryDate.HasValue && lot.Item.ExpiryDate.Value.Date < DateTime.UtcNow.Date;
+                    bool isExpired = lot.ExpiryDate.HasValue && lot.ExpiryDate.Value.Date < DateTime.UtcNow.Date;
 
                     // Use AutoMapper to create the base mapping
                     var lotDetail = _mapper.Map<LotDetailDto>(lot);
@@ -710,19 +710,19 @@ namespace Ettad.Inventory.Service.Inventories
 
                 // Sort lots by FEFO: items with expiry dates first (sorted by date), then items without expiry dates
                 var sortedLots = lots
-                    .OrderBy(l => l.Item.ExpiryDate.HasValue ? 0 : 1)  // Non-null expiry dates first
-                    .ThenBy(l => l.Item.ExpiryDate)                    // Then sort by expiry date
+                    .OrderBy(l => l.ExpiryDate.HasValue ? 0 : 1)  // Non-null expiry dates first
+                    .ThenBy(l => l.ExpiryDate)                    // Then sort by expiry date
                     .ThenBy(l => l.Lot)                                // Then by lot number
                     .ToList();
 
                 foreach (var lot in sortedLots)
                 {
                     // Skip expired lots
-                    bool isExpired = lot.Item.ExpiryDate.HasValue && lot.Item.ExpiryDate.Value.Date < currentDate;
+                    bool isExpired = lot.ExpiryDate.HasValue && lot.ExpiryDate.Value.Date < currentDate;
                     if (isExpired)
                     {
                         _logger.LogDebug("Skipping expired lot. Lot: {Lot}, ExpiryDate: {ExpiryDate}, ItemId: {ItemId}",
-                            lot.Lot, lot.Item.ExpiryDate, itemId);
+                            lot.Lot, lot.ExpiryDate, itemId);
                         continue;
                     }
 
@@ -836,8 +836,8 @@ namespace Ettad.Inventory.Service.Inventories
                 lotDetail.ReservedQuantityByOrdersOnProcessing = reservedQuantity;
                 lotDetail.RemainingQuantity = Math.Max(0, remainingQuantity);
                 lotDetail.IsEmptyLot = remainingQuantity <= 0;
-                lotDetail.IsExpired = inventoryDetail.Item?.ExpiryDate.HasValue == true &&
-                                      inventoryDetail.Item.ExpiryDate.Value.Date < DateTime.UtcNow.Date;
+                lotDetail.IsExpired = inventoryDetail.ExpiryDate.HasValue == true &&
+                                      inventoryDetail.ExpiryDate.Value.Date < DateTime.UtcNow.Date;
 
                 _logger.LogInformation("Lot details retrieved successfully. Lot: {Lot}, Remaining: {Remaining}, User: {UserId}",
                     lotNumber, lotDetail.RemainingQuantity, _currentUserService.UserId);
@@ -950,55 +950,38 @@ namespace Ettad.Inventory.Service.Inventories
         private async Task PopulateInventoryDetailsQuantitiesAsync(List<InventoryDetailDto> details)
         {
             if (!details.Any()) return;
+// ... existing code ...
+        }
 
-            var itemIds = details.Select(d => d.ItemId).Distinct().ToList();
-            if (!itemIds.Any()) return;
+        public async Task<APIOperationResponse<bool>> ToggleReadyForIssueAsync(long inventoryDetailId)
+        {
+            _logger.LogInformation("Toggling ReadyForIssue status. InventoryDetailId: {InventoryDetailId}, User: {UserId}", 
+                inventoryDetailId, _currentUserService.UserId);
 
-            // Get all supply details for these items
-            var supplyDetails = await _supplyDetailsRepository.FindAsync(
-                sd => itemIds.Contains(sd.ItemId) && !sd.IsDeleted);
-
-            if (!supplyDetails.Any())
+            try
             {
-                foreach (var detail in details)
+                var inventoryDetail = await _inventoryDetailRepository.FindOneAsync(id => id.Id == inventoryDetailId);
+                
+                if (inventoryDetail == null)
                 {
-                    detail.UsedQuantity = 0;
-                    detail.ReservedQuantityByOrdersOnProcessing = 0;
-                    detail.RemainingQuantity = detail.OriginalQuantity;
+                    _logger.LogWarning("Inventory detail not found. InventoryDetailId: {InventoryDetailId}, User: {UserId}", 
+                        inventoryDetailId, _currentUserService.UserId);
+                    return APIOperationResponse<bool>.Fail(ResponseType.NotFound, "Inventory detail not found");
                 }
-                return;
+
+                inventoryDetail.ReadyForIssue = !inventoryDetail.ReadyForIssue;
+                await _inventoryDetailRepository.UpdateAsync(inventoryDetail);
+
+                _logger.LogInformation("ReadyForIssue status toggled successfully. InventoryDetailId: {InventoryDetailId}, NewStatus: {NewStatus}, User: {UserId}", 
+                    inventoryDetailId, inventoryDetail.ReadyForIssue, _currentUserService.UserId);
+
+                return APIOperationResponse<bool>.Success(inventoryDetail.ReadyForIssue, "Status updated successfully");
             }
-
-            // Get supplies to check status
-            var supplyIds = supplyDetails.Select(sd => sd.SupplyId).Distinct().ToList();
-            var supplies = await _supplyRepository.FindAsync(
-                s => supplyIds.Contains(s.Id) && !s.IsDeleted);
-            
-            var supplyStatusMap = supplies.ToDictionary(s => s.Id, s => s.SubmissionStatus);
-
-            // Calculate Used/Reserved per (ItemId, Lot)
-            var usedByItemLot = supplyDetails
-                .Where(sd => supplyStatusMap.ContainsKey(sd.SupplyId) && 
-                             supplyStatusMap[sd.SupplyId] == SupplySubmissionStatus.Submitted)
-                .GroupBy(sd => new { sd.ItemId, sd.Lot })
-                .ToDictionary(g => g.Key, g => g.Sum(sd => sd.Quantity));
-
-            var reservedByItemLot = supplyDetails
-                .Where(sd => supplyStatusMap.ContainsKey(sd.SupplyId) && 
-                             supplyStatusMap[sd.SupplyId] == SupplySubmissionStatus.Draft)
-                .GroupBy(sd => new { sd.ItemId, sd.Lot })
-                .ToDictionary(g => g.Key, g => g.Sum(sd => sd.Quantity));
-
-            foreach (var detail in details)
+            catch (Exception ex)
             {
-                var key = new { detail.ItemId, detail.Lot };
-                
-                long used = usedByItemLot.TryGetValue(key, out var u) ? u : 0;
-                long reserved = reservedByItemLot.TryGetValue(key, out var r) ? r : 0;
-                
-                detail.UsedQuantity = used;
-                detail.ReservedQuantityByOrdersOnProcessing = reserved;
-                detail.RemainingQuantity = Math.Max(0, detail.OriginalQuantity - used - reserved);
+                _logger.LogError(ex, "Error toggling ReadyForIssue status. InventoryDetailId: {InventoryDetailId}, User: {UserId}", 
+                    inventoryDetailId, _currentUserService.UserId);
+                return APIOperationResponse<bool>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
             }
         }
     }
