@@ -29,7 +29,7 @@ namespace Ettad.Inventory.Service.Inventories.Dtos
 
         public long? CountryId { get; set; }
 
-        public long ItemQuantity { get; set; }
+        public long OriginalQuantity { get; set; }
     }
 }
 

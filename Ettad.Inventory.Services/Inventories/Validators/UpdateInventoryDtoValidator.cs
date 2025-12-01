@@ -42,7 +42,7 @@ namespace Ettad.Inventory.Service.Inventories.Validators
             RuleFor(x => x.Lot)
                 .GreaterThan(0).WithMessage("Lot number must be greater than 0");
 
-            RuleFor(x => x.ItemQuantity)
+            RuleFor(x => x.OriginalQuantity)
                 .GreaterThan(0).WithMessage("Item quantity must be greater than 0");
 
             RuleFor(x => x.SupplierId)

@@ -13,6 +13,7 @@ namespace Ettad.Inventory.Service.Inventories.Dtos
         public int Lot { get; set; }
         public long OriginalQuantity { get; set; }
         public long UsedQuantity { get; set; }
+        public long ReservedQuantityByOrdersOnProcessing { get; set; }
         public long RemainingQuantity { get; set; }
         public bool IsEmptyLot { get; set; }
         public bool IsExpired { get; set; }

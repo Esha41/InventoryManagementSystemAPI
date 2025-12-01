@@ -4,10 +4,10 @@ namespace Ettad.Inventory.Service.AllowanceItems.Dtos
     {
         public long DepartmentId { get; set; }
         public int Year { get; set; }
-        public int TotalReserve { get; set; }
-        public int AvailableReserve { get; set; }
-        public int OrderedQuantity { get; set; }
-        public int UtilizedQuantity { get; set; }
+        public int TotalOriginalQuantity { get; set; }
+        public int TotalRemainingQuantity { get; set; }
+        public int TotalReservedQuantityByOrdersOnProcessing { get; set; }
+        public int TotalUsedQuantity { get; set; }
     }
 }
 
