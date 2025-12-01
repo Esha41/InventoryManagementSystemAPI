@@ -8,7 +8,8 @@ namespace Ettad.RequestManagement.Service.Orders.Dto
 	{
 		public long Id { get; set; } // Order ID
 		public RequestStatus Status { get; set; } // RequestStatus
-		public DateTime UsageDate { get; set; } // Request Date (UsageDate)
+		public DateTime UsageDateFrom { get; set; } // Request Date (UsageDateFrom)
+        public DateTime UsageDateTo { get; set; } // Request Date (UsageDateTo)
 
 		// Department
 		public long DepartmentId { get; set; }

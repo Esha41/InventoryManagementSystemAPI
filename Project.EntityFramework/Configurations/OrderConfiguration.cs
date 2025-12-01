@@ -13,10 +13,16 @@ namespace Ettad.EntityFramework.Configurations
             builder.Property(x => x.IsFromAllowance)
                 .IsRequired();
 
-            builder.Property(x => x.UsageDate)
+            builder.Property(x => x.UsageDateFrom)
                 .IsRequired();
 
-            builder.Property(x => x.UsageTime)
+            builder.Property(x => x.UsageTimeFrom)
+                .IsRequired();
+
+            builder.Property(x => x.UsageDateTo)
+                .IsRequired();
+
+            builder.Property(x => x.UsageTimeTo)
                 .IsRequired();
 
             builder.Property(x => x.UsagePurpose)

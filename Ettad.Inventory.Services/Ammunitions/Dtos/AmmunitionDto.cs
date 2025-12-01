@@ -1,4 +1,4 @@
-using Ettad.Data.Enums;
+﻿using Ettad.Data.Enums;
 using Ettad.Module.lookup.Dtos;
 
 namespace Ettad.Inventory.Service.Ammunitions.Dtos
