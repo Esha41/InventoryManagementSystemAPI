@@ -6,15 +6,9 @@
 
         public string ItemNo { get; set; }
 
-        public string BatchNo { get; set; }
-
         public long HccId { get; set; }
 
         public string PartNo { get; set; }
-
-        public bool ReadyForIssue { get; set; } = true;
-
-        public DateTime? ExpiryDate { get; set; }
 
         public decimal BulletDiameter { get; set; }
 

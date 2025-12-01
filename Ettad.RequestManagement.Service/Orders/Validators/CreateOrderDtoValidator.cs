@@ -22,11 +22,18 @@ namespace Ettad.RequestManagement.Service.Orders.Validators
                 .GreaterThan(0).WithMessage("Request purpose is required");
 
             // Order-Specific Properties Validation
-            RuleFor(x => x.UsageDate)
-                .NotEmpty().WithMessage("Usage date is required");
+            RuleFor(x => x.UsageDateFrom)
+                .NotEmpty().WithMessage("Usage date from is required");
 
-            RuleFor(x => x.UsageTime)
-                .NotEmpty().WithMessage("Usage time is required");
+            RuleFor(x => x.UsageTimeFrom)
+                .NotEmpty().WithMessage("Usage time from is required");
+
+            RuleFor(x => x.UsageDateTo)
+                .NotEmpty().WithMessage("Usage date to is required")
+                .GreaterThanOrEqualTo(x => x.UsageDateFrom).WithMessage("Usage date to must be greater than or equal to usage date from");
+
+            RuleFor(x => x.UsageTimeTo)
+                .NotEmpty().WithMessage("Usage time to is required");
 
             RuleFor(x => x.UsagePurpose)
                 .NotEmpty().WithMessage("Usage purpose is required")

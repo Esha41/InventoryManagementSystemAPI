@@ -13,16 +13,17 @@ namespace Ettad.Inventory.Service.Inventories.Profiles
         {
             // Entity to DTO
             CreateMap<InventoryEntity, InventoryDto>();
-            CreateMap<InventoryDetailEntity, InventoryDetailDto>();
+            CreateMap<InventoryDetailEntity, InventoryDetailDto>()
+                .ForMember(dest => dest.OriginalQuantity, opt => opt.MapFrom(src => src.ItemQuantity));
             CreateMap<InventoryDetailEntity, LotDetailDto>()
                 .ForMember(dest => dest.InventoryDetailId, opt => opt.MapFrom(src => src.Id))
                 .ForMember(dest => dest.ItemName, opt => opt.MapFrom(src => src.Item.Name))
+                .ForMember(dest => dest.BatchNo, opt => opt.MapFrom(src => src.BatchNo))
                 .ForMember(dest => dest.OriginalQuantity, opt => opt.MapFrom(src => src.ItemQuantity))
                 .ForMember(dest => dest.UsedQuantity, opt => opt.Ignore()) // Will be set in service
                 .ForMember(dest => dest.RemainingQuantity, opt => opt.Ignore()) // Will be set in service
                 .ForMember(dest => dest.IsEmptyLot, opt => opt.Ignore()) // Will be set in service
                 .ForMember(dest => dest.IsExpired, opt => opt.Ignore()) // Will be set in service
-                .ForMember(dest => dest.ExpiryDate, opt => opt.MapFrom(src => src.Item.ExpiryDate))
                 .ForMember(dest => dest.Depot, opt => opt.MapFrom(src => src.Inventory.Depo));
             
             // Create DTO to Entity
@@ -38,6 +39,7 @@ namespace Ettad.Inventory.Service.Inventories.Profiles
                 .ForMember(dest => dest.Depo, opt => opt.Ignore());
 
             CreateMap<CreateInventoryDetailDto, InventoryDetailEntity>()
+                .ForMember(dest => dest.ItemQuantity, opt => opt.MapFrom(src => src.OriginalQuantity))
                 .ForMember(dest => dest.Id, opt => opt.Ignore())
                 .ForMember(dest => dest.InventoryId, opt => opt.Ignore())
                 .ForMember(dest => dest.Item, opt => opt.Ignore())
@@ -60,6 +62,7 @@ namespace Ettad.Inventory.Service.Inventories.Profiles
                 .ForMember(dest => dest.InventoryDetails, opt => opt.Ignore()); // Handle separately
 
             CreateMap<UpdateInventoryDetailDto, InventoryDetailEntity>()
+                .ForMember(dest => dest.ItemQuantity, opt => opt.MapFrom(src => src.OriginalQuantity))
                 .ForMember(dest => dest.InventoryId, opt => opt.Ignore())
                 .ForMember(dest => dest.Item, opt => opt.Ignore())
                 .ForMember(dest => dest.Inventory, opt => opt.Ignore())

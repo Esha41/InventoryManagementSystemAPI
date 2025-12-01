@@ -5,11 +5,11 @@ namespace Ettad.Inventory.Service.AllowanceItems.Dtos
         public long ItemId { get; set; }
         public string ItemName { get; set; }
         public string ItemNo { get; set; }
-        public string BatchNo { get; set; }
-        public int TotalReserve { get; set; }
-        public int AvailableReserve { get; set; }
-        public int OrderedQuantity { get; set; }
-        public int UtilizedQuantity { get; set; }
+        public string? BatchNo { get; set; }
+        public int OriginalQuantity { get; set; }
+        public int RemainingQuantity { get; set; }
+        public int ReservedQuantityByOrdersOnProcessing { get; set; }
+        public int UsedQuantity { get; set; }
     }
 
     public class AllowanceReserveDetailsByItemDto
@@ -19,10 +19,10 @@ namespace Ettad.Inventory.Service.AllowanceItems.Dtos
         public string DepartmentNameAr { get; set; }
         public string DepartmentNameEn { get; set; }
         public int Year { get; set; }
-        public int TotalReserve { get; set; }
-        public int TotalAvailableReserve { get; set; }
-        public int TotalOrderedQuantity { get; set; }
-        public int TotalUtilizedQuantity { get; set; }
+        public int TotalOriginalQuantity { get; set; }
+        public int TotalRemainingQuantity { get; set; }
+        public int TotalReservedQuantityByOrdersOnProcessing { get; set; }
+        public int TotalUsedQuantity { get; set; }
         public List<AllowanceItemReserveDetailsDto> Items { get; set; } = new List<AllowanceItemReserveDetailsDto>();
     }
 }

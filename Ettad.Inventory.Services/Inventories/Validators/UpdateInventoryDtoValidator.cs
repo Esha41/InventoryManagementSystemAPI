@@ -42,8 +42,16 @@ namespace Ettad.Inventory.Service.Inventories.Validators
             RuleFor(x => x.Lot)
                 .GreaterThan(0).WithMessage("Lot number must be greater than 0");
 
-            RuleFor(x => x.ItemQuantity)
+            RuleFor(x => x.OriginalQuantity)
                 .GreaterThan(0).WithMessage("Item quantity must be greater than 0");
+
+            RuleFor(x => x.BatchNo)
+                .MaximumLength(500).When(x => !string.IsNullOrEmpty(x.BatchNo))
+                .WithMessage("Batch number cannot exceed 500 characters");
+
+            RuleFor(x => x.ExpiryDate)
+                .Must(date => !date.HasValue || date.Value > DateTime.Now)
+                .WithMessage("Expiry date must be in the future");
 
             RuleFor(x => x.SupplierId)
                 .GreaterThan(0).When(x => x.SupplierId.HasValue)

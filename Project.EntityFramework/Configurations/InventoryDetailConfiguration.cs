@@ -17,6 +17,17 @@ namespace Ettad.EntityFramework.Configurations
             builder.Property(x => x.ItemQuantity)
                 .IsRequired();
 
+            builder.Property(x => x.BatchNo)
+                .IsRequired(false)
+                .HasMaxLength(500);
+
+            builder.Property(x => x.ReadyForIssue)
+                .IsRequired()
+                .HasDefaultValue(true);
+
+            builder.Property(x => x.ExpiryDate)
+                .IsRequired(false);
+
             builder.Property(x => x.IsLotEmpty)
                 .IsRequired()
                 .HasDefaultValue(false);

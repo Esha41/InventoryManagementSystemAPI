@@ -11,10 +11,14 @@ namespace Ettad.Inventory.Service.AllowanceItems.Dtos
         public int Quantity { get; set; }
         public ItemType ItemType { get; set; }
         
+        public int UsedQuantityFromAllowance { get; set; }
+        public int ReservedQuantityByOrdersOnProcessing { get; set; }
+        public int RemainingQuantityFromAllowance { get; set; }
+
         // Item details
         public string ItemName { get; set; }
         public string ItemNo { get; set; }
-        public string BatchNo { get; set; }
+        public string? BatchNo { get; set; }
     }
 
     public class AllowanceItemByDepartmentDto

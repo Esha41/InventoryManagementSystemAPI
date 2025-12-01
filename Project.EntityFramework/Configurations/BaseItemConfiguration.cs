@@ -20,10 +20,6 @@ namespace Ettad.EntityFramework.Configurations
             builder.Property(x => x.ItemType)
                 .IsRequired();
 
-            builder.Property(x => x.BatchNo)
-                .IsRequired()
-                .HasMaxLength(500);
-
             builder.Property(x => x.PartNo)
                 .IsRequired()
                 .HasMaxLength(500);

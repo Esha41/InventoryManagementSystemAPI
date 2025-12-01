@@ -122,6 +122,32 @@ namespace Ettad.Inventory.API.Controllers
             var result = await _inventoryService.GetLotByNumberAsync(lotNumber);
             return ProcessResponse(result);
         }
+
+        /// <summary>
+        /// Get aggregated inventory summary for a specific item (total quantity, used, reserved, remaining across all lots)
+        /// </summary>
+        [HttpGet("item/{itemId}/summary")]
+        [ProducesResponseType((int)HttpStatusCode.OK)]
+        [ProducesResponseType((int)HttpStatusCode.NotFound)]
+        [CheckAuthorize("Permissions.Inventory.View", "Permissions.Inventory.Page")]
+        public async Task<IActionResult> GetItemInventorySummary(long itemId)
+        {
+            var result = await _inventoryService.GetItemInventorySummaryAsync(itemId);
+            return ProcessResponse(result);
+        }
+
+        /// <summary>
+        /// Toggle the ReadyForIssue status of an inventory detail
+        /// </summary>
+        [HttpPost("detail/{inventoryDetailId}/toggle-ready-for-issue")]
+        [ProducesResponseType((int)HttpStatusCode.OK)]
+        [ProducesResponseType((int)HttpStatusCode.NotFound)]
+        [CheckAuthorize("Permissions.Inventory.Edit")]
+        public async Task<IActionResult> ToggleReadyForIssue(long inventoryDetailId)
+        {
+            var result = await _inventoryService.ToggleReadyForIssueAsync(inventoryDetailId);
+            return ProcessResponse(result);
+        }
     }
 }
 

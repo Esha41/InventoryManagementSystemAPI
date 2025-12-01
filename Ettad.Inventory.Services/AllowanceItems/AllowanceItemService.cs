@@ -18,6 +18,8 @@ namespace Ettad.Inventory.Service.AllowanceItems
         private readonly ICrossCuttingRepository<Department> _departmentRepository;
         private readonly ICrossCuttingRepository<Order> _orderRepository;
         private readonly ICrossCuttingRepository<RequestItem> _requestItemRepository;
+        private readonly ICrossCuttingRepository<Supply> _supplyRepository;
+        private readonly ICrossCuttingRepository<SupplyDetail> _supplyDetailRepository;
         private readonly IMapper _mapper;
         private readonly IValidator<CreateUpdateAllowanceItemDto> _validator;
         private readonly ICurrentUserService _currentUserService;
@@ -28,6 +30,8 @@ namespace Ettad.Inventory.Service.AllowanceItems
             ICrossCuttingRepository<Department> departmentRepository,
             ICrossCuttingRepository<Order> orderRepository,
             ICrossCuttingRepository<RequestItem> requestItemRepository,
+            ICrossCuttingRepository<Supply> supplyRepository,
+            ICrossCuttingRepository<SupplyDetail> supplyDetailRepository,
             IMapper mapper,
             IValidator<CreateUpdateAllowanceItemDto> validator,
             ICurrentUserService currentUserService,
@@ -37,6 +41,8 @@ namespace Ettad.Inventory.Service.AllowanceItems
             _departmentRepository = departmentRepository;
             _orderRepository = orderRepository;
             _requestItemRepository = requestItemRepository;
+            _supplyRepository = supplyRepository;
+            _supplyDetailRepository = supplyDetailRepository;
             _mapper = mapper;
             _validator = validator;
             _currentUserService = currentUserService;
@@ -53,6 +59,7 @@ namespace Ettad.Inventory.Service.AllowanceItems
                     return APIOperationResponse<AllowanceItemDto>.Fail(ResponseType.NotFound, "Allowance item not found");
 
                 var dto = _mapper.Map<AllowanceItemDto>(allowanceItem);
+                await PopulateCalculatedQuantitiesAsync(dto, allowanceItem);
                 return APIOperationResponse<AllowanceItemDto>.Success(dto);
             }
             catch (Exception ex)
@@ -69,6 +76,17 @@ namespace Ettad.Inventory.Service.AllowanceItems
                 var allowanceItems = await _allowanceItemRepository.FindAsync(a => !a.IsDeleted);
 
                 var dtos = _mapper.Map<List<AllowanceItemDto>>(allowanceItems);
+                
+                // Populate calculated quantities for each DTO
+                foreach (var dto in dtos)
+                {
+                    var allowanceItem = allowanceItems.FirstOrDefault(a => a.Id == dto.Id);
+                    if (allowanceItem != null)
+                    {
+                        await PopulateCalculatedQuantitiesAsync(dto, allowanceItem);
+                    }
+                }
+                
                 return APIOperationResponse<List<AllowanceItemDto>>.Success(dtos);
             }
             catch (Exception ex)
@@ -204,6 +222,24 @@ namespace Ettad.Inventory.Service.AllowanceItems
 
                 var itemDetails = _mapper.Map<List<AllowanceItemDetailDto>>(allowanceItems);
 
+                // Populate calculated quantities
+                var quantities = await GetCalculatedQuantitiesForDepartmentYearAsync(departmentId, year);
+                
+                foreach (var detail in itemDetails)
+                {
+                    if (quantities.TryGetValue(detail.ItemId, out var qty))
+                    {
+                        detail.UsedQuantityFromAllowance = qty.Used;
+                        detail.ReservedQuantityByOrdersOnProcessing = qty.Reserved;
+                    }
+                    else
+                    {
+                        detail.UsedQuantityFromAllowance = 0;
+                        detail.ReservedQuantityByOrdersOnProcessing = 0;
+                    }
+                    detail.RemainingQuantityFromAllowance = Math.Max(0, detail.Quantity - detail.UsedQuantityFromAllowance - detail.ReservedQuantityByOrdersOnProcessing);
+                }
+
                 var result = new AllowanceItemByDepartmentDto
                 {
                     DepartmentId = department.Id,
@@ -238,16 +274,41 @@ namespace Ettad.Inventory.Service.AllowanceItems
                 );
 
                 var groupedByYear = allowanceItems.GroupBy(a => a.Year).ToList();
+                var result = new List<AllowanceItemByDepartmentDto>();
 
-                var result = groupedByYear.Select(group => new AllowanceItemByDepartmentDto
+                foreach (var group in groupedByYear)
                 {
-                    DepartmentId = department.Id,
-                    DepartmentCode = department.Code,
-                    DepartmentNameAr = department.NameAr,
-                    DepartmentNameEn = department.NameEn,
-                    Year = group.Key,
-                    Items = _mapper.Map<List<AllowanceItemDetailDto>>(group.ToList())
-                }).ToList();
+                    var year = group.Key;
+                    var details = _mapper.Map<List<AllowanceItemDetailDto>>(group.ToList());
+                    
+                    // Batch calculate for this year
+                    var quantities = await GetCalculatedQuantitiesForDepartmentYearAsync(departmentId, year);
+                    
+                    foreach (var detail in details)
+                    {
+                        if (quantities.TryGetValue(detail.ItemId, out var qty))
+                        {
+                            detail.UsedQuantityFromAllowance = qty.Used;
+                            detail.ReservedQuantityByOrdersOnProcessing = qty.Reserved;
+                        }
+                        else
+                        {
+                            detail.UsedQuantityFromAllowance = 0;
+                            detail.ReservedQuantityByOrdersOnProcessing = 0;
+                        }
+                        detail.RemainingQuantityFromAllowance = Math.Max(0, detail.Quantity - detail.UsedQuantityFromAllowance - detail.ReservedQuantityByOrdersOnProcessing);
+                    }
+
+                    result.Add(new AllowanceItemByDepartmentDto
+                    {
+                        DepartmentId = department.Id,
+                        DepartmentCode = department.Code,
+                        DepartmentNameAr = department.NameAr,
+                        DepartmentNameEn = department.NameEn,
+                        Year = year,
+                        Items = details
+                    });
+                }
 
                 return APIOperationResponse<List<AllowanceItemByDepartmentDto>>.Success(result);
             }
@@ -257,7 +318,70 @@ namespace Ettad.Inventory.Service.AllowanceItems
             }
         }
 
-        public async Task<APIOperationResponse<List<AllowanceItemDto>>> BulkCreateAsync(BulkCreateAllowanceItemDto inputDto)
+        private async Task<Dictionary<long, (int Used, int Reserved)>> GetCalculatedQuantitiesForDepartmentYearAsync(long departmentId, int year)
+        {
+            // Get all orders for this department and year
+            var orders = await _orderRepository.FindAsync(
+                o => o.DepartmentId == departmentId &&
+                     o.CreationDate.Year == year &&
+                     !o.IsDeleted);
+
+            var orderIds = orders.Select(o => o.Id).ToList();
+
+            if (!orderIds.Any())
+            {
+                return new Dictionary<long, (int, int)>();
+            }
+
+            // Get all supplies for orders that have supplies
+            var supplies = await _supplyRepository.FindAsync(
+                s => orderIds.Contains(s.OrderId) && !s.IsDeleted);
+
+            // Separate Draft and Submitted supplies
+            var draftSupplyIds = supplies
+                .Where(s => s.SubmissionStatus == SupplySubmissionStatus.Draft)
+                .Select(s => s.Id)
+                .ToList();
+
+            var submittedSupplyIds = supplies
+                .Where(s => s.SubmissionStatus == SupplySubmissionStatus.Submitted)
+                .Select(s => s.Id)
+                .ToList();
+            
+            var allSupplyIds = draftSupplyIds.Concat(submittedSupplyIds).ToList();
+            
+            var quantities = new Dictionary<long, (int Used, int Reserved)>();
+
+            if (allSupplyIds.Any())
+            {
+                var supplyDetails = await _supplyDetailRepository.FindAsync(
+                    sd => allSupplyIds.Contains(sd.SupplyId) && !sd.IsDeleted);
+
+                var usedByItem = supplyDetails
+                    .Where(sd => submittedSupplyIds.Contains(sd.SupplyId))
+                    .GroupBy(sd => sd.ItemId)
+                    .ToDictionary(g => g.Key, g => (int)g.Sum(sd => sd.Quantity));
+
+                var reservedByItem = supplyDetails
+                    .Where(sd => draftSupplyIds.Contains(sd.SupplyId))
+                    .GroupBy(sd => sd.ItemId)
+                    .ToDictionary(g => g.Key, g => (int)g.Sum(sd => sd.Quantity));
+                
+                var allItemIds = usedByItem.Keys.Union(reservedByItem.Keys);
+                
+                foreach(var itemId in allItemIds)
+                {
+                    quantities[itemId] = (
+                        usedByItem.ContainsKey(itemId) ? usedByItem[itemId] : 0,
+                        reservedByItem.ContainsKey(itemId) ? reservedByItem[itemId] : 0
+                    );
+                }
+            }
+            
+            return quantities;
+        }
+
+        public async Task<APIOperationResponse<bool>> BulkCreateAsync(BulkCreateAllowanceItemDto inputDto)
         {
             _logger.LogInformation("Bulk creating allowance items. DepartmentId: {DepartmentId}, Year: {Year}, ItemCount: {ItemCount}, User: {UserId}", 
                 inputDto?.DepartmentId, inputDto?.Year, inputDto?.Items?.Count ?? 0, _currentUserService.UserId);
@@ -271,10 +395,9 @@ namespace Ettad.Inventory.Service.AllowanceItems
                     var errors = string.Join(", ", validationResult.Errors.Select(e => e.ErrorMessage));
                     _logger.LogWarning("Bulk allowance items validation failed. Errors: {ValidationErrors}, User: {UserId}", 
                         errors, _currentUserService.UserId);
-                    return APIOperationResponse<List<AllowanceItemDto>>.Fail(ResponseType.BadRequest, errors);
+                    return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, errors);
                 }
 
-                var createdItems = new List<AllowanceItemDto>();
                 int createdCount = 0;
                 int updatedCount = 0;
 
@@ -295,7 +418,7 @@ namespace Ettad.Inventory.Service.AllowanceItems
                         var errors = string.Join(", ", itemValidationResult.Errors.Select(e => e.ErrorMessage));
                         _logger.LogWarning("Item validation failed in bulk create. ItemId: {ItemId}, Errors: {Errors}", 
                             itemDto.ItemId, errors);
-                        return APIOperationResponse<List<AllowanceItemDto>>.Fail(ResponseType.BadRequest, $"Item {itemDto.ItemId}: {errors}");
+                        return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, $"Item {itemDto.ItemId}: {errors}");
                     }
 
                     // Check if already exists
@@ -312,7 +435,6 @@ namespace Ettad.Inventory.Service.AllowanceItems
                         existing.ModificationDate = DateTime.UtcNow;
                         existing.ModifiedBy = _currentUserService.UserId;
                         await _allowanceItemRepository.UpdateAsync(existing);
-                        createdItems.Add(_mapper.Map<AllowanceItemDto>(existing));
                         updatedCount++;
                     }
                     else
@@ -322,8 +444,7 @@ namespace Ettad.Inventory.Service.AllowanceItems
                         allowanceItem.CreationDate = DateTime.UtcNow;
                         allowanceItem.CreatedBy = _currentUserService.UserId;
 
-                        var created = await _allowanceItemRepository.AddAsync(allowanceItem);
-                        createdItems.Add(_mapper.Map<AllowanceItemDto>(created));
+                        await _allowanceItemRepository.AddAsync(allowanceItem);
                         createdCount++;
                     }
                 }
@@ -331,13 +452,13 @@ namespace Ettad.Inventory.Service.AllowanceItems
                 _logger.LogInformation("Bulk allowance items operation completed. DepartmentId: {DepartmentId}, Year: {Year}, Created: {CreatedCount}, Updated: {UpdatedCount}, User: {UserId}", 
                     inputDto.DepartmentId, inputDto.Year, createdCount, updatedCount, _currentUserService.UserId);
 
-                return APIOperationResponse<List<AllowanceItemDto>>.Success(createdItems, "Allowance items created successfully");
+                return APIOperationResponse<bool>.Success(true, "Allowance items created successfully");
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error in bulk create allowance items. DepartmentId: {DepartmentId}, Year: {Year}, User: {UserId}", 
                     inputDto?.DepartmentId, inputDto?.Year, _currentUserService.UserId);
-                return APIOperationResponse<List<AllowanceItemDto>>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
+                return APIOperationResponse<bool>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
             }
         }
 
@@ -362,50 +483,69 @@ namespace Ettad.Inventory.Service.AllowanceItems
                     a => a.DepartmentId == departmentId && a.Year == year && !a.IsDeleted);
 
                 // Calculate total reserve (sum of all allowance quantities)
-                var totalReserve = allowanceItems.Sum(a => a.Quantity);
+                var totalOriginalQuantity = allowanceItems.Sum(a => a.Quantity);
 
                 // Get all orders from allowance for this department and year
                 var ordersFromAllowance = await _orderRepository.FindAsync(
                     o => o.DepartmentId == departmentId && 
                          o.IsFromAllowance && 
-                         o.UsageDate.Year == year &&
+                         o.CreationDate.Year == year &&
                          !o.IsDeleted);
+                
+                var orderIds = ordersFromAllowance.Select(o => o.Id).ToList();
+                int totalUsedQuantity = 0;
+                int totalReservedQuantity = 0;
 
-                // Calculate ordered quantity (New and UnderProcess orders)
-                var orderedOrderIds = ordersFromAllowance
-                    .Where(o => o.Status == RequestStatus.New || o.Status == RequestStatus.UnderProcess)
-                    .Select(o => o.Id)
-                    .ToList();
+                if (orderIds.Any())
+                {
+                    // Get all supplies for these orders
+                    var supplies = await _supplyRepository.FindAsync(
+                        s => orderIds.Contains(s.OrderId) && !s.IsDeleted);
 
-                var orderedItems = await _requestItemRepository.FindAsync(
-                    ri => orderedOrderIds.Contains(ri.RequestId) && !ri.IsDeleted);
-                var orderedQuantity = (int)orderedItems.Sum(ri => ri.Quantity);
+                    var draftSupplyIds = supplies
+                        .Where(s => s.SubmissionStatus == SupplySubmissionStatus.Draft)
+                        .Select(s => s.Id)
+                        .ToList();
 
-                // Calculate utilized quantity (Approved orders)
-                var utilizedOrderIds = ordersFromAllowance
-                    .Where(o => o.Status == RequestStatus.Approved)
-                    .Select(o => o.Id)
-                    .ToList();
+                    var submittedSupplyIds = supplies
+                        .Where(s => s.SubmissionStatus == SupplySubmissionStatus.Submitted)
+                        .Select(s => s.Id)
+                        .ToList();
+                    
+                    var allSupplyIds = draftSupplyIds.Concat(submittedSupplyIds).ToList();
+                    
+                    if (allSupplyIds.Any())
+                    {
+                        var supplyDetails = await _supplyDetailRepository.FindAsync(
+                            sd => allSupplyIds.Contains(sd.SupplyId) && !sd.IsDeleted);
 
-                var utilizedItems = await _requestItemRepository.FindAsync(
-                    ri => utilizedOrderIds.Contains(ri.RequestId) && !ri.IsDeleted);
-                var utilizedQuantity = (int)utilizedItems.Sum(ri => ri.Quantity);
+                        // Calculate Used (Submitted)
+                        totalUsedQuantity = (int)supplyDetails
+                            .Where(sd => submittedSupplyIds.Contains(sd.SupplyId))
+                            .Sum(sd => sd.Quantity);
 
-                // Calculate available reserve
-                var availableReserve = totalReserve - orderedQuantity - utilizedQuantity;
+                        // Calculate Reserved (Draft)
+                        totalReservedQuantity = (int)supplyDetails
+                            .Where(sd => draftSupplyIds.Contains(sd.SupplyId))
+                            .Sum(sd => sd.Quantity);
+                    }
+                }
+
+                // Calculate remaining
+                var totalRemainingQuantity = totalOriginalQuantity - totalUsedQuantity - totalReservedQuantity;
 
                 var result = new AllowanceReserveDetailsDto
                 {
                     DepartmentId = departmentId,
                     Year = year,
-                    TotalReserve = totalReserve,
-                    AvailableReserve = Math.Max(0, availableReserve), // Ensure non-negative
-                    OrderedQuantity = orderedQuantity,
-                    UtilizedQuantity = utilizedQuantity
+                    TotalOriginalQuantity = totalOriginalQuantity,
+                    TotalRemainingQuantity = Math.Max(0, totalRemainingQuantity),
+                    TotalReservedQuantityByOrdersOnProcessing = totalReservedQuantity,
+                    TotalUsedQuantity = totalUsedQuantity
                 };
 
-                _logger.LogInformation("Reserve details calculated. DepartmentId: {DepartmentId}, Year: {Year}, Total: {Total}, Available: {Available}, Ordered: {Ordered}, Utilized: {Utilized}", 
-                    departmentId, year, totalReserve, availableReserve, orderedQuantity, utilizedQuantity);
+                _logger.LogInformation("Reserve details calculated. DepartmentId: {DepartmentId}, Year: {Year}, Original: {Original}, Remaining: {Remaining}, Reserved: {Reserved}, Used: {Used}", 
+                    departmentId, year, totalOriginalQuantity, totalRemainingQuantity, totalReservedQuantity, totalUsedQuantity);
 
                 return APIOperationResponse<AllowanceReserveDetailsDto>.Success(result);
             }
@@ -451,10 +591,10 @@ namespace Ettad.Inventory.Service.AllowanceItems
                         DepartmentNameAr = department.NameAr,
                         DepartmentNameEn = department.NameEn,
                         Year = year,
-                        TotalReserve = 0,
-                        TotalAvailableReserve = 0,
-                        TotalOrderedQuantity = 0,
-                        TotalUtilizedQuantity = 0,
+                        TotalOriginalQuantity = 0,
+                        TotalRemainingQuantity = 0,
+                        TotalReservedQuantityByOrdersOnProcessing = 0,
+                        TotalUsedQuantity = 0,
                         Items = new List<AllowanceItemReserveDetailsDto>()
                     });
                 }
@@ -463,55 +603,63 @@ namespace Ettad.Inventory.Service.AllowanceItems
                 var ordersFromAllowance = await _orderRepository.FindAsync(
                     o => o.DepartmentId == departmentId && 
                          o.IsFromAllowance && 
-                         o.UsageDate.Year == year &&
+                         o.CreationDate.Year == year &&
                          !o.IsDeleted);
 
-                var allOrderIds = ordersFromAllowance.Select(o => o.Id).ToList();
+                var orderIds = ordersFromAllowance.Select(o => o.Id).ToList();
                 
-                // Get all request items for these orders
-                var allRequestItems = await _requestItemRepository.FindAsync(
-                    ri => allOrderIds.Contains(ri.RequestId) && !ri.IsDeleted);
+                // Prepare dictionaries for quantities
+                var usedQuantityByItem = new Dictionary<long, int>();
+                var reservedQuantityByItem = new Dictionary<long, int>();
+
+                if (orderIds.Any())
+                {
+                    var supplies = await _supplyRepository.FindAsync(
+                        s => orderIds.Contains(s.OrderId) && !s.IsDeleted);
+
+                    var draftSupplyIds = supplies.Where(s => s.SubmissionStatus == SupplySubmissionStatus.Draft).Select(s => s.Id).ToList();
+                    var submittedSupplyIds = supplies.Where(s => s.SubmissionStatus == SupplySubmissionStatus.Submitted).Select(s => s.Id).ToList();
+                    var allSupplyIds = draftSupplyIds.Concat(submittedSupplyIds).ToList();
+
+                    if (allSupplyIds.Any())
+                    {
+                        var supplyDetails = await _supplyDetailRepository.FindAsync(
+                            sd => allSupplyIds.Contains(sd.SupplyId) && !sd.IsDeleted);
+
+                        // Group by ItemId
+                        usedQuantityByItem = supplyDetails
+                            .Where(sd => submittedSupplyIds.Contains(sd.SupplyId))
+                            .GroupBy(sd => sd.ItemId)
+                            .ToDictionary(g => g.Key, g => (int)g.Sum(sd => sd.Quantity));
+
+                        reservedQuantityByItem = supplyDetails
+                            .Where(sd => draftSupplyIds.Contains(sd.SupplyId))
+                            .GroupBy(sd => sd.ItemId)
+                            .ToDictionary(g => g.Key, g => (int)g.Sum(sd => sd.Quantity));
+                    }
+                }
 
                 // Calculate per-item details
                 var itemDetailsList = new List<AllowanceItemReserveDetailsDto>();
-                int totalReserve = 0;
-                int totalAvailableReserve = 0;
-                int totalOrderedQuantity = 0;
-                int totalUtilizedQuantity = 0;
+                int totalOriginal = 0;
+                int totalRemaining = 0;
+                int totalReserved = 0;
+                int totalUsed = 0;
 
                 foreach (var allowanceItem in allowanceItems)
                 {
                     var itemId = allowanceItem.ItemId;
-                    var itemTotalReserve = allowanceItem.Quantity;
-
-                    // Calculate ordered quantity for this item (New and UnderProcess orders)
-                    var orderedOrderIds = ordersFromAllowance
-                        .Where(o => o.Status == RequestStatus.New || o.Status == RequestStatus.UnderProcess)
-                        .Select(o => o.Id)
-                        .ToList();
-
-                    var itemOrderedQuantity = (int)allRequestItems
-                        .Where(ri => orderedOrderIds.Contains(ri.RequestId) && ri.ItemId == itemId)
-                        .Sum(ri => ri.Quantity);
-
-                    // Calculate utilized quantity for this item (Approved orders)
-                    var utilizedOrderIds = ordersFromAllowance
-                        .Where(o => o.Status == RequestStatus.Approved)
-                        .Select(o => o.Id)
-                        .ToList();
-
-                    var itemUtilizedQuantity = (int)allRequestItems
-                        .Where(ri => utilizedOrderIds.Contains(ri.RequestId) && ri.ItemId == itemId)
-                        .Sum(ri => ri.Quantity);
-
-                    // Calculate available reserve for this item
-                    var itemAvailableReserve = Math.Max(0, itemTotalReserve - itemOrderedQuantity - itemUtilizedQuantity);
+                    var itemOriginalQuantity = allowanceItem.Quantity;
+                    var itemUsedQuantity = usedQuantityByItem.TryGetValue(itemId, out var used) ? used : 0;
+                    var itemReservedQuantity = reservedQuantityByItem.TryGetValue(itemId, out var reserved) ? reserved : 0;
+                    var itemRemainingQuantity = Math.Max(0, itemOriginalQuantity - itemUsedQuantity - itemReservedQuantity);
 
                     // Get item details
                     var item = allowanceItem.Item;
                     var itemName = item?.Name ?? "Unknown Item";
                     var itemNo = item?.ItemNo ?? "";
-                    var batchNo = item?.BatchNo ?? "";
+                    // BatchNo is now on InventoryDetail, not BaseItem - set to null for allowance items
+                    string? batchNo = null;
 
                     itemDetailsList.Add(new AllowanceItemReserveDetailsDto
                     {
@@ -519,17 +667,17 @@ namespace Ettad.Inventory.Service.AllowanceItems
                         ItemName = itemName,
                         ItemNo = itemNo,
                         BatchNo = batchNo,
-                        TotalReserve = itemTotalReserve,
-                        AvailableReserve = itemAvailableReserve,
-                        OrderedQuantity = itemOrderedQuantity,
-                        UtilizedQuantity = itemUtilizedQuantity
+                        OriginalQuantity = itemOriginalQuantity,
+                        RemainingQuantity = itemRemainingQuantity,
+                        ReservedQuantityByOrdersOnProcessing = itemReservedQuantity,
+                        UsedQuantity = itemUsedQuantity
                     });
 
                     // Accumulate totals
-                    totalReserve += itemTotalReserve;
-                    totalAvailableReserve += itemAvailableReserve;
-                    totalOrderedQuantity += itemOrderedQuantity;
-                    totalUtilizedQuantity += itemUtilizedQuantity;
+                    totalOriginal += itemOriginalQuantity;
+                    totalRemaining += itemRemainingQuantity;
+                    totalReserved += itemReservedQuantity;
+                    totalUsed += itemUsedQuantity;
                 }
 
                 var result = new AllowanceReserveDetailsByItemDto
@@ -539,15 +687,15 @@ namespace Ettad.Inventory.Service.AllowanceItems
                     DepartmentNameAr = department.NameAr,
                     DepartmentNameEn = department.NameEn,
                     Year = year,
-                    TotalReserve = totalReserve,
-                    TotalAvailableReserve = totalAvailableReserve,
-                    TotalOrderedQuantity = totalOrderedQuantity,
-                    TotalUtilizedQuantity = totalUtilizedQuantity,
+                    TotalOriginalQuantity = totalOriginal,
+                    TotalRemainingQuantity = totalRemaining,
+                    TotalReservedQuantityByOrdersOnProcessing = totalReserved,
+                    TotalUsedQuantity = totalUsed,
                     Items = itemDetailsList
                 };
 
-                _logger.LogInformation("Reserve details by item calculated. DepartmentId: {DepartmentId}, Year: {Year}, ItemCount: {ItemCount}, TotalReserve: {Total}, TotalAvailable: {Available}", 
-                    departmentId, year, itemDetailsList.Count, totalReserve, totalAvailableReserve);
+                _logger.LogInformation("Reserve details by item calculated. DepartmentId: {DepartmentId}, Year: {Year}, ItemCount: {ItemCount}, TotalOriginal: {Total}, TotalRemaining: {Remaining}", 
+                    departmentId, year, itemDetailsList.Count, totalOriginal, totalRemaining);
 
                 return APIOperationResponse<AllowanceReserveDetailsByItemDto>.Success(result);
             }
@@ -558,6 +706,88 @@ namespace Ettad.Inventory.Service.AllowanceItems
                 return APIOperationResponse<AllowanceReserveDetailsByItemDto>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
             }
         }
+
+        /// <summary>
+        /// Populates calculated quantities (UsedQuantityFromAllowance, ReservedQuantityByOrdersUnderProccessing, RemainingQuantity) for an AllowanceItemDto
+        /// </summary>
+        private async Task PopulateCalculatedQuantitiesAsync(AllowanceItemDto dto, AllowanceItem allowanceItem)
+        {
+            try
+            {
+                // Get all orders from this department and year
+                var orders = await _orderRepository.FindAsync(
+                    o => o.DepartmentId == allowanceItem.DepartmentId &&
+                         o.CreationDate.Year == allowanceItem.Year &&
+                         !o.IsDeleted);
+
+                var orderIds = orders.Select(o => o.Id).ToList();
+
+                if (!orderIds.Any())
+                {
+                    dto.UsedQuantityFromAllowance = 0;
+                    dto.ReservedQuantityByOrdersOnProcessing = 0;
+                    dto.RemainingQuantityFromAllowance = allowanceItem.Quantity;
+                    return;
+                }
+
+                // Get all supplies for orders that have supplies (only consider orders with supplies)
+                var supplies = await _supplyRepository.FindAsync(
+                    s => orderIds.Contains(s.OrderId) && !s.IsDeleted);
+
+                // Separate Draft and Submitted supplies
+                var draftSupplyIds = supplies
+                    .Where(s => s.SubmissionStatus == SupplySubmissionStatus.Draft)
+                    .Select(s => s.Id)
+                    .ToList();
+
+                var submittedSupplyIds = supplies
+                    .Where(s => s.SubmissionStatus == SupplySubmissionStatus.Submitted)
+                    .Select(s => s.Id)
+                    .ToList();
+
+                // Calculate UsedQuantityFromAllowance from Submitted supplies
+                if (submittedSupplyIds.Any())
+                {
+                    var submittedSupplyDetails = await _supplyDetailRepository.FindAsync(
+                        sd => submittedSupplyIds.Contains(sd.SupplyId) &&
+                              sd.ItemId == allowanceItem.ItemId &&
+                              !sd.IsDeleted);
+
+                    dto.UsedQuantityFromAllowance = (int)submittedSupplyDetails.Sum(sd => sd.Quantity);
+                }
+                else
+                {
+                    dto.UsedQuantityFromAllowance = 0;
+                }
+
+                // Calculate ReservedQuantityByOrdersUnderProccessing from Draft supplies
+                if (draftSupplyIds.Any())
+                {
+                    var draftSupplyDetails = await _supplyDetailRepository.FindAsync(
+                        sd => draftSupplyIds.Contains(sd.SupplyId) &&
+                              sd.ItemId == allowanceItem.ItemId &&
+                              !sd.IsDeleted);
+
+                    dto.ReservedQuantityByOrdersOnProcessing = (int)draftSupplyDetails.Sum(sd => sd.Quantity);
+                }
+                else
+                {
+                    dto.ReservedQuantityByOrdersOnProcessing = 0;
+                }
+
+                // Calculate RemainingQuantity
+                dto.RemainingQuantityFromAllowance = Math.Max(0, allowanceItem.Quantity - dto.UsedQuantityFromAllowance - dto.ReservedQuantityByOrdersOnProcessing);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error calculating quantities for AllowanceItem. Id: {Id}, ItemId: {ItemId}, DepartmentId: {DepartmentId}, Year: {Year}",
+                    allowanceItem.Id, allowanceItem.ItemId, allowanceItem.DepartmentId, allowanceItem.Year);
+                
+                // Set defaults on error
+                dto.UsedQuantityFromAllowance = 0;
+                dto.ReservedQuantityByOrdersOnProcessing = 0;
+                dto.RemainingQuantityFromAllowance = allowanceItem.Quantity;
+            }
+        }
     }
 }
-

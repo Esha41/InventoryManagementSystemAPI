@@ -10,18 +10,12 @@ namespace Ettad.Data.Entities
         public string ItemNo { get; set; }
        
         public ItemType ItemType { get; set; }
-       
-        public string BatchNo { get; set; }
 
         public string Nsn { get; set; }
         
         public long HccId  { get; set; }
         
         public string PartNo { get; set; }
-
-        public bool ReadyForIssue { get; set; } = true;
-
-        public DateTime? ExpiryDate { get; set; }
 
         #region Navigation Properties
 

@@ -14,8 +14,7 @@ namespace Ettad.Inventory.Service.AllowanceItems.Profiles
             // Entity to Detail DTO
             CreateMap<AllowanceItem, AllowanceItemDetailDto>()
                 .ForMember(dest => dest.ItemName, opt => opt.MapFrom(src => src.Item != null ? src.Item.Name : null))
-                .ForMember(dest => dest.ItemNo, opt => opt.MapFrom(src => src.Item != null ? src.Item.ItemNo : null))
-                .ForMember(dest => dest.BatchNo, opt => opt.MapFrom(src => src.Item != null ? src.Item.BatchNo : null));
+                .ForMember(dest => dest.ItemNo, opt => opt.MapFrom(src => src.Item != null ? src.Item.ItemNo : null));
 
             // CreateUpdate DTO to Entity
             CreateMap<CreateUpdateAllowanceItemDto, AllowanceItem>()
