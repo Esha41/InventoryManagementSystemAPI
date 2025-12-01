@@ -21,6 +21,8 @@ namespace Ettad.Inventory.Service.Inventories.Dtos
 
         public long OriginalQuantity { get; set; } // Original Quantity
 
+        public string? BatchNo { get; set; }
+
         public long UsedQuantity { get; set; }
         public long ReservedQuantityByOrdersOnProcessing { get; set; }
         public long RemainingQuantity { get; set; }

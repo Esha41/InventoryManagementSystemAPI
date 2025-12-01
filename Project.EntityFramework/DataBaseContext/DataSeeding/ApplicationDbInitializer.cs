@@ -55,7 +55,6 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 {
                     Name = "9mm NATO Ball Ammunition",
                     ItemNo = "AMM-001",
-                    BatchNo = "BATCH-001",
                     HccId = 1,
                     PartNo = "PN-001",
                     ReadyForIssue = true,
@@ -84,7 +83,6 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 {
                     Name = "7.62mm NATO Match Ammunition",
                     ItemNo = "AMM-002",
-                    BatchNo = "BATCH-002",
                     HccId = 2,
                     PartNo = "PN-002",
                     ReadyForIssue = true,
@@ -113,7 +111,6 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 {
                     Name = "5.56mm NATO Tracer Round",
                     ItemNo = "AMM-003",
-                    BatchNo = "BATCH-003",
                     HccId = 3,
                     PartNo = "PN-003",
                     ReadyForIssue = true,
@@ -160,7 +157,6 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 {
                     Name = "M16A4 Assault Rifle",
                     ItemNo = "WPN-001",
-                    BatchNo = "BATCH-001",
                     HccId = 1,
                     PartNo = "PN-WPN-001",
                     ReadyForIssue = true,
@@ -174,7 +170,6 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 {
                     Name = "M4 Carbine",
                     ItemNo = "WPN-002",
-                    BatchNo = "BATCH-002",
                     HccId = 2,
                     PartNo = "PN-WPN-002",
                     ReadyForIssue = true,
@@ -188,7 +183,6 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 {
                     Name = "M249 Squad Automatic Weapon",
                     ItemNo = "WPN-003",
-                    BatchNo = "BATCH-003",
                     HccId = 3,
                     PartNo = "PN-WPN-003",
                     ReadyForIssue = true,
@@ -202,7 +196,6 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 {
                     Name = "M240B Machine Gun",
                     ItemNo = "WPN-004",
-                    BatchNo = "BATCH-004",
                     HccId = 1,
                     PartNo = "PN-WPN-004",
                     ReadyForIssue = true,
@@ -216,7 +209,6 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 {
                     Name = "M9 Pistol",
                     ItemNo = "WPN-005",
-                    BatchNo = "BATCH-005",
                     HccId = 2,
                     PartNo = "PN-WPN-005",
                     ReadyForIssue = true,
@@ -230,7 +222,6 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 {
                     Name = "M24 Sniper Weapon System",
                     ItemNo = "WPN-006",
-                    BatchNo = "BATCH-006",
                     HccId = 3,
                     PartNo = "PN-WPN-006",
                     ReadyForIssue = true,
@@ -244,7 +235,6 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 {
                     Name = "M2 Browning Machine Gun",
                     ItemNo = "WPN-007",
-                    BatchNo = "BATCH-007",
                     HccId = 1,
                     PartNo = "PN-WPN-007",
                     ReadyForIssue = true,
@@ -258,7 +248,6 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 {
                     Name = "M203 Grenade Launcher",
                     ItemNo = "WPN-008",
-                    BatchNo = "BATCH-008",
                     HccId = 2,
                     PartNo = "PN-WPN-008",
                     ReadyForIssue = true,
@@ -272,7 +261,6 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 {
                     Name = "M110 Semi-Automatic Sniper System",
                     ItemNo = "WPN-009",
-                    BatchNo = "BATCH-009",
                     HccId = 3,
                     PartNo = "PN-WPN-009",
                     ReadyForIssue = true,
@@ -304,7 +292,6 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 {
                     Name = "M67 Fragmentation Grenade",
                     ItemNo = "EXP-001",
-                    BatchNo = "BATCH-001",
                     HccId = 1,
                     PartNo = "PN-EXP-001",
                     ReadyForIssue = true,
@@ -318,7 +305,6 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 {
                     Name = "M84 Stun Grenade",
                     ItemNo = "EXP-002",
-                    BatchNo = "BATCH-002",
                     HccId = 2,
                     PartNo = "PN-EXP-002",
                     ReadyForIssue = true,
@@ -332,7 +318,6 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 {
                     Name = "M18 Smoke Grenade",
                     ItemNo = "EXP-003",
-                    BatchNo = "BATCH-003",
                     HccId = 3,
                     PartNo = "PN-EXP-003",
                     ReadyForIssue = true,
@@ -346,7 +331,6 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 {
                     Name = "C4 Explosive",
                     ItemNo = "EXP-004",
-                    BatchNo = "BATCH-004",
                     HccId = 1,
                     PartNo = "PN-EXP-004",
                     ReadyForIssue = true,
@@ -360,7 +344,6 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 {
                     Name = "M112 Demolition Charge",
                     ItemNo = "EXP-005",
-                    BatchNo = "BATCH-005",
                     HccId = 2,
                     PartNo = "PN-EXP-005",
                     ReadyForIssue = true,
@@ -374,7 +357,6 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 {
                     Name = "M26A2 Fragmentation Grenade",
                     ItemNo = "EXP-006",
-                    BatchNo = "BATCH-006",
                     HccId = 3,
                     PartNo = "PN-EXP-006",
                     ReadyForIssue = true,
@@ -388,7 +370,6 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 {
                     Name = "AN-M14 TH3 Incendiary Grenade",
                     ItemNo = "EXP-007",
-                    BatchNo = "BATCH-007",
                     HccId = 1,
                     PartNo = "PN-EXP-007",
                     ReadyForIssue = true,
@@ -402,7 +383,6 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 {
                     Name = "M72 LAW Rocket",
                     ItemNo = "EXP-008",
-                    BatchNo = "BATCH-008",
                     HccId = 2,
                     PartNo = "PN-EXP-008",
                     ReadyForIssue = true,
@@ -416,7 +396,6 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 {
                     Name = "M18A1 Claymore Mine",
                     ItemNo = "EXP-009",
-                    BatchNo = "BATCH-009",
                     HccId = 3,
                     PartNo = "PN-EXP-009",
                     ReadyForIssue = true,

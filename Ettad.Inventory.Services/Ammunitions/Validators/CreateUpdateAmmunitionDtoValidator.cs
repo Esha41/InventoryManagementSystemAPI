@@ -15,10 +15,6 @@ namespace Ettad.Inventory.Service.Ammunitions.Validators
                 .NotEmpty().WithMessage("Item number is required")
                 .MaximumLength(100).WithMessage("Item number cannot exceed 100 characters");
 
-            RuleFor(x => x.BatchNo)
-                .NotEmpty().WithMessage("Batch number is required")
-                .MaximumLength(100).WithMessage("Batch number cannot exceed 100 characters");
-
             RuleFor(x => x.HccId)
                 .GreaterThan(0).WithMessage("HCC is required");
 

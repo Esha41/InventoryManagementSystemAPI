@@ -1,4 +1,4 @@
-﻿using Ettad.Data.Enums;
+using Ettad.Data.Enums;
 using Ettad.Module.lookup.Dtos;
 
 namespace Ettad.Inventory.Service.Ammunitions.Dtos
@@ -12,8 +12,6 @@ namespace Ettad.Inventory.Service.Ammunitions.Dtos
         public string Name { get; set; }
 
         public string ItemNo { get; set; }
-
-        public string BatchNo { get; set; }
 
         public long HccId { get; set; }
 

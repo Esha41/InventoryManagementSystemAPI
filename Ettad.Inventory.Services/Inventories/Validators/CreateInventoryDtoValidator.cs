@@ -45,6 +45,10 @@ namespace Ettad.Inventory.Service.Inventories.Validators
             RuleFor(x => x.OriginalQuantity)
                 .GreaterThan(0).WithMessage("Item quantity must be greater than 0");
 
+            RuleFor(x => x.BatchNo)
+                .MaximumLength(500).When(x => !string.IsNullOrEmpty(x.BatchNo))
+                .WithMessage("Batch number cannot exceed 500 characters");
+
             RuleFor(x => x.SupplierId)
                 .GreaterThan(0).When(x => x.SupplierId.HasValue)
                 .WithMessage("Supplier ID must be greater than 0 when provided");

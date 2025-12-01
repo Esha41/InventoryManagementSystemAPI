@@ -27,6 +27,8 @@ namespace Ettad.Inventory.Service.Inventories.Dtos
 
         public long? CountryId { get; set; }
 
+        public string? BatchNo { get; set; }
+
         public long OriginalQuantity { get; set; }
     }
 }

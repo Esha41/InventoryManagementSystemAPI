@@ -18,7 +18,7 @@ namespace Ettad.Inventory.Service.AllowanceItems.Dtos
         // Item details
         public string ItemName { get; set; }
         public string ItemNo { get; set; }
-        public string BatchNo { get; set; }
+        public string? BatchNo { get; set; }
     }
 
     public class AllowanceItemByDepartmentDto

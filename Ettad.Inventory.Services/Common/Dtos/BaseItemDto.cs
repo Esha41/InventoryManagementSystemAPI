@@ -10,7 +10,6 @@ namespace Ettad.Inventory.Service.Common.Dtos
         public string Name { get; set; }
         public string ItemNo { get; set; }
         public ItemType ItemType { get; set; }
-        public string BatchNo { get; set; }
         public long HccId { get; set; }
         public string PartNo { get; set; }
         public bool ReadyForIssue { get; set; }

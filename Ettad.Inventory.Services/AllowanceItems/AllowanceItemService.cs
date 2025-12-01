@@ -658,7 +658,8 @@ namespace Ettad.Inventory.Service.AllowanceItems
                     var item = allowanceItem.Item;
                     var itemName = item?.Name ?? "Unknown Item";
                     var itemNo = item?.ItemNo ?? "";
-                    var batchNo = item?.BatchNo ?? "";
+                    // BatchNo is now on InventoryDetail, not BaseItem - set to null for allowance items
+                    string? batchNo = null;
 
                     itemDetailsList.Add(new AllowanceItemReserveDetailsDto
                     {

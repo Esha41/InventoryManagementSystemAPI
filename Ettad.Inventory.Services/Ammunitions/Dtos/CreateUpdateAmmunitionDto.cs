@@ -1,12 +1,10 @@
-﻿namespace Ettad.Inventory.Service.Ammunitions.Dtos
+namespace Ettad.Inventory.Service.Ammunitions.Dtos
 {
     public class CreateUpdateAmmunitionDto
     {
         public string Name { get; set; }
 
         public string ItemNo { get; set; }
-
-        public string BatchNo { get; set; }
 
         public long HccId { get; set; }
 
