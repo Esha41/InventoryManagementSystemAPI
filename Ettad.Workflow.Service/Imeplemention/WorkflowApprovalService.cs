@@ -441,6 +441,64 @@ namespace Ettad.Workflows.Service.Imeplemention
                 }
             }
 
+            // Get approver info for email notifications
+            var approver = await _context.Users.FirstOrDefaultAsync(u => u.Id == _currentUserService.UserId);
+            var approverName = approver?.FullNameEN ?? approver?.FullNameAR ?? approver?.UserName ?? "Approver";
+            var stepNumber = step.WorkflowStep?.StepOrder ?? 0;
+            var requestDepartmentId = baseRequest.DepartmentId > 0 ? (long?)baseRequest.DepartmentId : null;
+
+            // 📧 Send confirmation email to current approver (fire and forget - don't block)
+            // Only send if department matches for restricted roles, otherwise send normally
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    _logger.LogInformation(
+                        "Checking if approval confirmation email should be sent to approver {ApproverId} for request {RequestId}, DepartmentId: {DeptId}",
+                        _currentUserService.UserId, baseRequest.Id, requestDepartmentId);
+
+                    bool shouldSendEmail = await ShouldSendEmailToUserAsync(_currentUserService.UserId, requestDepartmentId);
+                    
+                    _logger.LogInformation(
+                        "ShouldSendEmailToUserAsync returned {ShouldSend} for approver {ApproverId}",
+                        shouldSendEmail, _currentUserService.UserId);
+
+                    if (shouldSendEmail)
+                    {
+                        _logger.LogInformation(
+                            "Sending approval confirmation email to approver {ApproverId} for request {RequestId}",
+                            _currentUserService.UserId, baseRequest.Id);
+
+                        await _notificationHelperService.SendNotificationAndEmailAsync(
+                            $"Approval Confirmation - Request {baseRequest.RequestNo}",
+                            $"You have successfully approved {baseRequest.RequestType} request {baseRequest.RequestNo} at step {stepNumber}." +
+                            (!string.IsNullOrWhiteSpace(model.Comments) ? $" Your comments: {model.Comments}" : ""),
+                            "Request",
+                            baseRequest.Id,
+                            new List<string> { _currentUserService.UserId },
+                            null,
+                            _currentUserService.UserId
+                        );
+
+                        _logger.LogInformation(
+                            "Approval confirmation email sent successfully to approver {ApproverId} for request {RequestId}",
+                            _currentUserService.UserId, baseRequest.Id);
+                    }
+                    else
+                    {
+                        _logger.LogWarning(
+                            "Skipping approval confirmation email to approver {ApproverId} - department mismatch for restricted role or other condition",
+                            _currentUserService.UserId);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, 
+                        "Failed to send approval confirmation email to approver {ApproverId} for request {RequestId}. Error: {ErrorMessage}",
+                        _currentUserService.UserId, baseRequest.Id, ex.Message);
+                }
+            });
+
             // ⭐ Continue normal workflow
             var workflowSteps = await _context.WorkflowSteps
                 .Where(ws => ws.WorkflowId == step.WorkflowStep.WorkflowId)
@@ -465,40 +523,109 @@ namespace Ettad.Workflows.Service.Imeplemention
                 _context.WorkflowApprovalSteps.Add(nextApproval);
                 baseRequest.Status = RequestStatus.UnderProcess;
 
+                // 📧 Send email to requester about step approval (fire and forget - don't block)
+                _ = Task.Run(async () =>
+                {
+                    try
+                    {
+                        await _notificationHelperService.SendNotificationAndEmailAsync(
+                            $"Request {baseRequest.RequestNo} - Step {stepNumber} Approved",
+                            $"Your {baseRequest.RequestType} request {baseRequest.RequestNo} has been approved at step {stepNumber} by {approverName}." +
+                            (!string.IsNullOrWhiteSpace(model.Comments) ? $" Comments: {model.Comments}" : ""),
+                            "Request",
+                            baseRequest.Id,
+                            new List<string> { baseRequest.CreatedBy },
+                            null,
+                            _currentUserService.UserId
+                        );
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Failed to send approval notification email to requester for request {RequestId}", baseRequest.Id);
+                    }
+                });
+
                 // Send notification to next step approvers
+                // Filter by department for restricted roles, otherwise send to all users in role
                 var nextRoles = new List<string> { nextStep.ApplicationRoleId };
                 if (!string.IsNullOrEmpty(nextStep.HigherApprovalRoleId))
                     nextRoles.Add(nextStep.HigherApprovalRoleId);
 
-                await _notificationHelperService.SendNotificationAndEmailAsync(
-                    "New Approval Required",
-                    "A request awaits your approval.",
-                    "Request",
-                    baseRequest.Id,
-                    null,
-                    nextRoles,
-                    _currentUserService.UserId
-                );
+                // Separate restricted and non-restricted roles
+                var (restrictedRoleIds, nonRestrictedRoleIds) = await SeparateRestrictedRolesAsync(nextRoles);
+
+                _logger.LogInformation(
+                    "Next approver notification: Restricted roles: {RestrictedCount}, Non-restricted roles: {NonRestrictedCount}, Request DepartmentId: {RequestDeptId}",
+                    restrictedRoleIds.Count, nonRestrictedRoleIds.Count, requestDepartmentId);
+
+                // For restricted roles: get filtered user IDs by department
+                var restrictedUserIds = new List<string>();
+                if (restrictedRoleIds.Any() && requestDepartmentId.HasValue)
+                {
+                    restrictedUserIds = await GetFilteredApproverUserIdsAsync(restrictedRoleIds, requestDepartmentId);
+                    _logger.LogInformation(
+                        "Next approver notification: Found {Count} users in restricted roles after department filtering",
+                        restrictedUserIds.Count);
+                }
+                else if (restrictedRoleIds.Any() && !requestDepartmentId.HasValue)
+                {
+                    _logger.LogWarning(
+                        "Next approver notification: Request has no department ID, skipping restricted role users for request {RequestId}",
+                        baseRequest.Id);
+                }
+
+                // Combine restricted user IDs and non-restricted role IDs
+                if (restrictedUserIds.Any() || nonRestrictedRoleIds.Any())
+                {
+                    _logger.LogInformation(
+                        "Next approver notification: Sending to {RestrictedUserCount} restricted users and {NonRestrictedRoleCount} non-restricted roles for request {RequestId}",
+                        restrictedUserIds.Count, nonRestrictedRoleIds.Count, baseRequest.Id);
+
+                    await _notificationHelperService.SendNotificationAndEmailAsync(
+                        "New Approval Required",
+                        $"A {baseRequest.RequestType} request {baseRequest.RequestNo} is pending your approval at step {nextStep.StepOrder}. Please review and take action.",
+                        "Request",
+                        baseRequest.Id,
+                        restrictedUserIds.Any() ? restrictedUserIds : null,
+                        nonRestrictedRoleIds.Any() ? nonRestrictedRoleIds : null,
+                        _currentUserService.UserId
+                    );
+                }
+                else
+                {
+                    _logger.LogWarning(
+                        "Next approver notification: No next approvers found (after department filtering) for request {RequestId} at step {StepOrder}. Restricted users: {RestrictedCount}, Non-restricted roles: {NonRestrictedCount}",
+                        baseRequest.Id, nextStep.StepOrder, restrictedUserIds.Count, nonRestrictedRoleIds.Count);
+                }
 
                 // 🔔 Also notify next step notifiers if configured
                 await SendNotificationsToStepNotifiersOnWorkflowStartAsync(nextStep.Id, baseRequest.Id);
             }
             else
             {
-                // ⭐ Final approval — now notify requester
+                // ⭐ Final approval — notify requester
                 baseRequest.Status = RequestStatus.Approved;
 
-                var approver = await _context.Users.FirstOrDefaultAsync(u => u.Id == _currentUserService.UserId);
-
-                await _notificationHelperService.SendNotificationAndEmailAsync(
-                    "Request Approved",
-                    $"Approved by {approver?.UserName}",
-                    "Request",
-                    baseRequest.Id,
-                    new List<string> { baseRequest.CreatedBy },
-                    null,
-                    _currentUserService.UserId
-                );
+                _ = Task.Run(async () =>
+                {
+                    try
+                    {
+                        await _notificationHelperService.SendNotificationAndEmailAsync(
+                            $"Request {baseRequest.RequestNo} - Fully Approved",
+                            $"Your {baseRequest.RequestType} request {baseRequest.RequestNo} has been fully approved by {approverName}." +
+                            (!string.IsNullOrWhiteSpace(model.Comments) ? $" Comments: {model.Comments}" : ""),
+                            "Request",
+                            baseRequest.Id,
+                            new List<string> { baseRequest.CreatedBy },
+                            null,
+                            _currentUserService.UserId
+                        );
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Failed to send final approval notification email to requester for request {RequestId}", baseRequest.Id);
+                    }
+                });
             }
 
             baseRequest.ModifiedBy = _currentUserService.UserId;
@@ -548,17 +675,86 @@ namespace Ettad.Workflows.Service.Imeplemention
 
             baseRequest.Status = RequestStatus.Rejected;
 
-            // Notify requester
-            var approver = await _context.Users.FirstOrDefaultAsync(u => u.Id == _currentUserService.UserId);
-            await _notificationHelperService.SendNotificationAndEmailAsync(
-                "Request Rejected",
-                $"Rejected by {approver?.UserName}",
-                "Request",
-                baseRequest.Id,
-                new List<string> { baseRequest.CreatedBy },
-                null,
-                _currentUserService.UserId
-            );
+            // Get rejector info for email notifications
+            var rejector = await _context.Users.FirstOrDefaultAsync(u => u.Id == _currentUserService.UserId);
+            var rejectorName = rejector?.FullNameEN ?? rejector?.FullNameAR ?? rejector?.UserName ?? "Approver";
+            var stepNumber = step.WorkflowStep?.StepOrder ?? 0;
+            var requestDepartmentId = baseRequest.DepartmentId > 0 ? (long?)baseRequest.DepartmentId : null;
+
+            // 📧 Send email to requester about rejection (fire and forget - don't block)
+            // Requester always receives email regardless of department
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await _notificationHelperService.SendNotificationAndEmailAsync(
+                        $"Request {baseRequest.RequestNo} - Rejected",
+                        $"Your {baseRequest.RequestType} request {baseRequest.RequestNo} has been rejected at step {stepNumber} by {rejectorName}." +
+                        (!string.IsNullOrWhiteSpace(model.Comments) ? $" Reason: {model.Comments}" : ""),
+                        "Request",
+                        baseRequest.Id,
+                        new List<string> { baseRequest.CreatedBy },
+                        null,
+                        _currentUserService.UserId
+                    );
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to send rejection notification email to requester for request {RequestId}", baseRequest.Id);
+                }
+            });
+
+            // 📧 Send confirmation email to current rejector (fire and forget - don't block)
+            // Only send if department matches for restricted roles, otherwise send normally
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    _logger.LogInformation(
+                        "Checking if rejection confirmation email should be sent to rejector {RejectorId} for request {RequestId}, DepartmentId: {DeptId}",
+                        _currentUserService.UserId, baseRequest.Id, requestDepartmentId);
+
+                    bool shouldSendEmail = await ShouldSendEmailToUserAsync(_currentUserService.UserId, requestDepartmentId);
+                    
+                    _logger.LogInformation(
+                        "ShouldSendEmailToUserAsync returned {ShouldSend} for rejector {RejectorId}",
+                        shouldSendEmail, _currentUserService.UserId);
+
+                    if (shouldSendEmail)
+                    {
+                        _logger.LogInformation(
+                            "Sending rejection confirmation email to rejector {RejectorId} for request {RequestId}",
+                            _currentUserService.UserId, baseRequest.Id);
+
+                        await _notificationHelperService.SendNotificationAndEmailAsync(
+                            $"Rejection Confirmation - Request {baseRequest.RequestNo}",
+                            $"You have successfully rejected {baseRequest.RequestType} request {baseRequest.RequestNo} at step {stepNumber}." +
+                            (!string.IsNullOrWhiteSpace(model.Comments) ? $" Your comments: {model.Comments}" : ""),
+                            "Request",
+                            baseRequest.Id,
+                            new List<string> { _currentUserService.UserId },
+                            null,
+                            _currentUserService.UserId
+                        );
+
+                        _logger.LogInformation(
+                            "Rejection confirmation email sent successfully to rejector {RejectorId} for request {RequestId}",
+                            _currentUserService.UserId, baseRequest.Id);
+                    }
+                    else
+                    {
+                        _logger.LogWarning(
+                            "Skipping rejection confirmation email to rejector {RejectorId} - department mismatch for restricted role or other condition",
+                            _currentUserService.UserId);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, 
+                        "Failed to send rejection confirmation email to rejector {RejectorId} for request {RequestId}. Error: {ErrorMessage}",
+                        _currentUserService.UserId, baseRequest.Id, ex.Message);
+                }
+            });
 
             baseRequest.ModifiedBy = _currentUserService.UserId;
             baseRequest.ModificationDate = DateTime.UtcNow;
@@ -636,16 +832,40 @@ namespace Ettad.Workflows.Service.Imeplemention
 
             baseRequest.Status = RequestStatus.UnderProcess;
 
-            // Send notification
-            await _notificationHelperService.SendNotificationAndEmailAsync(
-                "Higher Approval Required",
-                "A request requires higher approval.",
-                "Request",
-                baseRequest.Id,
-                null,
-                new List<string> { step.WorkflowStep.HigherApprovalRoleId },
-                _currentUserService.UserId
-            );
+            // Send notification to higher approvers
+            // Filter by department for restricted roles, otherwise send to all users in role
+            var requestDepartmentId = baseRequest.DepartmentId > 0 ? (long?)baseRequest.DepartmentId : null;
+            var higherApprovalRoleIds = new List<string> { step.WorkflowStep.HigherApprovalRoleId };
+
+            // Separate restricted and non-restricted roles
+            var (restrictedRoleIds, nonRestrictedRoleIds) = await SeparateRestrictedRolesAsync(higherApprovalRoleIds);
+
+            // For restricted roles: get filtered user IDs by department
+            var restrictedUserIds = new List<string>();
+            if (restrictedRoleIds.Any() && requestDepartmentId.HasValue)
+            {
+                restrictedUserIds = await GetFilteredApproverUserIdsAsync(restrictedRoleIds, requestDepartmentId);
+            }
+
+            // Combine restricted user IDs and non-restricted role IDs
+            if (restrictedUserIds.Any() || nonRestrictedRoleIds.Any())
+            {
+                await _notificationHelperService.SendNotificationAndEmailAsync(
+                    "Higher Approval Required",
+                    $"A request {baseRequest.RequestNo} requires higher approval.",
+                    "Request",
+                    baseRequest.Id,
+                    restrictedUserIds.Any() ? restrictedUserIds : null,
+                    nonRestrictedRoleIds.Any() ? nonRestrictedRoleIds : null,
+                    _currentUserService.UserId
+                );
+            }
+            else
+            {
+                _logger.LogInformation(
+                    "No higher approvers found (after department filtering) for request {RequestId}",
+                    baseRequest.Id);
+            }
 
             return true;
         }
@@ -818,20 +1038,51 @@ namespace Ettad.Workflows.Service.Imeplemention
                             _context.WorkflowApprovalSteps.Add(workflowApprovalStep);
                             await _context.SaveChangesAsync();
 
+                            // Get the base request to check department ID
+                            var baseRequest = await _context.BaseRequests.FirstOrDefaultAsync(br => br.Id == orderId);
+                            if (baseRequest == null)
+                            {
+                                _logger.LogWarning("Base request not found for orderId {OrderId} when starting workflow", orderId);
+                                return false;
+                            }
+
+                            var requestDepartmentId = baseRequest.DepartmentId > 0 ? (long?)baseRequest.DepartmentId : null;
+
                             // Notify the approver roles after creating the workflow approval step
+                            // Filter by department for restricted roles, otherwise send to all users in role
                             var approverRoles = new List<string> { firstWorkflowStep.ApplicationRoleId };
                             if (!string.IsNullOrEmpty(firstWorkflowStep.HigherApprovalRoleId))
                                 approverRoles.Add(firstWorkflowStep.HigherApprovalRoleId);
 
-                            await _notificationHelperService.SendNotificationAndEmailAsync(
-                                "New Approval Required",
-                                "A request awaits your approval.",
-                                "Request",
-                                orderId,
-                                null,
-                                approverRoles,
-                                _currentUserService.UserId
-                            );
+                            // Separate restricted and non-restricted roles
+                            var (restrictedRoleIds, nonRestrictedRoleIds) = await SeparateRestrictedRolesAsync(approverRoles);
+
+                            // For restricted roles: get filtered user IDs by department
+                            var restrictedUserIds = new List<string>();
+                            if (restrictedRoleIds.Any() && requestDepartmentId.HasValue)
+                            {
+                                restrictedUserIds = await GetFilteredApproverUserIdsAsync(restrictedRoleIds, requestDepartmentId);
+                            }
+
+                            // Combine restricted user IDs and non-restricted role IDs
+                            if (restrictedUserIds.Any() || nonRestrictedRoleIds.Any())
+                            {
+                                await _notificationHelperService.SendNotificationAndEmailAsync(
+                                    "New Approval Required",
+                                    $"A request {baseRequest.RequestNo} awaits your approval.",
+                                    "Request",
+                                    orderId,
+                                    restrictedUserIds.Any() ? restrictedUserIds : null,
+                                    nonRestrictedRoleIds.Any() ? nonRestrictedRoleIds : null,
+                                    _currentUserService.UserId
+                                );
+                            }
+                            else
+                            {
+                                _logger.LogInformation(
+                                    "No approvers found (after department filtering) for request {RequestId} when starting workflow",
+                                    orderId);
+                            }
 
                             // 🔔 Also notify step notifiers if configured
                             await SendNotificationsToStepNotifiersOnWorkflowStartAsync(firstWorkflowStep.Id, orderId);
@@ -1180,6 +1431,254 @@ namespace Ettad.Workflows.Service.Imeplemention
             }
 
             return baseRequests;
+        }
+
+        /// <summary>
+        /// Check if a user has one of the restricted roles that require department matching
+        /// Restricted roles: "Supply Officer (Order Requesting Entity)" and "Requesting Entity Commander (Order Requesting Entity)"
+        /// </summary>
+        private async Task<bool> HasRestrictedRoleAsync(string userId)
+        {
+            if (string.IsNullOrEmpty(userId))
+                return false;
+
+            var userRoles = await (from ur in _context.Set<IdentityUserRole<string>>()
+                                  join r in _context.Roles on ur.RoleId equals r.Id
+                                  where ur.UserId == userId
+                                  select r.Name)
+                                  .ToListAsync();
+
+            var restrictedRoleNames = new[]
+            {
+                "Supply Officer (Order Requesting Entity)",
+                "Requesting Entity Commander (Order Requesting Entity)"
+            };
+
+            bool hasRestricted = userRoles.Any(roleName => restrictedRoleNames.Contains(roleName));
+            
+            if (hasRestricted)
+            {
+                _logger.LogInformation(
+                    "User {UserId} has restricted role. User roles: {Roles}",
+                    userId, string.Join(", ", userRoles));
+            }
+
+            return hasRestricted;
+        }
+
+        /// <summary>
+        /// Check if email should be sent to a user based on department matching for restricted roles
+        /// </summary>
+        private async Task<bool> ShouldSendEmailToUserAsync(string userId, long? requestDepartmentId)
+        {
+            if (string.IsNullOrEmpty(userId))
+            {
+                _logger.LogWarning("ShouldSendEmailToUserAsync: UserId is null or empty");
+                return false;
+            }
+
+            // Check if user has restricted role
+            bool hasRestrictedRole = await HasRestrictedRoleAsync(userId);
+
+            // If user doesn't have restricted role, always send email
+            if (!hasRestrictedRole)
+            {
+                _logger.LogInformation(
+                    "ShouldSendEmailToUserAsync: User {UserId} does not have restricted role - will send email",
+                    userId);
+                return true;
+            }
+
+            _logger.LogInformation(
+                "ShouldSendEmailToUserAsync: User {UserId} has restricted role - checking department match. Request DepartmentId: {RequestDeptId}",
+                userId, requestDepartmentId);
+
+            // If user has restricted role, check department match
+            if (!requestDepartmentId.HasValue)
+            {
+                _logger.LogWarning(
+                    "ShouldSendEmailToUserAsync: Request has no department ID, skipping email to restricted role user {UserId}",
+                    userId);
+                return false;
+            }
+
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == userId);
+            if (user == null)
+            {
+                _logger.LogWarning("ShouldSendEmailToUserAsync: User {UserId} not found in database", userId);
+                return false;
+            }
+
+            if (!user.DepartmentId.HasValue)
+            {
+                _logger.LogWarning(
+                    "ShouldSendEmailToUserAsync: User {UserId} has restricted role but no department ID, skipping email",
+                    userId);
+                return false;
+            }
+
+            bool departmentMatches = user.DepartmentId.Value == requestDepartmentId.Value;
+            
+            if (departmentMatches)
+            {
+                _logger.LogInformation(
+                    "ShouldSendEmailToUserAsync: Department matches for user {UserId} - will send email. User DepartmentId: {UserDeptId}, Request DepartmentId: {RequestDeptId}",
+                    userId, user.DepartmentId.Value, requestDepartmentId.Value);
+            }
+            else
+            {
+                _logger.LogInformation(
+                    "ShouldSendEmailToUserAsync: Skipping email to user {UserId} with restricted role - department mismatch. User DepartmentId: {UserDeptId}, Request DepartmentId: {RequestDeptId}",
+                    userId, user.DepartmentId.Value, requestDepartmentId.Value);
+            }
+
+            return departmentMatches;
+        }
+
+        /// <summary>
+        /// Separate roles into restricted and non-restricted roles
+        /// </summary>
+        private async Task<(List<string> restrictedRoleIds, List<string> nonRestrictedRoleIds)> SeparateRestrictedRolesAsync(List<string> roleIds)
+        {
+            var restrictedRoleIds = new List<string>();
+            var nonRestrictedRoleIds = new List<string>();
+
+            var restrictedRoleNames = new[]
+            {
+                "Supply Officer (Order Requesting Entity)",
+                "Requesting Entity Commander (Order Requesting Entity)"
+            };
+
+            foreach (var roleId in roleIds)
+            {
+                if (string.IsNullOrEmpty(roleId))
+                    continue;
+
+                var role = await _context.Roles.FirstOrDefaultAsync(r => r.Id == roleId);
+                if (role == null)
+                    continue;
+
+                if (restrictedRoleNames.Contains(role.Name))
+                {
+                    restrictedRoleIds.Add(roleId);
+                }
+                else
+                {
+                    nonRestrictedRoleIds.Add(roleId);
+                }
+            }
+
+            return (restrictedRoleIds, nonRestrictedRoleIds);
+        }
+
+        /// <summary>
+        /// Get filtered user IDs for approvers based on roles and department matching for restricted roles
+        /// </summary>
+        private async Task<List<string>> GetFilteredApproverUserIdsAsync(List<string> roleIds, long? requestDepartmentId)
+        {
+            var approverUserIds = new List<string>();
+
+            _logger.LogInformation(
+                "GetFilteredApproverUserIdsAsync: Processing {Count} role IDs. Request DepartmentId: {RequestDeptId}",
+                roleIds.Count, requestDepartmentId);
+
+            foreach (var roleId in roleIds)
+            {
+                if (string.IsNullOrEmpty(roleId))
+                {
+                    _logger.LogWarning("GetFilteredApproverUserIdsAsync: Empty role ID found, skipping");
+                    continue;
+                }
+
+                var role = await _context.Roles.FirstOrDefaultAsync(r => r.Id == roleId);
+                if (role == null)
+                {
+                    _logger.LogWarning("GetFilteredApproverUserIdsAsync: Role {RoleId} not found in database", roleId);
+                    continue;
+                }
+
+                // Get all users in this role
+                var usersInRole = await _context.Set<IdentityUserRole<string>>()
+                    .Where(ur => ur.RoleId == roleId)
+                    .Select(ur => ur.UserId)
+                    .ToListAsync();
+
+                _logger.LogInformation(
+                    "GetFilteredApproverUserIdsAsync: Role {RoleName} ({RoleId}) has {UserCount} users",
+                    role.Name, roleId, usersInRole.Count);
+
+                // Check if this is a restricted role
+                var restrictedRoleNames = new[]
+                {
+                    "Supply Officer (Order Requesting Entity)",
+                    "Requesting Entity Commander (Order Requesting Entity)"
+                };
+
+                bool isRestrictedRole = restrictedRoleNames.Contains(role.Name);
+
+                if (isRestrictedRole)
+                {
+                    _logger.LogInformation(
+                        "GetFilteredApproverUserIdsAsync: Role {RoleName} is a restricted role - will filter by department",
+                        role.Name);
+
+                    if (requestDepartmentId.HasValue)
+                    {
+                        // Filter by department for restricted roles
+                        var usersWithMatchingDept = await _context.Users
+                            .Where(u => usersInRole.Contains(u.Id) &&
+                                       u.DepartmentId.HasValue &&
+                                       u.DepartmentId.Value == requestDepartmentId.Value)
+                            .Select(u => u.Id)
+                            .ToListAsync();
+
+                        approverUserIds.AddRange(usersWithMatchingDept);
+
+                        _logger.LogInformation(
+                            "GetFilteredApproverUserIdsAsync: Filtered approvers for restricted role {RoleName} by department {DepartmentId}. Total users in role: {TotalCount}, Users with matching department: {MatchingCount}",
+                            role.Name, requestDepartmentId.Value, usersInRole.Count, usersWithMatchingDept.Count);
+
+                        // Log details about users that were filtered out
+                        if (usersInRole.Count > usersWithMatchingDept.Count)
+                        {
+                            var filteredOutUsers = await _context.Users
+                                .Where(u => usersInRole.Contains(u.Id) && 
+                                           (!u.DepartmentId.HasValue || u.DepartmentId.Value != requestDepartmentId.Value))
+                                .Select(u => new { u.Id, u.UserName, u.DepartmentId })
+                                .ToListAsync();
+
+                            foreach (var user in filteredOutUsers)
+                            {
+                                _logger.LogInformation(
+                                    "GetFilteredApproverUserIdsAsync: User {UserId} ({UserName}) filtered out - DepartmentId: {UserDeptId}, Request DepartmentId: {RequestDeptId}",
+                                    user.Id, user.UserName ?? "Unknown", user.DepartmentId, requestDepartmentId.Value);
+                            }
+                        }
+                    }
+                    else
+                    {
+                        _logger.LogWarning(
+                            "GetFilteredApproverUserIdsAsync: Request has no department ID, skipping all users in restricted role {RoleName}",
+                            role.Name);
+                    }
+                }
+                else
+                {
+                    // No filtering for non-restricted roles - include all users in role
+                    approverUserIds.AddRange(usersInRole);
+                    _logger.LogInformation(
+                        "GetFilteredApproverUserIdsAsync: Role {RoleName} is not restricted - including all {Count} users",
+                        role.Name, usersInRole.Count);
+                }
+            }
+
+            // Remove duplicates
+            var distinctUserIds = approverUserIds.Distinct().ToList();
+            _logger.LogInformation(
+                "GetFilteredApproverUserIdsAsync: Returning {Count} unique user IDs",
+                distinctUserIds.Count);
+
+            return distinctUserIds;
         }
 
     }
