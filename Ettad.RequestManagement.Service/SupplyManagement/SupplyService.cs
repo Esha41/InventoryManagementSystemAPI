@@ -144,6 +144,12 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
 					supply.Order.RequestItems = supply.Order.RequestItems.Where(ri => !ri.IsDeleted).ToList();
 				}
 
+				// Filter out soft-deleted supply details
+				if (supply.SupplyDetails != null)
+				{
+					supply.SupplyDetails = supply.SupplyDetails.Where(sd => !sd.IsDeleted).ToList();
+				}
+
 				var dto = _mapper.Map<SupplyDto>(supply);
 				PopulateSupplyDetailCalculatedProperties(dto, supply);
 				
@@ -190,6 +196,12 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
                     supply.Order.RequestItems = supply.Order.RequestItems.Where(ri => !ri.IsDeleted).ToList();
                 }
 
+                // Filter out soft-deleted supply details
+                if (supply.SupplyDetails != null)
+                {
+                    supply.SupplyDetails = supply.SupplyDetails.Where(sd => !sd.IsDeleted).ToList();
+                }
+
                 var dto = _mapper.Map<SupplyDto>(supply);
                 PopulateSupplyDetailCalculatedProperties(dto, supply);
 
@@ -221,6 +233,22 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
 					nameof(Supply.ReceiverRank),
 					$"{nameof(Supply.SupplyDetails)}.{nameof(SupplyDetail.Item)}"
 				);
+
+				// Filter out soft-deleted items before mapping
+				foreach (var supply in supplies)
+				{
+					// Filter out soft-deleted request items
+					if (supply.Order?.RequestItems != null)
+					{
+						supply.Order.RequestItems = supply.Order.RequestItems.Where(ri => !ri.IsDeleted).ToList();
+					}
+
+					// Filter out soft-deleted supply details
+					if (supply.SupplyDetails != null)
+					{
+						supply.SupplyDetails = supply.SupplyDetails.Where(sd => !sd.IsDeleted).ToList();
+					}
+				}
 
 				var dtos = _mapper.Map<List<SupplyDto>>(supplies);
 				
@@ -754,19 +782,33 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
 						"Cannot delete the last detail from a supply. A supply must have at least one detail.");
 				}
 
-			// Find the supply detail to delete
-			var detail = supply.SupplyDetails?.FirstOrDefault(sd => sd.Id == detailId && !sd.IsDeleted);
-			if (detail == null)
+			// Verify the detail exists before attempting to delete
+			var detailExists = await _supplyDetailRepository.FindOneAsync(
+				sd => sd.Id == detailId && sd.SupplyId == supplyId && !sd.IsDeleted);
+			
+			if (detailExists == null)
 			{
 				_logger.LogWarning("Supply detail not found. SupplyId: {SupplyId}, DetailId: {DetailId}, User: {UserId}", 
 					supplyId, detailId, _currentUserService.UserId);
 				return APIOperationResponse<bool>.Fail(ResponseType.NotFound, "Supply detail not found");
 			}
 
-			// Soft delete the detail
-			await _supplyDetailRepository.DeleteAsync(detail);
+			// Soft delete the detail using direct context access to avoid tracking conflicts
+			// This approach is similar to ReplaceSupplyDetailsAsync and prevents EF tracking issues
+			var detailEntity = new SupplyDetail { Id = detailId };
+			_context.Attach(detailEntity);
+			detailEntity.IsDeleted = true;
+			detailEntity.DeletionDate = DateTime.UtcNow;
+			detailEntity.DeletedBy = _currentUserService.UserId;
+			_context.Entry(detailEntity).Property(x => x.IsDeleted).IsModified = true;
+			_context.Entry(detailEntity).Property(x => x.DeletionDate).IsModified = true;
+			_context.Entry(detailEntity).Property(x => x.DeletedBy).IsModified = true;
+			await _context.SaveChangesAsync();
 
-			// Reload the supply to avoid tracking conflicts and get updated state
+			// Detach the entity to avoid tracking conflicts before reloading
+			_context.Entry(detailEntity).State = EntityState.Detached;
+
+			// Reload the supply to get updated state
 			var updatedSupply = await _supplyRepository.FindOneAsync(
 				s => s.Id == supplyId && !s.IsDeleted,
 				false,
