@@ -367,27 +367,28 @@ namespace Ettad.Inventory.Service.Inventories
                     return APIOperationResponse<OrderSupplySuggestionDto>.Fail(ResponseType.BadRequest, "Order has no items to supply");
                 }
 
-				// Get all existing supplies for this order (excluding deleted)
+				// Get all existing SUBMITTED supplies for this order (excluding deleted and drafts)
+				// Draft supplies should not be counted because user can still modify them
 				var existingSuppliesForOrder = await _supplyRepository.FindAsync(
-					s => s.OrderId == orderId && !s.IsDeleted,
+					s => s.OrderId == orderId && !s.IsDeleted && s.SubmissionStatus == SupplySubmissionStatus.Submitted,
 					false,
 					nameof(Supply.SupplyDetails)
 				);
 
-                // Get all supply details for these supplies
+                // Get all supply details for these SUBMITTED supplies only
                 var supplyIds = existingSuppliesForOrder.Select(s => s.Id).ToList();
                 var existingSupplyDetails = supplyIds.Any()
                     ? await _supplyDetailsRepository.FindAsync(
                         sd => supplyIds.Contains(sd.SupplyId) && !sd.IsDeleted)
                     : new List<SupplyDetail>();
 
-                // Calculate already supplied quantities per item
+                // Calculate already supplied quantities per item (only from SUBMITTED supplies)
                 var suppliedQuantitiesByItem = existingSupplyDetails
                     .GroupBy(sd => sd.ItemId)
                     .ToDictionary(g => g.Key, g => g.Sum(sd => sd.Quantity));
 
-                _logger.LogInformation("Found existing supplies for order. OrderId: {OrderId}, SuppliedItemsCount: {Count}", 
-                    orderId, suppliedQuantitiesByItem.Count);
+                _logger.LogInformation("Found existing SUBMITTED supplies for order (drafts excluded). OrderId: {OrderId}, SuppliedItemsCount: {Count}", 
+					orderId, suppliedQuantitiesByItem.Count);
 
                 var suggestion = new OrderSupplySuggestionDto
                 {
