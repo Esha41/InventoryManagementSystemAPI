@@ -1237,6 +1237,9 @@ namespace Ettad.Workflows.Service.Imeplemention
                                             join wfs in _context.WorkflowSteps
                                                 on log.WorkflowStepId equals wfs.Id into wfsJoin
                                             from wfs in wfsJoin.DefaultIfEmpty()
+                                            join appRole in _context.Roles
+                                                on wfs != null ? wfs.ApplicationRoleId : null equals appRole.Id into roleJoin
+                                            from appRole in roleJoin.DefaultIfEmpty()
                                             where allowedRequestIds.Contains((long)was.TargetRequestId)
                                             select new
                                             {
@@ -1253,6 +1256,7 @@ namespace Ettad.Workflows.Service.Imeplemention
                                                     ChangedAt = log.ChangedAt,
                                                     StepOrder = wfs != null ? wfs.StepOrder : (int?)null,
                                                     ApplicationRoleId = wfs != null ? wfs.ApplicationRoleId : null,
+                                                    ApplicationRoleName = appRole != null ? appRole.Name : null,
                                                     RequireHigherApproval = wfs != null ? wfs.RequireHigherApproval : false,
                                                     HigherApprovalRoleId = wfs != null ? wfs.HigherApprovalRoleId : null
                                                 }
@@ -1325,8 +1329,11 @@ namespace Ettad.Workflows.Service.Imeplemention
                     isRejected = true;
                 }
 
-                // Only show pending/future steps if request is not rejected
-                if (!isRejected)
+                // Check if request is fully approved - if so, don't show any pending/future steps
+                bool isApproved = request.Status == RequestStatus.Approved;
+
+                // Only show pending/future steps if request is not rejected and not approved
+                if (!isRejected && !isApproved)
                 {
                     // Get the workflow for this request type
                     var workflowType = (WorkflowType)request.RequestType;

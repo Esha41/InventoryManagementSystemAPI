@@ -484,6 +484,7 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 .Concat(WriteInventory)
                 .Concat(ReadAllowanceItem)               
                 .Concat(ReadOrderDiscardReturn)
+                .Concat(WriteOrder)
                 .Concat(RequestReciever)
                 .Concat(Dashboard)
                 .Concat(Forecast)
@@ -608,6 +609,7 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 .Concat(ReadSupply)
                 .Concat(WareHouse)
                 .Concat(ReadDepo)
+                .Concat(Rank)
                 .Concat(new List<string>
                     {
                         PlainPermissions.SubmitSupply.ToString(),
