@@ -26,12 +26,12 @@ namespace Ettad.EntityFramework.Configurations
                 .IsRequired();
 
             builder.Property(x => x.UsagePurpose)
-                .IsRequired(false);
-
-            builder.Property(x => x.AnnualDiscard)
-                .IsRequired(false);
+                .IsRequired();
 
             builder.Property(x => x.UsageLocation)
+                .IsRequired();
+
+            builder.Property(x => x.AnnualDiscard)
                 .IsRequired(false);
 
             builder.Property(x => x.NumberOfOfficer)
