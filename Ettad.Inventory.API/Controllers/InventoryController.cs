@@ -124,6 +124,18 @@ namespace Ettad.Inventory.API.Controllers
         }
 
         /// <summary>
+        /// Get aggregated inventory summary for all items
+        /// </summary>
+        [HttpGet("items/summary")]
+        [ProducesResponseType((int)HttpStatusCode.OK)]
+        [CheckAuthorize("Permissions.Inventory.View", "Permissions.Inventory.Page")]
+        public async Task<IActionResult> GetInventorySummaryForAllItems()
+        {
+            var result = await _inventoryService.GetInventorySummaryForAllItemsAsync();
+            return ProcessResponse(result);
+        }
+
+        /// <summary>
         /// Get aggregated inventory summary for a specific item (total quantity, used, reserved, remaining across all lots)
         /// </summary>
         [HttpGet("item/{itemId}/summary")]

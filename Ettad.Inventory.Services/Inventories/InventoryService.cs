@@ -853,6 +853,117 @@ namespace Ettad.Inventory.Service.Inventories
             }
         }
 
+        public async Task<APIOperationResponse<List<ItemInventorySummaryDto>>> GetInventorySummaryForAllItemsAsync()
+        {
+            _logger.LogInformation("Getting inventory summary for all items. User: {UserId}", _currentUserService.UserId);
+
+            try
+            {
+                // 1. Get all valid inventory details
+                var inventoryDetails = await _inventoryDetailRepository.FindAsync(
+                    id => id.ItemQuantity > 0, // We only care about lots that were created with quantity
+                    false,
+                    nameof(InventoryDetailEntity.Inventory),
+                    nameof(InventoryDetailEntity.Item)
+                );
+
+                // Filter out deleted inventory parent records
+                var activeDetails = inventoryDetails
+                    .Where(id => !id.Inventory.IsDeleted)
+                    .ToList();
+
+                if (!activeDetails.Any())
+                {
+                    return APIOperationResponse<List<ItemInventorySummaryDto>>.Success(new List<ItemInventorySummaryDto>());
+                }
+
+                // 2. Get all supply details (to calculate usage)
+                var allSupplyDetails = await _supplyDetailsRepository.FindAsync(
+                    sd => !sd.IsDeleted
+                );
+
+                // 3. Get all supplies to check submission status
+                var supplyIds = allSupplyDetails.Select(sd => sd.SupplyId).Distinct().ToList();
+                var supplies = supplyIds.Any()
+                    ? await _supplyRepository.FindAsync(s => supplyIds.Contains(s.Id) && !s.IsDeleted)
+                    : new List<Supply>();
+
+                var supplyStatusMap = supplies.ToDictionary(s => s.Id, s => s.SubmissionStatus);
+
+                // 4. Group Supply Details by ItemId
+                var supplyDetailsByItem = allSupplyDetails
+                    .GroupBy(sd => sd.ItemId)
+                    .ToDictionary(g => g.Key, g => g.ToList());
+
+                // 5. Group Inventory Details by ItemId
+                var inventoryDetailsByItem = activeDetails
+                    .GroupBy(id => id.ItemId)
+                    .ToList();
+
+                var result = new List<ItemInventorySummaryDto>();
+
+                foreach (var itemGroup in inventoryDetailsByItem)
+                {
+                    long itemId = itemGroup.Key;
+                    var lots = itemGroup.ToList();
+                    var firstLotItem = lots.FirstOrDefault()?.Item;
+                    var itemName = firstLotItem?.Name ?? "Unknown Item";
+                    var itemNo = firstLotItem?.ItemNo ?? string.Empty;
+                    var itemType = firstLotItem?.ItemType ?? default(ItemType);
+                    var nsn = firstLotItem?.Nsn ?? string.Empty;
+                    var partNo = firstLotItem?.PartNo ?? string.Empty;
+
+                    // Calculate total entered quantity (sum of Original Quantities in lots)
+                    long totalQuantity = lots.Sum(l => l.ItemQuantity);
+
+                    // Get supplies for this item
+                    var itemSupplyDetails = supplyDetailsByItem.TryGetValue(itemId, out var supplyList)
+                        ? supplyList
+                        : new List<SupplyDetail>();
+
+                    // Calculate used quantity (Submitted supplies)
+                    long usedQuantity = itemSupplyDetails
+                        .Where(sd => supplyStatusMap.ContainsKey(sd.SupplyId) &&
+                                     supplyStatusMap[sd.SupplyId] == SupplySubmissionStatus.Submitted)
+                        .Sum(sd => sd.Quantity);
+
+                    // Calculate reserved quantity (Draft supplies)
+                    long reservedQuantity = itemSupplyDetails
+                        .Where(sd => supplyStatusMap.ContainsKey(sd.SupplyId) &&
+                                     supplyStatusMap[sd.SupplyId] == SupplySubmissionStatus.Draft)
+                        .Sum(sd => sd.Quantity);
+
+                    // Calculate remaining quantity
+                    long remainingQuantity = totalQuantity - usedQuantity - reservedQuantity;
+
+                    result.Add(new ItemInventorySummaryDto
+                    {
+                        ItemId = itemId,
+                        ItemName = itemName,
+                        ItemNo = itemNo,
+                        ItemType = itemType,
+                        Nsn = nsn,
+                        PartNo = partNo,
+                        TotalQuantity = totalQuantity,
+                        UsedQuantity = usedQuantity,
+                        ReservedQuantityByOrdersOnProcessing = reservedQuantity,
+                        RemainingQuantity = Math.Max(0, remainingQuantity),
+                        TotalLots = lots.Count
+                    });
+                }
+
+                _logger.LogInformation("Inventory summary calculated for {ItemCount} items. User: {UserId}",
+                    result.Count, _currentUserService.UserId);
+
+                return APIOperationResponse<List<ItemInventorySummaryDto>>.Success(result);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting inventory summary for all items. User: {UserId}", _currentUserService.UserId);
+                return APIOperationResponse<List<ItemInventorySummaryDto>>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
+            }
+        }
+
         public async Task<APIOperationResponse<ItemInventorySummaryDto>> GetItemInventorySummaryAsync(long itemId)
         {
             _logger.LogInformation("Getting item inventory summary. ItemId: {ItemId}, User: {UserId}",
@@ -872,6 +983,14 @@ namespace Ettad.Inventory.Service.Inventories
                     .Where(id => !id.Inventory.IsDeleted)
                     .ToList();
 
+                // Get item properties from first lot
+                var firstLotItem = lots.FirstOrDefault()?.Item;
+                var itemName = firstLotItem?.Name ?? "Unknown Item";
+                var itemNo = firstLotItem?.ItemNo ?? string.Empty;
+                var itemType = firstLotItem?.ItemType ?? default(ItemType);
+                var nsn = firstLotItem?.Nsn ?? string.Empty;
+                var partNo = firstLotItem?.PartNo ?? string.Empty;
+
                 if (lots.Count == 0)
                 {
                     _logger.LogInformation("No lots found for item. ItemId: {ItemId}, User: {UserId}",
@@ -881,7 +1000,11 @@ namespace Ettad.Inventory.Service.Inventories
                     var emptySummary = new ItemInventorySummaryDto
                     {
                         ItemId = itemId,
-                        ItemName = "Unknown Item",
+                        ItemName = itemName,
+                        ItemNo = itemNo,
+                        ItemType = itemType,
+                        Nsn = nsn,
+                        PartNo = partNo,
                         TotalQuantity = 0,
                         UsedQuantity = 0,
                         ReservedQuantityByOrdersOnProcessing = 0,
@@ -891,9 +1014,6 @@ namespace Ettad.Inventory.Service.Inventories
                     
                     return APIOperationResponse<ItemInventorySummaryDto>.Success(emptySummary);
                 }
-
-                // Get item name from first lot
-                var itemName = lots.FirstOrDefault()?.Item?.Name ?? "Unknown Item";
 
                 // Calculate total quantity across all lots
                 long totalQuantity = lots.Sum(l => l.ItemQuantity);
@@ -928,6 +1048,10 @@ namespace Ettad.Inventory.Service.Inventories
                 {
                     ItemId = itemId,
                     ItemName = itemName,
+                    ItemNo = itemNo,
+                    ItemType = itemType,
+                    Nsn = nsn,
+                    PartNo = partNo,
                     TotalQuantity = totalQuantity,
                     UsedQuantity = usedQuantity,
                     ReservedQuantityByOrdersOnProcessing = reservedQuantity,
