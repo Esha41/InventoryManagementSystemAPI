@@ -220,6 +220,8 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                     PropellantId = 1,
                     CompatibilityId = 1,
                     HazardDivisionId = 1,
+                    Price = 0.65m,
+                    MinimumQuantity = 200,
                     ItemType = ItemType.Ammunition,
                     CreationDate = utcNow,
                     CreatedBy = "SYSTEM"
@@ -246,6 +248,8 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                     PropellantId = 2,
                     CompatibilityId = 2,
                     HazardDivisionId = 2,
+                    Price = 1.25m,
+                    MinimumQuantity = 150,
                     ItemType = ItemType.Ammunition,
                     CreationDate = utcNow,
                     CreatedBy = "SYSTEM"
@@ -272,6 +276,8 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                     PropellantId = 3,
                     CompatibilityId = 3,
                     HazardDivisionId = 3,
+                    Price = 0.85m,
+                    MinimumQuantity = 250,
                     ItemType = ItemType.Ammunition,
                     CreationDate = utcNow,
                     CreatedBy = "SYSTEM"
@@ -301,6 +307,8 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                     HccId = 1,
                     PartNo = "PN-WPN-001",
                     Nsn = "1005-01-000-0001",
+                    Price = 1000.00m,
+                    MinimumQuantity = 10,
                     ItemType = ItemType.Weapon,
                     CreationDate = utcNow,
                     CreatedBy = "SYSTEM"
@@ -312,6 +320,8 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                     HccId = 2,
                     PartNo = "PN-WPN-002",
                     Nsn = "1005-01-000-0002",
+                    Price = 850.00m,
+                    MinimumQuantity = 15,
                     ItemType = ItemType.Weapon,
                     CreationDate = utcNow,
                     CreatedBy = "SYSTEM"
@@ -323,6 +333,8 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                     HccId = 3,
                     PartNo = "PN-WPN-003",
                     Nsn = "1005-01-000-0003",
+                    Price = 5000.00m,
+                    MinimumQuantity = 5,
                     ItemType = ItemType.Weapon,
                     CreationDate = utcNow,
                     CreatedBy = "SYSTEM"
@@ -334,6 +346,8 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                     HccId = 1,
                     PartNo = "PN-WPN-004",
                     Nsn = "1005-01-000-0004",
+                    Price = 6000.00m,
+                    MinimumQuantity = 5,
                     ItemType = ItemType.Weapon,
                     CreationDate = utcNow,
                     CreatedBy = "SYSTEM"
@@ -345,6 +359,8 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                     HccId = 2,
                     PartNo = "PN-WPN-005",
                     Nsn = "1005-01-000-0005",
+                    Price = 650.00m,
+                    MinimumQuantity = 20,
                     ItemType = ItemType.Weapon,
                     CreationDate = utcNow,
                     CreatedBy = "SYSTEM"
@@ -356,6 +372,8 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                     HccId = 3,
                     PartNo = "PN-WPN-006",
                     Nsn = "1005-01-000-0006",
+                    Price = 4000.00m,
+                    MinimumQuantity = 8,
                     ItemType = ItemType.Weapon,
                     CreationDate = utcNow,
                     CreatedBy = "SYSTEM"
@@ -367,6 +385,8 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                     HccId = 1,
                     PartNo = "PN-WPN-007",
                     Nsn = "1005-01-000-0007",
+                    Price = 10000.00m,
+                    MinimumQuantity = 3,
                     ItemType = ItemType.Weapon,
                     CreationDate = utcNow,
                     CreatedBy = "SYSTEM"
@@ -378,6 +398,8 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                     HccId = 2,
                     PartNo = "PN-WPN-008",
                     Nsn = "1005-01-000-0008",
+                    Price = 2000.00m,
+                    MinimumQuantity = 10,
                     ItemType = ItemType.Weapon,
                     CreationDate = utcNow,
                     CreatedBy = "SYSTEM"
@@ -389,6 +411,8 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                     HccId = 3,
                     PartNo = "PN-WPN-009",
                     Nsn = "1005-01-000-0009",
+                    Price = 5000.00m,
+                    MinimumQuantity = 8,
                     ItemType = ItemType.Weapon,
                     CreationDate = utcNow,
                     CreatedBy = "SYSTEM"
@@ -418,6 +442,8 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                     HccId = 1,
                     PartNo = "PN-EXP-001",
                     Nsn = "1330-01-000-0001",
+                    Price = 75.00m,
+                    MinimumQuantity = 50,
                     ItemType = ItemType.Explosive,
                     CreationDate = utcNow,
                     CreatedBy = "SYSTEM"
@@ -429,6 +455,8 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                     HccId = 2,
                     PartNo = "PN-EXP-002",
                     Nsn = "1330-01-000-0002",
+                    Price = 60.00m,
+                    MinimumQuantity = 50,
                     ItemType = ItemType.Explosive,
                     CreationDate = utcNow,
                     CreatedBy = "SYSTEM"
@@ -440,6 +468,8 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                     HccId = 3,
                     PartNo = "PN-EXP-003",
                     Nsn = "1330-01-000-0003",
+                    Price = 45.00m,
+                    MinimumQuantity = 50,
                     ItemType = ItemType.Explosive,
                     CreationDate = utcNow,
                     CreatedBy = "SYSTEM"
@@ -451,6 +481,8 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                     HccId = 1,
                     PartNo = "PN-EXP-004",
                     Nsn = "1330-01-000-0004",
+                    Price = 300.00m,
+                    MinimumQuantity = 20,
                     ItemType = ItemType.Explosive,
                     CreationDate = utcNow,
                     CreatedBy = "SYSTEM"
@@ -462,6 +494,8 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                     HccId = 2,
                     PartNo = "PN-EXP-005",
                     Nsn = "1330-01-000-0005",
+                    Price = 225.00m,
+                    MinimumQuantity = 25,
                     ItemType = ItemType.Explosive,
                     CreationDate = utcNow,
                     CreatedBy = "SYSTEM"
@@ -473,6 +507,8 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                     HccId = 3,
                     PartNo = "PN-EXP-006",
                     Nsn = "1330-01-000-0006",
+                    Price = 90.00m,
+                    MinimumQuantity = 40,
                     ItemType = ItemType.Explosive,
                     CreationDate = utcNow,
                     CreatedBy = "SYSTEM"
@@ -484,6 +520,8 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                     HccId = 1,
                     PartNo = "PN-EXP-007",
                     Nsn = "1330-01-000-0007",
+                    Price = 115.00m,
+                    MinimumQuantity = 30,
                     ItemType = ItemType.Explosive,
                     CreationDate = utcNow,
                     CreatedBy = "SYSTEM"
@@ -495,6 +533,8 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                     HccId = 2,
                     PartNo = "PN-EXP-008",
                     Nsn = "1410-01-000-0008",
+                    Price = 1500.00m,
+                    MinimumQuantity = 10,
                     ItemType = ItemType.Explosive,
                     CreationDate = utcNow,
                     CreatedBy = "SYSTEM"
@@ -506,6 +546,8 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                     HccId = 3,
                     PartNo = "PN-EXP-009",
                     Nsn = "1345-01-000-0009",
+                    Price = 300.00m,
+                    MinimumQuantity = 20,
                     ItemType = ItemType.Explosive,
                     CreationDate = utcNow,
                     CreatedBy = "SYSTEM"

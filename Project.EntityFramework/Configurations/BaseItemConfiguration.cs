@@ -24,6 +24,13 @@ namespace Ettad.EntityFramework.Configurations
                 .IsRequired()
                 .HasMaxLength(500);
 
+            builder.Property(x => x.Price)
+                .IsRequired(false)
+                .HasColumnType("decimal(18,2)");
+
+            builder.Property(x => x.MinimumQuantity)
+                .IsRequired(false);
+
             builder.HasOne(x => x.Hcc)
                 .WithMany()
                 .IsRequired()

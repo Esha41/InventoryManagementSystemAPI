@@ -12,6 +12,8 @@ namespace Ettad.Inventory.Service.Common.Dtos
         public ItemType ItemType { get; set; }
         public long HccId { get; set; }
         public string PartNo { get; set; }
+        public decimal? Price { get; set; }
+        public long? MinimumQuantity { get; set; }
         public bool IsDeleted { get; set; }
 
         #region Navigation Properties
