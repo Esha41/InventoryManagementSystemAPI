@@ -26,6 +26,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using Moujam.Casiher.Comman.Models;
+using Project.Api;
 using Serilog;
 using Serilog.Events;
 using System.Reflection;
@@ -93,6 +94,7 @@ try
     builder.Services.AddScoped<IEmailSender, EmailSender>();
     builder.Services.AddScoped<IWorkflowApprovalService, WorkflowApprovalService>();
     builder.Services.AddScoped<IFileStorageService, FileStorageService>();
+    builder.Services.AddScoped<IFileUploadService, FileUploadService>();
 
     builder.Services.Configure<JwtOptions>(
     builder.Configuration.GetSection("JWT"));
