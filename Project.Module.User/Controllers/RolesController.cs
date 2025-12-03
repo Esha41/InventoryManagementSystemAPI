@@ -27,13 +27,11 @@ namespace Ettad.User.API.Controllers
 
 
         [HttpPost("GetRolesWithPagination")]
+        [CheckAuthorize(
+             "Permissions.Roles.Page",
+             "Permissions.Roles.View"
 
-
- //       [CheckAuthorize(
- //    "Permissions.Roles.Page",
- //    "Permissions.Roles.View"
-   
- //)]
+         )]
         public async Task<IActionResult> GetRoles(PagedListRequest request)
         {
             var response = await _roleService.GetRolesAsync(request);
@@ -44,7 +42,6 @@ namespace Ettad.User.API.Controllers
              "Permissions.Roles.Page",
              "Permissions.Roles.View")
         ]
-        //[AllowAnonymous]
         [HttpGet("{id}")]
         public async Task<IActionResult> GetRoleById(string id)
         {
@@ -57,7 +54,6 @@ namespace Ettad.User.API.Controllers
              "Permissions.Roles.Page",
              "Permissions.Roles.View")
         ]
-        //[AllowAnonymous]
         [HttpGet]
         public async Task<IActionResult> GetAllRoles()
         {
@@ -70,9 +66,9 @@ namespace Ettad.User.API.Controllers
 
         [HttpPost]
         [CheckAuthorize(
-     "Permissions.Roles.Create"
+             "Permissions.Roles.Create"
 
- )]
+         )]
         public async Task<IActionResult> CreateRole([FromBody] CreateRoleDto createRoleDto)
         {
             var response = await _roleService.CreateRoleAsync(createRoleDto);
@@ -81,9 +77,8 @@ namespace Ettad.User.API.Controllers
         }
 
         [CheckAuthorize(
- "Permissions.Roles.Edit"
-
-)]
+         "Permissions.Roles.Edit"
+        )]
         [HttpPut("{id}")]
         public async Task<IActionResult> UpdateRole(string id, [FromBody] UpdateRoleDto updateRoleDto)
         {
@@ -109,8 +104,8 @@ namespace Ettad.User.API.Controllers
             }
             return Ok(response);
         }
-        //[CheckAuthorize("Permissions.Roles.Page","Permissions.Roles.View")]
-        [AllowAnonymous]
+
+        [CheckAuthorize("Permissions.Roles.Page","Permissions.Roles.View")]
         [HttpGet("{id}/permissions")]
         public async Task<IActionResult> GetPermitionByRoleId(string id)
         {
@@ -123,8 +118,7 @@ namespace Ettad.User.API.Controllers
             return Ok(response);
         }
 
-        //[CheckAuthorize("Permissions.Roles.Page","Permissions.Roles.View")]
-        [AllowAnonymous]
+        [CheckAuthorize("Permissions.Roles.Page","Permissions.Roles.View")]
         [HttpGet("{id}/crud/permissions")]
         public async Task<IActionResult> GetCrudPermissionsForRole(string id)
         {
@@ -139,8 +133,7 @@ namespace Ettad.User.API.Controllers
 
 
         [HttpPost("permissions")]
-        [AllowAnonymous]
-        //[Authorize("Permissions.Roles.Edit")]
+        [Authorize("Permissions.Roles.Edit")]
         public async Task<ActionResult> AssignPermissionsToRole(AssignPermissionsDto assignPermissions)
         {
             var response = await _roleService.AssignPermissionsToRoleAsync(assignPermissions);
@@ -153,7 +146,7 @@ namespace Ettad.User.API.Controllers
         }
 
         [HttpGet("{id}/users")] 
-        //[CheckAuthorize("Permissions.Roles.ViewUsers")]
+        [CheckAuthorize("Permissions.Roles.ViewUsers")]
         public async Task<IActionResult> GetUsersInRole(string id)
         {
             var response = await _roleService.GetUsersInRoleAsync(id);
@@ -161,7 +154,7 @@ namespace Ettad.User.API.Controllers
         }
 
         [HttpDelete("{id}/users")]
-        //[CheckAuthorize("Permissions.Roles.RemoveUsers")]
+        [CheckAuthorize("Permissions.Roles.RemoveUsers")]
         public async Task<IActionResult> RemoveUsersFromRole(string id, [FromBody] RemoveUsersFromRoleDto dto)
         {
             var response = await _roleService.RemoveUsersFromRoleAsync(id, dto);
