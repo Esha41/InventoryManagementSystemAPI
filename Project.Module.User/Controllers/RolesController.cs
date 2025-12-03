@@ -40,10 +40,11 @@ namespace Ettad.User.API.Controllers
             return Ok(response);
         }
 
-        //       [CheckAuthorize(
-        //"Permissions.Roles.Page",
-        //"Permissions.Roles.View")]
-        [AllowAnonymous]
+        [CheckAuthorize(
+             "Permissions.Roles.Page",
+             "Permissions.Roles.View")
+        ]
+        //[AllowAnonymous]
         [HttpGet("{id}")]
         public async Task<IActionResult> GetRoleById(string id)
         {
@@ -51,7 +52,12 @@ namespace Ettad.User.API.Controllers
             if (!response.Succeeded) return NotFound(response);
             return Ok(response);
         }
-        [AllowAnonymous]
+
+        [CheckAuthorize(
+             "Permissions.Roles.Page",
+             "Permissions.Roles.View")
+        ]
+        //[AllowAnonymous]
         [HttpGet]
         public async Task<IActionResult> GetAllRoles()
         {
