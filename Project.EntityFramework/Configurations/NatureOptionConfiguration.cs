@@ -33,36 +33,78 @@ namespace Ettad.EntityFramework.Configurations
                 new NatureOption
                 {
                     Id = 1,
-                    NameAr = "قتالية",
-                    NameEn = "Combat",
+                    NameAr = "ذخيرة حية",
+                    NameEn = "Live Ammunition",
                     IsDeleted = false
                 },
                 new NatureOption
                 {
                     Id = 2,
-                    NameAr = "تدريبية",
-                    NameEn = "Training",
+                    NameAr = "صوتي",
+                    NameEn = "Sonic",
                     IsDeleted = false
                 },
                 new NatureOption
                 {
                     Id = 3,
-                    NameAr = "تعليمية",
-                    NameEn = "Educational",
+                    NameAr = "مشرح",
+                    NameEn = "Fragmentation",
                     IsDeleted = false
                 },
                 new NatureOption
                 {
                     Id = 4,
-                    NameAr = "وهمية",
-                    NameEn = "Dummy",
+                    NameAr = "كاشف",
+                    NameEn = "Detector",
                     IsDeleted = false
                 },
                 new NatureOption
                 {
                     Id = 5,
-                    NameAr = "عرض",
-                    NameEn = "Display",
+                    NameAr = "مائت",
+                    NameEn = "Inert",
+                    IsDeleted = false
+                },
+                new NatureOption
+                {
+                    Id = 6,
+                    NameAr = "متفجر",
+                    NameEn = "Explosive",
+                    IsDeleted = false
+                },
+                new NatureOption
+                {
+                    Id = 7,
+                    NameAr = "خارق",
+                    NameEn = "Armor-Piercing",
+                    IsDeleted = false
+                },
+                new NatureOption
+                {
+                    Id = 8,
+                    NameAr = "دخاني",
+                    NameEn = "Smoke",
+                    IsDeleted = false
+                },
+                new NatureOption
+                {
+                    Id = 9,
+                    NameAr = "انارة",
+                    NameEn = "Illuminating",
+                    IsDeleted = false
+                },
+                new NatureOption
+                {
+                    Id = 10,
+                    NameAr = "حارق",
+                    NameEn = "Incendiary",
+                    IsDeleted = false
+                },
+                new NatureOption
+                {
+                    Id = 11,
+                    NameAr = "خارق حارق",
+                    NameEn = "Armor-Piercing Incendiary",
                     IsDeleted = false
                 }
             );
