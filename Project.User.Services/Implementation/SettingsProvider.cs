@@ -14,6 +14,7 @@ using Microsoft.Extensions.Options;
 using Ettad.Data.Enums;
 using SettingsEntity = Ettad.Data.Entities.Settings.Settings;
 using System.Text.RegularExpressions;
+using System.ComponentModel.DataAnnotations;
 
 namespace Ettad.User.Services.Implementation;
 
@@ -29,6 +30,93 @@ public class SettingsProvider : ISettingsProvider
         _dbContext = dbContext ?? throw new ArgumentNullException(nameof(dbContext));
         _currentUserService = currentUserService ?? throw new ArgumentNullException(nameof(currentUserService));
         _fallbackLdapOptions = fallbackOptions?.Value ?? new LdapOptions();
+    }
+
+    public async Task<bool> SaveLdapSettings(LdapOptions ldapSettings, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var userId = _currentUserService.UserId ?? "System";
+
+            var existingSettings = await _dbContext.Settings
+                .Where(s => s.Group == General.Group)
+                .ToListAsync(cancellationToken);
+
+            var settingsToUpdate = new Dictionary<string, SettingsEntity>(StringComparer.OrdinalIgnoreCase);
+            foreach (var setting in existingSettings)
+            {
+                if (!string.IsNullOrWhiteSpace(setting.Key))
+                {
+                    settingsToUpdate[setting.Key] = setting;
+                }
+            }
+
+            var ldapSettingKeys = new Dictionary<string, string?>
+            {
+                { "LdapServer", ldapSettings.LdapServer },
+                { "LdapDomain", ldapSettings.LdapDomain },
+                { "LdapEmpAttr", ldapSettings.LdapEmpAttr ?? "sAMAccountName" },
+                { "LdapUsername", ldapSettings.LdapUsername },
+                { "LdapPassword", ldapSettings.LdapPassword },
+                { "LdapIsActive", ldapSettings.IsActive.ToString() }
+            };
+
+            foreach (var kvp in ldapSettingKeys)
+            {
+                var value = kvp.Value ?? string.Empty;
+
+                if (settingsToUpdate.TryGetValue(kvp.Key, out var existingSetting))
+                {
+                    existingSetting.Value = value;
+                    existingSetting.ModificationDate = RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
+                        ? TimeZoneInfo.ConvertTime(DateTime.Now, TimeZoneInfo.FindSystemTimeZoneById("Arab Standard Time"))
+                        : TimeZoneInfo.ConvertTime(DateTime.Now, TimeZoneInfo.FindSystemTimeZoneById("Asia/Riyadh"));
+                    existingSetting.ModifiedBy = userId;
+                    _dbContext.Settings.Update(existingSetting);
+                }
+                else
+                {
+                    var newSetting = new SettingsEntity
+                    {
+                        Key = kvp.Key,
+                        Value = value,
+                        Group = General.Group,
+                        CreatedBy = userId
+                    };
+                    await _dbContext.Settings.AddAsync(newSetting, cancellationToken);
+                }
+            }
+
+            await _dbContext.SaveChangesAsync(cancellationToken);
+            return true;
+        }
+        catch (Exception)
+        {
+            return false;
+        }
+    }
+
+    public async Task<bool> DeleteLdapSettings(CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var ldapSettings = await _dbContext.Settings
+                .Where(s => s.Group == General.Group)
+                .ToListAsync(cancellationToken);
+
+            if (ldapSettings.Count == 0)
+            {
+                return true;
+            }
+
+            _dbContext.Settings.RemoveRange(ldapSettings);
+            await _dbContext.SaveChangesAsync(cancellationToken);
+            return true;
+        }
+        catch (Exception)
+        {
+            return false;
+        }
     }
 
     public async Task<LdapOptions> GetLdapSettings(CancellationToken cancellationToken = default)
