@@ -63,6 +63,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ettad.Notification.API", "E
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ettad.Modules.EmailSystem.API", "Ettad.Modules.EmailSystem.API\Ettad.Modules.EmailSystem.API.csproj", "{8777E058-8D3A-422B-83FD-98DFF41B1B1E}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ettad.Modules.FileUpload.API", "Ettad.Modules.FileUpload.API\Ettad.Modules.FileUpload.API.csproj", "{3A813F21-5E0A-4712-92F9-8CF5BB54B8D8}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -301,6 +303,18 @@ Global
 		{8777E058-8D3A-422B-83FD-98DFF41B1B1E}.Release|x64.Build.0 = Release|Any CPU
 		{8777E058-8D3A-422B-83FD-98DFF41B1B1E}.Release|x86.ActiveCfg = Release|Any CPU
 		{8777E058-8D3A-422B-83FD-98DFF41B1B1E}.Release|x86.Build.0 = Release|Any CPU
+		{3A813F21-5E0A-4712-92F9-8CF5BB54B8D8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3A813F21-5E0A-4712-92F9-8CF5BB54B8D8}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3A813F21-5E0A-4712-92F9-8CF5BB54B8D8}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{3A813F21-5E0A-4712-92F9-8CF5BB54B8D8}.Debug|x64.Build.0 = Debug|Any CPU
+		{3A813F21-5E0A-4712-92F9-8CF5BB54B8D8}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{3A813F21-5E0A-4712-92F9-8CF5BB54B8D8}.Debug|x86.Build.0 = Debug|Any CPU
+		{3A813F21-5E0A-4712-92F9-8CF5BB54B8D8}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3A813F21-5E0A-4712-92F9-8CF5BB54B8D8}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3A813F21-5E0A-4712-92F9-8CF5BB54B8D8}.Release|x64.ActiveCfg = Release|Any CPU
+		{3A813F21-5E0A-4712-92F9-8CF5BB54B8D8}.Release|x64.Build.0 = Release|Any CPU
+		{3A813F21-5E0A-4712-92F9-8CF5BB54B8D8}.Release|x86.ActiveCfg = Release|Any CPU
+		{3A813F21-5E0A-4712-92F9-8CF5BB54B8D8}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -331,6 +345,7 @@ Global
 		{04D77119-15C3-4A01-98EE-C6E790566490} = {FC965988-40C1-495A-A8D4-0ACF7CA26A8F}
 		{72DE34C1-2DD3-42E4-927D-46BB350AD633} = {FC965988-40C1-495A-A8D4-0ACF7CA26A8F}
 		{8777E058-8D3A-422B-83FD-98DFF41B1B1E} = {724F3B7A-DA79-4588-9EA4-1BC8EE03ED54}
+		{3A813F21-5E0A-4712-92F9-8CF5BB54B8D8} = {724F3B7A-DA79-4588-9EA4-1BC8EE03ED54}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {ECC5B3B4-1215-4670-A666-332AAF335B64}

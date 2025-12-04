@@ -24,10 +24,15 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.OpenApi.Models;
 using Moujam.Casiher.Comman.Models;
-using Project.Api;
 using Serilog;
+using Swashbuckle.AspNetCore.SwaggerGen;
+using System;
+using System.Linq;
+using System.Reflection;
 using Serilog.Events;
 using System.Reflection;
 using System.Text;
@@ -78,9 +83,11 @@ try
         .AddApplicationPart(typeof(Ettad.Notification.API.Controllers.NotificationController).Assembly)
         .AddApplicationPart(typeof(Ettad.Workflows.API.Controllers.WorkflowApprovalController).Assembly)
         .AddApplicationPart(typeof(Ettad.Modules.EmailSystem.API.Controllers.EmailSettingsController).Assembly)
+        .AddApplicationPart(typeof(Ettad.Modules.FileUpload.API.Controllers.FileUploadController).Assembly)
         .AddJsonOptions(options =>
         {
             options.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
+            options.JsonSerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter());
         });
 
     // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
@@ -94,7 +101,7 @@ try
     builder.Services.AddScoped<IEmailSender, EmailSender>();
     builder.Services.AddScoped<IWorkflowApprovalService, WorkflowApprovalService>();
     builder.Services.AddScoped<IFileStorageService, FileStorageService>();
-    builder.Services.AddScoped<IFileUploadService, FileUploadService>();
+    builder.Services.AddScoped<IFileUploadService, Ettad.Modules.FileUpload.API.Services.FileUploadService>();
 
     builder.Services.Configure<JwtOptions>(
     builder.Configuration.GetSection("JWT"));
@@ -187,6 +194,17 @@ try
     builder.Services.AddSwaggerGen(options =>
     {
         options.CustomSchemaIds(type => type.FullName);
+        
+        // Map enums as strings in Swagger
+        options.SchemaFilter<EnumAsStringSchemaFilter>();
+        options.ParameterFilter<EnumAsStringParameterFilter>();
+        
+        // Handle file uploads - map IFormFile to prevent parameter generation errors
+        options.MapType<IFormFile>(() => new OpenApiSchema { Type = "string", Format = "binary" });
+        options.MapType<FileStream>(() => new OpenApiSchema { Type = "string", Format = "binary" });
+        
+        // Handle file uploads in Swagger
+        options.OperationFilter<FileUploadOperationFilter>();
 
         // Add security definition for Bearer token
         options.AddSecurityDefinition(name: "Bearer", securityScheme: new OpenApiSecurityScheme
@@ -242,7 +260,6 @@ try
         });
     });
 
-
     #endregion
 
     var app = builder.Build();
@@ -271,9 +288,16 @@ try
     });
 
     // Configure the HTTP request pipeline.
-    
-        app.UseSwagger();
-        app.UseSwaggerUI();
+    // Add error handling for Swagger
+    app.UseSwagger(c =>
+    {
+        c.RouteTemplate = "swagger/{documentName}/swagger.json";
+    });
+    app.UseSwaggerUI(c =>
+    {
+        c.SwaggerEndpoint("/swagger/v1/swagger.json", "Ettad API V1");
+        c.RoutePrefix = "swagger";
+    });
   
     app.UseStaticFiles();
     app.UseHttpsRedirection();
@@ -379,6 +403,176 @@ static class DatabaseHelper
         catch (Exception ex)
         {
             Log.Warning(ex, "Failed to create log database automatically. It may need to be created manually.");
+        }
+    }
+}
+
+// Schema filter for enum handling in Swagger
+public class EnumAsStringSchemaFilter : ISchemaFilter
+{
+    public void Apply(OpenApiSchema schema, SchemaFilterContext context)
+    {
+        try
+        {
+            if (context?.Type != null && context.Type.IsEnum && schema != null)
+            {
+                var enumValues = Enum.GetValues(context.Type);
+                if (enumValues != null && enumValues.Length > 0)
+                {
+                    schema.Type = "string";
+                    schema.Format = null;
+                    schema.Enum = new List<Microsoft.OpenApi.Any.IOpenApiAny>();
+                    foreach (var enumValue in enumValues)
+                    {
+                        if (enumValue != null)
+                        {
+                            schema.Enum.Add(new Microsoft.OpenApi.Any.OpenApiString(enumValue.ToString()));
+                        }
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            // Log but don't throw - allow Swagger to continue
+            System.Diagnostics.Debug.WriteLine($"EnumAsStringSchemaFilter error: {ex.Message}");
+        }
+    }
+}
+
+// Parameter filter for enum handling in query parameters and file upload exclusion
+public class EnumAsStringParameterFilter : IParameterFilter
+{
+    public void Apply(OpenApiParameter parameter, ParameterFilterContext context)
+    {
+        try
+        {
+            // Exclude IFormFile parameters from being generated as query/route parameters
+            // They should be handled by the operation filter as request body
+            if (context?.ParameterInfo?.ParameterType != null)
+            {
+                var paramType = context.ParameterInfo.ParameterType;
+                
+                // Skip IFormFile parameters - they'll be handled by operation filter
+                if (paramType == typeof(IFormFile) || paramType == typeof(List<IFormFile>))
+                {
+                    // This will be handled by the operation filter, so we can skip it here
+                    return;
+                }
+                
+                // Handle enums
+                if (paramType.IsEnum && parameter != null)
+                {
+                    var enumValues = Enum.GetValues(paramType);
+                    
+                    if (enumValues != null && enumValues.Length > 0)
+                    {
+                        var enumList = new List<Microsoft.OpenApi.Any.IOpenApiAny>();
+                        foreach (var enumValue in enumValues)
+                        {
+                            if (enumValue != null)
+                            {
+                                enumList.Add(new Microsoft.OpenApi.Any.OpenApiString(enumValue.ToString()));
+                            }
+                        }
+                        
+                        parameter.Schema = new OpenApiSchema
+                        {
+                            Type = "string",
+                            Enum = enumList
+                        };
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            // Log but don't throw - allow Swagger to continue
+            System.Diagnostics.Debug.WriteLine($"EnumAsStringParameterFilter error: {ex.Message}");
+        }
+    }
+}
+
+// Operation filter to handle file uploads in Swagger
+public class FileUploadOperationFilter : IOperationFilter
+{
+    public void Apply(OpenApiOperation operation, OperationFilterContext context)
+    {
+        // Find all IFormFile parameters (with or without [FromForm])
+        var fileParameters = context.MethodInfo.GetParameters()
+            .Where(p => p.ParameterType == typeof(IFormFile) || 
+                       p.ParameterType == typeof(List<IFormFile>) ||
+                       (p.ParameterType.IsGenericType && 
+                        p.ParameterType.GetGenericTypeDefinition() == typeof(List<>) &&
+                        p.ParameterType.GetGenericArguments()[0] == typeof(IFormFile)))
+            .ToList();
+
+        if (fileParameters.Any())
+        {
+            // Remove file parameters from the parameters list first
+            if (operation.Parameters != null)
+            {
+                operation.Parameters = operation.Parameters
+                    .Where(p => !fileParameters.Any(fp => fp.Name.Equals(p.Name, StringComparison.OrdinalIgnoreCase)))
+                    .ToList();
+            }
+
+            // Create or update request body for multipart/form-data
+            if (operation.RequestBody == null)
+            {
+                operation.RequestBody = new OpenApiRequestBody();
+            }
+
+            if (operation.RequestBody.Content == null)
+            {
+                operation.RequestBody.Content = new Dictionary<string, OpenApiMediaType>();
+            }
+
+            if (!operation.RequestBody.Content.ContainsKey("multipart/form-data"))
+            {
+                operation.RequestBody.Content["multipart/form-data"] = new OpenApiMediaType
+                {
+                    Schema = new OpenApiSchema
+                    {
+                        Type = "object",
+                        Properties = new Dictionary<string, OpenApiSchema>(),
+                        Required = new HashSet<string>()
+                    }
+                };
+            }
+
+            var formDataSchema = operation.RequestBody.Content["multipart/form-data"].Schema;
+            if (formDataSchema.Properties == null)
+            {
+                formDataSchema.Properties = new Dictionary<string, OpenApiSchema>();
+            }
+            if (formDataSchema.Required == null)
+            {
+                formDataSchema.Required = new HashSet<string>();
+            }
+
+            foreach (var param in fileParameters)
+            {
+                var isList = param.ParameterType == typeof(List<IFormFile>) ||
+                            (param.ParameterType.IsGenericType && 
+                             param.ParameterType.GetGenericTypeDefinition() == typeof(List<>));
+                
+                var schema = isList
+                    ? new OpenApiSchema 
+                    { 
+                        Type = "array", 
+                        Items = new OpenApiSchema { Type = "string", Format = "binary" } 
+                    }
+                    : new OpenApiSchema { Type = "string", Format = "binary" };
+
+                formDataSchema.Properties[param.Name] = schema;
+                
+                // Mark as required if parameter is not optional
+                if (!param.IsOptional)
+                {
+                    formDataSchema.Required.Add(param.Name);
+                }
+            }
         }
     }
 }

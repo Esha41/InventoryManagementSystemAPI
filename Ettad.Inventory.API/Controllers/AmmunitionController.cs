@@ -4,6 +4,7 @@ using Ettad.Inventory.Service.Ammunitions;
 using Ettad.Inventory.Service.Ammunitions.Dtos;
 using Ettad.ResponseHandler.Models;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using System.Net;
 
@@ -52,9 +53,9 @@ namespace Ettad.Inventory.API.Controllers
         [HttpPost]
         [ProducesResponseType((int)HttpStatusCode.Created)]
         [CheckAuthorize("Permissions.Ammunition.Create")]
-        public async Task<IActionResult> Create([FromBody] CreateUpdateAmmunitionDto dto)
+        public async Task<IActionResult> Create([FromForm] CreateUpdateAmmunitionDto dto, [FromForm] List<IFormFile>? files = null)
         {
-            var result = await _ammunitionService.CreateAsync(dto);
+            var result = await _ammunitionService.CreateAsync(dto, files);
             return ProcessResponse(result);
         }
 

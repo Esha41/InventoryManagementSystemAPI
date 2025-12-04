@@ -4,6 +4,7 @@ using Ettad.Comman.Enums;
 using Ettad.ResponseHandler.Models;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Configuration;
 
 namespace Ettad.CrossCutting.Comman.FileUpload
 {
@@ -11,7 +12,7 @@ namespace Ettad.CrossCutting.Comman.FileUpload
     {
         Task<APIOperationResponse<string>> SaveFileAsync(
             IFormFile file,
-            string modelName,
+            FileEntityType fileEntityType,
             CancellationToken cancellationToken = default);
     }
 
@@ -21,15 +22,17 @@ namespace Ettad.CrossCutting.Comman.FileUpload
     public class FileStorageService : IFileStorageService
     {
         private readonly IWebHostEnvironment _environment;
+        private readonly IConfiguration _configuration;
 
-        public FileStorageService(IWebHostEnvironment environment)
+        public FileStorageService(IWebHostEnvironment environment, IConfiguration configuration)
         {
             _environment = environment;
+            _configuration = configuration;
         }
 
         public async Task<APIOperationResponse<string>> SaveFileAsync(
             IFormFile file,
-            string modelName,
+            FileEntityType fileEntityType,
             CancellationToken cancellationToken = default)
         {
             if (file == null || file.Length == 0)
@@ -39,14 +42,26 @@ namespace Ettad.CrossCutting.Comman.FileUpload
 
             try
             {
-                var today = DateTime.UtcNow.ToString("yyyy-MM-dd");
-                // Save files on the file server \\10.80.72.3\Uploads\<modelName>\<date>
-                var uploadsRoot = Path.Combine(@"\\10.80.72.3\SDShare", modelName, today);
+                // Get upload path from appsettings.json
+                var baseUploadPath = _configuration["FileSettings:UploadPath"];
+                if (string.IsNullOrWhiteSpace(baseUploadPath))
+                {
+                    return APIOperationResponse<string>.BadRequest("File upload path is not configured. Please set FileSettings:UploadPath in appsettings.json");
+                }
+
+                // Generate file name as FileEntityType_datetime (e.g., Item_2024-01-15_14-30-45)
+                var dateTime = DateTime.UtcNow.ToString("yyyy-MM-dd_HH-mm-ss");
+                var fileNamePrefix = $"{fileEntityType}_{dateTime}";
+                
+                // Save files on the file server <UploadPath>\Uploads\{FileEntityType}
+                var uploadsRoot = Path.Combine(baseUploadPath, "Uploads", fileEntityType.ToString());
                 if (!Directory.Exists(uploadsRoot))
                     Directory.CreateDirectory(uploadsRoot);
 
-                var fileName = $"{Guid.NewGuid()}{Path.GetExtension(file.FileName)}";
-                var fullPath = Path.Combine(uploadsRoot, fileName);
+                // Generate file name: {FileType}_{date}_{guid}.{extension}
+                var fileExtension = Path.GetExtension(file.FileName);
+                var uniqueFileName = $"{fileNamePrefix}_{Guid.NewGuid()}{fileExtension}";
+                var fullPath = Path.Combine(uploadsRoot, uniqueFileName);
 
                 await using (var stream = new FileStream(fullPath, FileMode.Create))
                 {
@@ -54,7 +69,7 @@ namespace Ettad.CrossCutting.Comman.FileUpload
                 }
 
                 // return full path on file server (can be changed to a relative/virtual path if needed)
-                var fullPathForResponse = uploadsRoot + Path.DirectorySeparatorChar + fileName;
+                var fullPathForResponse = uploadsRoot + Path.DirectorySeparatorChar + uniqueFileName;
 
                 return APIOperationResponse<string>.Success(fullPathForResponse, "File uploaded successfully.");
             }
@@ -84,6 +99,7 @@ namespace Ettad.CrossCutting.Comman.FileUpload
         /// </summary>
         Task<APIOperationResponse<List<long>>> SaveFilesAsync(
             List<IFormFile> files,
+            FileEntityType fileEntityType,
             CancellationToken cancellationToken = default);
 
         /// <summary>
@@ -113,4 +129,5 @@ namespace Ettad.CrossCutting.Comman.FileUpload
         public long PrimaryId { get; set; }
     }
 }
+
 
