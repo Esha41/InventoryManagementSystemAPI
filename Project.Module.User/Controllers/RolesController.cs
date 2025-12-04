@@ -133,7 +133,7 @@ namespace Ettad.User.API.Controllers
 
 
         [HttpPost("permissions")]
-        [Authorize("Permissions.Roles.Edit")]
+        [CheckAuthorize("Permissions.Roles.Edit")]
         public async Task<ActionResult> AssignPermissionsToRole(AssignPermissionsDto assignPermissions)
         {
             var response = await _roleService.AssignPermissionsToRoleAsync(assignPermissions);
