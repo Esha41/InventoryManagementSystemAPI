@@ -35,9 +35,9 @@ namespace Ettad.Modules.FileUpload.API.Controllers
         /// </summary>
         [HttpGet]
         [ProducesResponseType((int)HttpStatusCode.OK)]
-        public async Task<IActionResult> GetByEntity([FromQuery] FileEntityType entityId, [FromQuery] long primaryId)
+        public async Task<IActionResult> GetByEntity([FromQuery] FileEntityType entity, [FromQuery] long entityId)
         {
-            var result = await _fileUploadService.GetByEntityAsync(entityId, primaryId);
+            var result = await _fileUploadService.GetByEntityAsync(entity, entityId);
             return ProcessResponse(result);
         }
 
@@ -83,8 +83,8 @@ namespace Ettad.Modules.FileUpload.API.Controllers
         [ProducesResponseType((int)HttpStatusCode.BadRequest)]
         public async Task<IActionResult> UploadFile(
             IFormFile file,
-            [FromQuery] FileEntityType entityId,
-            [FromQuery] long primaryId,
+            [FromQuery] FileEntityType entity,
+            [FromQuery] long entityId,
             [FromQuery] bool isMain = false)
         {
             if (file == null || file.Length == 0)
@@ -92,7 +92,7 @@ namespace Ettad.Modules.FileUpload.API.Controllers
                 return BadRequest("No file provided");
             }
 
-            var result = await _fileUploadService.UploadAsync(file, entityId, primaryId, isMain);
+            var result = await _fileUploadService.UploadAsync(file, entity, entityId, isMain);
             return ProcessResponse(result);
         }
 
@@ -105,15 +105,15 @@ namespace Ettad.Modules.FileUpload.API.Controllers
         [ProducesResponseType((int)HttpStatusCode.BadRequest)]
         public async Task<IActionResult> UploadFilesForEntity(
             List<IFormFile> files,
-            [FromQuery] FileEntityType entityId,
-            [FromQuery] long primaryId)
+            [FromQuery] FileEntityType entity,
+            [FromQuery] long entityId)
         {
             if (files == null || files.Count == 0)
             {
                 return BadRequest("No files provided");
             }
 
-            var result = await _fileUploadService.UploadFilesForEntityAsync(files, entityId, primaryId);
+            var result = await _fileUploadService.UploadFilesForEntityAsync(files, entity, entityId);
             return ProcessResponse(result);
         }
 

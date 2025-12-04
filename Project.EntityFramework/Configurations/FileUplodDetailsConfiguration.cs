@@ -12,10 +12,12 @@ namespace Ettad.EntityFramework.Configurations
 
             builder.HasKey(x => x.Id);
 
-            builder.Property(x => x.EntityId)
+            builder.Property(x => x.Entity)
+                .HasColumnName("Entity")
                 .IsRequired();
 
-            builder.Property(x => x.PrimaryId)
+            builder.Property(x => x.EntityId)
+                .HasColumnName("entityId")
                 .IsRequired();
         }
     }

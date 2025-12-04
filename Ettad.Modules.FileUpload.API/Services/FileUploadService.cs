@@ -34,12 +34,12 @@ namespace Ettad.Modules.FileUpload.API.Services
 
         public async Task<APIOperationResponse<long>> UploadAsync(
             IFormFile file,
-            FileEntityType entityId,
-            long primaryId,
+            FileEntityType entity,
+            long entityId,
             bool isMain,
             CancellationToken cancellationToken = default)
         {
-            var storageResult = await _fileStorageService.SaveFileAsync(file, entityId, cancellationToken);
+            var storageResult = await _fileStorageService.SaveFileAsync(file, entity, cancellationToken);
             if (!storageResult.Succeeded)
             {
                 return APIOperationResponse<long>.BadRequest(storageResult.Message ?? "Failed to store file");
@@ -58,8 +58,8 @@ namespace Ettad.Modules.FileUpload.API.Services
             var detail = new FileUplodDetails
             {
                 FileUplodMasterId = master.Id,
-                EntityId = entityId,
-                PrimaryId = primaryId
+                Entity = entity,
+                EntityId = entityId
             };
 
             await _detailsRepository.AddAsync(detail);
@@ -112,11 +112,11 @@ namespace Ettad.Modules.FileUpload.API.Services
         /// </summary>
         public async Task<APIOperationResponse<List<long>>> UploadFilesForEntityAsync(
             List<IFormFile> files,
-            FileEntityType entityId,
-            long primaryId,
+            FileEntityType entity,
+            long entityId,
             CancellationToken cancellationToken = default)
         {
-            var saveResult = await SaveFilesAsync(files, entityId, cancellationToken);
+            var saveResult = await SaveFilesAsync(files, entity, cancellationToken);
             if (!saveResult.Succeeded || saveResult.Data == null)
             {
                 return APIOperationResponse<List<long>>.BadRequest(saveResult.Message ?? "Failed to upload files");
@@ -129,8 +129,8 @@ namespace Ettad.Modules.FileUpload.API.Services
                 var detail = new FileUplodDetails
                 {
                     FileUplodMasterId = masterId,
-                    EntityId = entityId,
-                    PrimaryId = primaryId
+                    Entity = entity,
+                    EntityId = entityId
                 };
 
                 detail = await _detailsRepository.AddAsync(detail);
@@ -140,10 +140,10 @@ namespace Ettad.Modules.FileUpload.API.Services
             return APIOperationResponse<List<long>>.Success(detailIds, "Files uploaded and linked successfully");
         }
 
-        public async Task<APIOperationResponse<List<FileUploadDto>>> GetByEntityAsync(FileEntityType entityId, long primaryId)
+        public async Task<APIOperationResponse<List<FileUploadDto>>> GetByEntityAsync(FileEntityType entity, long entityId)
         {
             var details = await _detailsRepository.FindAsync(
-                d => d.EntityId == entityId && d.PrimaryId == primaryId,
+                d => d.Entity == entity && d.EntityId == entityId,
                 false,
                 nameof(FileUplodDetails.FileUplodMaster));
 
@@ -156,8 +156,8 @@ namespace Ettad.Modules.FileUpload.API.Services
                     FileName = d.FileUplodMaster.FileName,
                     OriginalName = d.FileUplodMaster.OriginalName,
                     IsMain = d.FileUplodMaster.IsMain,
-                    EntityId = d.EntityId,
-                    PrimaryId = d.PrimaryId
+                    Entity = d.Entity,
+                    EntityId = d.EntityId
                 })
                 .ToList();
 
@@ -181,8 +181,8 @@ namespace Ettad.Modules.FileUpload.API.Services
                 FileName = master.FileName,
                 OriginalName = master.OriginalName,
                 IsMain = master.IsMain,
-                EntityId = detail?.EntityId ?? default,
-                PrimaryId = detail?.PrimaryId ?? 0
+                Entity = detail?.Entity ?? default,
+                EntityId = detail?.EntityId ?? 0
             };
 
             return APIOperationResponse<FileUploadDto>.Success(dto);
@@ -213,8 +213,8 @@ namespace Ettad.Modules.FileUpload.API.Services
             if (detail != null)
             {
                 var siblings = await _detailsRepository.FindAsync(
-                    d => d.EntityId == detail.EntityId &&
-                         d.PrimaryId == detail.PrimaryId,
+                    d => d.Entity == detail.Entity &&
+                         d.EntityId == detail.EntityId,
                     false,
                     nameof(FileUplodDetails.FileUplodMaster));
 
