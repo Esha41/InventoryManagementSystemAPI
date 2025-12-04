@@ -199,8 +199,8 @@ namespace Ettad.Inventory.Service.Ammunitions
                         var fileDetail = new FileUplodDetails
                         {
                             FileUplodMasterId = masterId,
-                            EntityId = FileEntityType.Ammunition,
-                            PrimaryId = createdAmmunition.Id
+                            Entity = FileEntityType.Ammunition,
+                            EntityId = createdAmmunition.Id
                         };
                         await _fileDetailsRepository.AddAsync(fileDetail);
                     }

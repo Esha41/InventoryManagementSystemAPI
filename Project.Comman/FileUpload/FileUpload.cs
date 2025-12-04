@@ -88,8 +88,8 @@ namespace Ettad.CrossCutting.Comman.FileUpload
     {
         Task<APIOperationResponse<long>> UploadAsync(
             IFormFile file,
-            FileEntityType entityId,
-            long primaryId,
+            FileEntityType entity,
+            long entityId,
             bool isMain,
             CancellationToken cancellationToken = default);
 
@@ -108,11 +108,11 @@ namespace Ettad.CrossCutting.Comman.FileUpload
         /// </summary>
         Task<APIOperationResponse<List<long>>> UploadFilesForEntityAsync(
             List<IFormFile> files,
-            FileEntityType entityId,
-            long primaryId,
+            FileEntityType entity,
+            long entityId,
             CancellationToken cancellationToken = default);
 
-        Task<APIOperationResponse<List<FileUploadDto>>> GetByEntityAsync(FileEntityType entityId, long primaryId);
+        Task<APIOperationResponse<List<FileUploadDto>>> GetByEntityAsync(FileEntityType entity, long entityId);
         Task<APIOperationResponse<FileUploadDto>> GetByIdAsync(long id);
         Task<APIOperationResponse<bool>> DeleteAsync(long id);
         Task<APIOperationResponse<bool>> SetMainAsync(long id);
@@ -125,8 +125,8 @@ namespace Ettad.CrossCutting.Comman.FileUpload
         public string FileName { get; set; }
         public string OriginalName { get; set; }
         public bool IsMain { get; set; }
-        public FileEntityType EntityId { get; set; }
-        public long PrimaryId { get; set; }
+        public FileEntityType Entity { get; set; }
+        public long EntityId { get; set; }
     }
 }
 
