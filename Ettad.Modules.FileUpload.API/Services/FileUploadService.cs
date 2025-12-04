@@ -10,7 +10,7 @@ using Ettad.Data.Entities;
 using Ettad.ResponseHandler.Models;
 using Microsoft.AspNetCore.Http;
 
-namespace Project.Api
+namespace Ettad.Modules.FileUpload.API.Services
 {
     /// <summary>
     /// High-level service that coordinates physical file storage with database tables
@@ -39,7 +39,7 @@ namespace Project.Api
             bool isMain,
             CancellationToken cancellationToken = default)
         {
-            var storageResult = await _fileStorageService.SaveFileAsync(file, entityId.ToString(), cancellationToken);
+            var storageResult = await _fileStorageService.SaveFileAsync(file, entityId, cancellationToken);
             if (!storageResult.Succeeded)
             {
                 return APIOperationResponse<long>.BadRequest(storageResult.Message ?? "Failed to store file");
@@ -73,6 +73,7 @@ namespace Project.Api
         /// </summary>
         public async Task<APIOperationResponse<List<long>>> SaveFilesAsync(
             List<IFormFile> files,
+            FileEntityType fileEntityType,
             CancellationToken cancellationToken = default)
         {
             if (files == null || !files.Any())
@@ -84,7 +85,7 @@ namespace Project.Api
 
             foreach (var file in files)
             {
-                var storageResult = await _fileStorageService.SaveFileAsync(file, "FileUploads", cancellationToken);
+                var storageResult = await _fileStorageService.SaveFileAsync(file, fileEntityType, cancellationToken);
                 if (!storageResult.Succeeded)
                 {
                     return APIOperationResponse<List<long>>.BadRequest(storageResult.Message ?? "Failed to store file");
@@ -115,7 +116,7 @@ namespace Project.Api
             long primaryId,
             CancellationToken cancellationToken = default)
         {
-            var saveResult = await SaveFilesAsync(files, cancellationToken);
+            var saveResult = await SaveFilesAsync(files, entityId, cancellationToken);
             if (!saveResult.Succeeded || saveResult.Data == null)
             {
                 return APIOperationResponse<List<long>>.BadRequest(saveResult.Message ?? "Failed to upload files");
@@ -241,5 +242,4 @@ namespace Project.Api
         }
     }
 }
-
 
