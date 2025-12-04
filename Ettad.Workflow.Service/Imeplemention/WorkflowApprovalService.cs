@@ -562,10 +562,28 @@ namespace Ettad.Workflows.Service.Imeplemention
 
             baseRequest.ModifiedBy = _currentUserService.UserId;
             baseRequest.ModificationDate = DateTime.UtcNow;
+
+            // Delete the draft supply record and its details for this order if any 
+            if (baseRequest.RequestType == RequestType.Order)
+            {
+                var draftSupply = await _context.Supplies
+                    .Include(s => s.SupplyDetails)
+                    .FirstOrDefaultAsync(s => s.OrderId == baseRequest.Id && s.SubmissionStatus == SupplySubmissionStatus.Draft);
+
+                if (draftSupply != null)
+                {
+                    if (draftSupply.SupplyDetails != null && draftSupply.SupplyDetails.Any())
+                    {
+                        _context.SupplyDetails.RemoveRange(draftSupply.SupplyDetails);
+                    }
+                    _context.Supplies.Remove(draftSupply);
+                }
+            }
+
         }
 
         // Return for review
-       
+
         // Helper: get current approval step by request ID
         public async Task<WorkflowApprovalStep> GetCurrentApprovalStepByRequestIdAsync(int requestId)
         {
