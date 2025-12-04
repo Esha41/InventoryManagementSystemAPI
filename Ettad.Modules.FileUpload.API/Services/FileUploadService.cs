@@ -10,7 +10,7 @@ using Ettad.Data.Entities;
 using Ettad.ResponseHandler.Models;
 using Microsoft.AspNetCore.Http;
 
-namespace Project.Api
+namespace Ettad.Modules.FileUpload.API.Services
 {
     /// <summary>
     /// High-level service that coordinates physical file storage with database tables
@@ -242,5 +242,4 @@ namespace Project.Api
         }
     }
 }
-
 
