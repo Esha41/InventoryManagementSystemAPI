@@ -107,6 +107,8 @@ namespace Ettad.EntityFramework.Configurations
                     PropellantId = 1,
                     CompatibilityId = 1,
                     HazardDivisionId = 1,
+                    Price = 0.65m,
+                    MinimumQuantity = 200,
                     CreationDate = seedDate,
                     IsDeleted = false,
                     AmmunitionType = AmmunitionType.Small
@@ -135,6 +137,8 @@ namespace Ettad.EntityFramework.Configurations
                     PropellantId = 2,
                     CompatibilityId = 2,
                     HazardDivisionId = 2,
+                    Price = 1.25m,
+                    MinimumQuantity = 150,
                     CreationDate = seedDate,
                     IsDeleted = false,
                     AmmunitionType = AmmunitionType.Small
@@ -163,6 +167,8 @@ namespace Ettad.EntityFramework.Configurations
                     PropellantId = 3,
                     CompatibilityId = 3,
                     HazardDivisionId = 3,
+                    Price = 0.70m,
+                    MinimumQuantity = 200,
                     CreationDate = seedDate,
                     IsDeleted = false,
                     AmmunitionType = AmmunitionType.Small
@@ -191,6 +197,8 @@ namespace Ettad.EntityFramework.Configurations
                     PropellantId = 1,
                     CompatibilityId = 1,
                     HazardDivisionId = 1,
+                    Price = 3.50m,
+                    MinimumQuantity = 50,
                     CreationDate = seedDate,
                     IsDeleted = false,
                     AmmunitionType = AmmunitionType.Small
@@ -219,6 +227,8 @@ namespace Ettad.EntityFramework.Configurations
                     PropellantId = 2,
                     CompatibilityId = 2,
                     HazardDivisionId = 2,
+                    Price = 1.50m,
+                    MinimumQuantity = 100,
                     CreationDate = seedDate,
                     IsDeleted = false,
                     AmmunitionType = AmmunitionType.Small
@@ -247,6 +257,8 @@ namespace Ettad.EntityFramework.Configurations
                     PropellantId = 3,
                     CompatibilityId = 3,
                     HazardDivisionId = 3,
+                    Price = 0.75m,
+                    MinimumQuantity = 150,
                     CreationDate = seedDate,
                     IsDeleted = false,
                     AmmunitionType = AmmunitionType.Small
@@ -275,6 +287,8 @@ namespace Ettad.EntityFramework.Configurations
                     PropellantId = 1,
                     CompatibilityId = 1,
                     HazardDivisionId = 1,
+                    Price = 2.50m,
+                    MinimumQuantity = 50,
                     CreationDate = seedDate,
                     IsDeleted = false,
                     AmmunitionType = AmmunitionType.Small
@@ -303,6 +317,8 @@ namespace Ettad.EntityFramework.Configurations
                     PropellantId = 2,
                     CompatibilityId = 2,
                     HazardDivisionId = 2,
+                    Price = 0.60m,
+                    MinimumQuantity = 200,
                     CreationDate = seedDate,
                     IsDeleted = false,
                     AmmunitionType = AmmunitionType.Small
@@ -331,6 +347,8 @@ namespace Ettad.EntityFramework.Configurations
                     PropellantId = 3,
                     CompatibilityId = 3,
                     HazardDivisionId = 3,
+                    Price = 0.80m,
+                    MinimumQuantity = 150,
                     CreationDate = seedDate,
                     IsDeleted = false,
                     AmmunitionType = AmmunitionType.Small
