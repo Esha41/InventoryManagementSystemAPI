@@ -18,6 +18,15 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
             {
                 var context = services.GetRequiredService<ApplicationDbContext>();
                 
+                // Seed countries data
+                await SeedCountriesDataAsync(context);
+                
+                // Seed suppliers data
+                await SeedSuppliersDataAsync(context);
+                
+                // Seed manufacturers data
+                await SeedManufacturersDataAsync(context);
+                
                 // Seed ammunition data
                 await SeedAmmunitionDataAsync(context);
                 
@@ -37,6 +46,144 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
             {
                 // swallow for startup; logs handled by outer try/catch
             }
+        }
+
+        private static async Task SeedCountriesDataAsync(ApplicationDbContext context)
+        {
+            // Check if countries already exist
+            if (await context.Countries.AnyAsync())
+            {
+                return; // Already seeded
+            }
+
+            var countries = new List<Country>
+            {
+                new Country { Code = "AF", NameEn = "Afghanistan", NameAr = "أفغانستان", IsDeleted = false },
+                new Country { Code = "AL", NameEn = "Albania", NameAr = "ألبانيا", IsDeleted = false },
+                new Country { Code = "DZ", NameEn = "Algeria", NameAr = "الجزائر", IsDeleted = false },
+                new Country { Code = "AR", NameEn = "Argentina", NameAr = "الأرجنتين", IsDeleted = false },
+                new Country { Code = "AU", NameEn = "Australia", NameAr = "أستراليا", IsDeleted = false },
+                new Country { Code = "AT", NameEn = "Austria", NameAr = "النمسا", IsDeleted = false },
+                new Country { Code = "BH", NameEn = "Bahrain", NameAr = "البحرين", IsDeleted = false },
+                new Country { Code = "BD", NameEn = "Bangladesh", NameAr = "بنغلاديش", IsDeleted = false },
+                new Country { Code = "BE", NameEn = "Belgium", NameAr = "بلجيكا", IsDeleted = false },
+                new Country { Code = "BR", NameEn = "Brazil", NameAr = "البرازيل", IsDeleted = false },
+                new Country { Code = "BG", NameEn = "Bulgaria", NameAr = "بلغاريا", IsDeleted = false },
+                new Country { Code = "CA", NameEn = "Canada", NameAr = "كندا", IsDeleted = false },
+                new Country { Code = "CN", NameEn = "China", NameAr = "الصين", IsDeleted = false },
+                new Country { Code = "CO", NameEn = "Colombia", NameAr = "كولومبيا", IsDeleted = false },
+                new Country { Code = "HR", NameEn = "Croatia", NameAr = "كرواتيا", IsDeleted = false },
+                new Country { Code = "CZ", NameEn = "Czech Republic", NameAr = "جمهورية التشيك", IsDeleted = false },
+                new Country { Code = "DK", NameEn = "Denmark", NameAr = "الدنمارك", IsDeleted = false },
+                new Country { Code = "EG", NameEn = "Egypt", NameAr = "مصر", IsDeleted = false },
+                new Country { Code = "FI", NameEn = "Finland", NameAr = "فنلندا", IsDeleted = false },
+                new Country { Code = "FR", NameEn = "France", NameAr = "فرنسا", IsDeleted = false },
+                new Country { Code = "DE", NameEn = "Germany", NameAr = "ألمانيا", IsDeleted = false },
+                new Country { Code = "GR", NameEn = "Greece", NameAr = "اليونان", IsDeleted = false },
+                new Country { Code = "HU", NameEn = "Hungary", NameAr = "المجر", IsDeleted = false },
+                new Country { Code = "IN", NameEn = "India", NameAr = "الهند", IsDeleted = false },
+                new Country { Code = "ID", NameEn = "Indonesia", NameAr = "إندونيسيا", IsDeleted = false },
+                new Country { Code = "IR", NameEn = "Iran", NameAr = "إيران", IsDeleted = false },
+                new Country { Code = "IQ", NameEn = "Iraq", NameAr = "العراق", IsDeleted = false },
+                new Country { Code = "IE", NameEn = "Ireland", NameAr = "أيرلندا", IsDeleted = false },
+                new Country { Code = "PS", NameEn = "Palestine", NameAr = "فلسطين", IsDeleted = false },
+                new Country { Code = "IT", NameEn = "Italy", NameAr = "إيطاليا", IsDeleted = false },
+                new Country { Code = "JP", NameEn = "Japan", NameAr = "اليابان", IsDeleted = false },
+                new Country { Code = "JO", NameEn = "Jordan", NameAr = "الأردن", IsDeleted = false },
+                new Country { Code = "KW", NameEn = "Kuwait", NameAr = "الكويت", IsDeleted = false },
+                new Country { Code = "MY", NameEn = "Malaysia", NameAr = "ماليزيا", IsDeleted = false },
+                new Country { Code = "MX", NameEn = "Mexico", NameAr = "المكسيك", IsDeleted = false },
+                new Country { Code = "NL", NameEn = "Netherlands", NameAr = "هولندا", IsDeleted = false },
+                new Country { Code = "NZ", NameEn = "New Zealand", NameAr = "نيوزيلندا", IsDeleted = false },
+                new Country { Code = "NO", NameEn = "Norway", NameAr = "النرويج", IsDeleted = false },
+                new Country { Code = "OM", NameEn = "Oman", NameAr = "عمان", IsDeleted = false },
+                new Country { Code = "PK", NameEn = "Pakistan", NameAr = "باكستان", IsDeleted = false },
+                new Country { Code = "PL", NameEn = "Poland", NameAr = "بولندا", IsDeleted = false },
+                new Country { Code = "PT", NameEn = "Portugal", NameAr = "البرتغال", IsDeleted = false },
+                new Country { Code = "QA", NameEn = "Qatar", NameAr = "قطر", IsDeleted = false },
+                new Country { Code = "RO", NameEn = "Romania", NameAr = "رومانيا", IsDeleted = false },
+                new Country { Code = "RU", NameEn = "Russia", NameAr = "روسيا", IsDeleted = false },
+                new Country { Code = "SA", NameEn = "Saudi Arabia", NameAr = "المملكة العربية السعودية", IsDeleted = false },
+                new Country { Code = "SG", NameEn = "Singapore", NameAr = "سنغافورة", IsDeleted = false },
+                new Country { Code = "ZA", NameEn = "South Africa", NameAr = "جنوب أفريقيا", IsDeleted = false },
+                new Country { Code = "KR", NameEn = "South Korea", NameAr = "كوريا الجنوبية", IsDeleted = false },
+                new Country { Code = "SD", NameEn = "Sudan", NameAr = "السودان", IsDeleted = false },
+                new Country { Code = "ES", NameEn = "Spain", NameAr = "إسبانيا", IsDeleted = false },
+                new Country { Code = "SE", NameEn = "Sweden", NameAr = "السويد", IsDeleted = false },
+                new Country { Code = "CH", NameEn = "Switzerland", NameAr = "سويسرا", IsDeleted = false },
+                new Country { Code = "TW", NameEn = "Taiwan", NameAr = "تايوان", IsDeleted = false },
+                new Country { Code = "TH", NameEn = "Thailand", NameAr = "تايلاند", IsDeleted = false },
+                new Country { Code = "TR", NameEn = "Turkey", NameAr = "تركيا", IsDeleted = false },
+                new Country { Code = "AE", NameEn = "United Arab Emirates", NameAr = "الإمارات العربية المتحدة", IsDeleted = false },
+                new Country { Code = "GB", NameEn = "United Kingdom", NameAr = "المملكة المتحدة", IsDeleted = false },
+                new Country { Code = "US", NameEn = "United States", NameAr = "الولايات المتحدة الأمريكية", IsDeleted = false },
+                new Country { Code = "VN", NameEn = "Vietnam", NameAr = "فيتنام", IsDeleted = false },
+                new Country { Code = "YE", NameEn = "Yemen", NameAr = "اليمن", IsDeleted = false }
+            };
+
+            await context.Countries.AddRangeAsync(countries);
+            await context.SaveChangesAsync();
+        }
+
+        private static async Task SeedSuppliersDataAsync(ApplicationDbContext context)
+        {
+            // Check if suppliers already exist
+            if (await context.Suppliers.AnyAsync())
+            {
+                return; // Already seeded
+            }
+
+            var utcNow = DateTime.UtcNow;
+
+            var suppliers = new[]
+            {
+                new Supplier { NameEn = "Global Defense Supplies", NameAr = "إمدادات الدفاع العالمية", IsDeleted = false },
+                new Supplier { NameEn = "Military Equipment Corporation", NameAr = "شركة المعدات العسكرية", IsDeleted = false },
+                new Supplier { NameEn = "Ammunition Supply International", NameAr = "الإمدادات الدولية للذخيرة", IsDeleted = false },
+                new Supplier { NameEn = "Defense Logistics Group", NameAr = "مجموعة الدفاع اللوجستية", IsDeleted = false },
+                new Supplier { NameEn = "Strategic Arms Distributors", NameAr = "موزعو الأسلحة الاستراتيجية", IsDeleted = false },
+                new Supplier { NameEn = "Tactical Equipment Suppliers", NameAr = "موردو المعدات التكتيكية", IsDeleted = false },
+                new Supplier { NameEn = "International Munitions Company", NameAr = "شركة الذخائر الدولية", IsDeleted = false },
+                new Supplier { NameEn = "Defense Procurement Services", NameAr = "خدمات المشتريات الدفاعية", IsDeleted = false },
+                new Supplier { NameEn = "Arms & Ammunition Trading", NameAr = "تجارة الأسلحة والذخيرة", IsDeleted = false },
+                new Supplier { NameEn = "Military Supply Chain Solutions", NameAr = "حلول سلسلة الإمدادات العسكرية", IsDeleted = false, CreationDate = utcNow, CreatedBy = "SYSTEM" }
+            };
+
+            await context.Suppliers.AddRangeAsync(suppliers);
+            await context.SaveChangesAsync();
+        }
+
+        private static async Task SeedManufacturersDataAsync(ApplicationDbContext context)
+        {
+            // Check if manufacturers already exist
+            if (await context.Manufacturers.AnyAsync())
+            {
+                return; // Already seeded
+            }
+
+            var utcNow = DateTime.UtcNow;
+
+            var manufacturers = new[]
+            {
+                new Manufacturer { NameEn = "Lockheed Martin", NameAr = "لوكهيد مارتن", IsDeleted = false },
+                new Manufacturer { NameEn = "Raytheon Technologies", NameAr = "رايثيون تكنولوجيز", IsDeleted = false },
+                new Manufacturer { NameEn = "BAE Systems", NameAr = "بي إيه إي سيستمز", IsDeleted = false },
+                new Manufacturer { NameEn = "Northrop Grumman", NameAr = "نورثروب جرومان", IsDeleted = false },
+                new Manufacturer { NameEn = "General Dynamics", NameAr = "جنرال ديناميكس", IsDeleted = false },
+                new Manufacturer { NameEn = "Boeing Defense", NameAr = "بوينغ للدفاع", IsDeleted = false },
+                new Manufacturer { NameEn = "Rheinmetall", NameAr = "راينميتال", IsDeleted = false },
+                new Manufacturer { NameEn = "Thales Group", NameAr = "مجموعة تاليس", IsDeleted = false },
+                new Manufacturer { NameEn = "Leonardo", NameAr = "ليوناردو", IsDeleted = false },
+                new Manufacturer { NameEn = "Honeywell Aerospace", NameAr = "هانيويل للطيران", IsDeleted = false },
+                new Manufacturer { NameEn = "Textron Systems", NameAr = "تكسترون سيستمز", IsDeleted = false },
+                new Manufacturer { NameEn = "L3Harris Technologies", NameAr = "إل 3 هاريس تكنولوجيز", IsDeleted = false },
+                new Manufacturer { NameEn = "FN Herstal", NameAr = "إف إن هيرستال", IsDeleted = false },
+                new Manufacturer { NameEn = "Heckler & Koch", NameAr = "هيكلر وكوخ", IsDeleted = false },
+                new Manufacturer { NameEn = "Remington Arms", NameAr = "ريمينغتون أرمز", IsDeleted = false, CreationDate = utcNow, CreatedBy = "SYSTEM" }
+            };
+
+            await context.Manufacturers.AddRangeAsync(manufacturers);
+            await context.SaveChangesAsync();
         }
 
         private static async Task SeedAmmunitionDataAsync(ApplicationDbContext context)
@@ -73,6 +220,8 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                     PropellantId = 1,
                     CompatibilityId = 1,
                     HazardDivisionId = 1,
+                    Price = 0.65m,
+                    MinimumQuantity = 200,
                     ItemType = ItemType.Ammunition,
                     CreationDate = utcNow,
                     CreatedBy = "SYSTEM"
@@ -99,6 +248,8 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                     PropellantId = 2,
                     CompatibilityId = 2,
                     HazardDivisionId = 2,
+                    Price = 1.25m,
+                    MinimumQuantity = 150,
                     ItemType = ItemType.Ammunition,
                     CreationDate = utcNow,
                     CreatedBy = "SYSTEM"
@@ -125,6 +276,8 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                     PropellantId = 3,
                     CompatibilityId = 3,
                     HazardDivisionId = 3,
+                    Price = 0.85m,
+                    MinimumQuantity = 250,
                     ItemType = ItemType.Ammunition,
                     CreationDate = utcNow,
                     CreatedBy = "SYSTEM"
@@ -154,6 +307,8 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                     HccId = 1,
                     PartNo = "PN-WPN-001",
                     Nsn = "1005-01-000-0001",
+                    Price = 1000.00m,
+                    MinimumQuantity = 10,
                     ItemType = ItemType.Weapon,
                     CreationDate = utcNow,
                     CreatedBy = "SYSTEM"
@@ -165,6 +320,8 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                     HccId = 2,
                     PartNo = "PN-WPN-002",
                     Nsn = "1005-01-000-0002",
+                    Price = 850.00m,
+                    MinimumQuantity = 15,
                     ItemType = ItemType.Weapon,
                     CreationDate = utcNow,
                     CreatedBy = "SYSTEM"
@@ -176,6 +333,8 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                     HccId = 3,
                     PartNo = "PN-WPN-003",
                     Nsn = "1005-01-000-0003",
+                    Price = 5000.00m,
+                    MinimumQuantity = 5,
                     ItemType = ItemType.Weapon,
                     CreationDate = utcNow,
                     CreatedBy = "SYSTEM"
@@ -187,6 +346,8 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                     HccId = 1,
                     PartNo = "PN-WPN-004",
                     Nsn = "1005-01-000-0004",
+                    Price = 6000.00m,
+                    MinimumQuantity = 5,
                     ItemType = ItemType.Weapon,
                     CreationDate = utcNow,
                     CreatedBy = "SYSTEM"
@@ -198,6 +359,8 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                     HccId = 2,
                     PartNo = "PN-WPN-005",
                     Nsn = "1005-01-000-0005",
+                    Price = 650.00m,
+                    MinimumQuantity = 20,
                     ItemType = ItemType.Weapon,
                     CreationDate = utcNow,
                     CreatedBy = "SYSTEM"
@@ -209,6 +372,8 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                     HccId = 3,
                     PartNo = "PN-WPN-006",
                     Nsn = "1005-01-000-0006",
+                    Price = 4000.00m,
+                    MinimumQuantity = 8,
                     ItemType = ItemType.Weapon,
                     CreationDate = utcNow,
                     CreatedBy = "SYSTEM"
@@ -220,6 +385,8 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                     HccId = 1,
                     PartNo = "PN-WPN-007",
                     Nsn = "1005-01-000-0007",
+                    Price = 10000.00m,
+                    MinimumQuantity = 3,
                     ItemType = ItemType.Weapon,
                     CreationDate = utcNow,
                     CreatedBy = "SYSTEM"
@@ -231,6 +398,8 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                     HccId = 2,
                     PartNo = "PN-WPN-008",
                     Nsn = "1005-01-000-0008",
+                    Price = 2000.00m,
+                    MinimumQuantity = 10,
                     ItemType = ItemType.Weapon,
                     CreationDate = utcNow,
                     CreatedBy = "SYSTEM"
@@ -242,6 +411,8 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                     HccId = 3,
                     PartNo = "PN-WPN-009",
                     Nsn = "1005-01-000-0009",
+                    Price = 5000.00m,
+                    MinimumQuantity = 8,
                     ItemType = ItemType.Weapon,
                     CreationDate = utcNow,
                     CreatedBy = "SYSTEM"
@@ -271,6 +442,8 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                     HccId = 1,
                     PartNo = "PN-EXP-001",
                     Nsn = "1330-01-000-0001",
+                    Price = 75.00m,
+                    MinimumQuantity = 50,
                     ItemType = ItemType.Explosive,
                     CreationDate = utcNow,
                     CreatedBy = "SYSTEM"
@@ -282,6 +455,8 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                     HccId = 2,
                     PartNo = "PN-EXP-002",
                     Nsn = "1330-01-000-0002",
+                    Price = 60.00m,
+                    MinimumQuantity = 50,
                     ItemType = ItemType.Explosive,
                     CreationDate = utcNow,
                     CreatedBy = "SYSTEM"
@@ -293,6 +468,8 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                     HccId = 3,
                     PartNo = "PN-EXP-003",
                     Nsn = "1330-01-000-0003",
+                    Price = 45.00m,
+                    MinimumQuantity = 50,
                     ItemType = ItemType.Explosive,
                     CreationDate = utcNow,
                     CreatedBy = "SYSTEM"
@@ -304,6 +481,8 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                     HccId = 1,
                     PartNo = "PN-EXP-004",
                     Nsn = "1330-01-000-0004",
+                    Price = 300.00m,
+                    MinimumQuantity = 20,
                     ItemType = ItemType.Explosive,
                     CreationDate = utcNow,
                     CreatedBy = "SYSTEM"
@@ -315,6 +494,8 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                     HccId = 2,
                     PartNo = "PN-EXP-005",
                     Nsn = "1330-01-000-0005",
+                    Price = 225.00m,
+                    MinimumQuantity = 25,
                     ItemType = ItemType.Explosive,
                     CreationDate = utcNow,
                     CreatedBy = "SYSTEM"
@@ -326,6 +507,8 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                     HccId = 3,
                     PartNo = "PN-EXP-006",
                     Nsn = "1330-01-000-0006",
+                    Price = 90.00m,
+                    MinimumQuantity = 40,
                     ItemType = ItemType.Explosive,
                     CreationDate = utcNow,
                     CreatedBy = "SYSTEM"
@@ -337,6 +520,8 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                     HccId = 1,
                     PartNo = "PN-EXP-007",
                     Nsn = "1330-01-000-0007",
+                    Price = 115.00m,
+                    MinimumQuantity = 30,
                     ItemType = ItemType.Explosive,
                     CreationDate = utcNow,
                     CreatedBy = "SYSTEM"
@@ -348,6 +533,8 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                     HccId = 2,
                     PartNo = "PN-EXP-008",
                     Nsn = "1410-01-000-0008",
+                    Price = 1500.00m,
+                    MinimumQuantity = 10,
                     ItemType = ItemType.Explosive,
                     CreationDate = utcNow,
                     CreatedBy = "SYSTEM"
@@ -359,6 +546,8 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                     HccId = 3,
                     PartNo = "PN-EXP-009",
                     Nsn = "1345-01-000-0009",
+                    Price = 300.00m,
+                    MinimumQuantity = 20,
                     ItemType = ItemType.Explosive,
                     CreationDate = utcNow,
                     CreatedBy = "SYSTEM"
@@ -380,6 +569,9 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
             // Ensure we have depots and ammunitions to seed inventories
             var depots = await context.Depots.Where(d => !d.IsDeleted).ToListAsync();
             var ammunitions = await context.Ammunitions.ToListAsync();
+            var suppliers = await context.Suppliers.Where(s => !s.IsDeleted).ToListAsync();
+            var manufacturers = await context.Manufacturers.Where(m => !m.IsDeleted).ToListAsync();
+            var countries = await context.Countries.Where(c => !c.IsDeleted).ToListAsync();
 
             if (!depots.Any() || !ammunitions.Any())
             {
@@ -421,14 +613,24 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
 
                     foreach (var ammo in ammoSelection)
                     {
+                        // Generate expiry date: between 1 to 5 years from received date
+                        var receivedDate = inventory.RecievedDate;
+                        var expiryDate = receivedDate?.AddYears(random.Next(1, 6)).AddDays(random.Next(0, 365));
+
+                        // Randomly select supplier, manufacturer, and country if available
+                        var supplier = suppliers.Any() ? suppliers[random.Next(suppliers.Count)] : null;
+                        var manufacturer = manufacturers.Any() ? manufacturers[random.Next(manufacturers.Count)] : null;
+                        var country = countries.Any() ? countries[random.Next(countries.Count)] : null;
+
                         inventory.InventoryDetails.Add(new InventoryDetail
                         {
                             ItemId = ammo.Id,
                             Lot = ++lotSequence,
                             ItemQuantity = random.Next(150, 600),
-                            SupplierId = null,
-                            ManufacturerId = null,
-                            CountryId = null,
+                            SupplierId = supplier?.Id,
+                            ManufacturerId = manufacturer?.Id,
+                            CountryId = country?.Id,
+                            ExpiryDate = expiryDate,
                             IsLotEmpty = false
                         });
                     }

@@ -17,6 +17,10 @@ namespace Ettad.Inventory.Service.Ammunitions.Dtos
 
         public string PartNo { get; set; }
 
+        public decimal? Price { get; set; }
+
+        public long? MinimumQuantity { get; set; }
+
         public decimal BulletDiameter { get; set; }
 
         public long BulletDiameterUnitId { get; set; }

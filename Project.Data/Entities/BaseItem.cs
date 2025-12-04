@@ -17,6 +17,10 @@ namespace Ettad.Data.Entities
         
         public string PartNo { get; set; }
 
+        public decimal? Price { get; set; }
+
+        public long? MinimumQuantity { get; set; }
+
         #region Navigation Properties
 
         public Hcc Hcc { get; set; }

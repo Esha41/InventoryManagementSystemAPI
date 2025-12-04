@@ -69,6 +69,15 @@ namespace Ettad.Inventory.Service.Ammunitions.Validators
             RuleFor(x => x.ProjectailMaterialId)
                 .GreaterThan(0).When(x => x.ProjectailMaterialId.HasValue)
                 .WithMessage("Projectile material ID must be greater than 0 when provided");
+
+            // Optional field validations for Price and MinimumQuantity
+            RuleFor(x => x.Price)
+                .GreaterThanOrEqualTo(0).When(x => x.Price.HasValue)
+                .WithMessage("Price must be greater than or equal to 0 when provided");
+
+            RuleFor(x => x.MinimumQuantity)
+                .GreaterThan(0).When(x => x.MinimumQuantity.HasValue)
+                .WithMessage("Minimum quantity must be greater than 0 when provided");
         }
     }
 }
