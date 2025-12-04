@@ -2,12 +2,15 @@
 using FluentValidation;
 using Microsoft.EntityFrameworkCore;
 using Ettad.CrossCutting.Data.Repository;
+using Ettad.CrossCutting.Comman.FileUpload;
+using Ettad.Comman.Enums;
 using Ettad.Data.Entities;
 using Ettad.Data.Enums;
 using Ettad.Inventory.Service.Ammunitions.Dtos;
 using Ettad.ResponseHandler.Consts;
 using Ettad.ResponseHandler.Models;
 using Ettad.Application.Common.Interfaces;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 
 namespace Ettad.Inventory.Service.Ammunitions
@@ -15,23 +18,29 @@ namespace Ettad.Inventory.Service.Ammunitions
     public class AmmunitionService : IAmmunitionService
     {
         private readonly ICrossCuttingRepository<Ammunition> _ammunitionRepository;
+        private readonly ICrossCuttingRepository<FileUplodDetails> _fileDetailsRepository;
         private readonly IMapper _mapper;
         private readonly IValidator<CreateUpdateAmmunitionDto> _validator;
         private readonly ICurrentUserService _currentUserService;
         private readonly ILogger<AmmunitionService> _logger;
+        private readonly IFileUploadService _fileUploadService;
 
         public AmmunitionService(
             ICrossCuttingRepository<Ammunition> ammunitionRepository,
+            ICrossCuttingRepository<FileUplodDetails> fileDetailsRepository,
             IMapper mapper,
             IValidator<CreateUpdateAmmunitionDto> validator,
             ICurrentUserService currentUserService,
-            ILogger<AmmunitionService> logger)
+            ILogger<AmmunitionService> logger,
+            IFileUploadService fileUploadService)
         {
             _ammunitionRepository = ammunitionRepository;
+            _fileDetailsRepository = fileDetailsRepository;
             _mapper = mapper;
             _validator = validator;
             _currentUserService = currentUserService;
             _logger = logger;
+            _fileUploadService = fileUploadService;
         }
 
         public async Task<APIOperationResponse<AmmunitionDto>> GetByIdAsync(long id)
@@ -127,7 +136,7 @@ namespace Ettad.Inventory.Service.Ammunitions
             }
         }
 
-        public async Task<APIOperationResponse<long>> CreateAsync(CreateUpdateAmmunitionDto inputDto)
+        public async Task<APIOperationResponse<long>> CreateAsync(CreateUpdateAmmunitionDto inputDto, List<IFormFile>? files = null)
         {
             _logger.LogInformation("Creating new ammunition. Name: {Name}, ItemNo: {ItemNo}, User: {UserId}", 
                 inputDto?.Name, inputDto?.ItemNo, _currentUserService.UserId);
@@ -154,6 +163,21 @@ namespace Ettad.Inventory.Service.Ammunitions
                         return APIOperationResponse<long>.Fail(ResponseType.BadRequest, "NSN already exists");
                 }
 
+                // Save files first if provided
+                List<long>? savedFileMasterIds = null;
+                if (files != null && files.Any())
+                {
+                    var saveFilesResult = await _fileUploadService.SaveFilesAsync(files, FileEntityType.Ammunition);
+                    if (!saveFilesResult.Succeeded)
+                    {
+                        _logger.LogWarning("File upload failed during ammunition creation. Error: {Error}, User: {UserId}", 
+                            saveFilesResult.Message, _currentUserService.UserId);
+                        return APIOperationResponse<long>.Fail(ResponseType.BadRequest, 
+                            $"File upload failed: {saveFilesResult.Message}");
+                    }
+                    savedFileMasterIds = saveFilesResult.Data;
+                }
+
                 // Map DTO to entity
                 var ammunition = _mapper.Map<Ammunition>(inputDto);
                 ammunition.AmmunitionType = AmmunitionType.Small;
@@ -166,6 +190,23 @@ namespace Ettad.Inventory.Service.Ammunitions
                 var createdAmmunition = await _ammunitionRepository.AddAsync(ammunition);
                 _logger.LogInformation("Ammunition created successfully. AmmunitionId: {AmmunitionId}, Name: {Name}, User: {UserId}",
                                 createdAmmunition.Id, createdAmmunition.Name, _currentUserService.UserId);
+
+                // Link saved files to the created ammunition
+                if (savedFileMasterIds != null && savedFileMasterIds.Any())
+                {
+                    foreach (var masterId in savedFileMasterIds)
+                    {
+                        var fileDetail = new FileUplodDetails
+                        {
+                            FileUplodMasterId = masterId,
+                            EntityId = FileEntityType.Ammunition,
+                            PrimaryId = createdAmmunition.Id
+                        };
+                        await _fileDetailsRepository.AddAsync(fileDetail);
+                    }
+                    _logger.LogInformation("Files linked to ammunition. AmmunitionId: {AmmunitionId}, FileCount: {FileCount}, User: {UserId}",
+                        createdAmmunition.Id, savedFileMasterIds.Count, _currentUserService.UserId);
+                }
 
                 return APIOperationResponse<long>.Success(createdAmmunition.Id, "Ammunition created successfully");
             }
