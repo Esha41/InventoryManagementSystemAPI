@@ -1,7 +1,9 @@
 using AutoMapper;
 using FluentValidation;
 using Ettad.Application.Common.Interfaces;
+using Ettad.Comman.Enums;
 using Ettad.Comman.Idenitity;
+using Ettad.CrossCutting.Comman.FileUpload;
 using Ettad.CrossCutting.Data.Repository;
 using Ettad.Data.Entities;
 using Ettad.Data.Enums;
@@ -12,6 +14,7 @@ using Ettad.Notification.Service;
 using Ettad.RequestManagement.Service.SupplyManagement.Dtos;
 using Ettad.ResponseHandler.Consts;
 using Ettad.ResponseHandler.Models;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -39,6 +42,7 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
 		private readonly INotificationHelperService _notificationHelperService;
 		private readonly UserManager<ApplicationUser> _userManager;
 		private readonly ILogger<SupplyService> _logger;
+		private readonly IFileUploadService _fileUploadService;
 
 	public SupplyService(
 			ApplicationDbContext context,
@@ -59,7 +63,8 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
 			IValidator<ConfirmSupplyPickupDateDto> confirmPickupDateValidator,
 			INotificationHelperService notificationHelperService,
 			UserManager<ApplicationUser> userManager,
-			ILogger<SupplyService> logger)
+			ILogger<SupplyService> logger,
+			IFileUploadService fileUploadService)
 		{
 			_context = context;
 			_inventoryService = inventoryService;
@@ -80,6 +85,7 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
 			_notificationHelperService = notificationHelperService;
 			_userManager = userManager;
 			_logger = logger;
+			_fileUploadService = fileUploadService;
 		}
 
 		public async Task<APIOperationResponse<OrderSupplySuggestionDto>> GetSupplySuggestionAsync(long orderId, List<long>? depotIds = null)
@@ -1010,20 +1016,21 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
 			}
 		}
 
-		public async Task<APIOperationResponse<bool>> SubmitSupplyAsync(long id, SubmitSupplyDto inputDto)
+		public async Task<APIOperationResponse<bool>> SubmitSupplyAsync(long id, SubmitSupplyDto inputDto, List<IFormFile> files)
 		{
-			_logger.LogInformation("Submitting supply. SupplyId: {SupplyId}, User: {UserId}",
-				id, _currentUserService.UserId);
-
 			try
 			{
 				var validationResult = await _submitValidator.ValidateAsync(inputDto);
 				if (!validationResult.IsValid)
 				{
 					var errors = string.Join(", ", validationResult.Errors.Select(e => e.ErrorMessage));
-					_logger.LogWarning("Supply submission validation failed. Errors: {ValidationErrors}, User: {UserId}",
-						errors, _currentUserService.UserId);
 					return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, errors);
+				}
+
+				// Validate that at least one file is provided
+				if (files == null || !files.Any() || files.All(f => f == null || f.Length == 0))
+				{
+					return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, "At least one file attachment is required when submitting a supply.");
 				}
 
 				var supply = await _supplyRepository.FindOneAsync(
@@ -1036,23 +1043,39 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
 
 				if (supply == null)
 				{
-					_logger.LogWarning("Supply not found. SupplyId: {SupplyId}, User: {UserId}",
-						id, _currentUserService.UserId);
 					return APIOperationResponse<bool>.Fail(ResponseType.NotFound, "Supply not found");
 				}
 
 				if (supply.SubmissionStatus == SupplySubmissionStatus.Submitted)
 				{
-					_logger.LogWarning("Supply already submitted. SupplyId: {SupplyId}, User: {UserId}",
-						id, _currentUserService.UserId);
 					return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, "Supply is already submitted.");
 				}
 
 				if (supply.SupplyDetails == null || !supply.SupplyDetails.Any(sd => !sd.IsDeleted))
 				{
-					_logger.LogWarning("Cannot submit supply without details. SupplyId: {SupplyId}, User: {UserId}",
-						id, _currentUserService.UserId);
 					return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, "Supply must have at least one detail before submission.");
+				}
+
+				// Filter out null or empty files
+				var validFiles = files.Where(f => f != null && f.Length > 0).ToList();
+				if (!validFiles.Any())
+				{
+					return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, "At least one valid file attachment is required when submitting a supply.");
+				}
+
+				// Upload files and link them to the supply
+				var uploadResult = await _fileUploadService.UploadFilesForEntityAsync(
+					validFiles,
+					FileEntityType.Supply,
+					supply.Id
+				);
+
+				if (!uploadResult.Succeeded)
+				{
+					_logger.LogError("Failed to upload files for supply. SupplyId: {SupplyId}, Error: {Error}, UserId: {UserId}",
+						id, uploadResult.Message, _currentUserService.UserId);
+					return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, 
+						$"Failed to upload files: {uploadResult.Message}");
 				}
 
 				// Update receiver information and submission metadata
@@ -1066,15 +1089,12 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
 				supply.ModifiedBy = _currentUserService.UserId;
 
 				await _supplyRepository.UpdateAsync(supply);
-				_logger.LogInformation("Supply submitted successfully. SupplyId: {SupplyId}, User: {UserId}",
-					id, _currentUserService.UserId);
 
 				return APIOperationResponse<bool>.Success(true, "Supply submitted successfully");
 			}
 			catch (Exception ex)
 			{
-				_logger.LogError(ex, "Error submitting supply. SupplyId: {SupplyId}, User: {UserId}",
-					id, _currentUserService.UserId);
+				_logger.LogError(ex, "Error submitting supply. SupplyId: {SupplyId}, UserId: {UserId}", id, _currentUserService.UserId);
 				return APIOperationResponse<bool>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
 			}
 		}
