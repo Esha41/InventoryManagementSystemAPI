@@ -20,6 +20,8 @@ using Ettad.User.Services.Interfaces;
 using Ettad.Workflow.Service;
 using Ettad.Workflows.Service.Imeplemention;
 using Ettad.Workflows.Service.Interface;
+using Ettad.Inventory.Service.Monitoring;
+using Hangfire;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -344,6 +346,18 @@ try
             //  await ApplicationDbInitializer.SeedDefaultDataAsync(scope.ServiceProvider);
         }
     }
+
+    // Register Recurring Jobs
+    // Low Stock Monitor Job - Checks items daily and sends notifications when stock is low
+    // Schedule is configured in appsettings.json under "BackgroundJobs:LowStockMonitor:CronExpression"
+    // Default: Daily at 9:00 AM (Cron: "0 9 * * *")
+    var lowStockCronExpression = builder.Configuration.GetValue<string>("BackgroundJobs:LowStockMonitor:CronExpression") ?? "0 9 * * *";
+    RecurringJob.AddOrUpdate<ILowStockMonitorService>(
+        "LowStockMonitor",
+        service => service.CheckAndNotifyAsync(),
+        lowStockCronExpression);
+    
+    Log.Information("Low Stock Monitor job registered with schedule: {Schedule}", lowStockCronExpression);
 
     Log.Information("Ettad Backend API started successfully");
     app.Run();
