@@ -8,7 +8,9 @@ using Ettad.ResponseHandler.Consts;
 using Ettad.ResponseHandler.Models;
 using Ettad.Workflow.Service.Interface;
 using Ettad.Workflows.Service.DTO;
+using Ettad.Workflows.Service.Events;
 using Ettad.Workflows.Service.Interface;
+using MediatR;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -22,19 +24,22 @@ namespace Ettad.Workflows.Service.Imeplemention
         private readonly INotificationHelperService _notificationHelperService;
         private readonly IWorkflowStepNotifierService _workflowStepNotifierService;
         private readonly ILogger<WorkflowApprovalService> _logger;
+        private readonly IMediator _mediator;
 
         public WorkflowApprovalService(
             ApplicationDbContext context, 
             ICurrentUserService currentUserService, 
             INotificationHelperService notificationHelperService,
             IWorkflowStepNotifierService workflowStepNotifierService,
-            ILogger<WorkflowApprovalService> logger)
+            ILogger<WorkflowApprovalService> logger,
+            IMediator mediator)
         {
             _context = context;
             _currentUserService = currentUserService;
             _notificationHelperService = notificationHelperService;
             _workflowStepNotifierService = workflowStepNotifierService;
             _logger = logger;
+            _mediator = mediator;
         }
      
         public async Task<IEnumerable<WorkflowApprovalStepDto>> GetAllAsync()
@@ -503,6 +508,18 @@ namespace Ettad.Workflows.Service.Imeplemention
 
             baseRequest.ModifiedBy = _currentUserService.UserId;
             baseRequest.ModificationDate = DateTime.UtcNow;
+
+            // Publish event
+            await _mediator.Publish(new WorkflowStepApprovedEvent
+            {
+                WorkflowApprovalStepId = step.Id,
+                WorkflowStepId = step.WorkflowStepId,
+                TargetRequestId = step.TargetRequestId,
+                RequestType = baseRequest.RequestType,
+                ApproverUserId = step.ApproverUserId,
+                ApplicationRoleId = step.WorkflowStep?.ApplicationRoleId,
+                ApplicationRoleName = step.WorkflowStep?.ApplicationRole?.Name
+            });
         }
 
 
@@ -589,6 +606,7 @@ namespace Ettad.Workflows.Service.Imeplemention
         {
             var step = await _context.WorkflowApprovalSteps
                 .Include(x => x.WorkflowStep)
+                    .ThenInclude(ws => ws.ApplicationRole)
                 .FirstOrDefaultAsync(x => x.TargetRequestId == requestId && x.IsCurrent);
 
             if (step == null)

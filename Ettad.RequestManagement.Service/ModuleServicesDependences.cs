@@ -20,6 +20,9 @@ namespace Ettad.RequestManagement.Service
             // Register FluentValidation validators from this assembly
             services.AddValidatorsFromAssembly(Assembly.GetExecutingAssembly());
 
+            // Register MediatR handlers
+            services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(Assembly.GetExecutingAssembly()));
+
             // Register services
             services.AddScoped<IRequestNoGeneratorService, RequestNoGeneratorService>();
             services.AddScoped<IRequestPurposeService, RequestPurposeService>();
