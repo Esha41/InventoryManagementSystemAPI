@@ -2,6 +2,7 @@ using Ettad.Data.Enums;
 using Ettad.Inventory.Service.Inventories.Dtos;
 using Ettad.RequestManagement.Service.SupplyManagement.Dtos;
 using Ettad.ResponseHandler.Models;
+using Microsoft.AspNetCore.Http;
 
 namespace Ettad.RequestManagement.Service.SupplyManagement
 {
@@ -17,7 +18,7 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
 		Task<APIOperationResponse<bool>> UpdateSupplyDetailAsync(long supplyId, long detailId, UpdateSupplyDetailDto detailDto);
 		Task<APIOperationResponse<bool>> DeleteSupplyDetailAsync(long supplyId, long detailId);
 		Task<APIOperationResponse<bool>> ReplaceSupplyDetailsAsync(long supplyId, List<CreateSupplyDetailDto> newDetails);
-		Task<APIOperationResponse<bool>> SubmitSupplyAsync(long id, SubmitSupplyDto inputDto);
+		Task<APIOperationResponse<bool>> SubmitSupplyAsync(long id, SubmitSupplyDto inputDto, List<IFormFile> files);
 		Task<APIOperationResponse<bool>> SetSupplyPickupDateAsync(long orderId, SetSupplyPickupDateDto inputDto);
 		Task<APIOperationResponse<bool>> ConfirmSupplyPickupDateAsync(long orderId, ConfirmSupplyPickupDateDto inputDto);
 	}
