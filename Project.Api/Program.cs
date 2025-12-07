@@ -304,6 +304,13 @@ try
 
     app.UseCors(corsPolicyName);
 
+   app.Use(async (context, next) =>
+    {
+        context.Response.Headers["X-Frame-Options"] = "DENY";
+        context.Response.Headers["Content-Security-Policy"] = "frame-ancestors 'self'";
+        await next();
+    });
+
     app.UseAuthentication();
 
     app.UseAuthorization();
