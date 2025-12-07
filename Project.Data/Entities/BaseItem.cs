@@ -1,4 +1,4 @@
-﻿using Ettad.CrossCutting.Comman.Base;
+using Ettad.CrossCutting.Comman.Base;
 using Ettad.Data.Enums;
 
 namespace Ettad.Data.Entities
@@ -11,11 +11,11 @@ namespace Ettad.Data.Entities
        
         public ItemType ItemType { get; set; }
 
-        public string Nsn { get; set; }
+        public string? Nsn { get; set; }
         
-        public long HccId  { get; set; }
+        public long? HccId  { get; set; }
         
-        public string PartNo { get; set; }
+        public string? PartNo { get; set; }
 
         public decimal? Price { get; set; }
 

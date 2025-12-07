@@ -16,6 +16,7 @@ namespace Ettad.RequestManagement.Service.Orders.Validators
                 .IsInEnum().WithMessage("Invalid priority");
 
             RuleFor(x => x.Notes)
+                .NotEmpty().WithMessage("Comments are required")
                 .MaximumLength(1000).WithMessage("Notes cannot exceed 1000 characters");
 
             RuleFor(x => x.RequestPurposeId)

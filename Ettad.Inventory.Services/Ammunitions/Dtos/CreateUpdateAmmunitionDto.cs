@@ -1,4 +1,4 @@
-﻿namespace Ettad.Inventory.Service.Ammunitions.Dtos
+namespace Ettad.Inventory.Service.Ammunitions.Dtos
 {
     public class CreateUpdateAmmunitionDto
     {
@@ -6,27 +6,26 @@
 
         public string ItemNo { get; set; }
 
-        public long HccId { get; set; }
+        // All other fields are optional - only Name and ItemNo are required
+        public long? HccId { get; set; }
 
-        public string PartNo { get; set; }
+        public string? PartNo { get; set; }
+
+        public string? ArmNumber { get; set; }
 
         public decimal? Price { get; set; }
 
         public long? MinimumQuantity { get; set; }
 
-        public decimal BulletDiameter { get; set; }
+        public decimal? BulletDiameter { get; set; }
 
-        public long BulletDiameterUnitId { get; set; }
+        public long? BulletDiameterUnitId { get; set; }
 
-        public decimal CaseLength { get; set; }
+        public bool? IsLinked { get; set; }
 
-        public long CaseLengthUnitId { get; set; }
+        public string? Primer { get; set; }
 
-        public bool IsLinked { get; set; }
-
-        public string Primer { get; set; }
-
-        public decimal TotalWeight { get; set; }
+        public decimal? TotalWeight { get; set; }
 
         public long? NatureOptionId { get; set; }
 
@@ -38,12 +37,12 @@
 
         public long? ProjectailMaterialId { get; set; }
 
-        public long CaseTypeId { get; set; }
+        public long? CaseTypeId { get; set; }
 
-        public long PropellantId { get; set; }
+        public long? PropellantId { get; set; }
 
-        public long CompatibilityId { get; set; }
+        public long? CompatibilityId { get; set; }
 
-        public long HazardDivisionId { get; set; }
+        public long? HazardDivisionId { get; set; }
     }
 }
