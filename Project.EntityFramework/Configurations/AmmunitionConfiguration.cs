@@ -1,4 +1,4 @@
-﻿using Ettad.Data.Entities;
+using Ettad.Data.Entities;
 using Ettad.Data.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -15,10 +15,11 @@ namespace Ettad.EntityFramework.Configurations
                 .IsRequired();
 
             builder.Property(x => x.BulletDiameter)
-                .IsRequired();
+                .IsRequired(false);
 
-            builder.Property(x => x.CaseLength)
-                .IsRequired();
+            builder.Property(x => x.ArmNumber)
+                .IsRequired(false)
+                .HasMaxLength(200);
 
             builder.HasOne(x => x.NatureOption)
                 .WithMany()
@@ -68,15 +69,9 @@ namespace Ettad.EntityFramework.Configurations
                 .HasForeignKey(x => x.HazardDivisionId)
                 .OnDelete(DeleteBehavior.Restrict);
 
-            builder.HasOne(x => x.CaseLengthUnit)
-                .WithMany()
-                .IsRequired(true)
-                .HasForeignKey(x => x.CaseLengthUnitId)
-                .OnDelete(DeleteBehavior.Restrict);
-
             builder.HasOne(x => x.BulletDiameterUnit)
                 .WithMany()
-                .IsRequired(true)
+                .IsRequired(false)
                 .HasForeignKey(x => x.BulletDiameterUnitId)
                 .OnDelete(DeleteBehavior.Restrict);
 
@@ -93,8 +88,6 @@ namespace Ettad.EntityFramework.Configurations
                     PartNo = "PN-556-001",
                     BulletDiameter = 5.56m,
                     BulletDiameterUnitId = 1,
-                    CaseLength = 45.0m,
-                    CaseLengthUnitId = 1,
                     IsLinked = false,
                     Primer = "Boxer",
                     TotalWeight = 12.0m,
@@ -123,8 +116,6 @@ namespace Ettad.EntityFramework.Configurations
                     PartNo = "PN-762-001",
                     BulletDiameter = 7.62m,
                     BulletDiameterUnitId = 2,
-                    CaseLength = 51.0m,
-                    CaseLengthUnitId = 2,
                     IsLinked = false,
                     Primer = "Berdan",
                     TotalWeight = 24.0m,
@@ -153,8 +144,6 @@ namespace Ettad.EntityFramework.Configurations
                     PartNo = "PN-9MM-001",
                     BulletDiameter = 9.0m,
                     BulletDiameterUnitId = 3,
-                    CaseLength = 19.0m,
-                    CaseLengthUnitId = 3,
                     IsLinked = false,
                     Primer = "Boxer",
                     TotalWeight = 7.5m,
@@ -183,8 +172,6 @@ namespace Ettad.EntityFramework.Configurations
                     PartNo = "PN-50BMG-001",
                     BulletDiameter = 12.7m,
                     BulletDiameterUnitId = 1,
-                    CaseLength = 99.0m,
-                    CaseLengthUnitId = 1,
                     IsLinked = false,
                     Primer = "Berdan",
                     TotalWeight = 115.0m,
@@ -213,8 +200,6 @@ namespace Ettad.EntityFramework.Configurations
                     PartNo = "PN-308-001",
                     BulletDiameter = 7.62m,
                     BulletDiameterUnitId = 2,
-                    CaseLength = 51.0m,
-                    CaseLengthUnitId = 2,
                     IsLinked = false,
                     Primer = "Boxer",
                     TotalWeight = 23.0m,
@@ -243,8 +228,6 @@ namespace Ettad.EntityFramework.Configurations
                     PartNo = "PN-45ACP-001",
                     BulletDiameter = 11.43m,
                     BulletDiameterUnitId = 3,
-                    CaseLength = 23.0m,
-                    CaseLengthUnitId = 3,
                     IsLinked = false,
                     Primer = "Boxer",
                     TotalWeight = 15.0m,
@@ -273,8 +256,6 @@ namespace Ettad.EntityFramework.Configurations
                     PartNo = "PN-127-001",
                     BulletDiameter = 12.7m,
                     BulletDiameterUnitId = 1,
-                    CaseLength = 108.0m,
-                    CaseLengthUnitId = 1,
                     IsLinked = false,
                     Primer = "Berdan",
                     TotalWeight = 130.0m,
@@ -303,8 +284,6 @@ namespace Ettad.EntityFramework.Configurations
                     PartNo = "PN-545-001",
                     BulletDiameter = 5.45m,
                     BulletDiameterUnitId = 2,
-                    CaseLength = 39.0m,
-                    CaseLengthUnitId = 2,
                     IsLinked = false,
                     Primer = "Berdan",
                     TotalWeight = 10.5m,
@@ -333,8 +312,6 @@ namespace Ettad.EntityFramework.Configurations
                     PartNo = "PN-40SW-001",
                     BulletDiameter = 10.16m,
                     BulletDiameterUnitId = 3,
-                    CaseLength = 21.6m,
-                    CaseLengthUnitId = 3,
                     IsLinked = false,
                     Primer = "Boxer",
                     TotalWeight = 11.0m,

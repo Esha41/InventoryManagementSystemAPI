@@ -1,4 +1,4 @@
-﻿using AutoMapper;
+using AutoMapper;
 using FluentValidation;
 using Microsoft.EntityFrameworkCore;
 using Ettad.CrossCutting.Data.Repository;
@@ -52,7 +52,6 @@ namespace Ettad.Inventory.Service.Ammunitions
                     false,
                     nameof(Ammunition.Hcc),
                     nameof(Ammunition.BulletDiameterUnit),
-                    nameof(Ammunition.CaseLengthUnit),
                     nameof(Ammunition.NatureOption),
                     nameof(Ammunition.PrimaryPurpos),
                     nameof(Ammunition.ProjectileColor),
@@ -84,7 +83,6 @@ namespace Ettad.Inventory.Service.Ammunitions
                     false,
                     nameof(Ammunition.Hcc),
                     nameof(Ammunition.BulletDiameterUnit),
-                    nameof(Ammunition.CaseLengthUnit),
                     nameof(Ammunition.NatureOption),
                     nameof(Ammunition.PrimaryPurpos),
                     nameof(Ammunition.ProjectileColor),
@@ -115,7 +113,6 @@ namespace Ettad.Inventory.Service.Ammunitions
                     false,
                     nameof(Ammunition.Hcc),
                     nameof(Ammunition.BulletDiameterUnit),
-                    nameof(Ammunition.CaseLengthUnit),
                     nameof(Ammunition.NatureOption),
                     nameof(Ammunition.PrimaryPurpos),
                     nameof(Ammunition.ProjectileColor),
