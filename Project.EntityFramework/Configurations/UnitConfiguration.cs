@@ -40,8 +40,8 @@ namespace Ettad.EntityFramework.Configurations
                 new Unit
                 {
                     Id = 2,
-                    NameAr = "متر",
-                    NameEn = "Meter",
+                    NameAr = "مليمتر",
+                    NameEn = "Millimeter",
                     IsDeleted = false
                 },
                 new Unit
