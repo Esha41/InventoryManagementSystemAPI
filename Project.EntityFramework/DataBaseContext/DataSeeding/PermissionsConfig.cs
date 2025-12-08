@@ -1,4 +1,4 @@
-﻿using Ettad.Data.Enums;
+using Ettad.Data.Enums;
 using Newtonsoft.Json;
 
 namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
@@ -107,6 +107,11 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
         public static List<string> ReadItems = new()
         {
             "Permissions.Ammunition.Page",
+            "Permissions.Ammunition.View",
+        };
+
+        public static List<string> ReadItemsViewOnly = new()
+        {
             "Permissions.Ammunition.View",
         };
 
@@ -275,8 +280,8 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
 
         public static List<string> Requester_OrderRequestingEntity =
             ReadLookups
-                .Concat(ReadAllowanceItem)                
-                .Concat(ReadItems)
+                .Concat(ReadAllowanceItem)
+                .Concat(ReadItemsViewOnly)
                 .Concat(Dashboard)
                 .Concat(Forecast)
                 .Concat(Notifications)                
@@ -444,6 +449,17 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
             ReadLookups
                 .Concat(ReadItems)
                 .Concat(ReadAllowanceItem)               
+                .Concat(Dashboard)
+                .Concat(Forecast)
+                .Concat(Notifications)
+                .Concat(ReadOrderDiscardReturn)
+                .Concat(RequestReciever)
+                .ToList();
+
+        public static List<string> AuditorOfDeputy_ChiefOfStaffOfficeEntity =
+            ReadLookups
+                .Concat(ReadItems)
+                .Concat(ReadAllowanceItem)
                 .Concat(Dashboard)
                 .Concat(Forecast)
                 .Concat(Notifications)
