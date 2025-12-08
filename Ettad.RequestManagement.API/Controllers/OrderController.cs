@@ -57,13 +57,13 @@ namespace Ettad.RequestManagement.API.Controllers
         /// <param name="files">Optional list of files to attach to the workflow approval step</param>
         /// <returns>Created order ID</returns>
         [HttpPost]
-        [Consumes("multipart/form-data", "application/json")]
+        [Consumes("multipart/form-data")]
         [ProducesResponseType(typeof(APIOperationResponse<long>), (int)HttpStatusCode.Created)]
         [ProducesResponseType((int)HttpStatusCode.BadRequest)]
         [CheckAuthorize("Permissions.Order.Create")]
         public async Task<IActionResult> Create(
             [FromForm] CreateOrderDto dto,
-            [FromForm] List<IFormFile> files = null)
+            [FromForm] List<IFormFile>? files = null)
         {
             try
             {

@@ -238,6 +238,65 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
             }
         }
 
+		public async Task<APIOperationResponse<SupplyDto>> GetDraftByOrderIdAsync(long orderId)
+		{
+			_logger.LogInformation("Getting draft supply by Order ID. OrderID: {OrderID}, User: {UserId}",
+				orderId, _currentUserService.UserId);
+
+			try
+			{
+				var supply = await _supplyRepository.FindOneAsync(
+					s => s.OrderId == orderId && !s.IsDeleted && s.SubmissionStatus == SupplySubmissionStatus.Draft,
+					false,
+					nameof(Supply.Order),
+					$"{nameof(Supply.Order)}.{nameof(Order.RequestItems)}",
+					$"{nameof(Supply.Order)}.{nameof(Order.RequestItems)}.{nameof(RequestItem.Item)}",
+					nameof(Supply.ReceiverRank),
+					$"{nameof(Supply.SupplyDetails)}.{nameof(SupplyDetail.Item)}"
+				);
+
+				if (supply == null)
+				{
+					// Not found is fine, it means no draft exists
+					return APIOperationResponse<SupplyDto>.Success(null);
+				}
+
+				// Filter out soft-deleted request items
+				if (supply.Order?.RequestItems != null)
+				{
+					supply.Order.RequestItems = supply.Order.RequestItems.Where(ri => !ri.IsDeleted).ToList();
+				}
+
+				// Filter out soft-deleted supply details
+				if (supply.SupplyDetails != null)
+				{
+					supply.SupplyDetails = supply.SupplyDetails.Where(sd => !sd.IsDeleted).ToList();
+				}
+
+				var dto = _mapper.Map<SupplyDto>(supply);
+				PopulateSupplyDetailCalculatedProperties(dto, supply);
+
+				// Load files associated with this supply
+				var filesResult = await _fileUploadService.GetByEntityAsync(FileEntityType.Supply, supply.Id);
+				if (filesResult.Succeeded && filesResult.Data != null)
+				{
+					dto.Files = filesResult.Data;
+				}
+				else
+				{
+					dto.Files = new List<FileUploadDto>();
+				}
+
+				return APIOperationResponse<SupplyDto>.Success(dto);
+			}
+			catch (Exception ex)
+			{
+				_logger.LogError(ex, "Error getting draft supply by Order ID. OrderID: {OrderID}, User: {UserId}",
+					orderId, _currentUserService.UserId);
+				return APIOperationResponse<SupplyDto>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
+			}
+		}
+
 
         public async Task<APIOperationResponse<List<SupplyDto>>> GetAllAsync()
 		{
@@ -344,6 +403,29 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
 					return APIOperationResponse<long>.Fail(ResponseType.BadRequest, 
 						$"A Draft supply already exists for this order (Supply ID: {existingDraftSupply.Id}). Please update the existing supply instead of creating a new one.");
 				}
+
+				// Consolidate duplicate item+lot combinations by summing quantities
+				// This handles cases where the same lot appears multiple times in the request
+				var consolidatedDetails = inputDto.SupplyDetails
+					.GroupBy(d => new { d.ItemId, d.Lot })
+					.Select(g => new CreateSupplyDetailDto
+					{
+						ItemId = g.Key.ItemId,
+						Lot = g.Key.Lot,
+						Quantity = g.Sum(d => d.Quantity),
+						Notes = g.First().Notes // Take notes from first occurrence
+					})
+					.ToList();
+
+				// Log if consolidation occurred
+				if (consolidatedDetails.Count < inputDto.SupplyDetails.Count)
+				{
+					_logger.LogInformation("Consolidated {OriginalCount} supply details into {ConsolidatedCount} unique item+lot combinations. OrderId: {OrderId}, User: {UserId}", 
+						inputDto.SupplyDetails.Count, consolidatedDetails.Count, inputDto.OrderId, _currentUserService.UserId);
+				}
+
+				// Use consolidated details for further processing
+				inputDto.SupplyDetails = consolidatedDetails;
 
 				// Get all existing supplies for this order (excluding deleted)
 				var existingSupplies = await _supplyRepository.FindAsync(
@@ -568,6 +650,18 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
 						supplyId, supply.SubmissionStatus, _currentUserService.UserId);
 					return APIOperationResponse<long>.Fail(ResponseType.BadRequest, 
 						"Supply details can only be added when submission status is Draft");
+				}
+
+				// Check if the same item+lot combination already exists in this supply
+				var duplicateDetail = supply.SupplyDetails?
+					.FirstOrDefault(sd => sd.ItemId == detailDto.ItemId && sd.Lot == detailDto.Lot && !sd.IsDeleted);
+				
+				if (duplicateDetail != null)
+				{
+					_logger.LogWarning("Duplicate item+lot combination. SupplyId: {SupplyId}, ItemId: {ItemId}, Lot: {Lot}, User: {UserId}", 
+						supplyId, detailDto.ItemId, detailDto.Lot, _currentUserService.UserId);
+					return APIOperationResponse<long>.Fail(ResponseType.BadRequest, 
+						$"A supply detail with Item {detailDto.ItemId} and Lot {detailDto.Lot} already exists in this supply. Please update the existing detail instead of adding a duplicate.");
 				}
 
 				// Find the corresponding request item
@@ -879,6 +973,29 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
 					return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, "At least one supply detail is required");
 				}
 
+				// Consolidate duplicate item+lot combinations by summing quantities
+				// This handles cases where the same lot appears multiple times in the request
+				var consolidatedDetails = newDetails
+					.GroupBy(d => new { d.ItemId, d.Lot })
+					.Select(g => new CreateSupplyDetailDto
+					{
+						ItemId = g.Key.ItemId,
+						Lot = g.Key.Lot,
+						Quantity = g.Sum(d => d.Quantity),
+						Notes = g.First().Notes // Take notes from first occurrence
+					})
+					.ToList();
+
+				// Log if consolidation occurred
+				if (consolidatedDetails.Count < newDetails.Count)
+				{
+					_logger.LogInformation("Consolidated {OriginalCount} supply details into {ConsolidatedCount} unique item+lot combinations. SupplyId: {SupplyId}, User: {UserId}", 
+						newDetails.Count, consolidatedDetails.Count, supplyId, _currentUserService.UserId);
+				}
+
+				// Replace newDetails with consolidated version
+				newDetails = consolidatedDetails;
+
 				// Validate each new detail
 				foreach (var detailDto in newDetails)
 				{
@@ -977,11 +1094,10 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
 					_context.Entry(detailEntity).Property(x => x.DeletedBy).IsModified = true;
 				}
 
-				// Detach to avoid tracking conflicts before adding new entities
-				foreach (var entry in _context.ChangeTracker.Entries<SupplyDetail>().ToList())
-				{
-					entry.State = EntityState.Detached;
-				}
+				// REMOVED: Detach loop was causing the soft-delete updates to be ignored 
+				// because it detached the entities before SaveChangesAsync was called.
+				// Since we are using stubs and the repository returns NoTracking entities,
+				// there is no tracking conflict to resolve here.
 
 				// Add new details
 				var createdDetails = new List<SupplyDetail>();
@@ -1177,8 +1293,9 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
 			}
 
 			// Get all supply details for this lot to calculate used quantity
+			// IMPORTANT: Only count non-deleted supply details
 			var supplyDetails = await _supplyDetailRepository.FindAsync(
-				sd => sd.ItemId == itemId && sd.Lot == lot
+				sd => sd.ItemId == itemId && sd.Lot == lot && !sd.IsDeleted
 			);
 
 			var totalUsedQuantity = supplyDetails.Sum(sd => sd.Quantity);
