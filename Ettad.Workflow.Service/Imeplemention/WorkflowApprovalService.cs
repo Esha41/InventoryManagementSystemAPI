@@ -1,4 +1,7 @@
 ﻿using Ettad.Application.Common.Interfaces;
+using Ettad.Comman.Enums;
+using Ettad.CrossCutting.Comman.FileUpload;
+using Ettad.CrossCutting.Data.Repository;
 using Ettad.Data.Entities;
 using Ettad.Data.Entities.Workflows;
 using Ettad.Data.Enums;
@@ -11,6 +14,7 @@ using Ettad.Workflows.Service.DTO;
 using Ettad.Workflows.Service.Events;
 using Ettad.Workflows.Service.Interface;
 using MediatR;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -25,6 +29,8 @@ namespace Ettad.Workflows.Service.Imeplemention
         private readonly IWorkflowStepNotifierService _workflowStepNotifierService;
         private readonly ILogger<WorkflowApprovalService> _logger;
         private readonly IMediator _mediator;
+        private readonly IFileUploadService _fileUploadService;
+        private readonly ICrossCuttingRepository<FileUplodDetails> _fileDetailsRepository;
 
         public WorkflowApprovalService(
             ApplicationDbContext context, 
@@ -32,7 +38,9 @@ namespace Ettad.Workflows.Service.Imeplemention
             INotificationHelperService notificationHelperService,
             IWorkflowStepNotifierService workflowStepNotifierService,
             ILogger<WorkflowApprovalService> logger,
-            IMediator mediator)
+            IMediator mediator,
+            IFileUploadService fileUploadService,
+            ICrossCuttingRepository<FileUplodDetails> fileDetailsRepository)
         {
             _context = context;
             _currentUserService = currentUserService;
@@ -40,6 +48,8 @@ namespace Ettad.Workflows.Service.Imeplemention
             _workflowStepNotifierService = workflowStepNotifierService;
             _logger = logger;
             _mediator = mediator;
+            _fileUploadService = fileUploadService;
+            _fileDetailsRepository = fileDetailsRepository;
         }
      
         public async Task<IEnumerable<WorkflowApprovalStepDto>> GetAllAsync()
@@ -230,10 +240,29 @@ namespace Ettad.Workflows.Service.Imeplemention
 
         public async Task<APIOperationResponse<bool>> ProcessActionAsync(ApproveRejectWorkflowApprovalDto model)
         {
+            return await ProcessActionAsync(model, null);
+        }
+
+        public async Task<APIOperationResponse<bool>> ProcessActionAsync(ApproveRejectWorkflowApprovalDto model, List<IFormFile> files)
+        {
             await using var transaction = await _context.Database.BeginTransactionAsync();
 
             try
             {
+                List<long> savedFileMasterIds = null;
+
+                // Step 1: Save files first (before updating status) if files are provided
+                if (files != null && files.Count > 0)
+                {
+                    var saveFilesResult = await _fileUploadService.SaveFilesAsync(files, FileEntityType.WorkflowApproval);
+                    if (!saveFilesResult.Succeeded || saveFilesResult.Data == null)
+                    {
+                        return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, 
+                            saveFilesResult.Message ?? "Failed to save files before processing approval/rejection.");
+                    }
+                    savedFileMasterIds = saveFilesResult.Data;
+                }
+
                 // Get current step
                 var currentStep = await GetCurrentApprovalStepByRequestIdAsync(model.BaseRequestID);
                 if (currentStep == null)
@@ -269,6 +298,36 @@ namespace Ettad.Workflows.Service.Imeplemention
 
                 await _context.SaveChangesAsync();
                 await transaction.CommitAsync();
+
+                // Step 2: Link files to the approval step (after status update) if files were saved
+                if (savedFileMasterIds != null && savedFileMasterIds.Count > 0)
+                {
+                    try
+                    {
+                        foreach (var masterId in savedFileMasterIds)
+                        {
+                            var detail = new FileUplodDetails
+                            {
+                                FileUplodMasterId = masterId,
+                                Entity = FileEntityType.WorkflowApproval,
+                                EntityId = currentStep.Id // Link to the approval step ID, not the request ID
+                            };
+
+                            await _fileDetailsRepository.AddAsync(detail);
+                        }
+                        await _context.SaveChangesAsync();
+                    }
+                    catch (Exception ex)
+                    {
+                        // Log error but don't fail the approval/rejection
+                        // Files are optional, so we continue even if linking fails
+                        _logger.LogError(ex,
+                            "Exception occurred while linking files to workflow approval step. StepId: {StepId}, RequestId: {RequestId}, Action: {Action}",
+                            currentStep.Id,
+                            model.BaseRequestID,
+                            model.Action);
+                    }
+                }
 
                 // 🔔 Send notifications to step notifiers (after transaction commits successfully)
                 await SendNotificationsToStepNotifiersAsync(currentStep.WorkflowStepId, model);
@@ -344,6 +403,11 @@ namespace Ettad.Workflows.Service.Imeplemention
 
         public async Task<WorkflowApprovalStepDto> ApproveOrReject(ApproveRejectWorkflowApprovalDto dto)
         {
+            return await ApproveOrReject(dto, null);
+        }
+
+        public async Task<WorkflowApprovalStepDto> ApproveOrReject(ApproveRejectWorkflowApprovalDto dto, List<IFormFile> files)
+        {
             // Validate action
             if (dto.Action != RequestStatus.Approved && dto.Action != RequestStatus.Rejected)
             {
@@ -362,7 +426,7 @@ namespace Ettad.Workflows.Service.Imeplemention
 
             try
             {
-                var result = await ProcessActionAsync(dto);
+                var result = await ProcessActionAsync(dto, files);
                 if (!result.Succeeded)
                 {
                     var errorMessage = result.Message ?? $"Failed to {actionName} the workflow step.";
@@ -821,6 +885,8 @@ namespace Ettad.Workflows.Service.Imeplemention
         /// <returns>True if workflow was started successfully, false otherwise</returns>
         public async Task<bool> StartWorkflowAsync(long orderId, WorkflowType workflowType)
         {
+            await using var transaction = await _context.Database.BeginTransactionAsync();
+
             try
             {
                 // Get workflow after creating order
@@ -853,6 +919,7 @@ namespace Ettad.Workflows.Service.Imeplemention
 
                             _context.WorkflowApprovalSteps.Add(workflowApprovalStep);
                             await _context.SaveChangesAsync();
+                            await transaction.CommitAsync();
 
                             // Notify the approver roles after creating the workflow approval step
                             var approverRoles = new List<string> { firstWorkflowStep.ApplicationRoleId };
@@ -877,11 +944,15 @@ namespace Ettad.Workflows.Service.Imeplemention
                     }
                 }
 
+                await transaction.CommitAsync();
                 return false;
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                // Don't throw - allow order creation to succeed even if workflow initialization fails
+                await transaction.RollbackAsync();
+                // Log the error but don't throw - allow order creation to succeed even if workflow initialization fails
+                _logger.LogError(ex, "Error starting workflow for order. OrderId: {OrderId}, WorkflowType: {WorkflowType}",
+                    orderId, workflowType);
                 return false;
             }
         }
@@ -999,7 +1070,8 @@ namespace Ettad.Workflows.Service.Imeplemention
                                                     StepOrder = wfs != null ? wfs.StepOrder : (int?)null,
                                                     ApplicationRoleId = wfs != null ? wfs.ApplicationRoleId : null,
                                                     RequireHigherApproval = wfs != null ? wfs.RequireHigherApproval : false,
-                                                    HigherApprovalRoleId = wfs != null ? wfs.HigherApprovalRoleId : null
+                                                    HigherApprovalRoleId = wfs != null ? wfs.HigherApprovalRoleId : null,
+                                                    Files = new List<FileUploadDto>() // Initialize Files list
                                                 }
                                             })
                                             .OrderBy(h => h.History.ChangedAt)
@@ -1050,15 +1122,123 @@ namespace Ettad.Workflows.Service.Imeplemention
                 .GroupBy(p => p.RequestId)
                 .ToDictionary(g => g.Key, g => g.ToList());
 
+            // Get ALL workflow approval steps for these requests (not just pending or logged ones)
+            // This ensures we get files for all steps, including completed ones that might not be in the log
+            var allWorkflowApprovalSteps = await _context.WorkflowApprovalSteps
+                .Where(was => allowedRequestIds.Contains((long)was.TargetRequestId))
+                .Select(was => new { was.Id, was.TargetRequestId })
+                .ToListAsync();
+
+            // Collect all workflow approval step IDs (from all steps, history, and pending steps)
+            var allApprovalStepIds = new HashSet<int>();
+            
+            // Add all workflow approval step IDs
+            foreach (var step in allWorkflowApprovalSteps)
+            {
+                if (step.Id > 0)
+                {
+                    allApprovalStepIds.Add(step.Id);
+                }
+            }
+            
+            // Also add from history (in case there are any missing)
+            foreach (var historyItem in approvalHistoryData)
+            {
+                if (historyItem.History.WorkflowApprovalStepId > 0)
+                {
+                    allApprovalStepIds.Add(historyItem.History.WorkflowApprovalStepId);
+                }
+            }
+            
+            // Also add from pending steps (in case there are any missing)
+            foreach (var pendingStep in pendingStepsData)
+            {
+                if (pendingStep.WorkflowApprovalStepId > 0)
+                {
+                    allApprovalStepIds.Add(pendingStep.WorkflowApprovalStepId);
+                }
+            }
+
+            // Get files for all approval steps
+            var filesByStepId = new Dictionary<int, List<FileUploadDto>>();
+            foreach (var stepId in allApprovalStepIds)
+            {
+                var filesResult = await _fileUploadService.GetByEntityAsync(FileEntityType.WorkflowApproval, stepId);
+                if (filesResult.Succeeded && filesResult.Data != null)
+                {
+                    filesByStepId[stepId] = filesResult.Data;
+                }
+                else
+                {
+                    filesByStepId[stepId] = new List<FileUploadDto>();
+                }
+            }
+
+            // Get files for orders, returns, and discards
+            var requestFilesByRequestId = new Dictionary<long, List<FileUploadDto>>();
+            var requestIds = baseRequests
+                .Where(r => r.RequestType == RequestType.Order || r.RequestType == RequestType.Return || r.RequestType == RequestType.Discard)
+                .Select(r => new { r.Id, r.RequestType })
+                .ToList();
+
+            foreach (var requestInfo in requestIds)
+            {
+                try
+                {
+                   
+
+                    var filesResult = await _fileUploadService.GetByEntityAsync(FileEntityType.Order, requestInfo.Id);
+                    if (filesResult.Succeeded && filesResult.Data != null)
+                    {
+                        requestFilesByRequestId[requestInfo.Id] = filesResult.Data;
+                    }
+                    else
+                    {
+                        requestFilesByRequestId[requestInfo.Id] = new List<FileUploadDto>();
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error getting files for request. RequestId: {RequestId}, RequestType: {RequestType}", 
+                        requestInfo.Id, requestInfo.RequestType);
+                    requestFilesByRequestId[requestInfo.Id] = new List<FileUploadDto>();
+                }
+            }
+
             // Assign approval history and merge with all workflow steps for each request
             foreach (var request in baseRequests)
             {
                 var combinedHistory = new List<ApprovalHistoryDto>();
 
-                // Get completed approval history
+                // Assign files to order, return, and discard requests
+                if ((request.RequestType == RequestType.Order || 
+                     request.RequestType == RequestType.Return || 
+                     request.RequestType == RequestType.Discard) &&
+                    requestFilesByRequestId.TryGetValue(request.Id, out var requestFiles))
+                {
+                    request.Files = requestFiles;
+                }
+                else
+                {
+                    request.Files = new List<FileUploadDto>();
+                }
+
+                // Get completed approval history and assign files to each step
                 if (historyByRequestId.TryGetValue(request.Id, out var history))
                 {
-                    combinedHistory.AddRange(history);
+                    foreach (var historyItem in history)
+                    {
+                        // Assign files to this approval step
+                        if (historyItem.WorkflowApprovalStepId > 0 && filesByStepId.TryGetValue(historyItem.WorkflowApprovalStepId, out var stepFiles))
+                        {
+                            historyItem.Files = stepFiles;
+                        }
+                        else
+                        {
+                            historyItem.Files = new List<FileUploadDto>();
+                        }
+                        combinedHistory.Add(historyItem);
+                    }
                 }
 
                 // Check if request has been rejected - if so, don't show any pending/future steps
@@ -1131,6 +1311,17 @@ namespace Ettad.Workflows.Service.Imeplemention
                                     HigherApprovalRoleId = nextPendingStep.HigherApprovalRoleId,
                                     IsPending = true
                                 };
+                                
+                                // Assign files to pending step if any
+                                if (nextPendingStep.WorkflowApprovalStepId > 0 && filesByStepId.TryGetValue(nextPendingStep.WorkflowApprovalStepId, out var pendingStepFiles))
+                                {
+                                    pendingStep.Files = pendingStepFiles;
+                                }
+                                else
+                                {
+                                    pendingStep.Files = new List<FileUploadDto>();
+                                }
+                                
                                 combinedHistory.Add(pendingStep);
                             }
                         }
@@ -1159,7 +1350,8 @@ namespace Ettad.Workflows.Service.Imeplemention
                                     ApplicationRoleName = nextWorkflowStep.ApplicationRole != null ? nextWorkflowStep.ApplicationRole.Name : null,
                                     RequireHigherApproval = nextWorkflowStep.RequireHigherApproval,
                                     HigherApprovalRoleId = nextWorkflowStep.HigherApprovalRoleId,
-                                    IsPending = true
+                                    IsPending = true,
+                                    Files = new List<FileUploadDto>() // No files for future steps that haven't been created yet
                                 };
                                 combinedHistory.Add(futureStep);
                             }
