@@ -4,8 +4,10 @@ using Ettad.RequestManagement.Service.Returns.Dtos;
 using Ettad.Data.Enums;
 using Ettad.ResponseHandler.Models;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using System.Net;
+using Ettad.ResponseHandler.Consts;
 
 namespace Ettad.RequestManagement.API.Controllers
 {
@@ -48,13 +50,29 @@ namespace Ettad.RequestManagement.API.Controllers
         /// <summary>
         /// Create a new return with items
         /// </summary>
+        /// <param name="dto">Return creation data</param>
+        /// <param name="files">Optional list of files to attach to the return</param>
+        /// <returns>Created return ID</returns>
         [HttpPost]
-        [ProducesResponseType((int)HttpStatusCode.Created)]
+        [Consumes("multipart/form-data", "application/json")]
+        [ProducesResponseType(typeof(APIOperationResponse<long>), (int)HttpStatusCode.Created)]
+        [ProducesResponseType((int)HttpStatusCode.BadRequest)]
         [CheckAuthorize("Permissions.Return.Create")]
-        public async Task<IActionResult> Create([FromBody] CreateReturnDto dto)
+        public async Task<IActionResult> Create(
+            [FromForm] CreateReturnDto dto,
+            [FromForm] List<IFormFile> files = null)
         {
-            var result = await _returnService.CreateAsync(dto);
-            return ProcessResponse(result);
+            try
+            {
+                var result = files != null && files.Count > 0
+                    ? await _returnService.CreateAsync(dto, files)
+                    : await _returnService.CreateAsync(dto);
+                return ProcessResponse(result);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(APIOperationResponse<long>.Fail(ResponseType.BadRequest, ex.Message));
+            }
         }
 
         /// <summary>

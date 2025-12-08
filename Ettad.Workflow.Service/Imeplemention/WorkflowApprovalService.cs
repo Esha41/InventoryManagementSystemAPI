@@ -1174,31 +1174,34 @@ namespace Ettad.Workflows.Service.Imeplemention
                 }
             }
 
-            // Get files for orders (RequestType.Order)
-            var orderFilesByRequestId = new Dictionary<long, List<FileUploadDto>>();
-            var orderRequestIds = baseRequests
-                .Where(r => r.RequestType == RequestType.Order)
-                .Select(r => r.Id)
+            // Get files for orders, returns, and discards
+            var requestFilesByRequestId = new Dictionary<long, List<FileUploadDto>>();
+            var requestIds = baseRequests
+                .Where(r => r.RequestType == RequestType.Order || r.RequestType == RequestType.Return || r.RequestType == RequestType.Discard)
+                .Select(r => new { r.Id, r.RequestType })
                 .ToList();
 
-            foreach (var orderId in orderRequestIds)
+            foreach (var requestInfo in requestIds)
             {
                 try
                 {
-                    var filesResult = await _fileUploadService.GetByEntityAsync(FileEntityType.Order, orderId);
+                   
+
+                    var filesResult = await _fileUploadService.GetByEntityAsync(FileEntityType.Order, requestInfo.Id);
                     if (filesResult.Succeeded && filesResult.Data != null)
                     {
-                        orderFilesByRequestId[orderId] = filesResult.Data;
+                        requestFilesByRequestId[requestInfo.Id] = filesResult.Data;
                     }
                     else
                     {
-                        orderFilesByRequestId[orderId] = new List<FileUploadDto>();
+                        requestFilesByRequestId[requestInfo.Id] = new List<FileUploadDto>();
                     }
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Error getting files for order. OrderId: {OrderId}", orderId);
-                    orderFilesByRequestId[orderId] = new List<FileUploadDto>();
+                    _logger.LogError(ex, "Error getting files for request. RequestId: {RequestId}, RequestType: {RequestType}", 
+                        requestInfo.Id, requestInfo.RequestType);
+                    requestFilesByRequestId[requestInfo.Id] = new List<FileUploadDto>();
                 }
             }
 
@@ -1207,10 +1210,13 @@ namespace Ettad.Workflows.Service.Imeplemention
             {
                 var combinedHistory = new List<ApprovalHistoryDto>();
 
-                // Assign files to order requests
-                if (request.RequestType == RequestType.Order && orderFilesByRequestId.TryGetValue(request.Id, out var orderFiles))
+                // Assign files to order, return, and discard requests
+                if ((request.RequestType == RequestType.Order || 
+                     request.RequestType == RequestType.Return || 
+                     request.RequestType == RequestType.Discard) &&
+                    requestFilesByRequestId.TryGetValue(request.Id, out var requestFiles))
                 {
-                    request.Files = orderFiles;
+                    request.Files = requestFiles;
                 }
                 else
                 {
