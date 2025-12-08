@@ -5,6 +5,7 @@ using Ettad.ResponseHandler.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Net;
+using Hangfire;
 
 namespace Ettad.Inventory.API.Controllers
 {
@@ -14,10 +15,14 @@ namespace Ettad.Inventory.API.Controllers
     public class ItemNotificationController : ApiControllerBase
     {
         private readonly ILowStockMonitorService _monitorService;
+        private readonly IRecurringJobManager _recurringJobManager;
 
-        public ItemNotificationController(ILowStockMonitorService monitorService)
+        public ItemNotificationController(
+            ILowStockMonitorService monitorService,
+            IRecurringJobManager recurringJobManager)
         {
             _monitorService = monitorService;
+            _recurringJobManager = recurringJobManager;
         }
 
         /// <summary>
@@ -43,5 +48,37 @@ namespace Ettad.Inventory.API.Controllers
             var result = await _monitorService.UpdateSettingsAsync(dto);
             return ProcessResponse(result);
         }
+
+        /// <summary>
+        /// Get the current schedule (cron expression) for low stock monitoring
+        /// </summary>
+        [HttpGet("schedule")]
+        [ProducesResponseType((int)HttpStatusCode.OK)]
+        [CheckAuthorize("Permissions.Inventory.View")]
+        public async Task<IActionResult> GetSchedule()
+        {
+            var result = await _monitorService.GetScheduleAsync();
+            return ProcessResponse(result);
+        }
+
+        /// <summary>
+        /// Update the schedule (time) for low stock monitoring
+        /// Accepts a DateTime and converts it to cron expression in the backend
+        /// Updates both the database settings and the Hangfire recurring job immediately
+        /// </summary>
+        [HttpPut("schedule")]
+        [ProducesResponseType((int)HttpStatusCode.OK)]
+        [CheckAuthorize("Permissions.Inventory.Edit")]
+        public async Task<IActionResult> UpdateSchedule([FromBody] UpdateScheduleDto dto)
+        {
+            // Service handles both database update and Hangfire job update
+            var result = await _monitorService.UpdateScheduleAsync(dto.ScheduleTime);
+            return ProcessResponse(result);
+        }
+    }
+
+    public class UpdateScheduleDto
+    {
+        public DateTime ScheduleTime { get; set; }
     }
 }
