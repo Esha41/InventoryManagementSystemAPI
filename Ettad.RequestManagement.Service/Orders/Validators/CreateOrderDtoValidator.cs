@@ -26,15 +26,19 @@ namespace Ettad.RequestManagement.Service.Orders.Validators
             RuleFor(x => x.UsageDateFrom)
                 .NotEmpty().WithMessage("Usage date from is required");
 
+          
             RuleFor(x => x.UsageTimeFrom)
-                .NotEmpty().WithMessage("Usage time from is required");
+                .Must(time => time >= TimeOnly.MinValue && time <= TimeOnly.MaxValue)
+                .WithMessage("Usage time from is required and must be a valid time");
 
             RuleFor(x => x.UsageDateTo)
                 .NotEmpty().WithMessage("Usage date to is required")
                 .GreaterThanOrEqualTo(x => x.UsageDateFrom).WithMessage("Usage date to must be greater than or equal to usage date from");
 
+            
             RuleFor(x => x.UsageTimeTo)
-                .NotEmpty().WithMessage("Usage time to is required");
+                .Must(time => time >= TimeOnly.MinValue && time <= TimeOnly.MaxValue)
+                .WithMessage("Usage time to is required and must be a valid time");
 
             RuleFor(x => x.UsagePurpose)
                 .NotEmpty().WithMessage("Usage purpose is required")
