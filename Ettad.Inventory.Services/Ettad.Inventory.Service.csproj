@@ -15,6 +15,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Ettad.Notification.Service\Ettad.Notification.Service.csproj" />
     <ProjectReference Include="..\Project.Data\Ettad.Data.csproj" />
     <ProjectReference Include="..\Project.Repository\Ettad.Repository.csproj" />
     <ProjectReference Include="..\Project.ResponseHandler\Ettad.CrossCutting.ResponseHandler.csproj" />

@@ -31,7 +31,8 @@ namespace Ettad.Notification.Service.EmailTemplate
             string? entityType = null,
             long? entityId = null,
             long notificationId = 0,
-            DateTime? updateDate = null)
+            DateTime? updateDate = null,
+            string? htmlContent = null)
         {
             try
             {
@@ -45,6 +46,9 @@ namespace Ettad.Notification.Service.EmailTemplate
                 template = template.Replace("{{MESSAGE}}", WebUtility.HtmlEncode(message));
                 template = template.Replace("{{UPDATE_DATE}}", WebUtility.HtmlEncode(now.ToString("MMM dd, yyyy")));
                 template = template.Replace("{{TIME}}", WebUtility.HtmlEncode(now.ToString("h:mm tt")));
+                
+                // HTML Content (not encoded, for tables and formatted content)
+                template = template.Replace("{{HTML_CONTENT}}", htmlContent ?? string.Empty);
                 
                 // Logo Section
                 var logoSection = GetLogoSection();
@@ -146,6 +150,7 @@ namespace Ettad.Notification.Service.EmailTemplate
     <div style=""max-width: 800px; margin: 0 auto; padding: 20px; background-color: #ffffff;"">
         <h1 style=""color: #1F3A5F;"">{{TITLE}}</h1>
         <p style=""color: #6B6B6B;"">{{MESSAGE}}</p>
+        {{HTML_CONTENT}}
         <p><strong>Date:</strong> {{UPDATE_DATE}} <strong>Time:</strong> {{TIME}}</p>
         {{VIEW_DETAILS_LINK}}
         {{ENTITY_DETAILS}}

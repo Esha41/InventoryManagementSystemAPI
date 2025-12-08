@@ -4,6 +4,7 @@ using System.Reflection;
 using Ettad.Inventory.Service.Ammunitions;
 using Ettad.Inventory.Service.AllowanceItems;
 using Ettad.Inventory.Service.Inventories;
+using Ettad.Inventory.Service.Monitoring;
 
 namespace Ettad.Inventory.Service
 {
@@ -21,6 +22,7 @@ namespace Ettad.Inventory.Service
             services.AddScoped<IAmmunitionService, AmmunitionService>();
             services.AddScoped<IAllowanceItemService, AllowanceItemService>();
             services.AddScoped<IInventoryService, InventoryService>();
+            services.AddScoped<ILowStockMonitorService, LowStockMonitorService>();
 
             return services;
         }

@@ -26,6 +26,15 @@ namespace Ettad.User.Services.Implementation
         private readonly ApplicationDbContext _context;
         private readonly ICurrentUserService _currentUserService;
 
+        // Protected role names that cannot be updated or deleted (used in business logic)
+        private static readonly HashSet<string> ProtectedRoleNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "Requesting Entity Commander (Order Requesting Entity)",
+            "Supply Officer (Order Requesting Entity)",
+            "Head of Ammunition Division (Directorate of Armament)",
+            "Head of Depo Division (Inventory)"
+        };
+
         public RoleService(RoleManager<ApplicationRole> roleManager, UserManager<ApplicationUser> userManager, ICurrentUserService currentUserService, IMapper mapper , ApplicationDbContext context)
         {
             _roleManager = roleManager;
@@ -33,6 +42,14 @@ namespace Ettad.User.Services.Implementation
             _currentUserService = currentUserService;
             _mapper = mapper;
             _context = context;
+        }
+
+        /// <summary>
+        /// Checks if a role name is protected and cannot be updated or deleted
+        /// </summary>
+        private bool IsProtectedRole(string roleName)
+        {
+            return ProtectedRoleNames.Contains(roleName);
         }
 
         public async Task<APIOperationResponse<RoleDto>> GetRoleByIdAsync(string id)
@@ -171,6 +188,12 @@ namespace Ettad.User.Services.Implementation
                 return APIOperationResponse<RoleDto>.NotFound($"Role with ID '{id}' not found.");
             }
 
+            // 1.5️⃣ Check if role is protected (cannot be updated)
+            if (IsProtectedRole(role.Name))
+            {
+                return APIOperationResponse<RoleDto>.BadRequest($"The role '{role.Name}' is protected and cannot be updated. This role is used in critical business logic.");
+            }
+
             // 2️⃣ Check if the new name is already taken by another role
             var existingRoleWithSameName = await _roleManager.FindByNameAsync(updateRoleDto.Name);
             if (existingRoleWithSameName != null && existingRoleWithSameName.Id != id)
@@ -225,6 +248,12 @@ namespace Ettad.User.Services.Implementation
             if (role == null)
             {
                 return APIOperationResponse<string>.NotFound($"Role with ID '{id}' not found.");
+            }
+
+            // Check if role is protected (cannot be deleted)
+            if (IsProtectedRole(role.Name))
+            {
+                return APIOperationResponse<string>.BadRequest($"The role '{role.Name}' is protected and cannot be deleted. This role is used in critical business logic.");
             }
 
             var result = await _roleManager.DeleteAsync(role);
