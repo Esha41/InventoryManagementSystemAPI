@@ -69,8 +69,7 @@ namespace Ettad.RequestManagement.Service.Discards
                     nameof(BaseRequest.Department),
                     nameof(BaseRequest.Requester),
                     nameof(BaseRequest.RequestPurpose),
-                    $"{nameof(BaseRequest.RequestItems)}.{nameof(RequestItem.Item)}",
-                    $"{nameof(BaseRequest.RequestItems)}.{nameof(RequestItem.Item)}.{nameof(BaseItem.Hcc)}"
+                    $"{nameof(BaseRequest.RequestItems)}.{nameof(RequestItem.Item)}"
                 );
 
                 if (discard == null)
@@ -109,8 +108,7 @@ namespace Ettad.RequestManagement.Service.Discards
                     nameof(BaseRequest.Department),
                     nameof(BaseRequest.Requester),
                     nameof(BaseRequest.RequestPurpose),
-                    $"{nameof(BaseRequest.RequestItems)}.{nameof(RequestItem.Item)}",
-                    $"{nameof(BaseRequest.RequestItems)}.{nameof(RequestItem.Item)}.{nameof(BaseItem.Hcc)}"
+                    $"{nameof(BaseRequest.RequestItems)}.{nameof(RequestItem.Item)}"
                 );
 
                 var dtos = _mapper.Map<List<DiscardDto>>(discards);

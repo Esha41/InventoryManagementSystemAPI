@@ -126,23 +126,6 @@ namespace Ettad.Lookups.Domain.API.Controllers
 
     #endregion
 
-    #region Hcc
-
-    [CheckAuthorize(
-        "Permissions.Hccs.Page",
-        "Permissions.Hccs.View",
-        "Permissions.Hccs.Create",
-        "Permissions.Hccs.Edit",
-        "Permissions.Hccs.Delete"
-    )]
-    public class HccController : LookupController<Hcc, CreateUpdateHccDto>
-    {
-        public HccController(ILookupService<Hcc, CreateUpdateHccDto> iLookupService, ILogger<LookupController<Hcc, CreateUpdateHccDto>> logger)
-            : base(iLookupService, logger) { }
-    }
-
-    #endregion
-
     #region Depot
 
     [CheckAuthorize(

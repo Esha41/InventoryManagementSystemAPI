@@ -13,8 +13,6 @@ namespace Ettad.Data.Entities
 
         public string? Nsn { get; set; }
         
-        public long? HccId  { get; set; }
-        
         public string? PartNo { get; set; }
 
         public decimal? Price { get; set; }
@@ -23,7 +21,7 @@ namespace Ettad.Data.Entities
 
         #region Navigation Properties
 
-        public Hcc Hcc { get; set; }
+        // HCC removed - no longer used
 
         #endregion
     }

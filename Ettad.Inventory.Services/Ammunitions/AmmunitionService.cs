@@ -50,7 +50,6 @@ namespace Ettad.Inventory.Service.Ammunitions
                 var ammunition = await _ammunitionRepository.FindOneAsync(
                     a => a.Id == id && !a.IsDeleted,
                     false,
-                    nameof(Ammunition.Hcc),
                     nameof(Ammunition.BulletDiameterUnit),
                     nameof(Ammunition.NatureOption),
                     nameof(Ammunition.PrimaryPurpos),
@@ -81,7 +80,6 @@ namespace Ettad.Inventory.Service.Ammunitions
                 var ammunitions = await _ammunitionRepository.FindAsync(
                     a => !a.IsDeleted,
                     false,
-                    nameof(Ammunition.Hcc),
                     nameof(Ammunition.BulletDiameterUnit),
                     nameof(Ammunition.NatureOption),
                     nameof(Ammunition.PrimaryPurpos),
@@ -111,7 +109,6 @@ namespace Ettad.Inventory.Service.Ammunitions
                 var ammunitions = await _ammunitionRepository.FindAsync(
                     a => !a.IsDeleted && a.AmmunitionType == ammunitionType,
                     false,
-                    nameof(Ammunition.Hcc),
                     nameof(Ammunition.BulletDiameterUnit),
                     nameof(Ammunition.NatureOption),
                     nameof(Ammunition.PrimaryPurpos),
