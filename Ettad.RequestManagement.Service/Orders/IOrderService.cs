@@ -1,5 +1,6 @@
 using Ettad.RequestManagement.Service.Orders.Dto;
 using Ettad.ResponseHandler.Models;
+using Microsoft.AspNetCore.Http;
 
 namespace Ettad.RequestManagement.Service.Orders
 {
@@ -8,6 +9,7 @@ namespace Ettad.RequestManagement.Service.Orders
         Task<APIOperationResponse<OrderDto>> GetByIdAsync(long id);
         Task<APIOperationResponse<List<OrderDto>>> GetAllAsync();
         Task<APIOperationResponse<long>> CreateAsync(CreateOrderDto inputDto);
+        Task<APIOperationResponse<long>> CreateAsync(CreateOrderDto inputDto, List<IFormFile> files);
         Task<APIOperationResponse<bool>> DeleteAsync(long id);
 
         // Order Item Management

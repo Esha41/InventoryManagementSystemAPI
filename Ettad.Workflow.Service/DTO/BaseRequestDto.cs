@@ -1,4 +1,5 @@
 using Ettad.Data.Enums;
+using Ettad.CrossCutting.Comman.FileUpload;
 using System;
 using System.Collections.Generic;
 
@@ -21,7 +22,9 @@ namespace Ettad.Workflows.Service.DTO
         public string? RequesterName { get; set; }
         public string? RequesterUserName { get; set; }
         public string? RequestPurposeName { get; set; }
+        public List<FileUploadDto> Files { get; set; } = new List<FileUploadDto>();
         public List<ApprovalHistoryDto> ApprovalHistory { get; set; } = new List<ApprovalHistoryDto>();
+      
     }
 
     public class ApprovalHistoryDto
@@ -40,6 +43,7 @@ namespace Ettad.Workflows.Service.DTO
         public bool RequireHigherApproval { get; set; }
         public string? HigherApprovalRoleId { get; set; }
         public bool IsPending { get; set; } // True if this step hasn't been completed yet
+        public List<FileUploadDto> Files { get; set; } = new List<FileUploadDto>();
     }
 }
 
