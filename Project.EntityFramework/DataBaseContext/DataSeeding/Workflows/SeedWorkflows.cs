@@ -96,16 +96,27 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding.Workflows
                 new(9, "Auditor of Military Operation (Military Operation)", "Military Operation"),
                 new(10, "Officer of Military Operation (Military Operation)", "Military Operation"),
                 new(11, "Chief of Operations (Military Operation)", "Military Operation"),
-                new(12, "Auditor of Chief of Staff Office (Chief of Staff Office)", "Chief of Staff Office"),
+                
+                new (
+                    12,
+                    "Auditor of Deputy of Chief of Staff Office (Chief of Staff Office)",
+                    "Chief of Staff Office",
+                    MustApprove: true,
+                    RequireHigherApproval: true,
+                    ReserveQty: false,
+                    HigherApprovalRoleName: "Deputy Chief of Staff for Operations (Chief of Staff Office)",
+                    HigherApplicationEntityName: "Chief of Staff Office"),
+
                 new (
                     13,
-                    "Deputy Chief of Staff for Operations (Chief of Staff Office)",
+                    "Auditor of Chief of Staff Office (Chief of Staff Office)",
                     "Chief of Staff Office",
                     MustApprove: true,
                     RequireHigherApproval: true,
                     ReserveQty: false,
                     HigherApprovalRoleName: "Chief of Staff (Chief of Staff Office)",
                     HigherApplicationEntityName: "Chief of Staff Office"),
+
                 new(14, "Auditor of Audit Depo (Inventory)", "Inventory"),
                 new(15, "Head of Audit Depo (Inventory)", "Inventory"),
                 new(16, "Depo Commander (Inventory)", "Inventory"),
@@ -128,16 +139,27 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding.Workflows
                 new(6, "Auditor of Military Operation (Military Operation)", "Military Operation"),
                 new(7, "Officer of Military Operation (Military Operation)", "Military Operation"),
                 new(8, "Chief of Operations (Military Operation)", "Military Operation"),
-                new(9, "Auditor of Chief of Staff Office (Chief of Staff Office)", "Chief of Staff Office"),
+           
                 new (
-                    10,
-                    "Deputy Chief of Staff for Operations (Chief of Staff Office)",
+                    12,
+                    "Auditor of Deputy of Chief of Staff Office (Chief of Staff Office)",
+                    "Chief of Staff Office",
+                    MustApprove: true,
+                    RequireHigherApproval: true,
+                    ReserveQty: false,
+                    HigherApprovalRoleName: "Deputy Chief of Staff for Operations (Chief of Staff Office)",
+                    HigherApplicationEntityName: "Chief of Staff Office"),
+
+                new (
+                    13,
+                    "Auditor of Chief of Staff Office (Chief of Staff Office)",
                     "Chief of Staff Office",
                     MustApprove: true,
                     RequireHigherApproval: true,
                     ReserveQty: false,
                     HigherApprovalRoleName: "Chief of Staff (Chief of Staff Office)",
                     HigherApplicationEntityName: "Chief of Staff Office"),
+
                 new(11, "Auditor of Audit Depo (Inventory)", "Inventory"),
                 new(12, "Head of Audit Depo (Inventory)", "Inventory"),
                 new(13, "Depo Commander (Inventory)", "Inventory"),

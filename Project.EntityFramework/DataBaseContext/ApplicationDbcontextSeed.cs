@@ -162,6 +162,7 @@ namespace Ettad.EntityFramework.DataBaseContext
                     "Chief of Staff Office", new List<(string, string)>
                     {
                         ("Auditor of Chief of Staff Office", "مدقق مكتب رئيس الأركان"),
+                        ("Auditor of Deputy of Chief of Staff Office", "مدقق مكتب نائب رئيس الأركان"),
                         ("Deputy Chief of Staff for Operations", "نائب رئيس الأركان للعمليات المشتركة"),
                         ("Chief of Staff", "رئيس الأركان")
                     }
@@ -311,6 +312,7 @@ namespace Ettad.EntityFramework.DataBaseContext
 
                 // Chief of Staff Entity
                 { ("Auditor of Chief of Staff Office", "Chief of Staff Office"), () => PermissionConfig.Auditor_ChiefOfStaffOfficeEntity },
+                { ("Auditor of Deputy of Chief of Staff Office", "Chief of Staff Office"), () => PermissionConfig.AuditorOfDeputy_ChiefOfStaffOfficeEntity },
                 { ("Deputy Chief of Staff for Operations", "Chief of Staff Office"), () => PermissionConfig.DeputyChiefOfStaff_ChiefOfStaffOfficeEntity },
                 { ("Chief of Staff", "Chief of Staff Office"), () => PermissionConfig.ChiefOfStaff_ChiefOfStaffOfficeEntity },
 
