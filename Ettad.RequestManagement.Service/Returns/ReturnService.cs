@@ -69,8 +69,7 @@ namespace Ettad.RequestManagement.Service.Returns
                     nameof(BaseRequest.Department),
                     nameof(BaseRequest.Requester),
                     nameof(BaseRequest.RequestPurpose),
-                    $"{nameof(BaseRequest.RequestItems)}.{nameof(RequestItem.Item)}",
-                    $"{nameof(BaseRequest.RequestItems)}.{nameof(RequestItem.Item)}.{nameof(BaseItem.Hcc)}"
+                    $"{nameof(BaseRequest.RequestItems)}.{nameof(RequestItem.Item)}"
                 );
 
                 if (returnEntity == null)
@@ -109,8 +108,7 @@ namespace Ettad.RequestManagement.Service.Returns
                     nameof(BaseRequest.Department),
                     nameof(BaseRequest.Requester),
                     nameof(BaseRequest.RequestPurpose),
-                    $"{nameof(BaseRequest.RequestItems)}.{nameof(RequestItem.Item)}",
-                    $"{nameof(BaseRequest.RequestItems)}.{nameof(RequestItem.Item)}.{nameof(BaseItem.Hcc)}"
+                    $"{nameof(BaseRequest.RequestItems)}.{nameof(RequestItem.Item)}"
                 );
 
                 var dtos = _mapper.Map<List<ReturnDto>>(returns);

@@ -202,7 +202,7 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 {
                     Name = "9mm NATO Ball Ammunition",
                     ItemNo = "AMM-001",
-                    HccId = 1,
+
                     PartNo = "PN-001",
                     BulletDiameter = 9.01m,
                     BulletDiameterUnitId = 1,
@@ -228,7 +228,7 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 {
                     Name = "7.62mm NATO Match Ammunition",
                     ItemNo = "AMM-002",
-                    HccId = 2,
+
                     PartNo = "PN-002",
                     BulletDiameter = 7.82m,
                     BulletDiameterUnitId = 2,
@@ -254,7 +254,7 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 {
                     Name = "5.56mm NATO Tracer Round",
                     ItemNo = "AMM-003",
-                    HccId = 3,
+
                     PartNo = "PN-003",
                     BulletDiameter = 5.70m,
                     BulletDiameterUnitId = 3,
@@ -298,7 +298,7 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 {
                     Name = "M16A4 Assault Rifle",
                     ItemNo = "WPN-001",
-                    HccId = 1,
+
                     PartNo = "PN-WPN-001",
                     Nsn = "1005-01-000-0001",
                     Price = 1000.00m,
@@ -311,7 +311,7 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 {
                     Name = "M4 Carbine",
                     ItemNo = "WPN-002",
-                    HccId = 2,
+
                     PartNo = "PN-WPN-002",
                     Nsn = "1005-01-000-0002",
                     Price = 850.00m,
@@ -324,7 +324,7 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 {
                     Name = "M249 Squad Automatic Weapon",
                     ItemNo = "WPN-003",
-                    HccId = 3,
+
                     PartNo = "PN-WPN-003",
                     Nsn = "1005-01-000-0003",
                     Price = 5000.00m,
@@ -337,7 +337,7 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 {
                     Name = "M240B Machine Gun",
                     ItemNo = "WPN-004",
-                    HccId = 1,
+
                     PartNo = "PN-WPN-004",
                     Nsn = "1005-01-000-0004",
                     Price = 6000.00m,
@@ -350,7 +350,7 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 {
                     Name = "M9 Pistol",
                     ItemNo = "WPN-005",
-                    HccId = 2,
+
                     PartNo = "PN-WPN-005",
                     Nsn = "1005-01-000-0005",
                     Price = 650.00m,
@@ -363,7 +363,7 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 {
                     Name = "M24 Sniper Weapon System",
                     ItemNo = "WPN-006",
-                    HccId = 3,
+
                     PartNo = "PN-WPN-006",
                     Nsn = "1005-01-000-0006",
                     Price = 4000.00m,
@@ -376,7 +376,7 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 {
                     Name = "M2 Browning Machine Gun",
                     ItemNo = "WPN-007",
-                    HccId = 1,
+
                     PartNo = "PN-WPN-007",
                     Nsn = "1005-01-000-0007",
                     Price = 10000.00m,
@@ -389,7 +389,7 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 {
                     Name = "M203 Grenade Launcher",
                     ItemNo = "WPN-008",
-                    HccId = 2,
+
                     PartNo = "PN-WPN-008",
                     Nsn = "1005-01-000-0008",
                     Price = 2000.00m,
@@ -402,7 +402,7 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 {
                     Name = "M110 Semi-Automatic Sniper System",
                     ItemNo = "WPN-009",
-                    HccId = 3,
+
                     PartNo = "PN-WPN-009",
                     Nsn = "1005-01-000-0009",
                     Price = 5000.00m,
@@ -433,7 +433,7 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 {
                     Name = "M67 Fragmentation Grenade",
                     ItemNo = "EXP-001",
-                    HccId = 1,
+
                     PartNo = "PN-EXP-001",
                     Nsn = "1330-01-000-0001",
                     Price = 75.00m,
@@ -446,7 +446,7 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 {
                     Name = "M84 Stun Grenade",
                     ItemNo = "EXP-002",
-                    HccId = 2,
+
                     PartNo = "PN-EXP-002",
                     Nsn = "1330-01-000-0002",
                     Price = 60.00m,
@@ -459,7 +459,7 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 {
                     Name = "M18 Smoke Grenade",
                     ItemNo = "EXP-003",
-                    HccId = 3,
+
                     PartNo = "PN-EXP-003",
                     Nsn = "1330-01-000-0003",
                     Price = 45.00m,
@@ -472,7 +472,7 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 {
                     Name = "C4 Explosive",
                     ItemNo = "EXP-004",
-                    HccId = 1,
+
                     PartNo = "PN-EXP-004",
                     Nsn = "1330-01-000-0004",
                     Price = 300.00m,
@@ -485,7 +485,7 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 {
                     Name = "M112 Demolition Charge",
                     ItemNo = "EXP-005",
-                    HccId = 2,
+
                     PartNo = "PN-EXP-005",
                     Nsn = "1330-01-000-0005",
                     Price = 225.00m,
@@ -498,7 +498,7 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 {
                     Name = "M26A2 Fragmentation Grenade",
                     ItemNo = "EXP-006",
-                    HccId = 3,
+
                     PartNo = "PN-EXP-006",
                     Nsn = "1330-01-000-0006",
                     Price = 90.00m,
@@ -511,7 +511,7 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 {
                     Name = "AN-M14 TH3 Incendiary Grenade",
                     ItemNo = "EXP-007",
-                    HccId = 1,
+
                     PartNo = "PN-EXP-007",
                     Nsn = "1330-01-000-0007",
                     Price = 115.00m,
@@ -524,7 +524,7 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 {
                     Name = "M72 LAW Rocket",
                     ItemNo = "EXP-008",
-                    HccId = 2,
+
                     PartNo = "PN-EXP-008",
                     Nsn = "1410-01-000-0008",
                     Price = 1500.00m,
@@ -537,7 +537,7 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 {
                     Name = "M18A1 Claymore Mine",
                     ItemNo = "EXP-009",
-                    HccId = 3,
+
                     PartNo = "PN-EXP-009",
                     Nsn = "1345-01-000-0009",
                     Price = 300.00m,

@@ -31,11 +31,7 @@ namespace Ettad.EntityFramework.Configurations
             builder.Property(x => x.MinimumQuantity)
                 .IsRequired(false);
 
-            builder.HasOne(x => x.Hcc)
-                .WithMany()
-                .IsRequired(false)
-                .HasForeignKey(x =>  x.HccId)
-                .OnDelete(DeleteBehavior.Restrict);
+            // HCC relationship removed - no longer used
         }
     }
 }
