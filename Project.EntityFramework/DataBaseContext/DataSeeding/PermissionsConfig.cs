@@ -456,6 +456,17 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 .Concat(RequestReciever)
                 .ToList();
 
+        public static List<string> AuditorOfDeputy_ChiefOfStaffOfficeEntity =
+            ReadLookups
+                .Concat(ReadItems)
+                .Concat(ReadAllowanceItem)
+                .Concat(Dashboard)
+                .Concat(Forecast)
+                .Concat(Notifications)
+                .Concat(ReadOrderDiscardReturn)
+                .Concat(RequestReciever)
+                .ToList();
+
         public static List<string> DeputyChiefOfStaff_ChiefOfStaffOfficeEntity =
             ReadLookups
                 .Concat(ReadItems)

@@ -11,7 +11,8 @@ namespace Ettad.Notification.Service.EmailTemplate
             string? entityType = null,
             long? entityId = null,
             long notificationId = 0,
-            DateTime? updateDate = null);
+            DateTime? updateDate = null,
+            string? htmlContent = null);
     }
 }
 

@@ -20,6 +20,8 @@ using Ettad.User.Services.Interfaces;
 using Ettad.Workflow.Service;
 using Ettad.Workflows.Service.Imeplemention;
 using Ettad.Workflows.Service.Interface;
+using Ettad.Inventory.Service.Monitoring;
+using Hangfire;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -102,6 +104,15 @@ try
     builder.Services.AddScoped<IWorkflowApprovalService, WorkflowApprovalService>();
     builder.Services.AddScoped<IFileStorageService, FileStorageService>();
     builder.Services.AddScoped<IFileUploadService, Ettad.Modules.FileUpload.API.Services.FileUploadService>();
+
+    // Configure Hangfire for background jobs
+    var hangfireConnectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+    builder.Services.AddHangfire(config => config
+        .SetDataCompatibilityLevel(Hangfire.CompatibilityLevel.Version_170)
+        .UseSimpleAssemblyNameTypeSerializer()
+        .UseRecommendedSerializerSettings()
+        .UseSqlServerStorage(hangfireConnectionString));
+    builder.Services.AddHangfireServer();
 
     builder.Services.Configure<JwtOptions>(
     builder.Configuration.GetSection("JWT"));
@@ -343,6 +354,34 @@ try
             Log.Error(ex, "An error occurred during database migration or seeding");
             //  await ApplicationDbInitializer.SeedDefaultDataAsync(scope.ServiceProvider);
         }
+    }
+
+    // Register Recurring Jobs
+    // Low Stock Monitor Job - Checks items daily and sends notifications when stock is low
+    // Schedule is stored in Settings table (Key: "LowStockMonitorSchedule", Group: "BackgroundJobs")
+    // Can be updated at runtime via API endpoint
+    using (var scope = app.Services.CreateScope())
+    {
+        var recurringJobManager = scope.ServiceProvider.GetRequiredService<IRecurringJobManager>();
+        var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+
+        // Read schedule from Settings table, fallback to appsettings.json, then default
+        // Note: Cron expressions are in UTC timezone. For Qatar (UTC+3), subtract 3 hours from local time.
+        // Example: 9:15 AM Qatar time = 6:15 AM UTC = "15 6 * * *"
+        var scheduleSetting = await context.Settings
+            .FirstOrDefaultAsync(s => s.Key == "LowStockMonitorSchedule" && s.Group == "BackgroundJobs");
+        
+        var lowStockCronExpression = scheduleSetting?.Value 
+            ?? app.Configuration.GetValue<string>("BackgroundJobs:LowStockMonitor:CronExpression") 
+            ?? "15 6 * * *"; // Default: 6:15 AM UTC (9:15 AM Qatar time, UTC+3)
+
+
+        recurringJobManager.AddOrUpdate(
+            "LowStockMonitor",
+            () => scope.ServiceProvider.GetRequiredService<ILowStockMonitorService>().CheckAndNotifyAsync(),
+            lowStockCronExpression);
+        
+        Log.Information("Low Stock Monitor job registered with schedule: {Schedule}", lowStockCronExpression);
     }
 
     Log.Information("Ettad Backend API started successfully");
