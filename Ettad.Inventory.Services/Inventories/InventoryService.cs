@@ -292,7 +292,10 @@ namespace Ettad.Inventory.Service.Inventories
                                 SupplierId = existingDetail.SupplierId,
                                 ManufacturerId = existingDetail.ManufacturerId,
                                 CountryId = existingDetail.CountryId,
-                                ItemQuantity = existingDetail.ItemQuantity
+                                ItemQuantity = existingDetail.ItemQuantity,
+                                BatchNo = existingDetail.BatchNo,
+                                ExpiryDate = existingDetail.ExpiryDate,
+                                ReadyForIssue = existingDetail.ReadyForIssue
                             };
                             await _inventoryDetailRepository.UpdateAsync(detailUpdate);
                         }
