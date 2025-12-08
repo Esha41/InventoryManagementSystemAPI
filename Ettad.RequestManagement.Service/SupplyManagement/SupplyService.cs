@@ -211,8 +211,22 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
                 var dto = _mapper.Map<SupplyDto>(supply);
                 PopulateSupplyDetailCalculatedProperties(dto, supply);
 
-                _logger.LogInformation("Supply retrieved successfully. OrderID: {OrderID}, OrderId: {OrderId}",
-                    orderId, supply.OrderId);
+                // Load files associated with this supply
+                var filesResult = await _fileUploadService.GetByEntityAsync(FileEntityType.Supply, supply.Id);
+                if (filesResult.Succeeded && filesResult.Data != null)
+                {
+                    dto.Files = filesResult.Data;
+                }
+                else
+                {
+                    dto.Files = new List<FileUploadDto>();
+                    // Log warning but don't fail the operation
+                    _logger.LogWarning("Failed to load files for supply. SupplyId: {SupplyId}, Error: {Error}",
+                        supply.Id, filesResult.Message);
+                }
+
+                _logger.LogInformation("Supply retrieved successfully. OrderID: {OrderID}, OrderId: {OrderId}, FileCount: {FileCount}",
+                    orderId, supply.OrderId, dto.Files?.Count ?? 0);
 
                 return APIOperationResponse<SupplyDto>.Success(dto);
             }

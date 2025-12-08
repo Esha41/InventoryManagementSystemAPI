@@ -21,9 +21,6 @@ namespace Ettad.Inventory.Service.Ammunitions.Validators
                 .MaximumLength(100).When(x => !string.IsNullOrEmpty(x.PartNo))
                 .WithMessage("Part number cannot exceed 100 characters");
 
-            RuleFor(x => x.HccId)
-                .GreaterThan(0).When(x => x.HccId.HasValue)
-                .WithMessage("HCC must be greater than 0 when provided");
 
             RuleFor(x => x.BulletDiameter)
                 .GreaterThan(0).When(x => x.BulletDiameter.HasValue)

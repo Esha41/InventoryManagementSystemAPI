@@ -13,8 +13,6 @@ namespace Ettad.Inventory.Service.Ammunitions.Dtos
 
         public string ItemNo { get; set; }
 
-        public long? HccId { get; set; }
-
         public string? PartNo { get; set; }
 
         public decimal? Price { get; set; }
@@ -53,7 +51,6 @@ namespace Ettad.Inventory.Service.Ammunitions.Dtos
         
         #region Navigation Properties
 
-        public HccDto Hcc { get; set; }
         public UnitDto BulletDiameterUnit { get; set; }
         public NatureOptionDto NatureOption { get; set; }
         public PrimaryPurposDto PrimaryPurpos { get; set; }

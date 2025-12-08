@@ -7,7 +7,6 @@ namespace Ettad.Inventory.Service.Ammunitions.Dtos
         public string ItemNo { get; set; }
 
         // All other fields are optional - only Name and ItemNo are required
-        public long? HccId { get; set; }
 
         public string? PartNo { get; set; }
 

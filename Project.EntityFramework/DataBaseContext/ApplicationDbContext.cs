@@ -37,7 +37,6 @@ namespace Ettad.EntityFramework.DataBaseContext
         public DbSet<Department> Departments { get; set; }
         public DbSet<Depot> Depots { get; set; }
         public DbSet<HazardDivision> HazardDivisions { get; set; }
-        public DbSet<Hcc> Hcc { get; set; }
         public DbSet<Inventory> Inventories { get; set; }
         public DbSet<InventoryDetail> InventoryDetails { get; set; }
         public DbSet<Manufacturer> Manufacturers { get; set; }

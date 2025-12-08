@@ -35,7 +35,6 @@ namespace Ettad.Inventory.API.Controllers
             {
                 var explosives = await _context.Explosives
                     .Where(e => !e.IsDeleted)
-                    .Include(e => e.Hcc)
                     .ToListAsync();
 
                 var dtos = _mapper.Map<List<BaseItemDto>>(explosives);

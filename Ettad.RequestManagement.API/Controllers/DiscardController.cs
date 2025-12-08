@@ -3,7 +3,9 @@ using Ettad.RequestManagement.Service.Discards;
 using Ettad.RequestManagement.Service.Discards.Dtos;
 using Ettad.Data.Enums;
 using Ettad.ResponseHandler.Models;
+using Ettad.ResponseHandler.Consts;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using System.Net;
 
@@ -48,13 +50,29 @@ namespace Ettad.RequestManagement.API.Controllers
         /// <summary>
         /// Create a new discard with items
         /// </summary>
+        /// <param name="dto">Discard creation data</param>
+        /// <param name="files">Optional list of files to attach to the discard</param>
+        /// <returns>Created discard ID</returns>
         [HttpPost]
-        [ProducesResponseType((int)HttpStatusCode.Created)]
+        [Consumes("multipart/form-data", "application/json")]
+        [ProducesResponseType(typeof(APIOperationResponse<long>), (int)HttpStatusCode.Created)]
+        [ProducesResponseType((int)HttpStatusCode.BadRequest)]
         [CheckAuthorize("Permissions.Discard.Create")]
-        public async Task<IActionResult> Create([FromBody] CreateDiscardDto dto)
+        public async Task<IActionResult> Create(
+            [FromForm] CreateDiscardDto dto,
+            [FromForm] List<IFormFile> files = null)
         {
-            var result = await _discardService.CreateAsync(dto);
-            return ProcessResponse(result);
+            try
+            {
+                var result = files != null && files.Count > 0
+                    ? await _discardService.CreateAsync(dto, files)
+                    : await _discardService.CreateAsync(dto);
+                return ProcessResponse(result);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(APIOperationResponse<long>.Fail(ResponseType.BadRequest, ex.Message));
+            }
         }
 
         /// <summary>
