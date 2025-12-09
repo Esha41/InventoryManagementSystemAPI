@@ -48,25 +48,42 @@ namespace Ettad.RequestManagement.API.Controllers
         }
 
         /// <summary>
-        /// Create a new return with items
+        /// Create a new return (Supports both Multipart/Form-Data and Application/JSON)
         /// </summary>
-        /// <param name="dto">Return creation data</param>
-        /// <param name="files">Optional list of files to attach to the return</param>
         /// <returns>Created return ID</returns>
         [HttpPost]
-        [Consumes("multipart/form-data", "application/json")]
         [ProducesResponseType(typeof(APIOperationResponse<long>), (int)HttpStatusCode.Created)]
         [ProducesResponseType((int)HttpStatusCode.BadRequest)]
         [CheckAuthorize("Permissions.Return.Create")]
-        public async Task<IActionResult> Create(
-            [FromForm] CreateReturnDto dto,
-            [FromForm] List<IFormFile> files = null)
+        public async Task<IActionResult> Create()
         {
             try
             {
+                CreateReturnDto dto;
+                List<IFormFile>? files = null;
+
+                if (Request.HasFormContentType)
+                {
+                    // Handle Multipart/Form-Data
+                    dto = new CreateReturnDto();
+                    await TryUpdateModelAsync(dto);
+                    files = Request.Form.Files.ToList();
+                }
+                else
+                {
+                    // Handle Application/JSON
+                    using var reader = new StreamReader(Request.Body);
+                    var body = await reader.ReadToEndAsync();
+                    dto = System.Text.Json.JsonSerializer.Deserialize<CreateReturnDto>(body, new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                }
+
+                if (dto == null)
+                    return BadRequest(APIOperationResponse<long>.Fail(ResponseType.BadRequest, "Invalid request data"));
+
                 var result = files != null && files.Count > 0
                     ? await _returnService.CreateAsync(dto, files)
                     : await _returnService.CreateAsync(dto);
+
                 return ProcessResponse(result);
             }
             catch (Exception ex)
