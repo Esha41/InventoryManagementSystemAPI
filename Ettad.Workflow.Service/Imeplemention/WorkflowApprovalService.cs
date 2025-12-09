@@ -984,37 +984,58 @@ namespace Ettad.Workflows.Service.Imeplemention
                     .Select(ur => ur.RoleId)
                     .ToListAsync();
 
-                if (!userRoleIds.Any())
-                    return Enumerable.Empty<BaseRequestDto>();
-
                 // Get request IDs that the user has permission to approve
-                var workflowQuery = from ws in _context.WorkflowApprovalSteps
-                                   join br in _context.BaseRequests
-                                       on (long)ws.TargetRequestId equals br.Id
-                                   join wfs in _context.WorkflowSteps
-                                       on ws.WorkflowStepId equals wfs.Id
-                                   where
-                                       !br.IsDeleted &&
-                                       (
-                                           // Step assigned directly to this user
-                                           ws.ApproverUserId == currentUserId
-                                           // OR user role matches main approver
-                                           || userRoleIds.Contains(wfs.ApplicationRoleId)
-                                           // OR user role matches higher approval
-                                           || (!string.IsNullOrEmpty(wfs.HigherApprovalRoleId) && userRoleIds.Contains(wfs.HigherApprovalRoleId))
-                                       )
-                                   select br;
+                var workflowRequestIds = new List<long>();
+                
+                if (userRoleIds.Any())
+                {
+                    var workflowQuery = from ws in _context.WorkflowApprovalSteps
+                                       join br in _context.BaseRequests
+                                           on (long)ws.TargetRequestId equals br.Id
+                                       join wfs in _context.WorkflowSteps
+                                           on ws.WorkflowStepId equals wfs.Id
+                                       where
+                                           !br.IsDeleted &&
+                                           (
+                                               // Step assigned directly to this user
+                                               ws.ApproverUserId == currentUserId
+                                               // OR user role matches main approver
+                                               || userRoleIds.Contains(wfs.ApplicationRoleId)
+                                               // OR user role matches higher approval
+                                               || (!string.IsNullOrEmpty(wfs.HigherApprovalRoleId) && userRoleIds.Contains(wfs.HigherApprovalRoleId))
+                                           )
+                                       select br;
+                    
+                    // Filter by department if user has a departmentId
+                    if (userDepartmentId.HasValue)
+                    {
+                        workflowQuery = workflowQuery.Where(br => br.DepartmentId == userDepartmentId.Value);
+                    }
+                    
+                    workflowRequestIds = await workflowQuery
+                        .Select(br => br.Id)
+                        .Distinct()
+                        .ToListAsync();
+                }
+
+                // Get request IDs where the user is the requester
+                var requesterQuery = _context.BaseRequests.Where(br => !br.IsDeleted && br.RequesterId == currentUserId);
                 
                 // Filter by department if user has a departmentId
                 if (userDepartmentId.HasValue)
                 {
-                    workflowQuery = workflowQuery.Where(br => br.DepartmentId == userDepartmentId.Value);
+                    requesterQuery = requesterQuery.Where(br => br.DepartmentId == userDepartmentId.Value);
                 }
                 
-                allowedRequestIds = await workflowQuery
+                var requesterRequestIds = await requesterQuery
                     .Select(br => br.Id)
-                    .Distinct()
                     .ToListAsync();
+
+                // Combine both lists and remove duplicates
+                allowedRequestIds = workflowRequestIds
+                    .Union(requesterRequestIds)
+                    .Distinct()
+                    .ToList();
             }
 
             if (!allowedRequestIds.Any())
