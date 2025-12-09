@@ -1109,6 +1109,7 @@ namespace Ettad.Workflows.Service.Imeplemention
                                              Comments = was.Comments,
                                              CreationDate = was.CreationDate,
                                              StepOrder = wfs.StepOrder,
+                                             ApproverUserId = was.ApproverUserId,
                                              ApplicationRoleId = wfs.ApplicationRoleId,
                                              ApplicationRoleName = wfs.ApplicationRole != null ? wfs.ApplicationRole.Name : null,
                                              RequireHigherApproval = wfs.RequireHigherApproval,
@@ -1163,7 +1164,7 @@ namespace Ettad.Workflows.Service.Imeplemention
             var filesByStepId = new Dictionary<int, List<FileUploadDto>>();
             foreach (var stepId in allApprovalStepIds)
             {
-                var filesResult = await _fileUploadService.GetByEntityAsync(FileEntityType.WorkflowApproval, stepId);
+                var filesResult = await _fileUploadService.GetByEntityAsync(FileEntityType.WorkflowApproval, (long)stepId);
                 if (filesResult.Succeeded && filesResult.Data != null)
                 {
                     filesByStepId[stepId] = filesResult.Data;
@@ -1294,6 +1295,47 @@ namespace Ettad.Workflows.Service.Imeplemention
                                     ? nextPendingStep.HigherApprovalRoleName
                                     : nextPendingStep.ApplicationRoleName;
                                 
+                                // Calculate IsCurrentUserApprover
+                                bool isCurrentUserApprover = false;
+                                
+                                if (!string.IsNullOrEmpty(nextPendingStep.ApproverUserId))
+                                {
+                                    // If assigned to specific user, strict check
+                                    isCurrentUserApprover = nextPendingStep.ApproverUserId == currentUserId;
+                                }
+                                else
+                                {
+                                    // Check role requirements
+                                    string requiredRoleId = isHigherApprovalStep ? nextPendingStep.HigherApprovalRoleId : nextPendingStep.ApplicationRoleId;
+                                    string requiredRoleName = roleNameToUse;
+                                    var currentUserRoles = _currentUserService.Roles ?? new List<string>();
+
+                                    // Check Role ID match
+                                    if (!string.IsNullOrEmpty(requiredRoleId) && currentUserRoles.Contains(requiredRoleId))
+                                    {
+                                        isCurrentUserApprover = true;
+                                    }
+                                    // Check Role Name match (if ID didn't match)
+                                    else if (!string.IsNullOrEmpty(requiredRoleName))
+                                    {
+                                         // Strict name match
+                                         if (currentUserRoles.Contains(requiredRoleName))
+                                         {
+                                             isCurrentUserApprover = true;
+                                         }
+                                         // Fuzzy/Normalized match fallback
+                                         else 
+                                         {
+                                             var normalizedRequired = requiredRoleName.ToLower().Replace(" ", "").Replace(".", "").Replace("_", "").Replace("-", "").Replace("(", "").Replace(")", "");
+                                             // Check if any user role matches normalized required role
+                                             if (currentUserRoles.Any(r => r.ToLower().Replace(" ", "").Replace(".", "").Replace("_", "").Replace("-", "").Replace("(", "").Replace(")", "") == normalizedRequired))
+                                             {
+                                                 isCurrentUserApprover = true;
+                                             }
+                                         }
+                                    }
+                                }
+
                                 var pendingStep = new ApprovalHistoryDto
                                 {
                                     Id = nextPendingStep.WorkflowApprovalStepId,
@@ -1309,7 +1351,8 @@ namespace Ettad.Workflows.Service.Imeplemention
                                     ApplicationRoleName = roleNameToUse,
                                     RequireHigherApproval = nextPendingStep.RequireHigherApproval,
                                     HigherApprovalRoleId = nextPendingStep.HigherApprovalRoleId,
-                                    IsPending = true
+                                    IsPending = true,
+                                    IsCurrentUserApprover = isCurrentUserApprover
                                 };
                                 
                                 // Assign files to pending step if any
