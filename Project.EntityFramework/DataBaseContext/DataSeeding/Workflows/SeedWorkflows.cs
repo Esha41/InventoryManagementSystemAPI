@@ -139,9 +139,9 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding.Workflows
                 new(6, "Auditor of Military Operation (Military Operation)", "Military Operation"),
                 new(7, "Officer of Military Operation (Military Operation)", "Military Operation"),
                 new(8, "Chief of Operations (Military Operation)", "Military Operation"),
-           
+
                 new (
-                    12,
+                    9,
                     "Auditor of Deputy of Chief of Staff Office (Chief of Staff Office)",
                     "Chief of Staff Office",
                     MustApprove: true,
@@ -151,7 +151,7 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding.Workflows
                     HigherApplicationEntityName: "Chief of Staff Office"),
 
                 new (
-                    13,
+                    10,
                     "Auditor of Chief of Staff Office (Chief of Staff Office)",
                     "Chief of Staff Office",
                     MustApprove: true,
