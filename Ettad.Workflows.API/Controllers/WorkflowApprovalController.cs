@@ -96,6 +96,8 @@ namespace Ettad.Workflows.API.Controllers
                     ? "Request approved successfully."
                     : dto.Action == RequestStatus.Rejected
                     ? "Request rejected successfully."
+                    : dto.Action == RequestStatus.ReturnedForReview
+                    ? "Request returned for review successfully."
                     : "Workflow step processed successfully.";
 
                 // Wrap into API Response
@@ -140,6 +142,14 @@ namespace Ettad.Workflows.API.Controllers
                     Message = $"An unexpected error occurred: {ex.Message}"
                 });
             }
+        }
+
+        [HttpGet("previous-steps/{requestId}")]
+        [CheckAuthorize("Permissions.RequestReciever.Page", "Permissions.RequestReciever.View")]
+        public async Task<IActionResult> GetPreviousWorkflowStepsForReturn(int requestId)
+        {
+            var result = await _service.GetPreviousWorkflowStepsForReturn(requestId);
+            return Ok(result);
         }
 
     }

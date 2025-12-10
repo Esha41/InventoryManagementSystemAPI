@@ -36,6 +36,9 @@ namespace Ettad.Data.Entities.Workflows
 
         public bool IsCurrent { get; set; }
 
+        // When a step is returned for review, this tracks which step to return to after approval
+        public int? ReturnToStepId { get; set; }
+
         // Navigation properties
         public virtual WorkflowStep WorkflowStep { get; set; }
 
