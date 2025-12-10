@@ -66,7 +66,8 @@ namespace Ettad.Workflows.Service.Imeplemention
                     ApprovedDate = x.ApprovedDate,
                     Status = x.Status,
                     Comments = x.Comments,
-                    IsCurrent = x.IsCurrent
+                    IsCurrent = x.IsCurrent,
+                    ReturnToStepId = x.ReturnToStepId
                 }).ToListAsync();
         }
 
@@ -86,7 +87,8 @@ namespace Ettad.Workflows.Service.Imeplemention
                 ApprovedDate = entity.ApprovedDate,
                 Status = entity.Status,
                 Comments = entity.Comments,
-                IsCurrent = entity.IsCurrent
+                IsCurrent = entity.IsCurrent,
+                ReturnToStepId = entity.ReturnToStepId
             };
         }
 
@@ -121,6 +123,7 @@ namespace Ettad.Workflows.Service.Imeplemention
                 Status = entity.Status,
                 Comments = entity.Comments,
                 IsCurrent = entity.IsCurrent,
+                ReturnToStepId = entity.ReturnToStepId,
                 CreatedBy = entity.CreatedBy
             };
         }
@@ -156,6 +159,7 @@ namespace Ettad.Workflows.Service.Imeplemention
                 Status = entity.Status,
                 Comments = entity.Comments,
                 IsCurrent = entity.IsCurrent,
+                ReturnToStepId = entity.ReturnToStepId,
                 ChangedBy = entity.ModifiedBy,
             };
         }
@@ -285,9 +289,9 @@ namespace Ettad.Workflows.Service.Imeplemention
                         await RejectStepAsync(currentStep, model);
                         break;
 
-                    //case RequestStatus.Returned:
-                    //    await ReturnStepAsync(currentStep, model);
-                    //    break;
+                    case RequestStatus.ReturnedForReview:
+                        await ReturnStepAsync(currentStep, model);
+                        break;
 
                     default:
                         return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, "Invalid workflow action.");
@@ -409,9 +413,11 @@ namespace Ettad.Workflows.Service.Imeplemention
         public async Task<WorkflowApprovalStepDto> ApproveOrReject(ApproveRejectWorkflowApprovalDto dto, List<IFormFile> files)
         {
             // Validate action
-            if (dto.Action != RequestStatus.Approved && dto.Action != RequestStatus.Rejected)
+            if (dto.Action != RequestStatus.Approved && 
+                dto.Action != RequestStatus.Rejected && 
+                dto.Action != RequestStatus.ReturnedForReview)
             {
-                throw new InvalidOperationException($"Invalid action: {dto.Action}. Only 'Approved' or 'Rejected' actions are allowed.");
+                throw new InvalidOperationException($"Invalid action: {dto.Action}. Only 'Approved', 'Rejected', or 'ReturnedForReview' actions are allowed.");
             }
 
             // Get the step ID before processing
@@ -422,7 +428,11 @@ namespace Ettad.Workflows.Service.Imeplemention
             }
 
             var stepId = currentStep.Id;
-            var actionName = dto.Action == RequestStatus.Approved ? "approve" : "reject";
+            var actionName = dto.Action == RequestStatus.Approved 
+                ? "approve" 
+                : dto.Action == RequestStatus.Rejected 
+                ? "reject" 
+                : "return for review";
 
             try
             {
@@ -466,6 +476,7 @@ namespace Ettad.Workflows.Service.Imeplemention
                 Status = entity.Status,
                 Comments = entity.Comments,
                 IsCurrent = entity.IsCurrent,
+                ReturnToStepId = entity.ReturnToStepId,
                 ChangedBy = entity.ModifiedBy,
             };
         }
@@ -498,7 +509,7 @@ namespace Ettad.Workflows.Service.Imeplemention
             if (baseRequest == null)
                 return;
 
-            // ⭐ Higher approval only when SendToHigherApproval = true
+            //  Higher approval only when SendToHigherApproval = true
             if (model.SendToHigherApproval == true)
             {
                 bool created = await HandleHigherApprovalAsync(step, baseRequest);
@@ -510,13 +521,52 @@ namespace Ettad.Workflows.Service.Imeplemention
                 }
             }
 
-            // ⭐ Continue normal workflow
+            //  Continue normal workflow
             var workflowSteps = await _context.WorkflowSteps
                 .Where(ws => ws.WorkflowId == step.WorkflowStep.WorkflowId)
                 .OrderBy(ws => ws.StepOrder)
                 .ToListAsync();
 
-            var nextStep = workflowSteps.FirstOrDefault(ws => ws.StepOrder > step.WorkflowStep.StepOrder);
+            //  Determine the next step
+            // If this step was returned for review, we need to progress sequentially back to the original step
+            WorkflowStep nextStep = null;
+            int? nextReturnToStepId = null;
+
+            if (step.ReturnToStepId.HasValue)
+            {
+                // Find the target step we're returning to
+                var targetStep = workflowSteps.FirstOrDefault(ws => ws.Id == step.ReturnToStepId.Value);
+                
+                // Find the next sequential step after the current one
+                var sequentialNextStep = workflowSteps.FirstOrDefault(ws => ws.StepOrder > step.WorkflowStep.StepOrder);
+                
+                if (sequentialNextStep != null && targetStep != null)
+                {
+                    // If the next sequential step's order is less than or equal to the target step's order,
+                    // we need to continue progressing sequentially
+                    if (sequentialNextStep.StepOrder <= targetStep.StepOrder)
+                    {
+                        nextStep = sequentialNextStep;
+                        
+                        // If we haven't reached the target step yet, pass along the ReturnToStepId
+                        if (sequentialNextStep.Id != step.ReturnToStepId.Value)
+                        {
+                            nextReturnToStepId = step.ReturnToStepId.Value;
+                        }
+                        // If this IS the target step, don't set ReturnToStepId (normal flow resumes)
+                    }
+                    else
+                    {
+                        // We've passed the target step, continue normal flow
+                        nextStep = sequentialNextStep;
+                    }
+                }
+            }
+            else
+            {
+                // Normal flow - proceed to next step in sequence
+                nextStep = workflowSteps.FirstOrDefault(ws => ws.StepOrder > step.WorkflowStep.StepOrder);
+            }
 
             if (nextStep != null)
             {
@@ -527,6 +577,7 @@ namespace Ettad.Workflows.Service.Imeplemention
                     RequestType = step.RequestType,
                     Status = RequestStatus.New,
                     IsCurrent = true,
+                    ReturnToStepId = nextReturnToStepId, // Pass along the ReturnToStepId if we're still progressing back
                     CreatedBy = _currentUserService.UserId,
                     CreationDate = DateTime.UtcNow
                 };
@@ -549,12 +600,12 @@ namespace Ettad.Workflows.Service.Imeplemention
                     _currentUserService.UserId
                 );
 
-                // 🔔 Also notify next step notifiers if configured
+                //  Also notify next step notifiers if configured
                 await SendNotificationsToStepNotifiersOnWorkflowStartAsync(nextStep.Id, baseRequest.Id);
             }
             else
             {
-                // ⭐ Final approval — now notify requester
+                //  Final approval — now notify requester
                 baseRequest.Status = RequestStatus.Approved;
 
                 var approver = await _context.Users.FirstOrDefaultAsync(u => u.Id == _currentUserService.UserId);
@@ -664,6 +715,99 @@ namespace Ettad.Workflows.Service.Imeplemention
         }
 
         // Return for review
+        private async Task ReturnStepAsync(WorkflowApprovalStep step, ApproveRejectWorkflowApprovalDto model)
+        {
+            // Prevent double approval/rejection
+            if (step.Status == RequestStatus.Approved || step.Status == RequestStatus.Rejected)
+            {
+                throw new Exception("This step has already been processed.");
+            }
+
+            // Only current step can be processed
+            if (!step.IsCurrent)
+            {
+                throw new Exception("This step is not active anymore.");
+            }
+
+            // Validate that ReturnToWorkflowStepId is provided
+            if (!model.ReturnToWorkflowStepId.HasValue)
+            {
+                throw new InvalidOperationException("ReturnToWorkflowStepId must be specified for return action.");
+            }
+
+            // Get the workflow step to return to
+            var returnToWorkflowStep = await _context.WorkflowSteps
+                .FirstOrDefaultAsync(ws => ws.Id == model.ReturnToWorkflowStepId.Value);
+
+            if (returnToWorkflowStep == null)
+            {
+                throw new KeyNotFoundException($"Workflow step with ID {model.ReturnToWorkflowStepId.Value} not found.");
+            }
+
+            // Validate that the return step is a previous step in the same workflow
+            if (returnToWorkflowStep.WorkflowId != step.WorkflowStep.WorkflowId)
+            {
+                throw new InvalidOperationException("Cannot return to a step in a different workflow.");
+            }
+
+            if (returnToWorkflowStep.StepOrder >= step.WorkflowStep.StepOrder)
+            {
+                throw new InvalidOperationException("Can only return to a previous step.");
+            }
+
+            // Mark current step as returned for review
+            step.Status = RequestStatus.ReturnedForReview;
+            step.ApproverUserId = _currentUserService.UserId;
+            step.ApprovedDate = DateTime.UtcNow;
+            step.IsCurrent = false;
+            step.ModifiedBy = _currentUserService.UserId;
+            step.ModificationDate = DateTime.UtcNow;
+
+            var baseRequest = await _context.BaseRequests
+                .FirstOrDefaultAsync(x => x.Id == step.TargetRequestId);
+
+            if (baseRequest == null)
+                return;
+
+            // Create a new approval step for the returned-to step
+            // This step will have ReturnToStepId set to the current step's WorkflowStepId
+            var returnApproval = new WorkflowApprovalStep
+            {
+                WorkflowStepId = returnToWorkflowStep.Id,
+                TargetRequestId = step.TargetRequestId,
+                RequestType = step.RequestType,
+                Status = RequestStatus.New,
+                IsCurrent = true,
+                ReturnToStepId = step.WorkflowStepId, // When this step is approved, return to the original step
+                CreatedBy = _currentUserService.UserId,
+                CreationDate = DateTime.UtcNow
+            };
+
+            _context.WorkflowApprovalSteps.Add(returnApproval);
+            baseRequest.Status = RequestStatus.ReturnedForReview;
+
+            // Send notification to the returned-to step approvers
+            var returnRoles = new List<string> { returnToWorkflowStep.ApplicationRoleId };
+            if (!string.IsNullOrEmpty(returnToWorkflowStep.HigherApprovalRoleId))
+                returnRoles.Add(returnToWorkflowStep.HigherApprovalRoleId);
+
+            var approver = await _context.Users.FirstOrDefaultAsync(u => u.Id == _currentUserService.UserId);
+            await _notificationHelperService.SendNotificationAsync(
+                "Request Returned for Review",
+                $"Request #{baseRequest.RequestNo} has been returned for review by {approver?.UserName}. Comments: {model.Comments}",
+                "Request",
+                baseRequest.Id,
+                null,
+                returnRoles,
+                _currentUserService.UserId
+            );
+
+            //  Also notify step notifiers if configured
+            await SendNotificationsToStepNotifiersOnWorkflowStartAsync(returnToWorkflowStep.Id, baseRequest.Id);
+
+            baseRequest.ModifiedBy = _currentUserService.UserId;
+            baseRequest.ModificationDate = DateTime.UtcNow;
+        }
 
         // Helper: get current approval step by request ID
         public async Task<WorkflowApprovalStep> GetCurrentApprovalStepByRequestIdAsync(int requestId)
@@ -1432,6 +1576,50 @@ namespace Ettad.Workflows.Service.Imeplemention
             }
 
             return baseRequests;
+        }
+
+        /// <summary>
+        /// Get all previous workflow steps that can be returned to for review
+        /// </summary>
+        public async Task<IEnumerable<WorkflowStepDto>> GetPreviousWorkflowStepsForReturn(int requestId)
+        {
+            // Get the current approval step for this request
+            var currentApprovalStep = await _context.WorkflowApprovalSteps
+                .Include(x => x.WorkflowStep)
+                .FirstOrDefaultAsync(x => x.TargetRequestId == requestId && x.IsCurrent);
+
+            if (currentApprovalStep == null)
+            {
+                return Enumerable.Empty<WorkflowStepDto>();
+            }
+
+            // Get all workflow steps in the same workflow
+            var allWorkflowSteps = await _context.WorkflowSteps
+                .Include(ws => ws.ApplicationRole)
+                .Where(ws => ws.WorkflowId == currentApprovalStep.WorkflowStep.WorkflowId)
+                .OrderBy(ws => ws.StepOrder)
+                .ToListAsync();
+
+            // Get only the previous steps (steps with lower StepOrder than current)
+            var previousSteps = allWorkflowSteps
+                .Where(ws => ws.StepOrder < currentApprovalStep.WorkflowStep.StepOrder)
+                .Select(ws => new WorkflowStepDto
+                {
+                    Id = ws.Id,
+                    WorkflowId = ws.WorkflowId,
+                    StepOrder = ws.StepOrder,
+                    ApplicationRoleId = ws.ApplicationRoleId,
+                    ApplicationRoleName = ws.ApplicationRole?.Name,
+                    ApplicationEntityId = ws.ApplicationEntityId,
+                    MustApprove = ws.MustApprove,
+                    RequireHigherApproval = ws.RequireHigherApproval,
+                    HigherApprovalRoleId = ws.HigherApprovalRoleId,
+                    HigherApplicationEntityId = ws.HigherApplicationEntityId,
+                    ReserveQty = ws.ReserveQty
+                })
+                .ToList();
+
+            return previousSteps;
         }
 
     }
