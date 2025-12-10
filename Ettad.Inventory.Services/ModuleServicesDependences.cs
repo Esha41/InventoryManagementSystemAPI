@@ -22,10 +22,13 @@ namespace Ettad.Inventory.Service
             services.AddScoped<IAmmunitionService, AmmunitionService>();
             services.AddScoped<IAllowanceItemService, AllowanceItemService>();
             services.AddScoped<IInventoryService, InventoryService>();
-            services.AddScoped<ILowStockMonitorService, LowStockMonitorService>();
+            
+            // Low Stock Monitor services
+            services.AddScoped<ILowStockMonitorBackgroundService, LowStockMonitorBackgroundService>();
+            services.AddScoped<ILowStockMonitorSettingsService, LowStockMonitorSettingsService>();
+            services.AddScoped<LowStockEmailTemplateService>();
 
             return services;
         }
     }
 }
-
