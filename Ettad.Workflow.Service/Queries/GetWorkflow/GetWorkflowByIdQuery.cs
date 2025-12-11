@@ -43,6 +43,7 @@ namespace Ettad.Workflows.Service.Queries.GetWorkflowById
             {
                 var workflow = await _context.Workflows
                     .Include(w => w.WorkflowSteps)
+                        .ThenInclude(ws => ws.Transitions)
                     .FirstOrDefaultAsync(x => x.Id == request.Id && !x.IsDeleted, cancellationToken);
 
                 if (workflow == null)

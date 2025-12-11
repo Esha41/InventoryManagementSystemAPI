@@ -75,6 +75,7 @@ namespace Ettad.Workflows.Service.Command.CreateWorkflow
                 // Reload the workflow with steps to return complete data
                 var createdWorkflow = await _context.Workflows
                     .Include(w => w.WorkflowSteps)
+                        .ThenInclude(ws => ws.Transitions)
                     .FirstOrDefaultAsync(w => w.Id == workflow.Id, cancellationToken);
 
                 var workflowDto = MapToWorkflowDto(createdWorkflow);
@@ -183,7 +184,9 @@ namespace Ettad.Workflows.Service.Command.CreateWorkflow
                     MustApprove = step.MustApprove,
                     RequireHigherApproval = step.RequireHigherApproval,
                     HigherApprovalRoleId = step.HigherApprovalRoleId,
-                    ReserveQty = step.ReserveQty
+                    ReserveQty = step.ReserveQty,
+                    CanSkip = step.CanSkip,
+                    AllowedSkipTargetIds = step.Transitions?.Select(t => t.TargetWorkflowStepId).ToList() ?? new List<int>()
                     
                 }).ToList()
             };

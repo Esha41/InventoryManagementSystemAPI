@@ -564,8 +564,42 @@ namespace Ettad.Workflows.Service.Imeplemention
             }
             else
             {
-                // Normal flow - proceed to next step in sequence
-                nextStep = workflowSteps.FirstOrDefault(ws => ws.StepOrder > step.WorkflowStep.StepOrder);
+                // 🔹 Skip Logic Implementation 🔹
+                if (step.WorkflowStep.CanSkip)
+                {
+                    // 1. Explicit skip request
+                    if (model.NextStepId.HasValue)
+                    {
+                        if (step.WorkflowStep.Transitions.Any(t => t.TargetWorkflowStepId == model.NextStepId.Value))
+                        {
+                            nextStep = workflowSteps.FirstOrDefault(ws => ws.Id == model.NextStepId.Value);
+                            if (nextStep == null) throw new InvalidOperationException("Target skip step not found in workflow definition.");
+                        }
+                        else
+                        {
+                             throw new InvalidOperationException("Invalid skip target provided.");
+                        }
+                    }
+                    else
+                    {
+                        // 2. Auto-skip if single target exists
+                        if (step.WorkflowStep.Transitions.Count == 1)
+                        {
+                            var targetId = step.WorkflowStep.Transitions.First().TargetWorkflowStepId;
+                            nextStep = workflowSteps.FirstOrDefault(ws => ws.Id == targetId);
+                        }
+                        else
+                        {
+                            // 3. Default behavior
+                            nextStep = workflowSteps.FirstOrDefault(ws => ws.StepOrder > step.WorkflowStep.StepOrder);
+                        }
+                    }
+                }
+                else
+                {
+                    // Normal flow - proceed to next step in sequence
+                    nextStep = workflowSteps.FirstOrDefault(ws => ws.StepOrder > step.WorkflowStep.StepOrder);
+                }
             }
 
             if (nextStep != null)
@@ -815,6 +849,8 @@ namespace Ettad.Workflows.Service.Imeplemention
             var step = await _context.WorkflowApprovalSteps
                 .Include(x => x.WorkflowStep)
                     .ThenInclude(ws => ws.ApplicationRole)
+                .Include(x => x.WorkflowStep)
+                    .ThenInclude(ws => ws.Transitions)
                 .FirstOrDefaultAsync(x => x.TargetRequestId == requestId && x.IsCurrent);
 
             if (step == null)

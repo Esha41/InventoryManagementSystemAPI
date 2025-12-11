@@ -66,7 +66,9 @@ namespace Ettad.Workflows.Service.Queries.GetWorkflow
                             RequireHigherApproval = step.RequireHigherApproval,
                             HigherApprovalRoleId = step.HigherApprovalRoleId,
                             HigherApplicationEntityId= step.HigherApplicationEntityId,
-                            ReserveQty = step.ReserveQty
+                            ReserveQty = step.ReserveQty,
+                            CanSkip = step.CanSkip,
+                            AllowedSkipTargetIds = step.Transitions.Select(t => t.TargetWorkflowStepId).ToList()
                         }).ToList()
                     }
                 )

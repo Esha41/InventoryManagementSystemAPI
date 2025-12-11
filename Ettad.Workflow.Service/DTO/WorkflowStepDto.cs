@@ -30,6 +30,9 @@ namespace Ettad.Workflows.Service.DTO
 
         public bool ReserveQty { get; set; } = false;
 
+        public bool CanSkip { get; set; } = false;
+        public List<int> AllowedSkipTargetIds { get; set; } = new List<int>();
+
         // Approval steps for this workflow step
         public List<WorkflowApprovalStepDto> ApprovalSteps { get; set; } = new();
     }

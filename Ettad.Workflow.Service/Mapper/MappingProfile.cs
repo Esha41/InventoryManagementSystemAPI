@@ -20,7 +20,8 @@ namespace Ettad.Workflows.Service.Mapper
 
             // WorkflowStep
             CreateMap<WorkflowStepCreateDto, WorkflowStep>().ReverseMap();
-            CreateMap<WorkflowStep, WorkflowStepDto>();
+            CreateMap<WorkflowStep, WorkflowStepDto>()
+                .ForMember(dest => dest.AllowedSkipTargetIds, opt => opt.MapFrom(src => src.Transitions.Select(t => t.TargetWorkflowStepId).ToList()));
             CreateMap<WorkflowStepDto, WorkflowStep>();
 
             // WorkflowApprovalStep

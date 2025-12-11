@@ -3,8 +3,10 @@ using Microsoft.AspNetCore.Mvc;
 using Ettad.Workflows.Service.Command.CreateWorkflow;
 using Ettad.Workflows.Service.Command.DeleteWorkflow;
 using Ettad.Workflows.Service.Command.UpdateWorkflow;
+using Ettad.Workflows.Service.Command.ManageTransitions;
 using Ettad.Workflows.Service.Queries.GetWorkflow;
 using Ettad.Workflows.Service.Queries.GetWorkflowById;
+using Ettad.Workflows.Service.Queries.GetNextSteps;
 using Ettad.CrossCutting.Comman.Models;
 using Ettad.ResponseHandler.Models;
 using Ettad.Data.Enums;
@@ -20,6 +22,28 @@ namespace Ettad.Workflows.API.Controllers
         public WorkflowsController(IMediator mediator)
         {
             _mediator = mediator;
+        }
+
+        [HttpGet("step/{stepId}/next-steps")]
+        public async Task<IActionResult> GetNextStepsForWorkflowStep(int stepId)
+        {
+            var query = new GetNextStepsForWorkflowStepQuery(stepId);
+            var result = await _mediator.Send(query);
+            return Ok(result);
+        }
+
+        [HttpPut("step-transition")]
+        public async Task<IActionResult> SetStepTransitions([FromBody] SetWorkflowStepTransitionsCommand command)
+        {
+            var result = await _mediator.Send(command);
+            return Ok(result);
+        }
+
+        [HttpDelete("step-transition")]
+        public async Task<IActionResult> RemoveStepTransition([FromBody] RemoveWorkflowStepTransitionCommand command)
+        {
+            var result = await _mediator.Send(command);
+            return Ok(result);
         }
 
         [HttpGet("{id}")]
