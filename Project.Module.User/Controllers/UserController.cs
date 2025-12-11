@@ -24,25 +24,24 @@ namespace Ettad.User.API.Controllers
             _userService = userService;
         }
 
-        [HttpGet("{id}")]
-        [CheckAuthorize("Permissions.SystemUsers.View", "Permissions.SystemUsers.page")]
-
-        public async Task<IActionResult> GetById(string id)
-        {
-            var response = await _userService.GetByIdAsync(id);
-            return ProcessResponse(response);
-        }
-
-        [HttpGet("me")]
+        [HttpPost]
+        [Route("me")]
         public async Task<IActionResult> GetCurrentUser()
         {
             var response = await _userService.GetCurrentUserAsync();
             return ProcessResponse(response);
         }
 
+        [HttpGet("{id}")]
+        [CheckAuthorize("Permissions.SystemUsers.View", "Permissions.SystemUsers.page")]
+        public async Task<IActionResult> GetById(string id)
+        {
+            var response = await _userService.GetByIdAsync(id);
+            return ProcessResponse(response);
+        }
+
         [HttpGet]
         [CheckAuthorize("Permissions.SystemUsers.View", "Permissions.SystemUsers.page")]
-
         public async Task<IActionResult> GetAll()
         {
             var response = await _userService.GetAllAsync();

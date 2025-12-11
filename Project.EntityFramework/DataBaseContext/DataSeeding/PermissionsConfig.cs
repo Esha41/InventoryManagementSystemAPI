@@ -357,7 +357,8 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
         public static List<string> HeadOfDivision_DirectorateOfAmmunitionEntity =
             ReadLookups
                 .Concat(ReadItems)
-                .Concat(ReadAllowanceItem)                
+                .Concat(ReadAllowanceItem)
+                .Concat(ReadInventory)
                 .Concat(Dashboard)
                 .Concat(Forecast)
                 .Concat(Notifications)               
