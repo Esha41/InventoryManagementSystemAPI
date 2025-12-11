@@ -3,7 +3,9 @@ using Ettad.Data.Entities;
 using Ettad.Data.Enums;
 using Ettad.Lookups.Services.Contracts;
 using Ettad.Module.lookup.Dtos;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
+using System.Threading.Tasks;
 
 namespace Ettad.Lookups.Domain.API.Controllers
 {
@@ -137,11 +139,35 @@ namespace Ettad.Lookups.Domain.API.Controllers
     )]
     public class DepotController : LookupController<Depot, CreateUpdateDepotDto>
     {
-        public DepotController(ILookupService<Depot, CreateUpdateDepotDto> iLookupService, ILogger<LookupController<Depot, CreateUpdateDepotDto>> logger)
-            : base(iLookupService, logger) { }
+        private readonly IDepotService _depotService;
+
+        public DepotController(IDepotService depotService, ILogger<LookupController<Depot, CreateUpdateDepotDto>> logger)
+            : base(depotService, logger)
+        {
+            _depotService = depotService;
+        }
+
+        /// <summary>
+        /// Override Delete to check for inventory before allowing deletion
+        /// </summary>
+        [HttpDelete("{id}")]
+        public override async Task<IActionResult> Delete(int id, [FromBody] CreateUpdateDepotDto item)
+        {
+            _logger?.LogInformation("HTTP DELETE request to delete Depot with Id {Id}", id);
+
+            var result = await _depotService.DeleteDepotAsync(id, item);
+
+            if (!result.Succeeded)
+            {
+                _logger?.LogWarning("Failed to delete Depot with Id {Id}: {Message}", id, result.Message);
+            }
+
+            return ProcessResponse(result);
+        }
     }
 
     #endregion
+
 
     #region HazardDivision
 

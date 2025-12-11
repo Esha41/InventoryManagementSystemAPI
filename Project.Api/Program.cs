@@ -100,6 +100,9 @@ try
 
     builder.Services.AddScoped(typeof(ILookupService<,>), typeof(LookupService<,>));
 
+    // Register custom Depot service with inventory validation
+    builder.Services.AddScoped<IDepotService, DepotService>();
+
     builder.Services.AddScoped<IEmailSender, EmailSender>();
     builder.Services.AddScoped<IWorkflowApprovalService, WorkflowApprovalService>();
     builder.Services.AddScoped<IFileStorageService, FileStorageService>();
