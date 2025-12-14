@@ -14,14 +14,14 @@ namespace Ettad.Inventory.API.Controllers
     [Authorize]
     public class ItemNotificationController : ApiControllerBase
     {
-        private readonly ILowStockMonitorService _monitorService;
+        private readonly ILowStockMonitorSettingsService _settingsService;
         private readonly IRecurringJobManager _recurringJobManager;
 
         public ItemNotificationController(
-            ILowStockMonitorService monitorService,
+            ILowStockMonitorSettingsService settingsService,
             IRecurringJobManager recurringJobManager)
         {
-            _monitorService = monitorService;
+            _settingsService = settingsService;
             _recurringJobManager = recurringJobManager;
         }
 
@@ -33,7 +33,7 @@ namespace Ettad.Inventory.API.Controllers
         [CheckAuthorize("Permissions.Inventory.View")]
         public async Task<IActionResult> GetSettings()
         {
-            var result = await _monitorService.GetSettingsAsync();
+            var result = await _settingsService.GetSettingsAsync();
             return ProcessResponse(result);
         }
 
@@ -45,7 +45,7 @@ namespace Ettad.Inventory.API.Controllers
         [CheckAuthorize("Permissions.Inventory.Edit")]
         public async Task<IActionResult> UpdateSettings([FromBody] LowStockNotificationSettingsDto dto)
         {
-            var result = await _monitorService.UpdateSettingsAsync(dto);
+            var result = await _settingsService.UpdateSettingsAsync(dto);
             return ProcessResponse(result);
         }
 
@@ -57,7 +57,7 @@ namespace Ettad.Inventory.API.Controllers
         [CheckAuthorize("Permissions.Inventory.View")]
         public async Task<IActionResult> GetSchedule()
         {
-            var result = await _monitorService.GetScheduleAsync();
+            var result = await _settingsService.GetScheduleAsync();
             return ProcessResponse(result);
         }
 
@@ -72,7 +72,7 @@ namespace Ettad.Inventory.API.Controllers
         public async Task<IActionResult> UpdateSchedule([FromBody] UpdateScheduleDto dto)
         {
             // Service handles both database update and Hangfire job update
-            var result = await _monitorService.UpdateScheduleAsync(dto.ScheduleTime);
+            var result = await _settingsService.UpdateScheduleAsync(dto.ScheduleTime);
             return ProcessResponse(result);
         }
     }
