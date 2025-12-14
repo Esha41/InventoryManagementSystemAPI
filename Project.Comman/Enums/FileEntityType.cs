@@ -11,7 +11,9 @@ namespace Ettad.Comman.Enums
         Workflow = 3,
         WorkflowApproval = 4,
         Supply = 5,
-        Return = 6
+        Return = 6,
+        Weapon = 7,
+        Explosive = 8
        
         // Add other entities here (e.g. Discard = 7, ...)
     }

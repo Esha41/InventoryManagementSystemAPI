@@ -560,14 +560,16 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 return;
             }
 
-            // Ensure we have depots and ammunitions to seed inventories
+            // Ensure we have depots and items to seed inventories
             var depots = await context.Depots.Where(d => !d.IsDeleted).ToListAsync();
             var ammunitions = await context.Ammunitions.ToListAsync();
+            var weapons = await context.Weapons.ToListAsync();
+            var explosives = await context.Explosives.ToListAsync();
             var suppliers = await context.Suppliers.Where(s => !s.IsDeleted).ToListAsync();
             var manufacturers = await context.Manufacturers.Where(m => !m.IsDeleted).ToListAsync();
             var countries = await context.Countries.Where(c => !c.IsDeleted).ToListAsync();
 
-            if (!depots.Any() || !ammunitions.Any())
+            if (!depots.Any() || (!ammunitions.Any() && !weapons.Any() && !explosives.Any()))
             {
                 return;
             }
@@ -581,7 +583,8 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
             foreach (var depot in depots)
             {
                 // Create multiple inventories per depot
-                var inventoriesPerDepot = Math.Min(3, Math.Max(2, ammunitions.Count / 2));
+                var totalItemsCount = ammunitions.Count + weapons.Count + explosives.Count;
+                var inventoriesPerDepot = Math.Min(5, Math.Max(2, totalItemsCount / 3));
 
                 for (int i = 0; i < inventoriesPerDepot; i++)
                 {
@@ -600,33 +603,102 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                     invoiceSequence++;
 
                     // Take a random subset of ammunitions for this inventory
-                    var ammoSelection = ammunitions
-                        .OrderBy(_ => random.Next())
-                        .Take(Math.Min(3, ammunitions.Count))
-                        .ToList();
-
-                    foreach (var ammo in ammoSelection)
+                    if (ammunitions.Any())
                     {
-                        // Generate expiry date: between 1 to 5 years from received date
-                        var receivedDate = inventory.RecievedDate;
-                        var expiryDate = receivedDate?.AddYears(random.Next(1, 6)).AddDays(random.Next(0, 365));
+                        var ammoSelection = ammunitions
+                            .OrderBy(_ => random.Next())
+                            .Take(Math.Min(2, ammunitions.Count))
+                            .ToList();
 
-                        // Randomly select supplier, manufacturer, and country if available
-                        var supplier = suppliers.Any() ? suppliers[random.Next(suppliers.Count)] : null;
-                        var manufacturer = manufacturers.Any() ? manufacturers[random.Next(manufacturers.Count)] : null;
-                        var country = countries.Any() ? countries[random.Next(countries.Count)] : null;
-
-                        inventory.InventoryDetails.Add(new InventoryDetail
+                        foreach (var ammo in ammoSelection)
                         {
-                            ItemId = ammo.Id,
-                            Lot = ++lotSequence,
-                            ItemQuantity = random.Next(150, 600),
-                            SupplierId = supplier?.Id,
-                            ManufacturerId = manufacturer?.Id,
-                            CountryId = country?.Id,
-                            ExpiryDate = expiryDate,
-                            IsLotEmpty = false
-                        });
+                            // Generate expiry date: between 1 to 5 years from received date
+                            var receivedDate = inventory.RecievedDate;
+                            var expiryDate = receivedDate?.AddYears(random.Next(1, 6)).AddDays(random.Next(0, 365));
+
+                            // Randomly select supplier, manufacturer, and country if available
+                            var supplier = suppliers.Any() ? suppliers[random.Next(suppliers.Count)] : null;
+                            var manufacturer = manufacturers.Any() ? manufacturers[random.Next(manufacturers.Count)] : null;
+                            var country = countries.Any() ? countries[random.Next(countries.Count)] : null;
+
+                            inventory.InventoryDetails.Add(new InventoryDetail
+                            {
+                                ItemId = ammo.Id,
+                                Lot = ++lotSequence,
+                                ItemQuantity = random.Next(150, 600),
+                                SupplierId = supplier?.Id,
+                                ManufacturerId = manufacturer?.Id,
+                                CountryId = country?.Id,
+                                ExpiryDate = expiryDate,
+                                IsLotEmpty = false
+                            });
+                        }
+                    }
+
+                    // Take a random subset of weapons for this inventory
+                    if (weapons.Any())
+                    {
+                        var weaponSelection = weapons
+                            .OrderBy(_ => random.Next())
+                            .Take(Math.Min(3, weapons.Count))
+                            .ToList();
+
+                        foreach (var weapon in weaponSelection)
+                        {
+                            // Generate expiry date: weapons typically don't expire, but we can set a maintenance/inspection date
+                            var receivedDate = inventory.RecievedDate;
+                            var expiryDate = receivedDate?.AddYears(random.Next(5, 15)).AddDays(random.Next(0, 365));
+
+                            // Randomly select supplier, manufacturer, and country if available
+                            var supplier = suppliers.Any() ? suppliers[random.Next(suppliers.Count)] : null;
+                            var manufacturer = manufacturers.Any() ? manufacturers[random.Next(manufacturers.Count)] : null;
+                            var country = countries.Any() ? countries[random.Next(countries.Count)] : null;
+
+                            inventory.InventoryDetails.Add(new InventoryDetail
+                            {
+                                ItemId = weapon.Id,
+                                Lot = ++lotSequence,
+                                ItemQuantity = random.Next(5, 30), // Weapons typically have lower quantities
+                                SupplierId = supplier?.Id,
+                                ManufacturerId = manufacturer?.Id,
+                                CountryId = country?.Id,
+                                ExpiryDate = expiryDate,
+                                IsLotEmpty = false
+                            });
+                        }
+                    }
+
+                    // Take a random subset of explosives for this inventory
+                    if (explosives.Any())
+                    {
+                        var explosiveSelection = explosives
+                            .OrderBy(_ => random.Next())
+                            .Take(Math.Min(3, explosives.Count))
+                            .ToList();
+
+                        foreach (var explosive in explosiveSelection)
+                        {
+                            // Generate expiry date: between 2 to 7 years from received date
+                            var receivedDate = inventory.RecievedDate;
+                            var expiryDate = receivedDate?.AddYears(random.Next(2, 8)).AddDays(random.Next(0, 365));
+
+                            // Randomly select supplier, manufacturer, and country if available
+                            var supplier = suppliers.Any() ? suppliers[random.Next(suppliers.Count)] : null;
+                            var manufacturer = manufacturers.Any() ? manufacturers[random.Next(manufacturers.Count)] : null;
+                            var country = countries.Any() ? countries[random.Next(countries.Count)] : null;
+
+                            inventory.InventoryDetails.Add(new InventoryDetail
+                            {
+                                ItemId = explosive.Id,
+                                Lot = ++lotSequence,
+                                ItemQuantity = random.Next(20, 100), // Explosives have moderate quantities
+                                SupplierId = supplier?.Id,
+                                ManufacturerId = manufacturer?.Id,
+                                CountryId = country?.Id,
+                                ExpiryDate = expiryDate,
+                                IsLotEmpty = false
+                            });
+                        }
                     }
 
                     inventories.Add(inventory);
@@ -655,14 +727,22 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 return; // No departments to seed allowances for
             }
 
-            // Get all Ammunition items only
+            // Get all items (Ammunition, Weapons, Explosives)
             var ammunitions = await context.Ammunitions
                 .Where(a => !a.IsDeleted)
                 .ToListAsync();
 
-            if (!ammunitions.Any())
+            var weapons = await context.Weapons
+                .Where(w => !w.IsDeleted)
+                .ToListAsync();
+
+            var explosives = await context.Explosives
+                .Where(e => !e.IsDeleted)
+                .ToListAsync();
+
+            if (!ammunitions.Any() && !weapons.Any() && !explosives.Any())
             {
-                return; // No ammunition items to create allowances for
+                return; // No items to create allowances for
             }
 
             // Define different quantities for each ammunition item by ItemNo
@@ -673,13 +753,42 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 { "AMM-003", 120 }  // 5.56mm NATO Tracer Round - 120 units
             };
 
+            // Define different quantities for each weapon item by ItemNo
+            var weaponQuantities = new Dictionary<string, int>
+            {
+                { "WPN-001", 20 },  // M16A4 Assault Rifle - 20 units
+                { "WPN-002", 25 },  // M4 Carbine - 25 units
+                { "WPN-003", 10 },  // M249 Squad Automatic Weapon - 10 units
+                { "WPN-004", 8 },   // M240B Machine Gun - 8 units
+                { "WPN-005", 30 },  // M9 Pistol - 30 units
+                { "WPN-006", 12 },  // M24 Sniper Weapon System - 12 units
+                { "WPN-007", 5 },   // M2 Browning Machine Gun - 5 units
+                { "WPN-008", 15 },  // M203 Grenade Launcher - 15 units
+                { "WPN-009", 10 }   // M110 Semi-Automatic Sniper System - 10 units
+            };
+
+            // Define different quantities for each explosive item by ItemNo
+            var explosiveQuantities = new Dictionary<string, int>
+            {
+                { "EXP-001", 100 }, // M67 Fragmentation Grenade - 100 units
+                { "EXP-002", 80 },  // M84 Stun Grenade - 80 units
+                { "EXP-003", 90 },  // M18 Smoke Grenade - 90 units
+                { "EXP-004", 40 },  // C4 Explosive - 40 units
+                { "EXP-005", 50 },  // M112 Demolition Charge - 50 units
+                { "EXP-006", 75 },  // M26A2 Fragmentation Grenade - 75 units
+                { "EXP-007", 60 },  // AN-M14 TH3 Incendiary Grenade - 60 units
+                { "EXP-008", 20 },  // M72 LAW Rocket - 20 units
+                { "EXP-009", 35 }   // M18A1 Claymore Mine - 35 units
+            };
+
             var utcNow = DateTime.UtcNow;
             var currentYear = utcNow.Year;
             var allowanceItems = new List<AllowanceItem>();
 
-            // Create allowances for each department and each ammunition item
+            // Create allowances for each department and each item type
             foreach (var department in departments)
             {
+                // Ammunition allowances
                 foreach (var ammunition in ammunitions)
                 {
                     // Get quantity from dictionary, default to 100 if not found
@@ -690,6 +799,44 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                     allowanceItems.Add(new AllowanceItem
                     {
                         ItemId = ammunition.Id,
+                        DepartmentId = department.Id,
+                        Year = currentYear,
+                        Quantity = quantity,
+                        CreationDate = utcNow,
+                        CreatedBy = "SYSTEM"
+                    });
+                }
+
+                // Weapon allowances
+                foreach (var weapon in weapons)
+                {
+                    // Get quantity from dictionary, default to 10 if not found
+                    var quantity = weaponQuantities.TryGetValue(weapon.ItemNo, out int qty) 
+                        ? qty 
+                        : 10;
+
+                    allowanceItems.Add(new AllowanceItem
+                    {
+                        ItemId = weapon.Id,
+                        DepartmentId = department.Id,
+                        Year = currentYear,
+                        Quantity = quantity,
+                        CreationDate = utcNow,
+                        CreatedBy = "SYSTEM"
+                    });
+                }
+
+                // Explosive allowances
+                foreach (var explosive in explosives)
+                {
+                    // Get quantity from dictionary, default to 50 if not found
+                    var quantity = explosiveQuantities.TryGetValue(explosive.ItemNo, out int qty) 
+                        ? qty 
+                        : 50;
+
+                    allowanceItems.Add(new AllowanceItem
+                    {
+                        ItemId = explosive.Id,
                         DepartmentId = department.Id,
                         Year = currentYear,
                         Quantity = quantity,

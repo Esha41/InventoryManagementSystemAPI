@@ -1,10 +1,21 @@
-﻿using Ettad.Data.Entities;
 using Ettad.Data.Enums;
 
-namespace Ettad.Data.Entities
+namespace Ettad.Inventory.Service.Explosives.Dtos
 {
-    public class Explosive : BaseItem
+    public class CreateUpdateExplosiveDto
     {
+        public string Name { get; set; }
+
+        public string ItemNo { get; set; }
+
+        public string? PartNo { get; set; }
+
+        public decimal? Price { get; set; }
+
+        public long? MinimumQuantity { get; set; }
+        
+        public string? Nsn { get; set; }
+
         public ExplosiveType ExplosiveType { get; set; }
         
         public string? UNNumber { get; set; }
@@ -18,12 +29,5 @@ namespace Ettad.Data.Entities
         public long? HazardDivisionId { get; set; }
         
         public long? CompatibilityId { get; set; }
-
-        #region Navigation Properties
-        public Unit NetExplosiveQuantityUnit { get; set; }
-        public Unit TotalWeightUnit { get; set; }
-        public HazardDivision HazardDivision { get; set; }
-        public Compatibility Compatibility { get; set; }
-        #endregion
     }
 }
