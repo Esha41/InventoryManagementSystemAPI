@@ -1401,11 +1401,11 @@ namespace Ettad.EntityFramework.Migrations
                 columns: new[] { "Id", "CreatedBy", "CreationDate", "IsDeleted", "ModificationDate", "ModifiedBy", "NameAr", "NameEn" },
                 values: new object[,]
                 {
-                    { 1L, null, new DateTime(2025, 12, 14, 8, 40, 35, 954, DateTimeKind.Unspecified).AddTicks(5974), false, null, null, "نحاسي", "Brass" },
-                    { 2L, null, new DateTime(2025, 12, 14, 8, 40, 35, 954, DateTimeKind.Unspecified).AddTicks(5998), false, null, null, "فولاذي", "Steel" },
-                    { 3L, null, new DateTime(2025, 12, 14, 8, 40, 35, 954, DateTimeKind.Unspecified).AddTicks(6000), false, null, null, "ألومنيوم", "Aluminum" },
-                    { 4L, null, new DateTime(2025, 12, 14, 8, 40, 35, 954, DateTimeKind.Unspecified).AddTicks(6002), false, null, null, "بلاستيك", "Plastic" },
-                    { 5L, null, new DateTime(2025, 12, 14, 8, 40, 35, 954, DateTimeKind.Unspecified).AddTicks(6003), false, null, null, "مختلط", "Composite" }
+                    { 1L, null, new DateTime(2025, 12, 14, 10, 16, 20, 788, DateTimeKind.Unspecified).AddTicks(834), false, null, null, "نحاسي", "Brass" },
+                    { 2L, null, new DateTime(2025, 12, 14, 10, 16, 20, 788, DateTimeKind.Unspecified).AddTicks(855), false, null, null, "فولاذي", "Steel" },
+                    { 3L, null, new DateTime(2025, 12, 14, 10, 16, 20, 788, DateTimeKind.Unspecified).AddTicks(857), false, null, null, "ألومنيوم", "Aluminum" },
+                    { 4L, null, new DateTime(2025, 12, 14, 10, 16, 20, 788, DateTimeKind.Unspecified).AddTicks(858), false, null, null, "بلاستيك", "Plastic" },
+                    { 5L, null, new DateTime(2025, 12, 14, 10, 16, 20, 788, DateTimeKind.Unspecified).AddTicks(860), false, null, null, "مختلط", "Composite" }
                 });
 
             migrationBuilder.InsertData(
@@ -1425,11 +1425,11 @@ namespace Ettad.EntityFramework.Migrations
                 columns: new[] { "Id", "CreatedBy", "CreationDate", "IsDeleted", "ModificationDate", "ModifiedBy", "NameAr", "NameEn" },
                 values: new object[,]
                 {
-                    { 1L, null, new DateTime(2025, 12, 14, 8, 40, 35, 954, DateTimeKind.Unspecified).AddTicks(9953), false, null, null, "المجموعة أ", "Group A" },
-                    { 2L, null, new DateTime(2025, 12, 14, 8, 40, 35, 954, DateTimeKind.Unspecified).AddTicks(9976), false, null, null, "المجموعة ب", "Group B" },
-                    { 3L, null, new DateTime(2025, 12, 14, 8, 40, 35, 954, DateTimeKind.Unspecified).AddTicks(9978), false, null, null, "المجموعة ج", "Group C" },
-                    { 4L, null, new DateTime(2025, 12, 14, 8, 40, 35, 954, DateTimeKind.Unspecified).AddTicks(9980), false, null, null, "المجموعة د", "Group D" },
-                    { 5L, null, new DateTime(2025, 12, 14, 8, 40, 35, 954, DateTimeKind.Unspecified).AddTicks(9981), false, null, null, "المجموعة هـ", "Group E" }
+                    { 1L, null, new DateTime(2025, 12, 14, 10, 16, 20, 788, DateTimeKind.Unspecified).AddTicks(3637), false, null, null, "المجموعة أ", "Group A" },
+                    { 2L, null, new DateTime(2025, 12, 14, 10, 16, 20, 788, DateTimeKind.Unspecified).AddTicks(3654), false, null, null, "المجموعة ب", "Group B" },
+                    { 3L, null, new DateTime(2025, 12, 14, 10, 16, 20, 788, DateTimeKind.Unspecified).AddTicks(3655), false, null, null, "المجموعة ج", "Group C" },
+                    { 4L, null, new DateTime(2025, 12, 14, 10, 16, 20, 788, DateTimeKind.Unspecified).AddTicks(3656), false, null, null, "المجموعة د", "Group D" },
+                    { 5L, null, new DateTime(2025, 12, 14, 10, 16, 20, 788, DateTimeKind.Unspecified).AddTicks(3658), false, null, null, "المجموعة هـ", "Group E" }
                 });
 
             migrationBuilder.InsertData(
@@ -1449,24 +1449,24 @@ namespace Ettad.EntityFramework.Migrations
                 columns: new[] { "Id", "Code", "CreatedBy", "CreationDate", "IsDeleted", "ModificationDate", "ModifiedBy", "NameAr", "NameEn" },
                 values: new object[,]
                 {
-                    { 1L, "QELF", "SYSTEM", new DateTime(2025, 12, 14, 8, 40, 35, 955, DateTimeKind.Unspecified).AddTicks(4413), false, null, null, "القوات البرية الأميرية القطرية", "Qatar Emiri Land Forces" },
-                    { 2L, "QEAF", "SYSTEM", new DateTime(2025, 12, 14, 8, 40, 35, 955, DateTimeKind.Unspecified).AddTicks(4444), false, null, null, "القوات الجوية الأميرية القطرية", "Qatar Emiri Air Force" },
-                    { 3L, "QENF", "SYSTEM", new DateTime(2025, 12, 14, 8, 40, 35, 955, DateTimeKind.Unspecified).AddTicks(4447), false, null, null, "القوات البحرية الأميرية القطرية", "Qatar Emiri Navy" },
-                    { 4L, "EGD", "SYSTEM", new DateTime(2025, 12, 14, 8, 40, 35, 955, DateTimeKind.Unspecified).AddTicks(4449), false, null, null, "الحرس الأميري", "Emiri Guard Directorate" },
-                    { 5L, "JSFC", "SYSTEM", new DateTime(2025, 12, 14, 8, 40, 35, 955, DateTimeKind.Unspecified).AddTicks(4450), false, null, null, "قيادة القوات الخاصة المشتركة", "Joint Special Forces Command" },
-                    { 6L, "NSAC", "SYSTEM", new DateTime(2025, 12, 14, 8, 40, 35, 955, DateTimeKind.Unspecified).AddTicks(4452), false, null, null, "أكاديمية الخدمة الوطنية", "National Service Academy" },
-                    { 7L, "MID", "SYSTEM", new DateTime(2025, 12, 14, 8, 40, 35, 955, DateTimeKind.Unspecified).AddTicks(4453), false, null, null, "مديرية الاستخبارات العسكرية", "Military Intelligence Directorate" },
-                    { 8L, "LOGC", "SYSTEM", new DateTime(2025, 12, 14, 8, 40, 35, 955, DateTimeKind.Unspecified).AddTicks(4455), false, null, null, "قيادة الإمداد والتموين", "Logistics and Supply Command" },
-                    { 9L, "MP", "SYSTEM", new DateTime(2025, 12, 14, 8, 40, 35, 955, DateTimeKind.Unspecified).AddTicks(4456), false, null, null, "قيادة الشرطة العسكرية", "Military Police Command" },
-                    { 10L, "MED", "SYSTEM", new DateTime(2025, 12, 14, 8, 40, 35, 955, DateTimeKind.Unspecified).AddTicks(4458), false, null, null, "الخدمات الطبية للقوات المسلحة", "Armed Forces Medical Services" },
-                    { 11L, "TRAD", "SYSTEM", new DateTime(2025, 12, 14, 8, 40, 35, 955, DateTimeKind.Unspecified).AddTicks(4459), false, null, null, "قيادة التدريب والعقيدة", "Training and Doctrine Command" },
-                    { 12L, "ADC", "SYSTEM", new DateTime(2025, 12, 14, 8, 40, 35, 955, DateTimeKind.Unspecified).AddTicks(4461), false, null, null, "قيادة الدفاع الجوي", "Air Defense Command" },
-                    { 13L, "CYBC", "SYSTEM", new DateTime(2025, 12, 14, 8, 40, 35, 955, DateTimeKind.Unspecified).AddTicks(4462), false, null, null, "قيادة الاتصالات والدفاع السيبراني", "Cyber Defense & Communications Command" },
-                    { 14L, "MT", "SYSTEM", new DateTime(2025, 12, 14, 8, 40, 35, 955, DateTimeKind.Unspecified).AddTicks(4464), false, null, null, "مديرية التدريب العسكري", "Military Training" },
-                    { 15L, "DoA", "SYSTEM", new DateTime(2025, 12, 14, 8, 40, 35, 955, DateTimeKind.Unspecified).AddTicks(4465), false, null, null, "مديرية التسليح", "Directorate of Armament" },
-                    { 16L, "MO", "SYSTEM", new DateTime(2025, 12, 14, 8, 40, 35, 955, DateTimeKind.Unspecified).AddTicks(4467), false, null, null, "هئية العمليات", "Military Operation" },
-                    { 17L, "CoS", "SYSTEM", new DateTime(2025, 12, 14, 8, 40, 35, 955, DateTimeKind.Unspecified).AddTicks(4468), false, null, null, "مكتب رئيس الأركان", "Chief of Staff Office" },
-                    { 18L, "Inventory", "SYSTEM", new DateTime(2025, 12, 14, 8, 40, 35, 955, DateTimeKind.Unspecified).AddTicks(4470), false, null, null, "مستودعات الأسلحة والذخيرة المركزيه", "Inventory" }
+                    { 1L, "QELF", "SYSTEM", new DateTime(2025, 12, 14, 10, 16, 20, 788, DateTimeKind.Unspecified).AddTicks(6809), false, null, null, "القوات البرية الأميرية القطرية", "Qatar Emiri Land Forces" },
+                    { 2L, "QEAF", "SYSTEM", new DateTime(2025, 12, 14, 10, 16, 20, 788, DateTimeKind.Unspecified).AddTicks(6828), false, null, null, "القوات الجوية الأميرية القطرية", "Qatar Emiri Air Force" },
+                    { 3L, "QENF", "SYSTEM", new DateTime(2025, 12, 14, 10, 16, 20, 788, DateTimeKind.Unspecified).AddTicks(6829), false, null, null, "القوات البحرية الأميرية القطرية", "Qatar Emiri Navy" },
+                    { 4L, "EGD", "SYSTEM", new DateTime(2025, 12, 14, 10, 16, 20, 788, DateTimeKind.Unspecified).AddTicks(6831), false, null, null, "الحرس الأميري", "Emiri Guard Directorate" },
+                    { 5L, "JSFC", "SYSTEM", new DateTime(2025, 12, 14, 10, 16, 20, 788, DateTimeKind.Unspecified).AddTicks(6832), false, null, null, "قيادة القوات الخاصة المشتركة", "Joint Special Forces Command" },
+                    { 6L, "NSAC", "SYSTEM", new DateTime(2025, 12, 14, 10, 16, 20, 788, DateTimeKind.Unspecified).AddTicks(6834), false, null, null, "أكاديمية الخدمة الوطنية", "National Service Academy" },
+                    { 7L, "MID", "SYSTEM", new DateTime(2025, 12, 14, 10, 16, 20, 788, DateTimeKind.Unspecified).AddTicks(6836), false, null, null, "مديرية الاستخبارات العسكرية", "Military Intelligence Directorate" },
+                    { 8L, "LOGC", "SYSTEM", new DateTime(2025, 12, 14, 10, 16, 20, 788, DateTimeKind.Unspecified).AddTicks(6837), false, null, null, "قيادة الإمداد والتموين", "Logistics and Supply Command" },
+                    { 9L, "MP", "SYSTEM", new DateTime(2025, 12, 14, 10, 16, 20, 788, DateTimeKind.Unspecified).AddTicks(6838), false, null, null, "قيادة الشرطة العسكرية", "Military Police Command" },
+                    { 10L, "MED", "SYSTEM", new DateTime(2025, 12, 14, 10, 16, 20, 788, DateTimeKind.Unspecified).AddTicks(6840), false, null, null, "الخدمات الطبية للقوات المسلحة", "Armed Forces Medical Services" },
+                    { 11L, "TRAD", "SYSTEM", new DateTime(2025, 12, 14, 10, 16, 20, 788, DateTimeKind.Unspecified).AddTicks(6841), false, null, null, "قيادة التدريب والعقيدة", "Training and Doctrine Command" },
+                    { 12L, "ADC", "SYSTEM", new DateTime(2025, 12, 14, 10, 16, 20, 788, DateTimeKind.Unspecified).AddTicks(6842), false, null, null, "قيادة الدفاع الجوي", "Air Defense Command" },
+                    { 13L, "CYBC", "SYSTEM", new DateTime(2025, 12, 14, 10, 16, 20, 788, DateTimeKind.Unspecified).AddTicks(6843), false, null, null, "قيادة الاتصالات والدفاع السيبراني", "Cyber Defense & Communications Command" },
+                    { 14L, "MT", "SYSTEM", new DateTime(2025, 12, 14, 10, 16, 20, 788, DateTimeKind.Unspecified).AddTicks(6845), false, null, null, "مديرية التدريب العسكري", "Military Training" },
+                    { 15L, "DoA", "SYSTEM", new DateTime(2025, 12, 14, 10, 16, 20, 788, DateTimeKind.Unspecified).AddTicks(6846), false, null, null, "مديرية التسليح", "Directorate of Armament" },
+                    { 16L, "MO", "SYSTEM", new DateTime(2025, 12, 14, 10, 16, 20, 788, DateTimeKind.Unspecified).AddTicks(6847), false, null, null, "هئية العمليات", "Military Operation" },
+                    { 17L, "CoS", "SYSTEM", new DateTime(2025, 12, 14, 10, 16, 20, 788, DateTimeKind.Unspecified).AddTicks(6848), false, null, null, "مكتب رئيس الأركان", "Chief of Staff Office" },
+                    { 18L, "Inventory", "SYSTEM", new DateTime(2025, 12, 14, 10, 16, 20, 788, DateTimeKind.Unspecified).AddTicks(6849), false, null, null, "مستودعات الأسلحة والذخيرة المركزيه", "Inventory" }
                 });
 
             migrationBuilder.InsertData(
@@ -1474,10 +1474,10 @@ namespace Ettad.EntityFramework.Migrations
                 columns: new[] { "Id", "Code", "CreatedBy", "CreationDate", "IsDeleted", "Latitude", "Location", "Longitude", "ModificationDate", "ModifiedBy", "NameAr", "NameEn" },
                 values: new object[,]
                 {
-                    { 1L, "DEP-001", null, new DateTime(2025, 12, 14, 8, 40, 35, 955, DateTimeKind.Unspecified).AddTicks(8442), false, 25.2854m, "Doha", 51.5310m, null, null, "مستودع الدوحة المركزي", "Doha Central Depot" },
-                    { 2L, "DEP-002", null, new DateTime(2025, 12, 14, 8, 40, 35, 955, DateTimeKind.Unspecified).AddTicks(8460), false, 25.2866m, "Al Rayyan", 51.4244m, null, null, "مستودع الريان الغربي", "Al Rayyan West Depot" },
-                    { 3L, "DEP-003", null, new DateTime(2025, 12, 14, 8, 40, 35, 955, DateTimeKind.Unspecified).AddTicks(8463), false, 25.6800m, "Al Khor", 51.5059m, null, null, "مستودع الخور الشمالي", "Al Khor North Depot" },
-                    { 4L, "DEP-004", null, new DateTime(2025, 12, 14, 8, 40, 35, 955, DateTimeKind.Unspecified).AddTicks(8465), false, 25.1657m, "Al Wakrah", 51.6034m, null, null, "مستودع الوكرة الجنوبي", "Al Wakrah South Depot" }
+                    { 1L, "DEP-001", null, new DateTime(2025, 12, 14, 10, 16, 20, 788, DateTimeKind.Unspecified).AddTicks(8467), false, 25.2854m, "Doha", 51.5310m, null, null, "مستودع الدوحة المركزي", "Doha Central Depot" },
+                    { 2L, "DEP-002", null, new DateTime(2025, 12, 14, 10, 16, 20, 788, DateTimeKind.Unspecified).AddTicks(8480), false, 25.2866m, "Al Rayyan", 51.4244m, null, null, "مستودع الريان الغربي", "Al Rayyan West Depot" },
+                    { 3L, "DEP-003", null, new DateTime(2025, 12, 14, 10, 16, 20, 788, DateTimeKind.Unspecified).AddTicks(8482), false, 25.6800m, "Al Khor", 51.5059m, null, null, "مستودع الخور الشمالي", "Al Khor North Depot" },
+                    { 4L, "DEP-004", null, new DateTime(2025, 12, 14, 10, 16, 20, 788, DateTimeKind.Unspecified).AddTicks(8484), false, 25.1657m, "Al Wakrah", 51.6034m, null, null, "مستودع الوكرة الجنوبي", "Al Wakrah South Depot" }
                 });
 
             migrationBuilder.InsertData(
@@ -1485,11 +1485,11 @@ namespace Ettad.EntityFramework.Migrations
                 columns: new[] { "Id", "CreatedBy", "CreationDate", "IsDeleted", "ModificationDate", "ModifiedBy", "NameAr", "NameEn" },
                 values: new object[,]
                 {
-                    { 1L, null, new DateTime(2025, 12, 14, 8, 40, 35, 956, DateTimeKind.Unspecified).AddTicks(5228), false, null, null, "القسم 1.1 - مواد متفجرة", "Division 1.1 - Explosives" },
-                    { 2L, null, new DateTime(2025, 12, 14, 8, 40, 35, 956, DateTimeKind.Unspecified).AddTicks(5253), false, null, null, "القسم 1.2 - مواد قابلة للانفجار", "Division 1.2 - Projection Hazard" },
-                    { 3L, null, new DateTime(2025, 12, 14, 8, 40, 35, 956, DateTimeKind.Unspecified).AddTicks(5255), false, null, null, "القسم 1.3 - مواد قابلة للاشتعال", "Division 1.3 - Fire Hazard" },
-                    { 4L, null, new DateTime(2025, 12, 14, 8, 40, 35, 956, DateTimeKind.Unspecified).AddTicks(5256), false, null, null, "القسم 1.4 - مواد منخفضة المخاطر", "Division 1.4 - Minor Hazard" },
-                    { 5L, null, new DateTime(2025, 12, 14, 8, 40, 35, 956, DateTimeKind.Unspecified).AddTicks(5258), false, null, null, "القسم 1.5 - مواد غير حساسة", "Division 1.5 - Very Insensitive" }
+                    { 1L, null, new DateTime(2025, 12, 14, 10, 16, 20, 789, DateTimeKind.Unspecified).AddTicks(4541), false, null, null, "القسم 1.1 - مواد متفجرة", "Division 1.1 - Explosives" },
+                    { 2L, null, new DateTime(2025, 12, 14, 10, 16, 20, 789, DateTimeKind.Unspecified).AddTicks(4563), false, null, null, "القسم 1.2 - مواد قابلة للانفجار", "Division 1.2 - Projection Hazard" },
+                    { 3L, null, new DateTime(2025, 12, 14, 10, 16, 20, 789, DateTimeKind.Unspecified).AddTicks(4564), false, null, null, "القسم 1.3 - مواد قابلة للاشتعال", "Division 1.3 - Fire Hazard" },
+                    { 4L, null, new DateTime(2025, 12, 14, 10, 16, 20, 789, DateTimeKind.Unspecified).AddTicks(4566), false, null, null, "القسم 1.4 - مواد منخفضة المخاطر", "Division 1.4 - Minor Hazard" },
+                    { 5L, null, new DateTime(2025, 12, 14, 10, 16, 20, 789, DateTimeKind.Unspecified).AddTicks(4567), false, null, null, "القسم 1.5 - مواد غير حساسة", "Division 1.5 - Very Insensitive" }
                 });
 
             migrationBuilder.InsertData(
@@ -1497,11 +1497,11 @@ namespace Ettad.EntityFramework.Migrations
                 columns: new[] { "Id", "CreatedBy", "CreationDate", "IsDeleted", "ModificationDate", "ModifiedBy", "NameAr", "NameEn" },
                 values: new object[,]
                 {
-                    { 1L, null, new DateTime(2025, 12, 14, 8, 40, 35, 957, DateTimeKind.Unspecified).AddTicks(3822), false, null, null, "مصنع الذخائر الملكي", "Royal Ordnance Factory" },
-                    { 2L, null, new DateTime(2025, 12, 14, 8, 40, 35, 957, DateTimeKind.Unspecified).AddTicks(3847), false, null, null, "شركة رايثيون", "Raytheon Company" },
-                    { 3L, null, new DateTime(2025, 12, 14, 8, 40, 35, 957, DateTimeKind.Unspecified).AddTicks(3849), false, null, null, "مؤسسة الصناعات العسكرية الوطنية", "National Military Industries" },
-                    { 4L, null, new DateTime(2025, 12, 14, 8, 40, 35, 957, DateTimeKind.Unspecified).AddTicks(3851), false, null, null, "شركة لوكهيد مارتن", "Lockheed Martin" },
-                    { 5L, null, new DateTime(2025, 12, 14, 8, 40, 35, 957, DateTimeKind.Unspecified).AddTicks(3853), false, null, null, "مجموعة بي إيه إي سيستمز", "BAE Systems" }
+                    { 1L, null, new DateTime(2025, 12, 14, 10, 16, 20, 790, DateTimeKind.Unspecified).AddTicks(1949), false, null, null, "مصنع الذخائر الملكي", "Royal Ordnance Factory" },
+                    { 2L, null, new DateTime(2025, 12, 14, 10, 16, 20, 790, DateTimeKind.Unspecified).AddTicks(1970), false, null, null, "شركة رايثيون", "Raytheon Company" },
+                    { 3L, null, new DateTime(2025, 12, 14, 10, 16, 20, 790, DateTimeKind.Unspecified).AddTicks(1972), false, null, null, "مؤسسة الصناعات العسكرية الوطنية", "National Military Industries" },
+                    { 4L, null, new DateTime(2025, 12, 14, 10, 16, 20, 790, DateTimeKind.Unspecified).AddTicks(1974), false, null, null, "شركة لوكهيد مارتن", "Lockheed Martin" },
+                    { 5L, null, new DateTime(2025, 12, 14, 10, 16, 20, 790, DateTimeKind.Unspecified).AddTicks(1975), false, null, null, "مجموعة بي إيه إي سيستمز", "BAE Systems" }
                 });
 
             migrationBuilder.InsertData(
@@ -1509,17 +1509,17 @@ namespace Ettad.EntityFramework.Migrations
                 columns: new[] { "Id", "CreatedBy", "CreationDate", "IsDeleted", "ModificationDate", "ModifiedBy", "NameAr", "NameEn" },
                 values: new object[,]
                 {
-                    { 1L, null, new DateTime(2025, 12, 14, 8, 40, 35, 957, DateTimeKind.Unspecified).AddTicks(5381), false, null, null, "ذخيرة حية", "Live Ammunition" },
-                    { 2L, null, new DateTime(2025, 12, 14, 8, 40, 35, 957, DateTimeKind.Unspecified).AddTicks(5392), false, null, null, "صوتي", "Sonic" },
-                    { 3L, null, new DateTime(2025, 12, 14, 8, 40, 35, 957, DateTimeKind.Unspecified).AddTicks(5394), false, null, null, "مشرح", "Fragmentation" },
-                    { 4L, null, new DateTime(2025, 12, 14, 8, 40, 35, 957, DateTimeKind.Unspecified).AddTicks(5396), false, null, null, "كاشف", "Detector" },
-                    { 5L, null, new DateTime(2025, 12, 14, 8, 40, 35, 957, DateTimeKind.Unspecified).AddTicks(5397), false, null, null, "مائت", "Inert" },
-                    { 6L, null, new DateTime(2025, 12, 14, 8, 40, 35, 957, DateTimeKind.Unspecified).AddTicks(5399), false, null, null, "متفجر", "Explosive" },
-                    { 7L, null, new DateTime(2025, 12, 14, 8, 40, 35, 957, DateTimeKind.Unspecified).AddTicks(5400), false, null, null, "خارق", "Armor-Piercing" },
-                    { 8L, null, new DateTime(2025, 12, 14, 8, 40, 35, 957, DateTimeKind.Unspecified).AddTicks(5402), false, null, null, "دخاني", "Smoke" },
-                    { 9L, null, new DateTime(2025, 12, 14, 8, 40, 35, 957, DateTimeKind.Unspecified).AddTicks(5403), false, null, null, "انارة", "Illuminating" },
-                    { 10L, null, new DateTime(2025, 12, 14, 8, 40, 35, 957, DateTimeKind.Unspecified).AddTicks(5405), false, null, null, "حارق", "Incendiary" },
-                    { 11L, null, new DateTime(2025, 12, 14, 8, 40, 35, 957, DateTimeKind.Unspecified).AddTicks(5406), false, null, null, "خارق حارق", "Armor-Piercing Incendiary" }
+                    { 1L, null, new DateTime(2025, 12, 14, 10, 16, 20, 790, DateTimeKind.Unspecified).AddTicks(3356), false, null, null, "ذخيرة حية", "Live Ammunition" },
+                    { 2L, null, new DateTime(2025, 12, 14, 10, 16, 20, 790, DateTimeKind.Unspecified).AddTicks(3365), false, null, null, "صوتي", "Sonic" },
+                    { 3L, null, new DateTime(2025, 12, 14, 10, 16, 20, 790, DateTimeKind.Unspecified).AddTicks(3367), false, null, null, "مشرح", "Fragmentation" },
+                    { 4L, null, new DateTime(2025, 12, 14, 10, 16, 20, 790, DateTimeKind.Unspecified).AddTicks(3368), false, null, null, "كاشف", "Detector" },
+                    { 5L, null, new DateTime(2025, 12, 14, 10, 16, 20, 790, DateTimeKind.Unspecified).AddTicks(3369), false, null, null, "مائت", "Inert" },
+                    { 6L, null, new DateTime(2025, 12, 14, 10, 16, 20, 790, DateTimeKind.Unspecified).AddTicks(3371), false, null, null, "متفجر", "Explosive" },
+                    { 7L, null, new DateTime(2025, 12, 14, 10, 16, 20, 790, DateTimeKind.Unspecified).AddTicks(3372), false, null, null, "خارق", "Armor-Piercing" },
+                    { 8L, null, new DateTime(2025, 12, 14, 10, 16, 20, 790, DateTimeKind.Unspecified).AddTicks(3373), false, null, null, "دخاني", "Smoke" },
+                    { 9L, null, new DateTime(2025, 12, 14, 10, 16, 20, 790, DateTimeKind.Unspecified).AddTicks(3374), false, null, null, "انارة", "Illuminating" },
+                    { 10L, null, new DateTime(2025, 12, 14, 10, 16, 20, 790, DateTimeKind.Unspecified).AddTicks(3375), false, null, null, "حارق", "Incendiary" },
+                    { 11L, null, new DateTime(2025, 12, 14, 10, 16, 20, 790, DateTimeKind.Unspecified).AddTicks(3376), false, null, null, "خارق حارق", "Armor-Piercing Incendiary" }
                 });
 
             migrationBuilder.InsertData(
@@ -1527,11 +1527,11 @@ namespace Ettad.EntityFramework.Migrations
                 columns: new[] { "Id", "CreatedBy", "CreationDate", "IsDeleted", "ModificationDate", "ModifiedBy", "NameAr", "NameEn" },
                 values: new object[,]
                 {
-                    { 1L, null, new DateTime(2025, 12, 14, 8, 40, 35, 958, DateTimeKind.Unspecified).AddTicks(3575), false, null, null, "قتالي", "Combat" },
-                    { 2L, null, new DateTime(2025, 12, 14, 8, 40, 35, 958, DateTimeKind.Unspecified).AddTicks(3599), false, null, null, "تدريبي", "Training" },
-                    { 3L, null, new DateTime(2025, 12, 14, 8, 40, 35, 958, DateTimeKind.Unspecified).AddTicks(3601), false, null, null, "دفاعي", "Defense" },
-                    { 4L, null, new DateTime(2025, 12, 14, 8, 40, 35, 958, DateTimeKind.Unspecified).AddTicks(3603), false, null, null, "استطلاعي", "Reconnaissance" },
-                    { 5L, null, new DateTime(2025, 12, 14, 8, 40, 35, 958, DateTimeKind.Unspecified).AddTicks(3604), false, null, null, "هجومي", "Offensive" }
+                    { 1L, null, new DateTime(2025, 12, 14, 10, 16, 20, 791, DateTimeKind.Unspecified).AddTicks(1009), false, null, null, "قتالي", "Combat" },
+                    { 2L, null, new DateTime(2025, 12, 14, 10, 16, 20, 791, DateTimeKind.Unspecified).AddTicks(1031), false, null, null, "تدريبي", "Training" },
+                    { 3L, null, new DateTime(2025, 12, 14, 10, 16, 20, 791, DateTimeKind.Unspecified).AddTicks(1032), false, null, null, "دفاعي", "Defense" },
+                    { 4L, null, new DateTime(2025, 12, 14, 10, 16, 20, 791, DateTimeKind.Unspecified).AddTicks(1033), false, null, null, "استطلاعي", "Reconnaissance" },
+                    { 5L, null, new DateTime(2025, 12, 14, 10, 16, 20, 791, DateTimeKind.Unspecified).AddTicks(1035), false, null, null, "هجومي", "Offensive" }
                 });
 
             migrationBuilder.InsertData(
@@ -1539,11 +1539,11 @@ namespace Ettad.EntityFramework.Migrations
                 columns: new[] { "Id", "CreatedBy", "CreationDate", "IsDeleted", "ModificationDate", "ModifiedBy", "NameAr", "NameEn" },
                 values: new object[,]
                 {
-                    { 1L, null, new DateTime(2025, 12, 14, 8, 40, 35, 958, DateTimeKind.Unspecified).AddTicks(4963), false, null, null, "فولاذ", "Steel" },
-                    { 2L, null, new DateTime(2025, 12, 14, 8, 40, 35, 958, DateTimeKind.Unspecified).AddTicks(4972), false, null, null, "نحاس", "Brass" },
-                    { 3L, null, new DateTime(2025, 12, 14, 8, 40, 35, 958, DateTimeKind.Unspecified).AddTicks(4974), false, null, null, "رصاص", "Lead" },
-                    { 4L, null, new DateTime(2025, 12, 14, 8, 40, 35, 958, DateTimeKind.Unspecified).AddTicks(4975), false, null, null, "تنغستن", "Tungsten" },
-                    { 5L, null, new DateTime(2025, 12, 14, 8, 40, 35, 958, DateTimeKind.Unspecified).AddTicks(4977), false, null, null, "يورانيوم منضب", "Depleted Uranium" }
+                    { 1L, null, new DateTime(2025, 12, 14, 10, 16, 20, 791, DateTimeKind.Unspecified).AddTicks(2449), false, null, null, "فولاذ", "Steel" },
+                    { 2L, null, new DateTime(2025, 12, 14, 10, 16, 20, 791, DateTimeKind.Unspecified).AddTicks(2461), false, null, null, "نحاس", "Brass" },
+                    { 3L, null, new DateTime(2025, 12, 14, 10, 16, 20, 791, DateTimeKind.Unspecified).AddTicks(2462), false, null, null, "رصاص", "Lead" },
+                    { 4L, null, new DateTime(2025, 12, 14, 10, 16, 20, 791, DateTimeKind.Unspecified).AddTicks(2464), false, null, null, "تنغستن", "Tungsten" },
+                    { 5L, null, new DateTime(2025, 12, 14, 10, 16, 20, 791, DateTimeKind.Unspecified).AddTicks(2465), false, null, null, "يورانيوم منضب", "Depleted Uranium" }
                 });
 
             migrationBuilder.InsertData(
@@ -1551,11 +1551,11 @@ namespace Ettad.EntityFramework.Migrations
                 columns: new[] { "Id", "CreatedBy", "CreationDate", "IsDeleted", "ModificationDate", "ModifiedBy", "NameAr", "NameEn" },
                 values: new object[,]
                 {
-                    { 1L, null, new DateTime(2025, 12, 14, 8, 40, 35, 958, DateTimeKind.Unspecified).AddTicks(6319), false, null, null, "بارود أحادي القاعدة", "Single-base Powder" },
-                    { 2L, null, new DateTime(2025, 12, 14, 8, 40, 35, 958, DateTimeKind.Unspecified).AddTicks(6330), false, null, null, "بارود ثنائي القاعدة", "Double-base Powder" },
-                    { 3L, null, new DateTime(2025, 12, 14, 8, 40, 35, 958, DateTimeKind.Unspecified).AddTicks(6332), false, null, null, "بارود ثلاثي القاعدة", "Triple-base Powder" },
-                    { 4L, null, new DateTime(2025, 12, 14, 8, 40, 35, 958, DateTimeKind.Unspecified).AddTicks(6334), false, null, null, "نيتروسليلوز", "Nitrocellulose" },
-                    { 5L, null, new DateTime(2025, 12, 14, 8, 40, 35, 958, DateTimeKind.Unspecified).AddTicks(6335), false, null, null, "كورديت", "Cordite" }
+                    { 1L, null, new DateTime(2025, 12, 14, 10, 16, 20, 791, DateTimeKind.Unspecified).AddTicks(3773), false, null, null, "بارود أحادي القاعدة", "Single-base Powder" },
+                    { 2L, null, new DateTime(2025, 12, 14, 10, 16, 20, 791, DateTimeKind.Unspecified).AddTicks(3783), false, null, null, "بارود ثنائي القاعدة", "Double-base Powder" },
+                    { 3L, null, new DateTime(2025, 12, 14, 10, 16, 20, 791, DateTimeKind.Unspecified).AddTicks(3784), false, null, null, "بارود ثلاثي القاعدة", "Triple-base Powder" },
+                    { 4L, null, new DateTime(2025, 12, 14, 10, 16, 20, 791, DateTimeKind.Unspecified).AddTicks(3786), false, null, null, "نيتروسليلوز", "Nitrocellulose" },
+                    { 5L, null, new DateTime(2025, 12, 14, 10, 16, 20, 791, DateTimeKind.Unspecified).AddTicks(3787), false, null, null, "كورديت", "Cordite" }
                 });
 
             migrationBuilder.InsertData(
@@ -1563,16 +1563,16 @@ namespace Ettad.EntityFramework.Migrations
                 columns: new[] { "Id", "CreatedBy", "CreationDate", "IsDeleted", "ModificationDate", "ModifiedBy", "NameAr", "NameEn" },
                 values: new object[,]
                 {
-                    { 1L, null, new DateTime(2025, 12, 14, 8, 40, 35, 958, DateTimeKind.Unspecified).AddTicks(7949), false, null, null, "عقيد", "Colonel" },
-                    { 2L, null, new DateTime(2025, 12, 14, 8, 40, 35, 958, DateTimeKind.Unspecified).AddTicks(7963), false, null, null, "مقدم", "Lieutenant Colonel" },
-                    { 3L, null, new DateTime(2025, 12, 14, 8, 40, 35, 958, DateTimeKind.Unspecified).AddTicks(7965), false, null, null, "رائد", "Major" },
-                    { 4L, null, new DateTime(2025, 12, 14, 8, 40, 35, 958, DateTimeKind.Unspecified).AddTicks(7967), false, null, null, "نقيب", "Captain" },
-                    { 5L, null, new DateTime(2025, 12, 14, 8, 40, 35, 958, DateTimeKind.Unspecified).AddTicks(7969), false, null, null, "ملازم أول", "First Lieutenant" },
-                    { 6L, null, new DateTime(2025, 12, 14, 8, 40, 35, 958, DateTimeKind.Unspecified).AddTicks(7970), false, null, null, "ملازم", "Second Lieutenant" },
-                    { 7L, null, new DateTime(2025, 12, 14, 8, 40, 35, 958, DateTimeKind.Unspecified).AddTicks(7971), false, null, null, "رقيب أول", "Master Sergeant" },
-                    { 8L, null, new DateTime(2025, 12, 14, 8, 40, 35, 958, DateTimeKind.Unspecified).AddTicks(7973), false, null, null, "رقيب", "Sergeant" },
-                    { 9L, null, new DateTime(2025, 12, 14, 8, 40, 35, 958, DateTimeKind.Unspecified).AddTicks(7974), false, null, null, "عريف", "Corporal" },
-                    { 10L, null, new DateTime(2025, 12, 14, 8, 40, 35, 958, DateTimeKind.Unspecified).AddTicks(7976), false, null, null, "جندي", "Private" }
+                    { 1L, null, new DateTime(2025, 12, 14, 10, 16, 20, 791, DateTimeKind.Unspecified).AddTicks(5060), false, null, null, "عقيد", "Colonel" },
+                    { 2L, null, new DateTime(2025, 12, 14, 10, 16, 20, 791, DateTimeKind.Unspecified).AddTicks(5069), false, null, null, "مقدم", "Lieutenant Colonel" },
+                    { 3L, null, new DateTime(2025, 12, 14, 10, 16, 20, 791, DateTimeKind.Unspecified).AddTicks(5071), false, null, null, "رائد", "Major" },
+                    { 4L, null, new DateTime(2025, 12, 14, 10, 16, 20, 791, DateTimeKind.Unspecified).AddTicks(5072), false, null, null, "نقيب", "Captain" },
+                    { 5L, null, new DateTime(2025, 12, 14, 10, 16, 20, 791, DateTimeKind.Unspecified).AddTicks(5073), false, null, null, "ملازم أول", "First Lieutenant" },
+                    { 6L, null, new DateTime(2025, 12, 14, 10, 16, 20, 791, DateTimeKind.Unspecified).AddTicks(5075), false, null, null, "ملازم", "Second Lieutenant" },
+                    { 7L, null, new DateTime(2025, 12, 14, 10, 16, 20, 791, DateTimeKind.Unspecified).AddTicks(5076), false, null, null, "رقيب أول", "Master Sergeant" },
+                    { 8L, null, new DateTime(2025, 12, 14, 10, 16, 20, 791, DateTimeKind.Unspecified).AddTicks(5077), false, null, null, "رقيب", "Sergeant" },
+                    { 9L, null, new DateTime(2025, 12, 14, 10, 16, 20, 791, DateTimeKind.Unspecified).AddTicks(5078), false, null, null, "عريف", "Corporal" },
+                    { 10L, null, new DateTime(2025, 12, 14, 10, 16, 20, 791, DateTimeKind.Unspecified).AddTicks(5079), false, null, null, "جندي", "Private" }
                 });
 
             migrationBuilder.InsertData(
@@ -1580,18 +1580,18 @@ namespace Ettad.EntityFramework.Migrations
                 columns: new[] { "Id", "CreatedBy", "CreationDate", "DeletedBy", "DeletionDate", "IsDeleted", "ModificationDate", "ModifiedBy", "NameAr", "NameEn", "RequestType" },
                 values: new object[,]
                 {
-                    { 1L, null, new DateTime(2025, 12, 14, 8, 40, 35, 959, DateTimeKind.Unspecified).AddTicks(1807), null, null, false, null, null, "طلب عادي", "Normal Order", 1 },
-                    { 2L, null, new DateTime(2025, 12, 14, 8, 40, 35, 959, DateTimeKind.Unspecified).AddTicks(1830), null, null, false, null, null, "طلب خدمة", "Duty Order", 1 },
-                    { 3L, null, new DateTime(2025, 12, 14, 8, 40, 35, 959, DateTimeKind.Unspecified).AddTicks(1832), null, null, false, null, null, "طلب عملية", "Operation Order", 1 },
-                    { 4L, null, new DateTime(2025, 12, 14, 8, 40, 35, 959, DateTimeKind.Unspecified).AddTicks(1834), null, null, false, null, null, "طلب تدريبي", "Training Order", 1 },
-                    { 5L, null, new DateTime(2025, 12, 14, 8, 40, 35, 959, DateTimeKind.Unspecified).AddTicks(1837), null, null, false, null, null, "إرجاع عادي", "Normal Return", 2 },
-                    { 6L, null, new DateTime(2025, 12, 14, 8, 40, 35, 959, DateTimeKind.Unspecified).AddTicks(1838), null, null, false, null, null, "إرجاع بعد انتهاء الخدمة", "Return After Service", 2 },
-                    { 7L, null, new DateTime(2025, 12, 14, 8, 40, 35, 959, DateTimeKind.Unspecified).AddTicks(1840), null, null, false, null, null, "إرجاع بعد العملية", "Return After Operation", 2 },
-                    { 8L, null, new DateTime(2025, 12, 14, 8, 40, 35, 959, DateTimeKind.Unspecified).AddTicks(1841), null, null, false, null, null, "إرجاع بعد التدريب", "Return After Training", 2 },
-                    { 9L, null, new DateTime(2025, 12, 14, 8, 40, 35, 959, DateTimeKind.Unspecified).AddTicks(1842), null, null, false, null, null, "تسديد تالف", "Damaged Discard", 3 },
-                    { 10L, null, new DateTime(2025, 12, 14, 8, 40, 35, 959, DateTimeKind.Unspecified).AddTicks(1844), null, null, false, null, null, "تسديد منتهي الصلاحية", "Expired Discard", 3 },
-                    { 11L, null, new DateTime(2025, 12, 14, 8, 40, 35, 959, DateTimeKind.Unspecified).AddTicks(1845), null, null, false, null, null, "تسديد غير مستخدم", "Unused Discard", 3 },
-                    { 12L, null, new DateTime(2025, 12, 14, 8, 40, 35, 959, DateTimeKind.Unspecified).AddTicks(1835), null, null, false, null, null, "تطهير الميدان", "Field Clearance", 1 }
+                    { 1L, null, new DateTime(2025, 12, 14, 10, 16, 20, 791, DateTimeKind.Unspecified).AddTicks(8496), null, null, false, null, null, "طلب عادي", "Normal Order", 1 },
+                    { 2L, null, new DateTime(2025, 12, 14, 10, 16, 20, 791, DateTimeKind.Unspecified).AddTicks(8518), null, null, false, null, null, "طلب خدمة", "Duty Order", 1 },
+                    { 3L, null, new DateTime(2025, 12, 14, 10, 16, 20, 791, DateTimeKind.Unspecified).AddTicks(8520), null, null, false, null, null, "طلب عملية", "Operation Order", 1 },
+                    { 4L, null, new DateTime(2025, 12, 14, 10, 16, 20, 791, DateTimeKind.Unspecified).AddTicks(8522), null, null, false, null, null, "طلب تدريبي", "Training Order", 1 },
+                    { 5L, null, new DateTime(2025, 12, 14, 10, 16, 20, 791, DateTimeKind.Unspecified).AddTicks(8524), null, null, false, null, null, "إرجاع عادي", "Normal Return", 2 },
+                    { 6L, null, new DateTime(2025, 12, 14, 10, 16, 20, 791, DateTimeKind.Unspecified).AddTicks(8526), null, null, false, null, null, "إرجاع بعد انتهاء الخدمة", "Return After Service", 2 },
+                    { 7L, null, new DateTime(2025, 12, 14, 10, 16, 20, 791, DateTimeKind.Unspecified).AddTicks(8527), null, null, false, null, null, "إرجاع بعد العملية", "Return After Operation", 2 },
+                    { 8L, null, new DateTime(2025, 12, 14, 10, 16, 20, 791, DateTimeKind.Unspecified).AddTicks(8528), null, null, false, null, null, "إرجاع بعد التدريب", "Return After Training", 2 },
+                    { 9L, null, new DateTime(2025, 12, 14, 10, 16, 20, 791, DateTimeKind.Unspecified).AddTicks(8529), null, null, false, null, null, "تسديد تالف", "Damaged Discard", 3 },
+                    { 10L, null, new DateTime(2025, 12, 14, 10, 16, 20, 791, DateTimeKind.Unspecified).AddTicks(8530), null, null, false, null, null, "تسديد منتهي الصلاحية", "Expired Discard", 3 },
+                    { 11L, null, new DateTime(2025, 12, 14, 10, 16, 20, 791, DateTimeKind.Unspecified).AddTicks(8531), null, null, false, null, null, "تسديد غير مستخدم", "Unused Discard", 3 },
+                    { 12L, null, new DateTime(2025, 12, 14, 10, 16, 20, 791, DateTimeKind.Unspecified).AddTicks(8523), null, null, false, null, null, "تطهير الميدان", "Field Clearance", 1 }
                 });
 
             migrationBuilder.InsertData(
@@ -1599,11 +1599,11 @@ namespace Ettad.EntityFramework.Migrations
                 columns: new[] { "Id", "CreatedBy", "CreationDate", "Group", "Key", "ModificationDate", "ModifiedBy", "Value" },
                 values: new object[,]
                 {
-                    { 1, null, new DateTime(2025, 12, 14, 8, 40, 35, 959, DateTimeKind.Unspecified).AddTicks(3837), "LDAP", "LdapServer", null, null, "10.80.70.3" },
-                    { 2, null, new DateTime(2025, 12, 14, 8, 40, 35, 959, DateTimeKind.Unspecified).AddTicks(3854), "LDAP", "LdapDomain", null, null, "sddev.local" },
-                    { 3, null, new DateTime(2025, 12, 14, 8, 40, 35, 959, DateTimeKind.Unspecified).AddTicks(3856), "LDAP", "LdapEmpAttr", null, null, "sAMAccountName" },
-                    { 4, null, new DateTime(2025, 12, 14, 8, 40, 35, 959, DateTimeKind.Unspecified).AddTicks(3858), "LDAP", "LdapUsername", null, null, "1000" },
-                    { 5, null, new DateTime(2025, 12, 14, 8, 40, 35, 959, DateTimeKind.Unspecified).AddTicks(3859), "LDAP", "LdapPassword", null, null, "Qatar@2025" }
+                    { 1, null, new DateTime(2025, 12, 14, 10, 16, 20, 792, DateTimeKind.Unspecified).AddTicks(412), "LDAP", "LdapServer", null, null, "10.80.70.3" },
+                    { 2, null, new DateTime(2025, 12, 14, 10, 16, 20, 792, DateTimeKind.Unspecified).AddTicks(429), "LDAP", "LdapDomain", null, null, "sddev.local" },
+                    { 3, null, new DateTime(2025, 12, 14, 10, 16, 20, 792, DateTimeKind.Unspecified).AddTicks(431), "LDAP", "LdapEmpAttr", null, null, "sAMAccountName" },
+                    { 4, null, new DateTime(2025, 12, 14, 10, 16, 20, 792, DateTimeKind.Unspecified).AddTicks(432), "LDAP", "LdapUsername", null, null, "1000" },
+                    { 5, null, new DateTime(2025, 12, 14, 10, 16, 20, 792, DateTimeKind.Unspecified).AddTicks(433), "LDAP", "LdapPassword", null, null, "Qatar@2025" }
                 });
 
             migrationBuilder.InsertData(
@@ -1611,11 +1611,11 @@ namespace Ettad.EntityFramework.Migrations
                 columns: new[] { "Id", "CreatedBy", "CreationDate", "IsDeleted", "ModificationDate", "ModifiedBy", "NameAr", "NameEn" },
                 values: new object[,]
                 {
-                    { 1L, null, new DateTime(2025, 12, 14, 8, 40, 35, 959, DateTimeKind.Unspecified).AddTicks(5295), false, null, null, "شركة الإمدادات العسكرية المتقدمة", "Advanced Military Supplies Co." },
-                    { 2L, null, new DateTime(2025, 12, 14, 8, 40, 35, 959, DateTimeKind.Unspecified).AddTicks(5306), false, null, null, "المؤسسة العامة للتسليح", "General Armament Corporation" },
-                    { 3L, null, new DateTime(2025, 12, 14, 8, 40, 35, 959, DateTimeKind.Unspecified).AddTicks(5308), false, null, null, "شركة الصناعات الدفاعية", "Defense Industries Company" },
-                    { 4L, null, new DateTime(2025, 12, 14, 8, 40, 35, 959, DateTimeKind.Unspecified).AddTicks(5309), false, null, null, "مجموعة التجهيزات العسكرية", "Military Equipment Group" },
-                    { 5L, null, new DateTime(2025, 12, 14, 8, 40, 35, 959, DateTimeKind.Unspecified).AddTicks(5311), false, null, null, "شركة التوريدات الاستراتيجية", "Strategic Supplies Corporation" }
+                    { 1L, null, new DateTime(2025, 12, 14, 10, 16, 20, 792, DateTimeKind.Unspecified).AddTicks(1761), false, null, null, "شركة الإمدادات العسكرية المتقدمة", "Advanced Military Supplies Co." },
+                    { 2L, null, new DateTime(2025, 12, 14, 10, 16, 20, 792, DateTimeKind.Unspecified).AddTicks(1772), false, null, null, "المؤسسة العامة للتسليح", "General Armament Corporation" },
+                    { 3L, null, new DateTime(2025, 12, 14, 10, 16, 20, 792, DateTimeKind.Unspecified).AddTicks(1773), false, null, null, "شركة الصناعات الدفاعية", "Defense Industries Company" },
+                    { 4L, null, new DateTime(2025, 12, 14, 10, 16, 20, 792, DateTimeKind.Unspecified).AddTicks(1775), false, null, null, "مجموعة التجهيزات العسكرية", "Military Equipment Group" },
+                    { 5L, null, new DateTime(2025, 12, 14, 10, 16, 20, 792, DateTimeKind.Unspecified).AddTicks(1776), false, null, null, "شركة التوريدات الاستراتيجية", "Strategic Supplies Corporation" }
                 });
 
             migrationBuilder.InsertData(
@@ -1623,9 +1623,9 @@ namespace Ettad.EntityFramework.Migrations
                 columns: new[] { "Id", "CreatedBy", "CreationDate", "IsDeleted", "ModificationDate", "ModifiedBy", "NameAr", "NameEn" },
                 values: new object[,]
                 {
-                    { 1L, null, new DateTime(2025, 12, 14, 8, 40, 35, 960, DateTimeKind.Unspecified).AddTicks(1149), false, null, null, "غرام", "Gram" },
-                    { 2L, null, new DateTime(2025, 12, 14, 8, 40, 35, 960, DateTimeKind.Unspecified).AddTicks(1171), false, null, null, "مليمتر", "Millimeter" },
-                    { 3L, null, new DateTime(2025, 12, 14, 8, 40, 35, 960, DateTimeKind.Unspecified).AddTicks(1173), false, null, null, "قطعة", "Piece" }
+                    { 1L, null, new DateTime(2025, 12, 14, 10, 16, 20, 792, DateTimeKind.Unspecified).AddTicks(7550), false, null, null, "غرام", "Gram" },
+                    { 2L, null, new DateTime(2025, 12, 14, 10, 16, 20, 792, DateTimeKind.Unspecified).AddTicks(7571), false, null, null, "مليمتر", "Millimeter" },
+                    { 3L, null, new DateTime(2025, 12, 14, 10, 16, 20, 792, DateTimeKind.Unspecified).AddTicks(7573), false, null, null, "قطعة", "Piece" }
                 });
 
             migrationBuilder.InsertData(
@@ -1633,9 +1633,9 @@ namespace Ettad.EntityFramework.Migrations
                 columns: new[] { "Id", "CreatedBy", "CreationDate", "IsDeleted", "ModificationDate", "ModifiedBy", "NameAr", "NameEn" },
                 values: new object[,]
                 {
-                    { 1L, null, new DateTime(2025, 12, 14, 8, 40, 35, 961, DateTimeKind.Unspecified).AddTicks(6453), false, null, null, "Request", "Request" },
-                    { 2L, null, new DateTime(2025, 12, 14, 8, 40, 35, 961, DateTimeKind.Unspecified).AddTicks(6479), false, null, null, "Discard", "Discard" },
-                    { 3L, null, new DateTime(2025, 12, 14, 8, 40, 35, 961, DateTimeKind.Unspecified).AddTicks(6481), false, null, null, "Return", "Return" }
+                    { 1L, null, new DateTime(2025, 12, 14, 10, 16, 20, 794, DateTimeKind.Unspecified).AddTicks(2313), false, null, null, "Request", "Request" },
+                    { 2L, null, new DateTime(2025, 12, 14, 10, 16, 20, 794, DateTimeKind.Unspecified).AddTicks(2335), false, null, null, "Discard", "Discard" },
+                    { 3L, null, new DateTime(2025, 12, 14, 10, 16, 20, 794, DateTimeKind.Unspecified).AddTicks(2336), false, null, null, "Return", "Return" }
                 });
 
             migrationBuilder.InsertData(

@@ -9,7 +9,9 @@ namespace Ettad.Inventory.Service.AllowanceItems.Profiles
         public AllowanceItemMappingProfile()
         {
             // Entity to DTO
-            CreateMap<AllowanceItem, AllowanceItemDto>();
+            CreateMap<AllowanceItem, AllowanceItemDto>()
+                .ForMember(dest => dest.ItemName, opt => opt.MapFrom(src => src.Item != null ? src.Item.Name : null))
+                .ForMember(dest => dest.ItemNo, opt => opt.MapFrom(src => src.Item != null ? src.Item.ItemNo : null));
 
             // Entity to Detail DTO
             CreateMap<AllowanceItem, AllowanceItemDetailDto>()
