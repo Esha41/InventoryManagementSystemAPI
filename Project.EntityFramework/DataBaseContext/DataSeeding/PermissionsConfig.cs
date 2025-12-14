@@ -108,11 +108,17 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
         {
             "Permissions.Ammunition.Page",
             "Permissions.Ammunition.View",
+            "Permissions.Weapon.Page",
+            "Permissions.Weapon.View",
+            "Permissions.Explosive.Page",
+            "Permissions.Explosive.View",
         };
 
         public static List<string> ReadItemsViewOnly = new()
         {
             "Permissions.Ammunition.View",
+            "Permissions.Weapon.View",
+            "Permissions.Explosive.View",
         };
 
         public static List<string> WriteItems = new()
@@ -120,6 +126,12 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
             "Permissions.Ammunition.Create",
             "Permissions.Ammunition.Edit",
             "Permissions.Ammunition.Delete",
+            "Permissions.Weapon.Create",
+            "Permissions.Weapon.Edit",
+            "Permissions.Weapon.Delete",
+            "Permissions.Explosive.Create",
+            "Permissions.Explosive.Edit",
+            "Permissions.Explosive.Delete",
         };
 
         public static List<string> ReadInventory = new()

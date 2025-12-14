@@ -1,11 +1,10 @@
+using Microsoft.AspNetCore.Http;
 using Ettad.CrossCutting.Common.Security;
-using Ettad.Data.Entities;
-using Ettad.Data.Enums;
-using Ettad.Inventory.Service.Common.Dtos;
+using Ettad.Inventory.Service.Explosives;
+using Ettad.Inventory.Service.Explosives.Dtos;
 using Ettad.ResponseHandler.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using System.Net;
 
 namespace Ettad.Inventory.API.Controllers
@@ -15,39 +14,65 @@ namespace Ettad.Inventory.API.Controllers
     [Authorize]
     public class ExplosiveController : ApiControllerBase
     {
-        private readonly Ettad.EntityFramework.DataBaseContext.ApplicationDbContext _context;
-        private readonly AutoMapper.IMapper _mapper;
+        private readonly IExplosiveService _explosiveService;
 
-        public ExplosiveController(
-            Ettad.EntityFramework.DataBaseContext.ApplicationDbContext context,
-            AutoMapper.IMapper mapper)
+        public ExplosiveController(IExplosiveService explosiveService)
         {
-            _context = context;
-            _mapper = mapper;
+            _explosiveService = explosiveService;
         }
 
         [HttpGet]
         [ProducesResponseType((int)HttpStatusCode.OK)]
-        [CheckAuthorize("Permissions.Ammunition.View", "Permissions.Ammunition.Page")]
+        [CheckAuthorize("Permissions.Explosive.View", "Permissions.Explosive.Page")]
         public async Task<IActionResult> GetAll()
         {
-            try
-            {
-                var explosives = await _context.Explosives
-                    .Where(e => !e.IsDeleted)
-                    .ToListAsync();
+            var result = await _explosiveService.GetAllAsync();
+            return ProcessResponse(result);
+        }
 
-                var dtos = _mapper.Map<List<BaseItemDto>>(explosives);
-                var result = APIOperationResponse<List<BaseItemDto>>.Success(dtos);
-                return ProcessResponse(result);
-            }
-            catch (Exception ex)
-            {
-                var result = APIOperationResponse<List<BaseItemDto>>.Fail(
-                    Ettad.ResponseHandler.Consts.ResponseType.InternalServerError, 
-                    $"An error occurred: {ex.Message}");
-                return ProcessResponse(result);
-            }
+        [HttpGet("{id}")]
+        [ProducesResponseType((int)HttpStatusCode.OK)]
+        [CheckAuthorize("Permissions.Explosive.View")]
+        public async Task<IActionResult> GetById(long id)
+        {
+            var result = await _explosiveService.GetByIdAsync(id);
+            return ProcessResponse(result);
+        }
+
+        [HttpGet("ByType/{type}")]
+        [ProducesResponseType((int)HttpStatusCode.OK)]
+        [CheckAuthorize("Permissions.Explosive.View")]
+        public async Task<IActionResult> GetByType(Ettad.Data.Enums.ExplosiveType type)
+        {
+            var result = await _explosiveService.GetByTypeAsync(type);
+            return ProcessResponse(result);
+        }
+
+        [HttpPost]
+        [ProducesResponseType((int)HttpStatusCode.Created)]
+        [CheckAuthorize("Permissions.Explosive.Create")]
+        public async Task<IActionResult> Create([FromForm] CreateUpdateExplosiveDto input, [FromForm] List<IFormFile> files)
+        {
+            var result = await _explosiveService.CreateAsync(input, files);
+            return ProcessResponse(result);
+        }
+
+        [HttpPut("{id}")]
+        [ProducesResponseType((int)HttpStatusCode.OK)]
+        [CheckAuthorize("Permissions.Explosive.Edit")]
+        public async Task<IActionResult> Update(long id, [FromBody] CreateUpdateExplosiveDto input)
+        {
+            var result = await _explosiveService.UpdateAsync(id, input);
+            return ProcessResponse(result);
+        }
+
+        [HttpDelete("{id}")]
+        [ProducesResponseType((int)HttpStatusCode.OK)]
+        [CheckAuthorize("Permissions.Explosive.Delete")]
+        public async Task<IActionResult> Delete(long id)
+        {
+            var result = await _explosiveService.DeleteAsync(id);
+            return ProcessResponse(result);
         }
     }
 }
