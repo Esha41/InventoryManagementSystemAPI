@@ -8,6 +8,7 @@ using Ettad.Workflows.Service.Queries.GetWorkflowById;
 using Ettad.CrossCutting.Comman.Models;
 using Ettad.ResponseHandler.Models;
 using Ettad.Data.Enums;
+using Ettad.Application.Common.Interfaces;
 
 namespace Ettad.Workflows.API.Controllers
 {
@@ -16,10 +17,12 @@ namespace Ettad.Workflows.API.Controllers
     public class WorkflowsController : ApiControllerBase
     {
         private readonly IMediator _mediator;
+        private readonly ICurrentUserService _currentUserService;
 
-        public WorkflowsController(IMediator mediator)
+        public WorkflowsController(IMediator mediator, ICurrentUserService currentUserService)
         {
             _mediator = mediator;
+            _currentUserService = currentUserService;
         }
 
         [HttpGet("{id}")]
@@ -57,6 +60,12 @@ namespace Ettad.Workflows.API.Controllers
         [HttpPost]
         public async Task<IActionResult> CreateWorkflow([FromBody] CreateWorkflowCommand command)
         {
+            // Restrict workflow creation to SuperAdmin only
+            if (!_currentUserService.IsSuperAdmin)
+            {
+                return Forbid();
+            }
+
             var result = await _mediator.Send(command);
             return Ok(result);
         }
@@ -64,6 +73,12 @@ namespace Ettad.Workflows.API.Controllers
         [HttpPut]
         public async Task<IActionResult> UpdateWorkflow([FromBody] UpdateWorkflowCommand command)
         {
+            // Restrict workflow updates to SuperAdmin only
+            if (!_currentUserService.IsSuperAdmin)
+            {
+                return Forbid();
+            }
+
             var result = await _mediator.Send(command);
             return Ok(result);
         }
@@ -71,6 +86,12 @@ namespace Ettad.Workflows.API.Controllers
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteWorkflow(int id)
         {
+            // Restrict workflow deletion to SuperAdmin only
+            if (!_currentUserService.IsSuperAdmin)
+            {
+                return Forbid();
+            }
+
             var command = new DeleteWorkflowCommand(id);
             var result = await _mediator.Send(command);
             return Ok(result);
