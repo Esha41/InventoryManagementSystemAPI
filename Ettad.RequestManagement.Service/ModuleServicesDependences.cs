@@ -7,6 +7,8 @@ using Ettad.RequestManagement.Service.RequestPurposes;
 using Ettad.RequestManagement.Service.Returns;
 using Ettad.RequestManagement.Service.Orders;
 using Ettad.RequestManagement.Service.SupplyManagement;
+using Ettad.RequestManagement.Service.Implementation;
+using Ettad.RequestManagement.Service.Interfaces;
 
 namespace Ettad.RequestManagement.Service
 {
@@ -30,6 +32,7 @@ namespace Ettad.RequestManagement.Service
             services.AddScoped<IReturnService, ReturnService>();
             services.AddScoped<IOrderService, OrderService>();
             services.AddScoped<ISupplyService, SupplyService>();
+            services.AddScoped<IRequestService, RequestService>();
 
             return services;
         }

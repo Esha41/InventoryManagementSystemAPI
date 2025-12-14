@@ -17,6 +17,7 @@
 		<ProjectReference Include="..\Ettad.Inventory.Services\Ettad.Inventory.Service.csproj" />
 		<ProjectReference Include="..\Ettad.Notification.Service\Ettad.Notification.Service.csproj" />
 		<ProjectReference Include="..\Ettad.Workflow.Service\Ettad.Workflows.Service.csproj" />
+		<ProjectReference Include="..\Project.Comman\Ettad.CrossCutting.Comman.csproj" />
 		<ProjectReference Include="..\Project.Data\Ettad.Data.csproj" />
 		<ProjectReference Include="..\Project.Module.Logic\Ettad.Module.lookup.csproj" />
 		<ProjectReference Include="..\Project.Repository\Ettad.Repository.csproj" />
