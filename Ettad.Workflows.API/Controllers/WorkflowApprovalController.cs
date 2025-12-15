@@ -78,6 +78,15 @@ namespace Ettad.Workflows.API.Controllers
             return Ok(result);
         }
 
+        [HttpGet("BaseRequest/{requestId}")]
+        [CheckAuthorize("Permissions.RequestReciever.Page", "Permissions.RequestReciever.View")]
+        public async Task<IActionResult> GetBaseRequestById(long requestId)
+        {
+            var result = await _service.GetBaseRequestByIdAsync(requestId);
+            if (result == null) return NotFound();
+            return Ok(result);
+        }
+
         [HttpPost("approve-reject")]
         [Consumes("multipart/form-data", "application/json")]
         [CheckAuthorize("Permissions.RequestReciever.Create", "Permissions.RequestReciever.Edit")]

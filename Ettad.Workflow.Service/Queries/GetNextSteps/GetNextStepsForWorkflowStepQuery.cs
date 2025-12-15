@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Ettad.Workflows.Service.DTO;
 using Ettad.EntityFramework.DataBaseContext;
 using Ettad.ResponseHandler.Models;
+using Ettad.User.Services.DTO;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -37,7 +38,13 @@ namespace Ettad.Workflows.Service.Queries.GetNextSteps
                 // Get the current workflow step
                 var currentStep = await _context.WorkflowSteps
                     .Include(ws => ws.ApplicationRole)
+                    .Include(ws => ws.HigherApprovalRole)
                     .Include(ws => ws.Transitions)
+                        .ThenInclude(t => t.TargetWorkflowStep)
+                            .ThenInclude(target => target.ApplicationRole)
+                    .Include(ws => ws.Transitions)
+                        .ThenInclude(t => t.TargetWorkflowStep)
+                            .ThenInclude(target => target.HigherApprovalRole)
                     .FirstOrDefaultAsync(ws => ws.Id == request.WorkflowStepId, cancellationToken);
 
                 if (currentStep == null)
@@ -48,7 +55,13 @@ namespace Ettad.Workflows.Service.Queries.GetNextSteps
                 // Get ALL workflow steps that come after the current step (StepOrder > currentStep.StepOrder)
                 var allNextStepsEntities = await _context.WorkflowSteps
                     .Include(ws => ws.ApplicationRole)
+                    .Include(ws => ws.HigherApprovalRole)
                     .Include(ws => ws.Transitions)
+                        .ThenInclude(t => t.TargetWorkflowStep)
+                            .ThenInclude(target => target.ApplicationRole)
+                    .Include(ws => ws.Transitions)
+                        .ThenInclude(t => t.TargetWorkflowStep)
+                            .ThenInclude(target => target.HigherApprovalRole)
                     .Where(ws => ws.WorkflowId == currentStep.WorkflowId && ws.StepOrder > currentStep.StepOrder)
                     .OrderBy(ws => ws.StepOrder)
                     .ToListAsync(cancellationToken);
@@ -79,7 +92,42 @@ namespace Ettad.Workflows.Service.Queries.GetNextSteps
                 HigherApplicationEntityId = ws.HigherApplicationEntityId,
                 ReserveQty = ws.ReserveQty,
                 CanSkip = ws.CanSkip,
-                AllowedSkipTargetIds = ws.Transitions?.Select(t => t.TargetWorkflowStepId).ToList() ?? new List<int>()
+                Transitions = ws.Transitions?.Select(t => new WorkflowStepTransitionDto
+                {
+                    Id = t.Id,
+                    SourceWorkflowStepId = t.SourceWorkflowStepId,
+                    TargetWorkflowStepId = t.TargetWorkflowStepId,
+                    TargetStep = t.TargetWorkflowStep != null ? new TargetStepDetailsDto
+                    {
+                        Id = t.TargetWorkflowStep.Id,
+                        WorkflowId = t.TargetWorkflowStep.WorkflowId,
+                        StepOrder = t.TargetWorkflowStep.StepOrder,
+                        ApplicationRole = t.TargetWorkflowStep.ApplicationRole != null ? new RoleDto
+                        {
+                            Id = t.TargetWorkflowStep.ApplicationRole.Id,
+                            Name = t.TargetWorkflowStep.ApplicationRole.Name,
+                            NameAr = t.TargetWorkflowStep.ApplicationRole.NameAr,
+                            IsDefaultRole = t.TargetWorkflowStep.ApplicationRole.IsDefaultRole ?? false,
+                            IsSuperAdmin = t.TargetWorkflowStep.ApplicationRole.IsSuperAdmin,
+                            ApplicationEntityIds = new List<long>()
+                        } : null,
+                        ApplicationEntityId = t.TargetWorkflowStep.ApplicationEntityId,
+                        RequireHigherApproval = t.TargetWorkflowStep.RequireHigherApproval,
+                        HigherApprovalRole = t.TargetWorkflowStep.HigherApprovalRole != null ? new RoleDto
+                        {
+                            Id = t.TargetWorkflowStep.HigherApprovalRole.Id,
+                            Name = t.TargetWorkflowStep.HigherApprovalRole.Name,
+                            NameAr = t.TargetWorkflowStep.HigherApprovalRole.NameAr,
+                            IsDefaultRole = t.TargetWorkflowStep.HigherApprovalRole.IsDefaultRole ?? false,
+                            IsSuperAdmin = t.TargetWorkflowStep.HigherApprovalRole.IsSuperAdmin,
+                            ApplicationEntityIds = new List<long>()
+                        } : null,
+                        HigherApplicationEntityId = t.TargetWorkflowStep.HigherApplicationEntityId,
+                        MustApprove = t.TargetWorkflowStep.MustApprove,
+                        ReserveQty = t.TargetWorkflowStep.ReserveQty,
+                        CanSkip = t.TargetWorkflowStep.CanSkip
+                    } : null
+                }).ToList() ?? new List<WorkflowStepTransitionDto>()
             };
         }
     }
