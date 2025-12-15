@@ -3,7 +3,10 @@ using Ettad.Data.Entities;
 using Ettad.Data.Enums;
 using Ettad.Lookups.Services.Contracts;
 using Ettad.Module.lookup.Dtos;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
+using System.Threading.Tasks;
+using Ettad.Application.Common.Interfaces;
 
 namespace Ettad.Lookups.Domain.API.Controllers
 {
@@ -137,11 +140,64 @@ namespace Ettad.Lookups.Domain.API.Controllers
     )]
     public class DepotController : LookupController<Depot, CreateUpdateDepotDto>
     {
-        public DepotController(ILookupService<Depot, CreateUpdateDepotDto> iLookupService, ILogger<LookupController<Depot, CreateUpdateDepotDto>> logger)
-            : base(iLookupService, logger) { }
+        private readonly IDepotService _depotService;
+        private readonly ICurrentUserService _currentUserService;
+
+        public DepotController(
+            IDepotService depotService, 
+            ICurrentUserService currentUserService,
+            ILogger<LookupController<Depot, CreateUpdateDepotDto>> logger)
+            : base(depotService, logger)
+        {
+            _depotService = depotService;
+            _currentUserService = currentUserService;
+        }
+
+        /// <summary>
+        /// Override Post to restrict depot creation to SuperAdmin only
+        /// </summary>
+        [HttpPost]
+        public override async Task<IActionResult> post([FromBody] CreateUpdateDepotDto item)
+        {
+            if (!_currentUserService.IsSuperAdmin)
+            {
+                _logger?.LogWarning("Non-SuperAdmin user attempted to create depot");
+                return Forbid();
+            }
+
+            return await base.post(item);
+        }
+
+        /// <summary>
+        /// Override Put - allows all authorized users to update depots
+        /// </summary>
+        [HttpPut("{id}")]
+        public override async Task<ActionResult> Put(int id, [FromBody] CreateUpdateDepotDto item)
+        {
+            return await base.Put(id, item);
+        }
+
+        /// <summary>
+        /// Override Delete - allows all authorized users to delete depots (with inventory check)
+        /// </summary>
+        [HttpDelete("{id}")]
+        public override async Task<IActionResult> Delete(int id, [FromBody] CreateUpdateDepotDto item)
+        {
+            _logger?.LogInformation("HTTP DELETE request to delete Depot with Id {Id}", id);
+
+            var result = await _depotService.DeleteDepotAsync(id, item);
+
+            if (!result.Succeeded)
+            {
+                _logger?.LogWarning("Failed to delete Depot with Id {Id}: {Message}", id, result.Message);
+            }
+
+            return ProcessResponse(result);
+        }
     }
 
     #endregion
+
 
     #region HazardDivision
 

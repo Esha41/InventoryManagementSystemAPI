@@ -1,9 +1,21 @@
-﻿using Ettad.Data.Enums;
+using Ettad.Data.Enums;
 
-namespace Ettad.Data.Entities
+namespace Ettad.Inventory.Service.Weapons.Dtos
 {
-    public class Weapon : BaseItem
+    public class CreateUpdateWeaponDto
     {
+        public string Name { get; set; }
+
+        public string ItemNo { get; set; }
+
+        public string? PartNo { get; set; }
+
+        public decimal? Price { get; set; }
+
+        public long? MinimumQuantity { get; set; }
+        
+        public string? Nsn { get; set; }
+
         public WeaponType WeaponType { get; set; }
         
         public string? Caliber { get; set; }
@@ -20,11 +32,5 @@ namespace Ettad.Data.Entities
         public long? WeightUnitId { get; set; }
         
         public int? Capacity { get; set; }
-
-        #region Navigation Properties
-        public Unit BarrelLengthUnit { get; set; }
-        public Unit OverallLengthUnit { get; set; }
-        public Unit WeightUnit { get; set; }
-        #endregion
     }
 }

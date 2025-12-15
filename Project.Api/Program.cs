@@ -100,6 +100,9 @@ try
 
     builder.Services.AddScoped(typeof(ILookupService<,>), typeof(LookupService<,>));
 
+    // Register custom Depot service with inventory validation
+    builder.Services.AddScoped<IDepotService, DepotService>();
+
     builder.Services.AddScoped<IEmailSender, EmailSender>();
     builder.Services.AddScoped<IWorkflowApprovalService, WorkflowApprovalService>();
     builder.Services.AddScoped<IFileStorageService, FileStorageService>();
@@ -369,16 +372,19 @@ try
         // Note: Cron expressions are in UTC timezone. For Qatar (UTC+3), subtract 3 hours from local time.
         // Example: 9:15 AM Qatar time = 6:15 AM UTC = "15 6 * * *"
         var scheduleSetting = await context.Settings
-            .FirstOrDefaultAsync(s => s.Key == "LowStockMonitorSchedule" && s.Group == "BackgroundJobs");
+            .FirstOrDefaultAsync(s => s.Key == LowStockMonitorConstants.SCHEDULE_SETTINGS_KEY && s.Group == LowStockMonitorConstants.SCHEDULE_SETTINGS_GROUP);
         
         var lowStockCronExpression = scheduleSetting?.Value 
             ?? app.Configuration.GetValue<string>("BackgroundJobs:LowStockMonitor:CronExpression") 
-            ?? "15 6 * * *"; // Default: 6:15 AM UTC (9:15 AM Qatar time, UTC+3)
+            ?? LowStockMonitorConstants.DEFAULT_CRON_EXPRESSION; // Default: 6:15 AM UTC (9:15 AM Qatar time, UTC+3)
 
 
+        // Set the service provider for the job
+        LowStockMonitorJob.SetServiceProvider(app.Services);
+        
         recurringJobManager.AddOrUpdate(
-            "LowStockMonitor",
-            () => scope.ServiceProvider.GetRequiredService<ILowStockMonitorService>().CheckAndNotifyAsync(),
+            LowStockMonitorConstants.JOB_ID,
+            () => LowStockMonitorJob.Execute(),
             lowStockCronExpression);
         
         Log.Information("Low Stock Monitor job registered with schedule: {Schedule}", lowStockCronExpression);

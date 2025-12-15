@@ -18,33 +18,47 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
             {
                 var context = services.GetRequiredService<ApplicationDbContext>();
                 
+                Console.WriteLine("=== Starting Database Seeding ===");
+                
                 // Seed countries data
                 await SeedCountriesDataAsync(context);
+                Console.WriteLine("✓ Countries seeded");
                 
                 // Seed suppliers data
                 await SeedSuppliersDataAsync(context);
+                Console.WriteLine("✓ Suppliers seeded");
                 
                 // Seed manufacturers data
                 await SeedManufacturersDataAsync(context);
+                Console.WriteLine("✓ Manufacturers seeded");
                 
                 // Seed ammunition data
                 await SeedAmmunitionDataAsync(context);
+                Console.WriteLine("✓ Ammunition seeded");
                 
                 // Seed weapon data
                 await SeedWeaponDataAsync(context);
+                Console.WriteLine("✓ Weapons seeded");
                 
                 // Seed explosive data
                 await SeedExplosiveDataAsync(context);
+                Console.WriteLine("✓ Explosives seeded");
                 
                 // Seed inventory data based on seeded depots and ammunitions
                 await SeedInventoryDataAsync(context);
+                Console.WriteLine("✓ Inventory seeded");
                 
                 // Seed allowance data for all departments and all items
                 await SeedAllowanceDataAsync(context);
+                Console.WriteLine("✓ Allowances seeded");
+                
+                Console.WriteLine("=== Database Seeding Completed Successfully ===");
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                // swallow for startup; logs handled by outer try/catch
+                Console.WriteLine($"!!! ERROR SEEDING DATABASE: {ex.Message}");
+                Console.WriteLine($"Stack Trace: {ex.StackTrace}");
+                throw; // Re-throw to see the error
             }
         }
 
@@ -202,15 +216,15 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 {
                     Name = "9mm NATO Ball Ammunition",
                     ItemNo = "AMM-001",
-
-                    PartNo = "PN-001",
+                    AmmunitionType = AmmunitionType.Small,
+                    PartNo = "PN-9MM-001",
                     BulletDiameter = 9.01m,
                     BulletDiameterUnitId = 1,
                     IsLinked = false,
-                    Primer = "CCI No. 500",
+                    Primer = "Small Pistol",
                     TotalWeight = 0.012m,
                     NatureOptionId = 1,
-                    Nsn = "1305-01-000-0003",
+                    Nsn = "1305-01-527-3103",
                     PrimaryPurposId = 1,
                     ProjectileColorId = 1,
                     ProjectailMaterialId = 1,
@@ -219,6 +233,162 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                     CompatibilityId = 1,
                     HazardDivisionId = 1,
                     Price = 0.65m,
+                    MinimumQuantity = 500,
+                    ItemType = ItemType.Ammunition,
+                    CreationDate = utcNow,
+                    CreatedBy = "SYSTEM"
+                },
+                new Ammunition
+                {
+                    Name = "5.56mm M855 Ball (Green Tip)",
+                    ItemNo = "AMM-002",
+                    AmmunitionType = AmmunitionType.Small,
+                    PartNo = "PN-556-M855",
+                    BulletDiameter = 5.70m,
+                    BulletDiameterUnitId = 1,
+                    IsLinked = false,
+                    Primer = "Small Rifle",
+                    TotalWeight = 0.012m,
+                    NatureOptionId = 1,
+                    Nsn = "1305-01-231-3242",
+                    PrimaryPurposId = 1,
+                    ProjectileColorId = 2,
+                    ProjectailMaterialId = 1,
+                    CaseTypeId = 1,
+                    PropellantId = 1,
+                    CompatibilityId = 1,
+                    HazardDivisionId = 1,
+                    Price = 0.75m,
+                    MinimumQuantity = 1000,
+                    ItemType = ItemType.Ammunition,
+                    CreationDate = utcNow,
+                    CreatedBy = "SYSTEM"
+                },
+                new Ammunition
+                {
+                    Name = "5.56mm M856 Tracer (Red Tip)",
+                    ItemNo = "AMM-003",
+                    AmmunitionType = AmmunitionType.Small,
+                    PartNo = "PN-556-M856",
+                    BulletDiameter = 5.70m,
+                    BulletDiameterUnitId = 1,
+                    IsLinked = false,
+                    Primer = "Small Rifle",
+                    TotalWeight = 0.011m,
+                    NatureOptionId = 2,
+                    Nsn = "1305-01-231-3243",
+                    PrimaryPurposId = 3,
+                    ProjectileColorId = 3,
+                    ProjectailMaterialId = 2,
+                    CaseTypeId = 1,
+                    PropellantId = 1,
+                    CompatibilityId = 1,
+                    HazardDivisionId = 1,
+                    Price = 0.95m,
+                    MinimumQuantity = 500,
+                    ItemType = ItemType.Ammunition,
+                    CreationDate = utcNow,
+                    CreatedBy = "SYSTEM"
+                },
+                new Ammunition
+                {
+                    Name = "7.62mm M80 Ball",
+                    ItemNo = "AMM-004",
+                    AmmunitionType = AmmunitionType.Medium,
+                    PartNo = "PN-762-M80",
+                    BulletDiameter = 7.82m,
+                    BulletDiameterUnitId = 1,
+                    IsLinked = false,
+                    Primer = "Large Rifle",
+                    TotalWeight = 0.025m,
+                    NatureOptionId = 1,
+                    Nsn = "1305-00-903-0430",
+                    PrimaryPurposId = 1,
+                    ProjectileColorId = 1,
+                    ProjectailMaterialId = 1,
+                    CaseTypeId = 2,
+                    PropellantId = 2,
+                    CompatibilityId = 1,
+                    HazardDivisionId = 1,
+                    Price = 1.25m,
+                    MinimumQuantity = 800,
+                    ItemType = ItemType.Ammunition,
+                    CreationDate = utcNow,
+                    CreatedBy = "SYSTEM"
+                },
+                new Ammunition
+                {
+                    Name = "7.62mm M62 Tracer",
+                    ItemNo = "AMM-005",
+                    AmmunitionType = AmmunitionType.Medium,
+                    PartNo = "PN-762-M62",
+                    BulletDiameter = 7.82m,
+                    BulletDiameterUnitId = 1,
+                    IsLinked = true,
+                    Primer = "Large Rifle",
+                    TotalWeight = 0.026m,
+                    NatureOptionId = 2,
+                    Nsn = "1305-00-903-0431",
+                    PrimaryPurposId = 3,
+                    ProjectileColorId = 3,
+                    ProjectailMaterialId = 2,
+                    CaseTypeId = 2,
+                    PropellantId = 2,
+                    CompatibilityId = 1,
+                    HazardDivisionId = 1,
+                    Price = 1.45m,
+                    MinimumQuantity = 600,
+                    ItemType = ItemType.Ammunition,
+                    CreationDate = utcNow,
+                    CreatedBy = "SYSTEM"
+                },
+                new Ammunition
+                {
+                    Name = "7.62mm M118LR Sniper",
+                    ItemNo = "AMM-006",
+                    AmmunitionType = AmmunitionType.Medium,
+                    PartNo = "PN-762-M118LR",
+                    BulletDiameter = 7.82m,
+                    BulletDiameterUnitId = 1,
+                    IsLinked = false,
+                    Primer = "Large Rifle Match",
+                    TotalWeight = 0.028m,
+                    NatureOptionId = 1,
+                    Nsn = "1305-01-419-1687",
+                    PrimaryPurposId = 2,
+                    ProjectileColorId = 1,
+                    ProjectailMaterialId = 1,
+                    CaseTypeId = 2,
+                    PropellantId = 2,
+                    CompatibilityId = 1,
+                    HazardDivisionId = 1,
+                    Price = 2.50m,
+                    MinimumQuantity = 300,
+                    ItemType = ItemType.Ammunition,
+                    CreationDate = utcNow,
+                    CreatedBy = "SYSTEM"
+                },
+                new Ammunition
+                {
+                    Name = ".50 BMG M33 Ball",
+                    ItemNo = "AMM-007",
+                    AmmunitionType = AmmunitionType.Large,
+                    PartNo = "PN-50BMG-M33",
+                    BulletDiameter = 12.98m,
+                    BulletDiameterUnitId = 1,
+                    IsLinked = true,
+                    Primer = "Large Rifle Magnum",
+                    TotalWeight = 0.114m,
+                    NatureOptionId = 1,
+                    Nsn = "1305-00-179-6329",
+                    PrimaryPurposId = 1,
+                    ProjectileColorId = 1,
+                    ProjectailMaterialId = 1,
+                    CaseTypeId = 3,
+                    PropellantId = 3,
+                    CompatibilityId = 1,
+                    HazardDivisionId = 1,
+                    Price = 5.50m,
                     MinimumQuantity = 200,
                     ItemType = ItemType.Ammunition,
                     CreationDate = utcNow,
@@ -226,25 +396,25 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 },
                 new Ammunition
                 {
-                    Name = "7.62mm NATO Match Ammunition",
-                    ItemNo = "AMM-002",
-
-                    PartNo = "PN-002",
-                    BulletDiameter = 7.82m,
-                    BulletDiameterUnitId = 2,
+                    Name = ".50 BMG M2 AP (Armor Piercing)",
+                    ItemNo = "AMM-008",
+                    AmmunitionType = AmmunitionType.Large,
+                    PartNo = "PN-50BMG-M2AP",
+                    BulletDiameter = 12.98m,
+                    BulletDiameterUnitId = 1,
                     IsLinked = true,
-                    Primer = "Federal 210M",
-                    TotalWeight = 0.024m,
-                    NatureOptionId = 2,
-                    Nsn = "1305-01-000-0002",
-                    PrimaryPurposId = 2,
-                    ProjectileColorId = 2,
-                    ProjectailMaterialId = 2,
-                    CaseTypeId = 2,
-                    PropellantId = 2,
-                    CompatibilityId = 2,
-                    HazardDivisionId = 2,
-                    Price = 1.25m,
+                    Primer = "Large Rifle Magnum",
+                    TotalWeight = 0.116m,
+                    NatureOptionId = 1,
+                    Nsn = "1305-00-179-6330",
+                    PrimaryPurposId = 1,
+                    ProjectileColorId = 1,
+                    ProjectailMaterialId = 3,
+                    CaseTypeId = 3,
+                    PropellantId = 3,
+                    CompatibilityId = 1,
+                    HazardDivisionId = 1,
+                    Price = 7.25m,
                     MinimumQuantity = 150,
                     ItemType = ItemType.Ammunition,
                     CreationDate = utcNow,
@@ -252,26 +422,182 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 },
                 new Ammunition
                 {
-                    Name = "5.56mm NATO Tracer Round",
-                    ItemNo = "AMM-003",
-
-                    PartNo = "PN-003",
-                    BulletDiameter = 5.70m,
-                    BulletDiameterUnitId = 3,
+                    Name = ".45 ACP Ball M1911",
+                    ItemNo = "AMM-009",
+                    AmmunitionType = AmmunitionType.Small,
+                    PartNo = "PN-45ACP-M1911",
+                    BulletDiameter = 11.43m,
+                    BulletDiameterUnitId = 1,
                     IsLinked = false,
-                    Primer = "Winchester Small Rifle",
-                    TotalWeight = 0.012m,
-                    NatureOptionId = 3,
-                    Nsn = "1305-01-000-0001",
-                    PrimaryPurposId = 3,
-                    ProjectileColorId = 3,
-                    ProjectailMaterialId = 3,
+                    Primer = "Large Pistol",
+                    TotalWeight = 0.021m,
+                    NatureOptionId = 1,
+                    Nsn = "1305-00-179-6331",
+                    PrimaryPurposId = 1,
+                    ProjectileColorId = 1,
+                    ProjectailMaterialId = 1,
+                    CaseTypeId = 1,
+                    PropellantId = 1,
+                    CompatibilityId = 1,
+                    HazardDivisionId = 1,
+                    Price = 0.85m,
+                    MinimumQuantity = 400,
+                    ItemType = ItemType.Ammunition,
+                    CreationDate = utcNow,
+                    CreatedBy = "SYSTEM"
+                },
+                new Ammunition
+                {
+                    Name = "5.56mm Mk 262 Mod 1 (Match)",
+                    ItemNo = "AMM-010",
+                    AmmunitionType = AmmunitionType.Small,
+                    PartNo = "PN-556-MK262",
+                    BulletDiameter = 5.70m,
+                    BulletDiameterUnitId = 1,
+                    IsLinked = false,
+                    Primer = "Small Rifle Match",
+                    TotalWeight = 0.013m,
+                    NatureOptionId = 1,
+                    Nsn = "1305-01-534-5544",
+                    PrimaryPurposId = 2,
+                    ProjectileColorId = 1,
+                    ProjectailMaterialId = 1,
+                    CaseTypeId = 1,
+                    PropellantId = 1,
+                    CompatibilityId = 1,
+                    HazardDivisionId = 1,
+                    Price = 1.50m,
+                    MinimumQuantity = 300,
+                    ItemType = ItemType.Ammunition,
+                    CreationDate = utcNow,
+                    CreatedBy = "SYSTEM"
+                },
+                new Ammunition
+                {
+                    Name = "7.62x39mm Ball (AK-47)",
+                    ItemNo = "AMM-011",
+                    AmmunitionType = AmmunitionType.Medium,
+                    PartNo = "PN-762x39-BALL",
+                    BulletDiameter = 7.92m,
+                    BulletDiameterUnitId = 1,
+                    IsLinked = false,
+                    Primer = "Large Rifle",
+                    TotalWeight = 0.016m,
+                    NatureOptionId = 1,
+                    Nsn = "1305-01-234-5678",
+                    PrimaryPurposId = 1,
+                    ProjectileColorId = 1,
+                    ProjectailMaterialId = 1,
+                    CaseTypeId = 2,
+                    PropellantId = 2,
+                    CompatibilityId = 1,
+                    HazardDivisionId = 1,
+                    Price = 0.95m,
+                    MinimumQuantity = 700,
+                    ItemType = ItemType.Ammunition,
+                    CreationDate = utcNow,
+                    CreatedBy = "SYSTEM"
+                },
+                new Ammunition
+                {
+                    Name = "12 Gauge 00 Buckshot",
+                    ItemNo = "AMM-012",
+                    AmmunitionType = AmmunitionType.Large,
+                    PartNo = "PN-12GA-00BUCK",
+                    BulletDiameter = 18.5m,
+                    BulletDiameterUnitId = 1,
+                    IsLinked = false,
+                    Primer = "Large Shotgun",
+                    TotalWeight = 0.034m,
+                    NatureOptionId = 1,
+                    Nsn = "1305-01-345-6789",
+                    PrimaryPurposId = 1,
+                    ProjectileColorId = 1,
+                    ProjectailMaterialId = 1,
+                    CaseTypeId = 3,
+                    PropellantId = 1,
+                    CompatibilityId = 1,
+                    HazardDivisionId = 1,
+                    Price = 1.20m,
+                    MinimumQuantity = 250,
+                    ItemType = ItemType.Ammunition,
+                    CreationDate = utcNow,
+                    CreatedBy = "SYSTEM"
+                },
+                new Ammunition
+                {
+                    Name = ".338 Lapua Magnum",
+                    ItemNo = "AMM-013",
+                    AmmunitionType = AmmunitionType.Large,
+                    PartNo = "PN-338-LAPUA",
+                    BulletDiameter = 8.58m,
+                    BulletDiameterUnitId = 1,
+                    IsLinked = false,
+                    Primer = "Large Rifle Magnum",
+                    TotalWeight = 0.034m,
+                    NatureOptionId = 1,
+                    Nsn = "1305-01-456-7890",
+                    PrimaryPurposId = 2,
+                    ProjectileColorId = 1,
+                    ProjectailMaterialId = 1,
                     CaseTypeId = 3,
                     PropellantId = 3,
-                    CompatibilityId = 3,
-                    HazardDivisionId = 3,
-                    Price = 0.85m,
-                    MinimumQuantity = 250,
+                    CompatibilityId = 1,
+                    HazardDivisionId = 1,
+                    Price = 4.50m,
+                    MinimumQuantity = 150,
+                    ItemType = ItemType.Ammunition,
+                    CreationDate = utcNow,
+                    CreatedBy = "SYSTEM"
+                },
+                new Ammunition
+                {
+                    Name = "40mm M433 HEDP Grenade",
+                    ItemNo = "AMM-014",
+                    AmmunitionType = AmmunitionType.Large,
+                    PartNo = "PN-40MM-M433",
+                    BulletDiameter = 40.0m,
+                    BulletDiameterUnitId = 1,
+                    IsLinked = false,
+                    Primer = "Electric",
+                    TotalWeight = 0.230m,
+                    NatureOptionId = 3,
+                    Nsn = "1310-01-195-5648",
+                    PrimaryPurposId = 1,
+                    ProjectileColorId = 2,
+                    ProjectailMaterialId = 2,
+                    CaseTypeId = 3,
+                    PropellantId = 3,
+                    CompatibilityId = 2,
+                    HazardDivisionId = 2,
+                    Price = 45.00m,
+                    MinimumQuantity = 50,
+                    ItemType = ItemType.Ammunition,
+                    CreationDate = utcNow,
+                    CreatedBy = "SYSTEM"
+                },
+                new Ammunition
+                {
+                    Name = "5.7x28mm SS190 AP",
+                    ItemNo = "AMM-015",
+                    AmmunitionType = AmmunitionType.Small,
+                    PartNo = "PN-57-SS190",
+                    BulletDiameter = 5.70m,
+                    BulletDiameterUnitId = 1,
+                    IsLinked = false,
+                    Primer = "Small Pistol",
+                    TotalWeight = 0.006m,
+                    NatureOptionId = 1,
+                    Nsn = "1305-01-567-8901",
+                    PrimaryPurposId = 1,
+                    ProjectileColorId = 1,
+                    ProjectailMaterialId = 3,
+                    CaseTypeId = 1,
+                    PropellantId = 1,
+                    CompatibilityId = 1,
+                    HazardDivisionId = 1,
+                    Price = 1.85m,
+                    MinimumQuantity = 300,
                     ItemType = ItemType.Ammunition,
                     CreationDate = utcNow,
                     CreatedBy = "SYSTEM"
@@ -298,7 +624,16 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 {
                     Name = "M16A4 Assault Rifle",
                     ItemNo = "WPN-001",
-
+                    WeaponType = WeaponType.Rifle,
+                    ActionType = ActionType.Automatic,
+                    Caliber = "5.56x45mm NATO",
+                    BarrelLength = 508m,
+                    BarrelLengthUnitId = 1,
+                    OverallLength = 1003m,
+                    OverallLengthUnitId = 1,
+                    Weight = 3.4m,
+                    WeightUnitId = 1,
+                    Capacity = 30,
                     PartNo = "PN-WPN-001",
                     Nsn = "1005-01-000-0001",
                     Price = 1000.00m,
@@ -311,7 +646,16 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 {
                     Name = "M4 Carbine",
                     ItemNo = "WPN-002",
-
+                    WeaponType = WeaponType.Rifle,
+                    ActionType = ActionType.Automatic,
+                    Caliber = "5.56x45mm NATO",
+                    BarrelLength = 368m,
+                    BarrelLengthUnitId = 1,
+                    OverallLength = 838m,
+                    OverallLengthUnitId = 1,
+                    Weight = 2.88m,
+                    WeightUnitId = 1,
+                    Capacity = 30,
                     PartNo = "PN-WPN-002",
                     Nsn = "1005-01-000-0002",
                     Price = 850.00m,
@@ -324,7 +668,16 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 {
                     Name = "M249 Squad Automatic Weapon",
                     ItemNo = "WPN-003",
-
+                    WeaponType = WeaponType.MachineGun,
+                    ActionType = ActionType.Automatic,
+                    Caliber = "5.56x45mm NATO",
+                    BarrelLength = 465m,
+                    BarrelLengthUnitId = 1,
+                    OverallLength = 1041m,
+                    OverallLengthUnitId = 1,
+                    Weight = 7.5m,
+                    WeightUnitId = 1,
+                    Capacity = 200,
                     PartNo = "PN-WPN-003",
                     Nsn = "1005-01-000-0003",
                     Price = 5000.00m,
@@ -337,7 +690,16 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 {
                     Name = "M240B Machine Gun",
                     ItemNo = "WPN-004",
-
+                    WeaponType = WeaponType.MachineGun,
+                    ActionType = ActionType.Automatic,
+                    Caliber = "7.62x51mm NATO",
+                    BarrelLength = 630m,
+                    BarrelLengthUnitId = 1,
+                    OverallLength = 1263m,
+                    OverallLengthUnitId = 1,
+                    Weight = 12.5m,
+                    WeightUnitId = 1,
+                    Capacity = 100,
                     PartNo = "PN-WPN-004",
                     Nsn = "1005-01-000-0004",
                     Price = 6000.00m,
@@ -350,7 +712,16 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 {
                     Name = "M9 Pistol",
                     ItemNo = "WPN-005",
-
+                    WeaponType = WeaponType.Pistol,
+                    ActionType = ActionType.SemiAutomatic,
+                    Caliber = "9x19mm Parabellum",
+                    BarrelLength = 125m,
+                    BarrelLengthUnitId = 1,
+                    OverallLength = 217m,
+                    OverallLengthUnitId = 1,
+                    Weight = 0.96m,
+                    WeightUnitId = 1,
+                    Capacity = 15,
                     PartNo = "PN-WPN-005",
                     Nsn = "1005-01-000-0005",
                     Price = 650.00m,
@@ -363,7 +734,16 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 {
                     Name = "M24 Sniper Weapon System",
                     ItemNo = "WPN-006",
-
+                    WeaponType = WeaponType.SniperRifle,
+                    ActionType = ActionType.BoltAction,
+                    Caliber = "7.62x51mm NATO",
+                    BarrelLength = 610m,
+                    BarrelLengthUnitId = 1,
+                    OverallLength = 1092m,
+                    OverallLengthUnitId = 1,
+                    Weight = 5.49m,
+                    WeightUnitId = 1,
+                    Capacity = 5,
                     PartNo = "PN-WPN-006",
                     Nsn = "1005-01-000-0006",
                     Price = 4000.00m,
@@ -376,7 +756,16 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 {
                     Name = "M2 Browning Machine Gun",
                     ItemNo = "WPN-007",
-
+                    WeaponType = WeaponType.MachineGun,
+                    ActionType = ActionType.Automatic,
+                    Caliber = ".50 BMG (12.7x99mm)",
+                    BarrelLength = 1143m,
+                    BarrelLengthUnitId = 1,
+                    OverallLength = 1654m,
+                    OverallLengthUnitId = 1,
+                    Weight = 38.1m,
+                    WeightUnitId = 1,
+                    Capacity = 100,
                     PartNo = "PN-WPN-007",
                     Nsn = "1005-01-000-0007",
                     Price = 10000.00m,
@@ -389,7 +778,16 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 {
                     Name = "M203 Grenade Launcher",
                     ItemNo = "WPN-008",
-
+                    WeaponType = WeaponType.GrenadeLauncher,
+                    ActionType = ActionType.BreakAction,
+                    Caliber = "40x46mm",
+                    BarrelLength = 305m,
+                    BarrelLengthUnitId = 1,
+                    OverallLength = 380m,
+                    OverallLengthUnitId = 1,
+                    Weight = 1.36m,
+                    WeightUnitId = 1,
+                    Capacity = 1,
                     PartNo = "PN-WPN-008",
                     Nsn = "1005-01-000-0008",
                     Price = 2000.00m,
@@ -402,11 +800,64 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 {
                     Name = "M110 Semi-Automatic Sniper System",
                     ItemNo = "WPN-009",
-
+                    WeaponType = WeaponType.SniperRifle,
+                    ActionType = ActionType.SemiAutomatic,
+                    Caliber = "7.62x51mm NATO",
+                    BarrelLength = 508m,
+                    BarrelLengthUnitId = 1,
+                    OverallLength = 1181m,
+                    OverallLengthUnitId = 1,
+                    Weight = 6.94m,
+                    WeightUnitId = 1,
+                    Capacity = 20,
                     PartNo = "PN-WPN-009",
                     Nsn = "1005-01-000-0009",
                     Price = 5000.00m,
                     MinimumQuantity = 8,
+                    ItemType = ItemType.Weapon,
+                    CreationDate = utcNow,
+                    CreatedBy = "SYSTEM"
+                },
+                new Weapon
+                {
+                    Name = "Remington 870 Shotgun",
+                    ItemNo = "WPN-010",
+                    WeaponType = WeaponType.Shotgun,
+                    ActionType = ActionType.PumpAction,
+                    Caliber = "12 Gauge",
+                    BarrelLength = 470m,
+                    BarrelLengthUnitId = 1,
+                    OverallLength = 1067m,
+                    OverallLengthUnitId = 1,
+                    Weight = 3.6m,
+                    WeightUnitId = 1,
+                    Capacity = 7,
+                    PartNo = "PN-WPN-010",
+                    Nsn = "1005-01-000-0010",
+                    Price = 450.00m,
+                    MinimumQuantity = 15,
+                    ItemType = ItemType.Weapon,
+                    CreationDate = utcNow,
+                    CreatedBy = "SYSTEM"
+                },
+                new Weapon
+                {
+                    Name = "MP5 Submachine Gun",
+                    ItemNo = "WPN-011",
+                    WeaponType = WeaponType.SubmachineGun,
+                    ActionType = ActionType.Automatic,
+                    Caliber = "9x19mm Parabellum",
+                    BarrelLength = 225m,
+                    BarrelLengthUnitId = 1,
+                    OverallLength = 680m,
+                    OverallLengthUnitId = 1,
+                    Weight = 2.54m,
+                    WeightUnitId = 1,
+                    Capacity = 30,
+                    PartNo = "PN-WPN-011",
+                    Nsn = "1005-01-000-0011",
+                    Price = 1200.00m,
+                    MinimumQuantity = 12,
                     ItemType = ItemType.Weapon,
                     CreationDate = utcNow,
                     CreatedBy = "SYSTEM"
@@ -433,7 +884,14 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 {
                     Name = "M67 Fragmentation Grenade",
                     ItemNo = "EXP-001",
-
+                    ExplosiveType = ExplosiveType.Grenade,
+                    UNNumber = "UN0284",
+                    NetExplosiveQuantity = 0.18m,
+                    NetExplosiveQuantityUnitId = 1,
+                    TotalWeight = 0.4m,
+                    TotalWeightUnitId = 1,
+                    HazardDivisionId = 1,
+                    CompatibilityId = 1,
                     PartNo = "PN-EXP-001",
                     Nsn = "1330-01-000-0001",
                     Price = 75.00m,
@@ -446,7 +904,14 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 {
                     Name = "M84 Stun Grenade",
                     ItemNo = "EXP-002",
-
+                    ExplosiveType = ExplosiveType.Grenade,
+                    UNNumber = "UN0014",
+                    NetExplosiveQuantity = 0.005m,
+                    NetExplosiveQuantityUnitId = 1,
+                    TotalWeight = 0.39m,
+                    TotalWeightUnitId = 1,
+                    HazardDivisionId = 1,
+                    CompatibilityId = 1,
                     PartNo = "PN-EXP-002",
                     Nsn = "1330-01-000-0002",
                     Price = 60.00m,
@@ -459,7 +924,14 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 {
                     Name = "M18 Smoke Grenade",
                     ItemNo = "EXP-003",
-
+                    ExplosiveType = ExplosiveType.Grenade,
+                    UNNumber = "UN0015",
+                    NetExplosiveQuantity = 0.012m,
+                    NetExplosiveQuantityUnitId = 1,
+                    TotalWeight = 0.54m,
+                    TotalWeightUnitId = 1,
+                    HazardDivisionId = 1,
+                    CompatibilityId = 2,
                     PartNo = "PN-EXP-003",
                     Nsn = "1330-01-000-0003",
                     Price = 45.00m,
@@ -472,7 +944,14 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 {
                     Name = "C4 Explosive",
                     ItemNo = "EXP-004",
-
+                    ExplosiveType = ExplosiveType.PlasticExplosive,
+                    UNNumber = "UN0056",
+                    NetExplosiveQuantity = 0.567m,
+                    NetExplosiveQuantityUnitId = 1,
+                    TotalWeight = 0.567m,
+                    TotalWeightUnitId = 1,
+                    HazardDivisionId = 1,
+                    CompatibilityId = 1,
                     PartNo = "PN-EXP-004",
                     Nsn = "1330-01-000-0004",
                     Price = 300.00m,
@@ -485,7 +964,14 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 {
                     Name = "M112 Demolition Charge",
                     ItemNo = "EXP-005",
-
+                    ExplosiveType = ExplosiveType.PlasticExplosive,
+                    UNNumber = "UN0048",
+                    NetExplosiveQuantity = 0.58m,
+                    NetExplosiveQuantityUnitId = 1,
+                    TotalWeight = 0.68m,
+                    TotalWeightUnitId = 1,
+                    HazardDivisionId = 1,
+                    CompatibilityId = 1,
                     PartNo = "PN-EXP-005",
                     Nsn = "1330-01-000-0005",
                     Price = 225.00m,
@@ -498,7 +984,14 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 {
                     Name = "M26A2 Fragmentation Grenade",
                     ItemNo = "EXP-006",
-
+                    ExplosiveType = ExplosiveType.Grenade,
+                    UNNumber = "UN0285",
+                    NetExplosiveQuantity = 0.165m,
+                    NetExplosiveQuantityUnitId = 1,
+                    TotalWeight = 0.454m,
+                    TotalWeightUnitId = 1,
+                    HazardDivisionId = 1,
+                    CompatibilityId = 1,
                     PartNo = "PN-EXP-006",
                     Nsn = "1330-01-000-0006",
                     Price = 90.00m,
@@ -511,7 +1004,14 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 {
                     Name = "AN-M14 TH3 Incendiary Grenade",
                     ItemNo = "EXP-007",
-
+                    ExplosiveType = ExplosiveType.Grenade,
+                    UNNumber = "UN0009",
+                    NetExplosiveQuantity = 0.025m,
+                    NetExplosiveQuantityUnitId = 1,
+                    TotalWeight = 0.907m,
+                    TotalWeightUnitId = 1,
+                    HazardDivisionId = 1,
+                    CompatibilityId = 2,
                     PartNo = "PN-EXP-007",
                     Nsn = "1330-01-000-0007",
                     Price = 115.00m,
@@ -524,7 +1024,14 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 {
                     Name = "M72 LAW Rocket",
                     ItemNo = "EXP-008",
-
+                    ExplosiveType = ExplosiveType.Rocket,
+                    UNNumber = "UN0180",
+                    NetExplosiveQuantity = 0.45m,
+                    NetExplosiveQuantityUnitId = 1,
+                    TotalWeight = 2.5m,
+                    TotalWeightUnitId = 1,
+                    HazardDivisionId = 1,
+                    CompatibilityId = 1,
                     PartNo = "PN-EXP-008",
                     Nsn = "1410-01-000-0008",
                     Price = 1500.00m,
@@ -537,11 +1044,78 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 {
                     Name = "M18A1 Claymore Mine",
                     ItemNo = "EXP-009",
-
+                    ExplosiveType = ExplosiveType.Mine,
+                    UNNumber = "UN0137",
+                    NetExplosiveQuantity = 0.68m,
+                    NetExplosiveQuantityUnitId = 1,
+                    TotalWeight = 1.58m,
+                    TotalWeightUnitId = 1,
+                    HazardDivisionId = 1,
+                    CompatibilityId = 1,
                     PartNo = "PN-EXP-009",
                     Nsn = "1345-01-000-0009",
                     Price = 300.00m,
                     MinimumQuantity = 20,
+                    ItemType = ItemType.Explosive,
+                    CreationDate = utcNow,
+                    CreatedBy = "SYSTEM"
+                },
+                new Explosive
+                {
+                    Name = "M67 Training Grenade",
+                    ItemNo = "EXP-010",
+                    ExplosiveType = ExplosiveType.Grenade,
+                    UNNumber = "UN0110",
+                    NetExplosiveQuantity = 0.001m,
+                    NetExplosiveQuantityUnitId = 1,
+                    TotalWeight = 0.4m,
+                    TotalWeightUnitId = 1,
+                    HazardDivisionId = 1,
+                    CompatibilityId = 2,
+                    PartNo = "PN-EXP-010",
+                    Nsn = "1330-01-000-0010",
+                    Price = 25.00m,
+                    MinimumQuantity = 100,
+                    ItemType = ItemType.Explosive,
+                    CreationDate = utcNow,
+                    CreatedBy = "SYSTEM"
+                },
+                new Explosive
+                {
+                    Name = "M183 Demolition Charge Assembly",
+                    ItemNo = "EXP-011",
+                    ExplosiveType = ExplosiveType.Bomb,
+                    UNNumber = "UN0118",
+                    NetExplosiveQuantity = 7.26m,
+                    NetExplosiveQuantityUnitId = 1,
+                    TotalWeight = 8.16m,
+                    TotalWeightUnitId = 1,
+                    HazardDivisionId = 1,
+                    CompatibilityId = 1,
+                    PartNo = "PN-EXP-011",
+                    Nsn = "1375-01-000-0011",
+                    Price = 850.00m,
+                    MinimumQuantity = 5,
+                    ItemType = ItemType.Explosive,
+                    CreationDate = utcNow,
+                    CreatedBy = "SYSTEM"
+                },
+                new Explosive
+                {
+                    Name = "M6 Electric Blasting Cap",
+                    ItemNo = "EXP-012",
+                    ExplosiveType = ExplosiveType.Detonator,
+                    UNNumber = "UN0030",
+                    NetExplosiveQuantity = 0.001m,
+                    NetExplosiveQuantityUnitId = 1,
+                    TotalWeight = 0.008m,
+                    TotalWeightUnitId = 1,
+                    HazardDivisionId = 1,
+                    CompatibilityId = 2,
+                    PartNo = "PN-EXP-012",
+                    Nsn = "1375-01-000-0012",
+                    Price = 15.00m,
+                    MinimumQuantity = 200,
                     ItemType = ItemType.Explosive,
                     CreationDate = utcNow,
                     CreatedBy = "SYSTEM"
@@ -560,14 +1134,16 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 return;
             }
 
-            // Ensure we have depots and ammunitions to seed inventories
+            // Ensure we have depots and items to seed inventories
             var depots = await context.Depots.Where(d => !d.IsDeleted).ToListAsync();
             var ammunitions = await context.Ammunitions.ToListAsync();
+            var weapons = await context.Weapons.ToListAsync();
+            var explosives = await context.Explosives.ToListAsync();
             var suppliers = await context.Suppliers.Where(s => !s.IsDeleted).ToListAsync();
             var manufacturers = await context.Manufacturers.Where(m => !m.IsDeleted).ToListAsync();
             var countries = await context.Countries.Where(c => !c.IsDeleted).ToListAsync();
 
-            if (!depots.Any() || !ammunitions.Any())
+            if (!depots.Any() || (!ammunitions.Any() && !weapons.Any() && !explosives.Any()))
             {
                 return;
             }
@@ -580,32 +1156,25 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
 
             foreach (var depot in depots)
             {
-                // Create multiple inventories per depot
-                var inventoriesPerDepot = Math.Min(3, Math.Max(2, ammunitions.Count / 2));
-
-                for (int i = 0; i < inventoriesPerDepot; i++)
+                // Create ONE comprehensive inventory per depot with ALL items
+                var inventory = new Inventory
                 {
-                    var inventory = new Inventory
-                    {
-                        DepoId = depot.Id,
-                        InvoiceNumber = $"INV-{invoiceSequence:0000}",
-                        InvoiceDate = utcNow.AddDays(-random.Next(30, 120)),
-                        RecievedDate = utcNow.AddDays(-random.Next(5, 60)),
-                        Notes = $"Seeded inventory for depot {depot.Code}",
-                        CreationDate = utcNow,
-                        CreatedBy = "SYSTEM",
-                        InventoryDetails = new List<InventoryDetail>()
-                    };
+                    DepoId = depot.Id,
+                    InvoiceNumber = $"INV-{invoiceSequence:0000}",
+                    InvoiceDate = utcNow.AddDays(-random.Next(30, 120)),
+                    RecievedDate = utcNow.AddDays(-random.Next(5, 60)),
+                    Notes = $"Seeded inventory for depot {depot.Code}",
+                    CreationDate = utcNow,
+                    CreatedBy = "SYSTEM",
+                    InventoryDetails = new List<InventoryDetail>()
+                };
 
-                    invoiceSequence++;
+                invoiceSequence++;
 
-                    // Take a random subset of ammunitions for this inventory
-                    var ammoSelection = ammunitions
-                        .OrderBy(_ => random.Next())
-                        .Take(Math.Min(3, ammunitions.Count))
-                        .ToList();
-
-                    foreach (var ammo in ammoSelection)
+                // Add ALL ammunitions to this depot
+                if (ammunitions.Any())
+                {
+                    foreach (var ammo in ammunitions)
                     {
                         // Generate expiry date: between 1 to 5 years from received date
                         var receivedDate = inventory.RecievedDate;
@@ -620,7 +1189,7 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                         {
                             ItemId = ammo.Id,
                             Lot = ++lotSequence,
-                            ItemQuantity = random.Next(150, 600),
+                            ItemQuantity = random.Next(5000, 25000), // Realistic military stockpile
                             SupplierId = supplier?.Id,
                             ManufacturerId = manufacturer?.Id,
                             CountryId = country?.Id,
@@ -628,9 +1197,65 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                             IsLotEmpty = false
                         });
                     }
-
-                    inventories.Add(inventory);
                 }
+
+                // Add ALL weapons to this depot
+                if (weapons.Any())
+                {
+                    foreach (var weapon in weapons)
+                    {
+                        // Generate expiry date: weapons typically don't expire, but we can set a maintenance/inspection date
+                        var receivedDate = inventory.RecievedDate;
+                        var expiryDate = receivedDate?.AddYears(random.Next(5, 15)).AddDays(random.Next(0, 365));
+
+                        // Randomly select supplier, manufacturer, and country if available
+                        var supplier = suppliers.Any() ? suppliers[random.Next(suppliers.Count)] : null;
+                        var manufacturer = manufacturers.Any() ? manufacturers[random.Next(manufacturers.Count)] : null;
+                        var country = countries.Any() ? countries[random.Next(countries.Count)] : null;
+
+                        inventory.InventoryDetails.Add(new InventoryDetail
+                        {
+                            ItemId = weapon.Id,
+                            Lot = ++lotSequence,
+                            ItemQuantity = random.Next(100, 500), // Realistic military stockpile
+                            SupplierId = supplier?.Id,
+                            ManufacturerId = manufacturer?.Id,
+                            CountryId = country?.Id,
+                            ExpiryDate = expiryDate,
+                            IsLotEmpty = false
+                        });
+                    }
+                }
+
+                // Add ALL explosives to this depot
+                if (explosives.Any())
+                {
+                    foreach (var explosive in explosives)
+                    {
+                        // Generate expiry date: between 2 to 7 years from received date
+                        var receivedDate = inventory.RecievedDate;
+                        var expiryDate = receivedDate?.AddYears(random.Next(2, 8)).AddDays(random.Next(0, 365));
+
+                        // Randomly select supplier, manufacturer, and country if available
+                        var supplier = suppliers.Any() ? suppliers[random.Next(suppliers.Count)] : null;
+                        var manufacturer = manufacturers.Any() ? manufacturers[random.Next(manufacturers.Count)] : null;
+                        var country = countries.Any() ? countries[random.Next(countries.Count)] : null;
+
+                        inventory.InventoryDetails.Add(new InventoryDetail
+                        {
+                            ItemId = explosive.Id,
+                            Lot = ++lotSequence,
+                            ItemQuantity = random.Next(1000, 5000), // Realistic military stockpile
+                            SupplierId = supplier?.Id,
+                            ManufacturerId = manufacturer?.Id,
+                            CountryId = country?.Id,
+                            ExpiryDate = expiryDate,
+                            IsLotEmpty = false
+                        });
+                    }
+                }
+
+                inventories.Add(inventory);
             }
 
             await context.Inventories.AddRangeAsync(inventories);
@@ -655,31 +1280,85 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 return; // No departments to seed allowances for
             }
 
-            // Get all Ammunition items only
+            // Get all items (Ammunition, Weapons, Explosives)
             var ammunitions = await context.Ammunitions
                 .Where(a => !a.IsDeleted)
                 .ToListAsync();
 
-            if (!ammunitions.Any())
+            var weapons = await context.Weapons
+                .Where(w => !w.IsDeleted)
+                .ToListAsync();
+
+            var explosives = await context.Explosives
+                .Where(e => !e.IsDeleted)
+                .ToListAsync();
+
+            if (!ammunitions.Any() && !weapons.Any() && !explosives.Any())
             {
-                return; // No ammunition items to create allowances for
+                return; // No items to create allowances for
             }
 
             // Define different quantities for each ammunition item by ItemNo
             var ammunitionQuantities = new Dictionary<string, int>
             {
-                { "AMM-001", 150 }, // 9mm NATO Ball Ammunition - 150 units
-                { "AMM-002", 200 }, // 7.62mm NATO Match Ammunition - 200 units
-                { "AMM-003", 120 }  // 5.56mm NATO Tracer Round - 120 units
+                { "AMM-001", 15000 },  // 9mm NATO Ball Ammunition
+                { "AMM-002", 25000 },  // 5.56mm M855 Ball (Green Tip)
+                { "AMM-003", 12000 },  // 5.56mm M856 Tracer (Red Tip)
+                { "AMM-004", 20000 },  // 7.62mm M80 Ball
+                { "AMM-005", 15000 },  // 7.62mm M62 Tracer
+                { "AMM-006", 8000 },   // 7.62mm M118LR Sniper
+                { "AMM-007", 5000 },   // .50 BMG M33 Ball
+                { "AMM-008", 3000 },   // .50 BMG M2 AP
+                { "AMM-009", 10000 },  // .45 ACP Ball M1911
+                { "AMM-010", 7000 },   // 5.56mm Mk 262 Mod 1
+                { "AMM-011", 18000 },  // 7.62x39mm Ball (AK-47)
+                { "AMM-012", 6000 },   // 12 Gauge 00 Buckshot
+                { "AMM-013", 4000 },   // .338 Lapua Magnum
+                { "AMM-014", 1500 },   // 40mm M433 HEDP Grenade
+                { "AMM-015", 8000 }    // 5.7x28mm SS190 AP
+            };
+
+            // Define different quantities for each weapon item by ItemNo
+            var weaponQuantities = new Dictionary<string, int>
+            {
+                { "WPN-001", 500 },   // M16A4 Assault Rifle
+                { "WPN-002", 600 },   // M4 Carbine
+                { "WPN-003", 250 },   // M249 Squad Automatic Weapon
+                { "WPN-004", 200 },   // M240B Machine Gun
+                { "WPN-005", 800 },   // M9 Pistol
+                { "WPN-006", 300 },   // M24 Sniper Weapon System
+                { "WPN-007", 150 },   // M2 Browning Machine Gun
+                { "WPN-008", 400 },   // M203 Grenade Launcher
+                { "WPN-009", 250 },   // M110 Semi-Automatic Sniper System
+                { "WPN-010", 450 },   // Remington 870 Shotgun
+                { "WPN-011", 350 }    // MP5 Submachine Gun
+            };
+
+            // Define different quantities for each explosive item by ItemNo
+            var explosiveQuantities = new Dictionary<string, int>
+            {
+                { "EXP-001", 5000 },  // M67 Fragmentation Grenade
+                { "EXP-002", 4000 },  // M84 Stun Grenade
+                { "EXP-003", 4500 },  // M18 Smoke Grenade
+                { "EXP-004", 2000 },  // C4 Explosive
+                { "EXP-005", 2500 },  // M112 Demolition Charge
+                { "EXP-006", 3500 },  // M26A2 Fragmentation Grenade
+                { "EXP-007", 3000 },  // AN-M14 TH3 Incendiary Grenade
+                { "EXP-008", 1000 },  // M72 LAW Rocket
+                { "EXP-009", 1500 },  // M18A1 Claymore Mine
+                { "EXP-010", 8000 },  // M67 Training Grenade
+                { "EXP-011", 500 },   // M183 Demolition Charge Assembly
+                { "EXP-012", 10000 }  // M6 Electric Blasting Cap
             };
 
             var utcNow = DateTime.UtcNow;
             var currentYear = utcNow.Year;
             var allowanceItems = new List<AllowanceItem>();
 
-            // Create allowances for each department and each ammunition item
+            // Create allowances for each department and each item type
             foreach (var department in departments)
             {
+                // Ammunition allowances
                 foreach (var ammunition in ammunitions)
                 {
                     // Get quantity from dictionary, default to 100 if not found
@@ -690,6 +1369,44 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                     allowanceItems.Add(new AllowanceItem
                     {
                         ItemId = ammunition.Id,
+                        DepartmentId = department.Id,
+                        Year = currentYear,
+                        Quantity = quantity,
+                        CreationDate = utcNow,
+                        CreatedBy = "SYSTEM"
+                    });
+                }
+
+                // Weapon allowances
+                foreach (var weapon in weapons)
+                {
+                    // Get quantity from dictionary, default to 10 if not found
+                    var quantity = weaponQuantities.TryGetValue(weapon.ItemNo, out int qty) 
+                        ? qty 
+                        : 10;
+
+                    allowanceItems.Add(new AllowanceItem
+                    {
+                        ItemId = weapon.Id,
+                        DepartmentId = department.Id,
+                        Year = currentYear,
+                        Quantity = quantity,
+                        CreationDate = utcNow,
+                        CreatedBy = "SYSTEM"
+                    });
+                }
+
+                // Explosive allowances
+                foreach (var explosive in explosives)
+                {
+                    // Get quantity from dictionary, default to 50 if not found
+                    var quantity = explosiveQuantities.TryGetValue(explosive.ItemNo, out int qty) 
+                        ? qty 
+                        : 50;
+
+                    allowanceItems.Add(new AllowanceItem
+                    {
+                        ItemId = explosive.Id,
                         DepartmentId = department.Id,
                         Year = currentYear,
                         Quantity = quantity,

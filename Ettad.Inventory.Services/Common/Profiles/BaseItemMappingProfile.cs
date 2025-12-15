@@ -14,6 +14,11 @@ namespace Ettad.Inventory.Service.Common.Profiles
         {
             // BaseItem to BaseItemDto mapping (for polymorphic mapping from Ammunition, Explosive, Weapon, Accessory)
             CreateMap<BaseItem, BaseItemDto>();
+            
+            // Explicit mappings for derived types to ensure ItemType is correctly mapped
+            CreateMap<Ammunition, BaseItemDto>();
+            CreateMap<Weapon, BaseItemDto>();
+            CreateMap<Explosive, BaseItemDto>();
         }
     }
 }

@@ -26,7 +26,6 @@ namespace Ettad.User.API.Controllers
 
         [HttpGet("{id}")]
         [CheckAuthorize("Permissions.SystemUsers.View", "Permissions.SystemUsers.page")]
-
         public async Task<IActionResult> GetById(string id)
         {
             var response = await _userService.GetByIdAsync(id);
@@ -42,7 +41,6 @@ namespace Ettad.User.API.Controllers
 
         [HttpGet]
         [CheckAuthorize("Permissions.SystemUsers.View", "Permissions.SystemUsers.page")]
-
         public async Task<IActionResult> GetAll()
         {
             var response = await _userService.GetAllAsync();

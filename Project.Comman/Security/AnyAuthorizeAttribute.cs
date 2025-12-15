@@ -43,6 +43,13 @@ public class CheckAuthorizeAttribute : AuthorizeAttribute, IAuthorizationFilter
 
         var userPolicies = permissionService?.GetUserPermissions(userId).Result; // Assume it returns List<string>
 
+        // Check if user is a super admin - super admins bypass all permission checks
+        var isSuperAdmin = user.FindFirst("IsSuperAdmin")?.Value;
+        if (isSuperAdmin == "true")
+        {
+            return; // Super admin has access to everything
+        }
+
         if (userPolicies == null || !userPolicies.Intersect(RequiredPolicies).Any())
         {
             context.Result = new StatusCodeResult((int)System.Net.HttpStatusCode.Forbidden);

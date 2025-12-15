@@ -53,7 +53,10 @@ namespace Ettad.Inventory.Service.AllowanceItems
         {
             try
             {
-                var allowanceItem = await _allowanceItemRepository.FindOneAsync(x => x.Id == id);
+                var allowanceItem = await _allowanceItemRepository.FindOneAsync(
+                    x => x.Id == id,
+                    false,
+                    nameof(AllowanceItem.Item));
 
                 if (allowanceItem == null)
                     return APIOperationResponse<AllowanceItemDto>.Fail(ResponseType.NotFound, "Allowance item not found");
@@ -72,8 +75,11 @@ namespace Ettad.Inventory.Service.AllowanceItems
         {
             try
             {
-                // Only get non-deleted items
-                var allowanceItems = await _allowanceItemRepository.FindAsync(a => !a.IsDeleted);
+                // Only get non-deleted items, include Item navigation property for names
+                var allowanceItems = await _allowanceItemRepository.FindAsync(
+                    a => !a.IsDeleted,
+                    false,
+                    nameof(AllowanceItem.Item));
 
                 var dtos = _mapper.Map<List<AllowanceItemDto>>(allowanceItems);
                 
