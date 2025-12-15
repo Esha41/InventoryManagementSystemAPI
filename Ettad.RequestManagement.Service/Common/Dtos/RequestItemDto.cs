@@ -11,6 +11,7 @@
         #region Navigation Properties (Simplified)
         public string ItemName { get; set; }
         public string ItemNo { get; set; }
+        public string Nsn { get; set; }
         #endregion
     }
 }

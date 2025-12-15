@@ -1,5 +1,6 @@
 using Ettad.CrossCutting.Comman.FileUpload;
 using Ettad.Data.Enums;
+using Ettad.User.Services.DTO;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -70,5 +71,6 @@ namespace Ettad.Workflows.Service.DTO
         public bool IsPending { get; set; } // True if this step hasn't been completed yet
         public bool IsCurrentUserApprover { get; set; } // True if current user can approve this step
         public List<FileUploadDto> Files { get; set; } = new List<FileUploadDto>();
+        public List<WorkflowStepTransitionDto> Transitions { get; set; } = new List<WorkflowStepTransitionDto>();
     }
 }

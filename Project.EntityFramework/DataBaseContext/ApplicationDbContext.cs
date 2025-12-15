@@ -22,6 +22,7 @@ namespace Ettad.EntityFramework.DataBaseContext
         public DbSet<WorkflowStepApprovalLog> WorkflowStepApprovalLog { get; set; }
         public DbSet<WorkflowStep> WorkflowSteps { get; set; }
         public DbSet<WorkflowApprovalStep> WorkflowApprovalSteps { get; set; }
+        public DbSet<WorkflowStepTransition> WorkflowStepTransitions { get; set; }
         public DbSet<WorkflowStepNotifier> WorkflowStepNotifiers { get; set; }
         public DbSet<EmailConfiguration> EmailConfigurations { get; set; }
 

@@ -1,4 +1,6 @@
 ﻿using Ettad.Data.Enums;
+using Ettad.Module.lookup.Dtos;
+using Ettad.RequestManagement.Service.RequestPurposes.Dtos;
 
 namespace Ettad.RequestManagement.Service.Common.Dtos
 {
@@ -13,17 +15,12 @@ namespace Ettad.RequestManagement.Service.Common.Dtos
         public string? Notes { get; set; }
         public long DepartmentId { get; set; }
         public string? RequesterId { get; set; }
-        public string? RecieverId { get; set; }
-        public long? DepotId { get; set; }
         public long RequestPurposeId { get; set; }
 
-        #region Navigation Properties (Simplified - just names/what makes sense)
-        public string DepartmentName { get; set; }
-        public string? RequesterName { get; set; }
-        public string? RecieverName { get; set; }
-        public string? DepotName { get; set; }
-        public string RequestPurposeName { get; set; }
+        public DepartmentDto Department { get; set; }
+        public RequesterDto Requester { get; set; }
+        public RequestPurposeDto RequestPurpose { get; set; }
+
         public ICollection<RequestItemDto> RequestItems { get; set; }
-        #endregion
     }
 }
