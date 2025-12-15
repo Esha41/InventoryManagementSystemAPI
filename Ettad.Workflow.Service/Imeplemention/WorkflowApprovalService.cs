@@ -1242,11 +1242,18 @@ namespace Ettad.Workflows.Service.Imeplemention
                     RequesterId = br.RequesterId,
                     RequestPurposeId = br.RequestPurposeId,
                     DepartmentName = br.Department != null ? br.Department.NameEn : null,
+                    DepartmentNameAr = br.Department != null ? br.Department.NameAr : null,
+                    DepartmentNameEn = br.Department != null ? br.Department.NameEn : null,
                     RequesterName = br.Requester != null ? (br.Requester.FullNameEN ?? br.Requester.FullNameAR ?? br.Requester.UserName) : null,
+                    RequesterNameEn = br.Requester != null ? br.Requester.FullNameEN : null,
+                    RequesterNameAr = br.Requester != null ? br.Requester.FullNameAR : null,
                     RequesterUserName = br.Requester != null ? br.Requester.UserName : null,
-                    RequestPurposeName = br.RequestPurpose != null ? br.RequestPurpose.NameEn : null
+                    RequestPurposeName = br.RequestPurpose != null ? br.RequestPurpose.NameEn : null,
+                    RequestPurposeNameAr = br.RequestPurpose != null ? br.RequestPurpose.NameAr : null,
+                    RequestPurposeNameEn = br.RequestPurpose != null ? br.RequestPurpose.NameEn : null
                 })
                 .ToListAsync();
+
 
             // Get all approval history for these requests
             var approvalHistoryData = await (from log in _context.WorkflowStepApprovalLog
@@ -1255,6 +1262,12 @@ namespace Ettad.Workflows.Service.Imeplemention
                                             join wfs in _context.WorkflowSteps
                                                 on log.WorkflowStepId equals wfs.Id into wfsJoin
                                             from wfs in wfsJoin.DefaultIfEmpty()
+                                            join role in _context.Roles
+                                                on wfs.ApplicationRoleId equals role.Id into roleJoin
+                                            from role in roleJoin.DefaultIfEmpty()
+                                            join user in _context.Users
+                                                on log.ChangedBy equals user.UserName into userJoin
+                                            from user in userJoin.DefaultIfEmpty()
                                             where allowedRequestIds.Contains((long)was.TargetRequestId)
                                             select new
                                             {
@@ -1268,9 +1281,13 @@ namespace Ettad.Workflows.Service.Imeplemention
                                                     NewRequestStatus = log.NewRequestStatus,
                                                     Comments = log.Comments,
                                                     ChangedBy = log.ChangedBy,
+                                                    ApproverNameEn = user != null ? user.FullNameEN : null,
+                                                    ApproverNameAr = user != null ? user.FullNameAR : null,
                                                     ChangedAt = log.ChangedAt,
                                                     StepOrder = wfs != null ? wfs.StepOrder : (int?)null,
                                                     ApplicationRoleId = wfs != null ? wfs.ApplicationRoleId : null,
+                                                    ApplicationRoleName = role != null ? role.Name : null,
+                                                    ApplicationRoleNameAr = role != null ? role.NameAr : null,
                                                     RequireHigherApproval = wfs != null ? wfs.RequireHigherApproval : false,
                                                     HigherApprovalRoleId = wfs != null ? wfs.HigherApprovalRoleId : null,
                                                     Files = new List<FileUploadDto>() // Initialize Files list
@@ -1278,6 +1295,7 @@ namespace Ettad.Workflows.Service.Imeplemention
                                             })
                                             .OrderBy(h => h.History.ChangedAt)
                                             .ToListAsync();
+
 
             // Group approval history by request ID
             var historyByRequestId = approvalHistoryData
@@ -1314,9 +1332,11 @@ namespace Ettad.Workflows.Service.Imeplemention
                                              ApproverUserId = was.ApproverUserId,
                                              ApplicationRoleId = wfs.ApplicationRoleId,
                                              ApplicationRoleName = wfs.ApplicationRole != null ? wfs.ApplicationRole.Name : null,
+                                             ApplicationRoleNameAr = wfs.ApplicationRole != null ? wfs.ApplicationRole.NameAr : null,
                                              RequireHigherApproval = wfs.RequireHigherApproval,
                                              HigherApprovalRoleId = wfs.HigherApprovalRoleId,
-                                             HigherApprovalRoleName = wfs.HigherApprovalRole != null ? wfs.HigherApprovalRole.Name : null
+                                             HigherApprovalRoleName = wfs.HigherApprovalRole != null ? wfs.HigherApprovalRole.Name : null,
+                                             HigherApprovalRoleNameAr = wfs.HigherApprovalRole != null ? wfs.HigherApprovalRole.NameAr : null
                                          })
                                          .ToListAsync();
 
@@ -1497,6 +1517,10 @@ namespace Ettad.Workflows.Service.Imeplemention
                                     ? nextPendingStep.HigherApprovalRoleName
                                     : nextPendingStep.ApplicationRoleName;
                                 
+                                string roleNameArToUse = isHigherApprovalStep && !string.IsNullOrEmpty(nextPendingStep.HigherApprovalRoleNameAr)
+                                    ? nextPendingStep.HigherApprovalRoleNameAr
+                                    : nextPendingStep.ApplicationRoleNameAr;
+                                
                                 // Calculate IsCurrentUserApprover
                                 bool isCurrentUserApprover = false;
                                 
@@ -1551,6 +1575,7 @@ namespace Ettad.Workflows.Service.Imeplemention
                                     StepOrder = nextPendingStep.StepOrder,
                                     ApplicationRoleId = isHigherApprovalStep ? nextPendingStep.HigherApprovalRoleId : nextPendingStep.ApplicationRoleId,
                                     ApplicationRoleName = roleNameToUse,
+                                    ApplicationRoleNameAr = roleNameArToUse,
                                     RequireHigherApproval = nextPendingStep.RequireHigherApproval,
                                     HigherApprovalRoleId = nextPendingStep.HigherApprovalRoleId,
                                     IsPending = true,
@@ -1719,9 +1744,15 @@ namespace Ettad.Workflows.Service.Imeplemention
                     RequesterId = br.RequesterId,
                     RequestPurposeId = br.RequestPurposeId,
                     DepartmentName = br.Department != null ? br.Department.NameEn : null,
+                    DepartmentNameAr = br.Department != null ? br.Department.NameAr : null,
+                    DepartmentNameEn = br.Department != null ? br.Department.NameEn : null,
                     RequesterName = br.Requester != null ? (br.Requester.FullNameEN ?? br.Requester.FullNameAR ?? br.Requester.UserName) : null,
+                    RequesterNameEn = br.Requester != null ? br.Requester.FullNameEN : null,
+                    RequesterNameAr = br.Requester != null ? br.Requester.FullNameAR : null,
                     RequesterUserName = br.Requester != null ? br.Requester.UserName : null,
-                    RequestPurposeName = br.RequestPurpose != null ? br.RequestPurpose.NameEn : null
+                    RequestPurposeName = br.RequestPurpose != null ? br.RequestPurpose.NameEn : null,
+                    RequestPurposeNameAr = br.RequestPurpose != null ? br.RequestPurpose.NameAr : null,
+                    RequestPurposeNameEn = br.RequestPurpose != null ? br.RequestPurpose.NameEn : null
                 })
                 .FirstOrDefaultAsync();
 
@@ -1735,6 +1766,12 @@ namespace Ettad.Workflows.Service.Imeplemention
                                             join wfs in _context.WorkflowSteps
                                                 on log.WorkflowStepId equals wfs.Id into wfsJoin
                                             from wfs in wfsJoin.DefaultIfEmpty()
+                                            join role in _context.Roles
+                                                on wfs.ApplicationRoleId equals role.Id into roleJoin
+                                            from role in roleJoin.DefaultIfEmpty()
+                                            join user in _context.Users
+                                                on log.ChangedBy equals user.UserName into userJoin
+                                            from user in userJoin.DefaultIfEmpty()
                                             where (long)was.TargetRequestId == requestId
                                             select new
                                             {
@@ -1749,9 +1786,13 @@ namespace Ettad.Workflows.Service.Imeplemention
                                                     NewRequestStatus = log.NewRequestStatus,
                                                     Comments = log.Comments,
                                                     ChangedBy = log.ChangedBy,
+                                                    ApproverNameEn = user != null ? user.FullNameEN : null,
+                                                    ApproverNameAr = user != null ? user.FullNameAR : null,
                                                     ChangedAt = log.ChangedAt,
                                                     StepOrder = wfs != null ? wfs.StepOrder : (int?)null,
                                                     ApplicationRoleId = wfs != null ? wfs.ApplicationRoleId : null,
+                                                    ApplicationRoleName = role != null ? role.Name : null,
+                                                    ApplicationRoleNameAr = role != null ? role.NameAr : null,
                                                     RequireHigherApproval = wfs != null ? wfs.RequireHigherApproval : false,
                                                     HigherApprovalRoleId = wfs != null ? wfs.HigherApprovalRoleId : null,
                                                     Files = new List<FileUploadDto>() // Initialize Files list
@@ -1780,9 +1821,11 @@ namespace Ettad.Workflows.Service.Imeplemention
                                              ApproverUserId = was.ApproverUserId,
                                              ApplicationRoleId = wfs.ApplicationRoleId,
                                              ApplicationRoleName = wfs.ApplicationRole != null ? wfs.ApplicationRole.Name : null,
+                                             ApplicationRoleNameAr = wfs.ApplicationRole != null ? wfs.ApplicationRole.NameAr : null,
                                              RequireHigherApproval = wfs.RequireHigherApproval,
                                              HigherApprovalRoleId = wfs.HigherApprovalRoleId,
-                                             HigherApprovalRoleName = wfs.HigherApprovalRole != null ? wfs.HigherApprovalRole.Name : null
+                                             HigherApprovalRoleName = wfs.HigherApprovalRole != null ? wfs.HigherApprovalRole.Name : null,
+                                             HigherApprovalRoleNameAr = wfs.HigherApprovalRole != null ? wfs.HigherApprovalRole.NameAr : null
                                          })
                                          .ToListAsync();
 
@@ -2025,6 +2068,10 @@ namespace Ettad.Workflows.Service.Imeplemention
                                 ? nextPendingStep.HigherApprovalRoleName
                                 : nextPendingStep.ApplicationRoleName;
                             
+                            string roleNameArToUse = isHigherApprovalStep && !string.IsNullOrEmpty(nextPendingStep.HigherApprovalRoleNameAr)
+                                ? nextPendingStep.HigherApprovalRoleNameAr
+                                : nextPendingStep.ApplicationRoleNameAr;
+                            
                             // Calculate IsCurrentUserApprover
                             bool isCurrentUserApprover = false;
                             
@@ -2079,6 +2126,7 @@ namespace Ettad.Workflows.Service.Imeplemention
                                 StepOrder = nextPendingStep.StepOrder,
                                 ApplicationRoleId = isHigherApprovalStep ? nextPendingStep.HigherApprovalRoleId : nextPendingStep.ApplicationRoleId,
                                 ApplicationRoleName = roleNameToUse,
+                                ApplicationRoleNameAr = roleNameArToUse,
                                 RequireHigherApproval = nextPendingStep.RequireHigherApproval,
                                 HigherApprovalRoleId = nextPendingStep.HigherApprovalRoleId,
                                 IsPending = true,

@@ -152,6 +152,12 @@ try
         options.Password.RequiredLength = 5;
     }).AddDefaultTokenProviders()
     .AddEntityFrameworkStores<ApplicationDbContext>();
+
+    // Configure password reset token to expire in 15 minutes
+    builder.Services.Configure<DataProtectionTokenProviderOptions>(options =>
+    {
+        options.TokenLifespan = TimeSpan.FromMinutes(15);
+    });
     #endregion
     builder.Services.AddAuthentication(option =>
     {

@@ -343,7 +343,18 @@ namespace Ettad.User.Services.Implementation
             if (user == null)
             {
                 _logger.LogWarning("Password reset failed: User not found. Email: {Email}", request.Email);
-                return APIOperationResponse<string>.Fail(ResponseType.NotFound, "User not found");
+                // Don't reveal if user exists - security best practice
+                return APIOperationResponse<string>.Success("If an account exists with this email, a password reset link has been sent.");
+            }
+
+            // Prevent LDAP users from resetting password (managed externally)
+            if (user.IsLdapUser)
+            {
+                _logger.LogWarning("Password reset denied: LDAP user attempted reset. Email: {Email}, UserId: {UserId}", 
+                    request.Email, user.Id);
+                return APIOperationResponse<string>.Fail(
+                    ResponseType.BadRequest, 
+                    "LDAP users cannot reset their password through this system. Please contact your system administrator.");
             }
 
             var token = await _userRepository.GeneratePasswordResetTokenAsync(user);
@@ -351,10 +362,9 @@ namespace Ettad.User.Services.Implementation
             _logger.LogInformation("Password reset token generated. Email: {Email}, UserId: {UserId}", 
                 request.Email, user.Id);
 
-            // ?? Normally, you would send this token via Email/SMS using IEmailService
-            // For now, just return it (not safe for production!)
+            // Send reset email
             var baseUrl = "http://localhost:4200/";
-            var resetUrl = $"{baseUrl}resetPassword?email={System.Net.WebUtility.UrlEncode(request.Email)}&token={System.Net.WebUtility.UrlEncode(token)}";
+            var resetUrl = $"{baseUrl}auth/reset-password?email={System.Net.WebUtility.UrlEncode(request.Email)}&token={System.Net.WebUtility.UrlEncode(token)}";
 
             string emailBody = $@"
             <html>
@@ -368,6 +378,7 @@ namespace Ettad.User.Services.Implementation
                     </button>
                 </a>
                 <p>If you did not request a password reset, please ignore this email.</p>
+                <p>This link will expire in 15 minutes.</p>
             </body>
             </html>";
 
@@ -381,9 +392,12 @@ namespace Ettad.User.Services.Implementation
             {
                 _logger.LogError(ex, "Failed to send password reset email. Email: {Email}, UserId: {UserId}", 
                     request.Email, user.Id);
+                return APIOperationResponse<string>.Fail(
+                    ResponseType.InternalServerError, 
+                    "Failed to send password reset email. Please try again later.");
             }
             
-            return APIOperationResponse<string>.Success(token);
+            return APIOperationResponse<string>.Success("If an account exists with this email, a password reset link has been sent.");
         }
 
         public async Task<APIOperationResponse<string>> ResetPasswordAsync(ResetPasswordDto request)
@@ -395,13 +409,23 @@ namespace Ettad.User.Services.Implementation
             if (user == null)
             {
                 _logger.LogWarning("Password reset failed: User not found. Email: {Email}", request.Email);
-                return APIOperationResponse<string>.Fail(ResponseType.NotFound, "User not found");
+                return APIOperationResponse<string>.Fail(ResponseType.BadRequest, "Invalid password reset request.");
+            }
+
+            // Prevent LDAP users from resetting password
+            if (user.IsLdapUser)
+            {
+                _logger.LogWarning("Password reset denied: LDAP user attempted reset. Email: {Email}, UserId: {UserId}", 
+                    request.Email, user.Id);
+                return APIOperationResponse<string>.Fail(
+                    ResponseType.BadRequest, 
+                    "LDAP users cannot reset their password through this system. Please contact your system administrator.");
             }
 
             var result = await _userRepository.ResetPasswordAsync(user, request.Token, request.NewPassword);
             if (!result.Succeeded)
             {
-                var errors = string.Join(",", result.Errors.Select(e => e.Description));
+                var errors = string.Join(", ", result.Errors.Select(e => e.Description));
                 _logger.LogWarning("Password reset failed: Validation errors. Email: {Email}, UserId: {UserId}, Errors: {Errors}", 
                     request.Email, user.Id, errors);
                 return APIOperationResponse<string>.Fail(ResponseType.BadRequest, errors);

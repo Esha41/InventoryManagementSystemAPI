@@ -29,10 +29,13 @@ namespace Ettad.Workflows.Service.DTO
         public string? DepartmentNameAr { get; set; }
         public string? DepartmentNameEn { get; set; }
         public string? RequesterName { get; set; }
+        public string? RequesterNameEn { get; set; }
+        public string? RequesterNameAr { get; set; }
         public string? RequesterUserName { get; set; }
         public string? RequestPurposeName { get; set; }
         public string? RequestPurposeNameAr { get; set; }
         public string? RequestPurposeNameEn { get; set; }
+
 
         // Lists
         public List<object> RequestItems { get; set; } = new List<object>();
@@ -62,10 +65,13 @@ namespace Ettad.Workflows.Service.DTO
         public RequestStatus NewRequestStatus { get; set; }
         public string? Comments { get; set; }
         public string? ChangedBy { get; set; }
+        public string? ApproverNameEn { get; set; }
+        public string? ApproverNameAr { get; set; }
         public DateTime ChangedAt { get; set; }
         public int? StepOrder { get; set; }
         public string? ApplicationRoleId { get; set; }
         public string? ApplicationRoleName { get; set; }
+        public string? ApplicationRoleNameAr { get; set; }
         public bool RequireHigherApproval { get; set; }
         public string? HigherApprovalRoleId { get; set; }
         public bool IsPending { get; set; } // True if this step hasn't been completed yet
