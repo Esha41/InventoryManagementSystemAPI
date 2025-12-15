@@ -5,7 +5,10 @@ using Microsoft.Extensions.Logging;
 using Ettad.Workflows.Service.DTO;
 using Ettad.EntityFramework.DataBaseContext;
 using Ettad.ResponseHandler.Models;
+using Ettad.User.Services.DTO;
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -43,7 +46,15 @@ namespace Ettad.Workflows.Service.Queries.GetWorkflowById
             {
                 var workflow = await _context.Workflows
                     .Include(w => w.WorkflowSteps)
-                        .ThenInclude(ws => ws.Transitions)
+                        .ThenInclude(step => step.Transitions)
+                            .ThenInclude(t => t.TargetWorkflowStep)
+                                .ThenInclude(target => target.ApplicationRole)
+                    .Include(w => w.WorkflowSteps)
+                        .ThenInclude(step => step.Transitions)
+                            .ThenInclude(t => t.TargetWorkflowStep)
+                                .ThenInclude(target => target.HigherApprovalRole)
+                    .Include(w => w.WorkflowSteps)
+                        .ThenInclude(step => step.ApplicationRole)
                     .FirstOrDefaultAsync(x => x.Id == request.Id && !x.IsDeleted, cancellationToken);
 
                 if (workflow == null)
@@ -51,7 +62,66 @@ namespace Ettad.Workflows.Service.Queries.GetWorkflowById
                     return APIOperationResponse<WorkflowDto>.NotFound($"Workflow with ID {request.Id} not found.");
                 }
 
-                var workflowDto = _mapper.Map<WorkflowDto>(workflow);
+                var workflowDto = new WorkflowDto
+                {
+                    Id = workflow.Id,
+                    WorkflowName = workflow.WorkflowName,
+                    WorkflowType = workflow.WorkflowType,
+                    IsActive = workflow.IsActive,
+                    IsDeleted = workflow.IsDeleted,
+                    WorkflowSteps = workflow.WorkflowSteps.Select(step => new WorkflowStepDto
+                    {
+                        Id = step.Id,
+                        WorkflowId = step.WorkflowId,
+                        StepOrder = step.StepOrder,
+                        ApplicationRoleId = step.ApplicationRoleId,
+                        ApplicationRoleName = step.ApplicationRole?.Name,
+                        ApplicationEntityId = step.ApplicationEntityId,
+                        MustApprove = step.MustApprove,
+                        RequireHigherApproval = step.RequireHigherApproval,
+                        HigherApprovalRoleId = step.HigherApprovalRoleId,
+                        HigherApplicationEntityId = step.HigherApplicationEntityId,
+                        ReserveQty = step.ReserveQty,
+                        CanSkip = step.CanSkip,
+                        Transitions = step.Transitions.Select(t => new WorkflowStepTransitionDto
+                        {
+                            Id = t.Id,
+                            SourceWorkflowStepId = t.SourceWorkflowStepId,
+                            TargetWorkflowStepId = t.TargetWorkflowStepId,
+                            TargetStep = t.TargetWorkflowStep != null ? new TargetStepDetailsDto
+                            {
+                                Id = t.TargetWorkflowStep.Id,
+                                WorkflowId = t.TargetWorkflowStep.WorkflowId,
+                                StepOrder = t.TargetWorkflowStep.StepOrder,
+                                ApplicationRole = t.TargetWorkflowStep.ApplicationRole != null ? new RoleDto
+                                {
+                                    Id = t.TargetWorkflowStep.ApplicationRole.Id,
+                                    Name = t.TargetWorkflowStep.ApplicationRole.Name,
+                                    NameAr = t.TargetWorkflowStep.ApplicationRole.NameAr,
+                                    IsDefaultRole = t.TargetWorkflowStep.ApplicationRole.IsDefaultRole ?? false,
+                                    IsSuperAdmin = t.TargetWorkflowStep.ApplicationRole.IsSuperAdmin,
+                                    ApplicationEntityIds = new List<long>()
+                                } : null,
+                                ApplicationEntityId = t.TargetWorkflowStep.ApplicationEntityId,
+                                RequireHigherApproval = t.TargetWorkflowStep.RequireHigherApproval,
+                                HigherApprovalRole = t.TargetWorkflowStep.HigherApprovalRole != null ? new RoleDto
+                                {
+                                    Id = t.TargetWorkflowStep.HigherApprovalRole.Id,
+                                    Name = t.TargetWorkflowStep.HigherApprovalRole.Name,
+                                    NameAr = t.TargetWorkflowStep.HigherApprovalRole.NameAr,
+                                    IsDefaultRole = t.TargetWorkflowStep.HigherApprovalRole.IsDefaultRole ?? false,
+                                    IsSuperAdmin = t.TargetWorkflowStep.HigherApprovalRole.IsSuperAdmin,
+                                    ApplicationEntityIds = new List<long>()
+                                } : null,
+                                HigherApplicationEntityId = t.TargetWorkflowStep.HigherApplicationEntityId,
+                                MustApprove = t.TargetWorkflowStep.MustApprove,
+                                ReserveQty = t.TargetWorkflowStep.ReserveQty,
+                                CanSkip = t.TargetWorkflowStep.CanSkip
+                            } : null
+                        }).ToList()
+                    }).ToList()
+                };
+
                 return APIOperationResponse<WorkflowDto>.Success(workflowDto);
             }
             catch (Exception e)
