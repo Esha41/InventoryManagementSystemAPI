@@ -1,4 +1,5 @@
 using Ettad.ResponseHandler.Models;
+using Ettad.Services.DataTransferObject.AuthenticationDto;
 using Ettad.User.Services.DTO;
 using System;
 using System.Collections.Generic;
@@ -22,5 +23,6 @@ namespace Ettad.User.Services.Interfaces
         Task<APIOperationResponse<List<UserDto>>> GetByRoleIdsAsync(IEnumerable<string> roleIds);
         Task<APIOperationResponse<List<UserDto>>> GetSuperAdminsAsync();
         Task<APIOperationResponse<UserDto>> GetCurrentUserAsync();
+        Task<APIOperationResponse<bool>> ChangePasswordAsync(ChangePasswordDto dto);
     }
 }
