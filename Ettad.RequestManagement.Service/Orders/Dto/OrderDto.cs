@@ -1,23 +1,10 @@
 ﻿using Ettad.Data.Enums;
+using Ettad.RequestManagement.Service.Common.Dtos;
 
 namespace Ettad.RequestManagement.Service.Orders.Dto
 {
-    public class OrderDto
+    public class OrderDto : BaseRequestDto
     {
-        public long Id { get; set; }
-
-        #region BaseRequest Properties
-        public string RequestNo { get; set; }
-        public RequestType RequestType { get; set; }
-        public string Reason { get; set; }
-        public RequestPriority Priority { get; set; }
-        public RequestStatus Status { get; set; }
-        public string Notes { get; set; }
-        public long DepartmentId { get; set; }
-        public string? RequesterId { get; set; }
-        public long RequestPurposeId { get; set; }
-        #endregion
-
         #region Order-Specific Properties
         public bool IsFromAllowance { get; set; }
         public DateTime UsageDateFrom { get; set; }
@@ -31,13 +18,15 @@ namespace Ettad.RequestManagement.Service.Orders.Dto
         public int? NumberOfOtherRank { get; set; }
         #endregion
 
-        #region Navigation Names
+        #region Navigation Names (Order-Specific - Flattened for convenience)
         public string DepartmentNameAr { get; set; }
         public string DepartmentNameEn { get; set; }
         public string RequesterName { get; set; }
         public string RequestPurposeNameAr { get; set; }
         public string RequestPurposeNameEn { get; set; }
-        public ICollection<OrderRequestItemDto> RequestItems { get; set; }
+        
+        // Override to use Order-specific item DTO with ItemType
+        public new ICollection<OrderRequestItemDto> RequestItems { get; set; }
         #endregion
     }
 }

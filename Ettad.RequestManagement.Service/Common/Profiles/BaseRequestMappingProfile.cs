@@ -17,7 +17,8 @@ namespace Ettad.RequestManagement.Service.Common.Profiles
             CreateMap<RequestItem, RequestItemDto>()
                 .ForMember(dest => dest.ItemName, opt => opt.MapFrom(src => src.Item != null ? src.Item.Name : null))
                 .ForMember(dest => dest.ItemNo, opt => opt.MapFrom(src => src.Item != null ? src.Item.ItemNo : null))
-                .ForMember(dest => dest.Nsn, opt => opt.MapFrom(src => src.Item != null ? src.Item.Nsn : null));
+                .ForMember(dest => dest.Nsn, opt => opt.MapFrom(src => src.Item != null ? src.Item.Nsn : null))
+                .ForMember(dest => dest.ItemType, opt => opt.MapFrom(src => src.Item != null ? src.Item.ItemType : default));
 
             // Map ApplicationUser to RequesterDto
             CreateMap<ApplicationUser, RequesterDto>();
