@@ -21,6 +21,7 @@ using Ettad.Workflow.Service;
 using Ettad.Workflows.Service.Imeplemention;
 using Ettad.Workflows.Service.Interface;
 using Ettad.Inventory.Service.Monitoring;
+using Ettad.Services;
 using Hangfire;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
@@ -107,7 +108,7 @@ try
     builder.Services.AddScoped<IWorkflowApprovalService, WorkflowApprovalService>();
     builder.Services.AddScoped<IFileStorageService, FileStorageService>();
     builder.Services.AddScoped<IFileUploadService, Ettad.Modules.FileUpload.API.Services.FileUploadService>();
-
+    builder.Services.AddScoped<IExcelExportService, ExcelExportService>();
     // Configure Hangfire for background jobs
     var hangfireConnectionString = builder.Configuration.GetConnectionString("DefaultConnection");
     builder.Services.AddHangfire(config => config
