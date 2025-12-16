@@ -22,5 +22,8 @@ namespace Ettad.RequestManagement.Service.Common.Dtos
         public RequestPurposeDto RequestPurpose { get; set; }
 
         public ICollection<RequestItemDto> RequestItems { get; set; }
+        
+        // Audit fields
+        public DateTime CreationDate { get; set; }
     }
 }

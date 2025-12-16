@@ -1,5 +1,6 @@
 using AutoMapper;
 using Ettad.Data.Entities;
+using Ettad.RequestManagement.Service.Common.Dtos;
 using Ettad.RequestManagement.Service.Orders.Dto;
 
 namespace Ettad.RequestManagement.Service.Orders.Profile
@@ -13,15 +14,17 @@ namespace Ettad.RequestManagement.Service.Orders.Profile
                 .ForMember(dest => dest.RequestNo, opt => opt.MapFrom(src => src.RequestNo))
                 .ForMember(dest => dest.DepartmentNameAr, opt => opt.MapFrom(src => src.Department != null ? src.Department.NameAr : null))
                 .ForMember(dest => dest.DepartmentNameEn, opt => opt.MapFrom(src => src.Department != null ? src.Department.NameEn : null))
+                .ForMember(dest => dest.RequesterName, opt => opt.MapFrom(src => src.Requester != null ? (src.Requester.FullNameEN ?? src.Requester.FullNameAR ?? src.Requester.UserName) : null))
                 .ForMember(dest => dest.RequestPurposeNameAr, opt => opt.MapFrom(src => src.RequestPurpose != null ? src.RequestPurpose.NameAr : null))
                 .ForMember(dest => dest.RequestPurposeNameEn, opt => opt.MapFrom(src => src.RequestPurpose != null ? src.RequestPurpose.NameEn : null))
                 .ForMember(dest => dest.RequestItems, opt => opt.MapFrom(src => src.RequestItems != null ? src.RequestItems.Where(ri => !ri.IsDeleted) : null));
 
+
             // RequestItem to OrderRequestItemDto
+            // Inherits all mappings from RequestItem -> RequestItemDto (including ItemType)
             CreateMap<RequestItem, OrderRequestItemDto>()
-                .ForMember(dest => dest.ItemName, opt => opt.MapFrom(src => src.Item != null ? src.Item.Name : null))
-                .ForMember(dest => dest.ItemNo, opt => opt.MapFrom(src => src.Item != null ? src.Item.ItemNo : null))
-                .ForMember(dest => dest.ItemType, opt => opt.MapFrom(src => src.Item != null ? src.Item.ItemType : default));
+                .IncludeBase<RequestItem, RequestItemDto>();
+
 
             // CreateUpdateRequestItemDto to RequestItem
             CreateMap<CreateUpdateRequestItemDto, RequestItem>()

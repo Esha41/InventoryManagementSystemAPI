@@ -1,4 +1,6 @@
-﻿namespace Ettad.RequestManagement.Service.Common.Dtos
+﻿using Ettad.Data.Enums;
+
+namespace Ettad.RequestManagement.Service.Common.Dtos
 {
     public class RequestItemDto
     {
@@ -12,6 +14,7 @@
         public string ItemName { get; set; }
         public string ItemNo { get; set; }
         public string Nsn { get; set; }
+        public ItemType ItemType { get; set; }
         #endregion
     }
 }
