@@ -14,6 +14,11 @@ namespace Ettad.RequestManagement.Service.Returns.Profiles
             CreateMap<Return, ReturnDto>()
                 .IncludeBase<BaseRequest, BaseRequestDto>();
 
+            // Return to BaseRequestDto - for unified API
+            CreateMap<Return, BaseRequestDto>()
+                .IncludeBase<BaseRequest, BaseRequestDto>();
+
+
             // Create DTO to Entity
             CreateMap<CreateReturnDto, Return>()
                 .ForMember(dest => dest.Id, opt => opt.Ignore())
