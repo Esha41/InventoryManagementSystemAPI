@@ -137,6 +137,10 @@ namespace Ettad.RequestManagement.Service.Implementation
             var userRoles = _currentUserService.Roles ?? new List<string>();
             var userDepartmentId = _currentUserService.DepartmentId;
 
+            // if current user is super admin return all
+            if (_currentUserService.IsSuperAdmin)
+                return await GetAllRequestsAsync(status, requestType);
+
             var query = _context.BaseRequests.AsQueryable();
 
             if (status.HasValue)
