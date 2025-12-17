@@ -82,7 +82,8 @@ namespace Ettad.User.Services.Implementation
                 .Select(r => new RoleDto
                 {
                     Id = r.Id,
-                    Name = r.Name
+                    Name = r.Name,
+                    NameAr = r.NameAr
                 })
                 .ToListAsync();
 
@@ -100,6 +101,7 @@ namespace Ettad.User.Services.Implementation
                 {
                     Id = role.Id,
                     Name = role.Name,
+                    NameAr = role.NameAr,
                     IsDefaultRole = (bool)role.IsDefaultRole
                 });
 

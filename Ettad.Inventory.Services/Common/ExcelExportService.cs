@@ -21,8 +21,7 @@ namespace Ettad.Services
     {
         public ExcelExportService()
         {
-            // EPPlus 8.x: License is set via environment variable or app settings
-            // No code needed here - configure in appsettings.json or environment
+        
         }
 
         public byte[] ExportToExcel<T>(
