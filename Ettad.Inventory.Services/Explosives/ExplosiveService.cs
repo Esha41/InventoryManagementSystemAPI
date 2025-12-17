@@ -11,6 +11,7 @@ using Ettad.ResponseHandler.Models;
 using Ettad.Application.Common.Interfaces;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
+using Ettad.Inventory.Services.Common;
 
 namespace Ettad.Inventory.Service.Explosives
 {
@@ -22,6 +23,7 @@ namespace Ettad.Inventory.Service.Explosives
         private readonly ICurrentUserService _currentUserService;
         private readonly ILogger<ExplosiveService> _logger;
         private readonly IFileUploadService _fileUploadService;
+        private readonly IExcelImportService _excelImportService;
 
         public ExplosiveService(
             ICrossCuttingRepository<Explosive> explosiveRepository,
@@ -29,7 +31,8 @@ namespace Ettad.Inventory.Service.Explosives
             IValidator<CreateUpdateExplosiveDto> validator,
             ICurrentUserService currentUserService,
             ILogger<ExplosiveService> logger,
-            IFileUploadService fileUploadService)
+            IFileUploadService fileUploadService,
+            IExcelImportService excelImportService)
         {
             _explosiveRepository = explosiveRepository;
             _mapper = mapper;
@@ -37,6 +40,7 @@ namespace Ettad.Inventory.Service.Explosives
             _currentUserService = currentUserService;
             _logger = logger;
             _fileUploadService = fileUploadService;
+            _excelImportService = excelImportService;
         }
 
         public async Task<APIOperationResponse<ExplosiveDto>> GetByIdAsync(long id)
@@ -190,7 +194,13 @@ namespace Ettad.Inventory.Service.Explosives
                 _logger.LogError(ex, "Error creating explosive. Name: {Name}, User: {UserId}", 
                     inputDto?.Name, _currentUserService.UserId);
              
-                return APIOperationResponse<long>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
+                var msg = ex.Message;
+                if (ex.InnerException != null)
+                {
+                    msg += $" (Inner: {ex.InnerException.Message})";
+                }
+             
+                return APIOperationResponse<long>.Fail(ResponseType.InternalServerError, $"An error occurred: {msg}");
             }
         }
 
@@ -265,6 +275,65 @@ namespace Ettad.Inventory.Service.Explosives
                     id, _currentUserService.UserId);
                 return APIOperationResponse<bool>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
             }
+        }
+
+        public async Task<APIOperationResponse<ImportResult<CreateUpdateExplosiveDto>>> ImportAsync(IFormFile file)
+        {
+            try
+            {
+                var mappings = GetColumnMappings();
+                var importResult = await _excelImportService.ImportFromExcelAsync<CreateUpdateExplosiveDto>(file, mappings);
+
+                if (importResult.SuccessCount > 0)
+                {
+                    foreach (var dto in importResult.SuccessfulRecords)
+                    {
+                        var validationResult = await _validator.ValidateAsync(dto);
+                        if (!validationResult.IsValid)
+                        {
+                            importResult.Errors.Add(new ImportError
+                            {
+                                ErrorMessage = $"Validation failed: {string.Join(", ", validationResult.Errors.Select(e => e.ErrorMessage))}",
+                                ColumnName = "N/A"
+                            });
+                            continue;
+                        }
+
+                        var createResult = await CreateAsync(dto);
+                        if (!createResult.Succeeded)
+                        {
+                            importResult.Errors.Add(new ImportError
+                            {
+                                ErrorMessage = $"Creation failed: {createResult.Message}",
+                                ColumnName = "N/A"
+                            });
+                        }
+                    }
+                }
+
+                return APIOperationResponse<ImportResult<CreateUpdateExplosiveDto>>.Success(importResult, "Import processed");
+            }
+            catch (Exception ex)
+            {
+                return APIOperationResponse<ImportResult<CreateUpdateExplosiveDto>>.Fail(ResponseType.InternalServerError, ex.Message);
+            }
+        }
+
+        private Dictionary<string, string> GetColumnMappings()
+        {
+            return new Dictionary<string, string>
+            {
+                { "Name", nameof(CreateUpdateExplosiveDto.Name) },
+                { "Item No", nameof(CreateUpdateExplosiveDto.ItemNo) },
+                { "Part No", nameof(CreateUpdateExplosiveDto.PartNo) },
+                { "Price", nameof(CreateUpdateExplosiveDto.Price) },
+                { "Minimum Quantity", nameof(CreateUpdateExplosiveDto.MinimumQuantity) },
+                { "NSN", nameof(CreateUpdateExplosiveDto.Nsn) },
+                { "Explosive Type", nameof(CreateUpdateExplosiveDto.ExplosiveType) },
+                { "UN Number", nameof(CreateUpdateExplosiveDto.UNNumber) },
+                { "Net Explosive Quantity", nameof(CreateUpdateExplosiveDto.NetExplosiveQuantity) },
+                { "Total Weight", nameof(CreateUpdateExplosiveDto.TotalWeight) }
+            };
         }
     }
 }

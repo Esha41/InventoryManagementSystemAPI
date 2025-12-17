@@ -11,6 +11,7 @@ using Ettad.ResponseHandler.Models;
 using Ettad.Application.Common.Interfaces;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
+using Ettad.Inventory.Services.Common;
 
 namespace Ettad.Inventory.Service.Weapons
 {
@@ -22,6 +23,7 @@ namespace Ettad.Inventory.Service.Weapons
         private readonly ICurrentUserService _currentUserService;
         private readonly ILogger<WeaponService> _logger;
         private readonly IFileUploadService _fileUploadService;
+        private readonly IExcelImportService _excelImportService;
 
         public WeaponService(
             ICrossCuttingRepository<Weapon> weaponRepository,
@@ -29,7 +31,8 @@ namespace Ettad.Inventory.Service.Weapons
             IValidator<CreateUpdateWeaponDto> validator,
             ICurrentUserService currentUserService,
             ILogger<WeaponService> logger,
-            IFileUploadService fileUploadService)
+            IFileUploadService fileUploadService,
+            IExcelImportService excelImportService)
         {
             _weaponRepository = weaponRepository;
             _mapper = mapper;
@@ -37,6 +40,7 @@ namespace Ettad.Inventory.Service.Weapons
             _currentUserService = currentUserService;
             _logger = logger;
             _fileUploadService = fileUploadService;
+            _excelImportService = excelImportService;
         }
 
         public async Task<APIOperationResponse<WeaponDto>> GetByIdAsync(long id)
@@ -187,7 +191,13 @@ namespace Ettad.Inventory.Service.Weapons
                 _logger.LogError(ex, "Error creating weapon. Name: {Name}, User: {UserId}", 
                     inputDto?.Name, _currentUserService.UserId);
              
-                return APIOperationResponse<long>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
+                var msg = ex.Message;
+                if (ex.InnerException != null)
+                {
+                    msg += $" (Inner: {ex.InnerException.Message})";
+                }
+             
+                return APIOperationResponse<long>.Fail(ResponseType.InternalServerError, $"An error occurred: {msg}");
             }
         }
 
@@ -262,6 +272,68 @@ namespace Ettad.Inventory.Service.Weapons
                     id, _currentUserService.UserId);
                 return APIOperationResponse<bool>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
             }
+        }
+
+        public async Task<APIOperationResponse<ImportResult<CreateUpdateWeaponDto>>> ImportAsync(IFormFile file)
+        {
+            try
+            {
+                var mappings = GetColumnMappings();
+                var importResult = await _excelImportService.ImportFromExcelAsync<CreateUpdateWeaponDto>(file, mappings);
+
+                if (importResult.SuccessCount > 0)
+                {
+                    foreach (var dto in importResult.SuccessfulRecords)
+                    {
+                        var validationResult = await _validator.ValidateAsync(dto);
+                        if (!validationResult.IsValid)
+                        {
+                            importResult.Errors.Add(new ImportError
+                            {
+                                ErrorMessage = $"Validation failed: {string.Join(", ", validationResult.Errors.Select(e => e.ErrorMessage))}",
+                                ColumnName = "N/A"
+                            });
+                            continue;
+                        }
+
+                        var createResult = await CreateAsync(dto);
+                        if (!createResult.Succeeded)
+                        {
+                            importResult.Errors.Add(new ImportError
+                            {
+                                ErrorMessage = $"Creation failed: {createResult.Message}",
+                                ColumnName = "N/A"
+                            });
+                        }
+                    }
+                }
+
+                return APIOperationResponse<ImportResult<CreateUpdateWeaponDto>>.Success(importResult, "Import processed");
+            }
+            catch (Exception ex)
+            {
+                return APIOperationResponse<ImportResult<CreateUpdateWeaponDto>>.Fail(ResponseType.InternalServerError, ex.Message);
+            }
+        }
+
+        private Dictionary<string, string> GetColumnMappings()
+        {
+            return new Dictionary<string, string>
+            {
+                { "Name", nameof(CreateUpdateWeaponDto.Name) },
+                { "Item No", nameof(CreateUpdateWeaponDto.ItemNo) },
+                { "Part No", nameof(CreateUpdateWeaponDto.PartNo) },
+                { "Price", nameof(CreateUpdateWeaponDto.Price) },
+                { "Minimum Quantity", nameof(CreateUpdateWeaponDto.MinimumQuantity) },
+                { "NSN", nameof(CreateUpdateWeaponDto.Nsn) },
+                { "Weapon Type", nameof(CreateUpdateWeaponDto.WeaponType) },
+                { "Caliber", nameof(CreateUpdateWeaponDto.Caliber) },
+                { "Action Type", nameof(CreateUpdateWeaponDto.ActionType) },
+                { "Barrel Length", nameof(CreateUpdateWeaponDto.BarrelLength) },
+                { "Overall Length", nameof(CreateUpdateWeaponDto.OverallLength) },
+                { "Weight", nameof(CreateUpdateWeaponDto.Weight) },
+                { "Capacity", nameof(CreateUpdateWeaponDto.Capacity) }
+            };
         }
     }
 }

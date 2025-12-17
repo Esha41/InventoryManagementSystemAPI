@@ -1,5 +1,6 @@
 ﻿using Ettad.Data.Enums;
 using Ettad.Inventory.Service.Ammunitions.Dtos;
+using Ettad.Inventory.Services.Common;
 using Ettad.ResponseHandler.Models;
 using Microsoft.AspNetCore.Http;
 
@@ -13,5 +14,6 @@ namespace Ettad.Inventory.Service.Ammunitions
         Task<APIOperationResponse<long>> CreateAsync(CreateUpdateAmmunitionDto inputDto, List<IFormFile>? files = null);
         Task<APIOperationResponse<bool>> UpdateAsync(long id, CreateUpdateAmmunitionDto inputDto);
         Task<APIOperationResponse<bool>> DeleteAsync(long id);
+        Task<APIOperationResponse<ImportResult<CreateUpdateAmmunitionDto>>> ImportAsync(IFormFile file);
     }
 }

@@ -21,7 +21,8 @@ namespace Ettad.Services
     {
         public ExcelExportService()
         {
-        
+            // Set EPPlus license context (EPPlus 8+ API)
+            ExcelPackage.License.SetNonCommercialPersonal("Ettad");
         }
 
         public byte[] ExportToExcel<T>(

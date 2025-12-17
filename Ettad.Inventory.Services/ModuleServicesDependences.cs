@@ -16,6 +16,7 @@ using Ettad.Inventory.Service.Ammunitions.Profiles;
 using Ettad.Inventory.Service.AllowanceItems;
 using Ettad.Inventory.Service.Inventories;
 using Ettad.Inventory.Service.Monitoring;
+using Ettad.Inventory.Services.Common;
 
 namespace Ettad.Inventory.Service
 {
@@ -50,6 +51,7 @@ namespace Ettad.Inventory.Service
             services.AddScoped<ILowStockMonitorBackgroundService, LowStockMonitorBackgroundService>();
             services.AddScoped<ILowStockMonitorSettingsService, LowStockMonitorSettingsService>();
             services.AddScoped<LowStockEmailTemplateService>();
+            services.AddScoped<IExcelImportService, ExcelImportService>();
 
             return services;
         }

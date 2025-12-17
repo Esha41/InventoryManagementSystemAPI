@@ -59,6 +59,15 @@ namespace Ettad.Inventory.API.Controllers
             return ProcessResponse(result);
         }
 
+        [HttpPost("Import")]
+        [ProducesResponseType((int)HttpStatusCode.OK)]
+        [CheckAuthorize("Permissions.Ammunition.Create")]
+        public async Task<IActionResult> Import(IFormFile file)
+        {
+            var result = await _ammunitionService.ImportAsync(file);
+            return ProcessResponse(result);
+        }
+
         [HttpPut("{id}")]
         [ProducesResponseType((int)HttpStatusCode.OK)]
         [CheckAuthorize("Permissions.Ammunition.Edit")]
