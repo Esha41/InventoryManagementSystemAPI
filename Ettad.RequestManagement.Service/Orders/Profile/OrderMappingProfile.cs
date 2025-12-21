@@ -10,14 +10,14 @@ namespace Ettad.RequestManagement.Service.Orders.Profile
         public OrderMappingProfile()
         {
             // Entity to DTO - Map navigation properties to name strings
-            CreateMap<Order, OrderDto>()
-                .ForMember(dest => dest.RequestNo, opt => opt.MapFrom(src => src.RequestNo))
-                .ForMember(dest => dest.DepartmentNameAr, opt => opt.MapFrom(src => src.Department != null ? src.Department.NameAr : null))
-                .ForMember(dest => dest.DepartmentNameEn, opt => opt.MapFrom(src => src.Department != null ? src.Department.NameEn : null))
-                .ForMember(dest => dest.RequesterName, opt => opt.MapFrom(src => src.Requester != null ? (src.Requester.FullNameEN ?? src.Requester.FullNameAR ?? src.Requester.UserName) : null))
-                .ForMember(dest => dest.RequestPurposeNameAr, opt => opt.MapFrom(src => src.RequestPurpose != null ? src.RequestPurpose.NameAr : null))
-                .ForMember(dest => dest.RequestPurposeNameEn, opt => opt.MapFrom(src => src.RequestPurpose != null ? src.RequestPurpose.NameEn : null))
-                .ForMember(dest => dest.RequestItems, opt => opt.MapFrom(src => src.RequestItems != null ? src.RequestItems.Where(ri => !ri.IsDeleted) : null));
+            CreateMap<Order, OrderDto>();
+            //    .ForMember(dest => dest.RequestNo, opt => opt.MapFrom(src => src.RequestNo))
+            //    .ForMember(dest => dest.DepartmentNameAr, opt => opt.MapFrom(src => src.Department != null ? src.Department.NameAr : null))
+            //    .ForMember(dest => dest.DepartmentNameEn, opt => opt.MapFrom(src => src.Department != null ? src.Department.NameEn : null))
+            //    .ForMember(dest => dest.RequesterName, opt => opt.MapFrom(src => src.Requester != null ? (src.Requester.FullNameEN ?? src.Requester.FullNameAR ?? src.Requester.UserName) : null))
+            //    .ForMember(dest => dest.RequestPurposeNameAr, opt => opt.MapFrom(src => src.RequestPurpose != null ? src.RequestPurpose.NameAr : null))
+            //    .ForMember(dest => dest.RequestPurposeNameEn, opt => opt.MapFrom(src => src.RequestPurpose != null ? src.RequestPurpose.NameEn : null))
+            //    .ForMember(dest => dest.RequestItems, opt => opt.MapFrom(src => src.RequestItems != null ? src.RequestItems.Where(ri => !ri.IsDeleted) : null));
 
 
             // RequestItem to OrderRequestItemDto

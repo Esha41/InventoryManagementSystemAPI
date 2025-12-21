@@ -106,12 +106,6 @@ namespace Ettad.RequestManagement.Service.Orders
 
                 var dto = _mapper.Map<OrderDto>(order);
                 
-                // Fallback: If RequesterName is null but we have a CreatedBy user, use that user's name
-                if (string.IsNullOrEmpty(dto.RequesterName) && !string.IsNullOrEmpty(order.CreatedBy))
-                {
-                    dto.RequesterName = await GetUserNameByIdAsync(order.CreatedBy);
-                }
-                
                 _logger.LogInformation("Successfully retrieved order. OrderId: {OrderId}, OrderNo: {OrderNo}", id, order.RequestNo);
                 return APIOperationResponse<OrderDto>.Success(dto);
             }
@@ -148,16 +142,6 @@ namespace Ettad.RequestManagement.Service.Orders
                 }
 
                 var dtos = _mapper.Map<List<OrderDto>>(orders);
-                
-                // Fallback: Populate RequesterName from CreatedBy user if not set
-                foreach (var dto in dtos)
-                {
-                    var order = orders.FirstOrDefault(o => o.Id == dto.Id);
-                    if (order != null && string.IsNullOrEmpty(dto.RequesterName) && !string.IsNullOrEmpty(order.CreatedBy))
-                    {
-                        dto.RequesterName = await GetUserNameByIdAsync(order.CreatedBy);
-                    }
-                }
                 
                 _logger.LogInformation("Successfully retrieved {OrderCount} orders. User: {UserId}", dtos.Count, _currentUserService.UserId);
                 return APIOperationResponse<List<OrderDto>>.Success(dtos);
@@ -404,33 +388,6 @@ namespace Ettad.RequestManagement.Service.Orders
             {
                 // Log but don't fail the operation
                 _logger.LogWarning(ex, "Failed to send notification and email for order. OrderId: {OrderId}", entityId);
-            }
-        }
-
-        /// <summary>
-        /// Get user name by user ID from Identity system
-        /// </summary>
-        private async Task<string> GetUserNameByIdAsync(string userId)
-        {
-            try
-            {
-                var user = await _userManager.FindByIdAsync(userId);
-                if (user != null)
-                {
-                    // Try FullNameEN first, then FullNameAR, then UserName
-                    if (!string.IsNullOrEmpty(user.FullNameEN))
-                        return user.FullNameEN;
-                    if (!string.IsNullOrEmpty(user.FullNameAR))
-                        return user.FullNameAR;
-                    if (!string.IsNullOrEmpty(user.UserName))
-                        return user.UserName;
-                }
-                
-                return "System User";
-            }
-            catch
-            {
-                return "System User";
             }
         }
 

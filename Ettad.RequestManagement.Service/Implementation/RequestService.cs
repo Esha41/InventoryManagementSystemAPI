@@ -48,10 +48,13 @@ namespace Ettad.RequestManagement.Service.Implementation
                 .Include(r => r.Requester)
                     .ThenInclude(u => u.Rank)
                 .Include(r => r.RequestPurpose)
-                .ProjectTo<BaseRequestDto>(_mapper.ConfigurationProvider)
+                .Include(r => r.RequestItems)
+                    .ThenInclude(ri => ri.Item)
                 .ToListAsync();
 
-            return APIOperationResponse<List<BaseRequestDto>>.Success(requests);
+            var requestDtos = _mapper.Map<List<BaseRequestDto>>(requests);
+
+            return APIOperationResponse<List<BaseRequestDto>>.Success(requestDtos);
         }
 
         public async Task<APIOperationResponse<List<BaseRequestDto>>> GetRequestsByDepartmentAsync(long departmentId, RequestStatus? status = null, RequestType? requestType = null)
@@ -74,10 +77,13 @@ namespace Ettad.RequestManagement.Service.Implementation
                 .Include(r => r.Requester)
                     .ThenInclude(u => u.Rank)
                 .Include(r => r.RequestPurpose)
-                .ProjectTo<BaseRequestDto>(_mapper.ConfigurationProvider)
+                .Include(r => r.RequestItems)
+                    .ThenInclude(ri => ri.Item)
                 .ToListAsync();
 
-            return APIOperationResponse<List<BaseRequestDto>>.Success(requests);
+            var requestDtos = _mapper.Map<List<BaseRequestDto>>(requests);
+
+            return APIOperationResponse<List<BaseRequestDto>>.Success(requestDtos);
         }
 
         public async Task<APIOperationResponse<List<BaseRequestDto>>> GetRequestsByRequesterAsync(string requesterId, RequestStatus? status = null, RequestType? requestType = null)
@@ -100,10 +106,13 @@ namespace Ettad.RequestManagement.Service.Implementation
                 .Include(r => r.Requester)
                     .ThenInclude(u => u.Rank)
                 .Include(r => r.RequestPurpose)
-                .ProjectTo<BaseRequestDto>(_mapper.ConfigurationProvider)
+                .Include(r => r.RequestItems)
+                    .ThenInclude(ri => ri.Item)
                 .ToListAsync();
 
-            return APIOperationResponse<List<BaseRequestDto>>.Success(requests);
+            var requestDtos = _mapper.Map<List<BaseRequestDto>>(requests);
+
+            return APIOperationResponse<List<BaseRequestDto>>.Success(requestDtos);
         }
 
         public async Task<APIOperationResponse<List<BaseRequestDto>>> GetRequestsByStatusAndTypeAsync(RequestStatus? status, RequestType? requestType)
@@ -125,10 +134,13 @@ namespace Ettad.RequestManagement.Service.Implementation
                 .Include(r => r.Requester)
                     .ThenInclude(u => u.Rank)
                 .Include(r => r.RequestPurpose)
-                .ProjectTo<BaseRequestDto>(_mapper.ConfigurationProvider)
+                .Include(r => r.RequestItems)
+                    .ThenInclude(ri => ri.Item)
                 .ToListAsync();
 
-            return APIOperationResponse<List<BaseRequestDto>>.Success(requests);
+            var requestDtos = _mapper.Map<List<BaseRequestDto>>(requests);
+
+            return APIOperationResponse<List<BaseRequestDto>>.Success(requestDtos);
         }
 
         public async Task<APIOperationResponse<List<BaseRequestDto>>> GetUserActionRequestsAsync(RequestStatus? status = null, RequestType? requestType = null)
@@ -163,10 +175,13 @@ namespace Ettad.RequestManagement.Service.Implementation
                     .Include(r => r.Requester)
                         .ThenInclude(u => u.Rank)
                     .Include(r => r.RequestPurpose)
-                    .ProjectTo<BaseRequestDto>(_mapper.ConfigurationProvider)
+                    .Include(r => r.RequestItems)
+                        .ThenInclude(ri => ri.Item)
                     .ToListAsync();
 
-                return APIOperationResponse<List<BaseRequestDto>>.Success(requesterRequests);
+                var requestDtos = _mapper.Map<List<BaseRequestDto>>(requesterRequests);
+
+                return APIOperationResponse<List<BaseRequestDto>>.Success(requestDtos);
             }
 
             // Roles that are restricted to their own department
@@ -204,10 +219,13 @@ namespace Ettad.RequestManagement.Service.Implementation
                 .Include(r => r.Requester)
                     .ThenInclude(u => u.Rank)
                 .Include(r => r.RequestPurpose)
-                .ProjectTo<BaseRequestDto>(_mapper.ConfigurationProvider)
+                .Include(r => r.RequestItems)
+                    .ThenInclude(ri => ri.Item)
                 .ToListAsync();
 
-            return APIOperationResponse<List<BaseRequestDto>>.Success(requests);
+            var dtos = _mapper.Map<List<BaseRequestDto>>(requests);
+
+            return APIOperationResponse<List<BaseRequestDto>>.Success(dtos);
         }
     }
 }

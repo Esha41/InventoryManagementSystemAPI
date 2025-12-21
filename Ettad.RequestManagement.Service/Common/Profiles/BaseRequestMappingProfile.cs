@@ -3,6 +3,9 @@ using Ettad.Data.Entities;
 using Ettad.Module.lookup.Dtos;
 using Ettad.RequestManagement.Service.Common.Dtos;
 using Ettad.RequestManagement.Service.RequestPurposes.Dtos;
+using Ettad.RequestManagement.Service.Orders.Dto;
+using Ettad.RequestManagement.Service.Discards.Dtos;
+using Ettad.RequestManagement.Service.Returns.Dtos;
 
 namespace Ettad.RequestManagement.Service.Common.Profiles
 {
@@ -11,7 +14,13 @@ namespace Ettad.RequestManagement.Service.Common.Profiles
         public BaseRequestMappingProfile()
         {
             // BaseRequest to BaseRequestDto
-            CreateMap<BaseRequest, BaseRequestDto>();
+            CreateMap<BaseRequest, BaseRequestDto>()
+                .Include<Order, OrderDto>()
+                .Include<Discard, DiscardDto>()
+                // Return entity probably exists if ReturnDto exists.
+                // I need to be sure about Return entity name.
+                // Assuming Return.
+                .Include<Ettad.Data.Entities.Return, ReturnDto>();
 
             // RequestItem to RequestItemDto - navigation properties as names
             CreateMap<RequestItem, RequestItemDto>()

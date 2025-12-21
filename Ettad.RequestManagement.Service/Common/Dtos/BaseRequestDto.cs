@@ -1,9 +1,16 @@
 ﻿using Ettad.Data.Enums;
 using Ettad.Module.lookup.Dtos;
 using Ettad.RequestManagement.Service.RequestPurposes.Dtos;
+using System.Text.Json.Serialization;
+using Ettad.RequestManagement.Service.Orders.Dto;
+using Ettad.RequestManagement.Service.Discards.Dtos;
+using Ettad.RequestManagement.Service.Returns.Dtos;
 
 namespace Ettad.RequestManagement.Service.Common.Dtos
 {
+    [JsonDerivedType(typeof(OrderDto), typeDiscriminator: "Order")]
+    [JsonDerivedType(typeof(DiscardDto), typeDiscriminator: "Discard")]
+    [JsonDerivedType(typeof(ReturnDto), typeDiscriminator: "Return")]
     public class BaseRequestDto
     {
         public long Id { get; set; }
