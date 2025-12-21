@@ -12,6 +12,7 @@ using Ettad.ResponseHandler.Models;
 using Ettad.Application.Common.Interfaces;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
+using Ettad.Inventory.Services.Common;
 
 namespace Ettad.Inventory.Service.Ammunitions
 {
@@ -24,6 +25,7 @@ namespace Ettad.Inventory.Service.Ammunitions
         private readonly ICurrentUserService _currentUserService;
         private readonly ILogger<AmmunitionService> _logger;
         private readonly IFileUploadService _fileUploadService;
+        private readonly IExcelImportService _excelImportService;
 
         public AmmunitionService(
             ICrossCuttingRepository<Ammunition> ammunitionRepository,
@@ -32,7 +34,8 @@ namespace Ettad.Inventory.Service.Ammunitions
             IValidator<CreateUpdateAmmunitionDto> validator,
             ICurrentUserService currentUserService,
             ILogger<AmmunitionService> logger,
-            IFileUploadService fileUploadService)
+            IFileUploadService fileUploadService,
+            IExcelImportService excelImportService)
         {
             _ammunitionRepository = ammunitionRepository;
             _fileDetailsRepository = fileDetailsRepository;
@@ -41,6 +44,7 @@ namespace Ettad.Inventory.Service.Ammunitions
             _currentUserService = currentUserService;
             _logger = logger;
             _fileUploadService = fileUploadService;
+            _excelImportService = excelImportService;
         }
 
         public async Task<APIOperationResponse<AmmunitionDto>> GetByIdAsync(long id)
@@ -288,6 +292,69 @@ namespace Ettad.Inventory.Service.Ammunitions
                     id, _currentUserService.UserId);
                 return APIOperationResponse<bool>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
             }
+        }
+        public async Task<APIOperationResponse<ImportResult<CreateUpdateAmmunitionDto>>> ImportAsync(IFormFile file)
+        {
+            try
+            {
+                var mappings = GetColumnMappings();
+                var importResult = await _excelImportService.ImportFromExcelAsync<CreateUpdateAmmunitionDto>(file, mappings);
+
+                if (importResult.SuccessCount > 0)
+                {
+                    // Process valid records
+                    foreach (var dto in importResult.SuccessfulRecords)
+                    {
+                        // Optional: Check if exists to prevent duplicates if generic service didn't
+                        var validationResult = await _validator.ValidateAsync(dto);
+                        if (!validationResult.IsValid)
+                        {
+                            importResult.Errors.Add(new ImportError 
+                            { 
+                                ErrorMessage = $"Validation failed: {string.Join(", ", validationResult.Errors.Select(e => e.ErrorMessage))}", 
+                                ColumnName = "N/A" 
+                            });
+                            continue;
+                        }
+
+                        // Use CreateAsync logic but simplified to avoid excessive logging/overhead if needed
+                        // Or just call CreateAsync directly
+                        var createResult = await CreateAsync(dto);
+                        if (!createResult.Succeeded)
+                        {
+                             importResult.Errors.Add(new ImportError 
+                            { 
+                                ErrorMessage = $"Creation failed: {createResult.Message}", 
+                                ColumnName = "N/A" 
+                            });
+                        }
+                    }
+                }
+
+                return APIOperationResponse<ImportResult<CreateUpdateAmmunitionDto>>.Success(importResult, "Import processed");
+            }
+            catch (Exception ex)
+            {
+                return APIOperationResponse<ImportResult<CreateUpdateAmmunitionDto>>.Fail(ResponseType.InternalServerError, ex.Message);
+            }
+        }
+
+        private Dictionary<string, string> GetColumnMappings()
+        {
+            return new Dictionary<string, string>
+            {
+                { "Name", nameof(CreateUpdateAmmunitionDto.Name) },
+                { "Item No", nameof(CreateUpdateAmmunitionDto.ItemNo) },
+                { "Part No", nameof(CreateUpdateAmmunitionDto.PartNo) },
+                { "Arm Number", nameof(CreateUpdateAmmunitionDto.ArmNumber) },
+                { "Price", nameof(CreateUpdateAmmunitionDto.Price) },
+                { "Minimum Quantity", nameof(CreateUpdateAmmunitionDto.MinimumQuantity) },
+                { "Bullet Diameter", nameof(CreateUpdateAmmunitionDto.BulletDiameter) },
+                { "Is Linked", nameof(CreateUpdateAmmunitionDto.IsLinked) },
+                { "Primer", nameof(CreateUpdateAmmunitionDto.Primer) },
+                { "Total Weight", nameof(CreateUpdateAmmunitionDto.TotalWeight) },
+                { "NSN", nameof(CreateUpdateAmmunitionDto.Nsn) }
+            };
         }
     }
 }
