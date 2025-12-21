@@ -69,6 +69,11 @@ namespace Ettad.Inventory.Service.Inventories.Profiles
                 .ForMember(dest => dest.Supplier, opt => opt.Ignore())
                 .ForMember(dest => dest.Manufacturer, opt => opt.Ignore())
                 .ForMember(dest => dest.Country, opt => opt.Ignore());
+
+            // DTO to DTO mappings
+            CreateMap<LotDetailDto, SupplyLotSuggestionDto>()
+                .ForMember(dest => dest.AvailableQuantity, opt => opt.MapFrom(src => src.RemainingQuantity))
+                .ForMember(dest => dest.SuggestedQuantity, opt => opt.Ignore()); // Will be set in service
         }
     }
 }

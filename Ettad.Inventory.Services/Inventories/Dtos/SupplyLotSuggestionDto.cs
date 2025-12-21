@@ -14,6 +14,7 @@ namespace Ettad.Inventory.Service.Inventories.Dtos
         public long AvailableQuantity { get; set; }
         public long SuggestedQuantity { get; set; }
         public DateTime? ExpiryDate { get; set; }
+        public int? YearOfManufacture { get; set; }
         public long InventoryId { get; set; }
         public DepotDto? Depot { get; set; }
         public SupplierDto? Supplier { get; set; }
