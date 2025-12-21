@@ -80,28 +80,6 @@ namespace Ettad.Inventory.Services.Common
                         }
                     }
 
-                    // Validate all required columns are present
-                    // Validate required columns are present if mapped
-                    var requiredKeys = new[] 
-                    { 
-                        "Name", 
-                        "Item No", 
-                        "Weapon Type", 
-                        "Caliber", 
-                        "Action Type", 
-                        "Explosive Type",
-                        "UN Number",
-                        "Net Explosive Quantity",
-                        "Total Weight"
-                    };
-                    var missingRequired = requiredKeys.Where(k => columnMappings.ContainsKey(k) && !headerMap.ContainsKey(k)).ToList();
-                    
-                    if (missingRequired.Any())
-                    {
-                        result.Errors.Add(new ImportError { ErrorMessage = $"Missing required columns: {string.Join(", ", missingRequired)}" });
-                        return result;
-                    }
-
                     // Process Data Rows
                     for (int row = 2; row <= rowCount; row++)
                     {
@@ -193,7 +171,16 @@ namespace Ettad.Inventory.Services.Common
                     else if (targetType == typeof(DateTime))
                         convertedValue = DateTime.Parse(value); // Adjust format as needed
                     else if (targetType == typeof(bool))
-                        convertedValue = bool.Parse(value);
+                    {
+                        // Handle common Excel boolean formats
+                        var normalizedValue = value.Trim().ToLowerInvariant();
+                        if (normalizedValue == "yes" || normalizedValue == "y" || normalizedValue == "1" || normalizedValue == "true")
+                            convertedValue = true;
+                        else if (normalizedValue == "no" || normalizedValue == "n" || normalizedValue == "0" || normalizedValue == "false")
+                            convertedValue = false;
+                        else
+                            convertedValue = bool.Parse(value); // Fallback to standard parsing
+                    }
                     else if (targetType.IsEnum)
                     {
                         try

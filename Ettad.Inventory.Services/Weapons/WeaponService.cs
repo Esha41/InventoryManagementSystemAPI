@@ -316,6 +316,59 @@ namespace Ettad.Inventory.Service.Weapons
             }
         }
 
+        public async Task<APIOperationResponse<ImportResult<CreateUpdateWeaponDto>>> ImportPreviewAsync(IFormFile file)
+        {
+            try
+            {
+                var mappings = GetColumnMappings();
+                var importResult = await _excelImportService.ImportFromExcelAsync<CreateUpdateWeaponDto>(file, mappings);
+
+                if (importResult.SuccessCount > 0)
+                {
+                    // Validate records WITHOUT creating them
+                    foreach (var dto in importResult.SuccessfulRecords.ToList())
+                    {
+                        var validationResult = await _validator.ValidateAsync(dto);
+                        if (!validationResult.IsValid)
+                        {
+                            // Move from successful to errors
+                            importResult.SuccessfulRecords.Remove(dto);
+                            importResult.Errors.Add(new ImportError
+                            {
+                                ErrorMessage = $"Validation failed: {string.Join(", ", validationResult.Errors.Select(e => e.ErrorMessage))}",
+                                ColumnName = "N/A"
+                            });
+                        }
+                        else
+                        {
+                            // Check for duplicate NSN
+                            if (!string.IsNullOrWhiteSpace(dto.Nsn))
+                            {
+                                var existingWithSameNsn = await _weaponRepository.FindOneAsync(
+                                    w => !w.IsDeleted && w.Nsn == dto.Nsn.Trim());
+
+                                if (existingWithSameNsn != null)
+                                {
+                                    importResult.SuccessfulRecords.Remove(dto);
+                                    importResult.Errors.Add(new ImportError
+                                    {
+                                        ErrorMessage = $"NSN '{dto.Nsn}' already exists",
+                                        ColumnName = "NSN"
+                                    });
+                                }
+                            }
+                        }
+                    }
+                }
+
+                return APIOperationResponse<ImportResult<CreateUpdateWeaponDto>>.Success(importResult, "Preview processed");
+            }
+            catch (Exception ex)
+            {
+                return APIOperationResponse<ImportResult<CreateUpdateWeaponDto>>.Fail(ResponseType.InternalServerError, ex.Message);
+            }
+        }
+
         private Dictionary<string, string> GetColumnMappings()
         {
             return new Dictionary<string, string>

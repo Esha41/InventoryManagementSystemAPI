@@ -566,13 +566,24 @@ public class FileUploadOperationFilter : IOperationFilter
                         p.ParameterType.GetGenericArguments()[0] == typeof(IFormFile)))
             .ToList();
 
-        if (fileParameters.Any())
+        // Also check for other [FromForm] parameters
+        var otherFormParameters = context.MethodInfo.GetParameters()
+            .Where(p => p.GetCustomAttributes(typeof(Microsoft.AspNetCore.Mvc.FromFormAttribute), false).Any() &&
+                       p.ParameterType != typeof(IFormFile) &&
+                       p.ParameterType != typeof(List<IFormFile>) &&
+                       !(p.ParameterType.IsGenericType && 
+                         p.ParameterType.GetGenericTypeDefinition() == typeof(List<>) &&
+                         p.ParameterType.GetGenericArguments()[0] == typeof(IFormFile)))
+            .ToList();
+
+        if (fileParameters.Any() || otherFormParameters.Any())
         {
-            // Remove file parameters from the parameters list first
+            // Remove file and form parameters from the parameters list first
             if (operation.Parameters != null)
             {
+                var allFormParams = fileParameters.Concat(otherFormParameters).ToList();
                 operation.Parameters = operation.Parameters
-                    .Where(p => !fileParameters.Any(fp => fp.Name.Equals(p.Name, StringComparison.OrdinalIgnoreCase)))
+                    .Where(p => !allFormParams.Any(fp => fp.Name.Equals(p.Name, StringComparison.OrdinalIgnoreCase)))
                     .ToList();
             }
 
@@ -632,6 +643,46 @@ public class FileUploadOperationFilter : IOperationFilter
                     formDataSchema.Required.Add(param.Name);
                 }
             }
+
+            // Handle other [FromForm] parameters (non-file parameters)
+            foreach (var param in otherFormParameters)
+            {
+                OpenApiSchema schema;
+                
+                if (param.ParameterType == typeof(string))
+                {
+                    schema = new OpenApiSchema { Type = "string" };
+                }
+                else if (param.ParameterType == typeof(int) || param.ParameterType == typeof(long))
+                {
+                    schema = new OpenApiSchema { Type = "integer", Format = param.ParameterType == typeof(long) ? "int64" : "int32" };
+                }
+                else if (param.ParameterType == typeof(bool))
+                {
+                    schema = new OpenApiSchema { Type = "boolean" };
+                }
+                else if (param.ParameterType == typeof(DateTime) || param.ParameterType == typeof(DateTime?))
+                {
+                    schema = new OpenApiSchema { Type = "string", Format = "date-time" };
+                }
+                else
+                {
+                    // For complex types, use object schema
+                    schema = new OpenApiSchema { Type = "object" };
+                }
+
+                formDataSchema.Properties[param.Name] = schema;
+                
+                if (!param.IsOptional && !IsNullableType(param.ParameterType))
+                {
+                    formDataSchema.Required.Add(param.Name);
+                }
+            }
         }
+    }
+
+    private static bool IsNullableType(Type type)
+    {
+        return type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Nullable<>);
     }
 }
