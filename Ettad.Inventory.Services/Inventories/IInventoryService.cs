@@ -20,5 +20,6 @@ namespace Ettad.Inventory.Service.Inventories
         Task<APIOperationResponse<List<ItemInventorySummaryDto>>> GetInventorySummaryForAllItemsAsync();
         Task<APIOperationResponse<bool>> ToggleReadyForIssueAsync(long inventoryDetailId);
         Task<APIOperationResponse<ImportResult<InventoryImportRowDto>>> ImportAsync(IFormFile file, long depotId);
+        Task<APIOperationResponse<ImportResult<InventoryImportRowDto>>> ImportPreviewAsync(IFormFile file, long depotId);
     }
 }

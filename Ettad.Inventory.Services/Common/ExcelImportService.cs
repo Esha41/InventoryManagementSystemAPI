@@ -80,28 +80,6 @@ namespace Ettad.Inventory.Services.Common
                         }
                     }
 
-                    // Validate all required columns are present
-                    // Validate required columns are present if mapped
-                    var requiredKeys = new[] 
-                    { 
-                        "Name", 
-                        "Item No", 
-                        "Weapon Type", 
-                        "Caliber", 
-                        "Action Type", 
-                        "Explosive Type",
-                        "UN Number",
-                        "Net Explosive Quantity",
-                        "Total Weight"
-                    };
-                    var missingRequired = requiredKeys.Where(k => columnMappings.ContainsKey(k) && !headerMap.ContainsKey(k)).ToList();
-                    
-                    if (missingRequired.Any())
-                    {
-                        result.Errors.Add(new ImportError { ErrorMessage = $"Missing required columns: {string.Join(", ", missingRequired)}" });
-                        return result;
-                    }
-
                     // Process Data Rows
                     for (int row = 2; row <= rowCount; row++)
                     {

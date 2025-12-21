@@ -15,5 +15,6 @@ namespace Ettad.Inventory.Service.Weapons
         Task<APIOperationResponse<bool>> UpdateAsync(long id, CreateUpdateWeaponDto inputDto);
         Task<APIOperationResponse<bool>> DeleteAsync(long id);
         Task<APIOperationResponse<ImportResult<CreateUpdateWeaponDto>>> ImportAsync(IFormFile file);
+        Task<APIOperationResponse<ImportResult<CreateUpdateWeaponDto>>> ImportPreviewAsync(IFormFile file);
     }
 }

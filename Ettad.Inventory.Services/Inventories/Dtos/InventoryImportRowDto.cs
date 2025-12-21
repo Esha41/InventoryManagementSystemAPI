@@ -6,12 +6,21 @@ namespace Ettad.Inventory.Service.Inventories.Dtos
     /// </summary>
     public class InventoryImportRowDto
     {
+        public string? ItemName { get; set; } // "ItemName (ItemNo)" format from dropdown
         public string ItemNo { get; set; } = string.Empty;
         public long? ItemId { get; set; }
         public int Lot { get; set; }
+        
+        // Changed from IDs to names for user-friendly Excel import
+        public string? Supplier { get; set; }
+        public string? Manufacturer { get; set; }
+        public string? Country { get; set; }
+        
+        // Internal IDs (populated during import processing)
         public long? SupplierId { get; set; }
         public long? ManufacturerId { get; set; }
         public long? CountryId { get; set; }
+        
         public long OriginalQuantity { get; set; }
         public string? BatchNo { get; set; }
         public DateTime? ExpiryDate { get; set; }
