@@ -14,6 +14,11 @@ namespace Ettad.RequestManagement.Service.Discards.Profiles
             CreateMap<Discard, DiscardDto>()
                 .IncludeBase<BaseRequest, BaseRequestDto>();
 
+            // Discard to BaseRequestDto - for unified API
+            CreateMap<Discard, BaseRequestDto>()
+                .IncludeBase<BaseRequest, BaseRequestDto>();
+
+
             // Create DTO to
             CreateMap<CreateDiscardDto, Discard>()
                 .ForMember(dest => dest.Id, opt => opt.Ignore())

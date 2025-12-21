@@ -19,12 +19,14 @@ namespace Ettad.RequestManagement.Service.Orders.Profile
             //    .ForMember(dest => dest.RequestPurposeNameEn, opt => opt.MapFrom(src => src.RequestPurpose != null ? src.RequestPurpose.NameEn : null))
             //    .ForMember(dest => dest.RequestItems, opt => opt.MapFrom(src => src.RequestItems != null ? src.RequestItems.Where(ri => !ri.IsDeleted) : null));
 
+            // Order to BaseRequestDto - includes Order-specific fields for unified API
+            CreateMap<Order, BaseRequestDto>()
+                .IncludeBase<BaseRequest, BaseRequestDto>();
 
             // RequestItem to OrderRequestItemDto
             // Inherits all mappings from RequestItem -> RequestItemDto (including ItemType)
             CreateMap<RequestItem, OrderRequestItemDto>()
                 .IncludeBase<RequestItem, RequestItemDto>();
-
 
             // CreateUpdateRequestItemDto to RequestItem
             CreateMap<CreateUpdateRequestItemDto, RequestItem>()
