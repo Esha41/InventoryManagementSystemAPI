@@ -5,6 +5,7 @@ using Ettad.Inventory.Service.Inventories.Dtos;
 using Ettad.ResponseHandler.Models;
 using Ettad.Services;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using System.Net;
@@ -63,6 +64,31 @@ namespace Ettad.Inventory.API.Controllers
         public async Task<IActionResult> Create([FromBody] CreateInventoryDto dto)
         {
             var result = await _inventoryService.CreateAsync(dto);
+            return ProcessResponse(result);
+        }
+
+        /// <summary>
+        /// Import inventory from Excel file
+        /// </summary>
+        [HttpPost("Import")]
+        [ProducesResponseType((int)HttpStatusCode.OK)]
+        [CheckAuthorize("Permissions.Inventory.Create")]
+        public async Task<IActionResult> Import(IFormFile file, [FromForm] long depotId)
+        {
+            if (file == null || file.Length == 0)
+            {
+                return BadRequest(new { message = "File is required" });
+            }
+
+            if (depotId <= 0)
+            {
+                return BadRequest(new { message = "Valid depot ID is required" });
+            }
+
+            _logger.LogInformation("Inventory import request received. DepotId: {DepotId}, FileName: {FileName}, FileSize: {FileSize}",
+                depotId, file.FileName, file.Length);
+
+            var result = await _inventoryService.ImportAsync(file, depotId);
             return ProcessResponse(result);
         }
 

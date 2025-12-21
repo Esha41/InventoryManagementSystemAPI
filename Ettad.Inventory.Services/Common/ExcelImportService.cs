@@ -193,7 +193,16 @@ namespace Ettad.Inventory.Services.Common
                     else if (targetType == typeof(DateTime))
                         convertedValue = DateTime.Parse(value); // Adjust format as needed
                     else if (targetType == typeof(bool))
-                        convertedValue = bool.Parse(value);
+                    {
+                        // Handle common Excel boolean formats
+                        var normalizedValue = value.Trim().ToLowerInvariant();
+                        if (normalizedValue == "yes" || normalizedValue == "y" || normalizedValue == "1" || normalizedValue == "true")
+                            convertedValue = true;
+                        else if (normalizedValue == "no" || normalizedValue == "n" || normalizedValue == "0" || normalizedValue == "false")
+                            convertedValue = false;
+                        else
+                            convertedValue = bool.Parse(value); // Fallback to standard parsing
+                    }
                     else if (targetType.IsEnum)
                     {
                         try
