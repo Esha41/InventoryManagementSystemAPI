@@ -52,7 +52,9 @@ namespace Ettad.RequestManagement.Service.Implementation
                     .ThenInclude(ri => ri.Item)
                 .ToListAsync();
 
-            return APIOperationResponse<List<BaseRequestDto>>.Success(MapRequestsToDto(requests));
+            var requestDtos = _mapper.Map<List<BaseRequestDto>>(requests);
+
+            return APIOperationResponse<List<BaseRequestDto>>.Success(requestDtos);
         }
 
         public async Task<APIOperationResponse<List<BaseRequestDto>>> GetRequestsByDepartmentAsync(long departmentId, RequestStatus? status = null, RequestType? requestType = null)
@@ -79,7 +81,9 @@ namespace Ettad.RequestManagement.Service.Implementation
                     .ThenInclude(ri => ri.Item)
                 .ToListAsync();
 
-            return APIOperationResponse<List<BaseRequestDto>>.Success(MapRequestsToDto(requests));
+            var requestDtos = _mapper.Map<List<BaseRequestDto>>(requests);
+
+            return APIOperationResponse<List<BaseRequestDto>>.Success(requestDtos);
         }
 
         public async Task<APIOperationResponse<List<BaseRequestDto>>> GetRequestsByRequesterAsync(string requesterId, RequestStatus? status = null, RequestType? requestType = null)
@@ -106,7 +110,9 @@ namespace Ettad.RequestManagement.Service.Implementation
                     .ThenInclude(ri => ri.Item)
                 .ToListAsync();
 
-            return APIOperationResponse<List<BaseRequestDto>>.Success(MapRequestsToDto(requests));
+            var requestDtos = _mapper.Map<List<BaseRequestDto>>(requests);
+
+            return APIOperationResponse<List<BaseRequestDto>>.Success(requestDtos);
         }
 
         public async Task<APIOperationResponse<List<BaseRequestDto>>> GetRequestsByStatusAndTypeAsync(RequestStatus? status, RequestType? requestType)
@@ -132,7 +138,9 @@ namespace Ettad.RequestManagement.Service.Implementation
                     .ThenInclude(ri => ri.Item)
                 .ToListAsync();
 
-            return APIOperationResponse<List<BaseRequestDto>>.Success(MapRequestsToDto(requests));
+            var requestDtos = _mapper.Map<List<BaseRequestDto>>(requests);
+
+            return APIOperationResponse<List<BaseRequestDto>>.Success(requestDtos);
         }
 
         public async Task<APIOperationResponse<List<BaseRequestDto>>> GetUserActionRequestsAsync(RequestStatus? status = null, RequestType? requestType = null)
@@ -171,7 +179,9 @@ namespace Ettad.RequestManagement.Service.Implementation
                         .ThenInclude(ri => ri.Item)
                     .ToListAsync();
 
-                return APIOperationResponse<List<BaseRequestDto>>.Success(MapRequestsToDto(requesterRequests));
+                var requestDtos = _mapper.Map<List<BaseRequestDto>>(requesterRequests);
+
+                return APIOperationResponse<List<BaseRequestDto>>.Success(requestDtos);
             }
 
             // Roles that are restricted to their own department
@@ -213,39 +223,9 @@ namespace Ettad.RequestManagement.Service.Implementation
                     .ThenInclude(ri => ri.Item)
                 .ToListAsync();
 
-            return APIOperationResponse<List<BaseRequestDto>>.Success(MapRequestsToDto(requests));
-        }
+            var dtos = _mapper.Map<List<BaseRequestDto>>(requests);
 
-        private List<BaseRequestDto> MapRequestsToDto(List<BaseRequest> requests)
-        {
-            var result = new List<BaseRequestDto>();
-
-            foreach (var request in requests)
-            {
-                BaseRequestDto dto;
-                
-                // Map based on actual type to get Order-specific fields
-                if (request is Order order)
-                {
-                    dto = _mapper.Map<BaseRequestDto>(order);
-                }
-                else if (request is Return returnRequest)
-                {
-                    dto = _mapper.Map<BaseRequestDto>(returnRequest);
-                }
-                else if (request is Discard discardRequest)
-                {
-                    dto = _mapper.Map<BaseRequestDto>(discardRequest);
-                }
-                else
-                {
-                    dto = _mapper.Map<BaseRequestDto>(request);
-                }
-
-                result.Add(dto);
-            }
-
-            return result;
+            return APIOperationResponse<List<BaseRequestDto>>.Success(dtos);
         }
     }
 }

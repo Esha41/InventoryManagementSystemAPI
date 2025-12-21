@@ -1,9 +1,16 @@
 ﻿using Ettad.Data.Enums;
 using Ettad.Module.lookup.Dtos;
 using Ettad.RequestManagement.Service.RequestPurposes.Dtos;
+using System.Text.Json.Serialization;
+using Ettad.RequestManagement.Service.Orders.Dto;
+using Ettad.RequestManagement.Service.Discards.Dtos;
+using Ettad.RequestManagement.Service.Returns.Dtos;
 
 namespace Ettad.RequestManagement.Service.Common.Dtos
 {
+    [JsonDerivedType(typeof(OrderDto), typeDiscriminator: "Order")]
+    [JsonDerivedType(typeof(DiscardDto), typeDiscriminator: "Discard")]
+    [JsonDerivedType(typeof(ReturnDto), typeDiscriminator: "Return")]
     public class BaseRequestDto
     {
         public long Id { get; set; }
@@ -25,22 +32,5 @@ namespace Ettad.RequestManagement.Service.Common.Dtos
         
         // Audit fields
         public DateTime CreationDate { get; set; }
-
-        // Order-specific fields (nullable for Return/Discard requests)
-        public DateTime? UsageDateFrom { get; set; }
-        public DateTime? UsageDateTo { get; set; }
-        public TimeOnly? UsageTimeFrom { get; set; }
-        public TimeOnly? UsageTimeTo { get; set; }
-        public string? UsagePurpose { get; set; }
-        public string? UsageLocation { get; set; }
-        public bool? IsFromAllowance { get; set; }
-        public bool? AnnualDiscard { get; set; }
-        public int? NumberOfOfficer { get; set; }
-        public int? NumberOfOtherRank { get; set; }
-        public long? DepotId { get; set; }
-        public string? DepotNameAr { get; set; }
-        public string? DepotNameEn { get; set; }
-        public string? ReceiverId { get; set; }
-        public string? ReceiverName { get; set; }
     }
 }
