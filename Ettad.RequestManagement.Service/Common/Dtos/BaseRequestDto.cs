@@ -1,7 +1,16 @@
 ﻿using Ettad.Data.Enums;
+using Ettad.Module.lookup.Dtos;
+using Ettad.RequestManagement.Service.RequestPurposes.Dtos;
+using System.Text.Json.Serialization;
+using Ettad.RequestManagement.Service.Orders.Dto;
+using Ettad.RequestManagement.Service.Discards.Dtos;
+using Ettad.RequestManagement.Service.Returns.Dtos;
 
 namespace Ettad.RequestManagement.Service.Common.Dtos
 {
+    [JsonDerivedType(typeof(OrderDto), typeDiscriminator: "Order")]
+    [JsonDerivedType(typeof(DiscardDto), typeDiscriminator: "Discard")]
+    [JsonDerivedType(typeof(ReturnDto), typeDiscriminator: "Return")]
     public class BaseRequestDto
     {
         public long Id { get; set; }
@@ -13,17 +22,15 @@ namespace Ettad.RequestManagement.Service.Common.Dtos
         public string? Notes { get; set; }
         public long DepartmentId { get; set; }
         public string? RequesterId { get; set; }
-        public string? RecieverId { get; set; }
-        public long? DepotId { get; set; }
         public long RequestPurposeId { get; set; }
 
-        #region Navigation Properties (Simplified - just names/what makes sense)
-        public string DepartmentName { get; set; }
-        public string? RequesterName { get; set; }
-        public string? RecieverName { get; set; }
-        public string? DepotName { get; set; }
-        public string RequestPurposeName { get; set; }
+        public DepartmentDto Department { get; set; }
+        public RequesterDto Requester { get; set; }
+        public RequestPurposeDto RequestPurpose { get; set; }
+
         public ICollection<RequestItemDto> RequestItems { get; set; }
-        #endregion
+        
+        // Audit fields
+        public DateTime CreationDate { get; set; }
     }
 }

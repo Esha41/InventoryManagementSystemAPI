@@ -2,6 +2,7 @@ using Ettad.Data.Enums;
 using Ettad.RequestManagement.Service.Orders.Dto;
 using Ettad.Inventory.Service.Common.Dtos;
 using Ettad.Module.lookup.Dtos;
+using Ettad.CrossCutting.Comman.FileUpload;
 
 namespace Ettad.RequestManagement.Service.SupplyManagement.Dtos
 {
@@ -21,6 +22,7 @@ namespace Ettad.RequestManagement.Service.SupplyManagement.Dtos
         public OrderDto Order { get; set; }
         public RankDto? ReceiverRank { get; set; }
         public List<SupplyDetailDto> SupplyDetails { get; set; } = new();
+        public List<FileUploadDto> Files { get; set; } = new();
         #endregion
     }
 

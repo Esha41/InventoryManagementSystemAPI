@@ -1,4 +1,4 @@
-﻿using Ettad.Data.Entities;
+using Ettad.Data.Entities;
 using Ettad.Data.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -59,6 +59,13 @@ namespace Ettad.EntityFramework.Configurations
                     Id = 4,
                     NameAr = "طلب تدريبي",
                     NameEn = "Training Order",
+                    RequestType = RequestType.Order
+                },
+                new RequestPurpose
+                {
+                    Id = 12,
+                    NameAr = "تطهير الميدان",
+                    NameEn = "Field Clearance",
                     RequestType = RequestType.Order
                 },
                 // Return purposes

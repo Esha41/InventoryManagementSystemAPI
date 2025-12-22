@@ -8,6 +8,7 @@ using Ettad.ResponseHandler.Consts;
 using Ettad.ResponseHandler.Models;
 using Ettad.Application.Common.Interfaces;
 using Ettad.RequestManagement.Service.Common;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Ettad.Comman.Idenitity;
 using Microsoft.Extensions.Logging;
@@ -15,6 +16,8 @@ using Ettad.Notification.Service;
 using AutoMapper.QueryableExtensions;
 using Ettad.CrossCutting.Comman.Models;
 using Ettad.Workflows.Service.Interface;
+using Ettad.CrossCutting.Comman.FileUpload;
+using Ettad.Comman.Enums;
 using System.Linq;
 
 namespace Ettad.RequestManagement.Service.Orders
@@ -27,6 +30,7 @@ namespace Ettad.RequestManagement.Service.Orders
         private readonly ICrossCuttingRepository<AllowanceItem> _allowanceItemRepository;
         private readonly ICrossCuttingRepository<Supply> _supplyRepository;
         private readonly ICrossCuttingRepository<SupplyDetail> _supplyDetailRepository;
+        private readonly ICrossCuttingRepository<FileUplodDetails> _fileDetailsRepository;
         private readonly IWorkflowApprovalService _workflowApprovalService;
         private readonly IMapper _mapper;
         private readonly IValidator<CreateOrderDto> _createValidator;
@@ -35,6 +39,7 @@ namespace Ettad.RequestManagement.Service.Orders
         private readonly INotificationHelperService _notificationHelperService;
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly ILogger<OrderService> _logger;
+        private readonly IFileUploadService _fileUploadService;
 
         public OrderService(
             ICrossCuttingRepository<Order> orderRepository,
@@ -43,6 +48,7 @@ namespace Ettad.RequestManagement.Service.Orders
             ICrossCuttingRepository<AllowanceItem> allowanceItemRepository,
             ICrossCuttingRepository<Supply> supplyRepository,
             ICrossCuttingRepository<SupplyDetail> supplyDetailRepository,
+            ICrossCuttingRepository<FileUplodDetails> fileDetailsRepository,
             IWorkflowApprovalService workflowApprovalService,
             IMapper mapper,
             IValidator<CreateOrderDto> createValidator,
@@ -50,7 +56,8 @@ namespace Ettad.RequestManagement.Service.Orders
             IRequestNoGeneratorService requestNoGeneratorService,
             INotificationHelperService notificationHelperService,
             UserManager<ApplicationUser> userManager,
-            ILogger<OrderService> logger)
+            ILogger<OrderService> logger,
+            IFileUploadService fileUploadService)
         {
             _orderRepository = orderRepository;
             _requestItemRepository = requestItemRepository;
@@ -58,6 +65,7 @@ namespace Ettad.RequestManagement.Service.Orders
             _allowanceItemRepository = allowanceItemRepository;
             _supplyRepository = supplyRepository;
             _supplyDetailRepository = supplyDetailRepository;
+            _fileDetailsRepository = fileDetailsRepository;
             _workflowApprovalService = workflowApprovalService;
             _mapper = mapper;
             _createValidator = createValidator;
@@ -66,6 +74,7 @@ namespace Ettad.RequestManagement.Service.Orders
             _notificationHelperService = notificationHelperService;
             _userManager = userManager;
             _logger = logger;
+            _fileUploadService = fileUploadService;
         }
 
         public async Task<APIOperationResponse<OrderDto>> GetByIdAsync(long id)
@@ -96,12 +105,6 @@ namespace Ettad.RequestManagement.Service.Orders
                 }
 
                 var dto = _mapper.Map<OrderDto>(order);
-                
-                // Fallback: If RequesterName is null but we have a CreatedBy user, use that user's name
-                if (string.IsNullOrEmpty(dto.RequesterName) && !string.IsNullOrEmpty(order.CreatedBy))
-                {
-                    dto.RequesterName = await GetUserNameByIdAsync(order.CreatedBy);
-                }
                 
                 _logger.LogInformation("Successfully retrieved order. OrderId: {OrderId}, OrderNo: {OrderNo}", id, order.RequestNo);
                 return APIOperationResponse<OrderDto>.Success(dto);
@@ -140,16 +143,6 @@ namespace Ettad.RequestManagement.Service.Orders
 
                 var dtos = _mapper.Map<List<OrderDto>>(orders);
                 
-                // Fallback: Populate RequesterName from CreatedBy user if not set
-                foreach (var dto in dtos)
-                {
-                    var order = orders.FirstOrDefault(o => o.Id == dto.Id);
-                    if (order != null && string.IsNullOrEmpty(dto.RequesterName) && !string.IsNullOrEmpty(order.CreatedBy))
-                    {
-                        dto.RequesterName = await GetUserNameByIdAsync(order.CreatedBy);
-                    }
-                }
-                
                 _logger.LogInformation("Successfully retrieved {OrderCount} orders. User: {UserId}", dtos.Count, _currentUserService.UserId);
                 return APIOperationResponse<List<OrderDto>>.Success(dtos);
             }
@@ -162,6 +155,11 @@ namespace Ettad.RequestManagement.Service.Orders
 
         public async Task<APIOperationResponse<long>> CreateAsync(CreateOrderDto inputDto)
         {
+            return await CreateAsync(inputDto, null);
+        }
+
+        public async Task<APIOperationResponse<long>> CreateAsync(CreateOrderDto inputDto, List<IFormFile> files)
+        {
             var currentUserId = _currentUserService.UserId;
             var departmentId = _currentUserService.DepartmentId;
 
@@ -172,8 +170,8 @@ namespace Ettad.RequestManagement.Service.Orders
                     "Department not found for current user. Cannot create order.");
             }
 
-            _logger.LogInformation("Creating new order. DepartmentId: {DepartmentId}, IsFromAllowance: {IsFromAllowance}, User: {UserId}",
-                departmentId.Value, inputDto.IsFromAllowance, currentUserId);
+            _logger.LogInformation("Creating new order. DepartmentId: {DepartmentId}, IsFromAllowance: {IsFromAllowance}, User: {UserId}, HasFiles: {HasFiles}",
+                departmentId.Value, inputDto.IsFromAllowance, currentUserId, files != null && files.Count > 0);
             
             try
             {
@@ -207,7 +205,35 @@ namespace Ettad.RequestManagement.Service.Orders
                     return APIOperationResponse<long>.Fail(ResponseType.BadRequest, "Request purpose must be of type Order");
                 }
 
-                // Map DTO to entity (exclude RequestItems for now)
+                // Step 1: Save files first (before creating order) to create FileUplodMaster records
+                List<long> savedFileMasterIds = null;
+                if (files != null && files.Count > 0)
+                {
+                    try
+                    {
+                        var saveFilesResult = await _fileUploadService.SaveFilesAsync(files, FileEntityType.Order);
+                        if (!saveFilesResult.Succeeded || saveFilesResult.Data == null)
+                        {
+                            _logger.LogWarning("Failed to save files before creating order. Error: {Error}, User: {UserId}",
+                                saveFilesResult.Message ?? "Unknown error", currentUserId);
+                            // Continue without files - files are optional
+                        }
+                        else
+                        {
+                            savedFileMasterIds = saveFilesResult.Data;
+                            _logger.LogInformation("Files saved successfully before order creation. FileCount: {FileCount}, MasterIds: {MasterIds}, User: {UserId}",
+                                files.Count, string.Join(", ", savedFileMasterIds), currentUserId);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        // Log error but don't fail order creation - files are optional
+                        _logger.LogError(ex, "Exception occurred while saving files before order creation. User: {UserId}",
+                            currentUserId);
+                    }
+                }
+
+                // Step 2: Map DTO to entity (exclude RequestItems for now)
                 var order = _mapper.Map<Order>(inputDto);
                 order.RequestType = RequestType.Order; // Always set request type to Order
                 order.Status = RequestStatus.New; // Always set initial status to New
@@ -240,17 +266,43 @@ namespace Ettad.RequestManagement.Service.Orders
                     }
                 }
 
-                // Add to repository (this will cascade save RequestItems)
+                // Step 3: Add to repository (this will cascade save RequestItems)
                 var createdOrder = await _orderRepository.AddAsync(order);
+
+                // Step 4: Link files to the order (create FileUplodDetails records) if files were saved
+                if (savedFileMasterIds != null && savedFileMasterIds.Count > 0)
+                {
+                    try
+                    {
+                        foreach (var masterId in savedFileMasterIds)
+                        {
+                            var detail = new FileUplodDetails
+                            {
+                                FileUplodMasterId = masterId,
+                                Entity = FileEntityType.Order,
+                                EntityId = createdOrder.Id
+                            };
+
+                            await _fileDetailsRepository.AddAsync(detail);
+                        }
+
+                        _logger.LogInformation("Files linked successfully to order. OrderId: {OrderId}, FileCount: {FileCount}, User: {UserId}",
+                            createdOrder.Id, savedFileMasterIds.Count, currentUserId);
+                    }
+                    catch (Exception ex)
+                    {
+                        // Log error but don't fail order creation - files are optional
+                        _logger.LogError(ex, "Exception occurred while linking files to order. OrderId: {OrderId}, User: {UserId}",
+                            createdOrder.Id, currentUserId);
+                    }
+                }
 
                 // Determine workflow type based on order type
                 // If order is from reserved/allowance, use WorkflowType.OrderFromAllowance (4), otherwise use WorkflowType.NoramlOrder (1)
                 var workflowType = createdOrder.IsFromAllowance ? WorkflowType.OrderFromAllowance : WorkflowType.NoramlOrder;
 
                 // Start workflow for the order
-                var workflowStarted = await _workflowApprovalService.StartWorkflowAsync(
-                    createdOrder.Id, 
-                    workflowType);
+                var workflowStarted = await _workflowApprovalService.StartWorkflowAsync(createdOrder.Id, workflowType);
 
                 if (workflowStarted)
                 {
@@ -336,33 +388,6 @@ namespace Ettad.RequestManagement.Service.Orders
             {
                 // Log but don't fail the operation
                 _logger.LogWarning(ex, "Failed to send notification and email for order. OrderId: {OrderId}", entityId);
-            }
-        }
-
-        /// <summary>
-        /// Get user name by user ID from Identity system
-        /// </summary>
-        private async Task<string> GetUserNameByIdAsync(string userId)
-        {
-            try
-            {
-                var user = await _userManager.FindByIdAsync(userId);
-                if (user != null)
-                {
-                    // Try FullNameEN first, then FullNameAR, then UserName
-                    if (!string.IsNullOrEmpty(user.FullNameEN))
-                        return user.FullNameEN;
-                    if (!string.IsNullOrEmpty(user.FullNameAR))
-                        return user.FullNameAR;
-                    if (!string.IsNullOrEmpty(user.UserName))
-                        return user.UserName;
-                }
-                
-                return "System User";
-            }
-            catch
-            {
-                return "System User";
             }
         }
 

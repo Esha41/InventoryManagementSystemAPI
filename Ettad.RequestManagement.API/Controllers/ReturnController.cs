@@ -4,8 +4,10 @@ using Ettad.RequestManagement.Service.Returns.Dtos;
 using Ettad.Data.Enums;
 using Ettad.ResponseHandler.Models;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using System.Net;
+using Ettad.ResponseHandler.Consts;
 
 namespace Ettad.RequestManagement.API.Controllers
 {
@@ -46,15 +48,48 @@ namespace Ettad.RequestManagement.API.Controllers
         }
 
         /// <summary>
-        /// Create a new return with items
+        /// Create a new return (Supports both Multipart/Form-Data and Application/JSON)
         /// </summary>
+        /// <returns>Created return ID</returns>
         [HttpPost]
-        [ProducesResponseType((int)HttpStatusCode.Created)]
+        [ProducesResponseType(typeof(APIOperationResponse<long>), (int)HttpStatusCode.Created)]
+        [ProducesResponseType((int)HttpStatusCode.BadRequest)]
         [CheckAuthorize("Permissions.Return.Create")]
-        public async Task<IActionResult> Create([FromBody] CreateReturnDto dto)
+        public async Task<IActionResult> Create()
         {
-            var result = await _returnService.CreateAsync(dto);
-            return ProcessResponse(result);
+            try
+            {
+                CreateReturnDto dto;
+                List<IFormFile>? files = null;
+
+                if (Request.HasFormContentType)
+                {
+                    // Handle Multipart/Form-Data
+                    dto = new CreateReturnDto();
+                    await TryUpdateModelAsync(dto);
+                    files = Request.Form.Files.ToList();
+                }
+                else
+                {
+                    // Handle Application/JSON
+                    using var reader = new StreamReader(Request.Body);
+                    var body = await reader.ReadToEndAsync();
+                    dto = System.Text.Json.JsonSerializer.Deserialize<CreateReturnDto>(body, new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                }
+
+                if (dto == null)
+                    return BadRequest(APIOperationResponse<long>.Fail(ResponseType.BadRequest, "Invalid request data"));
+
+                var result = files != null && files.Count > 0
+                    ? await _returnService.CreateAsync(dto, files)
+                    : await _returnService.CreateAsync(dto);
+
+                return ProcessResponse(result);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(APIOperationResponse<long>.Fail(ResponseType.BadRequest, ex.Message));
+            }
         }
 
         /// <summary>

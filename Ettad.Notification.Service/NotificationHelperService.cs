@@ -153,7 +153,8 @@ namespace Ettad.Notification.Service
             long? entityId = null,
             List<string>? userIds = null,
             List<string>? roleIds = null,
-            bool includeSuperAdmins = false)
+            bool includeSuperAdmins = false,
+            string? htmlContent = null)
         {
             try
             {
@@ -171,7 +172,7 @@ namespace Ettad.Notification.Service
 
                 // Build email body once for all users
                 var emailBody = await _emailTemplateService.RenderEmailTemplateAsync(
-                    title, message, entityType, entityId, 0, DateTime.UtcNow);
+                    title, message, entityType, entityId, 0, DateTime.UtcNow, htmlContent);
 
                 _logger.LogInformation("Email template rendered successfully. Body length: {BodyLength} characters", emailBody?.Length ?? 0);
 

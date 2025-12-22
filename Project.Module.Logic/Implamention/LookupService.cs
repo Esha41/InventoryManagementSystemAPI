@@ -17,8 +17,8 @@ namespace Ettad.Lookups.Services.Implementation
         {
             private readonly ICrossCuttingRepository<T> _repository;
             protected readonly IMapper _mapper;
-            private readonly ICurrentUserService _currentUserService;
-            private readonly ILogger<LookupService<T, TDto>> _logger;
+            protected readonly ICurrentUserService _currentUserService;
+            protected readonly ILogger<LookupService<T, TDto>> _logger;
 
             public LookupService(
                 ICrossCuttingRepository<T> repository, 

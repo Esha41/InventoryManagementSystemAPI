@@ -1,4 +1,4 @@
-﻿using Ettad.Data.Entities;
+using Ettad.Data.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -21,14 +21,17 @@ namespace Ettad.EntityFramework.Configurations
                 .IsRequired();
 
             builder.Property(x => x.PartNo)
-                .IsRequired()
+                .IsRequired(false)
                 .HasMaxLength(500);
 
-            builder.HasOne(x => x.Hcc)
-                .WithMany()
-                .IsRequired()
-                .HasForeignKey(x =>  x.HccId)
-                .OnDelete(DeleteBehavior.Restrict);
+            builder.Property(x => x.Price)
+                .IsRequired(false)
+                .HasColumnType("decimal(18,2)");
+
+            builder.Property(x => x.MinimumQuantity)
+                .IsRequired(false);
+
+            // HCC relationship removed - no longer used
         }
     }
 }

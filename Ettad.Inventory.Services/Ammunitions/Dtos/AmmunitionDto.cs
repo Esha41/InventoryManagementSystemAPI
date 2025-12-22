@@ -1,4 +1,4 @@
-﻿using Ettad.Data.Enums;
+using Ettad.Data.Enums;
 using Ettad.Module.lookup.Dtos;
 
 namespace Ettad.Inventory.Service.Ammunitions.Dtos
@@ -13,27 +13,27 @@ namespace Ettad.Inventory.Service.Ammunitions.Dtos
 
         public string ItemNo { get; set; }
 
-        public long HccId { get; set; }
+        public string? PartNo { get; set; }
 
-        public string PartNo { get; set; }
+        public decimal? Price { get; set; }
 
-        public decimal BulletDiameter { get; set; }
+        public long? MinimumQuantity { get; set; }
 
-        public long BulletDiameterUnitId { get; set; }
+        public decimal? BulletDiameter { get; set; }
 
-        public decimal CaseLength { get; set; }
+        public long? BulletDiameterUnitId { get; set; }
 
-        public long CaseLengthUnitId { get; set; }
+        public string? ArmNumber { get; set; }
 
         public bool IsLinked { get; set; }
 
-        public string Primer { get; set; }
+        public string? Primer { get; set; }
 
-        public decimal TotalWeight { get; set; }
+        public decimal? TotalWeight { get; set; }
 
         public long? NatureOptionId { get; set; }
 
-        public string Nsn { get; set; }
+        public string? Nsn { get; set; }
 
         public long? PrimaryPurposId { get; set; }
 
@@ -41,19 +41,17 @@ namespace Ettad.Inventory.Service.Ammunitions.Dtos
 
         public long? ProjectailMaterialId { get; set; }
 
-        public long CaseTypeId { get; set; }
+        public long? CaseTypeId { get; set; }
 
-        public long PropellantId { get; set; }
+        public long? PropellantId { get; set; }
 
-        public long CompatibilityId { get; set; }
+        public long? CompatibilityId { get; set; }
 
-        public long HazardDivisionId { get; set; }
+        public long? HazardDivisionId { get; set; }
         
         #region Navigation Properties
 
-        public HccDto Hcc { get; set; }
         public UnitDto BulletDiameterUnit { get; set; }
-        public UnitDto CaseLengthUnit { get; set; }
         public NatureOptionDto NatureOption { get; set; }
         public PrimaryPurposDto PrimaryPurpos { get; set; }
         public ColorDto ProjectileColor { get; set; }

@@ -29,6 +29,9 @@ namespace Ettad.Workflows.Service.DTO
 
         public bool IsCurrent { get; set; }
 
+        // When a step is returned for review, this tracks which step to return to after approval
+        public int? ReturnToStepId { get; set; }
+
         // Optional: For history tracking
         public RequestStatus? OldRequestStatus { get; set; }
         public RequestStatus? NewRequestStatus { get; set; }

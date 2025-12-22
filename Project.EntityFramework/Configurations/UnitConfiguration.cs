@@ -1,4 +1,4 @@
-﻿using Ettad.Data.Entities;
+using Ettad.Data.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -33,36 +33,22 @@ namespace Ettad.EntityFramework.Configurations
                 new Unit
                 {
                     Id = 1,
-                    NameAr = "قطعة",
-                    NameEn = "Piece",
+                    NameAr = "غرام",
+                    NameEn = "Gram",
                     IsDeleted = false
                 },
                 new Unit
                 {
                     Id = 2,
-                    NameAr = "صندوق",
-                    NameEn = "Box",
+                    NameAr = "مليمتر",
+                    NameEn = "Millimeter",
                     IsDeleted = false
                 },
                 new Unit
                 {
                     Id = 3,
-                    NameAr = "طن",
-                    NameEn = "Ton",
-                    IsDeleted = false
-                },
-                new Unit
-                {
-                    Id = 4,
-                    NameAr = "كيلوغرام",
-                    NameEn = "Kilogram",
-                    IsDeleted = false
-                },
-                new Unit
-                {
-                    Id = 5,
-                    NameAr = "حاوية",
-                    NameEn = "Container",
+                    NameAr = "قطعة",
+                    NameEn = "Piece",
                     IsDeleted = false
                 }
             );

@@ -10,9 +10,7 @@ namespace Ettad.RequestManagement.Service.Returns.Profiles
     {
         public ReturnMappingProfile()
         {
-            // Entity to DTO - Use base mapping which handles RequestItems automatically
-            CreateMap<Return, ReturnDto>()
-                .IncludeBase<BaseRequest, BaseRequestDto>();
+            CreateMap<Return, ReturnDto>();
 
             // Create DTO to Entity
             CreateMap<CreateReturnDto, Return>()

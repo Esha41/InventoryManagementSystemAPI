@@ -1,7 +1,9 @@
 using AutoMapper;
 using FluentValidation;
 using Ettad.Application.Common.Interfaces;
+using Ettad.Comman.Enums;
 using Ettad.Comman.Idenitity;
+using Ettad.CrossCutting.Comman.FileUpload;
 using Ettad.CrossCutting.Data.Repository;
 using Ettad.Data.Entities;
 using Ettad.Data.Enums;
@@ -12,6 +14,7 @@ using Ettad.Notification.Service;
 using Ettad.RequestManagement.Service.SupplyManagement.Dtos;
 using Ettad.ResponseHandler.Consts;
 using Ettad.ResponseHandler.Models;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -39,6 +42,7 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
 		private readonly INotificationHelperService _notificationHelperService;
 		private readonly UserManager<ApplicationUser> _userManager;
 		private readonly ILogger<SupplyService> _logger;
+		private readonly IFileUploadService _fileUploadService;
 
 	public SupplyService(
 			ApplicationDbContext context,
@@ -59,7 +63,8 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
 			IValidator<ConfirmSupplyPickupDateDto> confirmPickupDateValidator,
 			INotificationHelperService notificationHelperService,
 			UserManager<ApplicationUser> userManager,
-			ILogger<SupplyService> logger)
+			ILogger<SupplyService> logger,
+			IFileUploadService fileUploadService)
 		{
 			_context = context;
 			_inventoryService = inventoryService;
@@ -80,6 +85,7 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
 			_notificationHelperService = notificationHelperService;
 			_userManager = userManager;
 			_logger = logger;
+			_fileUploadService = fileUploadService;
 		}
 
 		public async Task<APIOperationResponse<OrderSupplySuggestionDto>> GetSupplySuggestionAsync(long orderId, List<long>? depotIds = null)
@@ -205,8 +211,22 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
                 var dto = _mapper.Map<SupplyDto>(supply);
                 PopulateSupplyDetailCalculatedProperties(dto, supply);
 
-                _logger.LogInformation("Supply retrieved successfully. OrderID: {OrderID}, OrderId: {OrderId}",
-                    orderId, supply.OrderId);
+                // Load files associated with this supply
+                var filesResult = await _fileUploadService.GetByEntityAsync(FileEntityType.Supply, supply.Id);
+                if (filesResult.Succeeded && filesResult.Data != null)
+                {
+                    dto.Files = filesResult.Data;
+                }
+                else
+                {
+                    dto.Files = new List<FileUploadDto>();
+                    // Log warning but don't fail the operation
+                    _logger.LogWarning("Failed to load files for supply. SupplyId: {SupplyId}, Error: {Error}",
+                        supply.Id, filesResult.Message);
+                }
+
+                _logger.LogInformation("Supply retrieved successfully. OrderID: {OrderID}, OrderId: {OrderId}, FileCount: {FileCount}",
+                    orderId, supply.OrderId, dto.Files?.Count ?? 0);
 
                 return APIOperationResponse<SupplyDto>.Success(dto);
             }
@@ -217,6 +237,65 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
                 return APIOperationResponse<SupplyDto>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
             }
         }
+
+		public async Task<APIOperationResponse<SupplyDto>> GetDraftByOrderIdAsync(long orderId)
+		{
+			_logger.LogInformation("Getting draft supply by Order ID. OrderID: {OrderID}, User: {UserId}",
+				orderId, _currentUserService.UserId);
+
+			try
+			{
+				var supply = await _supplyRepository.FindOneAsync(
+					s => s.OrderId == orderId && !s.IsDeleted && s.SubmissionStatus == SupplySubmissionStatus.Draft,
+					false,
+					nameof(Supply.Order),
+					$"{nameof(Supply.Order)}.{nameof(Order.RequestItems)}",
+					$"{nameof(Supply.Order)}.{nameof(Order.RequestItems)}.{nameof(RequestItem.Item)}",
+					nameof(Supply.ReceiverRank),
+					$"{nameof(Supply.SupplyDetails)}.{nameof(SupplyDetail.Item)}"
+				);
+
+				if (supply == null)
+				{
+					// Not found is fine, it means no draft exists
+					return APIOperationResponse<SupplyDto>.Success(null);
+				}
+
+				// Filter out soft-deleted request items
+				if (supply.Order?.RequestItems != null)
+				{
+					supply.Order.RequestItems = supply.Order.RequestItems.Where(ri => !ri.IsDeleted).ToList();
+				}
+
+				// Filter out soft-deleted supply details
+				if (supply.SupplyDetails != null)
+				{
+					supply.SupplyDetails = supply.SupplyDetails.Where(sd => !sd.IsDeleted).ToList();
+				}
+
+				var dto = _mapper.Map<SupplyDto>(supply);
+				PopulateSupplyDetailCalculatedProperties(dto, supply);
+
+				// Load files associated with this supply
+				var filesResult = await _fileUploadService.GetByEntityAsync(FileEntityType.Supply, supply.Id);
+				if (filesResult.Succeeded && filesResult.Data != null)
+				{
+					dto.Files = filesResult.Data;
+				}
+				else
+				{
+					dto.Files = new List<FileUploadDto>();
+				}
+
+				return APIOperationResponse<SupplyDto>.Success(dto);
+			}
+			catch (Exception ex)
+			{
+				_logger.LogError(ex, "Error getting draft supply by Order ID. OrderID: {OrderID}, User: {UserId}",
+					orderId, _currentUserService.UserId);
+				return APIOperationResponse<SupplyDto>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
+			}
+		}
 
 
         public async Task<APIOperationResponse<List<SupplyDto>>> GetAllAsync()
@@ -324,6 +403,29 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
 					return APIOperationResponse<long>.Fail(ResponseType.BadRequest, 
 						$"A Draft supply already exists for this order (Supply ID: {existingDraftSupply.Id}). Please update the existing supply instead of creating a new one.");
 				}
+
+				// Consolidate duplicate item+lot combinations by summing quantities
+				// This handles cases where the same lot appears multiple times in the request
+				var consolidatedDetails = inputDto.SupplyDetails
+					.GroupBy(d => new { d.ItemId, d.Lot })
+					.Select(g => new CreateSupplyDetailDto
+					{
+						ItemId = g.Key.ItemId,
+						Lot = g.Key.Lot,
+						Quantity = g.Sum(d => d.Quantity),
+						Notes = g.First().Notes // Take notes from first occurrence
+					})
+					.ToList();
+
+				// Log if consolidation occurred
+				if (consolidatedDetails.Count < inputDto.SupplyDetails.Count)
+				{
+					_logger.LogInformation("Consolidated {OriginalCount} supply details into {ConsolidatedCount} unique item+lot combinations. OrderId: {OrderId}, User: {UserId}", 
+						inputDto.SupplyDetails.Count, consolidatedDetails.Count, inputDto.OrderId, _currentUserService.UserId);
+				}
+
+				// Use consolidated details for further processing
+				inputDto.SupplyDetails = consolidatedDetails;
 
 				// Get all existing supplies for this order (excluding deleted)
 				var existingSupplies = await _supplyRepository.FindAsync(
@@ -548,6 +650,18 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
 						supplyId, supply.SubmissionStatus, _currentUserService.UserId);
 					return APIOperationResponse<long>.Fail(ResponseType.BadRequest, 
 						"Supply details can only be added when submission status is Draft");
+				}
+
+				// Check if the same item+lot combination already exists in this supply
+				var duplicateDetail = supply.SupplyDetails?
+					.FirstOrDefault(sd => sd.ItemId == detailDto.ItemId && sd.Lot == detailDto.Lot && !sd.IsDeleted);
+				
+				if (duplicateDetail != null)
+				{
+					_logger.LogWarning("Duplicate item+lot combination. SupplyId: {SupplyId}, ItemId: {ItemId}, Lot: {Lot}, User: {UserId}", 
+						supplyId, detailDto.ItemId, detailDto.Lot, _currentUserService.UserId);
+					return APIOperationResponse<long>.Fail(ResponseType.BadRequest, 
+						$"A supply detail with Item {detailDto.ItemId} and Lot {detailDto.Lot} already exists in this supply. Please update the existing detail instead of adding a duplicate.");
 				}
 
 				// Find the corresponding request item
@@ -859,6 +973,29 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
 					return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, "At least one supply detail is required");
 				}
 
+				// Consolidate duplicate item+lot combinations by summing quantities
+				// This handles cases where the same lot appears multiple times in the request
+				var consolidatedDetails = newDetails
+					.GroupBy(d => new { d.ItemId, d.Lot })
+					.Select(g => new CreateSupplyDetailDto
+					{
+						ItemId = g.Key.ItemId,
+						Lot = g.Key.Lot,
+						Quantity = g.Sum(d => d.Quantity),
+						Notes = g.First().Notes // Take notes from first occurrence
+					})
+					.ToList();
+
+				// Log if consolidation occurred
+				if (consolidatedDetails.Count < newDetails.Count)
+				{
+					_logger.LogInformation("Consolidated {OriginalCount} supply details into {ConsolidatedCount} unique item+lot combinations. SupplyId: {SupplyId}, User: {UserId}", 
+						newDetails.Count, consolidatedDetails.Count, supplyId, _currentUserService.UserId);
+				}
+
+				// Replace newDetails with consolidated version
+				newDetails = consolidatedDetails;
+
 				// Validate each new detail
 				foreach (var detailDto in newDetails)
 				{
@@ -957,11 +1094,10 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
 					_context.Entry(detailEntity).Property(x => x.DeletedBy).IsModified = true;
 				}
 
-				// Detach to avoid tracking conflicts before adding new entities
-				foreach (var entry in _context.ChangeTracker.Entries<SupplyDetail>().ToList())
-				{
-					entry.State = EntityState.Detached;
-				}
+				// REMOVED: Detach loop was causing the soft-delete updates to be ignored 
+				// because it detached the entities before SaveChangesAsync was called.
+				// Since we are using stubs and the repository returns NoTracking entities,
+				// there is no tracking conflict to resolve here.
 
 				// Add new details
 				var createdDetails = new List<SupplyDetail>();
@@ -1010,20 +1146,21 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
 			}
 		}
 
-		public async Task<APIOperationResponse<bool>> SubmitSupplyAsync(long id, SubmitSupplyDto inputDto)
+		public async Task<APIOperationResponse<bool>> SubmitSupplyAsync(long id, SubmitSupplyDto inputDto, List<IFormFile> files)
 		{
-			_logger.LogInformation("Submitting supply. SupplyId: {SupplyId}, User: {UserId}",
-				id, _currentUserService.UserId);
-
 			try
 			{
 				var validationResult = await _submitValidator.ValidateAsync(inputDto);
 				if (!validationResult.IsValid)
 				{
 					var errors = string.Join(", ", validationResult.Errors.Select(e => e.ErrorMessage));
-					_logger.LogWarning("Supply submission validation failed. Errors: {ValidationErrors}, User: {UserId}",
-						errors, _currentUserService.UserId);
 					return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, errors);
+				}
+
+				// Validate that at least one file is provided
+				if (files == null || !files.Any() || files.All(f => f == null || f.Length == 0))
+				{
+					return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, "At least one file attachment is required when submitting a supply.");
 				}
 
 				var supply = await _supplyRepository.FindOneAsync(
@@ -1036,23 +1173,39 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
 
 				if (supply == null)
 				{
-					_logger.LogWarning("Supply not found. SupplyId: {SupplyId}, User: {UserId}",
-						id, _currentUserService.UserId);
 					return APIOperationResponse<bool>.Fail(ResponseType.NotFound, "Supply not found");
 				}
 
 				if (supply.SubmissionStatus == SupplySubmissionStatus.Submitted)
 				{
-					_logger.LogWarning("Supply already submitted. SupplyId: {SupplyId}, User: {UserId}",
-						id, _currentUserService.UserId);
 					return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, "Supply is already submitted.");
 				}
 
 				if (supply.SupplyDetails == null || !supply.SupplyDetails.Any(sd => !sd.IsDeleted))
 				{
-					_logger.LogWarning("Cannot submit supply without details. SupplyId: {SupplyId}, User: {UserId}",
-						id, _currentUserService.UserId);
 					return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, "Supply must have at least one detail before submission.");
+				}
+
+				// Filter out null or empty files
+				var validFiles = files.Where(f => f != null && f.Length > 0).ToList();
+				if (!validFiles.Any())
+				{
+					return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, "At least one valid file attachment is required when submitting a supply.");
+				}
+
+				// Upload files and link them to the supply
+				var uploadResult = await _fileUploadService.UploadFilesForEntityAsync(
+					validFiles,
+					FileEntityType.Supply,
+					supply.Id
+				);
+
+				if (!uploadResult.Succeeded)
+				{
+					_logger.LogError("Failed to upload files for supply. SupplyId: {SupplyId}, Error: {Error}, UserId: {UserId}",
+						id, uploadResult.Message, _currentUserService.UserId);
+					return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, 
+						$"Failed to upload files: {uploadResult.Message}");
 				}
 
 				// Update receiver information and submission metadata
@@ -1066,15 +1219,12 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
 				supply.ModifiedBy = _currentUserService.UserId;
 
 				await _supplyRepository.UpdateAsync(supply);
-				_logger.LogInformation("Supply submitted successfully. SupplyId: {SupplyId}, User: {UserId}",
-					id, _currentUserService.UserId);
 
 				return APIOperationResponse<bool>.Success(true, "Supply submitted successfully");
 			}
 			catch (Exception ex)
 			{
-				_logger.LogError(ex, "Error submitting supply. SupplyId: {SupplyId}, User: {UserId}",
-					id, _currentUserService.UserId);
+				_logger.LogError(ex, "Error submitting supply. SupplyId: {SupplyId}, UserId: {UserId}", id, _currentUserService.UserId);
 				return APIOperationResponse<bool>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
 			}
 		}
@@ -1143,8 +1293,9 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
 			}
 
 			// Get all supply details for this lot to calculate used quantity
+			// IMPORTANT: Only count non-deleted supply details
 			var supplyDetails = await _supplyDetailRepository.FindAsync(
-				sd => sd.ItemId == itemId && sd.Lot == lot
+				sd => sd.ItemId == itemId && sd.Lot == lot && !sd.IsDeleted
 			);
 
 			var totalUsedQuantity = supplyDetails.Sum(sd => sd.Quantity);

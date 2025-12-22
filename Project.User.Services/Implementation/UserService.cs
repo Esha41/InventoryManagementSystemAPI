@@ -6,6 +6,7 @@ using Ettad.EntityFramework.DataBaseContext;
 using Ettad.Module.lookup.Dtos;
 using Ettad.ResponseHandler.Consts;
 using Ettad.ResponseHandler.Models;
+using Ettad.Services.DataTransferObject.AuthenticationDto;
 using Ettad.User.Services.DTO;
 using Ettad.User.Services.Interfaces;
 using Microsoft.AspNetCore.Identity;
@@ -510,6 +511,56 @@ public class UserService : IUserService
 
         _logger.LogInformation("Successfully retrieved current user info. UserId: {UserId}", currentUserId);
         return APIOperationResponse<UserDto>.Success(dto);
+    }
+
+    public async Task<APIOperationResponse<bool>> ChangePasswordAsync(ChangePasswordDto dto)
+    {
+        var currentUserId = _currentUserService.UserId;
+
+        if (string.IsNullOrWhiteSpace(currentUserId))
+        {
+            _logger.LogWarning("Password change failed: No authenticated user context available.");
+            return APIOperationResponse<bool>.Fail(ResponseType.Unauthorized, "User not authenticated.");
+        }
+
+        _logger.LogInformation("Attempting to change password. UserId: {UserId}", currentUserId);
+
+        var user = await _userManager.Users
+            .FirstOrDefaultAsync(u => u.Id == currentUserId && !u.IsDeleted);
+
+        if (user == null)
+        {
+            _logger.LogWarning("Password change failed: User not found. UserId: {UserId}", currentUserId);
+            return APIOperationResponse<bool>.Fail(ResponseType.NotFound, "User not found.");
+        }
+
+        // Prevent LDAP users from changing password (managed externally)
+        if (user.IsLdapUser)
+        {
+            _logger.LogWarning("Password change denied: LDAP user attempted to change password. UserId: {UserId}, Username: {Username}", 
+                currentUserId, user.UserName);
+            return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, 
+                "LDAP users cannot change their password through this system. Please contact your system administrator.");
+        }
+
+        // Verify old password and change to new password
+        var result = await _userManager.ChangePasswordAsync(user, dto.OldPassword, dto.NewPassword);
+
+        if (!result.Succeeded)
+        {
+            var errors = result.Errors.Select(e => e.Description).ToList();
+            var errorMessage = string.Join(", ", errors);
+            
+            _logger.LogWarning("Password change failed: {Errors}. UserId: {UserId}, Username: {Username}", 
+                errorMessage, currentUserId, user.UserName);
+            
+            return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, errorMessage);
+        }
+
+        _logger.LogInformation("Password changed successfully. UserId: {UserId}, Username: {Username}", 
+            currentUserId, user.UserName);
+
+        return APIOperationResponse<bool>.Success(true, "Password changed successfully.");
     }
 
     private async Task PopulateRolesAsync(UserDto dto, ApplicationUser user)

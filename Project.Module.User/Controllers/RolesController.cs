@@ -10,6 +10,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Ettad.Application.Common.Interfaces;
 
 namespace Ettad.User.API.Controllers
 {
@@ -19,10 +20,12 @@ namespace Ettad.User.API.Controllers
     public class RolesController : ApiControllerBase
     {
         private readonly IRoleService _roleService;
+        private readonly ICurrentUserService _currentUserService;
 
-        public RolesController(IRoleService roleService)
+        public RolesController(IRoleService roleService, ICurrentUserService currentUserService)
         {
             _roleService = roleService;
+            _currentUserService = currentUserService;
         }
 
 
@@ -71,6 +74,12 @@ namespace Ettad.User.API.Controllers
          )]
         public async Task<IActionResult> CreateRole([FromBody] CreateRoleDto createRoleDto)
         {
+            // Prevent non-super admins from creating super admin roles
+            if (createRoleDto.IsSuperAdmin && !_currentUserService.IsSuperAdmin)
+            {
+                return Forbid();
+            }
+
             var response = await _roleService.CreateRoleAsync(createRoleDto);
             if (!response.Succeeded) return BadRequest(response);
             return CreatedAtAction(nameof(GetRoleById), new { id = response.Data.Id }, response);
@@ -82,6 +91,12 @@ namespace Ettad.User.API.Controllers
         [HttpPut("{id}")]
         public async Task<IActionResult> UpdateRole(string id, [FromBody] UpdateRoleDto updateRoleDto)
         {
+            // Prevent non-super admins from setting or modifying super admin flag
+            if (updateRoleDto.IsSuperAdmin && !_currentUserService.IsSuperAdmin)
+            {
+                return Forbid();
+            }
+
             var response = await _roleService.UpdateRoleAsync(id, updateRoleDto);
             if (!response.Succeeded)
             {
@@ -133,7 +148,7 @@ namespace Ettad.User.API.Controllers
 
 
         [HttpPost("permissions")]
-        [Authorize("Permissions.Roles.Edit")]
+        [CheckAuthorize("Permissions.Roles.Edit")]
         public async Task<ActionResult> AssignPermissionsToRole(AssignPermissionsDto assignPermissions)
         {
             var response = await _roleService.AssignPermissionsToRoleAsync(assignPermissions);

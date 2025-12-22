@@ -5,6 +5,7 @@ using Ettad.RequestManagement.Service.SupplyManagement;
 using Ettad.RequestManagement.Service.SupplyManagement.Dtos;
 using Ettad.ResponseHandler.Models;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using System.Net;
 
@@ -66,6 +67,20 @@ namespace Ettad.RequestManagement.API.Controllers
         public async Task<IActionResult> GetByOrderId(long orderId)
         {
             var result = await _supplyService.GetByOrderIdAsync(orderId);
+            return ProcessResponse(result);
+        }
+
+        /// <summary>
+        /// Get draft supply by Order ID
+        /// </summary>
+        /// <param name="orderId">Order ID</param>
+        /// <returns>Draft Supply details or null if not found</returns>
+        [HttpGet("{orderId}/draft")]
+        [ProducesResponseType(typeof(APIOperationResponse<SupplyDto>), (int)HttpStatusCode.OK)]
+        [CheckAuthorize("Permissions.Supply.View", "Permissions.Supply.Page")]
+        public async Task<IActionResult> GetDraftByOrderId(long orderId)
+        {
+            var result = await _supplyService.GetDraftByOrderIdAsync(orderId);
             return ProcessResponse(result);
         }
 
@@ -184,19 +199,21 @@ namespace Ettad.RequestManagement.API.Controllers
         }
 
         /// <summary>
-        /// Submit a supply (requires receiver information)
+        /// Submit a supply (requires receiver information and at least one file attachment)
         /// </summary>
         /// <param name="id">Supply ID</param>
         /// <param name="dto">Submission data</param>
+        /// <param name="files">File attachments (at least one required)</param>
         /// <returns>Success result</returns>
         [HttpPost("{id}/submit")]
+        [Consumes("multipart/form-data")]
         [ProducesResponseType(typeof(APIOperationResponse<bool>), (int)HttpStatusCode.OK)]
         [ProducesResponseType((int)HttpStatusCode.BadRequest)]
         [ProducesResponseType((int)HttpStatusCode.NotFound)]
         [CheckAuthorize("SubmitSupply")]
-        public async Task<IActionResult> Submit(long id, [FromBody] SubmitSupplyDto dto)
+        public async Task<IActionResult> Submit(long id, [FromForm] SubmitSupplyDto dto, [FromForm] List<IFormFile> files)
         {
-            var result = await _supplyService.SubmitSupplyAsync(id, dto);
+            var result = await _supplyService.SubmitSupplyAsync(id, dto, files);
             return ProcessResponse(result);
         }
 

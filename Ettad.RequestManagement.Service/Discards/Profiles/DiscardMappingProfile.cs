@@ -10,9 +10,7 @@ namespace Ettad.RequestManagement.Service.Discards.Profiles
     {
         public DiscardMappingProfile()
         {
-            // to DTO - Use base mapping which handles RequestItems automatically
-            CreateMap<Discard, DiscardDto>()
-                .IncludeBase<BaseRequest, BaseRequestDto>();
+            CreateMap<Discard, DiscardDto>();
 
             // Create DTO to
             CreateMap<CreateDiscardDto, Discard>()

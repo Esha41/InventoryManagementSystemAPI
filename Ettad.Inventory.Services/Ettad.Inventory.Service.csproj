@@ -7,17 +7,24 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="AutoMapper" Version="12.0.1" />
     <PackageReference Include="AutoMapper.Extensions.Microsoft.DependencyInjection" Version="12.0.1" />
+    <PackageReference Include="EPPlus" Version="8.4.0" />
     <PackageReference Include="FluentValidation" Version="12.0.0" />
     <PackageReference Include="FluentValidation.DependencyInjectionExtensions" Version="12.0.0" />
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Ettad.Notification.Service\Ettad.Notification.Service.csproj" />
     <ProjectReference Include="..\Project.Data\Ettad.Data.csproj" />
     <ProjectReference Include="..\Project.Repository\Ettad.Repository.csproj" />
     <ProjectReference Include="..\Project.ResponseHandler\Ettad.CrossCutting.ResponseHandler.csproj" />
     <ProjectReference Include="..\Project.Module.Logic\Ettad.Module.lookup.csproj" />
+    <ProjectReference Include="..\Project.Comman\Ettad.CrossCutting.Comman.csproj" />
   </ItemGroup>
 
 </Project>

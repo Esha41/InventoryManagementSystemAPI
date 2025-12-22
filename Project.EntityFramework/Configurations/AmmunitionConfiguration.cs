@@ -1,4 +1,4 @@
-﻿using Ettad.Data.Entities;
+using Ettad.Data.Entities;
 using Ettad.Data.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -15,10 +15,11 @@ namespace Ettad.EntityFramework.Configurations
                 .IsRequired();
 
             builder.Property(x => x.BulletDiameter)
-                .IsRequired();
+                .IsRequired(false);
 
-            builder.Property(x => x.CaseLength)
-                .IsRequired();
+            builder.Property(x => x.ArmNumber)
+                .IsRequired(false)
+                .HasMaxLength(200);
 
             builder.HasOne(x => x.NatureOption)
                 .WithMany()
@@ -68,15 +69,9 @@ namespace Ettad.EntityFramework.Configurations
                 .HasForeignKey(x => x.HazardDivisionId)
                 .OnDelete(DeleteBehavior.Restrict);
 
-            builder.HasOne(x => x.CaseLengthUnit)
-                .WithMany()
-                .IsRequired(true)
-                .HasForeignKey(x => x.CaseLengthUnitId)
-                .OnDelete(DeleteBehavior.Restrict);
-
             builder.HasOne(x => x.BulletDiameterUnit)
                 .WithMany()
-                .IsRequired(true)
+                .IsRequired(false)
                 .HasForeignKey(x => x.BulletDiameterUnitId)
                 .OnDelete(DeleteBehavior.Restrict);
 
@@ -89,12 +84,9 @@ namespace Ettad.EntityFramework.Configurations
                     Name = "5.56x45mm NATO",
                     ItemNo = "AMM-001",
                     ItemType = ItemType.Ammunition,
-                    HccId = 1,
                     PartNo = "PN-556-001",
                     BulletDiameter = 5.56m,
                     BulletDiameterUnitId = 1,
-                    CaseLength = 45.0m,
-                    CaseLengthUnitId = 1,
                     IsLinked = false,
                     Primer = "Boxer",
                     TotalWeight = 12.0m,
@@ -107,6 +99,8 @@ namespace Ettad.EntityFramework.Configurations
                     PropellantId = 1,
                     CompatibilityId = 1,
                     HazardDivisionId = 1,
+                    Price = 0.65m,
+                    MinimumQuantity = 200,
                     CreationDate = seedDate,
                     IsDeleted = false,
                     AmmunitionType = AmmunitionType.Small
@@ -117,12 +111,9 @@ namespace Ettad.EntityFramework.Configurations
                     Name = "7.62x51mm NATO",
                     ItemNo = "AMM-002",
                     ItemType = ItemType.Ammunition,
-                    HccId = 2,
                     PartNo = "PN-762-001",
                     BulletDiameter = 7.62m,
                     BulletDiameterUnitId = 2,
-                    CaseLength = 51.0m,
-                    CaseLengthUnitId = 2,
                     IsLinked = false,
                     Primer = "Berdan",
                     TotalWeight = 24.0m,
@@ -135,6 +126,8 @@ namespace Ettad.EntityFramework.Configurations
                     PropellantId = 2,
                     CompatibilityId = 2,
                     HazardDivisionId = 2,
+                    Price = 1.25m,
+                    MinimumQuantity = 150,
                     CreationDate = seedDate,
                     IsDeleted = false,
                     AmmunitionType = AmmunitionType.Small
@@ -145,12 +138,9 @@ namespace Ettad.EntityFramework.Configurations
                     Name = "9x19mm Parabellum",
                     ItemNo = "AMM-003",
                     ItemType = ItemType.Ammunition,
-                    HccId = 3,
                     PartNo = "PN-9MM-001",
                     BulletDiameter = 9.0m,
                     BulletDiameterUnitId = 3,
-                    CaseLength = 19.0m,
-                    CaseLengthUnitId = 3,
                     IsLinked = false,
                     Primer = "Boxer",
                     TotalWeight = 7.5m,
@@ -163,6 +153,8 @@ namespace Ettad.EntityFramework.Configurations
                     PropellantId = 3,
                     CompatibilityId = 3,
                     HazardDivisionId = 3,
+                    Price = 0.70m,
+                    MinimumQuantity = 200,
                     CreationDate = seedDate,
                     IsDeleted = false,
                     AmmunitionType = AmmunitionType.Small
@@ -173,12 +165,9 @@ namespace Ettad.EntityFramework.Configurations
                     Name = ".50 BMG",
                     ItemNo = "AMM-004",
                     ItemType = ItemType.Ammunition,
-                    HccId = 1,
                     PartNo = "PN-50BMG-001",
                     BulletDiameter = 12.7m,
                     BulletDiameterUnitId = 1,
-                    CaseLength = 99.0m,
-                    CaseLengthUnitId = 1,
                     IsLinked = false,
                     Primer = "Berdan",
                     TotalWeight = 115.0m,
@@ -191,6 +180,8 @@ namespace Ettad.EntityFramework.Configurations
                     PropellantId = 1,
                     CompatibilityId = 1,
                     HazardDivisionId = 1,
+                    Price = 3.50m,
+                    MinimumQuantity = 50,
                     CreationDate = seedDate,
                     IsDeleted = false,
                     AmmunitionType = AmmunitionType.Small
@@ -201,12 +192,9 @@ namespace Ettad.EntityFramework.Configurations
                     Name = ".308 Winchester",
                     ItemNo = "AMM-005",
                     ItemType = ItemType.Ammunition,
-                    HccId = 2,
                     PartNo = "PN-308-001",
                     BulletDiameter = 7.62m,
                     BulletDiameterUnitId = 2,
-                    CaseLength = 51.0m,
-                    CaseLengthUnitId = 2,
                     IsLinked = false,
                     Primer = "Boxer",
                     TotalWeight = 23.0m,
@@ -219,6 +207,8 @@ namespace Ettad.EntityFramework.Configurations
                     PropellantId = 2,
                     CompatibilityId = 2,
                     HazardDivisionId = 2,
+                    Price = 1.50m,
+                    MinimumQuantity = 100,
                     CreationDate = seedDate,
                     IsDeleted = false,
                     AmmunitionType = AmmunitionType.Small
@@ -229,12 +219,9 @@ namespace Ettad.EntityFramework.Configurations
                     Name = ".45 ACP",
                     ItemNo = "AMM-006",
                     ItemType = ItemType.Ammunition,
-                    HccId = 3,
                     PartNo = "PN-45ACP-001",
                     BulletDiameter = 11.43m,
                     BulletDiameterUnitId = 3,
-                    CaseLength = 23.0m,
-                    CaseLengthUnitId = 3,
                     IsLinked = false,
                     Primer = "Boxer",
                     TotalWeight = 15.0m,
@@ -247,6 +234,8 @@ namespace Ettad.EntityFramework.Configurations
                     PropellantId = 3,
                     CompatibilityId = 3,
                     HazardDivisionId = 3,
+                    Price = 0.75m,
+                    MinimumQuantity = 150,
                     CreationDate = seedDate,
                     IsDeleted = false,
                     AmmunitionType = AmmunitionType.Small
@@ -257,12 +246,9 @@ namespace Ettad.EntityFramework.Configurations
                     Name = "12.7x108mm",
                     ItemNo = "AMM-007",
                     ItemType = ItemType.Ammunition,
-                    HccId = 1,
                     PartNo = "PN-127-001",
                     BulletDiameter = 12.7m,
                     BulletDiameterUnitId = 1,
-                    CaseLength = 108.0m,
-                    CaseLengthUnitId = 1,
                     IsLinked = false,
                     Primer = "Berdan",
                     TotalWeight = 130.0m,
@@ -275,6 +261,8 @@ namespace Ettad.EntityFramework.Configurations
                     PropellantId = 1,
                     CompatibilityId = 1,
                     HazardDivisionId = 1,
+                    Price = 2.50m,
+                    MinimumQuantity = 50,
                     CreationDate = seedDate,
                     IsDeleted = false,
                     AmmunitionType = AmmunitionType.Small
@@ -285,12 +273,9 @@ namespace Ettad.EntityFramework.Configurations
                     Name = "5.45x39mm",
                     ItemNo = "AMM-008",
                     ItemType = ItemType.Ammunition,
-                    HccId = 2,
                     PartNo = "PN-545-001",
                     BulletDiameter = 5.45m,
                     BulletDiameterUnitId = 2,
-                    CaseLength = 39.0m,
-                    CaseLengthUnitId = 2,
                     IsLinked = false,
                     Primer = "Berdan",
                     TotalWeight = 10.5m,
@@ -303,6 +288,8 @@ namespace Ettad.EntityFramework.Configurations
                     PropellantId = 2,
                     CompatibilityId = 2,
                     HazardDivisionId = 2,
+                    Price = 0.60m,
+                    MinimumQuantity = 200,
                     CreationDate = seedDate,
                     IsDeleted = false,
                     AmmunitionType = AmmunitionType.Small
@@ -313,12 +300,9 @@ namespace Ettad.EntityFramework.Configurations
                     Name = ".40 S&W",
                     ItemNo = "AMM-009",
                     ItemType = ItemType.Ammunition,
-                    HccId = 3,
                     PartNo = "PN-40SW-001",
                     BulletDiameter = 10.16m,
                     BulletDiameterUnitId = 3,
-                    CaseLength = 21.6m,
-                    CaseLengthUnitId = 3,
                     IsLinked = false,
                     Primer = "Boxer",
                     TotalWeight = 11.0m,
@@ -331,6 +315,8 @@ namespace Ettad.EntityFramework.Configurations
                     PropellantId = 3,
                     CompatibilityId = 3,
                     HazardDivisionId = 3,
+                    Price = 0.80m,
+                    MinimumQuantity = 150,
                     CreationDate = seedDate,
                     IsDeleted = false,
                     AmmunitionType = AmmunitionType.Small
