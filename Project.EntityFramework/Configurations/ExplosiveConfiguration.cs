@@ -1,5 +1,4 @@
 using Ettad.Data.Entities;
-using Ettad.Data.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -10,8 +9,15 @@ namespace Ettad.EntityFramework.Configurations
         public void Configure(EntityTypeBuilder<Explosive> builder)
         {
             builder.ToTable("Explosives");
-            // Seed data is handled in ApplicationDbInitializer (runtime seeding)
+
+            builder.Property(x => x.Unit)
+                .IsRequired();
+
+            builder.HasOne(x => x.HazardDivision)
+                .WithMany()
+                .HasForeignKey(x => x.HazardDivisionId)
+                .IsRequired(false)
+                .OnDelete(DeleteBehavior.Restrict);
         }
     }
 }
-

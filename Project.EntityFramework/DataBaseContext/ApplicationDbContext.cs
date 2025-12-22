@@ -48,6 +48,8 @@ namespace Ettad.EntityFramework.DataBaseContext
         public DbSet<Supplier> Suppliers { get; set; }
         public DbSet<Unit> Units { get; set; }
         public DbSet<Rank> Ranks { get; set; }
+        public DbSet<Classification> Classifications { get; set; }
+        public DbSet<ItemTypeLookup> ItemTypes { get; set; }
 
         public DbSet<RequestPurpose> RequestPurposes { get; set; }
         public DbSet<BaseRequest> BaseRequests { get; set; }

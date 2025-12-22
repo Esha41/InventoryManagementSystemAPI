@@ -198,7 +198,6 @@ namespace Ettad.Lookups.Domain.API.Controllers
 
     #endregion
 
-
     #region HazardDivision
 
     [CheckAuthorize(
@@ -331,5 +330,39 @@ namespace Ettad.Lookups.Domain.API.Controllers
         public WorkFlowTypeController(ILookupService<WorkFlowType, CreateUpdateWorkFlowTypeDto> iLookupService, ILogger<LookupController<WorkFlowType, CreateUpdateWorkFlowTypeDto>> logger)
             : base(iLookupService, logger) { }
     }
+    #endregion
+
+    #region Classification
+
+    [CheckAuthorize(
+        "Permissions.Classifications.Page",
+        "Permissions.Classifications.View",
+        "Permissions.Classifications.Create",
+        "Permissions.Classifications.Edit",
+        "Permissions.Classifications.Delete"
+    )]
+    public class ClassificationController : LookupController<Classification, CreateUpdateClassificationDto>
+    {
+        public ClassificationController(ILookupService<Classification, CreateUpdateClassificationDto> iLookupService, ILogger<LookupController<Classification, CreateUpdateClassificationDto>> logger)
+            : base(iLookupService, logger) { }
+    }
+
+    #endregion
+
+    #region ItemType
+
+    [CheckAuthorize(
+        "Permissions.ItemTypes.Page",
+        "Permissions.ItemTypes.View",
+        "Permissions.ItemTypes.Create",
+        "Permissions.ItemTypes.Edit",
+        "Permissions.ItemTypes.Delete"
+    )]
+    public class ItemTypeController : LookupController<ItemTypeLookup, CreateUpdateItemTypeLookupDto>
+    {
+        public ItemTypeController(ILookupService<ItemTypeLookup, CreateUpdateItemTypeLookupDto> iLookupService, ILogger<LookupController<ItemTypeLookup, CreateUpdateItemTypeLookupDto>> logger)
+            : base(iLookupService, logger) { }
+    }
+
     #endregion
 }

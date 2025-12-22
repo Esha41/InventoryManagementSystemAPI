@@ -25,6 +25,9 @@ namespace Ettad.EntityFramework.Configurations
                 .IsRequired()
                 .HasDefaultValue(true);
 
+            builder.Property(x => x.YearOfManufacture)
+                .IsRequired(false);
+
             builder.Property(x => x.ExpiryDate)
                 .IsRequired(false);
 

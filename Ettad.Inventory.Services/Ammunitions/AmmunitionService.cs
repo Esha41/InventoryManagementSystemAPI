@@ -62,13 +62,20 @@ namespace Ettad.Inventory.Service.Ammunitions
                     nameof(Ammunition.CaseType),
                     nameof(Ammunition.Propellant),
                     nameof(Ammunition.Compatibility),
-                    nameof(Ammunition.HazardDivision)
+                    nameof(Ammunition.HazardDivision),
+                    nameof(Ammunition.Classification),
+                    nameof(Ammunition.Type)
                 );
 
                 if (ammunition == null)
                     return APIOperationResponse<AmmunitionDto>.Fail(ResponseType.NotFound, "Ammunition not found");
 
                 var dto = _mapper.Map<AmmunitionDto>(ammunition);
+                
+                // Get images for this ammunition
+                var imagesResult = await _fileUploadService.GetByEntityAsync(FileEntityType.Ammunition, ammunition.Id);
+                dto.Images = imagesResult.Succeeded && imagesResult.Data != null ? imagesResult.Data : new List<FileUploadDto>();
+                
                 return APIOperationResponse<AmmunitionDto>.Success(dto);
             }
             catch (Exception ex)
@@ -92,10 +99,24 @@ namespace Ettad.Inventory.Service.Ammunitions
                     nameof(Ammunition.CaseType),
                     nameof(Ammunition.Propellant),
                     nameof(Ammunition.Compatibility),
-                    nameof(Ammunition.HazardDivision)
+                    nameof(Ammunition.HazardDivision),
+                    nameof(Ammunition.Classification),
+                    nameof(Ammunition.Type)
                 );
 
                 var dtos = _mapper.Map<List<AmmunitionDto>>(ammunitions);
+                
+                // Populate images for all ammunitions in a single database query
+                var entityIds = dtos.Select(d => d.Id).ToList();
+                var imagesResult = await _fileUploadService.GetByEntitiesAsync(FileEntityType.Ammunition, entityIds);
+                if (imagesResult.Succeeded && imagesResult.Data != null)
+                {
+                    foreach (var dto in dtos)
+                    {
+                        dto.Images = imagesResult.Data.ContainsKey(dto.Id) ? imagesResult.Data[dto.Id] : new List<FileUploadDto>();
+                    }
+                }
+                
                 return APIOperationResponse<List<AmmunitionDto>>.Success(dtos);
             }
             catch (Exception ex)
@@ -121,10 +142,24 @@ namespace Ettad.Inventory.Service.Ammunitions
                     nameof(Ammunition.CaseType),
                     nameof(Ammunition.Propellant),
                     nameof(Ammunition.Compatibility),
-                    nameof(Ammunition.HazardDivision)
+                    nameof(Ammunition.HazardDivision),
+                    nameof(Ammunition.Classification),
+                    nameof(Ammunition.Type)
                 );
 
                 var dtos = _mapper.Map<List<AmmunitionDto>>(ammunitions);
+                
+                // Populate images for all ammunitions in a single database query
+                var entityIds = dtos.Select(d => d.Id).ToList();
+                var imagesResult = await _fileUploadService.GetByEntitiesAsync(FileEntityType.Ammunition, entityIds);
+                if (imagesResult.Succeeded && imagesResult.Data != null)
+                {
+                    foreach (var dto in dtos)
+                    {
+                        dto.Images = imagesResult.Data.ContainsKey(dto.Id) ? imagesResult.Data[dto.Id] : new List<FileUploadDto>();
+                    }
+                }
+                
                 return APIOperationResponse<List<AmmunitionDto>>.Success(dtos);
             }
             catch (Exception ex)

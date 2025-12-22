@@ -37,6 +37,10 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
             "Permissions.Supplier.View",
             "Permissions.RequestPurpose.Page",
             "Permissions.RequestPurpose.View",
+            "Permissions.Classifications.Page",
+            "Permissions.Classifications.View",
+            "Permissions.ItemTypes.Page",
+            "Permissions.ItemTypes.View",
         };
 
         public static List<string> WriteLookups = new()
@@ -89,6 +93,12 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
             "Permissions.RequestPurpose.Create",
             "Permissions.RequestPurpose.Edit",
             "Permissions.RequestPurpose.Delete",
+            "Permissions.Classifications.Create",
+            "Permissions.Classifications.Edit",
+            "Permissions.Classifications.Delete",
+            "Permissions.ItemTypes.Create",
+            "Permissions.ItemTypes.Edit",
+            "Permissions.ItemTypes.Delete",
         };
 
         public static List<string> ReadDepo = new()

@@ -113,6 +113,13 @@ namespace Ettad.CrossCutting.Comman.FileUpload
             CancellationToken cancellationToken = default);
 
         Task<APIOperationResponse<List<FileUploadDto>>> GetByEntityAsync(FileEntityType entity, long entityId);
+        
+        /// <summary>
+        /// Gets files for multiple entities in a single database query.
+        /// Returns a dictionary mapping entityId to list of FileUploadDto.
+        /// </summary>
+        Task<APIOperationResponse<Dictionary<long, List<FileUploadDto>>>> GetByEntitiesAsync(FileEntityType entity, List<long> entityIds);
+        
         Task<APIOperationResponse<FileUploadDto>> GetByIdAsync(long id);
         Task<APIOperationResponse<bool>> DeleteAsync(long id);
         Task<APIOperationResponse<bool>> SetMainAsync(long id);

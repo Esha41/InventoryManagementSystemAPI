@@ -1,23 +1,20 @@
-using Ettad.CrossCutting.Comman.Base;
-using Ettad.Data.Enums;
-
-namespace Ettad.Data.Entities
+namespace Ettad.Inventory.Service.Common.Dtos
 {
-    public abstract class BaseItem : FullAuditEntity<long> // Base  for Ammunation , Explosive , Weapon , Accessory
+    public class CreateUpdateBaseItemDto
     {
         public string Name { get; set; }
 
         public string ItemNo { get; set; }
-       
-        public ItemType ItemType { get; set; }
 
-        public string? Nsn { get; set; }
-        
+        // All other fields are optional - only Name and ItemNo are required
+
         public string? PartNo { get; set; }
 
         public decimal? Price { get; set; }
 
         public long? MinimumQuantity { get; set; }
+
+        public string? Nsn { get; set; }
 
         public string? Distribution { get; set; }
 
@@ -30,13 +27,6 @@ namespace Ettad.Data.Entities
         public long? ClassificationId { get; set; }
 
         public long? TypeId { get; set; }
-
-        #region Navigation Properties
-
-        public Classification Classification { get; set; }
-
-        public ItemTypeLookup Type { get; set; }
-
-        #endregion
     }
 }
+

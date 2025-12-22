@@ -164,6 +164,51 @@ namespace Ettad.Modules.FileUpload.API.Services
             return APIOperationResponse<List<FileUploadDto>>.Success(result);
         }
 
+        /// <summary>
+        /// Gets files for multiple entities in a single database query.
+        /// Returns a dictionary mapping entityId to list of FileUploadDto.
+        /// </summary>
+        public async Task<APIOperationResponse<Dictionary<long, List<FileUploadDto>>>> GetByEntitiesAsync(FileEntityType entity, List<long> entityIds)
+        {
+            if (entityIds == null || !entityIds.Any())
+            {
+                return APIOperationResponse<Dictionary<long, List<FileUploadDto>>>.Success(new Dictionary<long, List<FileUploadDto>>());
+            }
+
+            var details = await _detailsRepository.FindAsync(
+                d => d.Entity == entity && entityIds.Contains(d.EntityId),
+                false,
+                nameof(FileUplodDetails.FileUplodMaster));
+
+            var result = details
+                .Where(d => d.FileUplodMaster != null)
+                .GroupBy(d => d.EntityId)
+                .ToDictionary(
+                    g => g.Key,
+                    g => g.Select(d => new FileUploadDto
+                    {
+                        Id = d.FileUplodMasterId,
+                        FileUrl = d.FileUplodMaster.FileUrl,
+                        FileName = d.FileUplodMaster.FileName,
+                        OriginalName = d.FileUplodMaster.OriginalName,
+                        IsMain = d.FileUplodMaster.IsMain,
+                        Entity = d.Entity,
+                        EntityId = d.EntityId
+                    }).ToList()
+                );
+
+            // Ensure all entityIds are in the dictionary (even if they have no files)
+            foreach (var entityId in entityIds)
+            {
+                if (!result.ContainsKey(entityId))
+                {
+                    result[entityId] = new List<FileUploadDto>();
+                }
+            }
+
+            return APIOperationResponse<Dictionary<long, List<FileUploadDto>>>.Success(result);
+        }
+
         public async Task<APIOperationResponse<FileUploadDto>> GetByIdAsync(long id)
         {
             var master = await _masterRepository.FindOneAsync(m => m.Id == id, false, nameof(FileUplodMaster.Details));
