@@ -93,15 +93,16 @@ namespace Ettad.Inventory.Services.Common
                                 var excelHeader = map.Key;
                                 var propertyName = map.Value;
 
-                                if (headerMap.TryGetValue(excelHeader, out int colIndex))
+                            if (headerMap.TryGetValue(excelHeader, out int colIndex))
+                            {
+                                // Use .Value instead of .Text to properly read numeric cells
+                                var cellValue = worksheet.Cells[row, colIndex].Value?.ToString() ?? string.Empty;
+                                if (!string.IsNullOrWhiteSpace(cellValue))
                                 {
-                                    var cellValue = worksheet.Cells[row, colIndex].Text;
-                                    if (!string.IsNullOrWhiteSpace(cellValue))
-                                    {
-                                        rowHasData = true;
-                                        SetProperty(item, propertyName, cellValue);
-                                    }
+                                    rowHasData = true;
+                                    SetProperty(item, propertyName, cellValue.Trim());
                                 }
+                            }
                             }
 
                             if (rowHasData)
@@ -164,6 +165,8 @@ namespace Ettad.Inventory.Services.Common
                         convertedValue = value;
                     else if (targetType == typeof(int))
                         convertedValue = int.Parse(value);
+                    else if (targetType == typeof(long))
+                        convertedValue = long.Parse(value);
                     else if (targetType == typeof(double))
                         convertedValue = double.Parse(value);
                     else if (targetType == typeof(decimal))
