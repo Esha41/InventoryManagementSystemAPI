@@ -33,7 +33,7 @@ namespace Ettad.User.API.Controllers
             return ProcessResponse(response);
         }
 
-        [HttpGet("me")]
+        [HttpPost("me")]
         public async Task<IActionResult> GetCurrentUser()
         {
             var response = await _userService.GetCurrentUserAsync();

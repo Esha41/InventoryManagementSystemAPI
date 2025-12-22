@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.Extensions.Options;
 using Ettad.CrossCutting.Comman.Exception;
-using Ettad.User.Services.DTO;
+using Ettad.LdapSettings.Services.DTO;
 using Ettad.User.Services.Interfaces;
 using System;
 using System.Collections.Generic;

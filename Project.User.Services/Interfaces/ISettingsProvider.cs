@@ -8,11 +8,12 @@ using System.Threading.Tasks;
 
 namespace Ettad.User.Services.Interfaces
 {
+    /// <summary>
+    /// Provider for non-LDAP application settings such as email configuration.
+    /// LDAP settings are handled by ILdapSettingsService in the Ettad.LdapSettings.Services module.
+    /// </summary>
     public interface ISettingsProvider
     {
-        Task<LdapOptions> GetLdapSettings(CancellationToken cancellationToken = default);
-        Task<bool> SaveLdapSettings(LdapOptions ldapSettings, CancellationToken cancellationToken = default);
-        Task<bool> DeleteLdapSettings(CancellationToken cancellationToken = default);
         Task<EmailConfiguration> getEmailSettings(CancellationToken cancellationToken = default);
         Task<bool> SaveEmailSettings(EmailSettingsDto emailSettings, CancellationToken cancellationToken = default);
     }

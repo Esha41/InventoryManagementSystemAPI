@@ -24,6 +24,7 @@
     <ProjectReference Include="..\Project.Module.Logic\Ettad.Module.lookup.csproj" />
     <ProjectReference Include="..\Project.Repository\Ettad.Repository.csproj" />
     <ProjectReference Include="..\Project.ResponseHandler\Ettad.CrossCutting.ResponseHandler.csproj" />
+    <ProjectReference Include="..\Ettad.LdapSettings.Services\Ettad.LdapSettings.Services.csproj" />
   </ItemGroup>
 
 </Project>

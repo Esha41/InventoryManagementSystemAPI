@@ -52,6 +52,7 @@
     <ProjectReference Include="..\Ettad.Notification.Service\Ettad.Notification.Service.csproj" />
     <ProjectReference Include="..\Ettad.Notification.API\Ettad.Notification.API.csproj" />
     <ProjectReference Include="..\Ettad.Modules.EmailSystem.API\Ettad.Modules.EmailSystem.API.csproj" />
+    <ProjectReference Include="..\Ettad.LdapSettings.APIs\Ettad.LdapSettings.APIs.csproj" />
   </ItemGroup>
 
   <ItemGroup>
