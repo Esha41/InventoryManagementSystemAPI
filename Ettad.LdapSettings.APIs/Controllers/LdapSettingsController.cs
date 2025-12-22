@@ -3,6 +3,7 @@ using Ettad.Application.Common.Models;
 using Ettad.LdapSettings.Services.DTO;
 using Ettad.LdapSettings.Services.Interfaces;
 using Ettad.ResponseHandler.Models;
+using Ettad.CrossCutting.Common.Security;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Net;
@@ -11,7 +12,7 @@ namespace Ettad.LdapSettings.APIs.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [AllowAnonymous] // Temporarily allowing anonymous access for testing
+    [CheckAuthorize("Permissions.LdapSettings.Page", "Permissions.LdapSettings.View")]
     public class LdapSettingsController : ApiControllerBase
     {
         private readonly ILdapSettingsService _ldapSettingsService;
@@ -31,6 +32,7 @@ namespace Ettad.LdapSettings.APIs.Controllers
         /// <param name="ldapSettings">LDAP settings data</param>
         /// <returns>Success result</returns>
         [HttpPost]
+        [CheckAuthorize("Permissions.LdapSettings.Create", "Permissions.LdapSettings.Edit")]
         [ProducesResponseType(typeof(APIOperationResponse<bool>), (int)HttpStatusCode.OK)]
         [ProducesResponseType((int)HttpStatusCode.BadRequest)]
         public async Task<IActionResult> CreateLdapSettings([FromBody] LdapOptions ldapSettings)
@@ -60,6 +62,7 @@ namespace Ettad.LdapSettings.APIs.Controllers
         /// <param name="ldapSettings">LDAP settings data</param>
         /// <returns>Success result</returns>
         [HttpPut]
+        [CheckAuthorize("Permissions.LdapSettings.Edit")]
         [ProducesResponseType(typeof(APIOperationResponse<bool>), (int)HttpStatusCode.OK)]
         [ProducesResponseType((int)HttpStatusCode.BadRequest)]
         public async Task<IActionResult> UpdateLdapSettings([FromBody] LdapOptions ldapSettings)
@@ -88,6 +91,7 @@ namespace Ettad.LdapSettings.APIs.Controllers
         /// </summary>
         /// <returns>LDAP settings</returns>
         [HttpGet]
+        [CheckAuthorize("Permissions.LdapSettings.View")]
         [ProducesResponseType(typeof(APIOperationResponse<LdapOptions>), (int)HttpStatusCode.OK)]
         public async Task<IActionResult> GetLdapSettings()
         {
@@ -100,6 +104,7 @@ namespace Ettad.LdapSettings.APIs.Controllers
         /// </summary>
         /// <returns>Success result</returns>
         [HttpDelete]
+        [CheckAuthorize("Permissions.LdapSettings.Delete")]
         [ProducesResponseType(typeof(APIOperationResponse<bool>), (int)HttpStatusCode.OK)]
         public async Task<IActionResult> DeleteLdapSettings()
         {
