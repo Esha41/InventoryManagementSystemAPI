@@ -14,6 +14,9 @@ using Microsoft.AspNetCore.Identity;
 using Ettad.Comman.Idenitity;
 using Microsoft.Extensions.Logging;
 using Ettad.Workflows.Service.Interface;
+using Microsoft.AspNetCore.Http;
+using Ettad.CrossCutting.Comman.FileUpload;
+using Ettad.Comman.Enums;
 
 namespace Ettad.RequestManagement.Service.Discards
 {
@@ -30,6 +33,8 @@ namespace Ettad.RequestManagement.Service.Discards
         private readonly INotificationHelperService _notificationHelperService;
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly ILogger<DiscardService> _logger;
+        private readonly IFileUploadService _fileUploadService;
+        private readonly ICrossCuttingRepository<FileUplodDetails> _fileDetailsRepository;
 
         public DiscardService(
             ICrossCuttingRepository<Discard> discardRepository,
@@ -42,7 +47,9 @@ namespace Ettad.RequestManagement.Service.Discards
             IRequestNoGeneratorService requestNoGeneratorService,
             INotificationHelperService notificationHelperService,
             UserManager<ApplicationUser> userManager,
-            ILogger<DiscardService> logger)
+            ILogger<DiscardService> logger,
+            IFileUploadService fileUploadService,
+            ICrossCuttingRepository<FileUplodDetails> fileDetailsRepository)
         {
             _discardRepository = discardRepository;
             _requestItemRepository = requestItemRepository;
@@ -55,6 +62,8 @@ namespace Ettad.RequestManagement.Service.Discards
             _notificationHelperService = notificationHelperService;
             _userManager = userManager;
             _logger = logger;
+            _fileUploadService = fileUploadService;
+            _fileDetailsRepository = fileDetailsRepository;
         }
 
         public async Task<APIOperationResponse<DiscardDto>> GetByIdAsync(long id)
@@ -69,8 +78,7 @@ namespace Ettad.RequestManagement.Service.Discards
                     nameof(BaseRequest.Department),
                     nameof(BaseRequest.Requester),
                     nameof(BaseRequest.RequestPurpose),
-                    $"{nameof(BaseRequest.RequestItems)}.{nameof(RequestItem.Item)}",
-                    $"{nameof(BaseRequest.RequestItems)}.{nameof(RequestItem.Item)}.{nameof(BaseItem.Hcc)}"
+                    $"{nameof(BaseRequest.RequestItems)}.{nameof(RequestItem.Item)}"
                 );
 
                 if (discard == null)
@@ -81,11 +89,6 @@ namespace Ettad.RequestManagement.Service.Discards
 
                 var dto = _mapper.Map<DiscardDto>(discard);
                 
-                // Fallback: If RequesterName is null but we have a CreatedBy user, use that user's name
-                if (string.IsNullOrEmpty(dto.RequesterName) && !string.IsNullOrEmpty(discard.CreatedBy))
-                {
-                    dto.RequesterName = await GetUserNameByIdAsync(discard.CreatedBy);
-                }
                 
                 _logger.LogInformation("Successfully retrieved discard. DiscardId: {DiscardId}, RequestNo: {RequestNo}", id, discard.RequestNo);
                 return APIOperationResponse<DiscardDto>.Success(dto);
@@ -109,21 +112,10 @@ namespace Ettad.RequestManagement.Service.Discards
                     nameof(BaseRequest.Department),
                     nameof(BaseRequest.Requester),
                     nameof(BaseRequest.RequestPurpose),
-                    $"{nameof(BaseRequest.RequestItems)}.{nameof(RequestItem.Item)}",
-                    $"{nameof(BaseRequest.RequestItems)}.{nameof(RequestItem.Item)}.{nameof(BaseItem.Hcc)}"
+                    $"{nameof(BaseRequest.RequestItems)}.{nameof(RequestItem.Item)}"
                 );
 
                 var dtos = _mapper.Map<List<DiscardDto>>(discards);
-                
-                // Fallback: Populate RequesterName from CreatedBy user if not set
-                foreach (var dto in dtos)
-                {
-                    var discard = discards.FirstOrDefault(d => d.Id == dto.Id);
-                    if (discard != null && string.IsNullOrEmpty(dto.RequesterName) && !string.IsNullOrEmpty(discard.CreatedBy))
-                    {
-                        dto.RequesterName = await GetUserNameByIdAsync(discard.CreatedBy);
-                    }
-                }
                 
                 _logger.LogInformation("Successfully retrieved {DiscardCount} discards. User: {UserId}", dtos.Count, _currentUserService.UserId);
                 return APIOperationResponse<List<DiscardDto>>.Success(dtos);
@@ -137,6 +129,11 @@ namespace Ettad.RequestManagement.Service.Discards
 
         public async Task<APIOperationResponse<long>> CreateAsync(CreateDiscardDto inputDto)
         {
+            return await CreateAsync(inputDto, null);
+        }
+
+        public async Task<APIOperationResponse<long>> CreateAsync(CreateDiscardDto inputDto, List<IFormFile> files)
+        {
             var currentUserId = _currentUserService.UserId;
             var departmentId = _currentUserService.DepartmentId;
 
@@ -146,8 +143,8 @@ namespace Ettad.RequestManagement.Service.Discards
                 return APIOperationResponse<long>.Fail(ResponseType.BadRequest, "Department not found for current user.");
             }
 
-            _logger.LogInformation("Creating new discard. DepartmentId: {DepartmentId}, RequestPurposeId: {RequestPurposeId}, User: {UserId}", 
-                departmentId.Value, inputDto.RequestPurposeId, currentUserId);
+            _logger.LogInformation("Creating new discard. DepartmentId: {DepartmentId}, RequestPurposeId: {RequestPurposeId}, User: {UserId}, HasFiles: {HasFiles}", 
+                departmentId.Value, inputDto.RequestPurposeId, currentUserId, files != null && files.Count > 0);
             
             try
             {
@@ -173,7 +170,36 @@ namespace Ettad.RequestManagement.Service.Discards
                     return APIOperationResponse<long>.Fail(ResponseType.BadRequest, "Request purpose must be of type Discard");
                 }
 
-                // Map DTO to entity
+                // Step 1: Save files first (before creating discard) to create FileUplodMaster records
+                List<long> savedFileMasterIds = null;
+                if (files != null && files.Count > 0)
+                {
+                    try
+                    {
+                        // Use FileEntityType.Order for discard files (no Discard FileEntityType exists)
+                        var saveFilesResult = await _fileUploadService.SaveFilesAsync(files, FileEntityType.Order);
+                        if (!saveFilesResult.Succeeded || saveFilesResult.Data == null)
+                        {
+                            _logger.LogWarning("Failed to save files before creating discard. Error: {Error}, User: {UserId}",
+                                saveFilesResult.Message ?? "Unknown error", currentUserId);
+                            // Continue without files - files are optional
+                        }
+                        else
+                        {
+                            savedFileMasterIds = saveFilesResult.Data;
+                            _logger.LogInformation("Files saved successfully before discard creation. FileCount: {FileCount}, MasterIds: {MasterIds}, User: {UserId}",
+                                files.Count, string.Join(", ", savedFileMasterIds), currentUserId);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        // Log error but don't fail discard creation - files are optional
+                        _logger.LogError(ex, "Exception occurred while saving files before discard creation. User: {UserId}",
+                            currentUserId);
+                    }
+                }
+
+                // Step 2: Map DTO to entity
                 var discard = _mapper.Map<Discard>(inputDto);
                 discard.DepartmentId = departmentId.Value;
                 
@@ -200,8 +226,36 @@ namespace Ettad.RequestManagement.Service.Discards
                 _logger.LogInformation("Adding {ItemCount} discard items to discard. RequestNo: {RequestNo}", 
                     discard.RequestItems.Count, discard.RequestNo);
 
-                // Add to repository
+                // Step 3: Add to repository
                 var createdDiscard = await _discardRepository.AddAsync(discard);
+
+                // Step 4: Link files to the discard (create FileUplodDetails records) if files were saved
+                if (savedFileMasterIds != null && savedFileMasterIds.Count > 0)
+                {
+                    try
+                    {
+                        foreach (var masterId in savedFileMasterIds)
+                        {
+                            var detail = new FileUplodDetails
+                            {
+                                FileUplodMasterId = masterId,
+                                Entity = FileEntityType.Order, // Use Order for discard files
+                                EntityId = createdDiscard.Id
+                            };
+
+                            await _fileDetailsRepository.AddAsync(detail);
+                        }
+
+                        _logger.LogInformation("Files linked successfully to discard. DiscardId: {DiscardId}, FileCount: {FileCount}, User: {UserId}",
+                            createdDiscard.Id, savedFileMasterIds.Count, currentUserId);
+                    }
+                    catch (Exception ex)
+                    {
+                        // Log error but don't fail discard creation - files are optional
+                        _logger.LogError(ex, "Exception occurred while linking files to discard. DiscardId: {DiscardId}, User: {UserId}",
+                            createdDiscard.Id, currentUserId);
+                    }
+                }
 
                 // Start workflow for the discard
                 var workflowStarted = await _workflowApprovalService.StartWorkflowAsync(
@@ -338,33 +392,5 @@ namespace Ettad.RequestManagement.Service.Discards
                 // Suppress notification errors to avoid impacting main workflow
             }
         }
-
-        /// <summary>
-        /// Get user name by user ID from Identity system
-        /// </summary>
-        private async Task<string> GetUserNameByIdAsync(string userId)
-        {
-            try
-            {
-                var user = await _userManager.FindByIdAsync(userId);
-                if (user != null)
-                {
-                    // Try FullNameEN first, then FullNameAR, then UserName
-                    if (!string.IsNullOrEmpty(user.FullNameEN))
-                        return user.FullNameEN;
-                    if (!string.IsNullOrEmpty(user.FullNameAR))
-                        return user.FullNameAR;
-                    if (!string.IsNullOrEmpty(user.UserName))
-                        return user.UserName;
-                }
-                
-                return "System User";
-            }
-            catch
-            {
-                return "System User";
-            }
-        }
     }
 }
-

@@ -1,5 +1,7 @@
 using Ettad.Inventory.Service.Inventories.Dtos;
+using Ettad.Inventory.Services.Common;
 using Ettad.ResponseHandler.Models;
+using Microsoft.AspNetCore.Http;
 
 namespace Ettad.Inventory.Service.Inventories
 {
@@ -17,5 +19,7 @@ namespace Ettad.Inventory.Service.Inventories
         Task<APIOperationResponse<ItemInventorySummaryDto>> GetItemInventorySummaryAsync(long itemId);
         Task<APIOperationResponse<List<ItemInventorySummaryDto>>> GetInventorySummaryForAllItemsAsync();
         Task<APIOperationResponse<bool>> ToggleReadyForIssueAsync(long inventoryDetailId);
+        Task<APIOperationResponse<ImportResult<InventoryImportRowDto>>> ImportAsync(IFormFile file, long depotId);
+        Task<APIOperationResponse<ImportResult<InventoryImportRowDto>>> ImportPreviewAsync(IFormFile file, long depotId);
     }
 }

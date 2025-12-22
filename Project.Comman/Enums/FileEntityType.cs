@@ -6,9 +6,16 @@ namespace Ettad.Comman.Enums
     /// </summary>
     public enum FileEntityType
     {
-        Item = 1,
-        Ammunition = 7,
-        // Add other entities here (e.g. Request = 2, Order = 3, ...)
+        Ammunition = 1,
+        Order = 2,
+        Workflow = 3,
+        WorkflowApproval = 4,
+        Supply = 5,
+        Return = 6,
+        Weapon = 7,
+        Explosive = 8
+       
+        // Add other entities here (e.g. Discard = 7, ...)
     }
 }
 

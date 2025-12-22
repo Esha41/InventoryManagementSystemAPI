@@ -13,12 +13,12 @@ namespace Ettad.Data.Entities
         /// <summary>
         /// Logical entity type that owns the file (e.g. Item, Request, Order).
         /// </summary>
-        public FileEntityType EntityId { get; set; }
+        public FileEntityType Entity { get; set; }
 
         /// <summary>
-        /// Primary key of the owning entity (for example Item.Id when EntityId = Item).
+        /// Primary key of the owning entity (for example Item.Id when Entity = Item).
         /// </summary>
-        public long PrimaryId { get; set; }
+        public long EntityId { get; set; }
 
         #region Navigation Properties
 

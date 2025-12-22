@@ -27,7 +27,8 @@ namespace Ettad.Notification.Service
             long? entityId = null,
             List<string>? userIds = null,
             List<string>? roleIds = null,
-            bool includeSuperAdmins = false);
+            bool includeSuperAdmins = false,
+            string? htmlContent = null);
 
         /// <summary>
         /// Sends both notification (SignalR + Database) and email to specified users or roles.

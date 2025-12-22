@@ -16,6 +16,7 @@
   <ItemGroup>
     <PackageReference Include="AutoMapper" Version="12.0.1" />
     <PackageReference Include="AutoMapper.Extensions.Microsoft.DependencyInjection" Version="12.0.1" />
+    <PackageReference Include="EPPlus" Version="8.4.0" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.10" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="8.0.10">
       <PrivateAssets>all</PrivateAssets>
@@ -53,6 +54,7 @@
     <ProjectReference Include="..\Ettad.Notification.API\Ettad.Notification.API.csproj" />
     <ProjectReference Include="..\Ettad.Modules.EmailSystem.API\Ettad.Modules.EmailSystem.API.csproj" />
     <ProjectReference Include="..\Ettad.LdapSettings.APIs\Ettad.LdapSettings.APIs.csproj" />
+    <ProjectReference Include="..\Ettad.Modules.FileUpload.API\Ettad.Modules.FileUpload.API.csproj" />
   </ItemGroup>
 
   <ItemGroup>

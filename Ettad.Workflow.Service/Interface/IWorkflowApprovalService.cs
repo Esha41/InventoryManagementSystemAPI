@@ -2,6 +2,7 @@
 using Ettad.Data.Enums;
 using Ettad.ResponseHandler.Models;
 using Ettad.Workflows.Service.DTO;
+using Microsoft.AspNetCore.Http;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -21,10 +22,14 @@ namespace Ettad.Workflows.Service.Interface
         Task<WorkflowApprovalStepDto> ApproveAsync(ApproveRejectWorkflowApprovalDto dto);
         Task<WorkflowApprovalStepDto> RejectAsync(ApproveRejectWorkflowApprovalDto dto);
         Task<WorkflowApprovalStepDto> ApproveOrReject(ApproveRejectWorkflowApprovalDto dto);
+        Task<WorkflowApprovalStepDto> ApproveOrReject(ApproveRejectWorkflowApprovalDto dto, List<IFormFile> files);
         Task<WorkflowApprovalStep> GetCurrentApprovalStepByRequestIdAsync(int requestId);
         Task<APIOperationResponse<bool>> ProcessActionAsync(ApproveRejectWorkflowApprovalDto model);
+        Task<APIOperationResponse<bool>> ProcessActionAsync(ApproveRejectWorkflowApprovalDto model, List<IFormFile> files);
         Task<bool> StartWorkflowAsync(long orderId, WorkflowType workflowType);
         Task<IEnumerable<BaseRequestDto>> GetAllBaseRequestsAsync();
+        Task<BaseRequestDto> GetBaseRequestByIdAsync(long requestId);
+        Task<IEnumerable<WorkflowStepDto>> GetPreviousWorkflowStepsForReturn(int requestId);
 
     }
 }

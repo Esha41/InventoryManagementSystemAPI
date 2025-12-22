@@ -5,6 +5,7 @@ using Ettad.ResponseHandler.Models;
 using Ettad.Workflows.Service.DTO;
 using Ettad.Workflows.Service.Interface;
 using MediatR;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Ettad.Workflows.API.Controllers
@@ -77,19 +78,35 @@ namespace Ettad.Workflows.API.Controllers
             return Ok(result);
         }
 
+        [HttpGet("BaseRequest/{requestId}")]
+        [CheckAuthorize("Permissions.RequestReciever.Page", "Permissions.RequestReciever.View")]
+        public async Task<IActionResult> GetBaseRequestById(long requestId)
+        {
+            var result = await _service.GetBaseRequestByIdAsync(requestId);
+            if (result == null) return NotFound();
+            return Ok(result);
+        }
+
         [HttpPost("approve-reject")]
+        [Consumes("multipart/form-data", "application/json")]
         [CheckAuthorize("Permissions.RequestReciever.Create", "Permissions.RequestReciever.Edit")]
-        public async Task<IActionResult> ApproveOrReject([FromBody] ApproveRejectWorkflowApprovalDto dto)
+        public async Task<IActionResult> ApproveOrReject(
+            [FromForm] ApproveRejectWorkflowApprovalDto dto,
+            [FromForm] List<IFormFile> files = null)
         {
             try
             {
-                var result = await _service.ApproveOrReject(dto);
+                var result = files != null && files.Count > 0
+                    ? await _service.ApproveOrReject(dto, files)
+                    : await _service.ApproveOrReject(dto);
 
                 // Determine success message based on action
                 string successMessage = dto.Action == RequestStatus.Approved
                     ? "Request approved successfully."
                     : dto.Action == RequestStatus.Rejected
                     ? "Request rejected successfully."
+                    : dto.Action == RequestStatus.ReturnedForReview
+                    ? "Request returned for review successfully."
                     : "Workflow step processed successfully.";
 
                 // Wrap into API Response
@@ -136,6 +153,13 @@ namespace Ettad.Workflows.API.Controllers
             }
         }
 
+        [HttpGet("previous-steps/{requestId}")]
+        [CheckAuthorize("Permissions.RequestReciever.Page", "Permissions.RequestReciever.View")]
+        public async Task<IActionResult> GetPreviousWorkflowStepsForReturn(int requestId)
+        {
+            var result = await _service.GetPreviousWorkflowStepsForReturn(requestId);
+            return Ok(result);
+        }
+
     }
 }
-

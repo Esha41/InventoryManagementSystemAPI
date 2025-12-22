@@ -14,6 +14,9 @@ using Microsoft.AspNetCore.Identity;
 using Ettad.Comman.Idenitity;
 using Microsoft.Extensions.Logging;
 using Ettad.Workflows.Service.Interface;
+using Microsoft.AspNetCore.Http;
+using Ettad.CrossCutting.Comman.FileUpload;
+using Ettad.Comman.Enums;
 
 namespace Ettad.RequestManagement.Service.Returns
 {
@@ -30,6 +33,8 @@ namespace Ettad.RequestManagement.Service.Returns
         private readonly INotificationHelperService _notificationHelperService;
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly ILogger<ReturnService> _logger;
+        private readonly IFileUploadService _fileUploadService;
+        private readonly ICrossCuttingRepository<FileUplodDetails> _fileDetailsRepository;
 
         public ReturnService(
             ICrossCuttingRepository<Return> returnRepository,
@@ -42,7 +47,9 @@ namespace Ettad.RequestManagement.Service.Returns
             IRequestNoGeneratorService requestNoGeneratorService,
             INotificationHelperService notificationHelperService,
             UserManager<ApplicationUser> userManager,
-            ILogger<ReturnService> logger)
+            ILogger<ReturnService> logger,
+            IFileUploadService fileUploadService,
+            ICrossCuttingRepository<FileUplodDetails> fileDetailsRepository)
         {
             _returnRepository = returnRepository;
             _requestItemRepository = requestItemRepository;
@@ -55,6 +62,8 @@ namespace Ettad.RequestManagement.Service.Returns
             _notificationHelperService = notificationHelperService;
             _userManager = userManager;
             _logger = logger;
+            _fileUploadService = fileUploadService;
+            _fileDetailsRepository = fileDetailsRepository;
         }
 
         public async Task<APIOperationResponse<ReturnDto>> GetByIdAsync(long id)
@@ -69,8 +78,7 @@ namespace Ettad.RequestManagement.Service.Returns
                     nameof(BaseRequest.Department),
                     nameof(BaseRequest.Requester),
                     nameof(BaseRequest.RequestPurpose),
-                    $"{nameof(BaseRequest.RequestItems)}.{nameof(RequestItem.Item)}",
-                    $"{nameof(BaseRequest.RequestItems)}.{nameof(RequestItem.Item)}.{nameof(BaseItem.Hcc)}"
+                    $"{nameof(BaseRequest.RequestItems)}.{nameof(RequestItem.Item)}"
                 );
 
                 if (returnEntity == null)
@@ -80,12 +88,6 @@ namespace Ettad.RequestManagement.Service.Returns
                 }
 
                 var dto = _mapper.Map<ReturnDto>(returnEntity);
-                
-                // Fallback: If RequesterName is null but we have a CreatedBy user, use that user's name
-                if (string.IsNullOrEmpty(dto.RequesterName) && !string.IsNullOrEmpty(returnEntity.CreatedBy))
-                {
-                    dto.RequesterName = await GetUserNameByIdAsync(returnEntity.CreatedBy);
-                }
                 
                 _logger.LogInformation("Successfully retrieved return. ReturnId: {ReturnId}, RequestNo: {RequestNo}", id, returnEntity.RequestNo);
                 return APIOperationResponse<ReturnDto>.Success(dto);
@@ -109,21 +111,10 @@ namespace Ettad.RequestManagement.Service.Returns
                     nameof(BaseRequest.Department),
                     nameof(BaseRequest.Requester),
                     nameof(BaseRequest.RequestPurpose),
-                    $"{nameof(BaseRequest.RequestItems)}.{nameof(RequestItem.Item)}",
-                    $"{nameof(BaseRequest.RequestItems)}.{nameof(RequestItem.Item)}.{nameof(BaseItem.Hcc)}"
+                    $"{nameof(BaseRequest.RequestItems)}.{nameof(RequestItem.Item)}"
                 );
 
                 var dtos = _mapper.Map<List<ReturnDto>>(returns);
-                
-                // Fallback: Populate RequesterName from CreatedBy user if not set
-                foreach (var dto in dtos)
-                {
-                    var returnEntity = returns.FirstOrDefault(r => r.Id == dto.Id);
-                    if (returnEntity != null && string.IsNullOrEmpty(dto.RequesterName) && !string.IsNullOrEmpty(returnEntity.CreatedBy))
-                    {
-                        dto.RequesterName = await GetUserNameByIdAsync(returnEntity.CreatedBy);
-                    }
-                }
                 
                 _logger.LogInformation("Successfully retrieved {ReturnCount} returns. User: {UserId}", dtos.Count, _currentUserService.UserId);
                 return APIOperationResponse<List<ReturnDto>>.Success(dtos);
@@ -137,6 +128,11 @@ namespace Ettad.RequestManagement.Service.Returns
 
         public async Task<APIOperationResponse<long>> CreateAsync(CreateReturnDto inputDto)
         {
+            return await CreateAsync(inputDto, null);
+        }
+
+        public async Task<APIOperationResponse<long>> CreateAsync(CreateReturnDto inputDto, List<IFormFile> files)
+        {
             var currentUserId = _currentUserService.UserId;
             var departmentId = _currentUserService.DepartmentId;
 
@@ -146,8 +142,8 @@ namespace Ettad.RequestManagement.Service.Returns
                 return APIOperationResponse<long>.Fail(ResponseType.BadRequest, "Department not found for current user.");
             }
 
-            _logger.LogInformation("Creating new return. DepartmentId: {DepartmentId}, RequestPurposeId: {RequestPurposeId}, User: {UserId}", 
-                departmentId.Value, inputDto.RequestPurposeId, currentUserId);
+            _logger.LogInformation("Creating new return. DepartmentId: {DepartmentId}, RequestPurposeId: {RequestPurposeId}, User: {UserId}, HasFiles: {HasFiles}", 
+                departmentId.Value, inputDto.RequestPurposeId, currentUserId, files != null && files.Count > 0);
             
             try
             {
@@ -173,7 +169,35 @@ namespace Ettad.RequestManagement.Service.Returns
                     return APIOperationResponse<long>.Fail(ResponseType.BadRequest, "Request purpose must be of type Return");
                 }
 
-                // Map DTO to entity
+                // Step 1: Save files first (before creating return) to create FileUplodMaster records
+                List<long> savedFileMasterIds = null;
+                if (files != null && files.Count > 0)
+                {
+                    try
+                    {
+                        var saveFilesResult = await _fileUploadService.SaveFilesAsync(files, FileEntityType.Return);
+                        if (!saveFilesResult.Succeeded || saveFilesResult.Data == null)
+                        {
+                            _logger.LogWarning("Failed to save files before creating return. Error: {Error}, User: {UserId}",
+                                saveFilesResult.Message ?? "Unknown error", currentUserId);
+                            // Continue without files - files are optional
+                        }
+                        else
+                        {
+                            savedFileMasterIds = saveFilesResult.Data;
+                            _logger.LogInformation("Files saved successfully before return creation. FileCount: {FileCount}, MasterIds: {MasterIds}, User: {UserId}",
+                                files.Count, string.Join(", ", savedFileMasterIds), currentUserId);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        // Log error but don't fail return creation - files are optional
+                        _logger.LogError(ex, "Exception occurred while saving files before return creation. User: {UserId}",
+                            currentUserId);
+                    }
+                }
+
+                // Step 2: Map DTO to entity
                 var returnEntity = _mapper.Map<Return>(inputDto);
                 returnEntity.DepartmentId = departmentId.Value;
                 
@@ -200,8 +224,36 @@ namespace Ettad.RequestManagement.Service.Returns
                 _logger.LogInformation("Adding {ItemCount} return items to return. RequestNo: {RequestNo}", 
                     returnEntity.RequestItems.Count, returnEntity.RequestNo);
 
-                // Add to repository
+                // Step 3: Add to repository
                 var createdReturn = await _returnRepository.AddAsync(returnEntity);
+
+                // Step 4: Link files to the return (create FileUplodDetails records) if files were saved
+                if (savedFileMasterIds != null && savedFileMasterIds.Count > 0)
+                {
+                    try
+                    {
+                        foreach (var masterId in savedFileMasterIds)
+                        {
+                            var detail = new FileUplodDetails
+                            {
+                                FileUplodMasterId = masterId,
+                                Entity = FileEntityType.Order,
+                                EntityId = createdReturn.Id
+                            };
+
+                            await _fileDetailsRepository.AddAsync(detail);
+                        }
+
+                        _logger.LogInformation("Files linked successfully to return. ReturnId: {ReturnId}, FileCount: {FileCount}, User: {UserId}",
+                            createdReturn.Id, savedFileMasterIds.Count, currentUserId);
+                    }
+                    catch (Exception ex)
+                    {
+                        // Log error but don't fail return creation - files are optional
+                        _logger.LogError(ex, "Exception occurred while linking files to return. ReturnId: {ReturnId}, User: {UserId}",
+                            createdReturn.Id, currentUserId);
+                    }
+                }
 
                 // Start workflow for the return
                 var workflowStarted = await _workflowApprovalService.StartWorkflowAsync(
@@ -338,35 +390,5 @@ namespace Ettad.RequestManagement.Service.Returns
                 // Suppress notification errors to avoid impacting main workflow
             }
         }
-
-        /// <summary>
-        /// Get user name by user ID from Identity system
-        /// </summary>
-        private async Task<string> GetUserNameByIdAsync(string userId)
-        {
-            try
-            {
-                var user = await _userManager.FindByIdAsync(userId);
-                if (user != null)
-                {
-                    // Try FullNameEN first, then FullNameAR, then UserName
-                    if (!string.IsNullOrEmpty(user.FullNameEN))
-                        return user.FullNameEN;
-                    if (!string.IsNullOrEmpty(user.FullNameAR))
-                        return user.FullNameAR;
-                    if (!string.IsNullOrEmpty(user.UserName))
-                        return user.UserName;
-                }
-                
-                return "System User";
-            }
-            catch
-            {
-                return "System User";
-            }
-        }
     }
 }
-
-
-

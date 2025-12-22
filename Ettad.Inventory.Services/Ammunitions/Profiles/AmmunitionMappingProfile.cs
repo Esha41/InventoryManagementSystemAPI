@@ -20,9 +20,7 @@ namespace Ettad.Inventory.Service.Ammunitions.Profiles
                 .ForMember(dest => dest.IsDeleted, opt => opt.Ignore())
                 .ForMember(dest => dest.ItemType, opt => opt.Ignore())
                 .ForMember(dest => dest.AmmunitionType, opt => opt.Ignore())
-                .ForMember(dest => dest.Hcc, opt => opt.Ignore())
                 .ForMember(dest => dest.BulletDiameterUnit, opt => opt.Ignore())
-                .ForMember(dest => dest.CaseLengthUnit, opt => opt.Ignore())
                 .ForMember(dest => dest.NatureOption, opt => opt.Ignore())
                 .ForMember(dest => dest.PrimaryPurpos, opt => opt.Ignore())
                 .ForMember(dest => dest.ProjectileColor, opt => opt.Ignore())
@@ -30,7 +28,9 @@ namespace Ettad.Inventory.Service.Ammunitions.Profiles
                 .ForMember(dest => dest.CaseType, opt => opt.Ignore())
                 .ForMember(dest => dest.Propellant, opt => opt.Ignore())
                 .ForMember(dest => dest.Compatibility, opt => opt.Ignore())
-                .ForMember(dest => dest.HazardDivision, opt => opt.Ignore());
+                .ForMember(dest => dest.HazardDivision, opt => opt.Ignore())
+                // Map nullable fields directly - entity now supports nullable values
+                .ForMember(dest => dest.IsLinked, opt => opt.MapFrom(src => src.IsLinked ?? false));
         }
     }
 }

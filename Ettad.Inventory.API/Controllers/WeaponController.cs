@@ -1,11 +1,10 @@
+using Microsoft.AspNetCore.Http;
 using Ettad.CrossCutting.Common.Security;
-using Ettad.Data.Entities;
-using Ettad.Data.Enums;
-using Ettad.Inventory.Service.Common.Dtos;
+using Ettad.Inventory.Service.Weapons;
+using Ettad.Inventory.Service.Weapons.Dtos;
 using Ettad.ResponseHandler.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using System.Net;
 
 namespace Ettad.Inventory.API.Controllers
@@ -15,40 +14,83 @@ namespace Ettad.Inventory.API.Controllers
     [Authorize]
     public class WeaponController : ApiControllerBase
     {
-        private readonly Ettad.EntityFramework.DataBaseContext.ApplicationDbContext _context;
-        private readonly AutoMapper.IMapper _mapper;
+        private readonly IWeaponService _weaponService;
 
-        public WeaponController(
-            Ettad.EntityFramework.DataBaseContext.ApplicationDbContext context,
-            AutoMapper.IMapper mapper)
+        public WeaponController(IWeaponService weaponService)
         {
-            _context = context;
-            _mapper = mapper;
+            _weaponService = weaponService;
         }
 
         [HttpGet]
         [ProducesResponseType((int)HttpStatusCode.OK)]
-        [CheckAuthorize("Permissions.Ammunition.View", "Permissions.Ammunition.Page")]
+        [CheckAuthorize("Permissions.Weapon.View", "Permissions.Weapon.Page")]
         public async Task<IActionResult> GetAll()
         {
-            try
-            {
-                var weapons = await _context.Weapons
-                    .Where(w => !w.IsDeleted)
-                    .Include(w => w.Hcc)
-                    .ToListAsync();
+            var result = await _weaponService.GetAllAsync();
+            return ProcessResponse(result);
+        }
 
-                var dtos = _mapper.Map<List<BaseItemDto>>(weapons);
-                var result = APIOperationResponse<List<BaseItemDto>>.Success(dtos);
-                return ProcessResponse(result);
-            }
-            catch (Exception ex)
-            {
-                var result = APIOperationResponse<List<BaseItemDto>>.Fail(
-                    Ettad.ResponseHandler.Consts.ResponseType.InternalServerError, 
-                    $"An error occurred: {ex.Message}");
-                return ProcessResponse(result);
-            }
+        [HttpGet("{id}")]
+        [ProducesResponseType((int)HttpStatusCode.OK)]
+        [CheckAuthorize("Permissions.Weapon.View")]
+        public async Task<IActionResult> GetById(long id)
+        {
+            var result = await _weaponService.GetByIdAsync(id);
+            return ProcessResponse(result);
+        }
+
+        [HttpGet("ByType/{type}")]
+        [ProducesResponseType((int)HttpStatusCode.OK)]
+        [CheckAuthorize("Permissions.Weapon.View")]
+        public async Task<IActionResult> GetByType(Ettad.Data.Enums.WeaponType type)
+        {
+            var result = await _weaponService.GetByTypeAsync(type);
+            return ProcessResponse(result);
+        }
+
+        [HttpPost]
+        [ProducesResponseType((int)HttpStatusCode.Created)]
+        [CheckAuthorize("Permissions.Weapon.Create")]
+        public async Task<IActionResult> Create([FromForm] CreateUpdateWeaponDto input, [FromForm] List<IFormFile> files)
+        {
+            var result = await _weaponService.CreateAsync(input, files);
+            return ProcessResponse(result);
+        }
+
+        [HttpPost("Import")]
+        [ProducesResponseType((int)HttpStatusCode.OK)]
+        [CheckAuthorize("Permissions.Weapon.Create")]
+        public async Task<IActionResult> Import(IFormFile file)
+        {
+            var result = await _weaponService.ImportAsync(file);
+            return ProcessResponse(result);
+        }
+
+        [HttpPost("ImportPreview")]
+        [ProducesResponseType((int)HttpStatusCode.OK)]
+        [CheckAuthorize("Permissions.Weapon.Create")]
+        public async Task<IActionResult> ImportPreview(IFormFile file)
+        {
+            var result = await _weaponService.ImportPreviewAsync(file);
+            return ProcessResponse(result);
+        }
+
+        [HttpPut("{id}")]
+        [ProducesResponseType((int)HttpStatusCode.OK)]
+        [CheckAuthorize("Permissions.Weapon.Edit")]
+        public async Task<IActionResult> Update(long id, [FromBody] CreateUpdateWeaponDto input)
+        {
+            var result = await _weaponService.UpdateAsync(id, input);
+            return ProcessResponse(result);
+        }
+
+        [HttpDelete("{id}")]
+        [ProducesResponseType((int)HttpStatusCode.OK)]
+        [CheckAuthorize("Permissions.Weapon.Delete")]
+        public async Task<IActionResult> Delete(long id)
+        {
+            var result = await _weaponService.DeleteAsync(id);
+            return ProcessResponse(result);
         }
     }
 }

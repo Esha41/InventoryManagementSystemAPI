@@ -1,19 +1,15 @@
-using Ettad.Data.Enums;
+using Ettad.RequestManagement.Service.Common.Dtos;
 
 namespace Ettad.RequestManagement.Service.Orders.Dto
 {
-    public class OrderRequestItemDto
+    /// <summary>
+    /// Order-specific request item DTO.
+    /// Currently inherits all properties from RequestItemDto.
+    /// Kept as separate class for potential future Order-specific item properties.
+    /// </summary>
+    public class OrderRequestItemDto : RequestItemDto
     {
-        public long Id { get; set; }
-        public long ItemId { get; set; }
-        public long Quantity { get; set; }
-        public string Notes { get; set; }
-
-        #region Item Navigation Properties
-        public string ItemName { get; set; }
-        public string ItemNo { get; set; }
-        public ItemType ItemType { get; set; }
-        #endregion
+        // All properties inherited from RequestItemDto (including ItemType)
     }
 }
 

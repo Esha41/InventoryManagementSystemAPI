@@ -10,6 +10,7 @@ namespace Ettad.User.Services.DTO
     {
         public string Id { get; set; }
         public string Name { get; set; }
+        public string? NameAr { get; set; }
         public bool IsDefaultRole { get; set; }
         public bool IsSuperAdmin { get; set; }
         public List<long> ApplicationEntityIds { get; set; } = new List<long>();

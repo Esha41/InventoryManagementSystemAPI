@@ -22,6 +22,7 @@ namespace Ettad.EntityFramework.DataBaseContext
         public DbSet<WorkflowStepApprovalLog> WorkflowStepApprovalLog { get; set; }
         public DbSet<WorkflowStep> WorkflowSteps { get; set; }
         public DbSet<WorkflowApprovalStep> WorkflowApprovalSteps { get; set; }
+        public DbSet<WorkflowStepTransition> WorkflowStepTransitions { get; set; }
         public DbSet<WorkflowStepNotifier> WorkflowStepNotifiers { get; set; }
         public DbSet<EmailConfiguration> EmailConfigurations { get; set; }
 
@@ -37,7 +38,6 @@ namespace Ettad.EntityFramework.DataBaseContext
         public DbSet<Department> Departments { get; set; }
         public DbSet<Depot> Depots { get; set; }
         public DbSet<HazardDivision> HazardDivisions { get; set; }
-        public DbSet<Hcc> Hcc { get; set; }
         public DbSet<Inventory> Inventories { get; set; }
         public DbSet<InventoryDetail> InventoryDetails { get; set; }
         public DbSet<Manufacturer> Manufacturers { get; set; }

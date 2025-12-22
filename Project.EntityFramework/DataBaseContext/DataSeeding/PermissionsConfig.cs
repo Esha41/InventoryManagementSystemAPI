@@ -1,4 +1,4 @@
-﻿using Ettad.Data.Enums;
+using Ettad.Data.Enums;
 using Newtonsoft.Json;
 
 namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
@@ -108,6 +108,17 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
         {
             "Permissions.Ammunition.Page",
             "Permissions.Ammunition.View",
+            "Permissions.Weapon.Page",
+            "Permissions.Weapon.View",
+            "Permissions.Explosive.Page",
+            "Permissions.Explosive.View",
+        };
+
+        public static List<string> ReadItemsViewOnly = new()
+        {
+            "Permissions.Ammunition.View",
+            "Permissions.Weapon.View",
+            "Permissions.Explosive.View",
         };
 
         public static List<string> WriteItems = new()
@@ -115,6 +126,12 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
             "Permissions.Ammunition.Create",
             "Permissions.Ammunition.Edit",
             "Permissions.Ammunition.Delete",
+            "Permissions.Weapon.Create",
+            "Permissions.Weapon.Edit",
+            "Permissions.Weapon.Delete",
+            "Permissions.Explosive.Create",
+            "Permissions.Explosive.Edit",
+            "Permissions.Explosive.Delete",
         };
 
         public static List<string> ReadInventory = new()
@@ -275,8 +292,8 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
 
         public static List<string> Requester_OrderRequestingEntity =
             ReadLookups
-                .Concat(ReadAllowanceItem)                
-                .Concat(ReadItems)
+                .Concat(ReadAllowanceItem)
+                .Concat(ReadItemsViewOnly)
                 .Concat(Dashboard)
                 .Concat(Forecast)
                 .Concat(Notifications)                
@@ -352,7 +369,8 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
         public static List<string> HeadOfDivision_DirectorateOfAmmunitionEntity =
             ReadLookups
                 .Concat(ReadItems)
-                .Concat(ReadAllowanceItem)                
+                .Concat(ReadAllowanceItem)
+                .Concat(ReadInventory)
                 .Concat(Dashboard)
                 .Concat(Forecast)
                 .Concat(Notifications)               
@@ -444,6 +462,17 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
             ReadLookups
                 .Concat(ReadItems)
                 .Concat(ReadAllowanceItem)               
+                .Concat(Dashboard)
+                .Concat(Forecast)
+                .Concat(Notifications)
+                .Concat(ReadOrderDiscardReturn)
+                .Concat(RequestReciever)
+                .ToList();
+
+        public static List<string> AuditorOfDeputy_ChiefOfStaffOfficeEntity =
+            ReadLookups
+                .Concat(ReadItems)
+                .Concat(ReadAllowanceItem)
                 .Concat(Dashboard)
                 .Concat(Forecast)
                 .Concat(Notifications)

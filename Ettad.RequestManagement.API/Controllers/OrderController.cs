@@ -1,8 +1,10 @@
 using Ettad.CrossCutting.Common.Security;
 using Ettad.RequestManagement.Service.Orders;
 using Ettad.RequestManagement.Service.Orders.Dto;
+using Ettad.ResponseHandler.Consts;
 using Ettad.ResponseHandler.Models;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using System.Net;
 
@@ -52,15 +54,28 @@ namespace Ettad.RequestManagement.API.Controllers
         /// Create a new order
         /// </summary>
         /// <param name="dto">Order creation data</param>
+        /// <param name="files">Optional list of files to attach to the workflow approval step</param>
         /// <returns>Created order ID</returns>
         [HttpPost]
+        [Consumes("multipart/form-data")]
         [ProducesResponseType(typeof(APIOperationResponse<long>), (int)HttpStatusCode.Created)]
         [ProducesResponseType((int)HttpStatusCode.BadRequest)]
         [CheckAuthorize("Permissions.Order.Create")]
-        public async Task<IActionResult> Create([FromBody] CreateOrderDto dto)
+        public async Task<IActionResult> Create(
+            [FromForm] CreateOrderDto dto,
+            [FromForm] List<IFormFile>? files = null)
         {
-            var result = await _orderService.CreateAsync(dto);
-            return ProcessResponse(result);
+            try
+            {
+                var result = files != null && files.Count > 0
+                    ? await _orderService.CreateAsync(dto, files)
+                    : await _orderService.CreateAsync(dto);
+                return ProcessResponse(result);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(APIOperationResponse<long>.Fail(ResponseType.BadRequest, ex.Message));
+            }
         }
 
         /// <summary>

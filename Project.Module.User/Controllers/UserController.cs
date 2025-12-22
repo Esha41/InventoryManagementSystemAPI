@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Ettad.CrossCutting.Common.Security;
 using Ettad.ResponseHandler.Models;
+using Ettad.Services.DataTransferObject.AuthenticationDto;
 using Ettad.User.Services.DTO;
 using Ettad.User.Services.Interfaces;
 using System;
@@ -26,7 +27,6 @@ namespace Ettad.User.API.Controllers
 
         [HttpGet("{id}")]
         [CheckAuthorize("Permissions.SystemUsers.View", "Permissions.SystemUsers.page")]
-
         public async Task<IActionResult> GetById(string id)
         {
             var response = await _userService.GetByIdAsync(id);
@@ -42,7 +42,6 @@ namespace Ettad.User.API.Controllers
 
         [HttpGet]
         [CheckAuthorize("Permissions.SystemUsers.View", "Permissions.SystemUsers.page")]
-
         public async Task<IActionResult> GetAll()
         {
             var response = await _userService.GetAllAsync();
@@ -100,6 +99,13 @@ namespace Ettad.User.API.Controllers
         public async Task<IActionResult> UpdateUserRoles(string id, [FromBody] UpdateUserRolesDto dto)
         {
             var response = await _userService.UpdateUserRolesAsync(id, dto);
+            return ProcessResponse(response);
+        }
+
+        [HttpPut("change-password")]
+        public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordDto dto)
+        {
+            var response = await _userService.ChangePasswordAsync(dto);
             return ProcessResponse(response);
         }
     }

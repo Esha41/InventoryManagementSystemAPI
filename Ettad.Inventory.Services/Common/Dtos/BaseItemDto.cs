@@ -10,13 +10,14 @@ namespace Ettad.Inventory.Service.Common.Dtos
         public string Name { get; set; }
         public string ItemNo { get; set; }
         public ItemType ItemType { get; set; }
-        public long HccId { get; set; }
         public string PartNo { get; set; }
+        public decimal? Price { get; set; }
+        public long? MinimumQuantity { get; set; }
         public bool IsDeleted { get; set; }
 
         #region Navigation Properties
 
-        public HccDto Hcc { get; set; }
+        // HCC removed - no longer used
 
         #endregion
     }

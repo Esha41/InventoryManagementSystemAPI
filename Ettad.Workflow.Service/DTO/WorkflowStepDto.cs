@@ -1,4 +1,5 @@
 using Ettad.Data.Enums;
+using Ettad.User.Services.DTO;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -17,6 +18,7 @@ namespace Ettad.Workflows.Service.DTO
 
         // Replaced ApproverType / ApproverEmployeeId
         public string ApplicationRoleId { get; set; }          // required role
+        public string ApplicationRoleName { get; set; }        // role name for display
         public long ApplicationEntityId { get; set; }             // required role for this step
             // entity being approved
 
@@ -29,8 +31,41 @@ namespace Ettad.Workflows.Service.DTO
 
         public bool ReserveQty { get; set; } = false;
 
+        public bool CanSkip { get; set; } = false;
+        public List<WorkflowStepTransitionDto> Transitions { get; set; } = new List<WorkflowStepTransitionDto>();
+
         // Approval steps for this workflow step
         public List<WorkflowApprovalStepDto> ApprovalSteps { get; set; } = new();
+    }
+
+    public class WorkflowStepTransitionDto
+    {
+        public int Id { get; set; }
+        public int SourceWorkflowStepId { get; set; }
+        public int TargetWorkflowStepId { get; set; }
+        
+        // Target step details
+        public TargetStepDetailsDto TargetStep { get; set; }
+    }
+
+    public class TargetStepDetailsDto
+    {
+        public int Id { get; set; }
+        public int WorkflowId { get; set; }
+        public int StepOrder { get; set; }
+        
+        // Role information
+        public RoleDto ApplicationRole { get; set; }
+        public long ApplicationEntityId { get; set; }
+        
+        // Higher approval role information
+        public bool RequireHigherApproval { get; set; }
+        public RoleDto? HigherApprovalRole { get; set; }
+        public long? HigherApplicationEntityId { get; set; }
+        
+        public bool MustApprove { get; set; }
+        public bool ReserveQty { get; set; }
+        public bool CanSkip { get; set; }
     }
 
     public class WorkflowStepCreateDto

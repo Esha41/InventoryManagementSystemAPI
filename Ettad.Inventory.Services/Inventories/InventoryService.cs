@@ -5,10 +5,14 @@ using Ettad.CrossCutting.Data.Repository;
 using Ettad.Data.Entities;
 using Ettad.Data.Enums;
 using Ettad.Inventory.Service.Inventories.Dtos;
+using Ettad.Inventory.Services.Common;
 using Ettad.ResponseHandler.Consts;
 using Ettad.ResponseHandler.Models;
 using Ettad.Application.Common.Interfaces;
+using Ettad.EntityFramework.DataBaseContext;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
+using System;
 using InventoryEntity = Ettad.Data.Entities.Inventory;
 using InventoryDetailEntity = Ettad.Data.Entities.InventoryDetail;
 
@@ -16,40 +20,49 @@ namespace Ettad.Inventory.Service.Inventories
 {
     public class InventoryService : IInventoryService
     {
+        private readonly ApplicationDbContext _context;
         private readonly ICrossCuttingRepository<InventoryEntity> _inventoryRepository;
         private readonly ICrossCuttingRepository<InventoryDetailEntity> _inventoryDetailRepository;
         private readonly ICrossCuttingRepository<Order> _orderRepository;
         private readonly ICrossCuttingRepository<RequestItem> _requestItemRepository;
         private readonly ICrossCuttingRepository<SupplyDetail> _supplyDetailsRepository;
         private readonly ICrossCuttingRepository<Supply> _supplyRepository;
+        private readonly ICrossCuttingRepository<BaseItem> _baseItemRepository;
         private readonly IMapper _mapper;
         private readonly IValidator<CreateInventoryDto> _createValidator;
         private readonly IValidator<UpdateInventoryDto> _updateValidator;
+        private readonly IExcelImportService _excelImportService;
         private readonly ICurrentUserService _currentUserService;
         private readonly ILogger<InventoryService> _logger;
 
         public InventoryService(
+            ApplicationDbContext context,
             ICrossCuttingRepository<InventoryEntity> inventoryRepository,
             ICrossCuttingRepository<InventoryDetailEntity> inventoryDetailRepository,
             ICrossCuttingRepository<Order> orderRepository,
             ICrossCuttingRepository<RequestItem> requestItemRepository,
             ICrossCuttingRepository<SupplyDetail> supplyDetailsRepository,
             ICrossCuttingRepository<Supply> supplyRepository,
+            ICrossCuttingRepository<BaseItem> baseItemRepository,
             IMapper mapper,
             IValidator<CreateInventoryDto> createValidator,
             IValidator<UpdateInventoryDto> updateValidator,
+            IExcelImportService excelImportService,
             ICurrentUserService currentUserService,
             ILogger<InventoryService> logger)
         {
+            _context = context;
             _inventoryRepository = inventoryRepository;
             _inventoryDetailRepository = inventoryDetailRepository;
             _orderRepository = orderRepository;
             _requestItemRepository = requestItemRepository;
             _supplyDetailsRepository = supplyDetailsRepository;
             _supplyRepository = supplyRepository;
+            _baseItemRepository = baseItemRepository;
             _mapper = mapper;
             _createValidator = createValidator;
             _updateValidator = updateValidator;
+            _excelImportService = excelImportService;
             _currentUserService = currentUserService;
             _logger = logger;
         }
@@ -66,7 +79,6 @@ namespace Ettad.Inventory.Service.Inventories
                     false,
                     nameof(InventoryEntity.Depo),
                     $"{nameof(InventoryEntity.InventoryDetails)}.{nameof(InventoryDetailEntity.Item)}",
-                    $"{nameof(InventoryEntity.InventoryDetails)}.{nameof(InventoryDetailEntity.Item)}.Hcc",
                     $"{nameof(InventoryEntity.InventoryDetails)}.{nameof(InventoryDetailEntity.Supplier)}",
                     $"{nameof(InventoryEntity.InventoryDetails)}.{nameof(InventoryDetailEntity.Manufacturer)}",
                     $"{nameof(InventoryEntity.InventoryDetails)}.{nameof(InventoryDetailEntity.Country)}"
@@ -110,7 +122,6 @@ namespace Ettad.Inventory.Service.Inventories
                     false,
                     nameof(InventoryEntity.Depo),
                     $"{nameof(InventoryEntity.InventoryDetails)}.{nameof(InventoryDetailEntity.Item)}",
-                    $"{nameof(InventoryEntity.InventoryDetails)}.{nameof(InventoryDetailEntity.Item)}.Hcc",
                     $"{nameof(InventoryEntity.InventoryDetails)}.{nameof(InventoryDetailEntity.Supplier)}",
                     $"{nameof(InventoryEntity.InventoryDetails)}.{nameof(InventoryDetailEntity.Manufacturer)}",
                     $"{nameof(InventoryEntity.InventoryDetails)}.{nameof(InventoryDetailEntity.Country)}"
@@ -294,7 +305,10 @@ namespace Ettad.Inventory.Service.Inventories
                                 SupplierId = existingDetail.SupplierId,
                                 ManufacturerId = existingDetail.ManufacturerId,
                                 CountryId = existingDetail.CountryId,
-                                ItemQuantity = existingDetail.ItemQuantity
+                                ItemQuantity = existingDetail.ItemQuantity,
+                                BatchNo = existingDetail.BatchNo,
+                                ExpiryDate = existingDetail.ExpiryDate,
+                                ReadyForIssue = existingDetail.ReadyForIssue
                             };
                             await _inventoryDetailRepository.UpdateAsync(detailUpdate);
                         }
@@ -1108,6 +1122,564 @@ namespace Ettad.Inventory.Service.Inventories
                     inventoryDetailId, _currentUserService.UserId);
                 return APIOperationResponse<bool>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
             }
+        }
+
+        public async Task<APIOperationResponse<ImportResult<InventoryImportRowDto>>> ImportAsync(IFormFile file, long depotId)
+        {
+            _logger.LogInformation("Starting inventory import. DepotId: {DepotId}, User: {UserId}", 
+                depotId, _currentUserService.UserId);
+
+            try
+            {
+                // Parse Excel file
+                var mappings = GetColumnMappings();
+                var importResult = await _excelImportService.ImportFromExcelAsync<InventoryImportRowDto>(file, mappings);
+
+                if (importResult.SuccessCount == 0)
+                {
+                    _logger.LogWarning("No valid rows found in Excel file. DepotId: {DepotId}, User: {UserId}", 
+                        depotId, _currentUserService.UserId);
+                    return APIOperationResponse<ImportResult<InventoryImportRowDto>>.Success(importResult, "Import processed with no valid records");
+                }
+
+                // Load all items for ItemNo lookup
+                var allItems = await LoadAllItemsAsync();
+
+                // Load lookup tables for name-to-ID resolution
+                var suppliers = await _context.Suppliers.Where(s => !s.IsDeleted).ToListAsync();
+                var manufacturers = await _context.Manufacturers.Where(m => !m.IsDeleted).ToListAsync();
+                var countries = await _context.Countries.Where(c => !c.IsDeleted).ToListAsync();
+
+                // Load existing inventory for duplicate checking
+                var existingInventoryDetails = await _inventoryDetailRepository.FindAsync(
+                    id => id.Inventory.DepoId == depotId && !id.Inventory.IsDeleted,
+                    false,
+                    nameof(InventoryDetailEntity.Inventory)
+                );
+
+                var existingKeys = new HashSet<string>();
+                foreach (var detail in existingInventoryDetails)
+                {
+                    var key = $"{detail.ItemId}_{detail.Lot}_{detail.BatchNo ?? ""}";
+                    existingKeys.Add(key);
+                }
+
+                // Process valid records with transaction support
+                await using var transaction = await _context.Database.BeginTransactionAsync();
+                
+                try
+                {
+                    // Group rows by invoice number
+                    var invoiceGroups = importResult.SuccessfulRecords
+                        .GroupBy(r => r.InvoiceNumber ?? $"IMPORT-{Guid.NewGuid()}")
+                        .ToList();
+
+                    int processedCount = 0;
+                    int errorCount = 0;
+
+                    foreach (var invoiceGroup in invoiceGroups)
+                    {
+                        var invoiceNumber = invoiceGroup.Key;
+                        var rows = invoiceGroup.ToList();
+
+                        try
+                        {
+                            // Validate all rows in invoice first (per-invoice atomicity)
+                            var invoiceErrors = new List<string>();
+                            var inventoryDetails = new List<CreateInventoryDetailDto>();
+                            DateTime? invoiceDate = null;
+                            DateTime? receivedDate = null;
+                            string? notes = null;
+
+                            foreach (var row in rows)
+                            {
+                                // Extract ItemNo from ItemName if provided (format: "ItemName (ItemNo)")
+                                if (string.IsNullOrEmpty(row.ItemNo) && !string.IsNullOrEmpty(row.ItemName))
+                                {
+                                    // Parse "ItemName (ItemNo)" format to extract ItemNo
+                                    var itemNameValue = row.ItemName.Trim();
+                                    if (itemNameValue.Contains("(") && itemNameValue.Contains(")"))
+                                    {
+                                        var startIndex = itemNameValue.LastIndexOf("(");
+                                        var endIndex = itemNameValue.LastIndexOf(")");
+                                        if (startIndex > 0 && endIndex > startIndex)
+                                        {
+                                            row.ItemNo = itemNameValue.Substring(startIndex + 1, endIndex - startIndex - 1).Trim();
+                                        }
+                                    }
+                                    else
+                                    {
+                                        // If no parentheses, try to match by item name
+                                        var foundItem = allItems.FirstOrDefault(i => 
+                                            i.Name != null && i.Name.Equals(itemNameValue, StringComparison.OrdinalIgnoreCase));
+                                        if (foundItem != null)
+                                        {
+                                            row.ItemNo = foundItem.ItemNo ?? "";
+                                        }
+                                    }
+                                }
+
+                                // Resolve ItemId from ItemNo
+                                long? itemId = row.ItemId;
+                                if (!itemId.HasValue && !string.IsNullOrEmpty(row.ItemNo))
+                                {
+                                    var foundItem = allItems.FirstOrDefault(i => i.ItemNo == row.ItemNo);
+                                    if (foundItem != null)
+                                    {
+                                        itemId = foundItem.Id;
+                                    }
+                                }
+
+                                if (!itemId.HasValue)
+                                {
+                                    invoiceErrors.Add($"Item not found: ItemName={row.ItemName}, ItemNo={row.ItemNo}, ItemId={row.ItemId}");
+                                    continue;
+                                }
+
+                                // Resolve Supplier name to ID
+                                if (!string.IsNullOrWhiteSpace(row.Supplier) && !row.SupplierId.HasValue)
+                                {
+                                    var supplier = suppliers.FirstOrDefault(s => 
+                                        s.NameEn.Equals(row.Supplier, StringComparison.OrdinalIgnoreCase) ||
+                                        s.NameAr.Equals(row.Supplier, StringComparison.OrdinalIgnoreCase));
+                                    
+                                    if (supplier != null)
+                                    {
+                                        row.SupplierId = supplier.Id;
+                                    }
+                                    else
+                                    {
+                                        invoiceErrors.Add($"Supplier not found: {row.Supplier}");
+                                        continue;
+                                    }
+                                }
+
+                                // Resolve Manufacturer name to ID
+                                if (!string.IsNullOrWhiteSpace(row.Manufacturer) && !row.ManufacturerId.HasValue)
+                                {
+                                    var manufacturer = manufacturers.FirstOrDefault(m => 
+                                        m.NameEn.Equals(row.Manufacturer, StringComparison.OrdinalIgnoreCase) ||
+                                        m.NameAr.Equals(row.Manufacturer, StringComparison.OrdinalIgnoreCase));
+                                    
+                                    if (manufacturer != null)
+                                    {
+                                        row.ManufacturerId = manufacturer.Id;
+                                    }
+                                    else
+                                    {
+                                        invoiceErrors.Add($"Manufacturer not found: {row.Manufacturer}");
+                                        continue;
+                                    }
+                                }
+
+                                // Resolve Country name to ID
+                                if (!string.IsNullOrWhiteSpace(row.Country) && !row.CountryId.HasValue)
+                                {
+                                    var country = countries.FirstOrDefault(c => 
+                                        c.NameEn.Equals(row.Country, StringComparison.OrdinalIgnoreCase) ||
+                                        c.NameAr.Equals(row.Country, StringComparison.OrdinalIgnoreCase));
+                                    
+                                    if (country != null)
+                                    {
+                                        row.CountryId = country.Id;
+                                    }
+                                    else
+                                    {
+                                        invoiceErrors.Add($"Country not found: {row.Country}");
+                                        continue;
+                                    }
+                                }
+
+                                // Check for duplicates
+                                var duplicateKey = $"{itemId.Value}_{row.Lot}_{row.BatchNo ?? ""}";
+                                if (existingKeys.Contains(duplicateKey))
+                                {
+                                    invoiceErrors.Add($"Duplicate entry: ItemId={itemId.Value}, Lot={row.Lot}, BatchNo={row.BatchNo ?? "N/A"}");
+                                    continue;
+                                }
+
+                                if (row.OriginalQuantity <= 0)
+                                {
+                                    invoiceErrors.Add($"Original Quantity must be greater than 0: ItemId={itemId.Value}");
+                                    continue;
+                                }
+
+                                // Add to details
+                                inventoryDetails.Add(new CreateInventoryDetailDto
+                                {
+                                    ItemId = itemId.Value,
+                                    Lot = row.Lot,
+                                    SupplierId = row.SupplierId,
+                                    ManufacturerId = row.ManufacturerId,
+                                    CountryId = row.CountryId,
+                                    OriginalQuantity = row.OriginalQuantity,
+                                    BatchNo = row.BatchNo,
+                                    ExpiryDate = row.ExpiryDate,
+                                    ReadyForIssue = row.ReadyForIssue
+                                });
+
+                                // Add to existing keys to prevent duplicates within import
+                                existingKeys.Add(duplicateKey);
+
+                                // Capture invoice-level data from first row
+                                if (rows.IndexOf(row) == 0)
+                                {
+                                    invoiceDate = row.InvoiceDate;
+                                    receivedDate = row.ReceivedDate;
+                                    notes = row.Notes;
+                                }
+                            }
+
+                            // If any errors in invoice, skip entire invoice
+                            if (invoiceErrors.Any())
+                            {
+                                foreach (var error in invoiceErrors)
+                                {
+                                    importResult.Errors.Add(new ImportError
+                                    {
+                                        RowNumber = 0,
+                                        ErrorMessage = $"Invoice {invoiceNumber}: {error}",
+                                        ColumnName = "N/A"
+                                    });
+                                }
+                                errorCount += rows.Count;
+                                continue;
+                            }
+
+                            if (inventoryDetails.Count == 0)
+                            {
+                                importResult.Errors.Add(new ImportError
+                                {
+                                    RowNumber = 0,
+                                    ErrorMessage = $"Invoice {invoiceNumber}: No valid inventory details",
+                                    ColumnName = "N/A"
+                                });
+                                errorCount += rows.Count;
+                                continue;
+                            }
+
+                            // Create inventory
+                            var createDto = new CreateInventoryDto
+                            {
+                                DepoId = depotId,
+                                InvoiceNumber = invoiceNumber.StartsWith("IMPORT-") ? null : invoiceNumber,
+                                InvoiceDate = invoiceDate,
+                                RecievedDate = receivedDate,
+                                Notes = notes,
+                                InventoryDetails = inventoryDetails
+                            };
+
+                            // Validate
+                            var validationResult = await _createValidator.ValidateAsync(createDto);
+                            if (!validationResult.IsValid)
+                            {
+                                var errors = string.Join(", ", validationResult.Errors.Select(e => e.ErrorMessage));
+                                importResult.Errors.Add(new ImportError
+                                {
+                                    RowNumber = 0,
+                                    ErrorMessage = $"Invoice {invoiceNumber}: Validation failed - {errors}",
+                                    ColumnName = "N/A"
+                                });
+                                errorCount += rows.Count;
+                                continue;
+                            }
+
+                            // Create inventory entity
+                            var inventory = _mapper.Map<InventoryEntity>(createDto);
+                            inventory.CreationDate = DateTime.UtcNow;
+                            inventory.CreatedBy = _currentUserService.UserId;
+                            inventory.InventoryDetails = inventoryDetails
+                                .Select(d => _mapper.Map<InventoryDetailEntity>(d))
+                                .ToList();
+
+                            await _inventoryRepository.AddAsync(inventory);
+                            processedCount += inventoryDetails.Count;
+
+                            _logger.LogInformation("Created inventory from import. InvoiceNumber: {InvoiceNumber}, DetailCount: {DetailCount}, DepotId: {DepotId}, User: {UserId}",
+                                invoiceNumber, inventoryDetails.Count, depotId, _currentUserService.UserId);
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogError(ex, "Error processing invoice group. InvoiceNumber: {InvoiceNumber}, DepotId: {DepotId}, User: {UserId}",
+                                invoiceNumber, depotId, _currentUserService.UserId);
+                            
+                            importResult.Errors.Add(new ImportError
+                            {
+                                RowNumber = 0,
+                                ErrorMessage = $"Invoice {invoiceNumber}: {ex.Message}",
+                                ColumnName = "N/A"
+                            });
+                            errorCount += rows.Count;
+                        }
+                    }
+
+                    // Commit transaction if all successful
+                    if (processedCount > 0)
+                    {
+                        await transaction.CommitAsync();
+                        _logger.LogInformation("Inventory import completed successfully. Processed: {ProcessedCount}, Errors: {ErrorCount}, DepotId: {DepotId}, User: {UserId}",
+                            processedCount, errorCount, depotId, _currentUserService.UserId);
+                    }
+                    else
+                    {
+                        await transaction.RollbackAsync();
+                        _logger.LogWarning("Inventory import rolled back - no valid records. DepotId: {DepotId}, User: {UserId}",
+                            depotId, _currentUserService.UserId);
+                    }
+
+                    // Update import result counts
+                    importResult.SuccessfulRecords = importResult.SuccessfulRecords.Take(processedCount).ToList();
+                    importResult.TotalProcessed = importResult.SuccessfulRecords.Count + importResult.Errors.Count;
+
+                    return APIOperationResponse<ImportResult<InventoryImportRowDto>>.Success(importResult, "Import processed");
+                }
+                catch (Exception ex)
+                {
+                    await transaction.RollbackAsync();
+                    _logger.LogError(ex, "Error during inventory import transaction. DepotId: {DepotId}, User: {UserId}",
+                        depotId, _currentUserService.UserId);
+                    throw;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error importing inventory. DepotId: {DepotId}, User: {UserId}",
+                    depotId, _currentUserService.UserId);
+                return APIOperationResponse<ImportResult<InventoryImportRowDto>>.Fail(ResponseType.InternalServerError, ex.Message);
+            }
+        }
+
+        public async Task<APIOperationResponse<ImportResult<InventoryImportRowDto>>> ImportPreviewAsync(IFormFile file, long depotId)
+        {
+            _logger.LogInformation("Starting inventory import preview. DepotId: {DepotId}, User: {UserId}", 
+                depotId, _currentUserService.UserId);
+
+            try
+            {
+                // Parse Excel file
+                var mappings = GetColumnMappings();
+                var importResult = await _excelImportService.ImportFromExcelAsync<InventoryImportRowDto>(file, mappings);
+
+                if (importResult.SuccessCount == 0)
+                {
+                    _logger.LogWarning("No valid rows found in Excel file for preview. DepotId: {DepotId}, User: {UserId}", 
+                        depotId, _currentUserService.UserId);
+                    return APIOperationResponse<ImportResult<InventoryImportRowDto>>.Success(importResult, "Preview processed with no valid records");
+                }
+
+                // Load all items for ItemNo lookup
+                var allItems = await LoadAllItemsAsync();
+
+                // Load lookup tables for name-to-ID resolution
+                var suppliers = await _context.Suppliers.Where(s => !s.IsDeleted).ToListAsync();
+                var manufacturers = await _context.Manufacturers.Where(m => !m.IsDeleted).ToListAsync();
+                var countries = await _context.Countries.Where(c => !c.IsDeleted).ToListAsync();
+
+                // Load existing inventory for duplicate checking
+                var existingInventoryDetails = await _inventoryDetailRepository.FindAsync(
+                    id => id.Inventory.DepoId == depotId && !id.Inventory.IsDeleted,
+                    false,
+                    nameof(InventoryDetailEntity.Inventory)
+                );
+
+                var existingKeys = new HashSet<string>();
+                foreach (var detail in existingInventoryDetails)
+                {
+                    var key = $"{detail.ItemId}_{detail.Lot}_{detail.BatchNo ?? ""}";
+                    existingKeys.Add(key);
+                }
+
+                // Validate records WITHOUT saving to database
+                // Use ToList() to avoid modification during iteration (following asset pattern)
+                foreach (var row in importResult.SuccessfulRecords.ToList())
+                {
+                    var rowErrors = new List<string>();
+
+                    // Extract ItemNo from ItemName if provided (format: "ItemName (ItemNo)")
+                    if (string.IsNullOrEmpty(row.ItemNo) && !string.IsNullOrEmpty(row.ItemName))
+                    {
+                        // Parse "ItemName (ItemNo)" format to extract ItemNo
+                        var itemNameValue = row.ItemName.Trim();
+                        if (itemNameValue.Contains("(") && itemNameValue.Contains(")"))
+                        {
+                            var startIndex = itemNameValue.LastIndexOf("(");
+                            var endIndex = itemNameValue.LastIndexOf(")");
+                            if (startIndex > 0 && endIndex > startIndex)
+                            {
+                                row.ItemNo = itemNameValue.Substring(startIndex + 1, endIndex - startIndex - 1).Trim();
+                            }
+                        }
+                        else
+                        {
+                            // If no parentheses, try to match by item name
+                            var foundItem = allItems.FirstOrDefault(i => 
+                                i.Name != null && i.Name.Equals(itemNameValue, StringComparison.OrdinalIgnoreCase));
+                            if (foundItem != null)
+                            {
+                                row.ItemNo = foundItem.ItemNo ?? "";
+                            }
+                        }
+                    }
+
+                    // Resolve ItemId from ItemNo
+                    long? itemId = row.ItemId;
+                    if (!itemId.HasValue && !string.IsNullOrEmpty(row.ItemNo))
+                    {
+                        var foundItem = allItems.FirstOrDefault(i => i.ItemNo == row.ItemNo);
+                        if (foundItem != null)
+                        {
+                            itemId = foundItem.Id;
+                            row.ItemId = itemId; // Update the row
+                        }
+                    }
+
+                    if (!itemId.HasValue)
+                    {
+                        rowErrors.Add($"Item not found: ItemName={row.ItemName}, ItemNo={row.ItemNo}, ItemId={row.ItemId}");
+                    }
+                    else
+                    {
+                        // Resolve Supplier name to ID
+                        if (!string.IsNullOrWhiteSpace(row.Supplier))
+                        {
+                            var supplier = suppliers.FirstOrDefault(s => 
+                                s.NameEn.Equals(row.Supplier, StringComparison.OrdinalIgnoreCase) ||
+                                s.NameAr.Equals(row.Supplier, StringComparison.OrdinalIgnoreCase));
+                            
+                            if (supplier != null)
+                            {
+                                row.SupplierId = supplier.Id;
+                            }
+                            else
+                            {
+                                rowErrors.Add($"Supplier not found: {row.Supplier}");
+                            }
+                        }
+
+                        // Resolve Manufacturer name to ID
+                        if (!string.IsNullOrWhiteSpace(row.Manufacturer))
+                        {
+                            var manufacturer = manufacturers.FirstOrDefault(m => 
+                                m.NameEn.Equals(row.Manufacturer, StringComparison.OrdinalIgnoreCase) ||
+                                m.NameAr.Equals(row.Manufacturer, StringComparison.OrdinalIgnoreCase));
+                            
+                            if (manufacturer != null)
+                            {
+                                row.ManufacturerId = manufacturer.Id;
+                            }
+                            else
+                            {
+                                rowErrors.Add($"Manufacturer not found: {row.Manufacturer}");
+                            }
+                        }
+
+                        // Resolve Country name to ID
+                        if (!string.IsNullOrWhiteSpace(row.Country))
+                        {
+                            var country = countries.FirstOrDefault(c => 
+                                c.NameEn.Equals(row.Country, StringComparison.OrdinalIgnoreCase) ||
+                                c.NameAr.Equals(row.Country, StringComparison.OrdinalIgnoreCase));
+                            
+                            if (country != null)
+                            {
+                                row.CountryId = country.Id;
+                            }
+                            else
+                            {
+                                rowErrors.Add($"Country not found: {row.Country}");
+                            }
+                        }
+
+                        // Check for duplicates
+                        var duplicateKey = $"{itemId.Value}_{row.Lot}_{row.BatchNo ?? ""}";
+                        if (existingKeys.Contains(duplicateKey))
+                        {
+                            rowErrors.Add($"Duplicate entry: ItemId={itemId.Value}, Lot={row.Lot}, BatchNo={row.BatchNo ?? "N/A"}");
+                        }
+                        else
+                        {
+                            // Add to existing keys to prevent duplicates within preview
+                            existingKeys.Add(duplicateKey);
+                        }
+
+                        if (row.OriginalQuantity <= 0)
+                        {
+                            rowErrors.Add($"Original Quantity must be greater than 0");
+                        }
+                    }
+
+                    // If validation failed, move from successful to errors (following asset pattern)
+                    if (rowErrors.Any())
+                    {
+                        importResult.SuccessfulRecords.Remove(row);
+                        importResult.Errors.Add(new ImportError
+                        {
+                            ErrorMessage = string.Join("; ", rowErrors),
+                            ColumnName = "N/A"
+                        });
+                    }
+                }
+
+                // Update counts
+                importResult.TotalProcessed = importResult.SuccessfulRecords.Count + importResult.Errors.Count;
+
+                _logger.LogInformation("Inventory import preview completed. Valid: {ValidCount}, Errors: {ErrorCount}, DepotId: {DepotId}, User: {UserId}",
+                    importResult.SuccessfulRecords.Count, importResult.Errors.Count, depotId, _currentUserService.UserId);
+
+                return APIOperationResponse<ImportResult<InventoryImportRowDto>>.Success(importResult, "Preview processed");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error previewing inventory import. DepotId: {DepotId}, User: {UserId}",
+                    depotId, _currentUserService.UserId);
+                return APIOperationResponse<ImportResult<InventoryImportRowDto>>.Fail(ResponseType.InternalServerError, ex.Message);
+            }
+        }
+
+        private Dictionary<string, string> GetColumnMappings()
+        {
+            return new Dictionary<string, string>
+            {
+                { "Item Name", nameof(InventoryImportRowDto.ItemName) }, // Primary: Item Name dropdown
+                { "Item No", nameof(InventoryImportRowDto.ItemNo) }, // Backward compatibility: direct Item No entry
+                { "Item ID", nameof(InventoryImportRowDto.ItemId) }, // Optional: auto-resolved from ItemNo if not provided
+                { "Lot", nameof(InventoryImportRowDto.Lot) },
+                { "Supplier", nameof(InventoryImportRowDto.Supplier) },
+                { "Manufacturer", nameof(InventoryImportRowDto.Manufacturer) },
+                { "Country", nameof(InventoryImportRowDto.Country) },
+                { "Original Quantity", nameof(InventoryImportRowDto.OriginalQuantity) },
+                { "Batch No", nameof(InventoryImportRowDto.BatchNo) },
+                { "Expiry Date", nameof(InventoryImportRowDto.ExpiryDate) },
+                { "Ready For Issue", nameof(InventoryImportRowDto.ReadyForIssue) },
+                { "Invoice Number", nameof(InventoryImportRowDto.InvoiceNumber) },
+                { "Invoice Date", nameof(InventoryImportRowDto.InvoiceDate) },
+                { "Received Date", nameof(InventoryImportRowDto.ReceivedDate) },
+                { "Notes", nameof(InventoryImportRowDto.Notes) }
+            };
+        }
+
+        private async Task<List<BaseItem>> LoadAllItemsAsync()
+        {
+            var items = new List<BaseItem>();
+            
+            // Load all ammunition, weapons, and explosives
+            var ammunitions = await _context.Ammunitions
+                .Where(a => !a.IsDeleted)
+                .ToListAsync();
+            
+            var weapons = await _context.Weapons
+                .Where(w => !w.IsDeleted)
+                .ToListAsync();
+            
+            var explosives = await _context.Explosives
+                .Where(e => !e.IsDeleted)
+                .ToListAsync();
+
+            items.AddRange(ammunitions.Cast<BaseItem>());
+            items.AddRange(weapons.Cast<BaseItem>());
+            items.AddRange(explosives.Cast<BaseItem>());
+
+            return items;
         }
     }
 }

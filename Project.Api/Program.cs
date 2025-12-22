@@ -20,14 +20,22 @@ using Ettad.User.Services.Interfaces;
 using Ettad.Workflow.Service;
 using Ettad.Workflows.Service.Imeplemention;
 using Ettad.Workflows.Service.Interface;
+using Ettad.Inventory.Service.Monitoring;
+using Ettad.Services;
+using Hangfire;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.OpenApi.Models;
 using Moujam.Casiher.Comman.Models;
-using Project.Api;
 using Serilog;
+using Swashbuckle.AspNetCore.SwaggerGen;
+using System;
+using System.Linq;
+using System.Reflection;
 using Serilog.Events;
 using System.Reflection;
 using System.Text;
@@ -78,9 +86,11 @@ try
         .AddApplicationPart(typeof(Ettad.Notification.API.Controllers.NotificationController).Assembly)
         .AddApplicationPart(typeof(Ettad.Workflows.API.Controllers.WorkflowApprovalController).Assembly)
         .AddApplicationPart(typeof(Ettad.Modules.EmailSystem.API.Controllers.EmailSettingsController).Assembly)
+        .AddApplicationPart(typeof(Ettad.Modules.FileUpload.API.Controllers.FileUploadController).Assembly)
         .AddJsonOptions(options =>
         {
             options.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
+            options.JsonSerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter());
         });
 
     // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
@@ -91,10 +101,22 @@ try
 
     builder.Services.AddScoped(typeof(ILookupService<,>), typeof(LookupService<,>));
 
+    // Register custom Depot service with inventory validation
+    builder.Services.AddScoped<IDepotService, DepotService>();
+
     builder.Services.AddScoped<IEmailSender, EmailSender>();
     builder.Services.AddScoped<IWorkflowApprovalService, WorkflowApprovalService>();
     builder.Services.AddScoped<IFileStorageService, FileStorageService>();
-    builder.Services.AddScoped<IFileUploadService, FileUploadService>();
+    builder.Services.AddScoped<IFileUploadService, Ettad.Modules.FileUpload.API.Services.FileUploadService>();
+    builder.Services.AddScoped<IExcelExportService, ExcelExportService>();
+    // Configure Hangfire for background jobs
+    var hangfireConnectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+    builder.Services.AddHangfire(config => config
+        .SetDataCompatibilityLevel(Hangfire.CompatibilityLevel.Version_170)
+        .UseSimpleAssemblyNameTypeSerializer()
+        .UseRecommendedSerializerSettings()
+        .UseSqlServerStorage(hangfireConnectionString));
+    builder.Services.AddHangfireServer();
 
     builder.Services.Configure<JwtOptions>(
     builder.Configuration.GetSection("JWT"));
@@ -131,6 +153,12 @@ try
         options.Password.RequiredLength = 5;
     }).AddDefaultTokenProviders()
     .AddEntityFrameworkStores<ApplicationDbContext>();
+
+    // Configure password reset token to expire in 15 minutes
+    builder.Services.Configure<DataProtectionTokenProviderOptions>(options =>
+    {
+        options.TokenLifespan = TimeSpan.FromMinutes(15);
+    });
     #endregion
     builder.Services.AddAuthentication(option =>
     {
@@ -187,6 +215,17 @@ try
     builder.Services.AddSwaggerGen(options =>
     {
         options.CustomSchemaIds(type => type.FullName);
+        
+        // Map enums as strings in Swagger
+        options.SchemaFilter<EnumAsStringSchemaFilter>();
+        options.ParameterFilter<EnumAsStringParameterFilter>();
+        
+        // Handle file uploads - map IFormFile to prevent parameter generation errors
+        options.MapType<IFormFile>(() => new OpenApiSchema { Type = "string", Format = "binary" });
+        options.MapType<FileStream>(() => new OpenApiSchema { Type = "string", Format = "binary" });
+        
+        // Handle file uploads in Swagger
+        options.OperationFilter<FileUploadOperationFilter>();
 
         // Add security definition for Bearer token
         options.AddSecurityDefinition(name: "Bearer", securityScheme: new OpenApiSecurityScheme
@@ -242,7 +281,6 @@ try
         });
     });
 
-
     #endregion
 
     var app = builder.Build();
@@ -271,14 +309,28 @@ try
     });
 
     // Configure the HTTP request pipeline.
-    
-        app.UseSwagger();
-        app.UseSwaggerUI();
+    // Add error handling for Swagger
+    app.UseSwagger(c =>
+    {
+        c.RouteTemplate = "swagger/{documentName}/swagger.json";
+    });
+    app.UseSwaggerUI(c =>
+    {
+        c.SwaggerEndpoint("/swagger/v1/swagger.json", "Ettad API V1");
+        c.RoutePrefix = "swagger";
+    });
   
     app.UseStaticFiles();
     app.UseHttpsRedirection();
 
     app.UseCors(corsPolicyName);
+
+   app.Use(async (context, next) =>
+    {
+        context.Response.Headers["X-Frame-Options"] = "DENY";
+        context.Response.Headers["Content-Security-Policy"] = "frame-ancestors 'self'";
+        await next();
+    });
 
     app.UseAuthentication();
 
@@ -312,6 +364,37 @@ try
             Log.Error(ex, "An error occurred during database migration or seeding");
             //  await ApplicationDbInitializer.SeedDefaultDataAsync(scope.ServiceProvider);
         }
+    }
+
+    // Register Recurring Jobs
+    // Low Stock Monitor Job - Checks items daily and sends notifications when stock is low
+    // Schedule is stored in Settings table (Key: "LowStockMonitorSchedule", Group: "BackgroundJobs")
+    // Can be updated at runtime via API endpoint
+    using (var scope = app.Services.CreateScope())
+    {
+        var recurringJobManager = scope.ServiceProvider.GetRequiredService<IRecurringJobManager>();
+        var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+
+        // Read schedule from Settings table, fallback to appsettings.json, then default
+        // Note: Cron expressions are in UTC timezone. For Qatar (UTC+3), subtract 3 hours from local time.
+        // Example: 9:15 AM Qatar time = 6:15 AM UTC = "15 6 * * *"
+        var scheduleSetting = await context.Settings
+            .FirstOrDefaultAsync(s => s.Key == LowStockMonitorConstants.SCHEDULE_SETTINGS_KEY && s.Group == LowStockMonitorConstants.SCHEDULE_SETTINGS_GROUP);
+        
+        var lowStockCronExpression = scheduleSetting?.Value 
+            ?? app.Configuration.GetValue<string>("BackgroundJobs:LowStockMonitor:CronExpression") 
+            ?? LowStockMonitorConstants.DEFAULT_CRON_EXPRESSION; // Default: 6:15 AM UTC (9:15 AM Qatar time, UTC+3)
+
+
+        // Set the service provider for the job
+        LowStockMonitorJob.SetServiceProvider(app.Services);
+        
+        recurringJobManager.AddOrUpdate(
+            LowStockMonitorConstants.JOB_ID,
+            () => LowStockMonitorJob.Execute(),
+            lowStockCronExpression);
+        
+        Log.Information("Low Stock Monitor job registered with schedule: {Schedule}", lowStockCronExpression);
     }
 
     Log.Information("Ettad Backend API started successfully");
@@ -380,5 +463,226 @@ static class DatabaseHelper
         {
             Log.Warning(ex, "Failed to create log database automatically. It may need to be created manually.");
         }
+    }
+}
+
+// Schema filter for enum handling in Swagger
+public class EnumAsStringSchemaFilter : ISchemaFilter
+{
+    public void Apply(OpenApiSchema schema, SchemaFilterContext context)
+    {
+        try
+        {
+            if (context?.Type != null && context.Type.IsEnum && schema != null)
+            {
+                var enumValues = Enum.GetValues(context.Type);
+                if (enumValues != null && enumValues.Length > 0)
+                {
+                    schema.Type = "string";
+                    schema.Format = null;
+                    schema.Enum = new List<Microsoft.OpenApi.Any.IOpenApiAny>();
+                    foreach (var enumValue in enumValues)
+                    {
+                        if (enumValue != null)
+                        {
+                            schema.Enum.Add(new Microsoft.OpenApi.Any.OpenApiString(enumValue.ToString()));
+                        }
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            // Log but don't throw - allow Swagger to continue
+            System.Diagnostics.Debug.WriteLine($"EnumAsStringSchemaFilter error: {ex.Message}");
+        }
+    }
+}
+
+// Parameter filter for enum handling in query parameters and file upload exclusion
+public class EnumAsStringParameterFilter : IParameterFilter
+{
+    public void Apply(OpenApiParameter parameter, ParameterFilterContext context)
+    {
+        try
+        {
+            // Exclude IFormFile parameters from being generated as query/route parameters
+            // They should be handled by the operation filter as request body
+            if (context?.ParameterInfo?.ParameterType != null)
+            {
+                var paramType = context.ParameterInfo.ParameterType;
+                
+                // Skip IFormFile parameters - they'll be handled by operation filter
+                if (paramType == typeof(IFormFile) || paramType == typeof(List<IFormFile>))
+                {
+                    // This will be handled by the operation filter, so we can skip it here
+                    return;
+                }
+                
+                // Handle enums
+                if (paramType.IsEnum && parameter != null)
+                {
+                    var enumValues = Enum.GetValues(paramType);
+                    
+                    if (enumValues != null && enumValues.Length > 0)
+                    {
+                        var enumList = new List<Microsoft.OpenApi.Any.IOpenApiAny>();
+                        foreach (var enumValue in enumValues)
+                        {
+                            if (enumValue != null)
+                            {
+                                enumList.Add(new Microsoft.OpenApi.Any.OpenApiString(enumValue.ToString()));
+                            }
+                        }
+                        
+                        parameter.Schema = new OpenApiSchema
+                        {
+                            Type = "string",
+                            Enum = enumList
+                        };
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            // Log but don't throw - allow Swagger to continue
+            System.Diagnostics.Debug.WriteLine($"EnumAsStringParameterFilter error: {ex.Message}");
+        }
+    }
+}
+
+// Operation filter to handle file uploads in Swagger
+public class FileUploadOperationFilter : IOperationFilter
+{
+    public void Apply(OpenApiOperation operation, OperationFilterContext context)
+    {
+        // Find all IFormFile parameters (with or without [FromForm])
+        var fileParameters = context.MethodInfo.GetParameters()
+            .Where(p => p.ParameterType == typeof(IFormFile) || 
+                       p.ParameterType == typeof(List<IFormFile>) ||
+                       (p.ParameterType.IsGenericType && 
+                        p.ParameterType.GetGenericTypeDefinition() == typeof(List<>) &&
+                        p.ParameterType.GetGenericArguments()[0] == typeof(IFormFile)))
+            .ToList();
+
+        // Also check for other [FromForm] parameters
+        var otherFormParameters = context.MethodInfo.GetParameters()
+            .Where(p => p.GetCustomAttributes(typeof(Microsoft.AspNetCore.Mvc.FromFormAttribute), false).Any() &&
+                       p.ParameterType != typeof(IFormFile) &&
+                       p.ParameterType != typeof(List<IFormFile>) &&
+                       !(p.ParameterType.IsGenericType && 
+                         p.ParameterType.GetGenericTypeDefinition() == typeof(List<>) &&
+                         p.ParameterType.GetGenericArguments()[0] == typeof(IFormFile)))
+            .ToList();
+
+        if (fileParameters.Any() || otherFormParameters.Any())
+        {
+            // Remove file and form parameters from the parameters list first
+            if (operation.Parameters != null)
+            {
+                var allFormParams = fileParameters.Concat(otherFormParameters).ToList();
+                operation.Parameters = operation.Parameters
+                    .Where(p => !allFormParams.Any(fp => fp.Name.Equals(p.Name, StringComparison.OrdinalIgnoreCase)))
+                    .ToList();
+            }
+
+            // Create or update request body for multipart/form-data
+            if (operation.RequestBody == null)
+            {
+                operation.RequestBody = new OpenApiRequestBody();
+            }
+
+            if (operation.RequestBody.Content == null)
+            {
+                operation.RequestBody.Content = new Dictionary<string, OpenApiMediaType>();
+            }
+
+            if (!operation.RequestBody.Content.ContainsKey("multipart/form-data"))
+            {
+                operation.RequestBody.Content["multipart/form-data"] = new OpenApiMediaType
+                {
+                    Schema = new OpenApiSchema
+                    {
+                        Type = "object",
+                        Properties = new Dictionary<string, OpenApiSchema>(),
+                        Required = new HashSet<string>()
+                    }
+                };
+            }
+
+            var formDataSchema = operation.RequestBody.Content["multipart/form-data"].Schema;
+            if (formDataSchema.Properties == null)
+            {
+                formDataSchema.Properties = new Dictionary<string, OpenApiSchema>();
+            }
+            if (formDataSchema.Required == null)
+            {
+                formDataSchema.Required = new HashSet<string>();
+            }
+
+            foreach (var param in fileParameters)
+            {
+                var isList = param.ParameterType == typeof(List<IFormFile>) ||
+                            (param.ParameterType.IsGenericType && 
+                             param.ParameterType.GetGenericTypeDefinition() == typeof(List<>));
+                
+                var schema = isList
+                    ? new OpenApiSchema 
+                    { 
+                        Type = "array", 
+                        Items = new OpenApiSchema { Type = "string", Format = "binary" } 
+                    }
+                    : new OpenApiSchema { Type = "string", Format = "binary" };
+
+                formDataSchema.Properties[param.Name] = schema;
+                
+                // Mark as required if parameter is not optional
+                if (!param.IsOptional)
+                {
+                    formDataSchema.Required.Add(param.Name);
+                }
+            }
+
+            // Handle other [FromForm] parameters (non-file parameters)
+            foreach (var param in otherFormParameters)
+            {
+                OpenApiSchema schema;
+                
+                if (param.ParameterType == typeof(string))
+                {
+                    schema = new OpenApiSchema { Type = "string" };
+                }
+                else if (param.ParameterType == typeof(int) || param.ParameterType == typeof(long))
+                {
+                    schema = new OpenApiSchema { Type = "integer", Format = param.ParameterType == typeof(long) ? "int64" : "int32" };
+                }
+                else if (param.ParameterType == typeof(bool))
+                {
+                    schema = new OpenApiSchema { Type = "boolean" };
+                }
+                else if (param.ParameterType == typeof(DateTime) || param.ParameterType == typeof(DateTime?))
+                {
+                    schema = new OpenApiSchema { Type = "string", Format = "date-time" };
+                }
+                else
+                {
+                    // For complex types, use object schema
+                    schema = new OpenApiSchema { Type = "object" };
+                }
+
+                formDataSchema.Properties[param.Name] = schema;
+                
+                if (!param.IsOptional && !IsNullableType(param.ParameterType))
+                {
+                    formDataSchema.Required.Add(param.Name);
+                }
+            }
+        }
+    }
+
+    private static bool IsNullableType(Type type)
+    {
+        return type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Nullable<>);
     }
 }
