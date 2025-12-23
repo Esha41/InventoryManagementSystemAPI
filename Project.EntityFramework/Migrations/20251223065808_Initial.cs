@@ -8,7 +8,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace Ettad.EntityFramework.Migrations
 {
     /// <inheritdoc />
-    public partial class Init : Migration
+    public partial class Initial : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -51,32 +51,6 @@ namespace Ettad.EntityFramework.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "BaseItems",
-                columns: table => new
-                {
-                    Id = table.Column<long>(type: "bigint", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    Name = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    ItemNo = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: false),
-                    ItemType = table.Column<int>(type: "int", nullable: false),
-                    Nsn = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    PartNo = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: true),
-                    Price = table.Column<decimal>(type: "decimal(18,2)", nullable: true),
-                    MinimumQuantity = table.Column<long>(type: "bigint", nullable: true),
-                    CreationDate = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    ModificationDate = table.Column<DateTime>(type: "datetime2", nullable: true),
-                    ModifiedBy = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    CreatedBy = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    IsDeleted = table.Column<bool>(type: "bit", nullable: false),
-                    DeletionDate = table.Column<DateTime>(type: "datetime2", nullable: true),
-                    DeletedBy = table.Column<string>(type: "nvarchar(max)", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_BaseItems", x => x.Id);
-                });
-
-            migrationBuilder.CreateTable(
                 name: "CaseTypes",
                 columns: table => new
                 {
@@ -93,6 +67,25 @@ namespace Ettad.EntityFramework.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_CaseTypes", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Classifications",
+                columns: table => new
+                {
+                    Id = table.Column<long>(type: "bigint", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    NameAr = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: false),
+                    NameEn = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: false),
+                    IsDeleted = table.Column<bool>(type: "bit", nullable: false),
+                    CreationDate = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    ModificationDate = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    ModifiedBy = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    CreatedBy = table.Column<string>(type: "nvarchar(max)", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Classifications", x => x.Id);
                 });
 
             migrationBuilder.CreateTable(
@@ -236,6 +229,26 @@ namespace Ettad.EntityFramework.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_HazardDivisions", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "ItemTypes",
+                columns: table => new
+                {
+                    Id = table.Column<long>(type: "bigint", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    NameAr = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: false),
+                    NameEn = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: false),
+                    ItemType = table.Column<int>(type: "int", nullable: false),
+                    IsDeleted = table.Column<bool>(type: "bit", nullable: false),
+                    CreationDate = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    ModificationDate = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    ModifiedBy = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    CreatedBy = table.Column<string>(type: "nvarchar(max)", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_ItemTypes", x => x.Id);
                 });
 
             migrationBuilder.CreateTable(
@@ -514,41 +527,6 @@ namespace Ettad.EntityFramework.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "AllowanceItems",
-                columns: table => new
-                {
-                    Id = table.Column<long>(type: "bigint", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    ItemId = table.Column<long>(type: "bigint", nullable: false),
-                    DepartmentId = table.Column<long>(type: "bigint", nullable: false),
-                    Year = table.Column<int>(type: "int", nullable: false),
-                    Quantity = table.Column<int>(type: "int", nullable: false),
-                    CreationDate = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    ModificationDate = table.Column<DateTime>(type: "datetime2", nullable: true),
-                    ModifiedBy = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    CreatedBy = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    IsDeleted = table.Column<bool>(type: "bit", nullable: false),
-                    DeletionDate = table.Column<DateTime>(type: "datetime2", nullable: true),
-                    DeletedBy = table.Column<string>(type: "nvarchar(max)", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_AllowanceItems", x => x.Id);
-                    table.ForeignKey(
-                        name: "FK_AllowanceItems_BaseItems_ItemId",
-                        column: x => x.ItemId,
-                        principalTable: "BaseItems",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "FK_AllowanceItems_Departments_DepartmentId",
-                        column: x => x.DepartmentId,
-                        principalTable: "Departments",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Restrict);
-                });
-
-            migrationBuilder.CreateTable(
                 name: "Inventories",
                 columns: table => new
                 {
@@ -600,6 +578,50 @@ namespace Ettad.EntityFramework.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "BaseItems",
+                columns: table => new
+                {
+                    Id = table.Column<long>(type: "bigint", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Name = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    ItemNo = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: false),
+                    ItemType = table.Column<int>(type: "int", nullable: false),
+                    Nsn = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    PartNo = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: true),
+                    Price = table.Column<decimal>(type: "decimal(18,2)", nullable: true),
+                    MinimumQuantity = table.Column<long>(type: "bigint", nullable: true),
+                    Distribution = table.Column<string>(type: "nvarchar(1000)", maxLength: 1000, nullable: true),
+                    ReferenceNo = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: true),
+                    UNNumber = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
+                    Notes = table.Column<string>(type: "nvarchar(max)", maxLength: 5000, nullable: true),
+                    ClassificationId = table.Column<long>(type: "bigint", nullable: true),
+                    TypeId = table.Column<long>(type: "bigint", nullable: true),
+                    CreationDate = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    ModificationDate = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    ModifiedBy = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    CreatedBy = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    IsDeleted = table.Column<bool>(type: "bit", nullable: false),
+                    DeletionDate = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    DeletedBy = table.Column<string>(type: "nvarchar(max)", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_BaseItems", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_BaseItems_Classifications_ClassificationId",
+                        column: x => x.ClassificationId,
+                        principalTable: "Classifications",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_BaseItems_ItemTypes_TypeId",
+                        column: x => x.TypeId,
+                        principalTable: "ItemTypes",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "AspNetUsers",
                 columns: table => new
                 {
@@ -646,6 +668,91 @@ namespace Ettad.EntityFramework.Migrations
                         column: x => x.RankId,
                         principalTable: "Ranks",
                         principalColumn: "Id");
+                });
+
+            migrationBuilder.CreateTable(
+                name: "WorkflowSteps",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    WorkflowId = table.Column<int>(type: "int", nullable: false),
+                    StepOrder = table.Column<int>(type: "int", nullable: false),
+                    ApplicationRoleId = table.Column<string>(type: "nvarchar(450)", nullable: false),
+                    ApplicationEntityId = table.Column<long>(type: "bigint", nullable: false),
+                    MustApprove = table.Column<bool>(type: "bit", nullable: false, defaultValue: true),
+                    RequireHigherApproval = table.Column<bool>(type: "bit", nullable: false, defaultValue: false),
+                    HigherApprovalRoleId = table.Column<string>(type: "nvarchar(450)", nullable: true),
+                    HigherApplicationEntityId = table.Column<long>(type: "bigint", nullable: true),
+                    ReserveQty = table.Column<bool>(type: "bit", nullable: false, defaultValue: false),
+                    CanSkip = table.Column<bool>(type: "bit", nullable: false),
+                    CreationDate = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    ModificationDate = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    ModifiedBy = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    CreatedBy = table.Column<string>(type: "nvarchar(max)", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_WorkflowSteps", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_WorkflowSteps_ApplicationEntity_HigherApplicationEntityId",
+                        column: x => x.HigherApplicationEntityId,
+                        principalTable: "ApplicationEntity",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_WorkflowSteps_AspNetRoles_ApplicationRoleId",
+                        column: x => x.ApplicationRoleId,
+                        principalTable: "AspNetRoles",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_WorkflowSteps_AspNetRoles_HigherApprovalRoleId",
+                        column: x => x.HigherApprovalRoleId,
+                        principalTable: "AspNetRoles",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_WorkflowSteps_Workflows_WorkflowId",
+                        column: x => x.WorkflowId,
+                        principalTable: "Workflows",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "AllowanceItems",
+                columns: table => new
+                {
+                    Id = table.Column<long>(type: "bigint", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    ItemId = table.Column<long>(type: "bigint", nullable: false),
+                    DepartmentId = table.Column<long>(type: "bigint", nullable: false),
+                    Year = table.Column<int>(type: "int", nullable: false),
+                    Quantity = table.Column<int>(type: "int", nullable: false),
+                    CreationDate = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    ModificationDate = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    ModifiedBy = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    CreatedBy = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    IsDeleted = table.Column<bool>(type: "bit", nullable: false),
+                    DeletionDate = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    DeletedBy = table.Column<string>(type: "nvarchar(max)", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_AllowanceItems", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_AllowanceItems_BaseItems_ItemId",
+                        column: x => x.ItemId,
+                        principalTable: "BaseItems",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_AllowanceItems_Departments_DepartmentId",
+                        column: x => x.DepartmentId,
+                        principalTable: "Departments",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
                 });
 
             migrationBuilder.CreateTable(
@@ -739,14 +846,8 @@ namespace Ettad.EntityFramework.Migrations
                 columns: table => new
                 {
                     Id = table.Column<long>(type: "bigint", nullable: false),
-                    ExplosiveType = table.Column<int>(type: "int", nullable: false),
-                    UNNumber = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    NetExplosiveQuantity = table.Column<decimal>(type: "decimal(18,2)", nullable: true),
-                    NetExplosiveQuantityUnitId = table.Column<long>(type: "bigint", nullable: true),
-                    TotalWeight = table.Column<decimal>(type: "decimal(18,2)", nullable: true),
-                    TotalWeightUnitId = table.Column<long>(type: "bigint", nullable: true),
                     HazardDivisionId = table.Column<long>(type: "bigint", nullable: true),
-                    CompatibilityId = table.Column<long>(type: "bigint", nullable: true)
+                    Unit = table.Column<int>(type: "int", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -758,25 +859,65 @@ namespace Ettad.EntityFramework.Migrations
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
-                        name: "FK_Explosives_Compatibilities_CompatibilityId",
-                        column: x => x.CompatibilityId,
-                        principalTable: "Compatibilities",
-                        principalColumn: "Id");
-                    table.ForeignKey(
                         name: "FK_Explosives_HazardDivisions_HazardDivisionId",
                         column: x => x.HazardDivisionId,
                         principalTable: "HazardDivisions",
-                        principalColumn: "Id");
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "InventoryDetails",
+                columns: table => new
+                {
+                    Id = table.Column<long>(type: "bigint", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    ItemId = table.Column<long>(type: "bigint", nullable: false),
+                    Lot = table.Column<int>(type: "int", nullable: false),
+                    InventoryId = table.Column<long>(type: "bigint", nullable: false),
+                    SupplierId = table.Column<long>(type: "bigint", nullable: true),
+                    ManufacturerId = table.Column<long>(type: "bigint", nullable: true),
+                    CountryId = table.Column<long>(type: "bigint", nullable: true),
+                    ItemQuantity = table.Column<long>(type: "bigint", nullable: false),
+                    BatchNo = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: true),
+                    ReadyForIssue = table.Column<bool>(type: "bit", nullable: false, defaultValue: true),
+                    YearOfManufacture = table.Column<int>(type: "int", nullable: true),
+                    ExpiryDate = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    IsLotEmpty = table.Column<bool>(type: "bit", nullable: false, defaultValue: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_InventoryDetails", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_Explosives_Units_NetExplosiveQuantityUnitId",
-                        column: x => x.NetExplosiveQuantityUnitId,
-                        principalTable: "Units",
-                        principalColumn: "Id");
+                        name: "FK_InventoryDetails_BaseItems_ItemId",
+                        column: x => x.ItemId,
+                        principalTable: "BaseItems",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
-                        name: "FK_Explosives_Units_TotalWeightUnitId",
-                        column: x => x.TotalWeightUnitId,
-                        principalTable: "Units",
-                        principalColumn: "Id");
+                        name: "FK_InventoryDetails_Countries_CountryId",
+                        column: x => x.CountryId,
+                        principalTable: "Countries",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_InventoryDetails_Inventories_InventoryId",
+                        column: x => x.InventoryId,
+                        principalTable: "Inventories",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_InventoryDetails_Manufacturers_ManufacturerId",
+                        column: x => x.ManufacturerId,
+                        principalTable: "Manufacturers",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_InventoryDetails_Suppliers_SupplierId",
+                        column: x => x.SupplierId,
+                        principalTable: "Suppliers",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
                 });
 
             migrationBuilder.CreateTable(
@@ -819,109 +960,6 @@ namespace Ettad.EntityFramework.Migrations
                         column: x => x.WeightUnitId,
                         principalTable: "Units",
                         principalColumn: "Id");
-                });
-
-            migrationBuilder.CreateTable(
-                name: "WorkflowSteps",
-                columns: table => new
-                {
-                    Id = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    WorkflowId = table.Column<int>(type: "int", nullable: false),
-                    StepOrder = table.Column<int>(type: "int", nullable: false),
-                    ApplicationRoleId = table.Column<string>(type: "nvarchar(450)", nullable: false),
-                    ApplicationEntityId = table.Column<long>(type: "bigint", nullable: false),
-                    MustApprove = table.Column<bool>(type: "bit", nullable: false, defaultValue: true),
-                    RequireHigherApproval = table.Column<bool>(type: "bit", nullable: false, defaultValue: false),
-                    HigherApprovalRoleId = table.Column<string>(type: "nvarchar(450)", nullable: true),
-                    HigherApplicationEntityId = table.Column<long>(type: "bigint", nullable: true),
-                    ReserveQty = table.Column<bool>(type: "bit", nullable: false, defaultValue: false),
-                    CanSkip = table.Column<bool>(type: "bit", nullable: false),
-                    CreationDate = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    ModificationDate = table.Column<DateTime>(type: "datetime2", nullable: true),
-                    ModifiedBy = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    CreatedBy = table.Column<string>(type: "nvarchar(max)", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_WorkflowSteps", x => x.Id);
-                    table.ForeignKey(
-                        name: "FK_WorkflowSteps_ApplicationEntity_HigherApplicationEntityId",
-                        column: x => x.HigherApplicationEntityId,
-                        principalTable: "ApplicationEntity",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "FK_WorkflowSteps_AspNetRoles_ApplicationRoleId",
-                        column: x => x.ApplicationRoleId,
-                        principalTable: "AspNetRoles",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "FK_WorkflowSteps_AspNetRoles_HigherApprovalRoleId",
-                        column: x => x.HigherApprovalRoleId,
-                        principalTable: "AspNetRoles",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "FK_WorkflowSteps_Workflows_WorkflowId",
-                        column: x => x.WorkflowId,
-                        principalTable: "Workflows",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "InventoryDetails",
-                columns: table => new
-                {
-                    Id = table.Column<long>(type: "bigint", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    ItemId = table.Column<long>(type: "bigint", nullable: false),
-                    Lot = table.Column<int>(type: "int", nullable: false),
-                    InventoryId = table.Column<long>(type: "bigint", nullable: false),
-                    SupplierId = table.Column<long>(type: "bigint", nullable: true),
-                    ManufacturerId = table.Column<long>(type: "bigint", nullable: true),
-                    CountryId = table.Column<long>(type: "bigint", nullable: true),
-                    ItemQuantity = table.Column<long>(type: "bigint", nullable: false),
-                    BatchNo = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: true),
-                    ReadyForIssue = table.Column<bool>(type: "bit", nullable: false, defaultValue: true),
-                    ExpiryDate = table.Column<DateTime>(type: "datetime2", nullable: true),
-                    IsLotEmpty = table.Column<bool>(type: "bit", nullable: false, defaultValue: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_InventoryDetails", x => x.Id);
-                    table.ForeignKey(
-                        name: "FK_InventoryDetails_BaseItems_ItemId",
-                        column: x => x.ItemId,
-                        principalTable: "BaseItems",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "FK_InventoryDetails_Countries_CountryId",
-                        column: x => x.CountryId,
-                        principalTable: "Countries",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "FK_InventoryDetails_Inventories_InventoryId",
-                        column: x => x.InventoryId,
-                        principalTable: "Inventories",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "FK_InventoryDetails_Manufacturers_ManufacturerId",
-                        column: x => x.ManufacturerId,
-                        principalTable: "Manufacturers",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "FK_InventoryDetails_Suppliers_SupplierId",
-                        column: x => x.SupplierId,
-                        principalTable: "Suppliers",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Restrict);
                 });
 
             migrationBuilder.CreateTable(
@@ -1413,18 +1451,18 @@ namespace Ettad.EntityFramework.Migrations
 
             migrationBuilder.InsertData(
                 table: "BaseItems",
-                columns: new[] { "Id", "CreatedBy", "CreationDate", "DeletedBy", "DeletionDate", "IsDeleted", "ItemNo", "ItemType", "MinimumQuantity", "ModificationDate", "ModifiedBy", "Name", "Nsn", "PartNo", "Price" },
+                columns: new[] { "Id", "ClassificationId", "CreatedBy", "CreationDate", "DeletedBy", "DeletionDate", "Distribution", "IsDeleted", "ItemNo", "ItemType", "MinimumQuantity", "ModificationDate", "ModifiedBy", "Name", "Notes", "Nsn", "PartNo", "Price", "ReferenceNo", "TypeId", "UNNumber" },
                 values: new object[,]
                 {
-                    { 1L, null, new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc), null, null, false, "AMM-001", 1, 200L, null, null, "5.56x45mm NATO", "1305-01-000-0001", "PN-556-001", 0.65m },
-                    { 2L, null, new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc), null, null, false, "AMM-002", 1, 150L, null, null, "7.62x51mm NATO", "1305-01-000-0002", "PN-762-001", 1.25m },
-                    { 3L, null, new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc), null, null, false, "AMM-003", 1, 200L, null, null, "9x19mm Parabellum", "1305-01-000-0003", "PN-9MM-001", 0.70m },
-                    { 4L, null, new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc), null, null, false, "AMM-004", 1, 50L, null, null, ".50 BMG", "1305-01-000-0004", "PN-50BMG-001", 3.50m },
-                    { 5L, null, new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc), null, null, false, "AMM-005", 1, 100L, null, null, ".308 Winchester", "1305-01-000-0005", "PN-308-001", 1.50m },
-                    { 6L, null, new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc), null, null, false, "AMM-006", 1, 150L, null, null, ".45 ACP", "1305-01-000-0006", "PN-45ACP-001", 0.75m },
-                    { 7L, null, new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc), null, null, false, "AMM-007", 1, 50L, null, null, "12.7x108mm", "1305-01-000-0007", "PN-127-001", 2.50m },
-                    { 8L, null, new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc), null, null, false, "AMM-008", 1, 200L, null, null, "5.45x39mm", "1305-01-000-0008", "PN-545-001", 0.60m },
-                    { 9L, null, new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc), null, null, false, "AMM-009", 1, 150L, null, null, ".40 S&W", "1305-01-000-0009", "PN-40SW-001", 0.80m }
+                    { 1L, null, null, new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc), null, null, null, false, "AMM-001", 1, 200L, null, null, "5.56x45mm NATO", null, "1305-01-000-0001", "PN-556-001", 0.65m, null, null, null },
+                    { 2L, null, null, new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc), null, null, null, false, "AMM-002", 1, 150L, null, null, "7.62x51mm NATO", null, "1305-01-000-0002", "PN-762-001", 1.25m, null, null, null },
+                    { 3L, null, null, new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc), null, null, null, false, "AMM-003", 1, 200L, null, null, "9x19mm Parabellum", null, "1305-01-000-0003", "PN-9MM-001", 0.70m, null, null, null },
+                    { 4L, null, null, new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc), null, null, null, false, "AMM-004", 1, 50L, null, null, ".50 BMG", null, "1305-01-000-0004", "PN-50BMG-001", 3.50m, null, null, null },
+                    { 5L, null, null, new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc), null, null, null, false, "AMM-005", 1, 100L, null, null, ".308 Winchester", null, "1305-01-000-0005", "PN-308-001", 1.50m, null, null, null },
+                    { 6L, null, null, new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc), null, null, null, false, "AMM-006", 1, 150L, null, null, ".45 ACP", null, "1305-01-000-0006", "PN-45ACP-001", 0.75m, null, null, null },
+                    { 7L, null, null, new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc), null, null, null, false, "AMM-007", 1, 50L, null, null, "12.7x108mm", null, "1305-01-000-0007", "PN-127-001", 2.50m, null, null, null },
+                    { 8L, null, null, new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc), null, null, null, false, "AMM-008", 1, 200L, null, null, "5.45x39mm", null, "1305-01-000-0008", "PN-545-001", 0.60m, null, null, null },
+                    { 9L, null, null, new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc), null, null, null, false, "AMM-009", 1, 150L, null, null, ".40 S&W", null, "1305-01-000-0009", "PN-40SW-001", 0.80m, null, null, null }
                 });
 
             migrationBuilder.InsertData(
@@ -1432,11 +1470,11 @@ namespace Ettad.EntityFramework.Migrations
                 columns: new[] { "Id", "CreatedBy", "CreationDate", "IsDeleted", "ModificationDate", "ModifiedBy", "NameAr", "NameEn" },
                 values: new object[,]
                 {
-                    { 1L, null, new DateTime(2025, 12, 21, 8, 55, 47, 268, DateTimeKind.Unspecified).AddTicks(6808), false, null, null, "نحاسي", "Brass" },
-                    { 2L, null, new DateTime(2025, 12, 21, 8, 55, 47, 268, DateTimeKind.Unspecified).AddTicks(6831), false, null, null, "فولاذي", "Steel" },
-                    { 3L, null, new DateTime(2025, 12, 21, 8, 55, 47, 268, DateTimeKind.Unspecified).AddTicks(6833), false, null, null, "ألومنيوم", "Aluminum" },
-                    { 4L, null, new DateTime(2025, 12, 21, 8, 55, 47, 268, DateTimeKind.Unspecified).AddTicks(6834), false, null, null, "بلاستيك", "Plastic" },
-                    { 5L, null, new DateTime(2025, 12, 21, 8, 55, 47, 268, DateTimeKind.Unspecified).AddTicks(6835), false, null, null, "مختلط", "Composite" }
+                    { 1L, null, new DateTime(2025, 12, 23, 9, 58, 7, 129, DateTimeKind.Unspecified).AddTicks(1387), false, null, null, "نحاسي", "Brass" },
+                    { 2L, null, new DateTime(2025, 12, 23, 9, 58, 7, 129, DateTimeKind.Unspecified).AddTicks(1411), false, null, null, "فولاذي", "Steel" },
+                    { 3L, null, new DateTime(2025, 12, 23, 9, 58, 7, 129, DateTimeKind.Unspecified).AddTicks(1412), false, null, null, "ألومنيوم", "Aluminum" },
+                    { 4L, null, new DateTime(2025, 12, 23, 9, 58, 7, 129, DateTimeKind.Unspecified).AddTicks(1414), false, null, null, "بلاستيك", "Plastic" },
+                    { 5L, null, new DateTime(2025, 12, 23, 9, 58, 7, 129, DateTimeKind.Unspecified).AddTicks(1415), false, null, null, "مختلط", "Composite" }
                 });
 
             migrationBuilder.InsertData(
@@ -1456,11 +1494,11 @@ namespace Ettad.EntityFramework.Migrations
                 columns: new[] { "Id", "CreatedBy", "CreationDate", "IsDeleted", "ModificationDate", "ModifiedBy", "NameAr", "NameEn" },
                 values: new object[,]
                 {
-                    { 1L, null, new DateTime(2025, 12, 21, 8, 55, 47, 268, DateTimeKind.Unspecified).AddTicks(9389), false, null, null, "المجموعة أ", "Group A" },
-                    { 2L, null, new DateTime(2025, 12, 21, 8, 55, 47, 268, DateTimeKind.Unspecified).AddTicks(9404), false, null, null, "المجموعة ب", "Group B" },
-                    { 3L, null, new DateTime(2025, 12, 21, 8, 55, 47, 268, DateTimeKind.Unspecified).AddTicks(9406), false, null, null, "المجموعة ج", "Group C" },
-                    { 4L, null, new DateTime(2025, 12, 21, 8, 55, 47, 268, DateTimeKind.Unspecified).AddTicks(9407), false, null, null, "المجموعة د", "Group D" },
-                    { 5L, null, new DateTime(2025, 12, 21, 8, 55, 47, 268, DateTimeKind.Unspecified).AddTicks(9408), false, null, null, "المجموعة هـ", "Group E" }
+                    { 1L, null, new DateTime(2025, 12, 23, 9, 58, 7, 129, DateTimeKind.Unspecified).AddTicks(5530), false, null, null, "المجموعة أ", "Group A" },
+                    { 2L, null, new DateTime(2025, 12, 23, 9, 58, 7, 129, DateTimeKind.Unspecified).AddTicks(5550), false, null, null, "المجموعة ب", "Group B" },
+                    { 3L, null, new DateTime(2025, 12, 23, 9, 58, 7, 129, DateTimeKind.Unspecified).AddTicks(5552), false, null, null, "المجموعة ج", "Group C" },
+                    { 4L, null, new DateTime(2025, 12, 23, 9, 58, 7, 129, DateTimeKind.Unspecified).AddTicks(5553), false, null, null, "المجموعة د", "Group D" },
+                    { 5L, null, new DateTime(2025, 12, 23, 9, 58, 7, 129, DateTimeKind.Unspecified).AddTicks(5555), false, null, null, "المجموعة هـ", "Group E" }
                 });
 
             migrationBuilder.InsertData(
@@ -1480,24 +1518,24 @@ namespace Ettad.EntityFramework.Migrations
                 columns: new[] { "Id", "Code", "CreatedBy", "CreationDate", "IsDeleted", "ModificationDate", "ModifiedBy", "NameAr", "NameEn" },
                 values: new object[,]
                 {
-                    { 1L, "QELF", "SYSTEM", new DateTime(2025, 12, 21, 8, 55, 47, 269, DateTimeKind.Unspecified).AddTicks(2386), false, null, null, "القوات البرية الأميرية القطرية", "Qatar Emiri Land Forces" },
-                    { 2L, "QEAF", "SYSTEM", new DateTime(2025, 12, 21, 8, 55, 47, 269, DateTimeKind.Unspecified).AddTicks(2402), false, null, null, "القوات الجوية الأميرية القطرية", "Qatar Emiri Air Force" },
-                    { 3L, "QENF", "SYSTEM", new DateTime(2025, 12, 21, 8, 55, 47, 269, DateTimeKind.Unspecified).AddTicks(2403), false, null, null, "القوات البحرية الأميرية القطرية", "Qatar Emiri Navy" },
-                    { 4L, "EGD", "SYSTEM", new DateTime(2025, 12, 21, 8, 55, 47, 269, DateTimeKind.Unspecified).AddTicks(2405), false, null, null, "الحرس الأميري", "Emiri Guard Directorate" },
-                    { 5L, "JSFC", "SYSTEM", new DateTime(2025, 12, 21, 8, 55, 47, 269, DateTimeKind.Unspecified).AddTicks(2406), false, null, null, "قيادة القوات الخاصة المشتركة", "Joint Special Forces Command" },
-                    { 6L, "NSAC", "SYSTEM", new DateTime(2025, 12, 21, 8, 55, 47, 269, DateTimeKind.Unspecified).AddTicks(2407), false, null, null, "أكاديمية الخدمة الوطنية", "National Service Academy" },
-                    { 7L, "MID", "SYSTEM", new DateTime(2025, 12, 21, 8, 55, 47, 269, DateTimeKind.Unspecified).AddTicks(2408), false, null, null, "مديرية الاستخبارات العسكرية", "Military Intelligence Directorate" },
-                    { 8L, "LOGC", "SYSTEM", new DateTime(2025, 12, 21, 8, 55, 47, 269, DateTimeKind.Unspecified).AddTicks(2410), false, null, null, "قيادة الإمداد والتموين", "Logistics and Supply Command" },
-                    { 9L, "MP", "SYSTEM", new DateTime(2025, 12, 21, 8, 55, 47, 269, DateTimeKind.Unspecified).AddTicks(2411), false, null, null, "قيادة الشرطة العسكرية", "Military Police Command" },
-                    { 10L, "MED", "SYSTEM", new DateTime(2025, 12, 21, 8, 55, 47, 269, DateTimeKind.Unspecified).AddTicks(2412), false, null, null, "الخدمات الطبية للقوات المسلحة", "Armed Forces Medical Services" },
-                    { 11L, "TRAD", "SYSTEM", new DateTime(2025, 12, 21, 8, 55, 47, 269, DateTimeKind.Unspecified).AddTicks(2414), false, null, null, "قيادة التدريب والعقيدة", "Training and Doctrine Command" },
-                    { 12L, "ADC", "SYSTEM", new DateTime(2025, 12, 21, 8, 55, 47, 269, DateTimeKind.Unspecified).AddTicks(2415), false, null, null, "قيادة الدفاع الجوي", "Air Defense Command" },
-                    { 13L, "CYBC", "SYSTEM", new DateTime(2025, 12, 21, 8, 55, 47, 269, DateTimeKind.Unspecified).AddTicks(2416), false, null, null, "قيادة الاتصالات والدفاع السيبراني", "Cyber Defense & Communications Command" },
-                    { 14L, "MT", "SYSTEM", new DateTime(2025, 12, 21, 8, 55, 47, 269, DateTimeKind.Unspecified).AddTicks(2417), false, null, null, "مديرية التدريب العسكري", "Military Training" },
-                    { 15L, "DoA", "SYSTEM", new DateTime(2025, 12, 21, 8, 55, 47, 269, DateTimeKind.Unspecified).AddTicks(2418), false, null, null, "مديرية التسليح", "Directorate of Armament" },
-                    { 16L, "MO", "SYSTEM", new DateTime(2025, 12, 21, 8, 55, 47, 269, DateTimeKind.Unspecified).AddTicks(2419), false, null, null, "هئية العمليات", "Military Operation" },
-                    { 17L, "CoS", "SYSTEM", new DateTime(2025, 12, 21, 8, 55, 47, 269, DateTimeKind.Unspecified).AddTicks(2420), false, null, null, "مكتب رئيس الأركان", "Chief of Staff Office" },
-                    { 18L, "Inventory", "SYSTEM", new DateTime(2025, 12, 21, 8, 55, 47, 269, DateTimeKind.Unspecified).AddTicks(2422), false, null, null, "مستودعات الأسلحة والذخيرة المركزيه", "Inventory" }
+                    { 1L, "QELF", "SYSTEM", new DateTime(2025, 12, 23, 9, 58, 7, 129, DateTimeKind.Unspecified).AddTicks(8730), false, null, null, "القوات البرية الأميرية القطرية", "Qatar Emiri Land Forces" },
+                    { 2L, "QEAF", "SYSTEM", new DateTime(2025, 12, 23, 9, 58, 7, 129, DateTimeKind.Unspecified).AddTicks(8749), false, null, null, "القوات الجوية الأميرية القطرية", "Qatar Emiri Air Force" },
+                    { 3L, "QENF", "SYSTEM", new DateTime(2025, 12, 23, 9, 58, 7, 129, DateTimeKind.Unspecified).AddTicks(8751), false, null, null, "القوات البحرية الأميرية القطرية", "Qatar Emiri Navy" },
+                    { 4L, "EGD", "SYSTEM", new DateTime(2025, 12, 23, 9, 58, 7, 129, DateTimeKind.Unspecified).AddTicks(8753), false, null, null, "الحرس الأميري", "Emiri Guard Directorate" },
+                    { 5L, "JSFC", "SYSTEM", new DateTime(2025, 12, 23, 9, 58, 7, 129, DateTimeKind.Unspecified).AddTicks(8754), false, null, null, "قيادة القوات الخاصة المشتركة", "Joint Special Forces Command" },
+                    { 6L, "NSAC", "SYSTEM", new DateTime(2025, 12, 23, 9, 58, 7, 129, DateTimeKind.Unspecified).AddTicks(8755), false, null, null, "أكاديمية الخدمة الوطنية", "National Service Academy" },
+                    { 7L, "MID", "SYSTEM", new DateTime(2025, 12, 23, 9, 58, 7, 129, DateTimeKind.Unspecified).AddTicks(8756), false, null, null, "مديرية الاستخبارات العسكرية", "Military Intelligence Directorate" },
+                    { 8L, "LOGC", "SYSTEM", new DateTime(2025, 12, 23, 9, 58, 7, 129, DateTimeKind.Unspecified).AddTicks(8758), false, null, null, "قيادة الإمداد والتموين", "Logistics and Supply Command" },
+                    { 9L, "MP", "SYSTEM", new DateTime(2025, 12, 23, 9, 58, 7, 129, DateTimeKind.Unspecified).AddTicks(8759), false, null, null, "قيادة الشرطة العسكرية", "Military Police Command" },
+                    { 10L, "MED", "SYSTEM", new DateTime(2025, 12, 23, 9, 58, 7, 129, DateTimeKind.Unspecified).AddTicks(8760), false, null, null, "الخدمات الطبية للقوات المسلحة", "Armed Forces Medical Services" },
+                    { 11L, "TRAD", "SYSTEM", new DateTime(2025, 12, 23, 9, 58, 7, 129, DateTimeKind.Unspecified).AddTicks(8761), false, null, null, "قيادة التدريب والعقيدة", "Training and Doctrine Command" },
+                    { 12L, "ADC", "SYSTEM", new DateTime(2025, 12, 23, 9, 58, 7, 129, DateTimeKind.Unspecified).AddTicks(8763), false, null, null, "قيادة الدفاع الجوي", "Air Defense Command" },
+                    { 13L, "CYBC", "SYSTEM", new DateTime(2025, 12, 23, 9, 58, 7, 129, DateTimeKind.Unspecified).AddTicks(8764), false, null, null, "قيادة الاتصالات والدفاع السيبراني", "Cyber Defense & Communications Command" },
+                    { 14L, "MT", "SYSTEM", new DateTime(2025, 12, 23, 9, 58, 7, 129, DateTimeKind.Unspecified).AddTicks(8765), false, null, null, "مديرية التدريب العسكري", "Military Training" },
+                    { 15L, "DoA", "SYSTEM", new DateTime(2025, 12, 23, 9, 58, 7, 129, DateTimeKind.Unspecified).AddTicks(8766), false, null, null, "مديرية التسليح", "Directorate of Armament" },
+                    { 16L, "MO", "SYSTEM", new DateTime(2025, 12, 23, 9, 58, 7, 129, DateTimeKind.Unspecified).AddTicks(8768), false, null, null, "هئية العمليات", "Military Operation" },
+                    { 17L, "CoS", "SYSTEM", new DateTime(2025, 12, 23, 9, 58, 7, 129, DateTimeKind.Unspecified).AddTicks(8769), false, null, null, "مكتب رئيس الأركان", "Chief of Staff Office" },
+                    { 18L, "Inventory", "SYSTEM", new DateTime(2025, 12, 23, 9, 58, 7, 129, DateTimeKind.Unspecified).AddTicks(8770), false, null, null, "مستودعات الأسلحة والذخيرة المركزيه", "Inventory" }
                 });
 
             migrationBuilder.InsertData(
@@ -1505,10 +1543,10 @@ namespace Ettad.EntityFramework.Migrations
                 columns: new[] { "Id", "Code", "CreatedBy", "CreationDate", "IsDeleted", "Latitude", "Location", "Longitude", "ModificationDate", "ModifiedBy", "NameAr", "NameEn" },
                 values: new object[,]
                 {
-                    { 1L, "DEP-001", null, new DateTime(2025, 12, 21, 8, 55, 47, 269, DateTimeKind.Unspecified).AddTicks(3968), false, 25.2854m, "Doha", 51.5310m, null, null, "مستودع الدوحة المركزي", "Doha Central Depot" },
-                    { 2L, "DEP-002", null, new DateTime(2025, 12, 21, 8, 55, 47, 269, DateTimeKind.Unspecified).AddTicks(3981), false, 25.2866m, "Al Rayyan", 51.4244m, null, null, "مستودع الريان الغربي", "Al Rayyan West Depot" },
-                    { 3L, "DEP-003", null, new DateTime(2025, 12, 21, 8, 55, 47, 269, DateTimeKind.Unspecified).AddTicks(3983), false, 25.6800m, "Al Khor", 51.5059m, null, null, "مستودع الخور الشمالي", "Al Khor North Depot" },
-                    { 4L, "DEP-004", null, new DateTime(2025, 12, 21, 8, 55, 47, 269, DateTimeKind.Unspecified).AddTicks(3985), false, 25.1657m, "Al Wakrah", 51.6034m, null, null, "مستودع الوكرة الجنوبي", "Al Wakrah South Depot" }
+                    { 1L, "DEP-001", null, new DateTime(2025, 12, 23, 9, 58, 7, 130, DateTimeKind.Unspecified).AddTicks(497), false, 25.2854m, "Doha", 51.5310m, null, null, "مستودع الدوحة المركزي", "Doha Central Depot" },
+                    { 2L, "DEP-002", null, new DateTime(2025, 12, 23, 9, 58, 7, 130, DateTimeKind.Unspecified).AddTicks(513), false, 25.2866m, "Al Rayyan", 51.4244m, null, null, "مستودع الريان الغربي", "Al Rayyan West Depot" },
+                    { 3L, "DEP-003", null, new DateTime(2025, 12, 23, 9, 58, 7, 130, DateTimeKind.Unspecified).AddTicks(515), false, 25.6800m, "Al Khor", 51.5059m, null, null, "مستودع الخور الشمالي", "Al Khor North Depot" },
+                    { 4L, "DEP-004", null, new DateTime(2025, 12, 23, 9, 58, 7, 130, DateTimeKind.Unspecified).AddTicks(517), false, 25.1657m, "Al Wakrah", 51.6034m, null, null, "مستودع الوكرة الجنوبي", "Al Wakrah South Depot" }
                 });
 
             migrationBuilder.InsertData(
@@ -1516,11 +1554,11 @@ namespace Ettad.EntityFramework.Migrations
                 columns: new[] { "Id", "CreatedBy", "CreationDate", "IsDeleted", "ModificationDate", "ModifiedBy", "NameAr", "NameEn" },
                 values: new object[,]
                 {
-                    { 1L, null, new DateTime(2025, 12, 21, 8, 55, 47, 269, DateTimeKind.Unspecified).AddTicks(9789), false, null, null, "القسم 1.1 - مواد متفجرة", "Division 1.1 - Explosives" },
-                    { 2L, null, new DateTime(2025, 12, 21, 8, 55, 47, 269, DateTimeKind.Unspecified).AddTicks(9809), false, null, null, "القسم 1.2 - مواد قابلة للانفجار", "Division 1.2 - Projection Hazard" },
-                    { 3L, null, new DateTime(2025, 12, 21, 8, 55, 47, 269, DateTimeKind.Unspecified).AddTicks(9811), false, null, null, "القسم 1.3 - مواد قابلة للاشتعال", "Division 1.3 - Fire Hazard" },
-                    { 4L, null, new DateTime(2025, 12, 21, 8, 55, 47, 269, DateTimeKind.Unspecified).AddTicks(9812), false, null, null, "القسم 1.4 - مواد منخفضة المخاطر", "Division 1.4 - Minor Hazard" },
-                    { 5L, null, new DateTime(2025, 12, 21, 8, 55, 47, 269, DateTimeKind.Unspecified).AddTicks(9813), false, null, null, "القسم 1.5 - مواد غير حساسة", "Division 1.5 - Very Insensitive" }
+                    { 1L, null, new DateTime(2025, 12, 23, 9, 58, 7, 130, DateTimeKind.Unspecified).AddTicks(7747), false, null, null, "القسم 1.1 - مواد متفجرة", "Division 1.1 - Explosives" },
+                    { 2L, null, new DateTime(2025, 12, 23, 9, 58, 7, 130, DateTimeKind.Unspecified).AddTicks(7769), false, null, null, "القسم 1.2 - مواد قابلة للانفجار", "Division 1.2 - Projection Hazard" },
+                    { 3L, null, new DateTime(2025, 12, 23, 9, 58, 7, 130, DateTimeKind.Unspecified).AddTicks(7771), false, null, null, "القسم 1.3 - مواد قابلة للاشتعال", "Division 1.3 - Fire Hazard" },
+                    { 4L, null, new DateTime(2025, 12, 23, 9, 58, 7, 130, DateTimeKind.Unspecified).AddTicks(7772), false, null, null, "القسم 1.4 - مواد منخفضة المخاطر", "Division 1.4 - Minor Hazard" },
+                    { 5L, null, new DateTime(2025, 12, 23, 9, 58, 7, 130, DateTimeKind.Unspecified).AddTicks(7773), false, null, null, "القسم 1.5 - مواد غير حساسة", "Division 1.5 - Very Insensitive" }
                 });
 
             migrationBuilder.InsertData(
@@ -1528,11 +1566,11 @@ namespace Ettad.EntityFramework.Migrations
                 columns: new[] { "Id", "CreatedBy", "CreationDate", "IsDeleted", "ModificationDate", "ModifiedBy", "NameAr", "NameEn" },
                 values: new object[,]
                 {
-                    { 1L, null, new DateTime(2025, 12, 21, 8, 55, 47, 270, DateTimeKind.Unspecified).AddTicks(6828), false, null, null, "مصنع الذخائر الملكي", "Royal Ordnance Factory" },
-                    { 2L, null, new DateTime(2025, 12, 21, 8, 55, 47, 270, DateTimeKind.Unspecified).AddTicks(6848), false, null, null, "شركة رايثيون", "Raytheon Company" },
-                    { 3L, null, new DateTime(2025, 12, 21, 8, 55, 47, 270, DateTimeKind.Unspecified).AddTicks(6850), false, null, null, "مؤسسة الصناعات العسكرية الوطنية", "National Military Industries" },
-                    { 4L, null, new DateTime(2025, 12, 21, 8, 55, 47, 270, DateTimeKind.Unspecified).AddTicks(6851), false, null, null, "شركة لوكهيد مارتن", "Lockheed Martin" },
-                    { 5L, null, new DateTime(2025, 12, 21, 8, 55, 47, 270, DateTimeKind.Unspecified).AddTicks(6852), false, null, null, "مجموعة بي إيه إي سيستمز", "BAE Systems" }
+                    { 1L, null, new DateTime(2025, 12, 23, 9, 58, 7, 131, DateTimeKind.Unspecified).AddTicks(7099), false, null, null, "مصنع الذخائر الملكي", "Royal Ordnance Factory" },
+                    { 2L, null, new DateTime(2025, 12, 23, 9, 58, 7, 131, DateTimeKind.Unspecified).AddTicks(7124), false, null, null, "شركة رايثيون", "Raytheon Company" },
+                    { 3L, null, new DateTime(2025, 12, 23, 9, 58, 7, 131, DateTimeKind.Unspecified).AddTicks(7127), false, null, null, "مؤسسة الصناعات العسكرية الوطنية", "National Military Industries" },
+                    { 4L, null, new DateTime(2025, 12, 23, 9, 58, 7, 131, DateTimeKind.Unspecified).AddTicks(7128), false, null, null, "شركة لوكهيد مارتن", "Lockheed Martin" },
+                    { 5L, null, new DateTime(2025, 12, 23, 9, 58, 7, 131, DateTimeKind.Unspecified).AddTicks(7130), false, null, null, "مجموعة بي إيه إي سيستمز", "BAE Systems" }
                 });
 
             migrationBuilder.InsertData(
@@ -1540,17 +1578,17 @@ namespace Ettad.EntityFramework.Migrations
                 columns: new[] { "Id", "CreatedBy", "CreationDate", "IsDeleted", "ModificationDate", "ModifiedBy", "NameAr", "NameEn" },
                 values: new object[,]
                 {
-                    { 1L, null, new DateTime(2025, 12, 21, 8, 55, 47, 270, DateTimeKind.Unspecified).AddTicks(8158), false, null, null, "ذخيرة حية", "Live Ammunition" },
-                    { 2L, null, new DateTime(2025, 12, 21, 8, 55, 47, 270, DateTimeKind.Unspecified).AddTicks(8168), false, null, null, "صوتي", "Sonic" },
-                    { 3L, null, new DateTime(2025, 12, 21, 8, 55, 47, 270, DateTimeKind.Unspecified).AddTicks(8169), false, null, null, "مشرح", "Fragmentation" },
-                    { 4L, null, new DateTime(2025, 12, 21, 8, 55, 47, 270, DateTimeKind.Unspecified).AddTicks(8170), false, null, null, "كاشف", "Detector" },
-                    { 5L, null, new DateTime(2025, 12, 21, 8, 55, 47, 270, DateTimeKind.Unspecified).AddTicks(8171), false, null, null, "مائت", "Inert" },
-                    { 6L, null, new DateTime(2025, 12, 21, 8, 55, 47, 270, DateTimeKind.Unspecified).AddTicks(8173), false, null, null, "متفجر", "Explosive" },
-                    { 7L, null, new DateTime(2025, 12, 21, 8, 55, 47, 270, DateTimeKind.Unspecified).AddTicks(8174), false, null, null, "خارق", "Armor-Piercing" },
-                    { 8L, null, new DateTime(2025, 12, 21, 8, 55, 47, 270, DateTimeKind.Unspecified).AddTicks(8175), false, null, null, "دخاني", "Smoke" },
-                    { 9L, null, new DateTime(2025, 12, 21, 8, 55, 47, 270, DateTimeKind.Unspecified).AddTicks(8176), false, null, null, "انارة", "Illuminating" },
-                    { 10L, null, new DateTime(2025, 12, 21, 8, 55, 47, 270, DateTimeKind.Unspecified).AddTicks(8177), false, null, null, "حارق", "Incendiary" },
-                    { 11L, null, new DateTime(2025, 12, 21, 8, 55, 47, 270, DateTimeKind.Unspecified).AddTicks(8178), false, null, null, "خارق حارق", "Armor-Piercing Incendiary" }
+                    { 1L, null, new DateTime(2025, 12, 23, 9, 58, 7, 131, DateTimeKind.Unspecified).AddTicks(8605), false, null, null, "ذخيرة حية", "Live Ammunition" },
+                    { 2L, null, new DateTime(2025, 12, 23, 9, 58, 7, 131, DateTimeKind.Unspecified).AddTicks(8616), false, null, null, "صوتي", "Sonic" },
+                    { 3L, null, new DateTime(2025, 12, 23, 9, 58, 7, 131, DateTimeKind.Unspecified).AddTicks(8617), false, null, null, "مشرح", "Fragmentation" },
+                    { 4L, null, new DateTime(2025, 12, 23, 9, 58, 7, 131, DateTimeKind.Unspecified).AddTicks(8619), false, null, null, "كاشف", "Detector" },
+                    { 5L, null, new DateTime(2025, 12, 23, 9, 58, 7, 131, DateTimeKind.Unspecified).AddTicks(8620), false, null, null, "مائت", "Inert" },
+                    { 6L, null, new DateTime(2025, 12, 23, 9, 58, 7, 131, DateTimeKind.Unspecified).AddTicks(8621), false, null, null, "متفجر", "Explosive" },
+                    { 7L, null, new DateTime(2025, 12, 23, 9, 58, 7, 131, DateTimeKind.Unspecified).AddTicks(8623), false, null, null, "خارق", "Armor-Piercing" },
+                    { 8L, null, new DateTime(2025, 12, 23, 9, 58, 7, 131, DateTimeKind.Unspecified).AddTicks(8624), false, null, null, "دخاني", "Smoke" },
+                    { 9L, null, new DateTime(2025, 12, 23, 9, 58, 7, 131, DateTimeKind.Unspecified).AddTicks(8625), false, null, null, "انارة", "Illuminating" },
+                    { 10L, null, new DateTime(2025, 12, 23, 9, 58, 7, 131, DateTimeKind.Unspecified).AddTicks(8626), false, null, null, "حارق", "Incendiary" },
+                    { 11L, null, new DateTime(2025, 12, 23, 9, 58, 7, 131, DateTimeKind.Unspecified).AddTicks(8627), false, null, null, "خارق حارق", "Armor-Piercing Incendiary" }
                 });
 
             migrationBuilder.InsertData(
@@ -1558,11 +1596,11 @@ namespace Ettad.EntityFramework.Migrations
                 columns: new[] { "Id", "CreatedBy", "CreationDate", "IsDeleted", "ModificationDate", "ModifiedBy", "NameAr", "NameEn" },
                 values: new object[,]
                 {
-                    { 1L, null, new DateTime(2025, 12, 21, 8, 55, 47, 271, DateTimeKind.Unspecified).AddTicks(5419), false, null, null, "قتالي", "Combat" },
-                    { 2L, null, new DateTime(2025, 12, 21, 8, 55, 47, 271, DateTimeKind.Unspecified).AddTicks(5440), false, null, null, "تدريبي", "Training" },
-                    { 3L, null, new DateTime(2025, 12, 21, 8, 55, 47, 271, DateTimeKind.Unspecified).AddTicks(5441), false, null, null, "دفاعي", "Defense" },
-                    { 4L, null, new DateTime(2025, 12, 21, 8, 55, 47, 271, DateTimeKind.Unspecified).AddTicks(5442), false, null, null, "استطلاعي", "Reconnaissance" },
-                    { 5L, null, new DateTime(2025, 12, 21, 8, 55, 47, 271, DateTimeKind.Unspecified).AddTicks(5443), false, null, null, "هجومي", "Offensive" }
+                    { 1L, null, new DateTime(2025, 12, 23, 9, 58, 7, 132, DateTimeKind.Unspecified).AddTicks(6284), false, null, null, "قتالي", "Combat" },
+                    { 2L, null, new DateTime(2025, 12, 23, 9, 58, 7, 132, DateTimeKind.Unspecified).AddTicks(6309), false, null, null, "تدريبي", "Training" },
+                    { 3L, null, new DateTime(2025, 12, 23, 9, 58, 7, 132, DateTimeKind.Unspecified).AddTicks(6311), false, null, null, "دفاعي", "Defense" },
+                    { 4L, null, new DateTime(2025, 12, 23, 9, 58, 7, 132, DateTimeKind.Unspecified).AddTicks(6312), false, null, null, "استطلاعي", "Reconnaissance" },
+                    { 5L, null, new DateTime(2025, 12, 23, 9, 58, 7, 132, DateTimeKind.Unspecified).AddTicks(6313), false, null, null, "هجومي", "Offensive" }
                 });
 
             migrationBuilder.InsertData(
@@ -1570,11 +1608,11 @@ namespace Ettad.EntityFramework.Migrations
                 columns: new[] { "Id", "CreatedBy", "CreationDate", "IsDeleted", "ModificationDate", "ModifiedBy", "NameAr", "NameEn" },
                 values: new object[,]
                 {
-                    { 1L, null, new DateTime(2025, 12, 21, 8, 55, 47, 271, DateTimeKind.Unspecified).AddTicks(6718), false, null, null, "فولاذ", "Steel" },
-                    { 2L, null, new DateTime(2025, 12, 21, 8, 55, 47, 271, DateTimeKind.Unspecified).AddTicks(6727), false, null, null, "نحاس", "Brass" },
-                    { 3L, null, new DateTime(2025, 12, 21, 8, 55, 47, 271, DateTimeKind.Unspecified).AddTicks(6729), false, null, null, "رصاص", "Lead" },
-                    { 4L, null, new DateTime(2025, 12, 21, 8, 55, 47, 271, DateTimeKind.Unspecified).AddTicks(6730), false, null, null, "تنغستن", "Tungsten" },
-                    { 5L, null, new DateTime(2025, 12, 21, 8, 55, 47, 271, DateTimeKind.Unspecified).AddTicks(6731), false, null, null, "يورانيوم منضب", "Depleted Uranium" }
+                    { 1L, null, new DateTime(2025, 12, 23, 9, 58, 7, 132, DateTimeKind.Unspecified).AddTicks(7737), false, null, null, "فولاذ", "Steel" },
+                    { 2L, null, new DateTime(2025, 12, 23, 9, 58, 7, 132, DateTimeKind.Unspecified).AddTicks(7747), false, null, null, "نحاس", "Brass" },
+                    { 3L, null, new DateTime(2025, 12, 23, 9, 58, 7, 132, DateTimeKind.Unspecified).AddTicks(7749), false, null, null, "رصاص", "Lead" },
+                    { 4L, null, new DateTime(2025, 12, 23, 9, 58, 7, 132, DateTimeKind.Unspecified).AddTicks(7751), false, null, null, "تنغستن", "Tungsten" },
+                    { 5L, null, new DateTime(2025, 12, 23, 9, 58, 7, 132, DateTimeKind.Unspecified).AddTicks(7752), false, null, null, "يورانيوم منضب", "Depleted Uranium" }
                 });
 
             migrationBuilder.InsertData(
@@ -1582,11 +1620,11 @@ namespace Ettad.EntityFramework.Migrations
                 columns: new[] { "Id", "CreatedBy", "CreationDate", "IsDeleted", "ModificationDate", "ModifiedBy", "NameAr", "NameEn" },
                 values: new object[,]
                 {
-                    { 1L, null, new DateTime(2025, 12, 21, 8, 55, 47, 271, DateTimeKind.Unspecified).AddTicks(7949), false, null, null, "بارود أحادي القاعدة", "Single-base Powder" },
-                    { 2L, null, new DateTime(2025, 12, 21, 8, 55, 47, 271, DateTimeKind.Unspecified).AddTicks(7958), false, null, null, "بارود ثنائي القاعدة", "Double-base Powder" },
-                    { 3L, null, new DateTime(2025, 12, 21, 8, 55, 47, 271, DateTimeKind.Unspecified).AddTicks(7959), false, null, null, "بارود ثلاثي القاعدة", "Triple-base Powder" },
-                    { 4L, null, new DateTime(2025, 12, 21, 8, 55, 47, 271, DateTimeKind.Unspecified).AddTicks(7961), false, null, null, "نيتروسليلوز", "Nitrocellulose" },
-                    { 5L, null, new DateTime(2025, 12, 21, 8, 55, 47, 271, DateTimeKind.Unspecified).AddTicks(7962), false, null, null, "كورديت", "Cordite" }
+                    { 1L, null, new DateTime(2025, 12, 23, 9, 58, 7, 132, DateTimeKind.Unspecified).AddTicks(9034), false, null, null, "بارود أحادي القاعدة", "Single-base Powder" },
+                    { 2L, null, new DateTime(2025, 12, 23, 9, 58, 7, 132, DateTimeKind.Unspecified).AddTicks(9044), false, null, null, "بارود ثنائي القاعدة", "Double-base Powder" },
+                    { 3L, null, new DateTime(2025, 12, 23, 9, 58, 7, 132, DateTimeKind.Unspecified).AddTicks(9046), false, null, null, "بارود ثلاثي القاعدة", "Triple-base Powder" },
+                    { 4L, null, new DateTime(2025, 12, 23, 9, 58, 7, 132, DateTimeKind.Unspecified).AddTicks(9047), false, null, null, "نيتروسليلوز", "Nitrocellulose" },
+                    { 5L, null, new DateTime(2025, 12, 23, 9, 58, 7, 132, DateTimeKind.Unspecified).AddTicks(9049), false, null, null, "كورديت", "Cordite" }
                 });
 
             migrationBuilder.InsertData(
@@ -1594,16 +1632,16 @@ namespace Ettad.EntityFramework.Migrations
                 columns: new[] { "Id", "CreatedBy", "CreationDate", "IsDeleted", "ModificationDate", "ModifiedBy", "NameAr", "NameEn" },
                 values: new object[,]
                 {
-                    { 1L, null, new DateTime(2025, 12, 21, 8, 55, 47, 271, DateTimeKind.Unspecified).AddTicks(9174), false, null, null, "عقيد", "Colonel" },
-                    { 2L, null, new DateTime(2025, 12, 21, 8, 55, 47, 271, DateTimeKind.Unspecified).AddTicks(9183), false, null, null, "مقدم", "Lieutenant Colonel" },
-                    { 3L, null, new DateTime(2025, 12, 21, 8, 55, 47, 271, DateTimeKind.Unspecified).AddTicks(9184), false, null, null, "رائد", "Major" },
-                    { 4L, null, new DateTime(2025, 12, 21, 8, 55, 47, 271, DateTimeKind.Unspecified).AddTicks(9186), false, null, null, "نقيب", "Captain" },
-                    { 5L, null, new DateTime(2025, 12, 21, 8, 55, 47, 271, DateTimeKind.Unspecified).AddTicks(9187), false, null, null, "ملازم أول", "First Lieutenant" },
-                    { 6L, null, new DateTime(2025, 12, 21, 8, 55, 47, 271, DateTimeKind.Unspecified).AddTicks(9188), false, null, null, "ملازم", "Second Lieutenant" },
-                    { 7L, null, new DateTime(2025, 12, 21, 8, 55, 47, 271, DateTimeKind.Unspecified).AddTicks(9189), false, null, null, "رقيب أول", "Master Sergeant" },
-                    { 8L, null, new DateTime(2025, 12, 21, 8, 55, 47, 271, DateTimeKind.Unspecified).AddTicks(9190), false, null, null, "رقيب", "Sergeant" },
-                    { 9L, null, new DateTime(2025, 12, 21, 8, 55, 47, 271, DateTimeKind.Unspecified).AddTicks(9191), false, null, null, "عريف", "Corporal" },
-                    { 10L, null, new DateTime(2025, 12, 21, 8, 55, 47, 271, DateTimeKind.Unspecified).AddTicks(9192), false, null, null, "جندي", "Private" }
+                    { 1L, null, new DateTime(2025, 12, 23, 9, 58, 7, 133, DateTimeKind.Unspecified).AddTicks(354), false, null, null, "عقيد", "Colonel" },
+                    { 2L, null, new DateTime(2025, 12, 23, 9, 58, 7, 133, DateTimeKind.Unspecified).AddTicks(364), false, null, null, "مقدم", "Lieutenant Colonel" },
+                    { 3L, null, new DateTime(2025, 12, 23, 9, 58, 7, 133, DateTimeKind.Unspecified).AddTicks(366), false, null, null, "رائد", "Major" },
+                    { 4L, null, new DateTime(2025, 12, 23, 9, 58, 7, 133, DateTimeKind.Unspecified).AddTicks(367), false, null, null, "نقيب", "Captain" },
+                    { 5L, null, new DateTime(2025, 12, 23, 9, 58, 7, 133, DateTimeKind.Unspecified).AddTicks(368), false, null, null, "ملازم أول", "First Lieutenant" },
+                    { 6L, null, new DateTime(2025, 12, 23, 9, 58, 7, 133, DateTimeKind.Unspecified).AddTicks(370), false, null, null, "ملازم", "Second Lieutenant" },
+                    { 7L, null, new DateTime(2025, 12, 23, 9, 58, 7, 133, DateTimeKind.Unspecified).AddTicks(371), false, null, null, "رقيب أول", "Master Sergeant" },
+                    { 8L, null, new DateTime(2025, 12, 23, 9, 58, 7, 133, DateTimeKind.Unspecified).AddTicks(372), false, null, null, "رقيب", "Sergeant" },
+                    { 9L, null, new DateTime(2025, 12, 23, 9, 58, 7, 133, DateTimeKind.Unspecified).AddTicks(373), false, null, null, "عريف", "Corporal" },
+                    { 10L, null, new DateTime(2025, 12, 23, 9, 58, 7, 133, DateTimeKind.Unspecified).AddTicks(374), false, null, null, "جندي", "Private" }
                 });
 
             migrationBuilder.InsertData(
@@ -1611,18 +1649,18 @@ namespace Ettad.EntityFramework.Migrations
                 columns: new[] { "Id", "CreatedBy", "CreationDate", "DeletedBy", "DeletionDate", "IsDeleted", "ModificationDate", "ModifiedBy", "NameAr", "NameEn", "RequestType" },
                 values: new object[,]
                 {
-                    { 1L, null, new DateTime(2025, 12, 21, 8, 55, 47, 272, DateTimeKind.Unspecified).AddTicks(2313), null, null, false, null, null, "طلب عادي", "Normal Order", 1 },
-                    { 2L, null, new DateTime(2025, 12, 21, 8, 55, 47, 272, DateTimeKind.Unspecified).AddTicks(2331), null, null, false, null, null, "طلب خدمة", "Duty Order", 1 },
-                    { 3L, null, new DateTime(2025, 12, 21, 8, 55, 47, 272, DateTimeKind.Unspecified).AddTicks(2333), null, null, false, null, null, "طلب عملية", "Operation Order", 1 },
-                    { 4L, null, new DateTime(2025, 12, 21, 8, 55, 47, 272, DateTimeKind.Unspecified).AddTicks(2334), null, null, false, null, null, "طلب تدريبي", "Training Order", 1 },
-                    { 5L, null, new DateTime(2025, 12, 21, 8, 55, 47, 272, DateTimeKind.Unspecified).AddTicks(2337), null, null, false, null, null, "إرجاع عادي", "Normal Return", 2 },
-                    { 6L, null, new DateTime(2025, 12, 21, 8, 55, 47, 272, DateTimeKind.Unspecified).AddTicks(2338), null, null, false, null, null, "إرجاع بعد انتهاء الخدمة", "Return After Service", 2 },
-                    { 7L, null, new DateTime(2025, 12, 21, 8, 55, 47, 272, DateTimeKind.Unspecified).AddTicks(2339), null, null, false, null, null, "إرجاع بعد العملية", "Return After Operation", 2 },
-                    { 8L, null, new DateTime(2025, 12, 21, 8, 55, 47, 272, DateTimeKind.Unspecified).AddTicks(2340), null, null, false, null, null, "إرجاع بعد التدريب", "Return After Training", 2 },
-                    { 9L, null, new DateTime(2025, 12, 21, 8, 55, 47, 272, DateTimeKind.Unspecified).AddTicks(2341), null, null, false, null, null, "تسديد تالف", "Damaged Discard", 3 },
-                    { 10L, null, new DateTime(2025, 12, 21, 8, 55, 47, 272, DateTimeKind.Unspecified).AddTicks(2342), null, null, false, null, null, "تسديد منتهي الصلاحية", "Expired Discard", 3 },
-                    { 11L, null, new DateTime(2025, 12, 21, 8, 55, 47, 272, DateTimeKind.Unspecified).AddTicks(2343), null, null, false, null, null, "تسديد غير مستخدم", "Unused Discard", 3 },
-                    { 12L, null, new DateTime(2025, 12, 21, 8, 55, 47, 272, DateTimeKind.Unspecified).AddTicks(2335), null, null, false, null, null, "تطهير الميدان", "Field Clearance", 1 }
+                    { 1L, null, new DateTime(2025, 12, 23, 9, 58, 7, 133, DateTimeKind.Unspecified).AddTicks(3907), null, null, false, null, null, "طلب عادي", "Normal Order", 1 },
+                    { 2L, null, new DateTime(2025, 12, 23, 9, 58, 7, 133, DateTimeKind.Unspecified).AddTicks(3930), null, null, false, null, null, "طلب خدمة", "Duty Order", 1 },
+                    { 3L, null, new DateTime(2025, 12, 23, 9, 58, 7, 133, DateTimeKind.Unspecified).AddTicks(3931), null, null, false, null, null, "طلب عملية", "Operation Order", 1 },
+                    { 4L, null, new DateTime(2025, 12, 23, 9, 58, 7, 133, DateTimeKind.Unspecified).AddTicks(3933), null, null, false, null, null, "طلب تدريبي", "Training Order", 1 },
+                    { 5L, null, new DateTime(2025, 12, 23, 9, 58, 7, 133, DateTimeKind.Unspecified).AddTicks(3936), null, null, false, null, null, "إرجاع عادي", "Normal Return", 2 },
+                    { 6L, null, new DateTime(2025, 12, 23, 9, 58, 7, 133, DateTimeKind.Unspecified).AddTicks(3937), null, null, false, null, null, "إرجاع بعد انتهاء الخدمة", "Return After Service", 2 },
+                    { 7L, null, new DateTime(2025, 12, 23, 9, 58, 7, 133, DateTimeKind.Unspecified).AddTicks(3938), null, null, false, null, null, "إرجاع بعد العملية", "Return After Operation", 2 },
+                    { 8L, null, new DateTime(2025, 12, 23, 9, 58, 7, 133, DateTimeKind.Unspecified).AddTicks(3939), null, null, false, null, null, "إرجاع بعد التدريب", "Return After Training", 2 },
+                    { 9L, null, new DateTime(2025, 12, 23, 9, 58, 7, 133, DateTimeKind.Unspecified).AddTicks(3940), null, null, false, null, null, "تسديد تالف", "Damaged Discard", 3 },
+                    { 10L, null, new DateTime(2025, 12, 23, 9, 58, 7, 133, DateTimeKind.Unspecified).AddTicks(3941), null, null, false, null, null, "تسديد منتهي الصلاحية", "Expired Discard", 3 },
+                    { 11L, null, new DateTime(2025, 12, 23, 9, 58, 7, 133, DateTimeKind.Unspecified).AddTicks(3942), null, null, false, null, null, "تسديد غير مستخدم", "Unused Discard", 3 },
+                    { 12L, null, new DateTime(2025, 12, 23, 9, 58, 7, 133, DateTimeKind.Unspecified).AddTicks(3934), null, null, false, null, null, "تطهير الميدان", "Field Clearance", 1 }
                 });
 
             migrationBuilder.InsertData(
@@ -1630,11 +1668,11 @@ namespace Ettad.EntityFramework.Migrations
                 columns: new[] { "Id", "CreatedBy", "CreationDate", "Group", "Key", "ModificationDate", "ModifiedBy", "Value" },
                 values: new object[,]
                 {
-                    { 1, null, new DateTime(2025, 12, 21, 8, 55, 47, 272, DateTimeKind.Unspecified).AddTicks(4199), "LDAP", "LdapServer", null, null, "10.80.70.3" },
-                    { 2, null, new DateTime(2025, 12, 21, 8, 55, 47, 272, DateTimeKind.Unspecified).AddTicks(4215), "LDAP", "LdapDomain", null, null, "sddev.local" },
-                    { 3, null, new DateTime(2025, 12, 21, 8, 55, 47, 272, DateTimeKind.Unspecified).AddTicks(4217), "LDAP", "LdapEmpAttr", null, null, "sAMAccountName" },
-                    { 4, null, new DateTime(2025, 12, 21, 8, 55, 47, 272, DateTimeKind.Unspecified).AddTicks(4218), "LDAP", "LdapUsername", null, null, "1000" },
-                    { 5, null, new DateTime(2025, 12, 21, 8, 55, 47, 272, DateTimeKind.Unspecified).AddTicks(4219), "LDAP", "LdapPassword", null, null, "Qatar@2025" }
+                    { 1, null, new DateTime(2025, 12, 23, 9, 58, 7, 133, DateTimeKind.Unspecified).AddTicks(5908), "LDAP", "LdapServer", null, null, "10.80.70.3" },
+                    { 2, null, new DateTime(2025, 12, 23, 9, 58, 7, 133, DateTimeKind.Unspecified).AddTicks(5925), "LDAP", "LdapDomain", null, null, "sddev.local" },
+                    { 3, null, new DateTime(2025, 12, 23, 9, 58, 7, 133, DateTimeKind.Unspecified).AddTicks(5927), "LDAP", "LdapEmpAttr", null, null, "sAMAccountName" },
+                    { 4, null, new DateTime(2025, 12, 23, 9, 58, 7, 133, DateTimeKind.Unspecified).AddTicks(5928), "LDAP", "LdapUsername", null, null, "1000" },
+                    { 5, null, new DateTime(2025, 12, 23, 9, 58, 7, 133, DateTimeKind.Unspecified).AddTicks(5929), "LDAP", "LdapPassword", null, null, "Qatar@2025" }
                 });
 
             migrationBuilder.InsertData(
@@ -1642,11 +1680,11 @@ namespace Ettad.EntityFramework.Migrations
                 columns: new[] { "Id", "CreatedBy", "CreationDate", "IsDeleted", "ModificationDate", "ModifiedBy", "NameAr", "NameEn" },
                 values: new object[,]
                 {
-                    { 1L, null, new DateTime(2025, 12, 21, 8, 55, 47, 272, DateTimeKind.Unspecified).AddTicks(5464), false, null, null, "شركة الإمدادات العسكرية المتقدمة", "Advanced Military Supplies Co." },
-                    { 2L, null, new DateTime(2025, 12, 21, 8, 55, 47, 272, DateTimeKind.Unspecified).AddTicks(5473), false, null, null, "المؤسسة العامة للتسليح", "General Armament Corporation" },
-                    { 3L, null, new DateTime(2025, 12, 21, 8, 55, 47, 272, DateTimeKind.Unspecified).AddTicks(5474), false, null, null, "شركة الصناعات الدفاعية", "Defense Industries Company" },
-                    { 4L, null, new DateTime(2025, 12, 21, 8, 55, 47, 272, DateTimeKind.Unspecified).AddTicks(5475), false, null, null, "مجموعة التجهيزات العسكرية", "Military Equipment Group" },
-                    { 5L, null, new DateTime(2025, 12, 21, 8, 55, 47, 272, DateTimeKind.Unspecified).AddTicks(5477), false, null, null, "شركة التوريدات الاستراتيجية", "Strategic Supplies Corporation" }
+                    { 1L, null, new DateTime(2025, 12, 23, 9, 58, 7, 133, DateTimeKind.Unspecified).AddTicks(7188), false, null, null, "شركة الإمدادات العسكرية المتقدمة", "Advanced Military Supplies Co." },
+                    { 2L, null, new DateTime(2025, 12, 23, 9, 58, 7, 133, DateTimeKind.Unspecified).AddTicks(7200), false, null, null, "المؤسسة العامة للتسليح", "General Armament Corporation" },
+                    { 3L, null, new DateTime(2025, 12, 23, 9, 58, 7, 133, DateTimeKind.Unspecified).AddTicks(7202), false, null, null, "شركة الصناعات الدفاعية", "Defense Industries Company" },
+                    { 4L, null, new DateTime(2025, 12, 23, 9, 58, 7, 133, DateTimeKind.Unspecified).AddTicks(7203), false, null, null, "مجموعة التجهيزات العسكرية", "Military Equipment Group" },
+                    { 5L, null, new DateTime(2025, 12, 23, 9, 58, 7, 133, DateTimeKind.Unspecified).AddTicks(7205), false, null, null, "شركة التوريدات الاستراتيجية", "Strategic Supplies Corporation" }
                 });
 
             migrationBuilder.InsertData(
@@ -1654,9 +1692,9 @@ namespace Ettad.EntityFramework.Migrations
                 columns: new[] { "Id", "CreatedBy", "CreationDate", "IsDeleted", "ModificationDate", "ModifiedBy", "NameAr", "NameEn" },
                 values: new object[,]
                 {
-                    { 1L, null, new DateTime(2025, 12, 21, 8, 55, 47, 273, DateTimeKind.Unspecified).AddTicks(563), false, null, null, "غرام", "Gram" },
-                    { 2L, null, new DateTime(2025, 12, 21, 8, 55, 47, 273, DateTimeKind.Unspecified).AddTicks(582), false, null, null, "مليمتر", "Millimeter" },
-                    { 3L, null, new DateTime(2025, 12, 21, 8, 55, 47, 273, DateTimeKind.Unspecified).AddTicks(584), false, null, null, "قطعة", "Piece" }
+                    { 1L, null, new DateTime(2025, 12, 23, 9, 58, 7, 134, DateTimeKind.Unspecified).AddTicks(2906), false, null, null, "غرام", "Gram" },
+                    { 2L, null, new DateTime(2025, 12, 23, 9, 58, 7, 134, DateTimeKind.Unspecified).AddTicks(2928), false, null, null, "مليمتر", "Millimeter" },
+                    { 3L, null, new DateTime(2025, 12, 23, 9, 58, 7, 134, DateTimeKind.Unspecified).AddTicks(2930), false, null, null, "قطعة", "Piece" }
                 });
 
             migrationBuilder.InsertData(
@@ -1664,9 +1702,9 @@ namespace Ettad.EntityFramework.Migrations
                 columns: new[] { "Id", "CreatedBy", "CreationDate", "IsDeleted", "ModificationDate", "ModifiedBy", "NameAr", "NameEn" },
                 values: new object[,]
                 {
-                    { 1L, null, new DateTime(2025, 12, 21, 8, 55, 47, 274, DateTimeKind.Unspecified).AddTicks(3591), false, null, null, "Request", "Request" },
-                    { 2L, null, new DateTime(2025, 12, 21, 8, 55, 47, 274, DateTimeKind.Unspecified).AddTicks(3612), false, null, null, "Discard", "Discard" },
-                    { 3L, null, new DateTime(2025, 12, 21, 8, 55, 47, 274, DateTimeKind.Unspecified).AddTicks(3613), false, null, null, "Return", "Return" }
+                    { 1L, null, new DateTime(2025, 12, 23, 9, 58, 7, 135, DateTimeKind.Unspecified).AddTicks(8411), false, null, null, "Request", "Request" },
+                    { 2L, null, new DateTime(2025, 12, 23, 9, 58, 7, 135, DateTimeKind.Unspecified).AddTicks(8514), false, null, null, "Discard", "Discard" },
+                    { 3L, null, new DateTime(2025, 12, 23, 9, 58, 7, 135, DateTimeKind.Unspecified).AddTicks(8517), false, null, null, "Return", "Return" }
                 });
 
             migrationBuilder.InsertData(
@@ -1813,10 +1851,20 @@ namespace Ettad.EntityFramework.Migrations
                 filter: "[NormalizedUserName] IS NOT NULL");
 
             migrationBuilder.CreateIndex(
+                name: "IX_BaseItems_ClassificationId",
+                table: "BaseItems",
+                column: "ClassificationId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_BaseItems_ItemNo",
                 table: "BaseItems",
                 column: "ItemNo",
                 unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_BaseItems_TypeId",
+                table: "BaseItems",
+                column: "TypeId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_BaseRequests_DepartmentId",
@@ -1849,6 +1897,20 @@ namespace Ettad.EntityFramework.Migrations
             migrationBuilder.CreateIndex(
                 name: "IX_CaseTypes_NameEn",
                 table: "CaseTypes",
+                column: "NameEn",
+                unique: true,
+                filter: "[IsDeleted] = 0");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Classifications_NameAr",
+                table: "Classifications",
+                column: "NameAr",
+                unique: true,
+                filter: "[IsDeleted] = 0");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Classifications_NameEn",
+                table: "Classifications",
                 column: "NameEn",
                 unique: true,
                 filter: "[IsDeleted] = 0");
@@ -1945,24 +2007,9 @@ namespace Ettad.EntityFramework.Migrations
                 filter: "[IsDeleted] = 0");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Explosives_CompatibilityId",
-                table: "Explosives",
-                column: "CompatibilityId");
-
-            migrationBuilder.CreateIndex(
                 name: "IX_Explosives_HazardDivisionId",
                 table: "Explosives",
                 column: "HazardDivisionId");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_Explosives_NetExplosiveQuantityUnitId",
-                table: "Explosives",
-                column: "NetExplosiveQuantityUnitId");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_Explosives_TotalWeightUnitId",
-                table: "Explosives",
-                column: "TotalWeightUnitId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_FileUplodDetails_FileUplodMasterId",
@@ -2012,6 +2059,20 @@ namespace Ettad.EntityFramework.Migrations
                 name: "IX_InventoryDetails_SupplierId",
                 table: "InventoryDetails",
                 column: "SupplierId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ItemTypes_NameAr_ItemType",
+                table: "ItemTypes",
+                columns: new[] { "NameAr", "ItemType" },
+                unique: true,
+                filter: "[IsDeleted] = 0");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ItemTypes_NameEn_ItemType",
+                table: "ItemTypes",
+                columns: new[] { "NameEn", "ItemType" },
+                unique: true,
+                filter: "[IsDeleted] = 0");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Manufacturers_NameAr",
@@ -2372,6 +2433,9 @@ namespace Ettad.EntityFramework.Migrations
                 name: "Colors");
 
             migrationBuilder.DropTable(
+                name: "Compatibilities");
+
+            migrationBuilder.DropTable(
                 name: "NatureOptions");
 
             migrationBuilder.DropTable(
@@ -2382,9 +2446,6 @@ namespace Ettad.EntityFramework.Migrations
 
             migrationBuilder.DropTable(
                 name: "Propellants");
-
-            migrationBuilder.DropTable(
-                name: "Compatibilities");
 
             migrationBuilder.DropTable(
                 name: "HazardDivisions");
@@ -2424,6 +2485,12 @@ namespace Ettad.EntityFramework.Migrations
 
             migrationBuilder.DropTable(
                 name: "Orders");
+
+            migrationBuilder.DropTable(
+                name: "Classifications");
+
+            migrationBuilder.DropTable(
+                name: "ItemTypes");
 
             migrationBuilder.DropTable(
                 name: "ApplicationEntity");
