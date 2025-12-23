@@ -50,16 +50,20 @@ namespace Ettad.Inventory.Service.Explosives
                 var explosive = await _explosiveRepository.FindOneAsync(
                     e => e.Id == id && !e.IsDeleted,
                     false,
-                    nameof(Explosive.NetExplosiveQuantityUnit),
-                    nameof(Explosive.TotalWeightUnit),
                     nameof(Explosive.HazardDivision),
-                    nameof(Explosive.Compatibility)
+                    nameof(Explosive.Classification),
+                    nameof(Explosive.Type)
                 );
 
                 if (explosive == null)
                     return APIOperationResponse<ExplosiveDto>.Fail(ResponseType.NotFound, "Explosive not found");
 
                 var dto = _mapper.Map<ExplosiveDto>(explosive);
+                
+                // Get images for this explosive
+                var imagesResult = await _fileUploadService.GetByEntityAsync(FileEntityType.Explosive, explosive.Id);
+                dto.Images = imagesResult.Succeeded && imagesResult.Data != null ? imagesResult.Data : new List<FileUploadDto>();
+                
                 return APIOperationResponse<ExplosiveDto>.Success(dto);
             }
             catch (Exception ex)
@@ -75,42 +79,28 @@ namespace Ettad.Inventory.Service.Explosives
                 var explosives = await _explosiveRepository.FindAsync(
                     e => !e.IsDeleted,
                     false,
-                    nameof(Explosive.NetExplosiveQuantityUnit),
-                    nameof(Explosive.TotalWeightUnit),
                     nameof(Explosive.HazardDivision),
-                    nameof(Explosive.Compatibility)
+                    nameof(Explosive.Classification),
+                    nameof(Explosive.Type)
                 );
 
                 var dtos = _mapper.Map<List<ExplosiveDto>>(explosives);
+                
+                // Populate images for all explosives in a single database query
+                var entityIds = dtos.Select(d => d.Id).ToList();
+                var imagesResult = await _fileUploadService.GetByEntitiesAsync(FileEntityType.Explosive, entityIds);
+                if (imagesResult.Succeeded && imagesResult.Data != null)
+                {
+                    foreach (var dto in dtos)
+                    {
+                        dto.Images = imagesResult.Data.ContainsKey(dto.Id) ? imagesResult.Data[dto.Id] : new List<FileUploadDto>();
+                    }
+                }
+                
                 return APIOperationResponse<List<ExplosiveDto>>.Success(dtos);
             }
             catch (Exception ex)
             {
-                return APIOperationResponse<List<ExplosiveDto>>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
-            }
-        }
-
-        public async Task<APIOperationResponse<List<ExplosiveDto>>> GetByTypeAsync(ExplosiveType explosiveType)
-        {
-            _logger.LogInformation("Getting explosives by type. ExplosiveType: {ExplosiveType}, User: {UserId}", explosiveType, _currentUserService.UserId);
-
-            try
-            {
-                var explosives = await _explosiveRepository.FindAsync(
-                    e => !e.IsDeleted && e.ExplosiveType == explosiveType,
-                    false,
-                    nameof(Explosive.NetExplosiveQuantityUnit),
-                    nameof(Explosive.TotalWeightUnit),
-                    nameof(Explosive.HazardDivision),
-                    nameof(Explosive.Compatibility)
-                );
-
-                var dtos = _mapper.Map<List<ExplosiveDto>>(explosives);
-                return APIOperationResponse<List<ExplosiveDto>>.Success(dtos);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error retrieving explosives by type. ExplosiveType: {ExplosiveType}, User: {UserId}", explosiveType, _currentUserService.UserId);
                 return APIOperationResponse<List<ExplosiveDto>>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
             }
         }
@@ -382,10 +372,7 @@ namespace Ettad.Inventory.Service.Explosives
                 { "Price", nameof(CreateUpdateExplosiveDto.Price) },
                 { "Minimum Quantity", nameof(CreateUpdateExplosiveDto.MinimumQuantity) },
                 { "NSN", nameof(CreateUpdateExplosiveDto.Nsn) },
-                { "Explosive Type", nameof(CreateUpdateExplosiveDto.ExplosiveType) },
-                { "UN Number", nameof(CreateUpdateExplosiveDto.UNNumber) },
-                { "Net Explosive Quantity", nameof(CreateUpdateExplosiveDto.NetExplosiveQuantity) },
-                { "Total Weight", nameof(CreateUpdateExplosiveDto.TotalWeight) }
+                { "UN Number", nameof(CreateUpdateExplosiveDto.UNNumber) }
             };
         }
     }

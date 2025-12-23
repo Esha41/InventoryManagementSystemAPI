@@ -49,6 +49,9 @@ namespace Ettad.Inventory.Service.Ammunitions
 
         public async Task<APIOperationResponse<AmmunitionDto>> GetByIdAsync(long id)
         {
+            _logger.LogInformation("Getting ammunition by ID. AmmunitionId: {AmmunitionId}, User: {UserId}", 
+                id, _currentUserService.UserId);
+            
             try
             {
                 var ammunition = await _ammunitionRepository.FindOneAsync(
@@ -62,23 +65,37 @@ namespace Ettad.Inventory.Service.Ammunitions
                     nameof(Ammunition.CaseType),
                     nameof(Ammunition.Propellant),
                     nameof(Ammunition.Compatibility),
-                    nameof(Ammunition.HazardDivision)
+                    nameof(Ammunition.HazardDivision),
+                    nameof(Ammunition.Classification),
+                    nameof(Ammunition.Type)
                 );
 
                 if (ammunition == null)
                     return APIOperationResponse<AmmunitionDto>.Fail(ResponseType.NotFound, "Ammunition not found");
 
                 var dto = _mapper.Map<AmmunitionDto>(ammunition);
+                
+                // Get images for this ammunition
+                var imagesResult = await _fileUploadService.GetByEntityAsync(FileEntityType.Ammunition, ammunition.Id);
+                dto.Images = imagesResult.Succeeded && imagesResult.Data != null ? imagesResult.Data : new List<FileUploadDto>();
+                
+                _logger.LogInformation("Ammunition retrieved successfully. AmmunitionId: {AmmunitionId}, Name: {Name}, User: {UserId}", 
+                    id, dto.Name, _currentUserService.UserId);
+                
                 return APIOperationResponse<AmmunitionDto>.Success(dto);
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Error retrieving ammunition by ID. AmmunitionId: {AmmunitionId}, User: {UserId}", 
+                    id, _currentUserService.UserId);
                 return APIOperationResponse<AmmunitionDto>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
             }
         }
 
         public async Task<APIOperationResponse<List<AmmunitionDto>>> GetAllAsync()
         {
+            _logger.LogInformation("Getting all ammunitions. User: {UserId}", _currentUserService.UserId);
+            
             try
             {
                 var ammunitions = await _ammunitionRepository.FindAsync(
@@ -92,14 +109,32 @@ namespace Ettad.Inventory.Service.Ammunitions
                     nameof(Ammunition.CaseType),
                     nameof(Ammunition.Propellant),
                     nameof(Ammunition.Compatibility),
-                    nameof(Ammunition.HazardDivision)
+                    nameof(Ammunition.HazardDivision),
+                    nameof(Ammunition.Classification),
+                    nameof(Ammunition.Type)
                 );
 
                 var dtos = _mapper.Map<List<AmmunitionDto>>(ammunitions);
+                
+                // Populate images for all ammunitions in a single database query
+                var entityIds = dtos.Select(d => d.Id).ToList();
+                var imagesResult = await _fileUploadService.GetByEntitiesAsync(FileEntityType.Ammunition, entityIds);
+                if (imagesResult.Succeeded && imagesResult.Data != null)
+                {
+                    foreach (var dto in dtos)
+                    {
+                        dto.Images = imagesResult.Data.ContainsKey(dto.Id) ? imagesResult.Data[dto.Id] : new List<FileUploadDto>();
+                    }
+                }
+                
+                _logger.LogInformation("All ammunitions retrieved successfully. Count: {Count}, User: {UserId}", 
+                    dtos.Count, _currentUserService.UserId);
+                
                 return APIOperationResponse<List<AmmunitionDto>>.Success(dtos);
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Error retrieving all ammunitions. User: {UserId}", _currentUserService.UserId);
                 return APIOperationResponse<List<AmmunitionDto>>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
             }
         }
@@ -121,10 +156,27 @@ namespace Ettad.Inventory.Service.Ammunitions
                     nameof(Ammunition.CaseType),
                     nameof(Ammunition.Propellant),
                     nameof(Ammunition.Compatibility),
-                    nameof(Ammunition.HazardDivision)
+                    nameof(Ammunition.HazardDivision),
+                    nameof(Ammunition.Classification),
+                    nameof(Ammunition.Type)
                 );
 
                 var dtos = _mapper.Map<List<AmmunitionDto>>(ammunitions);
+                
+                // Populate images for all ammunitions in a single database query
+                var entityIds = dtos.Select(d => d.Id).ToList();
+                var imagesResult = await _fileUploadService.GetByEntitiesAsync(FileEntityType.Ammunition, entityIds);
+                if (imagesResult.Succeeded && imagesResult.Data != null)
+                {
+                    foreach (var dto in dtos)
+                    {
+                        dto.Images = imagesResult.Data.ContainsKey(dto.Id) ? imagesResult.Data[dto.Id] : new List<FileUploadDto>();
+                    }
+                }
+                
+                _logger.LogInformation("Ammunitions retrieved by type successfully. AmmunitionType: {AmmunitionType}, Count: {Count}, User: {UserId}", 
+                    ammunitionType, dtos.Count, _currentUserService.UserId);
+                
                 return APIOperationResponse<List<AmmunitionDto>>.Success(dtos);
             }
             catch (Exception ex)
@@ -208,12 +260,15 @@ namespace Ettad.Inventory.Service.Ammunitions
                     }
                 }
 
+                _logger.LogInformation("Ammunition creation completed successfully. AmmunitionId: {AmmunitionId}, Name: {Name}, User: {UserId}", 
+                    createdAmmunition.Id, createdAmmunition.Name, _currentUserService.UserId);
+                
                 return APIOperationResponse<long>.Success(createdAmmunition.Id, "Ammunition created successfully");
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error creating ammunition. Name: {Name}, User: {UserId}", 
-                    inputDto?.Name, _currentUserService.UserId);
+                _logger.LogError(ex, "Error creating ammunition. Name: {Name}, ItemNo: {ItemNo}, User: {UserId}", 
+                    inputDto?.Name, inputDto?.ItemNo, _currentUserService.UserId);
              
                 return APIOperationResponse<long>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
             }
@@ -221,6 +276,9 @@ namespace Ettad.Inventory.Service.Ammunitions
 
         public async Task<APIOperationResponse<bool>> UpdateAsync(long id, CreateUpdateAmmunitionDto inputDto)
         {
+            _logger.LogInformation("Updating ammunition. AmmunitionId: {AmmunitionId}, Name: {Name}, User: {UserId}", 
+                id, inputDto?.Name, _currentUserService.UserId);
+            
             try
             {
                 // Validate input
@@ -254,10 +312,16 @@ namespace Ettad.Inventory.Service.Ammunitions
 
                 // Update in repository
                 await _ammunitionRepository.UpdateAsync(existingAmmunition);
+                
+                _logger.LogInformation("Ammunition updated successfully. AmmunitionId: {AmmunitionId}, Name: {Name}, User: {UserId}", 
+                    id, existingAmmunition.Name, _currentUserService.UserId);
+                
                 return APIOperationResponse<bool>.Success(true, "Ammunition updated successfully");
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Error updating ammunition. AmmunitionId: {AmmunitionId}, Name: {Name}, User: {UserId}", 
+                    id, inputDto?.Name, _currentUserService.UserId);
                 return APIOperationResponse<bool>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
             }
         }
@@ -295,6 +359,9 @@ namespace Ettad.Inventory.Service.Ammunitions
         }
         public async Task<APIOperationResponse<ImportResult<CreateUpdateAmmunitionDto>>> ImportAsync(IFormFile file)
         {
+            _logger.LogInformation("Importing ammunitions from file. FileName: {FileName}, User: {UserId}", 
+                file?.FileName, _currentUserService.UserId);
+            
             try
             {
                 var mappings = GetColumnMappings();
@@ -331,10 +398,15 @@ namespace Ettad.Inventory.Service.Ammunitions
                     }
                 }
 
+                _logger.LogInformation("Ammunition import completed. FileName: {FileName}, SuccessCount: {SuccessCount}, ErrorCount: {ErrorCount}, User: {UserId}", 
+                    file?.FileName, importResult.SuccessCount, importResult.Errors?.Count ?? 0, _currentUserService.UserId);
+                
                 return APIOperationResponse<ImportResult<CreateUpdateAmmunitionDto>>.Success(importResult, "Import processed");
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Error importing ammunitions from file. FileName: {FileName}, User: {UserId}", 
+                    file?.FileName, _currentUserService.UserId);
                 return APIOperationResponse<ImportResult<CreateUpdateAmmunitionDto>>.Fail(ResponseType.InternalServerError, ex.Message);
             }
         }

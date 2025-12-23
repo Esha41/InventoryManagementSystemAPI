@@ -1,6 +1,7 @@
-﻿using Ettad.CrossCutting.Comman.Base;
+﻿using Ettad.Comman.Idenitity;
+using Ettad.CrossCutting.Comman.Base;
+using Ettad.CrossCutting.Comman.FileUpload;
 using Ettad.Data.Enums;
-using Ettad.Comman.Idenitity;
 
 namespace Ettad.Data.Entities
 {

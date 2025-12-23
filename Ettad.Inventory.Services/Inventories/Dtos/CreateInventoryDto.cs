@@ -31,6 +31,8 @@ namespace Ettad.Inventory.Service.Inventories.Dtos
 
         public DateTime? ExpiryDate { get; set; }
 
+        public int? YearOfManufacture { get; set; }
+
         public bool ReadyForIssue { get; set; } = true;
 
         public long OriginalQuantity { get; set; }

@@ -14,6 +14,7 @@ namespace Ettad.EntityFramework.Configurations
             builder.Property(x => x.ItemNo)
                 .IsRequired()
                 .HasMaxLength(500);
+
             builder.HasIndex(x => x.ItemNo)
                 .IsUnique();
 
@@ -31,7 +32,39 @@ namespace Ettad.EntityFramework.Configurations
             builder.Property(x => x.MinimumQuantity)
                 .IsRequired(false);
 
-            // HCC relationship removed - no longer used
+            builder.Property(x => x.Distribution)
+                .IsRequired(false)
+                .HasMaxLength(1000);
+
+            builder.Property(x => x.ReferenceNo)
+                .IsRequired(false)
+                .HasMaxLength(500);
+
+            builder.Property(x => x.UNNumber)
+                .IsRequired(false)
+                .HasMaxLength(100);
+
+            builder.Property(x => x.Notes)
+                .IsRequired(false)
+                .HasMaxLength(5000);
+
+            builder.Property(x => x.ClassificationId)
+                .IsRequired(false);
+
+            builder.Property(x => x.TypeId)
+                .IsRequired(false);
+
+            builder.HasOne(x => x.Classification)
+                .WithMany()
+                .HasForeignKey(x => x.ClassificationId)
+                .IsRequired(false)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.HasOne(x => x.Type)
+                .WithMany()
+                .HasForeignKey(x => x.TypeId)
+                .IsRequired(false)
+                .OnDelete(DeleteBehavior.Restrict);
         }
     }
 }

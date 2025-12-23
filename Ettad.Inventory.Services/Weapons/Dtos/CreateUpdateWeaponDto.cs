@@ -16,6 +16,18 @@ namespace Ettad.Inventory.Service.Weapons.Dtos
         
         public string? Nsn { get; set; }
 
+        public string? Distribution { get; set; }
+
+        public string? ReferenceNo { get; set; }
+
+        public string? UNNumber { get; set; }
+
+        public string? Notes { get; set; }
+
+        public long? ClassificationId { get; set; }
+
+        public long? TypeId { get; set; }
+
         public WeaponType WeaponType { get; set; }
         
         public string? Caliber { get; set; }

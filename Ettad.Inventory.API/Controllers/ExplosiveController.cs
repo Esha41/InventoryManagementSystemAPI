@@ -39,15 +39,6 @@ namespace Ettad.Inventory.API.Controllers
             return ProcessResponse(result);
         }
 
-        [HttpGet("ByType/{type}")]
-        [ProducesResponseType((int)HttpStatusCode.OK)]
-        [CheckAuthorize("Permissions.Explosive.View")]
-        public async Task<IActionResult> GetByType(Ettad.Data.Enums.ExplosiveType type)
-        {
-            var result = await _explosiveService.GetByTypeAsync(type);
-            return ProcessResponse(result);
-        }
-
         [HttpPost]
         [ProducesResponseType((int)HttpStatusCode.Created)]
         [CheckAuthorize("Permissions.Explosive.Create")]

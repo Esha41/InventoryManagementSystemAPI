@@ -22,6 +22,8 @@ namespace Ettad.Data.Entities
 
         public bool ReadyForIssue { get; set; } = true;
 
+        public int? YearOfManufacture { get; set; }
+
         public DateTime? ExpiryDate { get; set; }
 
         public bool IsLotEmpty { get; set; } = false;

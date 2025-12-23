@@ -1,23 +1,13 @@
+using Ettad.CrossCutting.Comman.FileUpload;
 using Ettad.Data.Enums;
+using Ettad.Inventory.Service.Common.Dtos;
 using Ettad.Module.lookup.Dtos;
 
 namespace Ettad.Inventory.Service.Ammunitions.Dtos
 {
-    public class AmmunitionDto
+    public class AmmunitionDto : BaseItemDto
     {
-        public long Id { get; set; }
-
         public AmmunitionType AmmunitionType { get; set; }
-
-        public string Name { get; set; }
-
-        public string ItemNo { get; set; }
-
-        public string? PartNo { get; set; }
-
-        public decimal? Price { get; set; }
-
-        public long? MinimumQuantity { get; set; }
 
         public decimal? BulletDiameter { get; set; }
 
@@ -32,8 +22,6 @@ namespace Ettad.Inventory.Service.Ammunitions.Dtos
         public decimal? TotalWeight { get; set; }
 
         public long? NatureOptionId { get; set; }
-
-        public string? Nsn { get; set; }
 
         public long? PrimaryPurposId { get; set; }
 
@@ -60,6 +48,7 @@ namespace Ettad.Inventory.Service.Ammunitions.Dtos
         public PropellantDto Propellant { get; set; }
         public CompatibilityDto Compatibility { get; set; }
         public HazardDivisionDto HazardDivision { get; set; }
+        public List<FileUploadDto> Images { get; set; }
 
         #endregion
     }
