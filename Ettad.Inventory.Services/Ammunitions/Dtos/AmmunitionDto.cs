@@ -48,7 +48,6 @@ namespace Ettad.Inventory.Service.Ammunitions.Dtos
         public PropellantDto Propellant { get; set; }
         public CompatibilityDto Compatibility { get; set; }
         public HazardDivisionDto HazardDivision { get; set; }
-        public List<FileUploadDto> Images { get; set; }
 
         #endregion
     }
