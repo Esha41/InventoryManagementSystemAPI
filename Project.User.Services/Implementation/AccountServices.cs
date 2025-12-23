@@ -3,6 +3,7 @@ using Ettad.Comman.Idenitity;
 using Ettad.CrossCutting.Comman.Exception;
 using Ettad.CrossCutting.Comman.Idenitity;
 using Ettad.CrossCutting.Comman.Time;
+using Ettad.LdapSettings.Services.Interfaces;
 using Ettad.EntityFramework.DataBaseContext;
 using Ettad.ResponseHandler.Consts;
 using Ettad.ResponseHandler.Models;
@@ -19,7 +20,7 @@ namespace Ettad.User.Services.Implementation
     public class AccountServices : IAccountServices
     {
         private readonly IJwtServices _jwtServices;
-        private readonly ISettingsProvider _settingsProvider;
+        private readonly ILdapSettingsService _ldapSettingsService;
       //  private readonly IUnitOfWork _unitOfWork;
         private readonly ILdapAuthenticator _ldapAuthenticator;
         private readonly IDateTimeProvider _dateTimeProvider;
@@ -35,7 +36,7 @@ namespace Ettad.User.Services.Implementation
         private readonly ApplicationDbContext _context;
         public AccountServices(
             IJwtServices jwtServices,
-            ISettingsProvider settingsProvider,
+            ILdapSettingsService ldapSettingsService,
             //IUnitOfWork unitOfWork,
             ILdapAuthenticator ldapAuthenticator,
             IDateTimeProvider dateTimeProvider,
@@ -45,7 +46,7 @@ namespace Ettad.User.Services.Implementation
             ILogger<AccountServices> logger, ApplicationDbContext context)
         {
             _jwtServices = jwtServices ?? throw new ArgumentNullException(nameof(jwtServices));
-            _settingsProvider = settingsProvider ?? throw new ArgumentNullException(nameof(settingsProvider));
+            _ldapSettingsService = ldapSettingsService ?? throw new ArgumentNullException(nameof(ldapSettingsService));
             // _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
             _ldapAuthenticator = ldapAuthenticator ?? throw new ArgumentNullException(nameof(ldapAuthenticator));
             _dateTimeProvider = dateTimeProvider ?? throw new ArgumentNullException(nameof(dateTimeProvider));
@@ -157,7 +158,20 @@ namespace Ettad.User.Services.Implementation
         {
             try
             {
-                var ldapSettings = await _settingsProvider.GetLdapSettings(cancellationToken);
+                var ldapSettingsResponse = await _ldapSettingsService.GetLdapSettings(cancellationToken);
+
+                if (!ldapSettingsResponse.Succeeded || ldapSettingsResponse.Data == null)
+                {
+                    _logger.LogWarning("LDAP login attempt failed: Failed to retrieve LDAP settings. Username: {Username}",
+                        loginInformation?.Username);
+
+                    return APIOperationResponse<AuthenticatedResponse>.Fail(
+                        ResponseType.BadRequest,
+                        CommonErrorCodes.INVALID_LDAP_SETTINGS,
+                        "server.invalidLdapSettings");
+                }
+
+                var ldapSettings = ldapSettingsResponse.Data;
 
                 if (!ldapSettings.IsActive)
                 {

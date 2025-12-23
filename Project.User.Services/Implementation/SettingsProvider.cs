@@ -14,57 +14,20 @@ using Microsoft.Extensions.Options;
 using Ettad.Data.Enums;
 using SettingsEntity = Ettad.Data.Entities.Settings.Settings;
 using System.Text.RegularExpressions;
+using System.ComponentModel.DataAnnotations;
 
 namespace Ettad.User.Services.Implementation;
 
 public class SettingsProvider : ISettingsProvider
 {
     private readonly ApplicationDbContext _dbContext;
-    private readonly LdapOptions _fallbackLdapOptions;
     private readonly ICurrentUserService _currentUserService;
     private const string EmailGroup = "EMAIL";
 
-    public SettingsProvider(ApplicationDbContext dbContext, ICurrentUserService currentUserService, IOptions<LdapOptions>? fallbackOptions = null)
+    public SettingsProvider(ApplicationDbContext dbContext, ICurrentUserService currentUserService)
     {
         _dbContext = dbContext ?? throw new ArgumentNullException(nameof(dbContext));
         _currentUserService = currentUserService ?? throw new ArgumentNullException(nameof(currentUserService));
-        _fallbackLdapOptions = fallbackOptions?.Value ?? new LdapOptions();
-    }
-
-    public async Task<LdapOptions> GetLdapSettings(CancellationToken cancellationToken = default)
-    {
-        var settings = await _dbContext.Settings
-            .AsNoTracking()
-            .Where(s => s.Group != null && s.Group == General.Group)
-            .ToListAsync(cancellationToken);
-
-        if (settings.Count == 0)
-        {
-            return CloneLdapOptions(_fallbackLdapOptions);
-        }
-
-        var map = settings
-            .Where(s => !string.IsNullOrWhiteSpace(s.Key))
-            .GroupBy(s => s.Key!, StringComparer.OrdinalIgnoreCase)
-            .Select(g => g.First())
-            .ToDictionary(s => s.Key!, s => s.Value ?? string.Empty, StringComparer.OrdinalIgnoreCase);
-
-        var ldapOptions = new LdapOptions
-        {
-            IsActive = TryGetBool(map, "LdapIsActive", _fallbackLdapOptions.IsActive),
-            LdapServer = TryGetString(map, "LdapServer", _fallbackLdapOptions.LdapServer),
-            LdapDomain = TryGetString(map, "LdapDomain", _fallbackLdapOptions.LdapDomain),
-            LdapUsername = TryGetString(map, "LdapUsername", _fallbackLdapOptions.LdapUsername),
-            LdapPassword = TryGetString(map, "LdapPassword", _fallbackLdapOptions.LdapPassword),
-            LdapEmpAttr = TryGetString(map, "LdapEmpAttr", _fallbackLdapOptions.LdapEmpAttr ?? "sAMAccountName") ?? "sAMAccountName"
-        };
-
-        if (!map.ContainsKey("LdapIsActive") && !string.IsNullOrWhiteSpace(ldapOptions.LdapServer))
-        {
-            ldapOptions.IsActive = true;
-        }
-
-        return ldapOptions;
     }
 
     public async Task<EmailConfiguration> getEmailSettings(CancellationToken cancellationToken = default)
@@ -171,19 +134,6 @@ public class SettingsProvider : ISettingsProvider
         {
             return false;
         }
-    }
-
-    private static LdapOptions CloneLdapOptions(LdapOptions options)
-    {
-        return new LdapOptions
-        {
-            IsActive = options.IsActive,
-            LdapServer = options.LdapServer,
-            LdapDomain = options.LdapDomain,
-            LdapUsername = options.LdapUsername,
-            LdapPassword = options.LdapPassword,
-            LdapEmpAttr = options.LdapEmpAttr
-        };
     }
 
     private static string? TryGetString(IReadOnlyDictionary<string, string> map, string key, string? fallback)

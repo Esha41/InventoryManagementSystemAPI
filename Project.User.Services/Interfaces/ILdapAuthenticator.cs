@@ -1,4 +1,4 @@
-﻿using Ettad.User.Services.DTO;
+﻿using Ettad.LdapSettings.Services.DTO;
 using System;
 using System.Collections.Generic;
 using System.Linq;

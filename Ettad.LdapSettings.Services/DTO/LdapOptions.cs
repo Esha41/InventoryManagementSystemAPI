@@ -1,11 +1,8 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace Ettad.User.Services.DTO
+namespace Ettad.LdapSettings.Services.DTO
 {
+    /// <summary>
+    /// LDAP configuration options stored in settings and used for LDAP authentication.
+    /// </summary>
     public class LdapOptions
     {
         public bool IsActive { get; set; }
@@ -13,6 +10,8 @@ namespace Ettad.User.Services.DTO
         public string? LdapDomain { get; set; }
         public string? LdapUsername { get; set; }
         public string? LdapPassword { get; set; }
-        public string LdapEmpAttr { get; set; } = "sAMAccountName";
+        public string? LdapEmpAttr { get; set; }
     }
 }
+
+
