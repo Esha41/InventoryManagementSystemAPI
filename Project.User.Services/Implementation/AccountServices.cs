@@ -158,7 +158,20 @@ namespace Ettad.User.Services.Implementation
         {
             try
             {
-                var ldapSettings = await _ldapSettingsService.GetLdapSettings(cancellationToken);
+                var ldapSettingsResponse = await _ldapSettingsService.GetLdapSettings(cancellationToken);
+
+                if (!ldapSettingsResponse.Succeeded || ldapSettingsResponse.Data == null)
+                {
+                    _logger.LogWarning("LDAP login attempt failed: Failed to retrieve LDAP settings. Username: {Username}",
+                        loginInformation?.Username);
+
+                    return APIOperationResponse<AuthenticatedResponse>.Fail(
+                        ResponseType.BadRequest,
+                        CommonErrorCodes.INVALID_LDAP_SETTINGS,
+                        "server.invalidLdapSettings");
+                }
+
+                var ldapSettings = ldapSettingsResponse.Data;
 
                 if (!ldapSettings.IsActive)
                 {

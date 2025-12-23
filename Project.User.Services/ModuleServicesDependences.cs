@@ -6,8 +6,6 @@ using Ettad.Services.Interfaces;
 using Ettad.Services.Mapper;
 using Ettad.User.Services.Implementation;
 using Ettad.User.Services.Interfaces;
-using Ettad.LdapSettings.Services.Implementation;
-using Ettad.LdapSettings.Services.Interfaces;
 using  Ettad.CrossCutting.Comman.Time;
 using Ettad.User.Services.DTO;
 using Ettad.Application.Common.Interfaces;
@@ -25,7 +23,6 @@ namespace Ettad.User.Services
             service.AddScoped<IAccountServices, AccountServices>();
             service.AddScoped<ISettingsProvider, SettingsProvider>();
             service.AddScoped<ILdapAuthenticator, LdapAuthenticator>();
-            service.AddScoped<ILdapSettingsService, LdapSettingsService>();
             service.AddScoped<IDateTimeProvider, SystemDateTimeProvider>();
             service.AddScoped<IJwtServices, JwtServices>();
             service.AddScoped<IRoleService, RoleService>();

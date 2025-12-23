@@ -14,6 +14,7 @@ using Ettad.Lookups.Services.Implementation;
 using Ettad.Notification.Service;
 using Ettad.Repository;
 using Ettad.RequestManagement.Service;
+using Ettad.LdapSettings.Services;
 using Ettad.User.Services.DTO;
 using Ettad.User.Services.Helpers;
 using Ettad.User.Services.Interfaces;
@@ -87,6 +88,7 @@ try
         .AddApplicationPart(typeof(Ettad.Workflows.API.Controllers.WorkflowApprovalController).Assembly)
         .AddApplicationPart(typeof(Ettad.Modules.EmailSystem.API.Controllers.EmailSettingsController).Assembly)
         .AddApplicationPart(typeof(Ettad.Modules.FileUpload.API.Controllers.FileUploadController).Assembly)
+        .AddApplicationPart(typeof(Ettad.LdapSettings.APIs.Controllers.LdapSettingsController).Assembly)
         .AddJsonOptions(options =>
         {
             options.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
@@ -125,6 +127,7 @@ try
     builder.Services.AddInventoryServices();
     builder.Services.AddRequestServices();
     builder.Services.AddNotificationServices();
+    builder.Services.AddLdapSettingsServices();
     #endregion
 
     // Register soft delete interceptor (ICurrentUserService is already registered above)

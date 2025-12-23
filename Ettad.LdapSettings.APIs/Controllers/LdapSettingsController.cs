@@ -1,10 +1,8 @@
-using Ettad.Application.Common.Interfaces;
-using Ettad.Application.Common.Models;
 using Ettad.LdapSettings.Services.DTO;
 using Ettad.LdapSettings.Services.Interfaces;
 using Ettad.ResponseHandler.Models;
 using Ettad.CrossCutting.Common.Security;
-using Microsoft.AspNetCore.Authorization;
+using FluentValidation;
 using Microsoft.AspNetCore.Mvc;
 using System.Net;
 
@@ -16,14 +14,14 @@ namespace Ettad.LdapSettings.APIs.Controllers
     public class LdapSettingsController : ApiControllerBase
     {
         private readonly ILdapSettingsService _ldapSettingsService;
-        private readonly ICurrentUserService _currentUserService;
+        private readonly IValidator<LdapOptions> _validator;
 
         public LdapSettingsController(
             ILdapSettingsService ldapSettingsService,
-            ICurrentUserService currentUserService)
+            IValidator<LdapOptions> validator)
         {
             _ldapSettingsService = ldapSettingsService ?? throw new ArgumentNullException(nameof(ldapSettingsService));
-            _currentUserService = currentUserService ?? throw new ArgumentNullException(nameof(currentUserService));
+            _validator = validator ?? throw new ArgumentNullException(nameof(validator));
         }
 
         /// <summary>
@@ -37,23 +35,17 @@ namespace Ettad.LdapSettings.APIs.Controllers
         [ProducesResponseType((int)HttpStatusCode.BadRequest)]
         public async Task<IActionResult> CreateLdapSettings([FromBody] LdapOptions ldapSettings)
         {
-            if (!ModelState.IsValid)
+            var validationResult = await _validator.ValidateAsync(ldapSettings);
+            if (!validationResult.IsValid)
             {
-                return ProcessResponse(APIOperationResponse<bool>.Fail(
+                var errors = string.Join(", ", validationResult.Errors.Select(e => e.ErrorMessage));
+                return ProcessResponse<bool>(APIOperationResponse<bool>.Fail(
                     Ettad.ResponseHandler.Consts.ResponseType.BadRequest,
-                    "Invalid model state"));
+                    errors));
             }
 
             var result = await _ldapSettingsService.SaveLdapSettings(ldapSettings);
-
-            if (result)
-            {
-                return ProcessResponse(APIOperationResponse<bool>.Success(true, "LDAP settings saved successfully"));
-            }
-
-            return ProcessResponse(APIOperationResponse<bool>.Fail(
-                Ettad.ResponseHandler.Consts.ResponseType.InternalServerError,
-                "Failed to save LDAP settings"));
+            return ProcessResponse<bool>(result);
         }
 
         /// <summary>
@@ -67,23 +59,17 @@ namespace Ettad.LdapSettings.APIs.Controllers
         [ProducesResponseType((int)HttpStatusCode.BadRequest)]
         public async Task<IActionResult> UpdateLdapSettings([FromBody] LdapOptions ldapSettings)
         {
-            if (!ModelState.IsValid)
+            var validationResult = await _validator.ValidateAsync(ldapSettings);
+            if (!validationResult.IsValid)
             {
-                return ProcessResponse(APIOperationResponse<bool>.Fail(
+                var errors = string.Join(", ", validationResult.Errors.Select(e => e.ErrorMessage));
+                return ProcessResponse<bool>(APIOperationResponse<bool>.Fail(
                     Ettad.ResponseHandler.Consts.ResponseType.BadRequest,
-                    "Invalid model state"));
+                    errors));
             }
 
             var result = await _ldapSettingsService.SaveLdapSettings(ldapSettings);
-
-            if (result)
-            {
-                return ProcessResponse(APIOperationResponse<bool>.Success(true, "LDAP settings updated successfully"));
-            }
-
-            return ProcessResponse(APIOperationResponse<bool>.Fail(
-                Ettad.ResponseHandler.Consts.ResponseType.InternalServerError,
-                "Failed to update LDAP settings"));
+            return ProcessResponse<bool>(result);
         }
 
         /// <summary>
@@ -96,7 +82,7 @@ namespace Ettad.LdapSettings.APIs.Controllers
         public async Task<IActionResult> GetLdapSettings()
         {
             var result = await _ldapSettingsService.GetLdapSettings();
-            return ProcessResponse(APIOperationResponse<LdapOptions>.Success(result));
+            return ProcessResponse<LdapOptions>(result);
         }
 
         /// <summary>
@@ -109,15 +95,7 @@ namespace Ettad.LdapSettings.APIs.Controllers
         public async Task<IActionResult> DeleteLdapSettings()
         {
             var result = await _ldapSettingsService.DeleteLdapSettings();
-
-            if (result)
-            {
-                return ProcessResponse(APIOperationResponse<bool>.Success(true, "LDAP settings deleted successfully"));
-            }
-
-            return ProcessResponse(APIOperationResponse<bool>.Fail(
-                Ettad.ResponseHandler.Consts.ResponseType.InternalServerError,
-                "Failed to delete LDAP settings"));
+            return ProcessResponse<bool>(result);
         }
     }
 }

@@ -1,5 +1,5 @@
-using Ettad.Application.Common.Models;
 using Ettad.LdapSettings.Services.DTO;
+using Ettad.ResponseHandler.Models;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -10,10 +10,8 @@ namespace Ettad.LdapSettings.Services.Interfaces
     /// </summary>
     public interface ILdapSettingsService
     {
-        Task<LdapOptions> GetLdapSettings(CancellationToken cancellationToken = default);
-        Task<bool> SaveLdapSettings(LdapOptions ldapSettings, CancellationToken cancellationToken = default);
-        Task<bool> DeleteLdapSettings(CancellationToken cancellationToken = default);
+        Task<APIOperationResponse<LdapOptions>> GetLdapSettings(CancellationToken cancellationToken = default);
+        Task<APIOperationResponse<bool>> SaveLdapSettings(LdapOptions ldapSettings, CancellationToken cancellationToken = default);
+        Task<APIOperationResponse<bool>> DeleteLdapSettings(CancellationToken cancellationToken = default);
     }
 }
-
-

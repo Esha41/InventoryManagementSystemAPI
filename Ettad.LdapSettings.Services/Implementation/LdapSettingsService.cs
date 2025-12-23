@@ -9,6 +9,8 @@ using Ettad.EntityFramework.DataBaseContext;
 using Ettad.LdapSettings.Services.DTO;
 using Ettad.LdapSettings.Services.Interfaces;
 using Ettad.Data.Enums;
+using Ettad.ResponseHandler.Consts;
+using Ettad.ResponseHandler.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using SettingsEntity = Ettad.Data.Entities.Settings.Settings;
@@ -34,7 +36,7 @@ namespace Ettad.LdapSettings.Services.Implementation
             _fallbackLdapOptions = fallbackOptions?.Value ?? new LdapOptions();
         }
 
-        public async Task<bool> SaveLdapSettings(LdapOptions ldapSettings, CancellationToken cancellationToken = default)
+        public async Task<APIOperationResponse<bool>> SaveLdapSettings(LdapOptions ldapSettings, CancellationToken cancellationToken = default)
         {
             try
             {
@@ -90,15 +92,17 @@ namespace Ettad.LdapSettings.Services.Implementation
                 }
 
                 await _dbContext.SaveChangesAsync(cancellationToken);
-                return true;
+                return APIOperationResponse<bool>.Success(true);
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                return false;
+                return APIOperationResponse<bool>.Fail(
+                    ResponseType.InternalServerError,
+                    "Failed to save LDAP settings: " + ex.Message);
             }
         }
 
-        public async Task<bool> DeleteLdapSettings(CancellationToken cancellationToken = default)
+        public async Task<APIOperationResponse<bool>> DeleteLdapSettings(CancellationToken cancellationToken = default)
         {
             try
             {
@@ -108,53 +112,68 @@ namespace Ettad.LdapSettings.Services.Implementation
 
                 if (ldapSettings.Count == 0)
                 {
-                    return true;
+                    return APIOperationResponse<bool>.Success(true);
                 }
 
                 _dbContext.Settings.RemoveRange(ldapSettings);
                 await _dbContext.SaveChangesAsync(cancellationToken);
-                return true;
+                return APIOperationResponse<bool>.Success(true);
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                return false;
+                return APIOperationResponse<bool>.Fail(
+                    ResponseType.InternalServerError,
+                    "Failed to delete LDAP settings: " + ex.Message);
             }
         }
 
-        public async Task<LdapOptions> GetLdapSettings(CancellationToken cancellationToken = default)
+        public async Task<APIOperationResponse<LdapOptions>> GetLdapSettings(CancellationToken cancellationToken = default)
         {
-            var settings = await _dbContext.Settings
-                .AsNoTracking()
-                .Where(s => s.Group != null && s.Group == General.Group)
-                .ToListAsync(cancellationToken);
-
-            if (settings.Count == 0)
+            try
             {
-                return CloneLdapOptions(_fallbackLdapOptions);
+                var settings = await _dbContext.Settings
+                    .AsNoTracking()
+                    .Where(s => s.Group != null && s.Group == General.Group)
+                    .ToListAsync(cancellationToken);
+
+                LdapOptions ldapOptions;
+
+                if (settings.Count == 0)
+                {
+                    ldapOptions = CloneLdapOptions(_fallbackLdapOptions);
+                }
+                else
+                {
+                    var map = settings
+                        .Where(s => !string.IsNullOrWhiteSpace(s.Key))
+                        .GroupBy(s => s.Key!, StringComparer.OrdinalIgnoreCase)
+                        .Select(g => g.First())
+                        .ToDictionary(s => s.Key!, s => s.Value ?? string.Empty, StringComparer.OrdinalIgnoreCase);
+
+                    ldapOptions = new LdapOptions
+                    {
+                        IsActive = TryGetBool(map, "LdapIsActive", _fallbackLdapOptions.IsActive),
+                        LdapServer = TryGetString(map, "LdapServer", _fallbackLdapOptions.LdapServer),
+                        LdapDomain = TryGetString(map, "LdapDomain", _fallbackLdapOptions.LdapDomain),
+                        LdapUsername = TryGetString(map, "LdapUsername", _fallbackLdapOptions.LdapUsername),
+                        LdapPassword = TryGetString(map, "LdapPassword", _fallbackLdapOptions.LdapPassword),
+                        LdapEmpAttr = TryGetString(map, "LdapEmpAttr", _fallbackLdapOptions.LdapEmpAttr ?? "sAMAccountName") ?? "sAMAccountName"
+                    };
+
+                    if (!map.ContainsKey("LdapIsActive") && !string.IsNullOrWhiteSpace(ldapOptions.LdapServer))
+                    {
+                        ldapOptions.IsActive = true;
+                    }
+                }
+
+                return APIOperationResponse<LdapOptions>.Success(ldapOptions);
             }
-
-            var map = settings
-                .Where(s => !string.IsNullOrWhiteSpace(s.Key))
-                .GroupBy(s => s.Key!, StringComparer.OrdinalIgnoreCase)
-                .Select(g => g.First())
-                .ToDictionary(s => s.Key!, s => s.Value ?? string.Empty, StringComparer.OrdinalIgnoreCase);
-
-            var ldapOptions = new LdapOptions
+            catch (Exception ex)
             {
-                IsActive = TryGetBool(map, "LdapIsActive", _fallbackLdapOptions.IsActive),
-                LdapServer = TryGetString(map, "LdapServer", _fallbackLdapOptions.LdapServer),
-                LdapDomain = TryGetString(map, "LdapDomain", _fallbackLdapOptions.LdapDomain),
-                LdapUsername = TryGetString(map, "LdapUsername", _fallbackLdapOptions.LdapUsername),
-                LdapPassword = TryGetString(map, "LdapPassword", _fallbackLdapOptions.LdapPassword),
-                LdapEmpAttr = TryGetString(map, "LdapEmpAttr", _fallbackLdapOptions.LdapEmpAttr ?? "sAMAccountName") ?? "sAMAccountName"
-            };
-
-            if (!map.ContainsKey("LdapIsActive") && !string.IsNullOrWhiteSpace(ldapOptions.LdapServer))
-            {
-                ldapOptions.IsActive = true;
+                return APIOperationResponse<LdapOptions>.Fail(
+                    ResponseType.InternalServerError,
+                    "Failed to retrieve LDAP settings: " + ex.Message);
             }
-
-            return ldapOptions;
         }
 
         private static LdapOptions CloneLdapOptions(LdapOptions options)
