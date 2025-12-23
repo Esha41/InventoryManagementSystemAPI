@@ -14,7 +14,6 @@ namespace Ettad.Inventory.Service.Explosives.Dtos
 
         #region Navigation Properties
         public HazardDivisionDto HazardDivision { get; set; }
-        public List<FileUploadDto> Images { get; set; }
         #endregion
     }
 }

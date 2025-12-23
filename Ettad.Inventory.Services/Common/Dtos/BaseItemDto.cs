@@ -27,7 +27,7 @@ namespace Ettad.Inventory.Service.Common.Dtos
 
         public ClassificationDto Classification { get; set; }
         public ItemTypeLookupDto Type { get; set; }
-        public List<FileUploadDto> Attachments { get; set; }
+        public List<FileUploadDto> Images { get; set; }
 
         #endregion
     }
