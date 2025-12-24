@@ -18,9 +18,8 @@ namespace Ettad.Inventory.Service.Weapons.Profiles
                 .ForMember(dest => dest.ModifiedBy, opt => opt.Ignore())
                 .ForMember(dest => dest.IsDeleted, opt => opt.Ignore())
                 .ForMember(dest => dest.ItemType, opt => opt.Ignore())
-                .ForMember(dest => dest.BarrelLengthUnit, opt => opt.Ignore())
-                .ForMember(dest => dest.OverallLengthUnit, opt => opt.Ignore())
-                .ForMember(dest => dest.WeightUnit, opt => opt.Ignore());
+                .ForMember(dest => dest.CaliberUnit, opt => opt.Ignore())
+                .ForMember(dest => dest.CountryOfManufacture, opt => opt.Ignore());
         }
     }
 }

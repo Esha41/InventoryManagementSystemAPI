@@ -32,6 +32,10 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 await SeedManufacturersDataAsync(context);
                 Console.WriteLine("✓ Manufacturers seeded");
                 
+                // Seed item type lookup data
+                await SeedItemTypeLookupDataAsync(context);
+                Console.WriteLine("✓ Item Types seeded");
+                
                 // Seed ammunition data
                 await SeedAmmunitionDataAsync(context);
                 Console.WriteLine("✓ Ammunition seeded");
@@ -197,6 +201,42 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
             };
 
             await context.Manufacturers.AddRangeAsync(manufacturers);
+            await context.SaveChangesAsync();
+        }
+
+        private static async Task SeedItemTypeLookupDataAsync(ApplicationDbContext context)
+        {
+            // Check if item types already exist
+            if (await context.ItemTypes.AnyAsync())
+            {
+                return; // Already seeded
+            }
+
+            var itemTypes = new[]
+            {
+                // Ammunition Types
+                new ItemTypeLookup { NameEn = "Ball", NameAr = "كروي", ItemType = ItemType.Ammunition, IsDeleted = false },
+                new ItemTypeLookup { NameEn = "Tracer", NameAr = "تتبع", ItemType = ItemType.Ammunition, IsDeleted = false },
+                new ItemTypeLookup { NameEn = "Armor Piercing", NameAr = "خارق للدروع", ItemType = ItemType.Ammunition, IsDeleted = false },
+                new ItemTypeLookup { NameEn = "Incendiary", NameAr = "حارق", ItemType = ItemType.Ammunition, IsDeleted = false },
+                new ItemTypeLookup { NameEn = "Blank", NameAr = "فارغ", ItemType = ItemType.Ammunition, IsDeleted = false },
+                
+                // Weapon Types
+                new ItemTypeLookup { NameEn = "Rifle", NameAr = "بندقية", ItemType = ItemType.Weapon, IsDeleted = false },
+                new ItemTypeLookup { NameEn = "Pistol", NameAr = "مسدس", ItemType = ItemType.Weapon, IsDeleted = false },
+                new ItemTypeLookup { NameEn = "Machine Gun", NameAr = "رشاش", ItemType = ItemType.Weapon, IsDeleted = false },
+                new ItemTypeLookup { NameEn = "Sniper Rifle", NameAr = "بندقية قنص", ItemType = ItemType.Weapon, IsDeleted = false },
+                new ItemTypeLookup { NameEn = "Shotgun", NameAr = "بندقية صيد", ItemType = ItemType.Weapon, IsDeleted = false },
+                
+                // Explosive Types
+                new ItemTypeLookup { NameEn = "Grenade", NameAr = "قنبلة يدوية", ItemType = ItemType.Explosive, IsDeleted = false },
+                new ItemTypeLookup { NameEn = "Mine", NameAr = "لغم", ItemType = ItemType.Explosive, IsDeleted = false },
+                new ItemTypeLookup { NameEn = "C4", NameAr = "سي 4", ItemType = ItemType.Explosive, IsDeleted = false },
+                new ItemTypeLookup { NameEn = "TNT", NameAr = "تي إن تي", ItemType = ItemType.Explosive, IsDeleted = false },
+                new ItemTypeLookup { NameEn = "Rocket", NameAr = "صاروخ", ItemType = ItemType.Explosive, IsDeleted = false }
+            };
+
+            await context.ItemTypes.AddRangeAsync(itemTypes);
             await context.SaveChangesAsync();
         }
 
@@ -624,16 +664,10 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 {
                     Name = "M16A4 Assault Rifle",
                     ItemNo = "WPN-001",
-                    WeaponType = WeaponType.Rifle,
-                    ActionType = ActionType.Automatic,
                     Caliber = "5.56x45mm NATO",
-                    BarrelLength = 508m,
-                    BarrelLengthUnitId = 1,
-                    OverallLength = 1003m,
-                    OverallLengthUnitId = 1,
-                    Weight = 3.4m,
-                    WeightUnitId = 1,
-                    Capacity = 30,
+                    CaliberUnitId = 1,
+                    YearOfManufacture = 1997,
+                    Model = "M16A4",
                     PartNo = "PN-WPN-001",
                     Nsn = "1005-01-000-0001",
                     Price = 1000.00m,
@@ -646,16 +680,10 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 {
                     Name = "M4 Carbine",
                     ItemNo = "WPN-002",
-                    WeaponType = WeaponType.Rifle,
-                    ActionType = ActionType.Automatic,
                     Caliber = "5.56x45mm NATO",
-                    BarrelLength = 368m,
-                    BarrelLengthUnitId = 1,
-                    OverallLength = 838m,
-                    OverallLengthUnitId = 1,
-                    Weight = 2.88m,
-                    WeightUnitId = 1,
-                    Capacity = 30,
+                    CaliberUnitId = 1,
+                    YearOfManufacture = 1994,
+                    Model = "M4",
                     PartNo = "PN-WPN-002",
                     Nsn = "1005-01-000-0002",
                     Price = 850.00m,
@@ -668,16 +696,10 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 {
                     Name = "M249 Squad Automatic Weapon",
                     ItemNo = "WPN-003",
-                    WeaponType = WeaponType.MachineGun,
-                    ActionType = ActionType.Automatic,
                     Caliber = "5.56x45mm NATO",
-                    BarrelLength = 465m,
-                    BarrelLengthUnitId = 1,
-                    OverallLength = 1041m,
-                    OverallLengthUnitId = 1,
-                    Weight = 7.5m,
-                    WeightUnitId = 1,
-                    Capacity = 200,
+                    CaliberUnitId = 1,
+                    YearOfManufacture = 1984,
+                    Model = "M249 SAW",
                     PartNo = "PN-WPN-003",
                     Nsn = "1005-01-000-0003",
                     Price = 5000.00m,
@@ -690,16 +712,10 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 {
                     Name = "M240B Machine Gun",
                     ItemNo = "WPN-004",
-                    WeaponType = WeaponType.MachineGun,
-                    ActionType = ActionType.Automatic,
                     Caliber = "7.62x51mm NATO",
-                    BarrelLength = 630m,
-                    BarrelLengthUnitId = 1,
-                    OverallLength = 1263m,
-                    OverallLengthUnitId = 1,
-                    Weight = 12.5m,
-                    WeightUnitId = 1,
-                    Capacity = 100,
+                    CaliberUnitId = 1,
+                    YearOfManufacture = 1977,
+                    Model = "M240B",
                     PartNo = "PN-WPN-004",
                     Nsn = "1005-01-000-0004",
                     Price = 6000.00m,
@@ -712,16 +728,10 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 {
                     Name = "M9 Pistol",
                     ItemNo = "WPN-005",
-                    WeaponType = WeaponType.Pistol,
-                    ActionType = ActionType.SemiAutomatic,
                     Caliber = "9x19mm Parabellum",
-                    BarrelLength = 125m,
-                    BarrelLengthUnitId = 1,
-                    OverallLength = 217m,
-                    OverallLengthUnitId = 1,
-                    Weight = 0.96m,
-                    WeightUnitId = 1,
-                    Capacity = 15,
+                    CaliberUnitId = 1,
+                    YearOfManufacture = 1985,
+                    Model = "M9",
                     PartNo = "PN-WPN-005",
                     Nsn = "1005-01-000-0005",
                     Price = 650.00m,
@@ -734,16 +744,10 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 {
                     Name = "M24 Sniper Weapon System",
                     ItemNo = "WPN-006",
-                    WeaponType = WeaponType.SniperRifle,
-                    ActionType = ActionType.BoltAction,
                     Caliber = "7.62x51mm NATO",
-                    BarrelLength = 610m,
-                    BarrelLengthUnitId = 1,
-                    OverallLength = 1092m,
-                    OverallLengthUnitId = 1,
-                    Weight = 5.49m,
-                    WeightUnitId = 1,
-                    Capacity = 5,
+                    CaliberUnitId = 1,
+                    YearOfManufacture = 1988,
+                    Model = "M24 SWS",
                     PartNo = "PN-WPN-006",
                     Nsn = "1005-01-000-0006",
                     Price = 4000.00m,
@@ -756,16 +760,10 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 {
                     Name = "M2 Browning Machine Gun",
                     ItemNo = "WPN-007",
-                    WeaponType = WeaponType.MachineGun,
-                    ActionType = ActionType.Automatic,
                     Caliber = ".50 BMG (12.7x99mm)",
-                    BarrelLength = 1143m,
-                    BarrelLengthUnitId = 1,
-                    OverallLength = 1654m,
-                    OverallLengthUnitId = 1,
-                    Weight = 38.1m,
-                    WeightUnitId = 1,
-                    Capacity = 100,
+                    CaliberUnitId = 1,
+                    YearOfManufacture = 1933,
+                    Model = "M2HB",
                     PartNo = "PN-WPN-007",
                     Nsn = "1005-01-000-0007",
                     Price = 10000.00m,
@@ -778,16 +776,10 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 {
                     Name = "M203 Grenade Launcher",
                     ItemNo = "WPN-008",
-                    WeaponType = WeaponType.GrenadeLauncher,
-                    ActionType = ActionType.BreakAction,
                     Caliber = "40x46mm",
-                    BarrelLength = 305m,
-                    BarrelLengthUnitId = 1,
-                    OverallLength = 380m,
-                    OverallLengthUnitId = 1,
-                    Weight = 1.36m,
-                    WeightUnitId = 1,
-                    Capacity = 1,
+                    CaliberUnitId = 1,
+                    YearOfManufacture = 1969,
+                    Model = "M203",
                     PartNo = "PN-WPN-008",
                     Nsn = "1005-01-000-0008",
                     Price = 2000.00m,
@@ -800,16 +792,10 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 {
                     Name = "M110 Semi-Automatic Sniper System",
                     ItemNo = "WPN-009",
-                    WeaponType = WeaponType.SniperRifle,
-                    ActionType = ActionType.SemiAutomatic,
                     Caliber = "7.62x51mm NATO",
-                    BarrelLength = 508m,
-                    BarrelLengthUnitId = 1,
-                    OverallLength = 1181m,
-                    OverallLengthUnitId = 1,
-                    Weight = 6.94m,
-                    WeightUnitId = 1,
-                    Capacity = 20,
+                    CaliberUnitId = 1,
+                    YearOfManufacture = 2007,
+                    Model = "M110 SASS",
                     PartNo = "PN-WPN-009",
                     Nsn = "1005-01-000-0009",
                     Price = 5000.00m,
@@ -822,16 +808,10 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 {
                     Name = "Remington 870 Shotgun",
                     ItemNo = "WPN-010",
-                    WeaponType = WeaponType.Shotgun,
-                    ActionType = ActionType.PumpAction,
                     Caliber = "12 Gauge",
-                    BarrelLength = 470m,
-                    BarrelLengthUnitId = 1,
-                    OverallLength = 1067m,
-                    OverallLengthUnitId = 1,
-                    Weight = 3.6m,
-                    WeightUnitId = 1,
-                    Capacity = 7,
+                    CaliberUnitId = 1,
+                    YearOfManufacture = 1951,
+                    Model = "870",
                     PartNo = "PN-WPN-010",
                     Nsn = "1005-01-000-0010",
                     Price = 450.00m,
@@ -844,16 +824,10 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 {
                     Name = "MP5 Submachine Gun",
                     ItemNo = "WPN-011",
-                    WeaponType = WeaponType.SubmachineGun,
-                    ActionType = ActionType.Automatic,
                     Caliber = "9x19mm Parabellum",
-                    BarrelLength = 225m,
-                    BarrelLengthUnitId = 1,
-                    OverallLength = 680m,
-                    OverallLengthUnitId = 1,
-                    Weight = 2.54m,
-                    WeightUnitId = 1,
-                    Capacity = 30,
+                    CaliberUnitId = 1,
+                    YearOfManufacture = 1966,
+                    Model = "MP5A3",
                     PartNo = "PN-WPN-011",
                     Nsn = "1005-01-000-0011",
                     Price = 1200.00m,

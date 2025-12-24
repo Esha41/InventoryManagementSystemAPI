@@ -45,72 +45,87 @@ namespace Ettad.Inventory.Service.Weapons
 
         public async Task<APIOperationResponse<WeaponDto>> GetByIdAsync(long id)
         {
+            _logger.LogInformation("Getting weapon by ID. WeaponId: {WeaponId}, User: {UserId}", 
+                id, _currentUserService.UserId);
+            
             try
             {
                 var weapon = await _weaponRepository.FindOneAsync(
                     w => w.Id == id && !w.IsDeleted,
                     false,
-                    nameof(Weapon.BarrelLengthUnit),
-                    nameof(Weapon.OverallLengthUnit),
-                    nameof(Weapon.WeightUnit)
+                    nameof(Weapon.CaliberUnit),
+                    nameof(Weapon.CountryOfManufacture),
+                    nameof(Weapon.Classification),
+                    nameof(Weapon.Type)
                 );
 
                 if (weapon == null)
+                {
+                    _logger.LogWarning("Weapon not found. WeaponId: {WeaponId}, User: {UserId}", 
+                        id, _currentUserService.UserId);
                     return APIOperationResponse<WeaponDto>.Fail(ResponseType.NotFound, "Weapon not found");
+                }
 
                 var dto = _mapper.Map<WeaponDto>(weapon);
+                
+                // Get images for this weapon
+                var imagesResult = await _fileUploadService.GetByEntityAsync(FileEntityType.Weapon, weapon.Id);
+                dto.Images = imagesResult.Succeeded && imagesResult.Data != null ? imagesResult.Data : new List<FileUploadDto>();
+                
+                _logger.LogInformation("Weapon retrieved successfully. WeaponId: {WeaponId}, Name: {Name}, User: {UserId}", 
+                    id, dto.Name, _currentUserService.UserId);
+                
                 return APIOperationResponse<WeaponDto>.Success(dto);
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Error retrieving weapon by ID. WeaponId: {WeaponId}, User: {UserId}", 
+                    id, _currentUserService.UserId);
                 return APIOperationResponse<WeaponDto>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
             }
         }
 
         public async Task<APIOperationResponse<List<WeaponDto>>> GetAllAsync()
         {
+            _logger.LogInformation("Getting all weapons. User: {UserId}", _currentUserService.UserId);
+            
             try
             {
                 var weapons = await _weaponRepository.FindAsync(
                     w => !w.IsDeleted,
                     false,
-                    nameof(Weapon.BarrelLengthUnit),
-                    nameof(Weapon.OverallLengthUnit),
-                    nameof(Weapon.WeightUnit)
+                    nameof(Weapon.CaliberUnit),
+                    nameof(Weapon.CountryOfManufacture),
+                    nameof(Weapon.Classification),
+                    nameof(Weapon.Type)
                 );
 
                 var dtos = _mapper.Map<List<WeaponDto>>(weapons);
+                
+                // Populate images for all weapons in a single database query
+                var entityIds = dtos.Select(d => d.Id).ToList();
+                var imagesResult = await _fileUploadService.GetByEntitiesAsync(FileEntityType.Weapon, entityIds);
+                if (imagesResult.Succeeded && imagesResult.Data != null)
+                {
+                    foreach (var dto in dtos)
+                    {
+                        dto.Images = imagesResult.Data.ContainsKey(dto.Id) ? imagesResult.Data[dto.Id] : new List<FileUploadDto>();
+                    }
+                }
+                
+                _logger.LogInformation("All weapons retrieved successfully. Count: {Count}, User: {UserId}", 
+                    dtos.Count, _currentUserService.UserId);
+                
                 return APIOperationResponse<List<WeaponDto>>.Success(dtos);
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Error retrieving all weapons. User: {UserId}", _currentUserService.UserId);
                 return APIOperationResponse<List<WeaponDto>>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
             }
         }
 
-        public async Task<APIOperationResponse<List<WeaponDto>>> GetByTypeAsync(WeaponType weaponType)
-        {
-            _logger.LogInformation("Getting weapons by type. WeaponType: {WeaponType}, User: {UserId}", weaponType, _currentUserService.UserId);
 
-            try
-            {
-                var weapons = await _weaponRepository.FindAsync(
-                    w => !w.IsDeleted && w.WeaponType == weaponType,
-                    false,
-                    nameof(Weapon.BarrelLengthUnit),
-                    nameof(Weapon.OverallLengthUnit),
-                    nameof(Weapon.WeightUnit)
-                );
-
-                var dtos = _mapper.Map<List<WeaponDto>>(weapons);
-                return APIOperationResponse<List<WeaponDto>>.Success(dtos);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error retrieving weapons by type. WeaponType: {WeaponType}, User: {UserId}", weaponType, _currentUserService.UserId);
-                return APIOperationResponse<List<WeaponDto>>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
-            }
-        }
 
         public async Task<APIOperationResponse<long>> CreateAsync(CreateUpdateWeaponDto inputDto, List<IFormFile>? files = null)
         {
@@ -203,6 +218,9 @@ namespace Ettad.Inventory.Service.Weapons
 
         public async Task<APIOperationResponse<bool>> UpdateAsync(long id, CreateUpdateWeaponDto inputDto)
         {
+            _logger.LogInformation("Updating weapon. WeaponId: {WeaponId}, Name: {Name}, User: {UserId}", 
+                id, inputDto?.Name, _currentUserService.UserId);
+            
             try
             {
                 // Validate input
@@ -210,13 +228,19 @@ namespace Ettad.Inventory.Service.Weapons
                 if (!validationResult.IsValid)
                 {
                     var errors = string.Join(", ", validationResult.Errors.Select(e => e.ErrorMessage));
+                    _logger.LogWarning("Weapon validation failed. Errors: {ValidationErrors}, WeaponId: {WeaponId}, User: {UserId}", 
+                        errors, id, _currentUserService.UserId);
                     return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, errors);
                 }
 
                 // Check if weapon exists
                 var existingWeapon = await _weaponRepository.FindOneAsync(w => w.Id == id && !w.IsDeleted);
                 if (existingWeapon == null)
+                {
+                    _logger.LogWarning("Weapon not found for update. WeaponId: {WeaponId}, User: {UserId}", 
+                        id, _currentUserService.UserId);
                     return APIOperationResponse<bool>.Fail(ResponseType.NotFound, "Weapon not found");
+                }
 
                 if (!string.IsNullOrWhiteSpace(inputDto.Nsn))
                 {
@@ -235,10 +259,16 @@ namespace Ettad.Inventory.Service.Weapons
 
                 // Update in repository
                 await _weaponRepository.UpdateAsync(existingWeapon);
+                
+                _logger.LogInformation("Weapon updated successfully. WeaponId: {WeaponId}, Name: {Name}, User: {UserId}", 
+                    id, existingWeapon.Name, _currentUserService.UserId);
+                
                 return APIOperationResponse<bool>.Success(true, "Weapon updated successfully");
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Error updating weapon. WeaponId: {WeaponId}, Name: {Name}, User: {UserId}", 
+                    id, inputDto?.Name, _currentUserService.UserId);
                 return APIOperationResponse<bool>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
             }
         }
@@ -276,6 +306,9 @@ namespace Ettad.Inventory.Service.Weapons
 
         public async Task<APIOperationResponse<ImportResult<CreateUpdateWeaponDto>>> ImportAsync(IFormFile file)
         {
+            _logger.LogInformation("Importing weapons from file. FileName: {FileName}, User: {UserId}", 
+                file?.FileName, _currentUserService.UserId);
+            
             try
             {
                 var mappings = GetColumnMappings();
@@ -308,10 +341,15 @@ namespace Ettad.Inventory.Service.Weapons
                     }
                 }
 
+                _logger.LogInformation("Weapon import completed. FileName: {FileName}, SuccessCount: {SuccessCount}, ErrorCount: {ErrorCount}, User: {UserId}", 
+                    file?.FileName, importResult.SuccessCount, importResult.Errors?.Count ?? 0, _currentUserService.UserId);
+                
                 return APIOperationResponse<ImportResult<CreateUpdateWeaponDto>>.Success(importResult, "Import processed");
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Error importing weapons from file. FileName: {FileName}, User: {UserId}", 
+                    file?.FileName, _currentUserService.UserId);
                 return APIOperationResponse<ImportResult<CreateUpdateWeaponDto>>.Fail(ResponseType.InternalServerError, ex.Message);
             }
         }
@@ -379,13 +417,9 @@ namespace Ettad.Inventory.Service.Weapons
                 { "Price", nameof(CreateUpdateWeaponDto.Price) },
                 { "Minimum Quantity", nameof(CreateUpdateWeaponDto.MinimumQuantity) },
                 { "NSN", nameof(CreateUpdateWeaponDto.Nsn) },
-                { "Weapon Type", nameof(CreateUpdateWeaponDto.WeaponType) },
                 { "Caliber", nameof(CreateUpdateWeaponDto.Caliber) },
-                { "Action Type", nameof(CreateUpdateWeaponDto.ActionType) },
-                { "Barrel Length", nameof(CreateUpdateWeaponDto.BarrelLength) },
-                { "Overall Length", nameof(CreateUpdateWeaponDto.OverallLength) },
-                { "Weight", nameof(CreateUpdateWeaponDto.Weight) },
-                { "Capacity", nameof(CreateUpdateWeaponDto.Capacity) }
+                { "Year Of Manufacture", nameof(CreateUpdateWeaponDto.YearOfManufacture) },
+                { "Model", nameof(CreateUpdateWeaponDto.Model) }
             };
         }
     }
