@@ -6,6 +6,8 @@ using Ettad.ResponseHandler.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
+using OfficeOpenXml;
 using System.Net;
 
 namespace Ettad.Inventory.API.Controllers
@@ -16,10 +18,17 @@ namespace Ettad.Inventory.API.Controllers
     public class AmmunitionController : ApiControllerBase
     {
         private readonly IAmmunitionService _ammunitionService;
+        private readonly ILogger<AmmunitionController> _logger;
 
-        public AmmunitionController(IAmmunitionService ammunitionService)
+        public AmmunitionController(
+            IAmmunitionService ammunitionService,
+            ILogger<AmmunitionController> logger)
         {
             _ammunitionService = ammunitionService;
+            _logger = logger;
+            
+            // Set EPPlus license context
+            ExcelPackage.License.SetNonCommercialPersonal("Ettad");
         }
 
 
@@ -75,6 +84,46 @@ namespace Ettad.Inventory.API.Controllers
         {
             var result = await _ammunitionService.ImportPreviewAsync(file);
             return ProcessResponse(result);
+        }
+
+        /// <summary>
+        /// Generate ammunition import template with Excel data validation (dropdowns for lookups)
+        /// </summary>
+        /// <returns>Excel file with data validation dropdowns and all fields from web form</returns>
+        [HttpGet("template")]
+        [ProducesResponseType(typeof(FileContentResult), (int)HttpStatusCode.OK)]
+        [ProducesResponseType((int)HttpStatusCode.InternalServerError)]
+        [CheckAuthorize("Permissions.Ammunition.Create")]
+        public async Task<IActionResult> GenerateImportTemplate()
+        {
+            try
+            {
+                _logger.LogInformation("Generating ammunition import template");
+
+                var templateResult = await _ammunitionService.GenerateImportTemplateAsync();
+                
+                if (!templateResult.Succeeded || templateResult.Data == null)
+                {
+                    _logger.LogWarning("Failed to generate ammunition import template");
+                    return StatusCode(500, new { message = "Failed to generate template", errors = templateResult.Errors });
+                }
+
+                var fileName = $"Ammunition_Import_Template_{DateTime.UtcNow:yyyyMMdd}.xlsx";
+                
+                _logger.LogInformation("Ammunition import template generated successfully. FileSize: {FileSize} bytes", 
+                    templateResult.Data.Length);
+
+                return File(
+                    templateResult.Data,
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    fileName
+                );
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error generating ammunition import template");
+                return StatusCode(500, new { message = "An error occurred while generating the template", error = ex.Message });
+            }
         }
 
         [HttpPut("{id}")]

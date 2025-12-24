@@ -19,6 +19,7 @@ namespace Ettad.Inventory.Services.Common
         public int RowNumber { get; set; }
         public string ErrorMessage { get; set; }
         public string ColumnName { get; set; }
+        public object RowData { get; set; } // Store the actual row data for preview
     }
 
     public interface IExcelImportService

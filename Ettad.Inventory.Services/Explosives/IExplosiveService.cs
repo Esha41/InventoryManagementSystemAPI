@@ -15,5 +15,6 @@ namespace Ettad.Inventory.Service.Explosives
         Task<APIOperationResponse<bool>> DeleteAsync(long id);
         Task<APIOperationResponse<ImportResult<CreateUpdateExplosiveDto>>> ImportAsync(IFormFile file);
         Task<APIOperationResponse<ImportResult<CreateUpdateExplosiveDto>>> ImportPreviewAsync(IFormFile file);
+        Task<APIOperationResponse<byte[]>> GenerateImportTemplateAsync();
     }
 }
