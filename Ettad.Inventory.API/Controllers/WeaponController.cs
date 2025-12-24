@@ -39,14 +39,6 @@ namespace Ettad.Inventory.API.Controllers
             return ProcessResponse(result);
         }
 
-        [HttpGet("ByType/{type}")]
-        [ProducesResponseType((int)HttpStatusCode.OK)]
-        [CheckAuthorize("Permissions.Weapon.View")]
-        public async Task<IActionResult> GetByType(Ettad.Data.Enums.WeaponType type)
-        {
-            var result = await _weaponService.GetByTypeAsync(type);
-            return ProcessResponse(result);
-        }
 
         [HttpPost]
         [ProducesResponseType((int)HttpStatusCode.Created)]
