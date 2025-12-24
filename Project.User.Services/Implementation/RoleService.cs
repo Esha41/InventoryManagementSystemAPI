@@ -52,6 +52,11 @@ namespace Ettad.User.Services.Implementation
             return ProtectedRoleNames.Contains(roleName);
         }
 
+        /// <summary>
+        /// Checks if the current user is a SuperAdmin using the cached value from ICurrentUserService
+        /// </summary>
+        private bool IsCurrentUserSuperAdmin => _currentUserService.IsSuperAdmin;
+
         public async Task<APIOperationResponse<RoleDto>> GetRoleByIdAsync(string id)
         {
             // 1️⃣ Find the role by ID
@@ -78,12 +83,24 @@ namespace Ettad.User.Services.Implementation
 
         public async Task<APIOperationResponse<List<RoleDto>>> GetAllRolesAsync()
         {
-            var roles = await _roleManager.Roles
+            // Check if current user is SuperAdmin
+            var isSuperAdmin = IsCurrentUserSuperAdmin;
+
+            var rolesQuery = _roleManager.Roles.AsQueryable();
+
+            // Filter out SuperAdmin roles if user is not SuperAdmin
+            if (!isSuperAdmin)
+            {
+                rolesQuery = rolesQuery.Where(r => !r.IsSuperAdmin);
+            }
+
+            var roles = await rolesQuery
                 .Select(r => new RoleDto
                 {
                     Id = r.Id,
                     Name = r.Name,
-                    NameAr = r.NameAr
+                    NameAr = r.NameAr,
+                    IsSuperAdmin = r.IsSuperAdmin
                 })
                 .ToListAsync();
 
@@ -92,17 +109,27 @@ namespace Ettad.User.Services.Implementation
 
         public async Task<APIOperationResponse<PaginatedList<RoleDto>>> GetRolesAsync(PagedListRequest request)
         {
+            // Check if current user is SuperAdmin
+            var isSuperAdmin = IsCurrentUserSuperAdmin;
+
             // 1️⃣ Get roles as IQueryable
             var queryableRoles = _roleManager.Roles.AsQueryable();
 
-            // 2️⃣ Project to RoleDto using AutoMapper
+            // Filter out SuperAdmin roles if user is not SuperAdmin
+            if (!isSuperAdmin)
+            {
+                queryableRoles = queryableRoles.Where(r => !r.IsSuperAdmin);
+            }
+
+            // 2️⃣ Project to RoleDto
             var projectedRoles = queryableRoles
                 .Select(role => new RoleDto
                 {
                     Id = role.Id,
                     Name = role.Name,
                     NameAr = role.NameAr,
-                    IsDefaultRole = (bool)role.IsDefaultRole
+                    IsDefaultRole = (bool)role.IsDefaultRole,
+                    IsSuperAdmin = role.IsSuperAdmin
                 });
 
             // 3️⃣ Apply pagination
@@ -131,6 +158,16 @@ namespace Ettad.User.Services.Implementation
 
         public async Task<APIOperationResponse<RoleDto>> CreateRoleAsync(CreateRoleDto createRoleDto)
         {
+            // Security: Only SuperAdmins can create SuperAdmin roles
+            if (createRoleDto.IsSuperAdmin == true)
+            {
+                var isSuperAdmin = IsCurrentUserSuperAdmin;
+                if (!isSuperAdmin)
+                {
+                    return APIOperationResponse<RoleDto>.BadRequest("Only SuperAdmins can create SuperAdmin roles.");
+                }
+            }
+
             // 1️⃣ Check if role exists
             if (await _roleManager.RoleExistsAsync(createRoleDto.Name))
             {
@@ -190,6 +227,16 @@ namespace Ettad.User.Services.Implementation
                 return APIOperationResponse<RoleDto>.NotFound($"Role with ID '{id}' not found.");
             }
 
+            // Security: Only SuperAdmins can update SuperAdmin roles
+            if (role.IsSuperAdmin)
+            {
+                var isSuperAdmin = IsCurrentUserSuperAdmin;
+                if (!isSuperAdmin)
+                {
+                    return APIOperationResponse<RoleDto>.BadRequest("Only SuperAdmins can update SuperAdmin roles.");
+                }
+            }
+
             // 1.5️⃣ Check if role is protected (cannot be updated)
             if (IsProtectedRole(role.Name))
             {
@@ -205,6 +252,7 @@ namespace Ettad.User.Services.Implementation
 
             // 3️⃣ Update role properties
             role.Name = updateRoleDto.Name;
+            role.NameAr = updateRoleDto.NameAr;
             role.IsDefaultRole = updateRoleDto.IsDefaultRole;
 
             var result = await _roleManager.UpdateAsync(role);
@@ -250,6 +298,16 @@ namespace Ettad.User.Services.Implementation
             if (role == null)
             {
                 return APIOperationResponse<string>.NotFound($"Role with ID '{id}' not found.");
+            }
+
+            // Security: Only SuperAdmins can delete SuperAdmin roles
+            if (role.IsSuperAdmin)
+            {
+                var isSuperAdmin = IsCurrentUserSuperAdmin;
+                if (!isSuperAdmin)
+                {
+                    return APIOperationResponse<string>.BadRequest("Only SuperAdmins can delete SuperAdmin roles.");
+                }
             }
 
             // Check if role is protected (cannot be deleted)

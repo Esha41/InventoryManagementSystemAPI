@@ -21,6 +21,7 @@ namespace Ettad.Services.Mapper
 
             // Maps the Identity Role to our DTO
             CreateMap<ApplicationRole, RoleDto>()
+                .ForMember(dest => dest.NameEn, opt => opt.MapFrom(src => src.Name))
                 .ForMember(dest => dest.IsDefaultRole, opt => opt.MapFrom(src => src.IsDefaultRole ?? false));
 
             // Maps the Create DTO to the Identity Role
