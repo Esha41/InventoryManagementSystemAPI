@@ -206,7 +206,7 @@ namespace Ettad.RequestManagement.Service.Implementation
                 .ThenInclude(ws => ws.ApplicationRole)
                 .Where(was => 
                     (was.ApproverUserId == userId) || 
-                    (was.ApproverUserId == null && userRoles.Contains(was.WorkflowStep.ApplicationRole.Name))
+                    (was.ApproverUserId == null && (userRoles.Contains(was.WorkflowStep.ApplicationRole.Name) || userRoles.Contains(was.WorkflowStep.HigherApprovalRole.Name)))
                 )
                 .Select(was => (long)was.TargetRequestId)
                 .Distinct()
