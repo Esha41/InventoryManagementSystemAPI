@@ -40,6 +40,8 @@ namespace Ettad.EntityFramework.DataBaseContext
         public DbSet<HazardDivision> HazardDivisions { get; set; }
         public DbSet<Inventory> Inventories { get; set; }
         public DbSet<InventoryDetail> InventoryDetails { get; set; }
+        public DbSet<Asset> Assets { get; set; }
+        public DbSet<Employee> Employees { get; set; }
         public DbSet<Manufacturer> Manufacturers { get; set; }
         public DbSet<NatureOption> NatureOptions { get; set; }
         public DbSet<PrimaryPurpos> PrimaryPurposes { get; set; }
