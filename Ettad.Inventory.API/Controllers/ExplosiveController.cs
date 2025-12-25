@@ -78,18 +78,19 @@ namespace Ettad.Inventory.API.Controllers
         /// <summary>
         /// Generate explosive import template with Excel data validation (dropdowns for lookups)
         /// </summary>
+        /// <param name="language">Language for template headers (en/ar), defaults to 'en'</param>
         /// <returns>Excel file with data validation dropdowns and all fields from web form</returns>
         [HttpGet("template")]
         [ProducesResponseType(typeof(FileContentResult), (int)HttpStatusCode.OK)]
         [ProducesResponseType((int)HttpStatusCode.InternalServerError)]
         [CheckAuthorize("Permissions.Explosive.Create")]
-        public async Task<IActionResult> GenerateImportTemplate()
+        public async Task<IActionResult> GenerateImportTemplate([FromQuery] string language = "en")
         {
             try
             {
-                _logger.LogInformation("Generating explosive import template");
+                _logger.LogInformation("Generating explosive import template. Language: {Language}", language);
 
-                var templateResult = await _explosiveService.GenerateImportTemplateAsync();
+                var templateResult = await _explosiveService.GenerateImportTemplateAsync(language);
                 
                 if (!templateResult.Succeeded || templateResult.Data == null)
                 {
@@ -99,8 +100,8 @@ namespace Ettad.Inventory.API.Controllers
 
                 var fileName = $"Explosive_Import_Template_{DateTime.UtcNow:yyyyMMdd}.xlsx";
                 
-                _logger.LogInformation("Explosive import template generated successfully. FileSize: {FileSize} bytes", 
-                    templateResult.Data.Length);
+                _logger.LogInformation("Explosive import template generated successfully. Language: {Language}, FileSize: {FileSize} bytes", 
+                    language, templateResult.Data.Length);
 
                 return File(
                     templateResult.Data,

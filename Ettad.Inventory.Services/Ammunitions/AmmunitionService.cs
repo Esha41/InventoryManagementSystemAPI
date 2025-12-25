@@ -845,11 +845,11 @@ namespace Ettad.Inventory.Service.Ammunitions
             };
         }
 
-        public async Task<APIOperationResponse<byte[]>> GenerateImportTemplateAsync()
+        public async Task<APIOperationResponse<byte[]>> GenerateImportTemplateAsync(string language = "en")
         {
             try
             {
-                _logger.LogInformation("Generating ammunition import template with all fields and lookup data");
+                _logger.LogInformation("Generating ammunition import template with all fields and lookup data. Language: {Language}", language);
 
                 // Load all lookup data from database
                 var units = await _context.Units
@@ -913,15 +913,24 @@ namespace Ettad.Inventory.Service.Ammunitions
                 // Main template sheet
                 var templateSheet = package.Workbook.Worksheets.Add("Ammunition Import");
 
-                // Headers - ALL fields from add-asset form
-                var headers = new[]
-                {
-                    "Name*", "Item No*", "Part No", "Arm Number", "NSN", "Price", "Minimum Quantity",
-                    "Bullet Diameter", "Bullet Diameter Unit", "Total Weight", "Is Linked", "Primer",
-                    "Case Type", "Propellant", "Compatibility", "Hazard Division", "Nature Option",
-                    "Primary Purpose", "Projectile Color", "Projectile Material",
-                    "UN Number", "Distribution", "Reference No", "Classification", "Type", "Notes"
-                };
+                // Headers - Bilingual support (English / Arabic)
+                var headers = language == "ar" 
+                    ? new[]
+                    {
+                        "الاسم*", "رقم الصنف*", "رقم الجزء", "رقم ARM", "NSN", "السعر", "الكمية الدنيا",
+                        "قطر الرصاصة", "وحدة قطر الرصاصة", "الوزن الكلي", "مرتبط", "الكبسولة",
+                        "نوع الغلاف", "المادة الدافعة", "التوافق", "قسم الخطر", "خيار الطبيعة",
+                        "الغرض الأساسي", "لون المقذوف", "مادة المقذوف",
+                        "رقم الأمم المتحدة", "التوزيع", "الرقم المرجعي", "التصنيف", "النوع", "ملاحظات"
+                    }
+                    : new[]
+                    {
+                        "Name*", "Item No*", "Part No", "Arm Number", "NSN", "Price", "Minimum Quantity",
+                        "Bullet Diameter", "Bullet Diameter Unit", "Total Weight", "Is Linked", "Primer",
+                        "Case Type", "Propellant", "Compatibility", "Hazard Division", "Nature Option",
+                        "Primary Purpose", "Projectile Color", "Projectile Material",
+                        "UN Number", "Distribution", "Reference No", "Classification", "Type", "Notes"
+                    };
 
                 // Add headers with formatting
                 for (int col = 1; col <= headers.Length; col++)

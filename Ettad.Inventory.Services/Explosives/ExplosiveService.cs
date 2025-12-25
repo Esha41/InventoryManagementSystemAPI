@@ -574,6 +574,7 @@ namespace Ettad.Inventory.Service.Explosives
         {
             return new Dictionary<string, string>
             {
+                // English headers
                 { "Name*", nameof(ExplosiveImportDto.Name) },
                 { "Item No*", nameof(ExplosiveImportDto.ItemNo) },
                 { "Part No", nameof(ExplosiveImportDto.PartNo) },
@@ -587,15 +588,30 @@ namespace Ettad.Inventory.Service.Explosives
                 { "Hazard Division", nameof(ExplosiveImportDto.HazardDivision) },
                 { "Classification", nameof(ExplosiveImportDto.Classification) },
                 { "Type", nameof(ExplosiveImportDto.Type) },
-                { "Notes", nameof(ExplosiveImportDto.Notes) }
+                { "Notes", nameof(ExplosiveImportDto.Notes) },
+                
+                // Arabic headers (same mappings)
+                { "الاسم*", nameof(ExplosiveImportDto.Name) },
+                { "رقم الصنف*", nameof(ExplosiveImportDto.ItemNo) },
+                { "رقم الجزء", nameof(ExplosiveImportDto.PartNo) },
+                { "السعر", nameof(ExplosiveImportDto.Price) },
+                { "الكمية الدنيا", nameof(ExplosiveImportDto.MinimumQuantity) },
+                { "رقم الأمم المتحدة", nameof(ExplosiveImportDto.UNNumber) },
+                { "وحدة NEQ", nameof(ExplosiveImportDto.NEQUnit) },
+                { "التوزيع", nameof(ExplosiveImportDto.Distribution) },
+                { "الرقم المرجعي", nameof(ExplosiveImportDto.ReferenceNo) },
+                { "قسم الخطر", nameof(ExplosiveImportDto.HazardDivision) },
+                { "التصنيف", nameof(ExplosiveImportDto.Classification) },
+                { "النوع", nameof(ExplosiveImportDto.Type) },
+                { "ملاحظات", nameof(ExplosiveImportDto.Notes) }
             };
         }
 
-        public async Task<APIOperationResponse<byte[]>> GenerateImportTemplateAsync()
+        public async Task<APIOperationResponse<byte[]>> GenerateImportTemplateAsync(string language = "en")
         {
             try
             {
-                _logger.LogInformation("Generating explosive import template with all fields and lookup data");
+                _logger.LogInformation("Generating explosive import template with all fields and lookup data. Language: {Language}", language);
 
                 // Load lookup data from database
                 var units = await _context.Units
@@ -624,13 +640,20 @@ namespace Ettad.Inventory.Service.Explosives
                 // Main template sheet
                 var templateSheet = package.Workbook.Worksheets.Add("Explosive Import");
 
-                // Headers - ALL fields from add-asset form
-                var headers = new[]
-                {
-                    "Name*", "Item No*", "Part No", "NSN", "Price", "Minimum Quantity",
-                    "Explosive Type", "UN Number", "Net Explosive Quantity", "NEQ Unit",
-                    "Distribution", "Reference No", "Hazard Division", "Classification", "Type", "Notes"
-                };
+                // Headers - Bilingual support (English / Arabic)
+                var headers = language == "ar"
+                    ? new[]
+                    {
+                        "الاسم*", "رقم الصنف*", "رقم الجزء", "NSN", "السعر", "الكمية الدنيا",
+                        "نوع المتفجرات", "رقم الأمم المتحدة", "كمية المتفجرات الصافية", "وحدة NEQ",
+                        "التوزيع", "الرقم المرجعي", "قسم الخطر", "التصنيف", "النوع", "ملاحظات"
+                    }
+                    : new[]
+                    {
+                        "Name*", "Item No*", "Part No", "NSN", "Price", "Minimum Quantity",
+                        "Explosive Type", "UN Number", "Net Explosive Quantity", "NEQ Unit",
+                        "Distribution", "Reference No", "Hazard Division", "Classification", "Type", "Notes"
+                    };
 
                 // Add headers with formatting
                 for (int col = 1; col <= headers.Length; col++)
