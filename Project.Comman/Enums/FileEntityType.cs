@@ -13,7 +13,8 @@ namespace Ettad.Comman.Enums
         Supply = 5,
         Return = 6,
         Weapon = 7,
-        Explosive = 8
+        Explosive = 8,
+        Asset = 9
        
         // Add other entities here (e.g. Discard = 7, ...)
     }

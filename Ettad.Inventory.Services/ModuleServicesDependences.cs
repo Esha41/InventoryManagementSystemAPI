@@ -17,6 +17,10 @@ using Ettad.Inventory.Service.AllowanceItems;
 using Ettad.Inventory.Service.Inventories;
 using Ettad.Inventory.Service.Monitoring;
 using Ettad.Inventory.Services.Common;
+using Ettad.Inventory.Service.Assets;
+using Ettad.Inventory.Service.Assets.Dtos;
+using Ettad.Inventory.Service.Assets.Validators;
+using Ettad.Inventory.Service.Assets.Profiles;
 
 namespace Ettad.Inventory.Service
 {
@@ -46,6 +50,17 @@ namespace Ettad.Inventory.Service
 
             services.AddScoped<IAllowanceItemService, AllowanceItemService>();
             services.AddScoped<IInventoryService, InventoryService>();
+            
+            // Asset Services
+            services.AddScoped<IAssetService, AssetService>();
+            services.AddScoped<IValidator<CreateAssetDto>, CreateAssetDtoValidator>();
+            services.AddScoped<IValidator<UpdateAssetDto>, UpdateAssetDtoValidator>();
+            services.AddAutoMapper(typeof(AssetMappingProfile));
+
+            // Employee Services
+            services.AddScoped<IEmployeeService, EmployeeService>();
+            services.AddScoped<IValidator<CreateUpdateEmployeeDto>, CreateUpdateEmployeeDtoValidator>();
+            services.AddAutoMapper(typeof(EmployeeMappingProfile));
             
             // Low Stock Monitor services
             services.AddScoped<ILowStockMonitorBackgroundService, LowStockMonitorBackgroundService>();

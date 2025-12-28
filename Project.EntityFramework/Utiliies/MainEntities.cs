@@ -232,6 +232,26 @@ public static class MainEntities
         CrudOperation.Delete,
     };
 
+    [Category(CrudPermissionsGenerator.Inventory)]
+    public static readonly CrudOperation[] Asset = new[]
+    {
+        CrudOperation.Page,
+        CrudOperation.View,
+        CrudOperation.Create,
+        CrudOperation.Edit,
+        CrudOperation.Delete,
+    };
+
+    [Category(CrudPermissionsGenerator.Inventory)]
+    public static readonly CrudOperation[] Employee = new[]
+    {
+        CrudOperation.Page,
+        CrudOperation.View,
+        CrudOperation.Create,
+        CrudOperation.Edit,
+        CrudOperation.Delete,
+    };
+
     // ==============================
     // DASHBOARD
     // ==============================
