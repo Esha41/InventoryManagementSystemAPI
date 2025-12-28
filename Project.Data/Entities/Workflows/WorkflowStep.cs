@@ -46,6 +46,7 @@ namespace Ettad.Data.Entities.Workflows
         public bool ReserveQty { get; set; } = false;
 
         public bool CanSkip { get; set; } = false;
+        public bool CanReturn { get; set; } = false;
 
         // Navigation properties
         public virtual Workflow Workflow { get; set; }       

@@ -764,6 +764,12 @@ namespace Ettad.Workflows.Service.Imeplemention
                 throw new Exception("This step is not active anymore.");
             }
 
+            // Check if the current workflow step allows returning
+            if (!step.WorkflowStep.CanReturn)
+            {
+                throw new InvalidOperationException("This workflow step does not allow returning. CanReturn is set to false.");
+            }
+
             // Validate that ReturnToWorkflowStepId is provided
             if (!model.ReturnToWorkflowStepId.HasValue)
             {

@@ -125,6 +125,7 @@ namespace Ettad.Workflows.Service.Command.UpdateWorkflow
                     step.RequireHigherApproval = dto.RequireHigherApproval;
                     step.HigherApprovalRoleId = dto.HigherApprovalRoleId;
                     step.ReserveQty = dto.ReserveQty;
+                    step.CanReturn = dto.CanReturn;
                     step.ModifiedBy = _currentUserService.UserName;
                     step.ModificationDate = DateTime.UtcNow;
                 }
@@ -141,6 +142,7 @@ namespace Ettad.Workflows.Service.Command.UpdateWorkflow
                         HigherApprovalRoleId = dto.HigherApprovalRoleId,
                         HigherApplicationEntityId=dto.HigherApplicationEntityId,
                         ReserveQty = dto.ReserveQty,
+                        CanReturn = dto.CanReturn,
                         CreatedBy = _currentUserService.UserName,
                         CreationDate = DateTime.UtcNow
                     });
