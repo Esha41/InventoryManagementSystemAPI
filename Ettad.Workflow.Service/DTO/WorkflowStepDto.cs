@@ -18,7 +18,8 @@ namespace Ettad.Workflows.Service.DTO
 
         // Replaced ApproverType / ApproverEmployeeId
         public string ApplicationRoleId { get; set; }          // required role
-        public string ApplicationRoleName { get; set; }        // role name for display
+        public string ApplicationRoleName { get; set; }        // role name for display (English)
+        public string? ApplicationRoleNameAr { get; set; }    // role name for display (Arabic)
         public long ApplicationEntityId { get; set; }             // required role for this step
             // entity being approved
 

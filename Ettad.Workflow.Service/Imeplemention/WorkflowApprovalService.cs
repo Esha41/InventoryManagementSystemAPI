@@ -2275,6 +2275,7 @@ namespace Ettad.Workflows.Service.Imeplemention
                     StepOrder = ws.StepOrder,
                     ApplicationRoleId = ws.ApplicationRoleId,
                     ApplicationRoleName = ws.ApplicationRole?.Name,
+                    ApplicationRoleNameAr = ws.ApplicationRole?.NameAr,
                     ApplicationEntityId = ws.ApplicationEntityId,
                     MustApprove = ws.MustApprove,
                     RequireHigherApproval = ws.RequireHigherApproval,
