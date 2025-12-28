@@ -33,6 +33,7 @@ namespace Ettad.Workflows.Service.DTO
         public bool ReserveQty { get; set; } = false;
 
         public bool CanSkip { get; set; } = false;
+        public bool CanReturn { get; set; } = false;
         public List<WorkflowStepTransitionDto> Transitions { get; set; } = new List<WorkflowStepTransitionDto>();
 
         // Approval steps for this workflow step
@@ -67,6 +68,7 @@ namespace Ettad.Workflows.Service.DTO
         public bool MustApprove { get; set; }
         public bool ReserveQty { get; set; }
         public bool CanSkip { get; set; }
+        public bool CanReturn { get; set; }
     }
 
     public class WorkflowStepCreateDto
@@ -91,6 +93,8 @@ namespace Ettad.Workflows.Service.DTO
         public long? HigherApplicationEntityId { get; set; }
 
         public bool ReserveQty { get; set; } = false;
+
+        public bool CanReturn { get; set; } = false;
     }
 
 

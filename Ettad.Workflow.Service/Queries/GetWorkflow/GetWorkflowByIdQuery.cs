@@ -83,6 +83,7 @@ namespace Ettad.Workflows.Service.Queries.GetWorkflowById
                         HigherApplicationEntityId = step.HigherApplicationEntityId,
                         ReserveQty = step.ReserveQty,
                         CanSkip = step.CanSkip,
+                        CanReturn = step.CanReturn,
                         Transitions = step.Transitions.Select(t => new WorkflowStepTransitionDto
                         {
                             Id = t.Id,
@@ -116,7 +117,8 @@ namespace Ettad.Workflows.Service.Queries.GetWorkflowById
                                 HigherApplicationEntityId = t.TargetWorkflowStep.HigherApplicationEntityId,
                                 MustApprove = t.TargetWorkflowStep.MustApprove,
                                 ReserveQty = t.TargetWorkflowStep.ReserveQty,
-                                CanSkip = t.TargetWorkflowStep.CanSkip
+                                CanSkip = t.TargetWorkflowStep.CanSkip,
+                                CanReturn = t.TargetWorkflowStep.CanReturn
                             } : null
                         }).ToList()
                     }).ToList()
