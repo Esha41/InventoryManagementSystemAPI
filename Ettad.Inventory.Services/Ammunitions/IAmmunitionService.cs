@@ -16,5 +16,6 @@ namespace Ettad.Inventory.Service.Ammunitions
         Task<APIOperationResponse<bool>> DeleteAsync(long id);
         Task<APIOperationResponse<ImportResult<CreateUpdateAmmunitionDto>>> ImportAsync(IFormFile file);
         Task<APIOperationResponse<ImportResult<CreateUpdateAmmunitionDto>>> ImportPreviewAsync(IFormFile file);
+        Task<APIOperationResponse<byte[]>> GenerateImportTemplateAsync(string language = "en");
     }
 }

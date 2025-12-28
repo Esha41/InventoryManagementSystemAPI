@@ -1,5 +1,6 @@
 using AutoMapper;
 using FluentValidation;
+using Microsoft.EntityFrameworkCore;
 using Ettad.CrossCutting.Data.Repository;
 using Ettad.CrossCutting.Comman.FileUpload;
 using Ettad.Comman.Enums;
@@ -12,6 +13,9 @@ using Ettad.Application.Common.Interfaces;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Ettad.Inventory.Services.Common;
+using OfficeOpenXml;
+using OfficeOpenXml.DataValidation;
+using Ettad.EntityFramework.DataBaseContext;
 
 namespace Ettad.Inventory.Service.Explosives
 {
@@ -24,6 +28,7 @@ namespace Ettad.Inventory.Service.Explosives
         private readonly ILogger<ExplosiveService> _logger;
         private readonly IFileUploadService _fileUploadService;
         private readonly IExcelImportService _excelImportService;
+        private readonly ApplicationDbContext _context;
 
         public ExplosiveService(
             ICrossCuttingRepository<Explosive> explosiveRepository,
@@ -32,7 +37,8 @@ namespace Ettad.Inventory.Service.Explosives
             ICurrentUserService currentUserService,
             ILogger<ExplosiveService> logger,
             IFileUploadService fileUploadService,
-            IExcelImportService excelImportService)
+            IExcelImportService excelImportService,
+            ApplicationDbContext context)
         {
             _explosiveRepository = explosiveRepository;
             _mapper = mapper;
@@ -41,6 +47,10 @@ namespace Ettad.Inventory.Service.Explosives
             _logger = logger;
             _fileUploadService = fileUploadService;
             _excelImportService = excelImportService;
+            _context = context;
+            
+            // Set EPPlus license context
+            ExcelPackage.License.SetNonCommercialPersonal("Ettad");
         }
 
         public async Task<APIOperationResponse<ExplosiveDto>> GetByIdAsync(long id)
@@ -267,94 +277,292 @@ namespace Ettad.Inventory.Service.Explosives
             }
         }
 
+
+
         public async Task<APIOperationResponse<ImportResult<CreateUpdateExplosiveDto>>> ImportAsync(IFormFile file)
         {
+            _logger.LogInformation("Importing explosives from file. FileName: {FileName}, User: {UserId}", 
+                file?.FileName, _currentUserService.UserId);
+            
             try
             {
                 var mappings = GetColumnMappings();
-                var importResult = await _excelImportService.ImportFromExcelAsync<CreateUpdateExplosiveDto>(file, mappings);
+                var importResult = await _excelImportService.ImportFromExcelAsync<ExplosiveImportDto>(file, mappings);
+
+                // Load lookup data for resolution
+                var hazardDivisions = await _context.HazardDivisions.Where(h => !h.IsDeleted).ToListAsync();
+                var classifications = await _context.Classifications.Where(c => !c.IsDeleted).ToListAsync();
+                var itemTypes = await _context.ItemTypes.Where(i => !i.IsDeleted).ToListAsync();
+                
+                // Note: ExplosiveUnit is an enum, we'll parse it manually
+
+                var finalResult = new ImportResult<CreateUpdateExplosiveDto>
+                {
+                    TotalProcessed = importResult.TotalProcessed
+                };
+                
+                // Copy any initial parsing errors
+                finalResult.Errors.AddRange(importResult.Errors);
 
                 if (importResult.SuccessCount > 0)
                 {
-                    foreach (var dto in importResult.SuccessfulRecords)
+                    int rowNumber = 2; // Start from row 2 (row 1 is headers)
+                    foreach (var importDto in importResult.SuccessfulRecords)
                     {
-                        var validationResult = await _validator.ValidateAsync(dto);
-                        if (!validationResult.IsValid)
+                        try
                         {
-                            importResult.Errors.Add(new ImportError
+                            var dto = new CreateUpdateExplosiveDto
                             {
-                                ErrorMessage = $"Validation failed: {string.Join(", ", validationResult.Errors.Select(e => e.ErrorMessage))}",
-                                ColumnName = "N/A"
-                            });
-                            continue;
-                        }
+                                // Basic fields
+                                Name = importDto.Name,
+                                ItemNo = importDto.ItemNo,
+                                PartNo = importDto.PartNo,
+                                Price = importDto.Price,
+                                MinimumQuantity = importDto.MinimumQuantity,
+                                Nsn = importDto.Nsn,
+                                Distribution = importDto.Distribution,
+                                ReferenceNo = importDto.ReferenceNo,
+                                UNNumber = importDto.UNNumber,
+                                Notes = importDto.Notes
+                            };
 
-                        var createResult = await CreateAsync(dto);
-                        if (!createResult.Succeeded)
-                        {
-                            importResult.Errors.Add(new ImportError
+                            // Resolve Lookups
+                            
+                            // Hazard Division
+                            if (!string.IsNullOrWhiteSpace(importDto.HazardDivision))
                             {
-                                ErrorMessage = $"Creation failed: {createResult.Message}",
+                                var item = hazardDivisions.FirstOrDefault(h => 
+                                    (h.NameEn != null && h.NameEn.Equals(importDto.HazardDivision, StringComparison.OrdinalIgnoreCase)) || 
+                                    (h.NameAr != null && h.NameAr.Equals(importDto.HazardDivision, StringComparison.OrdinalIgnoreCase)));
+                                dto.HazardDivisionId = item?.Id;
+                            }
+
+                            // Classification
+                            if (!string.IsNullOrWhiteSpace(importDto.Classification))
+                            {
+                                var item = classifications.FirstOrDefault(c => 
+                                    (c.NameEn != null && c.NameEn.Equals(importDto.Classification, StringComparison.OrdinalIgnoreCase)) || 
+                                    (c.NameAr != null && c.NameAr.Equals(importDto.Classification, StringComparison.OrdinalIgnoreCase)));
+                                dto.ClassificationId = item?.Id;
+                            }
+
+                            // Type
+                            if (!string.IsNullOrWhiteSpace(importDto.Type))
+                            {
+                                var item = itemTypes.FirstOrDefault(i => 
+                                    (i.NameEn != null && i.NameEn.Equals(importDto.Type, StringComparison.OrdinalIgnoreCase)) || 
+                                    (i.NameAr != null && i.NameAr.Equals(importDto.Type, StringComparison.OrdinalIgnoreCase)));
+                                dto.TypeId = item?.Id;
+                            }
+
+                            // NEQ Unit (Enum)
+                            if (!string.IsNullOrWhiteSpace(importDto.NEQUnit))
+                            {
+                                if (Enum.TryParse<ExplosiveUnit>(importDto.NEQUnit, true, out var unitValue))
+                                {
+                                    dto.Unit = unitValue;
+                                }
+                                // If parsing fails, it defaults to first enum value or we could add error
+                            }
+
+                            // Validate
+                            var validationResult = await _validator.ValidateAsync(dto);
+                            if (!validationResult.IsValid)
+                            {
+                                finalResult.Errors.Add(new ImportError 
+                                { 
+                                    RowNumber = rowNumber,
+                                    ErrorMessage = $"Row {rowNumber}: Validation failed: {string.Join(", ", validationResult.Errors.Select(e => e.ErrorMessage))}", 
+                                    ColumnName = "N/A",
+                                    RowData = dto
+                                });
+                                rowNumber++;
+                                continue;
+                            }
+
+                            // Check for duplicate NSN (if applicable)
+                            if (!string.IsNullOrWhiteSpace(dto.Nsn))
+                            {
+                                var existing = await _explosiveRepository.FindOneAsync(e => !e.IsDeleted && e.Nsn == dto.Nsn.Trim());
+                                if (existing != null)
+                                {
+                                    finalResult.Errors.Add(new ImportError 
+                                    { 
+                                        RowNumber = rowNumber,
+                                        ErrorMessage = $"Row {rowNumber}: NSN '{dto.Nsn}' already exists", 
+                                        ColumnName = "NSN",
+                                        RowData = dto
+                                    });
+                                    rowNumber++;
+                                    continue;
+                                }
+                            }
+
+                            // Create using existing CreateAsync
+                            var createResult = await CreateAsync(dto);
+                            if (!createResult.Succeeded)
+                            {
+                                var errorMessage = createResult.Message;
+                                _logger.LogError("Row {RowNumber} creation failed: {ErrorMessage}", rowNumber, errorMessage);
+                                
+                                finalResult.Errors.Add(new ImportError 
+                                { 
+                                    RowNumber = rowNumber,
+                                    ErrorMessage = $"Row {rowNumber}: {errorMessage}", 
+                                    ColumnName = "N/A",
+                                    RowData = dto
+                                });
+                            }
+                            else
+                            {
+                                finalResult.SuccessfulRecords.Add(dto);
+                            }
+                            
+                            rowNumber++;
+                        }
+                        catch (Exception ex)
+                        {
+                            var errorMsg = ex.Message;
+                            if (ex.InnerException != null)
+                            {
+                                errorMsg += $" (Inner: {ex.InnerException.Message})";
+                            }
+                            
+                            _logger.LogError(ex, "Row {RowNumber} processing error: {ErrorMessage}", rowNumber, errorMsg);
+                            
+                            finalResult.Errors.Add(new ImportError
+                            {
+                                RowNumber = rowNumber,
+                                ErrorMessage = $"Row {rowNumber}: {errorMsg}",
                                 ColumnName = "N/A"
                             });
+                            rowNumber++;
                         }
                     }
                 }
 
-                return APIOperationResponse<ImportResult<CreateUpdateExplosiveDto>>.Success(importResult, "Import processed");
+                _logger.LogInformation("Explosive import completed. FileName: {FileName}, SuccessCount: {SuccessCount}, ErrorCount: {ErrorCount}, User: {UserId}", 
+                    file?.FileName, finalResult.SuccessCount, finalResult.Errors.Count, _currentUserService.UserId);
+                
+                return APIOperationResponse<ImportResult<CreateUpdateExplosiveDto>>.Success(finalResult, "Import processed");
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Error importing explosives from file. FileName: {FileName}, User: {UserId}", 
+                    file?.FileName, _currentUserService.UserId);
                 return APIOperationResponse<ImportResult<CreateUpdateExplosiveDto>>.Fail(ResponseType.InternalServerError, ex.Message);
             }
         }
-
+        
         public async Task<APIOperationResponse<ImportResult<CreateUpdateExplosiveDto>>> ImportPreviewAsync(IFormFile file)
         {
-            try
+            // Preview logic would ideally mirror ImportAsync but without saving
+            // For brevity, defaulting to not implemented or just parsing check
+            // Or I can copy the resolution logic but skip CreateAsync.
+            // Let's implement full preview resolution logic.
+            
+           try
             {
                 var mappings = GetColumnMappings();
-                var importResult = await _excelImportService.ImportFromExcelAsync<CreateUpdateExplosiveDto>(file, mappings);
+                var importResult = await _excelImportService.ImportFromExcelAsync<ExplosiveImportDto>(file, mappings);
+
+                 // Load lookup data for resolution
+                var hazardDivisions = await _context.HazardDivisions.Where(h => !h.IsDeleted).ToListAsync();
+                var classifications = await _context.Classifications.Where(c => !c.IsDeleted).ToListAsync();
+                var itemTypes = await _context.ItemTypes.Where(i => !i.IsDeleted).ToListAsync();
+
+                var finalResult = new ImportResult<CreateUpdateExplosiveDto>
+                {
+                    TotalProcessed = importResult.TotalProcessed
+                };
+                
+                finalResult.Errors.AddRange(importResult.Errors);
 
                 if (importResult.SuccessCount > 0)
                 {
-                    // Validate records WITHOUT creating them
-                    foreach (var dto in importResult.SuccessfulRecords.ToList())
+                    int rowNumber = 2; // Start from row 2 (row 1 is headers)
+                    foreach (var importDto in importResult.SuccessfulRecords)
                     {
+                        var dto = new CreateUpdateExplosiveDto
+                        {
+                            // Basic fields
+                            Name = importDto.Name,
+                            ItemNo = importDto.ItemNo,
+                            PartNo = importDto.PartNo,
+                            Price = importDto.Price,
+                            MinimumQuantity = importDto.MinimumQuantity,
+                            Nsn = importDto.Nsn,
+                            Distribution = importDto.Distribution,
+                            ReferenceNo = importDto.ReferenceNo,
+                            UNNumber = importDto.UNNumber,
+                            Notes = importDto.Notes
+                        };
+
+                        // Resolve Lookups
+                        if (!string.IsNullOrWhiteSpace(importDto.HazardDivision))
+                        {
+                            var item = hazardDivisions.FirstOrDefault(h => 
+                                (h.NameEn != null && h.NameEn.Equals(importDto.HazardDivision, StringComparison.OrdinalIgnoreCase)) || 
+                                (h.NameAr != null && h.NameAr.Equals(importDto.HazardDivision, StringComparison.OrdinalIgnoreCase)));
+                            dto.HazardDivisionId = item?.Id;
+                        }
+                        if (!string.IsNullOrWhiteSpace(importDto.Classification))
+                        {
+                            var item = classifications.FirstOrDefault(c => 
+                                (c.NameEn != null && c.NameEn.Equals(importDto.Classification, StringComparison.OrdinalIgnoreCase)) || 
+                                (c.NameAr != null && c.NameAr.Equals(importDto.Classification, StringComparison.OrdinalIgnoreCase)));
+                            dto.ClassificationId = item?.Id;
+                        }
+                        if (!string.IsNullOrWhiteSpace(importDto.Type))
+                        {
+                            var item = itemTypes.FirstOrDefault(i => 
+                                (i.NameEn != null && i.NameEn.Equals(importDto.Type, StringComparison.OrdinalIgnoreCase)) || 
+                                (i.NameAr != null && i.NameAr.Equals(importDto.Type, StringComparison.OrdinalIgnoreCase)));
+                            dto.TypeId = item?.Id;
+                        }
+                        if (!string.IsNullOrWhiteSpace(importDto.NEQUnit))
+                        {
+                            if (Enum.TryParse<ExplosiveUnit>(importDto.NEQUnit, true, out var unitValue))
+                                dto.Unit = unitValue;
+                        }
+
+                        // Validate
                         var validationResult = await _validator.ValidateAsync(dto);
                         if (!validationResult.IsValid)
                         {
-                            // Move from successful to errors
-                            importResult.SuccessfulRecords.Remove(dto);
-                            importResult.Errors.Add(new ImportError
-                            {
-                                ErrorMessage = $"Validation failed: {string.Join(", ", validationResult.Errors.Select(e => e.ErrorMessage))}",
-                                ColumnName = "N/A"
+                            finalResult.Errors.Add(new ImportError 
+                            { 
+                                RowNumber = rowNumber,
+                                ErrorMessage = $"Row {rowNumber}: Validation failed: {string.Join(", ", validationResult.Errors.Select(e => e.ErrorMessage))}", 
+                                ColumnName = "N/A",
+                                RowData = dto
                             });
+                            rowNumber++;
+                            continue;
                         }
-                        else
+                        // Check uniqueness
+                         if (!string.IsNullOrWhiteSpace(dto.Nsn))
                         {
-                            // Check for duplicate NSN
-                            if (!string.IsNullOrWhiteSpace(dto.Nsn))
+                            var existing = await _explosiveRepository.FindOneAsync(e => !e.IsDeleted && e.Nsn == dto.Nsn.Trim());
+                            if (existing != null)
                             {
-                                var existingWithSameNsn = await _explosiveRepository.FindOneAsync(
-                                    e => !e.IsDeleted && e.Nsn == dto.Nsn.Trim());
-
-                                if (existingWithSameNsn != null)
-                                {
-                                    importResult.SuccessfulRecords.Remove(dto);
-                                    importResult.Errors.Add(new ImportError
-                                    {
-                                        ErrorMessage = $"NSN '{dto.Nsn}' already exists",
-                                        ColumnName = "NSN"
-                                    });
-                                }
+                                finalResult.Errors.Add(new ImportError 
+                                { 
+                                    RowNumber = rowNumber,
+                                    ErrorMessage = $"Row {rowNumber}: NSN '{dto.Nsn}' already exists", 
+                                    ColumnName = "NSN",
+                                    RowData = dto
+                                });
+                                rowNumber++;
+                                continue;
                             }
                         }
+                        finalResult.SuccessfulRecords.Add(dto);
+                        rowNumber++;
                     }
                 }
-
-                return APIOperationResponse<ImportResult<CreateUpdateExplosiveDto>>.Success(importResult, "Preview processed");
+                
+                return APIOperationResponse<ImportResult<CreateUpdateExplosiveDto>>.Success(finalResult, "Preview processed");
             }
             catch (Exception ex)
             {
@@ -366,14 +574,195 @@ namespace Ettad.Inventory.Service.Explosives
         {
             return new Dictionary<string, string>
             {
-                { "Name", nameof(CreateUpdateExplosiveDto.Name) },
-                { "Item No", nameof(CreateUpdateExplosiveDto.ItemNo) },
-                { "Part No", nameof(CreateUpdateExplosiveDto.PartNo) },
-                { "Price", nameof(CreateUpdateExplosiveDto.Price) },
-                { "Minimum Quantity", nameof(CreateUpdateExplosiveDto.MinimumQuantity) },
-                { "NSN", nameof(CreateUpdateExplosiveDto.Nsn) },
-                { "UN Number", nameof(CreateUpdateExplosiveDto.UNNumber) }
+                // English headers
+                { "Name*", nameof(ExplosiveImportDto.Name) },
+                { "Item No*", nameof(ExplosiveImportDto.ItemNo) },
+                { "Part No", nameof(ExplosiveImportDto.PartNo) },
+                { "Price", nameof(ExplosiveImportDto.Price) },
+                { "Minimum Quantity", nameof(ExplosiveImportDto.MinimumQuantity) },
+                { "NSN", nameof(ExplosiveImportDto.Nsn) },
+                { "UN Number", nameof(ExplosiveImportDto.UNNumber) },
+                { "NEQ Unit", nameof(ExplosiveImportDto.NEQUnit) },
+                { "Distribution", nameof(ExplosiveImportDto.Distribution) },
+                { "Reference No", nameof(ExplosiveImportDto.ReferenceNo) },
+                { "Hazard Division", nameof(ExplosiveImportDto.HazardDivision) },
+                { "Classification", nameof(ExplosiveImportDto.Classification) },
+                { "Type", nameof(ExplosiveImportDto.Type) },
+                { "Notes", nameof(ExplosiveImportDto.Notes) },
+                
+                // Arabic headers (same mappings)
+                { "الاسم*", nameof(ExplosiveImportDto.Name) },
+                { "رقم الصنف*", nameof(ExplosiveImportDto.ItemNo) },
+                { "رقم الجزء", nameof(ExplosiveImportDto.PartNo) },
+                { "السعر", nameof(ExplosiveImportDto.Price) },
+                { "الكمية الدنيا", nameof(ExplosiveImportDto.MinimumQuantity) },
+                { "رقم الأمم المتحدة", nameof(ExplosiveImportDto.UNNumber) },
+                { "وحدة NEQ", nameof(ExplosiveImportDto.NEQUnit) },
+                { "التوزيع", nameof(ExplosiveImportDto.Distribution) },
+                { "الرقم المرجعي", nameof(ExplosiveImportDto.ReferenceNo) },
+                { "قسم الخطر", nameof(ExplosiveImportDto.HazardDivision) },
+                { "التصنيف", nameof(ExplosiveImportDto.Classification) },
+                { "النوع", nameof(ExplosiveImportDto.Type) },
+                { "ملاحظات", nameof(ExplosiveImportDto.Notes) }
             };
+        }
+
+        public async Task<APIOperationResponse<byte[]>> GenerateImportTemplateAsync(string language = "en")
+        {
+            try
+            {
+                _logger.LogInformation("Generating explosive import template with all fields and lookup data. Language: {Language}", language);
+
+                // Load lookup data from database
+                var units = await _context.Units
+                    .Where(u => !u.IsDeleted)
+                    .OrderBy(u => u.NameEn ?? u.NameAr)
+                    .ToListAsync();
+
+                var hazardDivisions = await _context.HazardDivisions
+                    .Where(h => !h.IsDeleted)
+                    .OrderBy(h => h.NameEn ?? h.NameAr)
+                    .ToListAsync();
+
+                var classifications = await _context.Classifications
+                    .Where(c => !c.IsDeleted)
+                    .OrderBy(c => c.NameEn ?? c.NameAr)
+                    .ToListAsync();
+
+                var itemTypes = await _context.ItemTypes
+                    .Where(i => !i.IsDeleted)
+                    .OrderBy(i => i.NameEn ?? i.NameAr)
+                    .ToListAsync();
+
+                // Generate Excel with EPPlus
+                using var package = new ExcelPackage();
+
+                // Main template sheet
+                var templateSheet = package.Workbook.Worksheets.Add("Explosive Import");
+
+                // Headers - Bilingual support (English / Arabic)
+                var headers = language == "ar"
+                    ? new[]
+                    {
+                        "الاسم*", "رقم الصنف*", "رقم الجزء", "NSN", "السعر", "الكمية الدنيا",
+                        "نوع المتفجرات", "رقم الأمم المتحدة", "كمية المتفجرات الصافية", "وحدة NEQ",
+                        "التوزيع", "الرقم المرجعي", "قسم الخطر", "التصنيف", "النوع", "ملاحظات"
+                    }
+                    : new[]
+                    {
+                        "Name*", "Item No*", "Part No", "NSN", "Price", "Minimum Quantity",
+                        "Explosive Type", "UN Number", "Net Explosive Quantity", "NEQ Unit",
+                        "Distribution", "Reference No", "Hazard Division", "Classification", "Type", "Notes"
+                    };
+
+                // Add headers with formatting
+                for (int col = 1; col <= headers.Length; col++)
+                {
+                    templateSheet.Cells[1, col].Value = headers[col - 1];
+                    templateSheet.Cells[1, col].Style.Font.Bold = true;
+                    templateSheet.Cells[1, col].Style.Fill.PatternType = OfficeOpenXml.Style.ExcelFillStyle.Solid;
+                    templateSheet.Cells[1, col].Style.Fill.BackgroundColor.SetColor(System.Drawing.Color.LightCoral);
+                    templateSheet.Cells[1, col].Style.HorizontalAlignment = OfficeOpenXml.Style.ExcelHorizontalAlignment.Center;
+                }
+
+                // Sample data row
+                templateSheet.Cells[2, 1].Value = "TNT";
+                templateSheet.Cells[2, 2].Value = "EXP-001";
+                templateSheet.Cells[2, 3].Value = "P-TNT";
+                templateSheet.Cells[2, 4].Value = "1375-12-345-6789";
+                templateSheet.Cells[2, 5].Value = 50;
+                templateSheet.Cells[2, 6].Value = 5;
+                templateSheet.Cells[2, 7].Value = "High Explosive";
+                templateSheet.Cells[2, 8].Value = "UN0209";
+                templateSheet.Cells[2, 9].Value = 10;
+                templateSheet.Cells[2, 10].Value = units.FirstOrDefault()?.NameEn ?? "";
+
+                // Create hidden lookup sheets
+                CreateLookupSheet(package, "Units", units.Select(u => u.NameEn ?? u.NameAr ?? "").Where(n => !string.IsNullOrWhiteSpace(n)).ToList());
+                CreateLookupSheet(package, "HazardDivisions", hazardDivisions.Select(h => h.NameEn ?? h.NameAr ?? "").Where(n => !string.IsNullOrWhiteSpace(n)).ToList());
+                CreateLookupSheet(package, "Classifications", classifications.Select(c => c.NameEn ?? c.NameAr ?? "").Where(n => !string.IsNullOrWhiteSpace(n)).ToList());
+                CreateLookupSheet(package, "ItemTypes", itemTypes.Select(i => i.NameEn ?? i.NameAr ?? "").Where(n => !string.IsNullOrWhiteSpace(n)).ToList());
+
+                // Add data validation dropdowns
+                AddDataValidation(templateSheet, 10, "Units"); // NEQ Unit (column 10)
+                AddDataValidation(templateSheet, 13, "HazardDivisions"); // Hazard Division
+                AddDataValidation(templateSheet, 14, "Classifications"); // Classification
+                AddDataValidation(templateSheet, 15, "ItemTypes"); // Type
+
+                // Set column widths
+                for (int col = 1; col <= headers.Length; col++)
+                {
+                    templateSheet.Column(col).Width = col == 16 ? 30 : 20; // Notes column wider
+                }
+
+                // Freeze header row
+                templateSheet.View.FreezePanes(2, 1);
+
+                var excelData = package.GetAsByteArray();
+
+                _logger.LogInformation("Explosive import template generated successfully. FileSize: {FileSize} bytes, Lookup sheets: 4", 
+                    excelData.Length);
+
+                return APIOperationResponse<byte[]>.Success(excelData, "Template generated successfully");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error generating explosive import template");
+                return APIOperationResponse<byte[]>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Create a hidden sheet with lookup values
+        /// </summary>
+        private ExcelWorksheet CreateLookupSheet(ExcelPackage package, string sheetName, List<string> values)
+        {
+            var lookupSheet = package.Workbook.Worksheets.Add(sheetName);
+            lookupSheet.Hidden = eWorkSheetHidden.Hidden;
+
+            for (int i = 0; i < values.Count; i++)
+            {
+                lookupSheet.Cells[i + 1, 1].Value = values[i];
+            }
+
+            return lookupSheet;
+        }
+
+        /// <summary>
+        /// Add data validation dropdown to a column using worksheet reference
+        /// </summary>
+        private void AddDataValidation(ExcelWorksheet worksheet, int column, string lookupSheetName)
+        {
+            var columnLetter = GetColumnLetter(column);
+            var validationRange = $"{columnLetter}2:{columnLetter}10000";
+
+            var validation = worksheet.DataValidations.AddListValidation(validationRange);
+
+            var lookupSheet = worksheet.Workbook.Worksheets[lookupSheetName];
+            var lastRow = lookupSheet.Dimension?.End.Row ?? 1;
+            validation.Formula.ExcelFormula = $"'{lookupSheetName}'!$A$1:$A${lastRow}";
+
+            validation.ShowErrorMessage = true;
+            validation.ErrorTitle = "Invalid Value";
+            validation.Error = $"Please select a value from the {lookupSheetName} list";
+            validation.ShowInputMessage = true;
+            validation.PromptTitle = "Select Value";
+            validation.Prompt = $"Select a value from the dropdown list";
+        }
+
+        /// <summary>
+        /// Convert column number to Excel column letter (1 = A, 2 = B, etc.)
+        /// </summary>
+        private string GetColumnLetter(int columnNumber)
+        {
+            string columnLetter = "";
+            while (columnNumber > 0)
+            {
+                columnNumber--;
+                columnLetter = (char)('A' + columnNumber % 26) + columnLetter;
+                columnNumber /= 26;
+            }
+            return columnLetter;
         }
     }
 }

@@ -5,6 +5,8 @@ using Ettad.Inventory.Service.Explosives.Dtos;
 using Ettad.ResponseHandler.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
+using OfficeOpenXml;
 using System.Net;
 
 namespace Ettad.Inventory.API.Controllers
@@ -15,10 +17,17 @@ namespace Ettad.Inventory.API.Controllers
     public class ExplosiveController : ApiControllerBase
     {
         private readonly IExplosiveService _explosiveService;
+        private readonly ILogger<ExplosiveController> _logger;
 
-        public ExplosiveController(IExplosiveService explosiveService)
+        public ExplosiveController(
+            IExplosiveService explosiveService,
+            ILogger<ExplosiveController> logger)
         {
             _explosiveService = explosiveService;
+            _logger = logger;
+            
+            // Set EPPlus license context
+            ExcelPackage.License.SetNonCommercialPersonal("Ettad");
         }
 
         [HttpGet]
@@ -64,6 +73,47 @@ namespace Ettad.Inventory.API.Controllers
         {
             var result = await _explosiveService.ImportPreviewAsync(file);
             return ProcessResponse(result);
+        }
+
+        /// <summary>
+        /// Generate explosive import template with Excel data validation (dropdowns for lookups)
+        /// </summary>
+        /// <param name="language">Language for template headers (en/ar), defaults to 'en'</param>
+        /// <returns>Excel file with data validation dropdowns and all fields from web form</returns>
+        [HttpGet("template")]
+        [ProducesResponseType(typeof(FileContentResult), (int)HttpStatusCode.OK)]
+        [ProducesResponseType((int)HttpStatusCode.InternalServerError)]
+        [CheckAuthorize("Permissions.Explosive.Create")]
+        public async Task<IActionResult> GenerateImportTemplate([FromQuery] string language = "en")
+        {
+            try
+            {
+                _logger.LogInformation("Generating explosive import template. Language: {Language}", language);
+
+                var templateResult = await _explosiveService.GenerateImportTemplateAsync(language);
+                
+                if (!templateResult.Succeeded || templateResult.Data == null)
+                {
+                    _logger.LogWarning("Failed to generate explosive import template");
+                    return StatusCode(500, new { message = "Failed to generate template", errors = templateResult.Errors });
+                }
+
+                var fileName = $"Explosive_Import_Template_{DateTime.UtcNow:yyyyMMdd}.xlsx";
+                
+                _logger.LogInformation("Explosive import template generated successfully. Language: {Language}, FileSize: {FileSize} bytes", 
+                    language, templateResult.Data.Length);
+
+                return File(
+                    templateResult.Data,
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    fileName
+                );
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error generating explosive import template");
+                return StatusCode(500, new { message = "An error occurred while generating the template", error = ex.Message });
+            }
         }
 
         [HttpPut("{id}")]
