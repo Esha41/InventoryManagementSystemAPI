@@ -405,6 +405,10 @@ namespace Ettad.Inventory.Service.Ammunitions
 
                 if (importResult.SuccessCount > 0)
                 {
+                    // Track NSNs and ItemNos seen in this import file to detect duplicates within the file
+                    var seenNsns = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                    var seenItemNos = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                    
                     int rowNumber = 2; // Start from row 2 (row 1 is headers)
                     foreach (var importDto in importResult.SuccessfulRecords)
                     {
@@ -548,7 +552,45 @@ namespace Ettad.Inventory.Service.Ammunitions
                                 continue;
                             }
 
-                            // Create using existing CreateAsync
+                            // Check for duplicate ItemNo within the import file
+                            if (!string.IsNullOrWhiteSpace(dto.ItemNo))
+                            {
+                                var itemNoKey = dto.ItemNo.Trim();
+                                if (seenItemNos.Contains(itemNoKey))
+                                {
+                                    finalResult.Errors.Add(new ImportError 
+                                    { 
+                                        RowNumber = rowNumber,
+                                        ErrorMessage = $"Row {rowNumber}: Item No '{dto.ItemNo}' appears multiple times in the import file", 
+                                        ColumnName = "Item No",
+                                        RowData = dto
+                                    });
+                                    rowNumber++;
+                                    continue;
+                                }
+                                seenItemNos.Add(itemNoKey);
+                            }
+                            
+                            // Check for duplicate NSN within the import file
+                            if (!string.IsNullOrWhiteSpace(dto.Nsn))
+                            {
+                                var nsnKey = dto.Nsn.Trim();
+                                if (seenNsns.Contains(nsnKey))
+                                {
+                                    finalResult.Errors.Add(new ImportError 
+                                    { 
+                                        RowNumber = rowNumber,
+                                        ErrorMessage = $"Row {rowNumber}: NSN '{dto.Nsn}' appears multiple times in the import file", 
+                                        ColumnName = "NSN",
+                                        RowData = dto
+                                    });
+                                    rowNumber++;
+                                    continue;
+                                }
+                                seenNsns.Add(nsnKey);
+                            }
+
+                            // Create using existing CreateAsync (which also checks database duplicates)
                             var createResult = await CreateAsync(dto);
                             if (!createResult.Succeeded)
                             {
@@ -634,6 +676,10 @@ namespace Ettad.Inventory.Service.Ammunitions
 
                 if (importResult.SuccessCount > 0)
                 {
+                    // Track NSNs and ItemNos seen in this import file to detect duplicates within the file
+                    var seenNsns = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                    var seenItemNos = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                    
                     int rowNumber = 2; // Start from row 2 (row 1 is headers)
                     foreach (var importDto in importResult.SuccessfulRecords)
                     {
@@ -774,16 +820,51 @@ namespace Ettad.Inventory.Service.Ammunitions
                             continue;
                         }
                         
-                        // Check for duplicate NSN (if applicable)
+                        // Check for duplicate ItemNo within the import file
+                        if (!string.IsNullOrWhiteSpace(dto.ItemNo))
+                        {
+                            var itemNoKey = dto.ItemNo.Trim();
+                            if (seenItemNos.Contains(itemNoKey))
+                            {
+                                finalResult.Errors.Add(new ImportError 
+                                { 
+                                    RowNumber = rowNumber,
+                                    ErrorMessage = $"Row {rowNumber}: Item No '{dto.ItemNo}' appears multiple times in the import file", 
+                                    ColumnName = "Item No",
+                                    RowData = dto
+                                });
+                                rowNumber++;
+                                continue;
+                            }
+                            seenItemNos.Add(itemNoKey);
+                        }
+                        
+                        // Check for duplicate NSN within the import file
                         if (!string.IsNullOrWhiteSpace(dto.Nsn))
                         {
-                            var existing = await _ammunitionRepository.FindOneAsync(e => !e.IsDeleted && e.Nsn == dto.Nsn.Trim());
+                            var nsnKey = dto.Nsn.Trim();
+                            if (seenNsns.Contains(nsnKey))
+                            {
+                                finalResult.Errors.Add(new ImportError 
+                                { 
+                                    RowNumber = rowNumber,
+                                    ErrorMessage = $"Row {rowNumber}: NSN '{dto.Nsn}' appears multiple times in the import file", 
+                                    ColumnName = "NSN",
+                                    RowData = dto // Include the row data for preview
+                                });
+                                rowNumber++;
+                                continue;
+                            }
+                            seenNsns.Add(nsnKey);
+                            
+                            // Also check if NSN exists in database
+                            var existing = await _ammunitionRepository.FindOneAsync(e => !e.IsDeleted && e.Nsn == nsnKey);
                             if (existing != null)
                             {
                                 finalResult.Errors.Add(new ImportError 
                                 { 
                                     RowNumber = rowNumber,
-                                    ErrorMessage = $"Row {rowNumber}: NSN '{dto.Nsn}' already exists", 
+                                    ErrorMessage = $"Row {rowNumber}: NSN '{dto.Nsn}' already exists in the database", 
                                     ColumnName = "NSN",
                                     RowData = dto // Include the row data for preview
                                 });

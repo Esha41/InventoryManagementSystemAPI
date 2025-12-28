@@ -84,6 +84,35 @@ namespace Ettad.Inventory.API.Controllers
             var result = await _weaponService.DeleteAsync(id);
             return ProcessResponse(result);
         }
+
+        /// <summary>
+        /// Generate weapon import template with Excel data validation (dropdowns for lookups)
+        /// </summary>
+        /// <param name="language">Language for template headers (en/ar), defaults to 'en'</param>
+        /// <returns>Excel file with data validation dropdowns and all fields from web form</returns>
+        [HttpGet("template")]
+        [ProducesResponseType(typeof(FileContentResult), (int)HttpStatusCode.OK)]
+        [ProducesResponseType((int)HttpStatusCode.InternalServerError)]
+        [CheckAuthorize("Permissions.Weapon.Create")]
+        public async Task<IActionResult> GenerateImportTemplate([FromQuery] string language = "en")
+        {
+            try
+            {
+                var templateResult = await _weaponService.GenerateImportTemplateAsync(language);
+                
+                if (!templateResult.Succeeded || templateResult.Data == null)
+                {
+                    return StatusCode((int)HttpStatusCode.InternalServerError, templateResult.Message);
+                }
+
+                var fileName = $"Weapon_Import_Template_{language}_{DateTime.UtcNow:yyyyMMddHHmmss}.xlsx";
+                return File(templateResult.Data, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", fileName);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode((int)HttpStatusCode.InternalServerError, $"Error generating template: {ex.Message}");
+            }
+        }
     }
 }
 
