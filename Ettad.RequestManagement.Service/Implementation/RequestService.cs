@@ -199,20 +199,13 @@ namespace Ettad.RequestManagement.Service.Implementation
             }
 
             // Filter requests where the user can take action or took an action
-            // Join with WorkflowApprovalStep and WorkflowStep
-            
-            var requestIds = await _context.WorkflowApprovalSteps
-                .Include(was => was.WorkflowStep)
-                .ThenInclude(ws => ws.ApplicationRole)
-                .Where(was => 
+            // Optimization: Use Any() to filter directly in SQL instead of fetching all IDs first
+            query = query.Where(r => _context.WorkflowApprovalSteps.Any(was => 
+                was.TargetRequestId == r.Id && (
                     (was.ApproverUserId == userId) || 
-                    (was.ApproverUserId == null && (userRoles.Contains(was.WorkflowStep.ApplicationRole.Name) || userRoles.Contains(was.WorkflowStep.HigherApprovalRole.Name)))
+                    (was.ApproverUserId == null && (userRoles.Contains(was.WorkflowStep.ApplicationRole.Name) || (was.WorkflowStep.HigherApprovalRole != null && userRoles.Contains(was.WorkflowStep.HigherApprovalRole.Name))))
                 )
-                .Select(was => (long)was.TargetRequestId)
-                .Distinct()
-                .ToListAsync();
-
-            query = query.Where(r => requestIds.Contains(r.Id));
+            ));
 
             var requests = await query
                 .Include(r => r.Department)
@@ -223,7 +216,25 @@ namespace Ettad.RequestManagement.Service.Implementation
                     .ThenInclude(ri => ri.Item)
                 .ToListAsync();
 
+            // Fetch IsMyTurn status only for the requested IDs to optimize database traffic
+            var fetchedRequestIds = requests.Select(r => (int)r.Id).ToList();
+
+            var myTurnSet = (await _context.WorkflowApprovalSteps
+                .Where(was => was.IsCurrent && fetchedRequestIds.Contains(was.TargetRequestId) && (
+                    (was.ApproverUserId == userId) || 
+                    (was.ApproverUserId == null && (userRoles.Contains(was.WorkflowStep.ApplicationRole.Name) || (was.WorkflowStep.HigherApprovalRole != null && userRoles.Contains(was.WorkflowStep.HigherApprovalRole.Name))))
+                ))
+                .Select(was => (long)was.TargetRequestId)
+                .Distinct()
+                .ToListAsync())
+                .ToHashSet();
+
             var dtos = _mapper.Map<List<BaseRequestDto>>(requests);
+
+            foreach (var dto in dtos)
+            {
+                dto.IsMyTurn = myTurnSet.Contains(dto.Id);
+            }
 
             return APIOperationResponse<List<BaseRequestDto>>.Success(dtos);
         }

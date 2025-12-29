@@ -32,5 +32,7 @@ namespace Ettad.RequestManagement.Service.Common.Dtos
         
         // Audit fields
         public DateTime CreationDate { get; set; }
+
+        public bool IsMyTurn { get; set; }
     }
 }
