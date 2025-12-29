@@ -7,11 +7,54 @@ using Ettad.EntityFramework.DataBaseContext;
 using Ettad.Data.Entities;
 using Ettad.Data.Enums;
 using System.Collections.Generic;
+using Serilog;
 
 namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
 {
     public static class ApplicationDbInitializer
     {
+        /// <summary>
+        /// Checks for pending migrations and applies them if any exist
+        /// </summary>
+        public static async Task ApplyPendingMigrationsAsync(IServiceProvider services)
+        {
+            try
+            {
+                var context = services.GetRequiredService<ApplicationDbContext>();
+                
+                if (!context.Database.IsSqlServer())
+                {
+                    Log.Information("Database is not SQL Server. Skipping migration check.");
+                    return;
+                }
+
+                // Get pending migrations
+                var pendingMigrations = await context.Database.GetPendingMigrationsAsync();
+                var pendingMigrationsList = pendingMigrations.ToList();
+
+                if (pendingMigrationsList.Any())
+                {
+                    Log.Information("Found {Count} pending migration(s): {Migrations}", 
+                        pendingMigrationsList.Count, 
+                        string.Join(", ", pendingMigrationsList));
+                    
+                    // Apply pending migrations
+                    await context.Database.MigrateAsync();
+                    
+                    Log.Information("Successfully applied {Count} pending migration(s)", pendingMigrationsList.Count);
+                }
+                else
+                {
+                    Log.Information("No pending migrations found. Database is up to date.");
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "An error occurred while applying pending migrations");
+                throw;
+            }
+        }
+
         public static async Task SeedDefaultDataAsync(IServiceProvider services)
         {
             try

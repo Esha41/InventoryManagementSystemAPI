@@ -1,5 +1,6 @@
 ﻿using Ettad.Application.Common.Interfaces;
 using Ettad.Comman.Enums;
+using Ettad.CrossCutting.Comman.Constants;
 using Ettad.CrossCutting.Comman.FileUpload;
 using Ettad.CrossCutting.Data.Repository;
 using Ettad.Data.Entities;
@@ -625,13 +626,15 @@ namespace Ettad.Workflows.Service.Imeplemention
                 if (!string.IsNullOrEmpty(nextStep.HigherApprovalRoleId))
                     nextRoles.Add(nextStep.HigherApprovalRoleId);
 
+                var (userIds, roleIds) = await FilterNotificationRecipientsByDepartmentAsync(nextRoles, baseRequest.DepartmentId);
+
                 await _notificationHelperService.SendNotificationAsync(
                     "New Approval Required",
                     "A request awaits your approval.",
                     "Request",
                     baseRequest.Id,
-                    null,
-                    nextRoles,
+                    userIds,
+                    roleIds,
                     _currentUserService.UserId
                 );
 
@@ -832,14 +835,16 @@ namespace Ettad.Workflows.Service.Imeplemention
             if (!string.IsNullOrEmpty(returnToWorkflowStep.HigherApprovalRoleId))
                 returnRoles.Add(returnToWorkflowStep.HigherApprovalRoleId);
 
+            var (userIds, roleIds) = await FilterNotificationRecipientsByDepartmentAsync(returnRoles, baseRequest.DepartmentId);
+
             var approver = await _context.Users.FirstOrDefaultAsync(u => u.Id == _currentUserService.UserId);
             await _notificationHelperService.SendNotificationAsync(
                 "Request Returned for Review",
                 $"Request #{baseRequest.RequestNo} has been returned for review by {approver?.UserName}. Comments: {model.Comments}",
                 "Request",
                 baseRequest.Id,
-                null,
-                returnRoles,
+                userIds,
+                roleIds,
                 _currentUserService.UserId
             );
 
@@ -878,6 +883,71 @@ namespace Ettad.Workflows.Service.Imeplemention
                 throw new UnauthorizedAccessException("User cannot approve/reject this step");
 
             return step;
+        }
+
+        /// <summary>
+        /// Filters notification recipients by department for restricted roles (Supply Officer, Commander).
+        /// For restricted roles, returns userIds filtered by department. For other roles, returns roleIds.
+        /// </summary>
+        private async Task<(List<string>? userIds, List<string>? roleIds)> FilterNotificationRecipientsByDepartmentAsync(
+            List<string> roleIds, 
+            long? departmentId)
+        {
+            if (roleIds == null || !roleIds.Any())
+                return (null, null);
+
+            // Roles that are restricted to their own department
+            var restrictedRoleNames = new List<string>
+            {
+                WorkflowRoleNames.SupplyOfficer,
+                WorkflowRoleNames.RequestingEntityCommander
+            };
+
+            // Get role names for the provided role IDs
+            var roles = await _context.Roles
+                .Where(r => roleIds.Contains(r.Id))
+                .ToListAsync();
+
+            var restrictedRoleIds = new List<string>();
+            var nonRestrictedRoleIds = new List<string>();
+            var userIds = new List<string>();
+
+            foreach (var role in roles)
+            {
+                if (restrictedRoleNames.Contains(role.Name))
+                {
+                    restrictedRoleIds.Add(role.Id);
+                }
+                else
+                {
+                    nonRestrictedRoleIds.Add(role.Id);
+                }
+            }
+
+            // For restricted roles, get users in that role who belong to the department
+            if (restrictedRoleIds.Any() && departmentId.HasValue)
+            {
+                var usersInRestrictedRoles = await (from userRole in _context.Set<IdentityUserRole<string>>()
+                                                    join user in _context.Users on userRole.UserId equals user.Id
+                                                    where restrictedRoleIds.Contains(userRole.RoleId) 
+                                                          && user.DepartmentId == departmentId.Value
+                                                          && !user.IsDeleted
+                                                    select user.Id)
+                                                    .Distinct()
+                                                    .ToListAsync();
+
+                userIds.AddRange(usersInRestrictedRoles);
+            }
+
+            // Return userIds if we have any, otherwise return roleIds for non-restricted roles
+            if (userIds.Any())
+            {
+                return (userIds, nonRestrictedRoleIds.Any() ? nonRestrictedRoleIds : null);
+            }
+            else
+            {
+                return (null, roleIds);
+            }
         }
 
         // Helper: log step action
@@ -1108,18 +1178,26 @@ namespace Ettad.Workflows.Service.Imeplemention
                             await _context.SaveChangesAsync();
                             await transaction.CommitAsync();
 
+                            // Get the base request to access department ID
+                            var baseRequest = await _context.BaseRequests
+                                .FirstOrDefaultAsync(br => br.Id == orderId);
+
                             // Notify the approver roles after creating the workflow approval step
                             var approverRoles = new List<string> { firstWorkflowStep.ApplicationRoleId };
                             if (!string.IsNullOrEmpty(firstWorkflowStep.HigherApprovalRoleId))
                                 approverRoles.Add(firstWorkflowStep.HigherApprovalRoleId);
+
+                            var (userIds, roleIds) = await FilterNotificationRecipientsByDepartmentAsync(
+                                approverRoles, 
+                                baseRequest?.DepartmentId);
 
                             await _notificationHelperService.SendNotificationAsync(
                                 "New Approval Required",
                                 "A request awaits your approval.",
                                 "Request",
                                 orderId,
-                                null,
-                                approverRoles,
+                                userIds,
+                                roleIds,
                                 _currentUserService.UserId
                             );
 
@@ -1296,6 +1374,7 @@ namespace Ettad.Workflows.Service.Imeplemention
                                                     ApplicationRoleNameAr = role != null ? role.NameAr : null,
                                                     RequireHigherApproval = wfs != null ? wfs.RequireHigherApproval : false,
                                                     HigherApprovalRoleId = wfs != null ? wfs.HigherApprovalRoleId : null,
+                                                    CanReturn = wfs != null ? wfs.CanReturn : false,
                                                     Files = new List<FileUploadDto>() // Initialize Files list
                                                 }
                                             })
@@ -1342,7 +1421,8 @@ namespace Ettad.Workflows.Service.Imeplemention
                                              RequireHigherApproval = wfs.RequireHigherApproval,
                                              HigherApprovalRoleId = wfs.HigherApprovalRoleId,
                                              HigherApprovalRoleName = wfs.HigherApprovalRole != null ? wfs.HigherApprovalRole.Name : null,
-                                             HigherApprovalRoleNameAr = wfs.HigherApprovalRole != null ? wfs.HigherApprovalRole.NameAr : null
+                                             HigherApprovalRoleNameAr = wfs.HigherApprovalRole != null ? wfs.HigherApprovalRole.NameAr : null,
+                                             CanReturn = wfs.CanReturn
                                          })
                                          .ToListAsync();
 
@@ -1584,6 +1664,7 @@ namespace Ettad.Workflows.Service.Imeplemention
                                     ApplicationRoleNameAr = roleNameArToUse,
                                     RequireHigherApproval = nextPendingStep.RequireHigherApproval,
                                     HigherApprovalRoleId = nextPendingStep.HigherApprovalRoleId,
+                                    CanReturn = nextPendingStep.CanReturn,
                                     IsPending = true,
                                     IsCurrentUserApprover = isCurrentUserApprover
                                 };
@@ -1626,6 +1707,7 @@ namespace Ettad.Workflows.Service.Imeplemention
                                     ApplicationRoleName = nextWorkflowStep.ApplicationRole != null ? nextWorkflowStep.ApplicationRole.Name : null,
                                     RequireHigherApproval = nextWorkflowStep.RequireHigherApproval,
                                     HigherApprovalRoleId = nextWorkflowStep.HigherApprovalRoleId,
+                                    CanReturn = nextWorkflowStep.CanReturn,
                                     IsPending = true,
                                     Files = new List<FileUploadDto>() // No files for future steps that haven't been created yet
                                 };
@@ -1801,6 +1883,7 @@ namespace Ettad.Workflows.Service.Imeplemention
                                                     ApplicationRoleNameAr = role != null ? role.NameAr : null,
                                                     RequireHigherApproval = wfs != null ? wfs.RequireHigherApproval : false,
                                                     HigherApprovalRoleId = wfs != null ? wfs.HigherApprovalRoleId : null,
+                                                    CanReturn = wfs != null ? wfs.CanReturn : false,
                                                     Files = new List<FileUploadDto>() // Initialize Files list
                                                 }
                                             })
@@ -1831,7 +1914,8 @@ namespace Ettad.Workflows.Service.Imeplemention
                                              RequireHigherApproval = wfs.RequireHigherApproval,
                                              HigherApprovalRoleId = wfs.HigherApprovalRoleId,
                                              HigherApprovalRoleName = wfs.HigherApprovalRole != null ? wfs.HigherApprovalRole.Name : null,
-                                             HigherApprovalRoleNameAr = wfs.HigherApprovalRole != null ? wfs.HigherApprovalRole.NameAr : null
+                                             HigherApprovalRoleNameAr = wfs.HigherApprovalRole != null ? wfs.HigherApprovalRole.NameAr : null,
+                                             CanReturn = wfs.CanReturn
                                          })
                                          .ToListAsync();
 
@@ -2135,6 +2219,7 @@ namespace Ettad.Workflows.Service.Imeplemention
                                 ApplicationRoleNameAr = roleNameArToUse,
                                 RequireHigherApproval = nextPendingStep.RequireHigherApproval,
                                 HigherApprovalRoleId = nextPendingStep.HigherApprovalRoleId,
+                                CanReturn = nextPendingStep.CanReturn,
                                 IsPending = true,
                                 IsCurrentUserApprover = isCurrentUserApprover
                             };
@@ -2187,6 +2272,7 @@ namespace Ettad.Workflows.Service.Imeplemention
                                 ApplicationRoleName = nextWorkflowStep.ApplicationRole != null ? nextWorkflowStep.ApplicationRole.Name : null,
                                 RequireHigherApproval = nextWorkflowStep.RequireHigherApproval,
                                 HigherApprovalRoleId = nextWorkflowStep.HigherApprovalRoleId,
+                                CanReturn = nextWorkflowStep.CanReturn,
                                 IsPending = true,
                                 Files = new List<FileUploadDto>(), // No files for future steps that haven't been created yet
                                 Transitions = nextWorkflowStep.Transitions?.Select(t => new WorkflowStepTransitionDto

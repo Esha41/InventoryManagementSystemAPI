@@ -76,6 +76,7 @@ namespace Ettad.Workflows.Service.DTO
         public string? HigherApprovalRoleId { get; set; }
         public bool IsPending { get; set; } // True if this step hasn't been completed yet
         public bool IsCurrentUserApprover { get; set; } // True if current user can approve this step
+        public bool CanReturn { get; set; }
         public List<FileUploadDto> Files { get; set; } = new List<FileUploadDto>();
         public List<WorkflowStepTransitionDto> Transitions { get; set; } = new List<WorkflowStepTransitionDto>();
     }

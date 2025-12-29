@@ -351,12 +351,10 @@ try
         var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
         try
         {
+            // Check and apply pending migrations
+            await Ettad.EntityFramework.DataBaseContext.DataSeeding.ApplicationDbInitializer.ApplyPendingMigrationsAsync(scope.ServiceProvider);
+            
             var context = services.GetRequiredService<ApplicationDbContext>();
-
-            if (context.Database.IsSqlServer())
-            {
-                context.Database.Migrate();
-            }
             await ApplicationDbcontextSeed.SeedDefaultUserAsync(context, userManager, roleManager);
             await Ettad.EntityFramework.DataBaseContext.DataSeeding.ApplicationDbInitializer.SeedDefaultDataAsync(scope.ServiceProvider);
 
