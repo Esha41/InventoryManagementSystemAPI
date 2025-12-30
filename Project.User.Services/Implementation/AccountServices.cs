@@ -10,10 +10,14 @@ using Ettad.ResponseHandler.Models;
 using Ettad.User.Services.DTO;
 using Ettad.User.Services.Helpers;
 using Ettad.User.Services.Interfaces;
+using Ettad.Data.Entities;
+using Ettad.Data.Enums;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Logging;
+using System.Security.Principal;
 
 namespace Ettad.User.Services.Implementation
 {
@@ -32,8 +36,15 @@ namespace Ettad.User.Services.Implementation
         private readonly ICurrentUserService _currentUserService;
         private readonly IEmailSender _emailSender;
         private readonly ILogger<AccountServices> _logger;
+        private readonly IHttpContextAccessor _httpContextAccessor;
+        private readonly ICaptchaService _captchaService;
 
         private readonly ApplicationDbContext _context;
+        
+        // Lockout configuration constants
+        private const int MAX_FAILED_ATTEMPTS = 5;
+        private const int LOCKOUT_DURATION_MINUTES = 15;
+        private const int CAPTCHA_REQUIRED_AFTER_ATTEMPTS = 3;
         public AccountServices(
             IJwtServices jwtServices,
             ILdapSettingsService ldapSettingsService,
@@ -43,7 +54,7 @@ namespace Ettad.User.Services.Implementation
             IOptions<JwtOptions> jwtOptions,
             IOptions<AdminUsersOptions> adminUsers, UserManager<ApplicationUser> userRepository,
             SignInManager<ApplicationUser> signInManager, RoleManager<ApplicationRole> roleManager, ICurrentUserService currentUserService, IEmailSender emailSender,
-            ILogger<AccountServices> logger, ApplicationDbContext context)
+            ILogger<AccountServices> logger, ApplicationDbContext context, IHttpContextAccessor httpContextAccessor, ICaptchaService captchaService)
         {
             _jwtServices = jwtServices ?? throw new ArgumentNullException(nameof(jwtServices));
             _ldapSettingsService = ldapSettingsService ?? throw new ArgumentNullException(nameof(ldapSettingsService));
@@ -59,7 +70,8 @@ namespace Ettad.User.Services.Implementation
             _emailSender = emailSender;
             _context = context;
             _logger = logger;
-            _context = context;
+            _httpContextAccessor = httpContextAccessor;
+            _captchaService = captchaService;
         }
 
         public async Task<APIOperationResponse<AuthenticatedResponse>> Login(
@@ -73,6 +85,7 @@ namespace Ettad.User.Services.Implementation
                 if (string.IsNullOrWhiteSpace(loginInformation?.Username))
                 {
                     _logger.LogWarning("Login failed: Empty username provided");
+                    await RecordLoginAttemptAsync(loginInformation?.Username, null, false, "Empty username", LoginType.Unknown, cancellationToken);
                     return APIOperationResponse<AuthenticatedResponse>.Fail(
                         ResponseType.BadRequest,
                         CommonErrorCodes.INVALID_EMAIL_OR_PASSWORD,
@@ -81,6 +94,55 @@ namespace Ettad.User.Services.Implementation
                              
                 var existingUser = await _userRepository.Users
                     .FirstOrDefaultAsync(u => u.UserName == loginInformation.Username.Trim() && !u.IsDeleted, cancellationToken);
+
+                // Check if account is locked (for existing users)
+                if (existingUser != null)
+                {
+                    var isLocked = await IsAccountLockedAsync(loginInformation.Username.Trim(), cancellationToken);
+                    if (isLocked)
+                    {
+                        _logger.LogWarning("Login blocked: Account is locked due to too many failed attempts. Username: {Username}", 
+                            loginInformation.Username);
+                        await RecordLoginAttemptAsync(loginInformation.Username.Trim(), existingUser.Id, false, 
+                            "Account locked due to too many failed attempts", LoginType.Admin, cancellationToken);
+                        return APIOperationResponse<AuthenticatedResponse>.Fail(
+                            ResponseType.Forbidden,
+                            CommonErrorCodes.INVALID_EMAIL_OR_PASSWORD,
+                            "Account is temporarily locked due to too many failed login attempts. Please try again in 15 minutes.");
+                    }
+                }
+
+                // Check if CAPTCHA is required (3+ failed attempts but not locked yet)
+                var captchaRequired = await IsCaptchaRequiredAsync(loginInformation.Username.Trim(), cancellationToken);
+                if (captchaRequired)
+                {
+                    // If CAPTCHA is required but not provided, return error indicating CAPTCHA is needed
+                    if (string.IsNullOrWhiteSpace(loginInformation.CaptchaId) || string.IsNullOrWhiteSpace(loginInformation.CaptchaCode))
+                    {
+                        _logger.LogWarning("Login blocked: CAPTCHA required but not provided. Username: {Username}", 
+                            loginInformation.Username);
+                        await RecordLoginAttemptAsync(loginInformation.Username.Trim(), existingUser?.Id, false, 
+                            "CAPTCHA required but not provided", existingUser != null ? LoginType.Admin : LoginType.Unknown, cancellationToken);
+                        return APIOperationResponse<AuthenticatedResponse>.Fail(
+                            ResponseType.BadRequest,
+                            CommonErrorCodes.INVALID_EMAIL_OR_PASSWORD,
+                            "CAPTCHA verification is required. Please complete the CAPTCHA and try again.");
+                    }
+
+                    // Validate CAPTCHA code
+                    var captchaValid = _captchaService.ValidateCaptcha(loginInformation.CaptchaId, loginInformation.CaptchaCode);
+                    if (!captchaValid)
+                    {
+                        _logger.LogWarning("Login blocked: Invalid CAPTCHA code. Username: {Username}", 
+                            loginInformation.Username);
+                        await RecordLoginAttemptAsync(loginInformation.Username.Trim(), existingUser?.Id, false, 
+                            "Invalid CAPTCHA code", existingUser != null ? LoginType.Admin : LoginType.Unknown, cancellationToken);
+                        return APIOperationResponse<AuthenticatedResponse>.Fail(
+                            ResponseType.BadRequest,
+                            CommonErrorCodes.INVALID_EMAIL_OR_PASSWORD,
+                            "CAPTCHA verification failed. Please try again.");
+                    }
+                }
 
                 var isAdminLogin = existingUser != null;
 
@@ -99,6 +161,8 @@ namespace Ettad.User.Services.Implementation
                 {
                     _logger.LogWarning("Login failed: LDAP not configured and user not found locally. Username: {Username}",
                         loginInformation.Username);
+                    await RecordLoginAttemptAsync(loginInformation.Username.Trim(), null, false, 
+                        "User not found and LDAP not configured", LoginType.Unknown, cancellationToken);
                     return APIOperationResponse<AuthenticatedResponse>.Fail(
                         ResponseType.Unauthorized,
                         CommonErrorCodes.INVALID_EMAIL_OR_PASSWORD,
@@ -108,6 +172,7 @@ namespace Ettad.User.Services.Implementation
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Login error occurred. Username: {Username}", loginInformation?.Username);
+                await RecordLoginAttemptAsync(loginInformation?.Username, null, false, ex.Message, LoginType.Unknown, cancellationToken);
                 return APIOperationResponse<AuthenticatedResponse>.Fail(
                     ResponseType.InternalServerError,
                     CommonErrorCodes.SERVER_ERROR,
@@ -126,6 +191,7 @@ namespace Ettad.User.Services.Implementation
             {
                 _logger.LogWarning("Admin login failed: User is deleted. Username: {Username}, UserId: {UserId}",
                     loginInformation.Username, user.Id);
+                await RecordLoginAttemptAsync(loginInformation.Username, user.Id, false, "User is deleted", LoginType.Admin, cancellationToken);
                 return APIOperationResponse<AuthenticatedResponse>.Fail(
                     ResponseType.Unauthorized,
                     CommonErrorCodes.INVALID_EMAIL_OR_PASSWORD,
@@ -138,6 +204,7 @@ namespace Ettad.User.Services.Implementation
                 _logger.LogWarning("Admin login failed: Invalid password. Username: {Username}, UserId: {UserId}",
                     loginInformation.Username, user.Id);
 
+                await RecordLoginAttemptAsync(loginInformation.Username, user.Id, false, "Invalid password", LoginType.Admin, cancellationToken);
                 return APIOperationResponse<AuthenticatedResponse>.Fail(
                     ResponseType.Unauthorized,
                     CommonErrorCodes.INVALID_EMAIL_OR_PASSWORD,
@@ -146,6 +213,9 @@ namespace Ettad.User.Services.Implementation
 
             _logger.LogInformation("Admin login successful. Username: {Username}, UserId: {UserId}",
                 loginInformation.Username, user.Id);
+
+            // Record successful login
+            await RecordLoginAttemptAsync(loginInformation.Username, user.Id, true, null, LoginType.Admin, cancellationToken);
 
             var authResponse = await CreateAndReturnAuthResponseAsync(user, cancellationToken);
             return APIOperationResponse<AuthenticatedResponse>.Success(authResponse);
@@ -165,6 +235,8 @@ namespace Ettad.User.Services.Implementation
                     _logger.LogWarning("LDAP login attempt failed: Failed to retrieve LDAP settings. Username: {Username}",
                         loginInformation?.Username);
 
+                    await RecordLoginAttemptAsync(loginInformation?.Username ?? "Unknown", null, false, 
+                        "Failed to retrieve LDAP settings", LoginType.LDAP, cancellationToken);
                     return APIOperationResponse<AuthenticatedResponse>.Fail(
                         ResponseType.BadRequest,
                         CommonErrorCodes.INVALID_LDAP_SETTINGS,
@@ -178,6 +250,8 @@ namespace Ettad.User.Services.Implementation
                     _logger.LogWarning("LDAP login attempt failed: LDAP settings inactive. Username: {Username}",
                         loginInformation?.Username);
 
+                    await RecordLoginAttemptAsync(loginInformation?.Username ?? "Unknown", null, false, 
+                        "LDAP settings inactive", LoginType.LDAP, cancellationToken);
                     return APIOperationResponse<AuthenticatedResponse>.Fail(
                         ResponseType.BadRequest,
                         CommonErrorCodes.INVALID_LDAP_SETTINGS,
@@ -188,10 +262,82 @@ namespace Ettad.User.Services.Implementation
                 {
                     _logger.LogWarning("LDAP login attempt failed: Username is empty.");
 
+                    await RecordLoginAttemptAsync("Unknown", null, false, "Username is empty", LoginType.LDAP, cancellationToken);
                     return APIOperationResponse<AuthenticatedResponse>.Fail(
                         ResponseType.BadRequest,
                         CommonErrorCodes.INVALID_EMAIL_OR_PASSWORD,
                         "server.invalidLogin");
+                }
+
+                // Check if Windows logged-in user matches LDAP username
+                var windowsIdentity = _httpContextAccessor.HttpContext?.User?.Identity?.Name
+                                      ?? WindowsIdentity.GetCurrent().Name;
+
+                if (!string.IsNullOrEmpty(windowsIdentity))
+                {
+                    var windowsUser = NormalizeUsername(windowsIdentity);
+                    var inputUser = NormalizeUsername(loginInformation.Username.Trim());
+
+                    if (!windowsUser.Equals(inputUser, StringComparison.OrdinalIgnoreCase))
+                    {
+                        _logger.LogWarning(
+                            "LDAP login blocked: Windows user mismatch. InputUser: {InputUser}, WindowsUser: {WindowsUser}",
+                            inputUser,
+                            windowsUser);
+
+                        await RecordLoginAttemptAsync(loginInformation.Username.Trim(), null, false, 
+                            $"Windows user mismatch. Expected: {windowsUser}, Got: {inputUser}", LoginType.LDAP, cancellationToken);
+                        return APIOperationResponse<AuthenticatedResponse>.Fail(
+                            ResponseType.Unauthorized,
+                            CommonErrorCodes.INVALID_EMAIL_OR_PASSWORD,
+                            "Windows logged-in user does not match the provided username. Please use your Windows account credentials.");
+                    }
+                }
+
+                // Check if account is locked (based on username)
+                var isLocked = await IsAccountLockedAsync(loginInformation.Username.Trim(), cancellationToken);
+                if (isLocked)
+                {
+                    _logger.LogWarning("LDAP login blocked: Account is locked due to too many failed attempts. Username: {Username}", 
+                        loginInformation.Username);
+                    await RecordLoginAttemptAsync(loginInformation.Username.Trim(), null, false, 
+                        "Account locked due to too many failed attempts", LoginType.LDAP, cancellationToken);
+                    return APIOperationResponse<AuthenticatedResponse>.Fail(
+                        ResponseType.Forbidden,
+                        CommonErrorCodes.INVALID_EMAIL_OR_PASSWORD,
+                        "Account is temporarily locked due to too many failed login attempts. Please try again in 15 minutes.");
+                }
+
+                // Check if CAPTCHA is required (3+ failed attempts but not locked yet)
+                var captchaRequired = await IsCaptchaRequiredAsync(loginInformation.Username.Trim(), cancellationToken);
+                if (captchaRequired)
+                {
+                    // If CAPTCHA is required but not provided, return error indicating CAPTCHA is needed
+                    if (string.IsNullOrWhiteSpace(loginInformation.CaptchaId) || string.IsNullOrWhiteSpace(loginInformation.CaptchaCode))
+                    {
+                        _logger.LogWarning("LDAP login blocked: CAPTCHA required but not provided. Username: {Username}", 
+                            loginInformation.Username);
+                        await RecordLoginAttemptAsync(loginInformation.Username.Trim(), null, false, 
+                            "CAPTCHA required but not provided", LoginType.LDAP, cancellationToken);
+                        return APIOperationResponse<AuthenticatedResponse>.Fail(
+                            ResponseType.BadRequest,
+                            CommonErrorCodes.INVALID_EMAIL_OR_PASSWORD,
+                            "CAPTCHA verification is required. Please complete the CAPTCHA and try again.");
+                    }
+
+                    // Validate CAPTCHA code
+                    var captchaValid = _captchaService.ValidateCaptcha(loginInformation.CaptchaId, loginInformation.CaptchaCode);
+                    if (!captchaValid)
+                    {
+                        _logger.LogWarning("LDAP login blocked: Invalid CAPTCHA code. Username: {Username}", 
+                            loginInformation.Username);
+                        await RecordLoginAttemptAsync(loginInformation.Username.Trim(), null, false, 
+                            "Invalid CAPTCHA code", LoginType.LDAP, cancellationToken);
+                        return APIOperationResponse<AuthenticatedResponse>.Fail(
+                            ResponseType.BadRequest,
+                            CommonErrorCodes.INVALID_EMAIL_OR_PASSWORD,
+                            "CAPTCHA verification failed. Please try again.");
+                    }
                 }
 
                 // 🧠 Step 1: Authenticate against LDAP
@@ -208,6 +354,7 @@ namespace Ettad.User.Services.Implementation
                         "LDAP login failed: Invalid credentials. Username: {Username}",
                         loginInformation.Username);
 
+                    await RecordLoginAttemptAsync(loginInformation.Username.Trim(), null, false, "Invalid LDAP credentials", LoginType.LDAP, cancellationToken);
                     return APIOperationResponse<AuthenticatedResponse>.Fail(
                         ResponseType.Unauthorized,
                         CommonErrorCodes.INVALID_EMAIL_OR_PASSWORD,
@@ -252,6 +399,7 @@ namespace Ettad.User.Services.Implementation
                     {
                         _logger.LogWarning("LDAP login failed: User is deleted. Username: {Username}, UserId: {UserId}",
                             user.UserName, user.Id);
+                        await RecordLoginAttemptAsync(resolvedUsername, user.Id, false, "User is deleted", LoginType.LDAP, cancellationToken);
                         return APIOperationResponse<AuthenticatedResponse>.Fail(
                             ResponseType.Unauthorized,
                             CommonErrorCodes.INVALID_EMAIL_OR_PASSWORD,
@@ -272,6 +420,9 @@ namespace Ettad.User.Services.Implementation
                     resolvedUsername,
                     user.Id);
 
+                // Record successful login
+                await RecordLoginAttemptAsync(resolvedUsername, user.Id, true, null, LoginType.LDAP, cancellationToken);
+
                 return APIOperationResponse<AuthenticatedResponse>.Success(response);
             }
             catch (Exception ex)
@@ -281,6 +432,8 @@ namespace Ettad.User.Services.Implementation
                     "LDAP login attempt threw exception. Username: {Username}",
                     loginInformation?.Username);
 
+                await RecordLoginAttemptAsync(loginInformation?.Username ?? "Unknown", null, false, 
+                    $"Exception: {ex.Message}", LoginType.LDAP, cancellationToken);
                 return APIOperationResponse<AuthenticatedResponse>.Fail(
                     ResponseType.InternalServerError,
                     CommonErrorCodes.SERVER_ERROR,
@@ -451,5 +604,145 @@ namespace Ettad.User.Services.Implementation
             return APIOperationResponse<string>.Success("Password has been reset successfully.");
         }
 
+        #region Login Tracking Helper Methods
+
+        /// <summary>
+        /// Checks if an account is locked due to too many failed login attempts
+        /// </summary>
+        private async Task<bool> IsAccountLockedAsync(string username, CancellationToken cancellationToken)
+        {
+            var lockoutThreshold = DateTime.UtcNow.AddMinutes(-LOCKOUT_DURATION_MINUTES);
+            
+            var failedAttempts = await _context.LoginAttempts
+                .Where(la => la.Username == username 
+                    && !la.IsSuccessful 
+                    && la.AttemptDate >= lockoutThreshold)
+                .CountAsync(cancellationToken);
+
+            return failedAttempts >= MAX_FAILED_ATTEMPTS;
+        }
+
+        /// <summary>
+        /// Checks if CAPTCHA is required (3+ failed attempts but account not locked yet)
+        /// </summary>
+        private async Task<bool> IsCaptchaRequiredAsync(string username, CancellationToken cancellationToken)
+        {
+            var lockoutThreshold = DateTime.UtcNow.AddMinutes(-LOCKOUT_DURATION_MINUTES);
+            
+            var failedAttempts = await _context.LoginAttempts
+                .Where(la => la.Username == username 
+                    && !la.IsSuccessful 
+                    && la.AttemptDate >= lockoutThreshold)
+                .CountAsync(cancellationToken);
+
+            // CAPTCHA required if 3+ failed attempts but less than 5 (which would lock the account)
+            return failedAttempts >= CAPTCHA_REQUIRED_AFTER_ATTEMPTS && failedAttempts < MAX_FAILED_ATTEMPTS;
+        }
+
+        /// <summary>
+        /// Records a login attempt in the database
+        /// </summary>
+        private async Task RecordLoginAttemptAsync(
+            string username, 
+            string? userId, 
+            bool isSuccessful, 
+            string? failureReason, 
+            LoginType loginType,
+            CancellationToken cancellationToken)
+        {
+            try
+            {
+                var loginAttempt = new LoginAttempt
+                {
+                    Username = username ?? "Unknown",
+                    UserId = userId,
+                    IsSuccessful = isSuccessful,
+                    FailureReason = failureReason,
+                    IpAddress = GetClientIpAddress(),
+                    UserAgent = GetUserAgent(),
+                    LoginType = loginType,
+                    AttemptDate = DateTime.UtcNow
+                };
+
+                _context.LoginAttempts.Add(loginAttempt);
+                await _context.SaveChangesAsync(cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                // Log but don't fail the login if tracking fails
+                _logger.LogError(ex, "Failed to record login attempt for username: {Username}", username);
+            }
+        }
+
+        /// <summary>
+        /// Gets the client IP address from HttpContext
+        /// </summary>
+        private string? GetClientIpAddress()
+        {
+            try
+            {
+                var httpContext = _httpContextAccessor.HttpContext;
+                if (httpContext == null) return null;
+
+                // Check for forwarded IP (when behind proxy/load balancer)
+                var forwardedFor = httpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault();
+                if (!string.IsNullOrEmpty(forwardedFor))
+                {
+                    var ips = forwardedFor.Split(',');
+                    return ips[0].Trim();
+                }
+
+                // Check for real IP header
+                var realIp = httpContext.Request.Headers["X-Real-IP"].FirstOrDefault();
+                if (!string.IsNullOrEmpty(realIp))
+                {
+                    return realIp;
+                }
+
+                // Fall back to connection remote IP
+                return httpContext.Connection.RemoteIpAddress?.ToString();
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Gets the User-Agent from HttpContext
+        /// </summary>
+        private string? GetUserAgent()
+        {
+            try
+            {
+                return _httpContextAccessor.HttpContext?.Request.Headers["User-Agent"].ToString();
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Normalizes username by removing domain prefix/suffix for comparison
+        /// Handles formats like: DOMAIN\username, username@domain.com, username
+        /// </summary>
+        private static string NormalizeUsername(string username)
+        {
+            if (string.IsNullOrWhiteSpace(username))
+                return string.Empty;
+
+            // DOMAIN\username → username
+            if (username.Contains("\\"))
+                return username.Split('\\').Last();
+
+            // username@domain.com → username
+            if (username.Contains("@"))
+                return username.Split('@').First();
+
+            return username;
+        }
+
+        #endregion
     }
 }
