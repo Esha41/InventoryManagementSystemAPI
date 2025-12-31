@@ -61,12 +61,35 @@ namespace Ettad.Inventory.Service.AllowanceItems
                 if (allowanceItem == null)
                     return APIOperationResponse<AllowanceItemDto>.Fail(ResponseType.NotFound, "Allowance item not found");
 
+                // Check authorization: users with ViewAllDepartments permission or admin can access all departments
+                var canViewAll = _currentUserService.IsSuperAdmin || 
+                    _currentUserService.IsAdminRole || 
+                    _currentUserService.IsUserHasClaim("AllowanceItemViewAllDepartments");
+                var userDepartmentId = _currentUserService.DepartmentId;
+
+                if (!canViewAll)
+                {
+                    if (!userDepartmentId.HasValue)
+                    {
+                        _logger.LogWarning("User has no department assigned. UserId: {UserId}", _currentUserService.UserId);
+                        return APIOperationResponse<AllowanceItemDto>.Fail(ResponseType.Forbidden, "You do not have permission to access this allowance item");
+                    }
+
+                    if (allowanceItem.DepartmentId != userDepartmentId.Value)
+                    {
+                        _logger.LogWarning("User attempted to access allowance from different department. UserDepartmentId: {UserDeptId}, AllowanceDepartmentId: {AllowanceDeptId}, UserId: {UserId}", 
+                            userDepartmentId.Value, allowanceItem.DepartmentId, _currentUserService.UserId);
+                        return APIOperationResponse<AllowanceItemDto>.Fail(ResponseType.Forbidden, "You do not have permission to access this allowance item");
+                    }
+                }
+
                 var dto = _mapper.Map<AllowanceItemDto>(allowanceItem);
                 await PopulateCalculatedQuantitiesAsync(dto, allowanceItem);
                 return APIOperationResponse<AllowanceItemDto>.Success(dto);
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Error retrieving allowance item by ID. Id: {Id}, User: {UserId}", id, _currentUserService.UserId);
                 return APIOperationResponse<AllowanceItemDto>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
             }
         }
@@ -75,9 +98,32 @@ namespace Ettad.Inventory.Service.AllowanceItems
         {
             try
             {
+                // Check if user can view all departments
+                var canViewAll = _currentUserService.IsSuperAdmin || 
+                    _currentUserService.IsAdminRole || 
+                    _currentUserService.IsUserHasClaim("AllowanceItemViewAllDepartments");
+                var userDepartmentId = _currentUserService.DepartmentId;
+
+                // Build filter: non-deleted items, and filter by department if user can't view all
+                System.Linq.Expressions.Expression<System.Func<AllowanceItem, bool>> filter = a => !a.IsDeleted;
+                
+                if (!canViewAll && userDepartmentId.HasValue)
+                {
+                    // Non-admin users can only see allowances for their own department
+                    filter = a => !a.IsDeleted && a.DepartmentId == userDepartmentId.Value;
+                    _logger.LogInformation("Filtering allowances by department. DepartmentId: {DepartmentId}, User: {UserId}", 
+                        userDepartmentId.Value, _currentUserService.UserId);
+                }
+                else if (!canViewAll && !userDepartmentId.HasValue)
+                {
+                    // User has no department assigned - return empty list
+                    _logger.LogWarning("User has no department assigned. UserId: {UserId}", _currentUserService.UserId);
+                    return APIOperationResponse<List<AllowanceItemDto>>.Success(new List<AllowanceItemDto>());
+                }
+
                 // Only get non-deleted items, include Item navigation property for names
                 var allowanceItems = await _allowanceItemRepository.FindAsync(
-                    a => !a.IsDeleted,
+                    filter,
                     false,
                     nameof(AllowanceItem.Item));
 
@@ -93,10 +139,14 @@ namespace Ettad.Inventory.Service.AllowanceItems
                     }
                 }
                 
+                _logger.LogInformation("Retrieved {Count} allowance items. CanViewAll: {CanViewAll}, DepartmentId: {DepartmentId}, User: {UserId}", 
+                    dtos.Count, canViewAll, userDepartmentId, _currentUserService.UserId);
+                
                 return APIOperationResponse<List<AllowanceItemDto>>.Success(dtos);
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Error retrieving allowance items. User: {UserId}", _currentUserService.UserId);
                 return APIOperationResponse<List<AllowanceItemDto>>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
             }
         }
@@ -108,6 +158,28 @@ namespace Ettad.Inventory.Service.AllowanceItems
             
             try
             {
+                // Check authorization: users with ViewAllDepartments permission or admin can create for all departments
+                var canViewAll = _currentUserService.IsSuperAdmin || 
+                    _currentUserService.IsAdminRole || 
+                    _currentUserService.IsUserHasClaim("AllowanceItemViewAllDepartments");
+                var userDepartmentId = _currentUserService.DepartmentId;
+
+                if (!canViewAll)
+                {
+                    if (!userDepartmentId.HasValue)
+                    {
+                        _logger.LogWarning("User has no department assigned. UserId: {UserId}", _currentUserService.UserId);
+                        return APIOperationResponse<long>.Fail(ResponseType.Forbidden, "You do not have permission to create allowances");
+                    }
+
+                    if (inputDto.DepartmentId != userDepartmentId.Value)
+                    {
+                        _logger.LogWarning("User attempted to create allowance for different department. UserDepartmentId: {UserDeptId}, RequestedDepartmentId: {RequestedDeptId}, UserId: {UserId}", 
+                            userDepartmentId.Value, inputDto.DepartmentId, _currentUserService.UserId);
+                        return APIOperationResponse<long>.Fail(ResponseType.Forbidden, "You can only create allowances for your own department");
+                    }
+                }
+
                 // Validate input
                 var validationResult = await _validator.ValidateAsync(inputDto);
                 if (!validationResult.IsValid)
@@ -150,6 +222,33 @@ namespace Ettad.Inventory.Service.AllowanceItems
         {
             try
             {
+                // Check if allowance item exists
+                var existingAllowanceItem = await _allowanceItemRepository.FindOneAsync(a => a.Id == id);
+                if (existingAllowanceItem == null)
+                    return APIOperationResponse<bool>.Fail(ResponseType.NotFound, "Allowance item not found");
+
+                // Check authorization: users with ViewAllDepartments permission or admin can update for all departments
+                var canViewAll = _currentUserService.IsSuperAdmin || 
+                    _currentUserService.IsAdminRole || 
+                    _currentUserService.IsUserHasClaim("AllowanceItemViewAllDepartments");
+                var userDepartmentId = _currentUserService.DepartmentId;
+
+                if (!canViewAll)
+                {
+                    if (!userDepartmentId.HasValue)
+                    {
+                        _logger.LogWarning("User has no department assigned. UserId: {UserId}", _currentUserService.UserId);
+                        return APIOperationResponse<bool>.Fail(ResponseType.Forbidden, "You do not have permission to update this allowance item");
+                    }
+
+                    if (existingAllowanceItem.DepartmentId != userDepartmentId.Value || inputDto.DepartmentId != userDepartmentId.Value)
+                    {
+                        _logger.LogWarning("User attempted to update allowance from different department. UserDepartmentId: {UserDeptId}, ExistingDepartmentId: {ExistingDeptId}, RequestedDepartmentId: {RequestedDeptId}, UserId: {UserId}", 
+                            userDepartmentId.Value, existingAllowanceItem.DepartmentId, inputDto.DepartmentId, _currentUserService.UserId);
+                        return APIOperationResponse<bool>.Fail(ResponseType.Forbidden, "You can only update allowances for your own department");
+                    }
+                }
+
                 // Validate input
                 var validationResult = await _validator.ValidateAsync(inputDto);
                 if (!validationResult.IsValid)
@@ -157,11 +256,6 @@ namespace Ettad.Inventory.Service.AllowanceItems
                     var errors = string.Join(", ", validationResult.Errors.Select(e => e.ErrorMessage));
                     return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, errors);
                 }
-
-                // Check if allowance item exists
-                var existingAllowanceItem = await _allowanceItemRepository.FindOneAsync(a => a.Id == id);
-                if (existingAllowanceItem == null)
-                    return APIOperationResponse<bool>.Fail(ResponseType.NotFound, "Allowance item not found");
 
                 // Map updates to entity
                 _mapper.Map(inputDto, existingAllowanceItem);
@@ -193,6 +287,28 @@ namespace Ettad.Inventory.Service.AllowanceItems
                     return APIOperationResponse<bool>.Fail(ResponseType.NotFound, "Allowance item not found");
                 }
 
+                // Check authorization: users with ViewAllDepartments permission or admin can delete for all departments
+                var canViewAll = _currentUserService.IsSuperAdmin || 
+                    _currentUserService.IsAdminRole || 
+                    _currentUserService.IsUserHasClaim("AllowanceItemViewAllDepartments");
+                var userDepartmentId = _currentUserService.DepartmentId;
+
+                if (!canViewAll)
+                {
+                    if (!userDepartmentId.HasValue)
+                    {
+                        _logger.LogWarning("User has no department assigned. UserId: {UserId}", _currentUserService.UserId);
+                        return APIOperationResponse<bool>.Fail(ResponseType.Forbidden, "You do not have permission to delete this allowance item");
+                    }
+
+                    if (allowanceItem.DepartmentId != userDepartmentId.Value)
+                    {
+                        _logger.LogWarning("User attempted to delete allowance from different department. UserDepartmentId: {UserDeptId}, AllowanceDepartmentId: {AllowanceDeptId}, UserId: {UserId}", 
+                            userDepartmentId.Value, allowanceItem.DepartmentId, _currentUserService.UserId);
+                        return APIOperationResponse<bool>.Fail(ResponseType.Forbidden, "You can only delete allowances for your own department");
+                    }
+                }
+
                 var itemId = allowanceItem.ItemId;
                 var quantity = allowanceItem.Quantity;
                 
@@ -215,6 +331,28 @@ namespace Ettad.Inventory.Service.AllowanceItems
         {
             try
             {
+                // Check authorization: users with ViewAllDepartments permission or admin can access all departments
+                var canViewAll = _currentUserService.IsSuperAdmin || 
+                    _currentUserService.IsAdminRole || 
+                    _currentUserService.IsUserHasClaim("AllowanceItemViewAllDepartments");
+                var userDepartmentId = _currentUserService.DepartmentId;
+
+                if (!canViewAll)
+                {
+                    if (!userDepartmentId.HasValue)
+                    {
+                        _logger.LogWarning("User has no department assigned. UserId: {UserId}", _currentUserService.UserId);
+                        return APIOperationResponse<AllowanceItemByDepartmentDto>.Fail(ResponseType.Forbidden, "You do not have permission to access this department's allowances");
+                    }
+
+                    if (departmentId != userDepartmentId.Value)
+                    {
+                        _logger.LogWarning("User attempted to access allowances from different department. UserDepartmentId: {UserDeptId}, RequestedDepartmentId: {RequestedDeptId}, UserId: {UserId}", 
+                            userDepartmentId.Value, departmentId, _currentUserService.UserId);
+                        return APIOperationResponse<AllowanceItemByDepartmentDto>.Fail(ResponseType.Forbidden, "You do not have permission to access this department's allowances");
+                    }
+                }
+
                 var department = await _departmentRepository.FindOneAsync(d => d.Id == departmentId && !d.IsDeleted);
                 if (department == null)
                     return APIOperationResponse<AllowanceItemByDepartmentDto>.Fail(ResponseType.NotFound, "Department not found");
@@ -268,6 +406,28 @@ namespace Ettad.Inventory.Service.AllowanceItems
         {
             try
             {
+                // Check authorization: users with ViewAllDepartments permission or admin can access all departments
+                var canViewAll = _currentUserService.IsSuperAdmin || 
+                    _currentUserService.IsAdminRole || 
+                    _currentUserService.IsUserHasClaim("AllowanceItemViewAllDepartments");
+                var userDepartmentId = _currentUserService.DepartmentId;
+
+                if (!canViewAll)
+                {
+                    if (!userDepartmentId.HasValue)
+                    {
+                        _logger.LogWarning("User has no department assigned. UserId: {UserId}", _currentUserService.UserId);
+                        return APIOperationResponse<List<AllowanceItemByDepartmentDto>>.Fail(ResponseType.Forbidden, "You do not have permission to access this department's allowances");
+                    }
+
+                    if (departmentId != userDepartmentId.Value)
+                    {
+                        _logger.LogWarning("User attempted to access allowances from different department. UserDepartmentId: {UserDeptId}, RequestedDepartmentId: {RequestedDeptId}, UserId: {UserId}", 
+                            userDepartmentId.Value, departmentId, _currentUserService.UserId);
+                        return APIOperationResponse<List<AllowanceItemByDepartmentDto>>.Fail(ResponseType.Forbidden, "You do not have permission to access this department's allowances");
+                    }
+                }
+
                 var department = await _departmentRepository.FindOneAsync(d => d.Id == departmentId && !d.IsDeleted);
                 if (department == null)
                     return APIOperationResponse<List<AllowanceItemByDepartmentDto>>.Fail(ResponseType.NotFound, "Department not found");
@@ -394,6 +554,28 @@ namespace Ettad.Inventory.Service.AllowanceItems
             
             try
             {
+                // Check authorization: non-admin users can only create allowances for their own department
+                var canViewAll = _currentUserService.IsSuperAdmin || 
+                    _currentUserService.IsAdminRole || 
+                    _currentUserService.IsUserHasClaim("AllowanceItemViewAllDepartments");
+                var userDepartmentId = _currentUserService.DepartmentId;
+
+                if (!canViewAll)
+                {
+                    if (!userDepartmentId.HasValue)
+                    {
+                        _logger.LogWarning("User has no department assigned. UserId: {UserId}", _currentUserService.UserId);
+                        return APIOperationResponse<bool>.Fail(ResponseType.Forbidden, "You do not have permission to create allowances");
+                    }
+
+                    if (inputDto.DepartmentId != userDepartmentId.Value)
+                    {
+                        _logger.LogWarning("User attempted to bulk create allowances for different department. UserDepartmentId: {UserDeptId}, RequestedDepartmentId: {RequestedDeptId}, UserId: {UserId}", 
+                            userDepartmentId.Value, inputDto.DepartmentId, _currentUserService.UserId);
+                        return APIOperationResponse<bool>.Fail(ResponseType.Forbidden, "You can only create allowances for your own department");
+                    }
+                }
+
                 var bulkValidator = new BulkCreateAllowanceItemDtoValidator();
                 var validationResult = await bulkValidator.ValidateAsync(inputDto);
                 if (!validationResult.IsValid)
@@ -475,6 +657,28 @@ namespace Ettad.Inventory.Service.AllowanceItems
             
             try
             {
+                // Check authorization: users with ViewAllDepartments permission or admin can access all departments
+                var canViewAll = _currentUserService.IsSuperAdmin || 
+                    _currentUserService.IsAdminRole || 
+                    _currentUserService.IsUserHasClaim("AllowanceItemViewAllDepartments");
+                var userDepartmentId = _currentUserService.DepartmentId;
+
+                if (!canViewAll)
+                {
+                    if (!userDepartmentId.HasValue)
+                    {
+                        _logger.LogWarning("User has no department assigned. UserId: {UserId}", _currentUserService.UserId);
+                        return APIOperationResponse<AllowanceReserveDetailsDto>.Fail(ResponseType.Forbidden, "You do not have permission to access this department's reserve details");
+                    }
+
+                    if (departmentId != userDepartmentId.Value)
+                    {
+                        _logger.LogWarning("User attempted to access reserve details from different department. UserDepartmentId: {UserDeptId}, RequestedDepartmentId: {RequestedDeptId}, UserId: {UserId}", 
+                            userDepartmentId.Value, departmentId, _currentUserService.UserId);
+                        return APIOperationResponse<AllowanceReserveDetailsDto>.Fail(ResponseType.Forbidden, "You do not have permission to access this department's reserve details");
+                    }
+                }
+
                 // Validate department
                 var department = await _departmentRepository.FindOneAsync(d => d.Id == departmentId && !d.IsDeleted);
                 if (department == null)
@@ -570,6 +774,28 @@ namespace Ettad.Inventory.Service.AllowanceItems
             
             try
             {
+                // Check authorization: users with ViewAllDepartments permission or admin can access all departments
+                var canViewAll = _currentUserService.IsSuperAdmin || 
+                    _currentUserService.IsAdminRole || 
+                    _currentUserService.IsUserHasClaim("AllowanceItemViewAllDepartments");
+                var userDepartmentId = _currentUserService.DepartmentId;
+
+                if (!canViewAll)
+                {
+                    if (!userDepartmentId.HasValue)
+                    {
+                        _logger.LogWarning("User has no department assigned. UserId: {UserId}", _currentUserService.UserId);
+                        return APIOperationResponse<AllowanceReserveDetailsByItemDto>.Fail(ResponseType.Forbidden, "You do not have permission to access this department's reserve details");
+                    }
+
+                    if (departmentId != userDepartmentId.Value)
+                    {
+                        _logger.LogWarning("User attempted to access reserve details from different department. UserDepartmentId: {UserDeptId}, RequestedDepartmentId: {RequestedDeptId}, UserId: {UserId}", 
+                            userDepartmentId.Value, departmentId, _currentUserService.UserId);
+                        return APIOperationResponse<AllowanceReserveDetailsByItemDto>.Fail(ResponseType.Forbidden, "You do not have permission to access this department's reserve details");
+                    }
+                }
+
                 // Validate department
                 var department = await _departmentRepository.FindOneAsync(d => d.Id == departmentId && !d.IsDeleted);
                 if (department == null)
