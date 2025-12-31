@@ -12,5 +12,6 @@ namespace Ettad.Data.Enums
         OrderFromAllowance = 2,
         Return = 3,
         Discard = 4,
+        NoramlOrderForTrainingPurpose = 5
     }
 }

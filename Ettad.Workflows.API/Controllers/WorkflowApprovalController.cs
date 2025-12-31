@@ -62,13 +62,13 @@ namespace Ettad.Workflows.API.Controllers
             return Ok();
         }
 
-        [HttpGet("AllOrders")]
-     //   [CheckAuthorize("Permissions.RequestReciever.Page", "Permissions.RequestReciever.View")]
-        public async Task<IActionResult> GetOrdersWithApprovalSteps()
-        {
-            var result = await _service.GetOrdersWithApprovalStepsAsync();
-            return Ok(result);
-        }
+        //[HttpGet("AllOrders")]
+        //[CheckAuthorize("Permissions.RequestReciever.Page", "Permissions.RequestReciever.View")]
+        //public async Task<IActionResult> GetOrdersWithApprovalSteps()
+        //{
+        //    var result = await _service.GetOrdersWithApprovalStepsAsync();
+        //    return Ok(result);
+        //}
 
         [HttpGet("AllBaseRequests")]
         [CheckAuthorize("Permissions.RequestReciever.Page", "Permissions.RequestReciever.View")]

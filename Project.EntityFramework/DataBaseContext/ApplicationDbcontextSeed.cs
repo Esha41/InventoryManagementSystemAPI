@@ -108,6 +108,7 @@ namespace Ettad.EntityFramework.DataBaseContext
                 await SeedDefaultUsersForRolesAsync(context, userManager, roleManager);
                 
                 await SeedWorkflows.SeedNormalOrderWorkflowAsync(context);
+                await SeedWorkflows.SeedNoramlOrderForTrainingPurposeWorkflowAsync(context);
                 await SeedWorkflows.SeedOrderFromAllowanceWorkflowAsync(context);
                 await SeedWorkflows.SeedDiscardWorkflowAsync(context);
                 await SeedWorkflows.SeedReturnWorkflowAsync(context);

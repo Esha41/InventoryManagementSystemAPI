@@ -21,7 +21,7 @@ public class CrudPermissionsGenerator
     public const string Inventory = "Inventory";
     public const string Dashboard = "Dashboard";
     public const string RequestManagement = "RequestManagement";
-    public const string WorkFlowType = "WorkFlowType";
+    public const string Workflow = "Workflow";
 
     public CrudPermissionsGenerator(ApplicationDbContext context)
     {

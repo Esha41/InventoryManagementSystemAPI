@@ -29,6 +29,23 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding.Workflows
             }
         }
 
+        public static async Task SeedNoramlOrderForTrainingPurposeWorkflowAsync(ApplicationDbContext context)
+        {
+            try
+            {
+                await SeedWorkflowAsync(
+                    context,
+                    WorkflowType.NoramlOrderForTrainingPurpose,
+                    "Noraml Order for Training Purpose Workflow",
+                    GetNoramlOrderForTrainingPurposeSteps);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Seeding Normal Order workflow error: {ex.Message}");
+                throw;
+            }
+        }
+
         public static async Task SeedOrderFromAllowanceWorkflowAsync(ApplicationDbContext context)
         {
             try
@@ -127,6 +144,49 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding.Workflows
         }
 
         private static List<WorkflowStepSeedDefinition> GetOrderFromAllowanceSteps()
+        {
+            return new List<WorkflowStepSeedDefinition>
+            {
+                new(1, "Supply Officer (Order Requesting Entity)", "Order Requesting Entity"),
+                new(2, "Requesting Entity Commander (Order Requesting Entity)", "Order Requesting Entity"),
+                new(3, "Auditor of Ammunition Division (Directorate of Armament)", "Directorate of Armament"),
+                new(4, "Head of Ammunition Division (Directorate of Armament)", "Directorate of Armament"),
+                new(5, "Director of the Armament Entity (Directorate of Armament)", "Directorate of Armament"),
+                // new(000, "Head of Logistics (Directorate of Armament)", "Directorate of Armament"), this will only be notified
+                new(6, "Auditor of Military Operation (Military Operation)", "Military Operation"),
+                new(7, "Officer of Military Operation (Military Operation)", "Military Operation"),
+                new(8, "Chief of Operations (Military Operation)", "Military Operation"),
+
+                new (
+                    9,
+                    "Auditor of Deputy of Chief of Staff Office (Chief of Staff Office)",
+                    "Chief of Staff Office",
+                    MustApprove: true,
+                    RequireHigherApproval: true,
+                    ReserveQty: false,
+                    HigherApprovalRoleName: "Deputy Chief of Staff for Operations (Chief of Staff Office)",
+                    HigherApplicationEntityName: "Chief of Staff Office"),
+
+                new (
+                    10,
+                    "Auditor of Chief of Staff Office (Chief of Staff Office)",
+                    "Chief of Staff Office",
+                    MustApprove: true,
+                    RequireHigherApproval: true,
+                    ReserveQty: false,
+                    HigherApprovalRoleName: "Chief of Staff (Chief of Staff Office)",
+                    HigherApplicationEntityName: "Chief of Staff Office"),
+
+                new(11, "Auditor of Audit Depo (Inventory)", "Inventory"),
+                new(12, "Head of Audit Depo (Inventory)", "Inventory"),
+                new(13, "Depo Commander (Inventory)", "Inventory"),
+                new(14, "Auditor of Depo Division (Inventory)", "Inventory"),
+                new(15, "Head of Depo Division (Inventory)", "Inventory"),
+                new(16, "Depo Officer (Inventory)", "Inventory")
+            };
+        }
+
+        private static List<WorkflowStepSeedDefinition> GetNoramlOrderForTrainingPurposeSteps()
         {
             return new List<WorkflowStepSeedDefinition>
             {
