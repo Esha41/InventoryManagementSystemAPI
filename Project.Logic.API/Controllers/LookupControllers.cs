@@ -317,20 +317,20 @@ namespace Ettad.Lookups.Domain.API.Controllers
 
     #endregion
 
-    #region Workflow
-    [CheckAuthorize(
-       "Permissions.WorkFlowType.Page",
-       "Permissions.WorkFlowType.View",
-       "Permissions.WorkFlowType.Create",
-       "Permissions.WorkFlowType.Edit",
-       "Permissions.WorkFlowType.Delete"
-   )]
-    public class WorkFlowTypeController : LookupController<WorkFlowType, CreateUpdateWorkFlowTypeDto>
-    {
-        public WorkFlowTypeController(ILookupService<WorkFlowType, CreateUpdateWorkFlowTypeDto> iLookupService, ILogger<LookupController<WorkFlowType, CreateUpdateWorkFlowTypeDto>> logger)
-            : base(iLookupService, logger) { }
-    }
-    #endregion
+   // #region Workflow
+   // [CheckAuthorize(
+   //    "Permissions.WorkFlowType.Page",
+   //    "Permissions.WorkFlowType.View",
+   //    "Permissions.WorkFlowType.Create",
+   //    "Permissions.WorkFlowType.Edit",
+   //    "Permissions.WorkFlowType.Delete"
+   //)]
+   // public class WorkFlowTypeController : LookupController<WorkFlowType, CreateUpdateWorkFlowTypeDto>
+   // {
+   //     public WorkFlowTypeController(ILookupService<WorkFlowType, CreateUpdateWorkFlowTypeDto> iLookupService, ILogger<LookupController<WorkFlowType, CreateUpdateWorkFlowTypeDto>> logger)
+   //         : base(iLookupService, logger) { }
+   // }
+   // #endregion
 
     #region Classification
 

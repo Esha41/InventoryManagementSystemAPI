@@ -33,7 +33,7 @@ namespace Ettad.Workflows.API.Controllers
         [HttpGet("step/{stepId}")]
         [ProducesResponseType(typeof(APIOperationResponse<List<WorkflowStepNotifierDto>>), (int)HttpStatusCode.OK)]
         [ProducesResponseType((int)HttpStatusCode.NotFound)]
-        [CheckAuthorize("Permissions.WorkFlowType.View", "Permissions.WorkFlowType.Page")]
+        [CheckAuthorize("Permissions.Workflow.View", "Permissions.Workflow.Page")]
         public async Task<IActionResult> GetNotifiersByStepId(int stepId)
         {
             var result = await _notifierService.GetNotifiersByStepIdAsync(stepId);
@@ -48,7 +48,7 @@ namespace Ettad.Workflows.API.Controllers
         [HttpGet("step/{stepId}/ids")]
         [ProducesResponseType(typeof(APIOperationResponse<(List<string> UserIds, List<string> RoleIds)>), (int)HttpStatusCode.OK)]
         [ProducesResponseType((int)HttpStatusCode.NotFound)]
-        [CheckAuthorize("Permissions.WorkFlowType.View", "Permissions.WorkFlowType.Page")]
+        [CheckAuthorize("Permissions.Workflow.View", "Permissions.Workflow.Page")]
         public async Task<IActionResult> GetNotifierIdsByStepId(int stepId)
         {
             var result = await _notifierService.GetNotifierIdsByStepIdAsync(stepId);
@@ -65,7 +65,7 @@ namespace Ettad.Workflows.API.Controllers
         [ProducesResponseType(typeof(APIOperationResponse<bool>), (int)HttpStatusCode.OK)]
         [ProducesResponseType((int)HttpStatusCode.BadRequest)]
         [ProducesResponseType((int)HttpStatusCode.NotFound)]
-        [CheckAuthorize("Permissions.WorkFlowType.Edit")]
+        [CheckAuthorize("Permissions.Workflow.Edit")]
         public async Task<IActionResult> UpdateStepNotifiers(int stepId, [FromBody] UpdateWorkflowStepNotifiersDto dto)
         {
             // Ensure the stepId in the DTO matches the route parameter
@@ -84,7 +84,7 @@ namespace Ettad.Workflows.API.Controllers
         [ProducesResponseType(typeof(APIOperationResponse<bool>), (int)HttpStatusCode.OK)]
         [ProducesResponseType((int)HttpStatusCode.BadRequest)]
         [ProducesResponseType((int)HttpStatusCode.NotFound)]
-        [CheckAuthorize("Permissions.WorkFlowType.Edit")]
+        [CheckAuthorize("Permissions.Workflow.Edit")]
         public async Task<IActionResult> AddNotifiers([FromBody] CreateWorkflowStepNotifierDto dto)
         {
             // Validate DTO
@@ -144,7 +144,7 @@ namespace Ettad.Workflows.API.Controllers
         [HttpDelete("{id}")]
         [ProducesResponseType(typeof(APIOperationResponse<bool>), (int)HttpStatusCode.OK)]
         [ProducesResponseType((int)HttpStatusCode.NotFound)]
-        [CheckAuthorize("Permissions.WorkFlowType.Edit")]
+        [CheckAuthorize("Permissions.Workflow.Edit")]
         public async Task<IActionResult> RemoveNotifier(int id)
         {
             var result = await _notifierService.RemoveNotifierAsync(id);
@@ -152,4 +152,3 @@ namespace Ettad.Workflows.API.Controllers
         }
     }
 }
-

@@ -12,7 +12,7 @@ namespace Ettad.Modules.EmailSystem.API.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [AllowAnonymous] // Temporarily allowing anonymous access for testing
+    [Authorize]
     public class EmailSettingsController : ApiControllerBase
     {
         private readonly ISettingsProvider _settingsProvider;
@@ -32,6 +32,7 @@ namespace Ettad.Modules.EmailSystem.API.Controllers
         [HttpPost]
         [ProducesResponseType(typeof(APIOperationResponse<bool>), (int)HttpStatusCode.OK)]
         [ProducesResponseType((int)HttpStatusCode.BadRequest)]
+        [CheckAuthorize("Permissions.EmailSettings.Create", "Permissions.EmailSettings.Edit")]
         public async Task<IActionResult> SaveEmailSettings([FromBody] EmailSettingsDto emailSettings)
         {
             // For now, allow any authenticated user (can be restricted later with permissions)
@@ -64,6 +65,7 @@ namespace Ettad.Modules.EmailSystem.API.Controllers
         /// <returns>Email settings</returns>
         [HttpGet]
         [ProducesResponseType(typeof(APIOperationResponse<EmailConfiguration>), (int)HttpStatusCode.OK)]
+        [CheckAuthorize("Permissions.EmailSettings.View", "Permissions.EmailSettings.Page")]
         public async Task<IActionResult> GetEmailSettings()
         {
             // For now, allow any authenticated user (can be restricted later with permissions)
@@ -73,4 +75,3 @@ namespace Ettad.Modules.EmailSystem.API.Controllers
         }
     }
 }
-
