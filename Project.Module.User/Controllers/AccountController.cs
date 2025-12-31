@@ -19,13 +19,15 @@ namespace Ettad.User.Api.Controllers
         #region fields
         private readonly IAccountServices _authenticationService;
         private readonly IHelpureService _helpureService;
+        private readonly ICaptchaService _captchaService;
         #endregion
 
         #region ctor
-        public AccountController(IAccountServices authenticationService, IHelpureService helpureService)
+        public AccountController(IAccountServices authenticationService, IHelpureService helpureService, ICaptchaService captchaService)
         {
             _authenticationService = authenticationService;
             _helpureService = helpureService;
+            _captchaService = captchaService;
         }
         #endregion
 
@@ -67,6 +69,18 @@ namespace Ettad.User.Api.Controllers
         {
             var result = await _authenticationService.ResetPasswordAsync(request);
             return ProcessResponse(result);
+        }
+
+        [HttpGet("generate-captcha")]
+        [AllowAnonymous]
+        [ProducesResponseType((int)HttpStatusCode.OK)]
+        public IActionResult GenerateCaptcha()
+        {
+            var (captchaId, captchaCode) = _captchaService.GenerateCaptcha();
+            
+            // Return only the CAPTCHA ID to the client, not the code
+            // The client will need to display the code and send it back with the login request
+            return Ok(new { captchaId, captchaCode });
         }
 
     }

@@ -70,6 +70,7 @@ namespace Ettad.EntityFramework.DataBaseContext
         public DbSet<Settings> Settings { get; set; }
         public DbSet<FileUplodMaster> FileUplodMasters { get; set; }
         public DbSet<FileUplodDetails> FileUplodDetails { get; set; }
+        public DbSet<LoginAttempt> LoginAttempts { get; set; }
        
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

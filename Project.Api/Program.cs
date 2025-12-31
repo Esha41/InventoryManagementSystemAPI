@@ -72,6 +72,9 @@ try
 
     // Add HttpContextAccessor for Serilog enrichers and CurrentUserService
     builder.Services.AddHttpContextAccessor();
+    
+    // Add MemoryCache for CAPTCHA service
+    builder.Services.AddMemoryCache();
 
     // Register ICurrentUserService early so interceptor can use it
     builder.Services.AddScoped<Ettad.Application.Common.Interfaces.ICurrentUserService, Ettad.User.Services.Implementation.CurrentUserService>();
