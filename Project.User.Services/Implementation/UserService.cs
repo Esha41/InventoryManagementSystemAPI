@@ -115,10 +115,48 @@ public class UserService : IUserService
             return APIOperationResponse<UserDto>.Fail(ResponseType.BadRequest, "Invalid request");
         }
 
+        // Determine username and password based on user role and LDAP status
+        string username;
+        string password;
+        bool isSuperAdmin = _currentUserService.IsSuperAdmin;
+
+        if (!isSuperAdmin && dto.IsLdapUser)
+        {
+            // Non-super admin creating LDAP user: use LdapUserName and allow nullable password
+            username = dto.LdapUserName ?? dto.UserName ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(username))
+            {
+                _logger.LogWarning("User creation failed: LdapUserName or UserName is required for LDAP user. CreatedBy: {CreatedBy}", 
+                    _currentUserService.UserId);
+                return APIOperationResponse<UserDto>.Fail(ResponseType.BadRequest, "LdapUserName or UserName is required");
+            }
+            // For LDAP users, if password is null, generate a random password (won't be used for authentication)
+            password = dto.Password ?? Guid.NewGuid().ToString() + "!@#$%^&*";
+            _logger.LogInformation("Non-super admin creating LDAP user. Using LdapUserName: {LdapUserName}", username);
+        }
+        else
+        {
+            // Super admin or non-LDAP user: use standard UserName and require password
+            if (string.IsNullOrWhiteSpace(dto.UserName))
+            {
+                _logger.LogWarning("User creation failed: UserName is required. CreatedBy: {CreatedBy}", 
+                    _currentUserService.UserId);
+                return APIOperationResponse<UserDto>.Fail(ResponseType.BadRequest, "UserName is required");
+            }
+            username = dto.UserName;
+            password = dto.Password;
+            if (string.IsNullOrWhiteSpace(password))
+            {
+                _logger.LogWarning("User creation failed: Password is required. CreatedBy: {CreatedBy}", 
+                    _currentUserService.UserId);
+                return APIOperationResponse<UserDto>.Fail(ResponseType.BadRequest, "Password is required");
+            }
+        }
+
         // 1️⃣ Create the user object
         var user = new ApplicationUser
         {
-            UserName = dto.UserName,
+            UserName = username,
             Email = dto.Email,
             IsLdapUser = dto.IsLdapUser,
             ExtraEmployeesView = dto.ExtraEmployeesView,
@@ -131,12 +169,12 @@ public class UserService : IUserService
         };
 
         // 2️⃣ Create user in DB
-        var result = await _userManager.CreateAsync(user, dto.Password);
+        var result = await _userManager.CreateAsync(user, password);
         if (!result.Succeeded)
         {
             var errors = string.Join(",", result.Errors.Select(e => e.Description));
             _logger.LogWarning("User creation failed: {Errors}. Username: {Username}, CreatedBy: {CreatedBy}", 
-                errors, dto.UserName, _currentUserService.UserId);
+                errors, username, _currentUserService.UserId);
             return APIOperationResponse<UserDto>.Fail(ResponseType.BadRequest, errors);
         }
 
@@ -151,14 +189,14 @@ public class UserService : IUserService
             if (roleNames.Any())
             {
                 _logger.LogInformation("Assigning {RoleCount} roles to new user. Username: {Username}, Roles: {Roles}", 
-                    roleNames.Count, dto.UserName, string.Join(", ", roleNames));
+                    roleNames.Count, username, string.Join(", ", roleNames));
                 
                 var addRolesResult = await _userManager.AddToRolesAsync(user, roleNames);
                 if (!addRolesResult.Succeeded)
                 {
                     var errors = string.Join(",", addRolesResult.Errors.Select(e => e.Description));
                     _logger.LogWarning("Role assignment failed. Username: {Username}, Errors: {Errors}", 
-                        dto.UserName, errors);
+                        username, errors);
                     return APIOperationResponse<UserDto>.Fail(ResponseType.BadRequest, errors);
                 }
             }
