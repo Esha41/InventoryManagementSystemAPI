@@ -5,6 +5,7 @@ using Ettad.ResponseHandler.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using OfficeOpenXml;
 using System.Net;
 
 namespace Ettad.Inventory.API.Controllers
@@ -19,6 +20,9 @@ namespace Ettad.Inventory.API.Controllers
         public AssetController(IAssetService assetService)
         {
             _assetService = assetService;
+            
+            // Set EPPlus license context
+            ExcelPackage.License.SetNonCommercialPersonal("Ettad");
         }
 
         [HttpGet("{id}")]
@@ -64,6 +68,82 @@ namespace Ettad.Inventory.API.Controllers
         {
             var result = await _assetService.DeleteAsync(id);
             return ProcessResponse(result);
+        }
+
+        /// <summary>
+        /// Import assets from Excel file
+        /// </summary>
+        [HttpPost("Import")]
+        [ProducesResponseType((int)HttpStatusCode.OK)]
+        [CheckAuthorize("Permissions.Asset.Create")]
+        public async Task<IActionResult> Import(IFormFile file, [FromForm] long depotId)
+        {
+            if (file == null || file.Length == 0)
+            {
+                return BadRequest(new { message = "File is required" });
+            }
+
+            if (depotId <= 0)
+            {
+                return BadRequest(new { message = "Valid depot ID is required" });
+            }
+
+            var result = await _assetService.ImportAsync(file, depotId);
+            return ProcessResponse(result);
+        }
+
+        /// <summary>
+        /// Preview asset import from Excel file (validation only, no data saved)
+        /// </summary>
+        [HttpPost("ImportPreview")]
+        [ProducesResponseType((int)HttpStatusCode.OK)]
+        [CheckAuthorize("Permissions.Asset.Create")]
+        public async Task<IActionResult> ImportPreview(IFormFile file, [FromForm] long depotId)
+        {
+            if (file == null || file.Length == 0)
+            {
+                return BadRequest(new { message = "File is required" });
+            }
+
+            if (depotId <= 0)
+            {
+                return BadRequest(new { message = "Valid depot ID is required" });
+            }
+
+            var result = await _assetService.ImportPreviewAsync(file, depotId);
+            return ProcessResponse(result);
+        }
+
+        /// <summary>
+        /// Generate asset import template with Excel data validation (dropdowns for lookups)
+        /// </summary>
+        [HttpGet("template")]
+        [ProducesResponseType(typeof(FileContentResult), (int)HttpStatusCode.OK)]
+        [ProducesResponseType((int)HttpStatusCode.InternalServerError)]
+        [CheckAuthorize("Permissions.Asset.Create")]
+        public async Task<IActionResult> GenerateImportTemplate([FromQuery] long depotId, [FromQuery] string language = "en")
+        {
+            try
+            {
+                var templateResult = await _assetService.GenerateImportTemplateAsync(depotId, language);
+                
+                if (!templateResult.Succeeded || templateResult.Data == null)
+                {
+                    return StatusCode(500, new { message = "Failed to generate template", errors = templateResult.Errors });
+                }
+
+                var fileName = $"Asset_Import_Template_Depot_{depotId}_{DateTime.UtcNow:yyyyMMdd}.xlsx";
+                
+                return File(
+                    templateResult.Data,
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    fileName
+                );
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "An error occurred while generating the template", error = ex.Message });
+            }
         }
     }
 }

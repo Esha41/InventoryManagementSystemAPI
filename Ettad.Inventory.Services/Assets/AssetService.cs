@@ -1,17 +1,22 @@
 using AutoMapper;
 using FluentValidation;
 using Microsoft.EntityFrameworkCore;
+using System.Linq;
 using Ettad.CrossCutting.Data.Repository;
 using Ettad.CrossCutting.Comman.FileUpload;
 using Ettad.Comman.Enums;
 using Ettad.Data.Entities;
 using Ettad.Data.Enums;
 using Ettad.Inventory.Service.Assets.Dtos;
+using Ettad.Inventory.Services.Common;
 using Ettad.ResponseHandler.Consts;
 using Ettad.ResponseHandler.Models;
 using Ettad.Application.Common.Interfaces;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
+using Ettad.EntityFramework.DataBaseContext;
+using OfficeOpenXml;
+using OfficeOpenXml.DataValidation;
 
 namespace Ettad.Inventory.Service.Assets
 {
@@ -24,6 +29,8 @@ namespace Ettad.Inventory.Service.Assets
         private readonly ICurrentUserService _currentUserService;
         private readonly ILogger<AssetService> _logger;
         private readonly IFileUploadService _fileUploadService;
+        private readonly IExcelImportService _excelImportService;
+        private readonly ApplicationDbContext _context;
 
         public AssetService(
             ICrossCuttingRepository<Asset> assetRepository,
@@ -32,7 +39,9 @@ namespace Ettad.Inventory.Service.Assets
             IValidator<UpdateAssetDto> updateValidator,
             ICurrentUserService currentUserService,
             ILogger<AssetService> logger,
-            IFileUploadService fileUploadService)
+            IFileUploadService fileUploadService,
+            IExcelImportService excelImportService,
+            ApplicationDbContext context)
         {
             _assetRepository = assetRepository;
             _mapper = mapper;
@@ -41,6 +50,8 @@ namespace Ettad.Inventory.Service.Assets
             _currentUserService = currentUserService;
             _logger = logger;
             _fileUploadService = fileUploadService;
+            _excelImportService = excelImportService;
+            _context = context;
         }
 
         public async Task<APIOperationResponse<AssetDto>> GetByIdAsync(long id)
@@ -277,6 +288,633 @@ namespace Ettad.Inventory.Service.Assets
                     id, _currentUserService.UserId);
                 return APIOperationResponse<bool>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
             }
+        }
+
+        public async Task<APIOperationResponse<ImportResult<CreateAssetDto>>> ImportAsync(IFormFile file, long depotId)
+        {
+            _logger.LogInformation("Starting asset import. DepotId: {DepotId}, User: {UserId}", 
+                depotId, _currentUserService.UserId);
+
+            try
+            {
+                // Parse Excel file
+                var mappings = GetColumnMappings();
+                var importResult = await _excelImportService.ImportFromExcelAsync<AssetImportDto>(file, mappings);
+
+                if (importResult.SuccessCount == 0)
+                {
+                    _logger.LogWarning("No valid rows found in Excel file. DepotId: {DepotId}, User: {UserId}", 
+                        depotId, _currentUserService.UserId);
+                    return APIOperationResponse<ImportResult<CreateAssetDto>>.Success(
+                        new ImportResult<CreateAssetDto> { Errors = importResult.Errors }, 
+                        "Import processed with no valid records");
+                }
+
+                // Load all items for ItemNo/ItemName lookup
+                var allItems = await LoadAllItemsAsync();
+
+                // Load existing assets for duplicate checking
+                var existingAssets = await _assetRepository.FindAsync(
+                    a => a.DepotId == depotId && !a.IsDeleted);
+
+                var existingSerialNumbers = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                var existingRFIDs = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                var existingAssetTags = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+                foreach (var asset in existingAssets)
+                {
+                    if (!string.IsNullOrWhiteSpace(asset.SerialNumber))
+                        existingSerialNumbers.Add(asset.SerialNumber);
+                    if (!string.IsNullOrWhiteSpace(asset.RFID))
+                        existingRFIDs.Add(asset.RFID);
+                    if (!string.IsNullOrWhiteSpace(asset.AssetTag))
+                        existingAssetTags.Add(asset.AssetTag);
+                }
+
+                // Process valid records with transaction support
+                await using var transaction = await _context.Database.BeginTransactionAsync();
+                
+                try
+                {
+                    var createAssetDtos = new List<CreateAssetDto>();
+                    int processedCount = 0;
+                    int errorCount = 0;
+
+                    // Use ToList() to avoid modification during iteration
+                    foreach (var row in importResult.SuccessfulRecords.ToList())
+                    {
+                        var rowErrors = new List<string>();
+
+                        // Resolve ItemId from ItemName or ItemNo
+                        long? itemId = row.ItemId;
+                        if (!itemId.HasValue)
+                        {
+                            if (!string.IsNullOrEmpty(row.ItemNo))
+                            {
+                                var foundItem = allItems.FirstOrDefault(i => i.ItemNo == row.ItemNo);
+                                if (foundItem != null)
+                                {
+                                    itemId = foundItem.Id;
+                                }
+                            }
+                            
+                            if (!itemId.HasValue && !string.IsNullOrEmpty(row.ItemName))
+                            {
+                                // Try to parse "ItemName (ItemNo)" format
+                                var itemNameValue = row.ItemName.Trim();
+                                if (itemNameValue.Contains("(") && itemNameValue.Contains(")"))
+                                {
+                                    var startIndex = itemNameValue.LastIndexOf("(");
+                                    var endIndex = itemNameValue.LastIndexOf(")");
+                                    if (startIndex > 0 && endIndex > startIndex)
+                                    {
+                                        var extractedItemNo = itemNameValue.Substring(startIndex + 1, endIndex - startIndex - 1).Trim();
+                                        var foundItem = allItems.FirstOrDefault(i => i.ItemNo == extractedItemNo);
+                                        if (foundItem != null)
+                                        {
+                                            itemId = foundItem.Id;
+                                        }
+                                    }
+                                }
+                                
+                                // If still not found, try matching by name
+                                if (!itemId.HasValue)
+                                {
+                                    var foundItem = allItems.FirstOrDefault(i => 
+                                        i.Name != null && i.Name.Equals(itemNameValue, StringComparison.OrdinalIgnoreCase));
+                                    if (foundItem != null)
+                                    {
+                                        itemId = foundItem.Id;
+                                    }
+                                }
+                            }
+                        }
+
+                        if (!itemId.HasValue)
+                        {
+                            rowErrors.Add($"Item not found: ItemName={row.ItemName}, ItemNo={row.ItemNo}, ItemId={row.ItemId}");
+                        }
+
+                        // Check for duplicate SerialNumber
+                        if (!string.IsNullOrWhiteSpace(row.SerialNumber))
+                        {
+                            if (existingSerialNumbers.Contains(row.SerialNumber))
+                            {
+                                rowErrors.Add($"Serial number already exists: {row.SerialNumber}");
+                            }
+                        }
+
+                        // Check for duplicate RFID
+                        if (!string.IsNullOrWhiteSpace(row.RFID))
+                        {
+                            if (existingRFIDs.Contains(row.RFID))
+                            {
+                                rowErrors.Add($"RFID already exists: {row.RFID}");
+                            }
+                        }
+
+                        // Check for duplicate AssetTag
+                        if (!string.IsNullOrWhiteSpace(row.AssetTag))
+                        {
+                            if (existingAssetTags.Contains(row.AssetTag))
+                            {
+                                rowErrors.Add($"Asset tag already exists: {row.AssetTag}");
+                            }
+                        }
+
+                        // If validation failed, move from successful to errors
+                        if (rowErrors.Any())
+                        {
+                            importResult.SuccessfulRecords.Remove(row);
+                            importResult.Errors.Add(new ImportError
+                            {
+                                ErrorMessage = string.Join("; ", rowErrors),
+                                ColumnName = "N/A"
+                            });
+                            errorCount++;
+                            continue;
+                        }
+
+                        // Create CreateAssetDto from AssetImportDto
+                        var createDto = new CreateAssetDto
+                        {
+                            ItemId = itemId.Value,
+                            DepotId = depotId,
+                            SerialNumber = string.IsNullOrWhiteSpace(row.SerialNumber) ? null : row.SerialNumber.Trim(),
+                            RFID = string.IsNullOrWhiteSpace(row.RFID) ? null : row.RFID.Trim(),
+                            AssetTag = string.IsNullOrWhiteSpace(row.AssetTag) ? null : row.AssetTag.Trim(),
+                            PurchaseDate = row.PurchaseDate,
+                            WarrantyExpiryDate = row.WarrantyExpiryDate,
+                            Condition = string.IsNullOrWhiteSpace(row.Condition) ? null : row.Condition.Trim(),
+                            PurchasePrice = row.PurchasePrice,
+                            Notes = string.IsNullOrWhiteSpace(row.Notes) ? null : row.Notes.Trim()
+                        };
+
+                        // Validate using FluentValidation
+                        var validationResult = await _createValidator.ValidateAsync(createDto);
+                        if (!validationResult.IsValid)
+                        {
+                            var errors = string.Join(", ", validationResult.Errors.Select(e => e.ErrorMessage));
+                            importResult.SuccessfulRecords.Remove(row);
+                            importResult.Errors.Add(new ImportError
+                            {
+                                ErrorMessage = $"Validation failed: {errors}",
+                                ColumnName = "N/A"
+                            });
+                            errorCount++;
+                            continue;
+                        }
+
+                        // Create asset entity
+                        var asset = _mapper.Map<Asset>(createDto);
+                        asset.CreationDate = DateTime.UtcNow;
+                        asset.CreatedBy = _currentUserService.UserId;
+                        asset.Status = AssetStatus.Active;
+
+                        await _assetRepository.AddAsync(asset);
+                        createAssetDtos.Add(createDto);
+                        processedCount++;
+
+                        // Add to existing sets to prevent duplicates within import
+                        if (!string.IsNullOrWhiteSpace(asset.SerialNumber))
+                            existingSerialNumbers.Add(asset.SerialNumber);
+                        if (!string.IsNullOrWhiteSpace(asset.RFID))
+                            existingRFIDs.Add(asset.RFID);
+                        if (!string.IsNullOrWhiteSpace(asset.AssetTag))
+                            existingAssetTags.Add(asset.AssetTag);
+
+                        _logger.LogInformation("Created asset from import. AssetId: {AssetId}, SerialNumber: {SerialNumber}, DepotId: {DepotId}, User: {UserId}",
+                            asset.Id, asset.SerialNumber, depotId, _currentUserService.UserId);
+                    }
+
+                    // Commit transaction if all successful
+                    if (processedCount > 0)
+                    {
+                        await transaction.CommitAsync();
+                        _logger.LogInformation("Asset import completed successfully. Processed: {ProcessedCount}, Errors: {ErrorCount}, DepotId: {DepotId}, User: {UserId}",
+                            processedCount, errorCount, depotId, _currentUserService.UserId);
+                    }
+                    else
+                    {
+                        await transaction.RollbackAsync();
+                        _logger.LogWarning("Asset import rolled back - no valid records. DepotId: {DepotId}, User: {UserId}",
+                            depotId, _currentUserService.UserId);
+                    }
+
+                    // Create result with CreateAssetDto
+                    var result = new ImportResult<CreateAssetDto>
+                    {
+                        SuccessfulRecords = createAssetDtos,
+                        Errors = importResult.Errors,
+                        TotalProcessed = processedCount + errorCount
+                    };
+
+                    return APIOperationResponse<ImportResult<CreateAssetDto>>.Success(result, "Import processed");
+                }
+                catch (Exception ex)
+                {
+                    await transaction.RollbackAsync();
+                    _logger.LogError(ex, "Error during asset import transaction. DepotId: {DepotId}, User: {UserId}",
+                        depotId, _currentUserService.UserId);
+                    throw;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error importing assets. DepotId: {DepotId}, User: {UserId}",
+                    depotId, _currentUserService.UserId);
+                return APIOperationResponse<ImportResult<CreateAssetDto>>.Fail(ResponseType.InternalServerError, ex.Message);
+            }
+        }
+
+        public async Task<APIOperationResponse<ImportResult<CreateAssetDto>>> ImportPreviewAsync(IFormFile file, long depotId)
+        {
+            _logger.LogInformation("Starting asset import preview. DepotId: {DepotId}, User: {UserId}", 
+                depotId, _currentUserService.UserId);
+
+            try
+            {
+                // Parse Excel file
+                var mappings = GetColumnMappings();
+                var importResult = await _excelImportService.ImportFromExcelAsync<AssetImportDto>(file, mappings);
+
+                if (importResult.SuccessCount == 0)
+                {
+                    _logger.LogWarning("No valid rows found in Excel file for preview. DepotId: {DepotId}, User: {UserId}", 
+                        depotId, _currentUserService.UserId);
+                    return APIOperationResponse<ImportResult<CreateAssetDto>>.Success(
+                        new ImportResult<CreateAssetDto> { Errors = importResult.Errors }, 
+                        "Preview processed with no valid records");
+                }
+
+                // Load all items for ItemNo/ItemName lookup
+                var allItems = await LoadAllItemsAsync();
+
+                // Load existing assets for duplicate checking
+                var existingAssets = await _assetRepository.FindAsync(
+                    a => a.DepotId == depotId && !a.IsDeleted);
+
+                var existingSerialNumbers = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                var existingRFIDs = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                var existingAssetTags = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+                foreach (var asset in existingAssets)
+                {
+                    if (!string.IsNullOrWhiteSpace(asset.SerialNumber))
+                        existingSerialNumbers.Add(asset.SerialNumber);
+                    if (!string.IsNullOrWhiteSpace(asset.RFID))
+                        existingRFIDs.Add(asset.RFID);
+                    if (!string.IsNullOrWhiteSpace(asset.AssetTag))
+                        existingAssetTags.Add(asset.AssetTag);
+                }
+
+                var createAssetDtos = new List<CreateAssetDto>();
+
+                // Validate records WITHOUT saving to database
+                // Use ToList() to avoid modification during iteration
+                foreach (var row in importResult.SuccessfulRecords.ToList())
+                {
+                    var rowErrors = new List<string>();
+
+                    // Resolve ItemId from ItemName or ItemNo
+                    long? itemId = row.ItemId;
+                    if (!itemId.HasValue)
+                    {
+                        if (!string.IsNullOrEmpty(row.ItemNo))
+                        {
+                            var foundItem = allItems.FirstOrDefault(i => i.ItemNo == row.ItemNo);
+                            if (foundItem != null)
+                            {
+                                itemId = foundItem.Id;
+                            }
+                        }
+                        
+                        if (!itemId.HasValue && !string.IsNullOrEmpty(row.ItemName))
+                        {
+                            // Try to parse "ItemName (ItemNo)" format
+                            var itemNameValue = row.ItemName.Trim();
+                            if (itemNameValue.Contains("(") && itemNameValue.Contains(")"))
+                            {
+                                var startIndex = itemNameValue.LastIndexOf("(");
+                                var endIndex = itemNameValue.LastIndexOf(")");
+                                if (startIndex > 0 && endIndex > startIndex)
+                                {
+                                    var extractedItemNo = itemNameValue.Substring(startIndex + 1, endIndex - startIndex - 1).Trim();
+                                    var foundItem = allItems.FirstOrDefault(i => i.ItemNo == extractedItemNo);
+                                    if (foundItem != null)
+                                    {
+                                        itemId = foundItem.Id;
+                                    }
+                                }
+                            }
+                            
+                            // If still not found, try matching by name
+                            if (!itemId.HasValue)
+                            {
+                                var foundItem = allItems.FirstOrDefault(i => 
+                                    i.Name != null && i.Name.Equals(itemNameValue, StringComparison.OrdinalIgnoreCase));
+                                if (foundItem != null)
+                                {
+                                    itemId = foundItem.Id;
+                                }
+                            }
+                        }
+                    }
+
+                    if (!itemId.HasValue)
+                    {
+                        rowErrors.Add($"Item not found: ItemName={row.ItemName}, ItemNo={row.ItemNo}, ItemId={row.ItemId}");
+                    }
+
+                    // Check for duplicate SerialNumber
+                    if (!string.IsNullOrWhiteSpace(row.SerialNumber))
+                    {
+                        if (existingSerialNumbers.Contains(row.SerialNumber))
+                        {
+                            rowErrors.Add($"Serial number already exists: {row.SerialNumber}");
+                        }
+                    }
+
+                    // Check for duplicate RFID
+                    if (!string.IsNullOrWhiteSpace(row.RFID))
+                    {
+                        if (existingRFIDs.Contains(row.RFID))
+                        {
+                            rowErrors.Add($"RFID already exists: {row.RFID}");
+                        }
+                    }
+
+                    // Check for duplicate AssetTag
+                    if (!string.IsNullOrWhiteSpace(row.AssetTag))
+                    {
+                        if (existingAssetTags.Contains(row.AssetTag))
+                        {
+                            rowErrors.Add($"Asset tag already exists: {row.AssetTag}");
+                        }
+                    }
+
+                    // If validation failed, move from successful to errors
+                    if (rowErrors.Any())
+                    {
+                        importResult.SuccessfulRecords.Remove(row);
+                        importResult.Errors.Add(new ImportError
+                        {
+                            ErrorMessage = string.Join("; ", rowErrors),
+                            ColumnName = "N/A"
+                        });
+                        continue;
+                    }
+
+                    // Create CreateAssetDto from AssetImportDto
+                    var createDto = new CreateAssetDto
+                    {
+                        ItemId = itemId.Value,
+                        DepotId = depotId,
+                        SerialNumber = string.IsNullOrWhiteSpace(row.SerialNumber) ? null : row.SerialNumber.Trim(),
+                        RFID = string.IsNullOrWhiteSpace(row.RFID) ? null : row.RFID.Trim(),
+                        AssetTag = string.IsNullOrWhiteSpace(row.AssetTag) ? null : row.AssetTag.Trim(),
+                        PurchaseDate = row.PurchaseDate,
+                        WarrantyExpiryDate = row.WarrantyExpiryDate,
+                        Condition = string.IsNullOrWhiteSpace(row.Condition) ? null : row.Condition.Trim(),
+                        PurchasePrice = row.PurchasePrice,
+                        Notes = string.IsNullOrWhiteSpace(row.Notes) ? null : row.Notes.Trim()
+                    };
+
+                    // Validate using FluentValidation
+                    var validationResult = await _createValidator.ValidateAsync(createDto);
+                    if (!validationResult.IsValid)
+                    {
+                        var errors = string.Join(", ", validationResult.Errors.Select(e => e.ErrorMessage));
+                        importResult.SuccessfulRecords.Remove(row);
+                        importResult.Errors.Add(new ImportError
+                        {
+                            ErrorMessage = $"Validation failed: {errors}",
+                            ColumnName = "N/A"
+                        });
+                        continue;
+                    }
+
+                    createAssetDtos.Add(createDto);
+
+                    // Add to existing sets to prevent duplicates within preview
+                    if (!string.IsNullOrWhiteSpace(createDto.SerialNumber))
+                        existingSerialNumbers.Add(createDto.SerialNumber);
+                    if (!string.IsNullOrWhiteSpace(createDto.RFID))
+                        existingRFIDs.Add(createDto.RFID);
+                    if (!string.IsNullOrWhiteSpace(createDto.AssetTag))
+                        existingAssetTags.Add(createDto.AssetTag);
+                }
+
+                // Create result with CreateAssetDto
+                var result = new ImportResult<CreateAssetDto>
+                {
+                    SuccessfulRecords = createAssetDtos,
+                    Errors = importResult.Errors,
+                    TotalProcessed = createAssetDtos.Count + importResult.Errors.Count
+                };
+
+                _logger.LogInformation("Asset import preview completed. Valid: {ValidCount}, Errors: {ErrorCount}, DepotId: {DepotId}, User: {UserId}",
+                    createAssetDtos.Count, importResult.Errors.Count, depotId, _currentUserService.UserId);
+
+                return APIOperationResponse<ImportResult<CreateAssetDto>>.Success(result, "Preview processed");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error previewing asset import. DepotId: {DepotId}, User: {UserId}",
+                    depotId, _currentUserService.UserId);
+                return APIOperationResponse<ImportResult<CreateAssetDto>>.Fail(ResponseType.InternalServerError, ex.Message);
+            }
+        }
+
+        public async Task<APIOperationResponse<byte[]>> GenerateImportTemplateAsync(long depotId, string language = "en")
+        {
+            try
+            {
+                _logger.LogInformation("Generating asset import template. DepotId: {DepotId}, Language: {Language}", 
+                    depotId, language);
+
+                // Load all items (ammunition, weapons, explosives)
+                var ammunitions = await _context.Ammunitions
+                    .Where(a => !a.IsDeleted)
+                    .ToListAsync();
+                
+                var weapons = await _context.Weapons
+                    .Where(w => !w.IsDeleted)
+                    .ToListAsync();
+                
+                var explosives = await _context.Explosives
+                    .Where(e => !e.IsDeleted)
+                    .ToListAsync();
+
+                // Combine all items and format as "ItemName (ItemNo)"
+                var allItems = new List<BaseItem>();
+                allItems.AddRange(ammunitions.Cast<BaseItem>());
+                allItems.AddRange(weapons.Cast<BaseItem>());
+                allItems.AddRange(explosives.Cast<BaseItem>());
+
+                var itemNames = allItems
+                    .Where(i => !string.IsNullOrWhiteSpace(i.Name) && !string.IsNullOrWhiteSpace(i.ItemNo))
+                    .Select(i => $"{i.Name} ({i.ItemNo})")
+                    .OrderBy(n => n)
+                    .ToList();
+
+                // Generate Excel with EPPlus
+                using var package = new ExcelPackage();
+                
+                // Main template sheet
+                var templateSheet = package.Workbook.Worksheets.Add("Asset Import");
+
+                // Headers - Bilingual support (English / Arabic)
+                var headers = language == "ar"
+                    ? new[]
+                    {
+                        "اسم الصنف", "رقم الصنف", "رقم التسلسل", "RFID", "علامة الأصل",
+                        "تاريخ الشراء", "تاريخ انتهاء الضمان", "الحالة", "سعر الشراء", "ملاحظات"
+                    }
+                    : new[]
+                    {
+                        "Item Name", "Item No", "Serial Number", "RFID", "Asset Tag",
+                        "Purchase Date", "Warranty Expiry Date", "Condition", "Purchase Price", "Notes"
+                    };
+
+                // Add headers with formatting
+                for (int col = 1; col <= headers.Length; col++)
+                {
+                    templateSheet.Cells[1, col].Value = headers[col - 1];
+                    templateSheet.Cells[1, col].Style.Font.Bold = true;
+                    templateSheet.Cells[1, col].Style.Fill.PatternType = OfficeOpenXml.Style.ExcelFillStyle.Solid;
+                    templateSheet.Cells[1, col].Style.Fill.BackgroundColor.SetColor(System.Drawing.Color.LightGray);
+                    templateSheet.Cells[1, col].Style.HorizontalAlignment = OfficeOpenXml.Style.ExcelHorizontalAlignment.Center;
+                }
+
+                // Sample data row
+                templateSheet.Cells[2, 1].Value = itemNames.FirstOrDefault() ?? "";
+                templateSheet.Cells[2, 2].Value = "";
+                templateSheet.Cells[2, 3].Value = "";
+                templateSheet.Cells[2, 4].Value = "";
+                templateSheet.Cells[2, 5].Value = "";
+                templateSheet.Cells[2, 6].Value = DateTime.Now.ToString("yyyy-MM-dd");
+                templateSheet.Cells[2, 7].Value = DateTime.Now.AddYears(1).ToString("yyyy-MM-dd");
+                templateSheet.Cells[2, 8].Value = "";
+                templateSheet.Cells[2, 9].Value = 0;
+                templateSheet.Cells[2, 10].Value = "";
+
+                // Create hidden lookup sheet for items
+                var lookupSheet = package.Workbook.Worksheets.Add("Items");
+                lookupSheet.Hidden = eWorkSheetHidden.Hidden;
+                for (int i = 0; i < itemNames.Count; i++)
+                {
+                    lookupSheet.Cells[i + 1, 1].Value = itemNames[i];
+                }
+
+                // Add data validation dropdown for Item Name (column 1)
+                var itemNameColumn = GetColumnLetter(1);
+                var itemNameValidationRange = $"{itemNameColumn}2:{itemNameColumn}10000";
+                var itemNameValidation = templateSheet.DataValidations.AddListValidation(itemNameValidationRange);
+                var lastRow = lookupSheet.Dimension?.End.Row ?? 1;
+                itemNameValidation.Formula.ExcelFormula = $"'Items'!$A$1:$A${lastRow}";
+                itemNameValidation.ShowErrorMessage = true;
+                itemNameValidation.ErrorTitle = "Invalid Value";
+                itemNameValidation.Error = "Please select an item from the dropdown list";
+                itemNameValidation.ShowInputMessage = true;
+                itemNameValidation.PromptTitle = "Select Item";
+                itemNameValidation.Prompt = "Select an item from the dropdown list";
+
+                // Set column widths
+                templateSheet.Column(1).Width = 30; // Item Name
+                templateSheet.Column(2).Width = 15; // Item No
+                templateSheet.Column(3).Width = 20; // Serial Number
+                templateSheet.Column(4).Width = 20; // RFID
+                templateSheet.Column(5).Width = 15; // Asset Tag
+                templateSheet.Column(6).Width = 15; // Purchase Date
+                templateSheet.Column(7).Width = 20; // Warranty Expiry Date
+                templateSheet.Column(8).Width = 15; // Condition
+                templateSheet.Column(9).Width = 15; // Purchase Price
+                templateSheet.Column(10).Width = 30; // Notes
+
+                // Freeze header row
+                templateSheet.View.FreezePanes(2, 1);
+
+                var excelData = package.GetAsByteArray();
+
+                _logger.LogInformation("Asset import template generated successfully. DepotId: {DepotId}, FileSize: {FileSize} bytes, ItemCount: {ItemCount}", 
+                    depotId, excelData.Length, itemNames.Count);
+
+                return APIOperationResponse<byte[]>.Success(excelData, "Template generated successfully");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error generating asset import template. DepotId: {DepotId}", depotId);
+                return APIOperationResponse<byte[]>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
+            }
+        }
+
+        private Dictionary<string, string> GetColumnMappings()
+        {
+            return new Dictionary<string, string>
+            {
+                { "Item Name", nameof(AssetImportDto.ItemName) },
+                { "Item No", nameof(AssetImportDto.ItemNo) },
+                { "Item ID", nameof(AssetImportDto.ItemId) },
+                { "Serial Number", nameof(AssetImportDto.SerialNumber) },
+                { "RFID", nameof(AssetImportDto.RFID) },
+                { "Asset Tag", nameof(AssetImportDto.AssetTag) },
+                { "Purchase Date", nameof(AssetImportDto.PurchaseDate) },
+                { "Warranty Expiry Date", nameof(AssetImportDto.WarrantyExpiryDate) },
+                { "Condition", nameof(AssetImportDto.Condition) },
+                { "Purchase Price", nameof(AssetImportDto.PurchasePrice) },
+                { "Notes", nameof(AssetImportDto.Notes) },
+                // Arabic column names
+                { "اسم الصنف", nameof(AssetImportDto.ItemName) },
+                { "رقم الصنف", nameof(AssetImportDto.ItemNo) },
+                { "رقم التسلسل", nameof(AssetImportDto.SerialNumber) },
+                // Note: "RFID" is the same in both languages, so it's already mapped above
+                { "علامة الأصل", nameof(AssetImportDto.AssetTag) },
+                { "تاريخ الشراء", nameof(AssetImportDto.PurchaseDate) },
+                { "تاريخ انتهاء الضمان", nameof(AssetImportDto.WarrantyExpiryDate) },
+                { "الحالة", nameof(AssetImportDto.Condition) },
+                { "سعر الشراء", nameof(AssetImportDto.PurchasePrice) },
+                { "ملاحظات", nameof(AssetImportDto.Notes) }
+            };
+        }
+
+        private async Task<List<BaseItem>> LoadAllItemsAsync()
+        {
+            var items = new List<BaseItem>();
+            
+            // Load all ammunition, weapons, and explosives
+            var ammunitions = await _context.Ammunitions
+                .Where(a => !a.IsDeleted)
+                .ToListAsync();
+            
+            var weapons = await _context.Weapons
+                .Where(w => !w.IsDeleted)
+                .ToListAsync();
+            
+            var explosives = await _context.Explosives
+                .Where(e => !e.IsDeleted)
+                .ToListAsync();
+
+            items.AddRange(ammunitions.Cast<BaseItem>());
+            items.AddRange(weapons.Cast<BaseItem>());
+            items.AddRange(explosives.Cast<BaseItem>());
+
+            return items;
+        }
+
+        /// <summary>
+        /// Convert column number to Excel column letter (1 = A, 2 = B, etc.)
+        /// </summary>
+        private string GetColumnLetter(int columnNumber)
+        {
+            string columnLetter = "";
+            while (columnNumber > 0)
+            {
+                columnNumber--;
+                columnLetter = (char)('A' + columnNumber % 26) + columnLetter;
+                columnNumber /= 26;
+            }
+            return columnLetter;
         }
     }
 }
