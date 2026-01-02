@@ -297,9 +297,23 @@ namespace Ettad.RequestManagement.Service.Orders
                     }
                 }
 
-                // Determine workflow type based on order type
-                // If order is from reserved/allowance, use WorkflowType.OrderFromAllowance (4), otherwise use WorkflowType.NoramlOrder (1)
-                var workflowType = createdOrder.IsFromAllowance ? WorkflowType.OrderFromAllowance : WorkflowType.NoramlOrder;
+                // Determine which workflow to start for the created order.
+                // Priority and rules:
+                // 1) If the order was created from an allowance (reserved items), always use
+                //    `WorkflowType.OrderFromAllowance` because allowance-based orders follow a different approval path.
+                // 2) Otherwise, if the request purpose represents a "Training Order" (currently coded as Id == 4),
+                //    use `WorkflowType.NoramlOrderForTrainingPurpose` — training orders have a specific workflow.
+                // 3) For all other non-allowance orders, use the default `WorkflowType.NoramlOrder`.
+                //
+                // Note:
+                // - The numeric literal `4` is a magic number that represents the seeded RequestPurpose for "Training Order".
+                //   Replace this with a named constant (e.g. `RequestPurposeIds.TrainingOrder`) and keep the seed/migration in sync
+                //   to avoid brittle code and accidental mismatches.
+                // - The allowance check takes precedence: if an order is both "from allowance" and a training purpose,
+                //   it will use the allowance workflow.
+                var workflowType = createdOrder.IsFromAllowance 
+                    ? WorkflowType.OrderFromAllowance 
+                    : createdOrder.RequestPurposeId == 4 ? WorkflowType.NoramlOrderForTrainingPurpose : WorkflowType.NoramlOrder;
 
                 // Start workflow for the order
                 var workflowStarted = await _workflowApprovalService.StartWorkflowAsync(createdOrder.Id, workflowType);

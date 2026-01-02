@@ -64,10 +64,7 @@ namespace Ettad.User.API.Controllers
             return ProcessResponse(response);
         }
 
-        [CheckAuthorize(
-"Permissions.SystemUsers.Edit"
-
-)]
+        [CheckAuthorize("Permissions.SystemUsers.Edit")]
         [HttpPut("{id}")]
         public async Task<IActionResult> Update(string id, [FromBody] UpdateUserDto dto)
         {
@@ -75,10 +72,8 @@ namespace Ettad.User.API.Controllers
             var response = await _userService.UpdateAsync(dto);
             return ProcessResponse(response);
         }
-        [CheckAuthorize(
-"Permissions.SystemUsers.Delete"
-
-)]
+       
+        [CheckAuthorize("Permissions.SystemUsers.Delete")]
         [HttpDelete("{id}")]
         public async Task<IActionResult> Delete(string id)
         {
@@ -87,7 +82,7 @@ namespace Ettad.User.API.Controllers
         }
 
         [HttpGet("{id}/roles")]
-        //[CheckAuthorize("Permissions.SystemUsers.AssignRoles")] 
+        [CheckAuthorize("Permissions.SystemUsers.View")] 
         public async Task<IActionResult> GetUserRoles(string id)
         {
             var response = await _userService.GetUserRolesAsync(id);
@@ -95,7 +90,7 @@ namespace Ettad.User.API.Controllers
         }
 
         [HttpPut("{id}/roles")]
-        //[CheckAuthorize("Permissions.SystemUsers.AssignRoles")] 
+        [CheckAuthorize("Permissions.SystemUsers.Edit")] 
         public async Task<IActionResult> UpdateUserRoles(string id, [FromBody] UpdateUserRolesDto dto)
         {
             var response = await _userService.UpdateUserRolesAsync(id, dto);
@@ -103,6 +98,7 @@ namespace Ettad.User.API.Controllers
         }
 
         [HttpPut("change-password")]
+        [Authorize]
         public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordDto dto)
         {
             var response = await _userService.ChangePasswordAsync(dto);

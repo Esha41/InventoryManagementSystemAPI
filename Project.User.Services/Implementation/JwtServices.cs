@@ -205,13 +205,13 @@ namespace Ettad.User.Services.Implementation
                         claims.Add(new Claim("IsSuperAdmin", "true"));
                     }
 
-                    // Add all role claims (permissions) to the token
-                    var roleClaims = await _roleManager.GetClaimsAsync(role);
-                    foreach (var roleClaim in roleClaims)
-                    {
-                        // Add permission claims to the token
-                        claims.Add(new Claim(roleClaim.Type, roleClaim.Value));
-                    }
+                    //// Add all role claims (permissions) to the token
+                    //var roleClaims = await _roleManager.GetClaimsAsync(role);
+                    //foreach (var roleClaim in roleClaims)
+                    //{
+                    //    // Add permission claims to the token
+                    //    claims.Add(new Claim(roleClaim.Type, roleClaim.Value));
+                    //}
                 }
             }
 
