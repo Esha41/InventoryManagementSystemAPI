@@ -97,7 +97,7 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding.Workflows
             }
         }
 
-        private static List<WorkflowStepSeedDefinition> GetNormalOrderSteps()
+        private static List<WorkflowStepSeedDefinition> GetNoramlOrderForTrainingPurposeSteps()
         {
             return new List<WorkflowStepSeedDefinition>
             {
@@ -186,7 +186,7 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding.Workflows
             };
         }
 
-        private static List<WorkflowStepSeedDefinition> GetNoramlOrderForTrainingPurposeSteps()
+        private static List<WorkflowStepSeedDefinition> GetNormalOrderSteps()
         {
             return new List<WorkflowStepSeedDefinition>
             {
