@@ -9,7 +9,6 @@ using Ettad.User.Services.Interfaces;
 using  Ettad.CrossCutting.Comman.Time;
 using Ettad.User.Services.DTO;
 using Ettad.Application.Common.Interfaces;
-using Ettad.Common.Interfaces;
 
 namespace Ettad.User.Services
 {

@@ -13,6 +13,7 @@ using Ettad.ResponseHandler.Models;
 using Ettad.User.Services.DTO;
 using Ettad.User.Services.Interfaces;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 
@@ -25,6 +26,7 @@ namespace Ettad.User.Services.Implementation
         private readonly IMapper _mapper;
         private readonly ApplicationDbContext _context;
         private readonly ICurrentUserService _currentUserService;
+        private readonly IMemoryCache _cache;
 
         // Protected role names that cannot be updated or deleted (used in business logic)
         private static readonly HashSet<string> ProtectedRoleNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
@@ -35,13 +37,14 @@ namespace Ettad.User.Services.Implementation
             "Head of Depo Division (Inventory)"
         };
 
-        public RoleService(RoleManager<ApplicationRole> roleManager, UserManager<ApplicationUser> userManager, ICurrentUserService currentUserService, IMapper mapper , ApplicationDbContext context)
+        public RoleService(RoleManager<ApplicationRole> roleManager, UserManager<ApplicationUser> userManager, ICurrentUserService currentUserService, IMapper mapper , ApplicationDbContext context, IMemoryCache cache)
         {
             _roleManager = roleManager;
             _userManager = userManager;
             _currentUserService = currentUserService;
             _mapper = mapper;
             _context = context;
+            _cache = cache;
         }
 
         /// <summary>
@@ -344,7 +347,7 @@ namespace Ettad.User.Services.Implementation
                 {
                     foreach (var permission in permissions.PermissionsList)
                     {
-                        if (roleClaims.Any(c => c == permission.DisplayValue))
+                        if (roleClaims.Any(c => c.Equals(permission.DisplayValue, StringComparison.OrdinalIgnoreCase)))
                         {
                             permission.IsSelected = true;
                         }
@@ -376,7 +379,7 @@ namespace Ettad.User.Services.Implementation
                 {
                     foreach (var permission in permissions.PermissionsList)
                     {
-                        if (roleClaims.Any(c => c == permission.DisplayValue))
+                        if (roleClaims.Any(c => c.Equals(permission.DisplayValue, StringComparison.OrdinalIgnoreCase)))
                         {
                             permission.IsSelected = true;
                         }
@@ -438,6 +441,13 @@ namespace Ettad.User.Services.Implementation
                     {
                         await _roleManager.AddClaimAsync(role, new Claim("Permissions", claim));
                     }
+                }
+
+                // Invalidate permission cache for all users in this role
+                var usersInRole = await _userManager.GetUsersInRoleAsync(role.Name);
+                foreach (var user in usersInRole)
+                {
+                    _cache.Remove($"user_permissions_{user.Id}");
                 }
 
                 return APIOperationResponse<bool>.Success(true, "Permissions assigned successfully.");

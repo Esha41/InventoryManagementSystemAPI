@@ -125,7 +125,12 @@ namespace Ettad.User.Services.Implementation
 
         public bool IsUserHasClaim(string claimName)
         {
-            return _httpContextAccessor.HttpContext?.User?.Claims.FirstOrDefault(item => item.Value == claimName) != null;
+            // Check both Type and Value to support different claim formats
+            // Plain permissions are typically stored as Type
+            return _httpContextAccessor.HttpContext?.User?.Claims.Any(item => 
+                item.Type == claimName || 
+                item.Value == claimName ||
+                item.Type.EndsWith(claimName, StringComparison.OrdinalIgnoreCase)) ?? false;
         }
         public int? OrganizationId => Convert.ToInt32(_httpContextAccessor.HttpContext?.User?.Claims.FirstOrDefault(item => item.Type == "OrgId")?.Value);
 
