@@ -8,7 +8,6 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
 using Ettad.Application.Common.Interfaces;
 using Microsoft.Extensions.DependencyInjection;
-using Ettad.Common.Interfaces;
 
 [AttributeUsage(AttributeTargets.Class | AttributeTargets.Method, AllowMultiple = false, Inherited = true)]
 public class CheckAuthorizeAttribute : AuthorizeAttribute, IAuthorizationFilter

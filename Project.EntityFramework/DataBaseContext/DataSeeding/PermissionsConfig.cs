@@ -160,7 +160,9 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
         public static List<string> ReadAllowanceItem = new()
         {
             "Permissions.AllowanceItem.Page",
+            "Permissions.AllowanceItem.Page",
             "Permissions.AllowanceItem.View",
+            "AllowanceItemViewAllDepartments",
         };
 
         public static List<string> Notifications = new()
@@ -320,6 +322,7 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 .Concat(Notifications)
                 .Concat(ReadOrderDiscardReturn)
                 .Concat(RequestReciever)
+                .Concat(new List<string> { "AllowanceItemViewAllDepartments" })
                 .ToList();
 
         public static List<string> RequestingEntityCommander_OrderRequestingEntity = 
