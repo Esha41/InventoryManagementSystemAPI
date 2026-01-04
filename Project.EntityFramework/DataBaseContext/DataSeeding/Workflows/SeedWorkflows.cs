@@ -134,12 +134,13 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding.Workflows
                     HigherApprovalRoleName: "Chief of Staff (Chief of Staff Office)",
                     HigherApplicationEntityName: "Chief of Staff Office"),
 
-                new(14, "Auditor of Audit Depo (Inventory)", "Inventory"),
-                new(15, "Head of Audit Depo (Inventory)", "Inventory"),
-                new(16, "Depo Commander (Inventory)", "Inventory"),
-                new(17, "Auditor of Depo Division (Inventory)", "Inventory"),
-                new(18, "Head of Depo Division (Inventory)", "Inventory"),
-                new(19, "Depo Officer (Inventory)", "Inventory")
+                new(14, "Auditor of Ammunition Division (Directorate of Armament)", "Directorate of Armament"),
+                new(15, "Auditor of Audit Depo (Inventory)", "Inventory"),
+                new(16, "Head of Audit Depo (Inventory)", "Inventory"),
+                new(17, "Depo Commander (Inventory)", "Inventory"),
+                new(18, "Auditor of Depo Division (Inventory)", "Inventory"),
+                new(19, "Head of Depo Division (Inventory)", "Inventory"),
+                new(20, "Depo Officer (Inventory)", "Inventory")
             };
         }
 
@@ -177,12 +178,13 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding.Workflows
                     HigherApprovalRoleName: "Chief of Staff (Chief of Staff Office)",
                     HigherApplicationEntityName: "Chief of Staff Office"),
 
-                new(11, "Auditor of Audit Depo (Inventory)", "Inventory"),
-                new(12, "Head of Audit Depo (Inventory)", "Inventory"),
-                new(13, "Depo Commander (Inventory)", "Inventory"),
-                new(14, "Auditor of Depo Division (Inventory)", "Inventory"),
-                new(15, "Head of Depo Division (Inventory)", "Inventory"),
-                new(16, "Depo Officer (Inventory)", "Inventory")
+                new(11, "Auditor of Ammunition Division (Directorate of Armament)", "Directorate of Armament"),
+                new(12, "Auditor of Audit Depo (Inventory)", "Inventory"),
+                new(13, "Head of Audit Depo (Inventory)", "Inventory"),
+                new(14, "Depo Commander (Inventory)", "Inventory"),
+                new(15, "Auditor of Depo Division (Inventory)", "Inventory"),
+                new(16, "Head of Depo Division (Inventory)", "Inventory"),
+                new(17, "Depo Officer (Inventory)", "Inventory")
             };
         }
 
@@ -220,12 +222,13 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding.Workflows
                     HigherApprovalRoleName: "Chief of Staff (Chief of Staff Office)",
                     HigherApplicationEntityName: "Chief of Staff Office"),
 
-                new(11, "Auditor of Audit Depo (Inventory)", "Inventory"),
-                new(12, "Head of Audit Depo (Inventory)", "Inventory"),
-                new(13, "Depo Commander (Inventory)", "Inventory"),
-                new(14, "Auditor of Depo Division (Inventory)", "Inventory"),
-                new(15, "Head of Depo Division (Inventory)", "Inventory"),
-                new(16, "Depo Officer (Inventory)", "Inventory")
+                new(11, "Auditor of Ammunition Division (Directorate of Armament)", "Directorate of Armament"),
+                new(12, "Auditor of Audit Depo (Inventory)", "Inventory"),
+                new(13, "Head of Audit Depo (Inventory)", "Inventory"),
+                new(14, "Depo Commander (Inventory)", "Inventory"),
+                new(15, "Auditor of Depo Division (Inventory)", "Inventory"),
+                new(16, "Head of Depo Division (Inventory)", "Inventory"),
+                new(17, "Depo Officer (Inventory)", "Inventory")
             };
         }
 
