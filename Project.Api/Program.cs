@@ -9,35 +9,36 @@ using Ettad.EntityFramework.DataBaseContext;
 using Ettad.EntityFramework.DataBaseContext.DataSeeding;
 using Ettad.EntityFramework.Interceptors;
 using Ettad.Inventory.Service;
+using Ettad.Inventory.Service.Monitoring;
+using Ettad.LdapSettings.Services;
 using Ettad.Lookups.Services.Contracts;
 using Ettad.Lookups.Services.Implementation;
 using Ettad.Notification.Service;
 using Ettad.Repository;
 using Ettad.RequestManagement.Service;
-using Ettad.LdapSettings.Services;
+using Ettad.Services;
 using Ettad.User.Services.DTO;
 using Ettad.User.Services.Helpers;
 using Ettad.User.Services.Interfaces;
 using Ettad.Workflow.Service;
 using Ettad.Workflows.Service.Imeplemention;
 using Ettad.Workflows.Service.Interface;
-using Ettad.Inventory.Service.Monitoring;
-using Ettad.Services;
 using Hangfire;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Server.IISIntegration;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.OpenApi.Models;
 using Moujam.Casiher.Comman.Models;
 using Serilog;
+using Serilog.Events;
 using Swashbuckle.AspNetCore.SwaggerGen;
 using System;
 using System.Linq;
 using System.Reflection;
-using Serilog.Events;
 using System.Reflection;
 using System.Text;
 using System.Text.Json;
@@ -72,7 +73,7 @@ try
 
     // Add HttpContextAccessor for Serilog enrichers and CurrentUserService
     builder.Services.AddHttpContextAccessor();
-    
+    builder.Services.AddAuthentication(IISDefaults.AuthenticationScheme);
     // Add MemoryCache for CAPTCHA service
     builder.Services.AddMemoryCache();
 
@@ -330,8 +331,15 @@ try
     app.UseHttpsRedirection();
 
     app.UseCors(corsPolicyName);
-
-   app.Use(async (context, next) =>
+    app.UseWhen(context => context.Request.Method == "OPTIONS", appBuilder =>
+    {
+        appBuilder.Run(async context =>
+        {
+            context.Response.StatusCode = 204;
+            await Task.CompletedTask;
+        });
+    });
+    app.Use(async (context, next) =>
     {
         context.Response.Headers["X-Frame-Options"] = "DENY";
         context.Response.Headers["Content-Security-Policy"] = "frame-ancestors 'self'";
@@ -342,11 +350,9 @@ try
 
     app.UseAuthorization();
 
-    app.MapControllers().RequireCors(corsPolicyName);
+    app.MapControllers();
 
-    app.MapHub<Ettad.Notification.Service.Hubs.NotificationHub>("/hubs/notification")
-        .RequireCors(corsPolicyName);
-
+    app.MapHub<Ettad.Notification.Service.Hubs.NotificationHub>("/hubs/notification");
     using (var scope = app.Services.CreateScope())
     {
         var services = scope.ServiceProvider;
