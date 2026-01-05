@@ -15,10 +15,15 @@ namespace Ettad.EntityFramework.Configurations
             builder.Property(x => x.SupplyDate)
                 .IsRequired(false);
 
-            builder.Property(x => x.Status)
+            builder.Property(x => x.SubmissionStatus)
                 .IsRequired()
                 .HasConversion<int>()
-                .HasDefaultValue(AssetSupplyStatus.Draft);
+                .HasDefaultValue(SupplySubmissionStatus.Submitted);
+
+            builder.Property(x => x.FulfillmentStatus)
+                .IsRequired()
+                .HasConversion<int>()
+                .HasDefaultValue(SupplyFulfillmentStatus.Partial);
 
             builder.Property(x => x.ReceiverName)
                 .IsRequired(false)
@@ -39,19 +44,13 @@ namespace Ettad.EntityFramework.Configurations
                 .IsRequired(false)
                 .HasMaxLength(2000);
 
-            builder.Property(x => x.ApprovedDate)
-                .IsRequired(false);
-
-            builder.Property(x => x.ApprovedByUserId)
+            builder.Property(x => x.CustodianId)
                 .IsRequired(false)
                 .HasMaxLength(450);
 
-            builder.Property(x => x.CompletedDate)
-                .IsRequired(false);
-
             // Indexes
             builder.HasIndex(x => x.OrderId);
-            builder.HasIndex(x => x.Status);
+            builder.HasIndex(x => x.SubmissionStatus);
             builder.HasIndex(x => x.DepartmentId);
 
             // Relationships
@@ -81,4 +80,3 @@ namespace Ettad.EntityFramework.Configurations
         }
     }
 }
-

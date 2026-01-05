@@ -77,8 +77,6 @@ namespace Ettad.Inventory.Service
             // Asset Supply Services
             services.AddScoped<IAssetSupplyService, AssetSupplyService>();
             services.AddScoped<IValidator<CreateAssetSupplyDto>, CreateAssetSupplyDtoValidator>();
-            services.AddScoped<IValidator<UpdateAssetSupplyDto>, UpdateAssetSupplyDtoValidator>();
-            services.AddScoped<IValidator<SubmitAssetSupplyDto>, SubmitAssetSupplyDtoValidator>();
             services.AddScoped<IValidator<ReturnAssetDto>, ReturnAssetDtoValidator>();
             services.AddScoped<IValidator<ReturnMultipleAssetsDto>, ReturnMultipleAssetsDtoValidator>();
             services.AddAutoMapper(typeof(AssetSupplyMappingProfile));

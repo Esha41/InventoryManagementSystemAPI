@@ -1,3 +1,4 @@
+using Ettad.Comman.Idenitity;
 using Ettad.CrossCutting.Comman.Base;
 using Ettad.Data.Enums;
 
@@ -20,9 +21,14 @@ namespace Ettad.Data.Entities
         public DateTime? SupplyDate { get; set; }
 
         /// <summary>
-        /// Current status of the supply
+        /// Current submission status of the supply
         /// </summary>
-        public AssetSupplyStatus Status { get; set; }
+        public SupplySubmissionStatus SubmissionStatus { get; set; }
+
+        /// <summary>
+        /// Current fulfillment status of the supply
+        /// </summary>
+        public SupplyFulfillmentStatus FulfillmentStatus { get; set; }
 
         /// <summary>
         /// Department receiving the assets (from order if not specified)
@@ -30,9 +36,9 @@ namespace Ettad.Data.Entities
         public long? DepartmentId { get; set; }
 
         /// <summary>
-        /// Custodian receiving the assets (optional)
+        /// Custodian (User) receiving the assets (optional)
         /// </summary>
-        public long? CustodianId { get; set; }
+        public string? CustodianId { get; set; }
 
         /// <summary>
         /// Name of the person receiving the supply
@@ -64,26 +70,11 @@ namespace Ettad.Data.Entities
         /// </summary>
         public string? Notes { get; set; }
 
-        /// <summary>
-        /// Date when supply was approved
-        /// </summary>
-        public DateTime? ApprovedDate { get; set; }
-
-        /// <summary>
-        /// User who approved the supply
-        /// </summary>
-        public string? ApprovedByUserId { get; set; }
-
-        /// <summary>
-        /// Date when supply was completed/delivered
-        /// </summary>
-        public DateTime? CompletedDate { get; set; }
-
         #region Navigation Properties
 
         public Order Order { get; set; }
         public Department Department { get; set; }
-        public Employee Custodian { get; set; }
+        public ApplicationUser Custodian { get; set; }
         public Rank ReceiverRank { get; set; }
         public ICollection<AssetSupplyDetail> SupplyDetails { get; set; }
         public ICollection<AssetAssignment> Assignments { get; set; }
@@ -91,4 +82,3 @@ namespace Ettad.Data.Entities
         #endregion
     }
 }
-

@@ -22,34 +22,14 @@ namespace Ettad.Inventory.Service.AssetSupply
         Task<APIOperationResponse<AssetSupplyDto>> GetByOrderIdAsync(long orderId);
 
         /// <summary>
-        /// Get draft asset supply by order ID (for editing)
-        /// </summary>
-        Task<APIOperationResponse<AssetSupplyDto>> GetDraftByOrderIdAsync(long orderId);
-
-        /// <summary>
         /// Get all asset supplies
         /// </summary>
         Task<APIOperationResponse<List<AssetSupplyDto>>> GetAllAsync();
 
         /// <summary>
-        /// Create a new asset supply
+        /// Create and submit a new asset supply
         /// </summary>
-        Task<APIOperationResponse<long>> CreateAsync(CreateAssetSupplyDto dto);
-
-        /// <summary>
-        /// Update an existing asset supply (only while in Draft status)
-        /// </summary>
-        Task<APIOperationResponse<bool>> UpdateAsync(long id, UpdateAssetSupplyDto dto);
-
-        /// <summary>
-        /// Submit an asset supply for processing
-        /// </summary>
-        Task<APIOperationResponse<bool>> SubmitSupplyAsync(long id, SubmitAssetSupplyDto dto);
-
-        /// <summary>
-        /// Complete a supply - creates assignments for all assets
-        /// </summary>
-        Task<APIOperationResponse<bool>> CompleteSupplyAsync(long id);
+        Task<APIOperationResponse<long>> CreateAndSubmitAsync(CreateAssetSupplyDto dto);
 
         /// <summary>
         /// Cancel an asset supply
@@ -67,4 +47,3 @@ namespace Ettad.Inventory.Service.AssetSupply
         Task<APIOperationResponse<bool>> ReturnMultipleAssetsAsync(ReturnMultipleAssetsDto dto);
     }
 }
-

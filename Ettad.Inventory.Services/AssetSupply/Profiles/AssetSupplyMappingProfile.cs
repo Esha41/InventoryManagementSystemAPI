@@ -1,6 +1,8 @@
 using AutoMapper;
 using Ettad.Data.Entities;
 using Ettad.Inventory.Service.AssetSupply.Dtos;
+using Ettad.Module.lookup.Dtos;
+using Ettad.User.Services.DTO;
 
 namespace Ettad.Inventory.Service.AssetSupply.Profiles
 {
@@ -10,9 +12,9 @@ namespace Ettad.Inventory.Service.AssetSupply.Profiles
         {
             // Entity to DTO mappings
             CreateMap<Ettad.Data.Entities.AssetSupply, AssetSupplyDto>()
-                .ForMember(dest => dest.DepartmentName, opt => opt.MapFrom(src => src.Department != null ? src.Department.NameEn : null))
-                .ForMember(dest => dest.CustodianName, opt => opt.MapFrom(src => src.Custodian != null ? src.Custodian.NameEn : null))
-                .ForMember(dest => dest.ReceiverRankName, opt => opt.MapFrom(src => src.ReceiverRank != null ? src.ReceiverRank.NameEn : null));
+                .ForMember(dest => dest.Department, opt => opt.MapFrom(src => src.Department))
+                .ForMember(dest => dest.ReceiverRank, opt => opt.MapFrom(src => src.ReceiverRank))
+                .ForMember(dest => dest.Custodian, opt => opt.MapFrom(src => src.Custodian));
 
             CreateMap<AssetSupplyDetail, AssetSupplyDetailDto>()
                 .ForMember(dest => dest.AssetSerialNumber, opt => opt.MapFrom(src => src.Asset != null ? src.Asset.SerialNumber : null))
@@ -22,14 +24,11 @@ namespace Ettad.Inventory.Service.AssetSupply.Profiles
             // DTO to Entity mappings for Create
             CreateMap<CreateAssetSupplyDto, Ettad.Data.Entities.AssetSupply>()
                 .ForMember(dest => dest.Id, opt => opt.Ignore())
-                .ForMember(dest => dest.Status, opt => opt.Ignore())
+                .ForMember(dest => dest.SubmissionStatus, opt => opt.Ignore())
+                .ForMember(dest => dest.FulfillmentStatus, opt => opt.Ignore())
                 .ForMember(dest => dest.SupplyDate, opt => opt.Ignore())
-                .ForMember(dest => dest.ReceiverName, opt => opt.Ignore())
-                .ForMember(dest => dest.ReceiverMilitaryId, opt => opt.Ignore())
-                .ForMember(dest => dest.ReceiverRankId, opt => opt.Ignore())
-                .ForMember(dest => dest.ApprovedDate, opt => opt.Ignore())
-                .ForMember(dest => dest.ApprovedByUserId, opt => opt.Ignore())
-                .ForMember(dest => dest.CompletedDate, opt => opt.Ignore())
+                .ForMember(dest => dest.DepartmentId, opt => opt.Ignore())
+                .ForMember(dest => dest.CustodianId, opt => opt.Ignore())
                 .ForMember(dest => dest.CreationDate, opt => opt.Ignore())
                 .ForMember(dest => dest.CreatedBy, opt => opt.Ignore())
                 .ForMember(dest => dest.ModificationDate, opt => opt.Ignore())
@@ -69,4 +68,3 @@ namespace Ettad.Inventory.Service.AssetSupply.Profiles
         }
     }
 }
-

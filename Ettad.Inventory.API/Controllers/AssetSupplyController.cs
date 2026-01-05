@@ -60,18 +60,6 @@ namespace Ettad.Inventory.API.Controllers
         }
 
         /// <summary>
-        /// Get draft asset supply by order ID
-        /// </summary>
-        [HttpGet("order/{orderId}/draft")]
-        [ProducesResponseType(typeof(APIOperationResponse<AssetSupplyDto>), (int)HttpStatusCode.OK)]
-        [CheckAuthorize("Permissions.AssetSupply.View", "Permissions.AssetSupply.Page")]
-        public async Task<IActionResult> GetDraftByOrderId(long orderId)
-        {
-            var result = await _assetSupplyService.GetDraftByOrderIdAsync(orderId);
-            return ProcessResponse(result);
-        }
-
-        /// <summary>
         /// Get all asset supplies
         /// </summary>
         [HttpGet]
@@ -84,50 +72,14 @@ namespace Ettad.Inventory.API.Controllers
         }
 
         /// <summary>
-        /// Create a new asset supply
+        /// Create and submit a new asset supply (creates assignments immediately)
         /// </summary>
         [HttpPost]
         [ProducesResponseType(typeof(APIOperationResponse<long>), (int)HttpStatusCode.Created)]
         [CheckAuthorize("Permissions.AssetSupply.Create")]
         public async Task<IActionResult> Create([FromBody] CreateAssetSupplyDto dto)
         {
-            var result = await _assetSupplyService.CreateAsync(dto);
-            return ProcessResponse(result);
-        }
-
-        /// <summary>
-        /// Update an existing asset supply (only while in Draft status)
-        /// </summary>
-        [HttpPut("{id}")]
-        [ProducesResponseType(typeof(APIOperationResponse<bool>), (int)HttpStatusCode.OK)]
-        [CheckAuthorize("Permissions.AssetSupply.Edit")]
-        public async Task<IActionResult> Update(long id, [FromBody] UpdateAssetSupplyDto dto)
-        {
-            var result = await _assetSupplyService.UpdateAsync(id, dto);
-            return ProcessResponse(result);
-        }
-
-        /// <summary>
-        /// Submit an asset supply for processing
-        /// </summary>
-        [HttpPost("{id}/submit")]
-        [ProducesResponseType(typeof(APIOperationResponse<bool>), (int)HttpStatusCode.OK)]
-        [CheckAuthorize("Permissions.AssetSupply.Edit")]
-        public async Task<IActionResult> Submit(long id, [FromBody] SubmitAssetSupplyDto dto)
-        {
-            var result = await _assetSupplyService.SubmitSupplyAsync(id, dto);
-            return ProcessResponse(result);
-        }
-
-        /// <summary>
-        /// Complete an asset supply - creates assignments for all assets
-        /// </summary>
-        [HttpPost("{id}/complete")]
-        [ProducesResponseType(typeof(APIOperationResponse<bool>), (int)HttpStatusCode.OK)]
-        [CheckAuthorize("Permissions.AssetSupply.Edit")]
-        public async Task<IActionResult> Complete(long id)
-        {
-            var result = await _assetSupplyService.CompleteSupplyAsync(id);
+            var result = await _assetSupplyService.CreateAndSubmitAsync(dto);
             return ProcessResponse(result);
         }
 
@@ -168,4 +120,3 @@ namespace Ettad.Inventory.API.Controllers
         }
     }
 }
-

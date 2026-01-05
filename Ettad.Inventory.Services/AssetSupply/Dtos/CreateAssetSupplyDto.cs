@@ -1,7 +1,7 @@
 namespace Ettad.Inventory.Service.AssetSupply.Dtos
 {
     /// <summary>
-    /// DTO for creating a new asset supply
+    /// DTO for creating and submitting a new asset supply in one step
     /// </summary>
     public class CreateAssetSupplyDto
     {
@@ -11,14 +11,24 @@ namespace Ettad.Inventory.Service.AssetSupply.Dtos
         public long OrderId { get; set; }
 
         /// <summary>
-        /// Optional custodian ID to assign assets to. If not provided, assets will be assigned to the order's department.
+        /// Optional custodian ID (User ID) to assign assets to. If not provided, assets will be assigned to the order's department.
         /// </summary>
-        public long? CustodianId { get; set; }
+        public string? CustodianId { get; set; }
 
         /// <summary>
-        /// Optional department ID override. If not provided, uses the order's department.
+        /// Name of the person receiving the supply (Required)
         /// </summary>
-        public long? DepartmentId { get; set; }
+        public string ReceiverName { get; set; }
+
+        /// <summary>
+        /// Military ID of the receiver (Required)
+        /// </summary>
+        public string ReceiverMilitaryId { get; set; }
+
+        /// <summary>
+        /// Rank ID of the receiver (Required)
+        /// </summary>
+        public long ReceiverRankId { get; set; }
 
         /// <summary>
         /// Location where assets will be assigned
@@ -62,4 +72,3 @@ namespace Ettad.Inventory.Service.AssetSupply.Dtos
         public string? Notes { get; set; }
     }
 }
-

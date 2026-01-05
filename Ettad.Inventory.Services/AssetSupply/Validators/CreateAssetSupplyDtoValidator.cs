@@ -10,6 +10,17 @@ namespace Ettad.Inventory.Service.AssetSupply.Validators
             RuleFor(x => x.OrderId)
                 .GreaterThan(0).WithMessage("Order ID is required and must be greater than 0");
 
+            RuleFor(x => x.ReceiverName)
+                .NotEmpty().WithMessage("Receiver name is required")
+                .MaximumLength(255).WithMessage("Receiver name cannot exceed 255 characters");
+
+            RuleFor(x => x.ReceiverMilitaryId)
+                .NotEmpty().WithMessage("Receiver military ID is required")
+                .MaximumLength(100).WithMessage("Receiver military ID cannot exceed 100 characters");
+
+            RuleFor(x => x.ReceiverRankId)
+                .GreaterThan(0).WithMessage("Receiver rank is required");
+
             RuleFor(x => x.SupplyDetails)
                 .NotEmpty().WithMessage("At least one asset must be included in the supply");
 
@@ -42,4 +53,3 @@ namespace Ettad.Inventory.Service.AssetSupply.Validators
         }
     }
 }
-
