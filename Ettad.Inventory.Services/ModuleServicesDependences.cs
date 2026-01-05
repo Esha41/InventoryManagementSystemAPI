@@ -21,6 +21,12 @@ using Ettad.Inventory.Service.Assets;
 using Ettad.Inventory.Service.Assets.Dtos;
 using Ettad.Inventory.Service.Assets.Validators;
 using Ettad.Inventory.Service.Assets.Profiles;
+using Ettad.Inventory.Service.AssetSupply;
+using Ettad.Inventory.Service.AssetSupply.Dtos;
+using Ettad.Inventory.Service.AssetSupply.Validators;
+using Ettad.Inventory.Service.AssetSupply.Profiles;
+using Ettad.Inventory.Service.AssetHistory;
+using Ettad.Inventory.Service.AssetHistory.Profiles;
 
 namespace Ettad.Inventory.Service
 {
@@ -67,6 +73,19 @@ namespace Ettad.Inventory.Service
             services.AddScoped<ILowStockMonitorSettingsService, LowStockMonitorSettingsService>();
             services.AddScoped<LowStockEmailTemplateService>();
             services.AddScoped<IExcelImportService, ExcelImportService>();
+
+            // Asset Supply Services
+            services.AddScoped<IAssetSupplyService, AssetSupplyService>();
+            services.AddScoped<IValidator<CreateAssetSupplyDto>, CreateAssetSupplyDtoValidator>();
+            services.AddScoped<IValidator<UpdateAssetSupplyDto>, UpdateAssetSupplyDtoValidator>();
+            services.AddScoped<IValidator<SubmitAssetSupplyDto>, SubmitAssetSupplyDtoValidator>();
+            services.AddScoped<IValidator<ReturnAssetDto>, ReturnAssetDtoValidator>();
+            services.AddScoped<IValidator<ReturnMultipleAssetsDto>, ReturnMultipleAssetsDtoValidator>();
+            services.AddAutoMapper(typeof(AssetSupplyMappingProfile));
+
+            // Asset History Services
+            services.AddScoped<IAssetHistoryService, AssetHistoryService>();
+            services.AddAutoMapper(typeof(AssetHistoryMappingProfile));
 
             return services;
         }

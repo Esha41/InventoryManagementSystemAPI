@@ -65,9 +65,7 @@ namespace Ettad.Inventory.Service.Assets
                     a => a.Id == id && !a.IsDeleted,
                     false,
                     nameof(Asset.Item),
-                    nameof(Asset.Depot),
-                    nameof(Asset.Department),
-                    nameof(Asset.Custodian)
+                    nameof(Asset.Depot)
                 );
 
                 if (asset == null)
@@ -102,9 +100,7 @@ namespace Ettad.Inventory.Service.Assets
                     a => !a.IsDeleted,
                     false,
                     nameof(Asset.Item),
-                    nameof(Asset.Depot),
-                    nameof(Asset.Department),
-                    nameof(Asset.Custodian)
+                    nameof(Asset.Depot)
                 );
 
                 var dtos = _mapper.Map<List<AssetDto>>(assets);

@@ -19,11 +19,6 @@ namespace Ettad.Inventory.Service.Assets.Profiles
                 .ForMember(dest => dest.IsDeleted, opt => opt.Ignore())
                 .ForMember(dest => dest.Item, opt => opt.Ignore())
                 .ForMember(dest => dest.Depot, opt => opt.Ignore())
-                .ForMember(dest => dest.Department, opt => opt.Ignore())
-                .ForMember(dest => dest.Custodian, opt => opt.Ignore())
-                .ForMember(dest => dest.DepartmentId, opt => opt.Ignore())
-                .ForMember(dest => dest.CustodianId, opt => opt.Ignore())
-                .ForMember(dest => dest.Location, opt => opt.Ignore())
                 .ForMember(dest => dest.Status, opt => opt.Ignore());
 
             CreateMap<UpdateAssetDto, Asset>()
@@ -35,11 +30,6 @@ namespace Ettad.Inventory.Service.Assets.Profiles
                 .ForMember(dest => dest.IsDeleted, opt => opt.Ignore())
                 .ForMember(dest => dest.Item, opt => opt.Ignore())
                 .ForMember(dest => dest.Depot, opt => opt.Ignore())
-                .ForMember(dest => dest.Department, opt => opt.Ignore())
-                .ForMember(dest => dest.Custodian, opt => opt.Ignore())
-                .ForMember(dest => dest.DepartmentId, opt => opt.Ignore())
-                .ForMember(dest => dest.CustodianId, opt => opt.Ignore())
-                .ForMember(dest => dest.Location, opt => opt.Ignore())
                 .ForMember(dest => dest.DepotId, opt => opt.Ignore());
         }
     }
