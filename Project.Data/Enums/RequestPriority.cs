@@ -8,9 +8,9 @@ namespace Ettad.Data.Enums
 {
     public enum RequestPriority
     {
-        High = 1,
-        Medium = 2,
-        Low = 3
+        Normal = 1,
+        Urgent = 2,
+        VeryUrgent = 3
     }
 }
 
