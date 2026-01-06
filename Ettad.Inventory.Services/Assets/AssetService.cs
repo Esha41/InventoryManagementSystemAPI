@@ -92,6 +92,53 @@ namespace Ettad.Inventory.Service.Assets
             }
         }
 
+        public async Task<APIOperationResponse<AssetDto>> GetBySerialNumberAsync(string serialNumber)
+        {
+            _logger.LogInformation("Getting asset by SerialNumber. SerialNumber: {SerialNumber}, User: {UserId}", 
+                serialNumber, _currentUserService.UserId);
+            
+            try
+            {
+                if (string.IsNullOrWhiteSpace(serialNumber))
+                    return APIOperationResponse<AssetDto>.Fail(ResponseType.BadRequest, "Serial number is required");
+
+                var trimmedSerialNumber = serialNumber.Trim();
+                
+                var asset = await _assetRepository.FindOneAsync(
+                    a => !a.IsDeleted && a.SerialNumber != null && a.SerialNumber == trimmedSerialNumber,
+                    false,
+                    nameof(Asset.Item),
+                    nameof(Asset.Depot),
+                    $"{nameof(Asset.CurrentAssignment)}.{nameof(AssetAssignment.Custodian)}",
+                    $"{nameof(Asset.CurrentAssignment)}.{nameof(AssetAssignment.Department)}"
+                );
+
+                if (asset == null)
+                {
+                    _logger.LogWarning("Asset not found by SerialNumber. SerialNumber: {SerialNumber}, User: {UserId}", 
+                        trimmedSerialNumber, _currentUserService.UserId);
+                    return APIOperationResponse<AssetDto>.Fail(ResponseType.NotFound, "Asset not found");
+                }
+
+                var dto = _mapper.Map<AssetDto>(asset);
+                
+                // Get images for this asset
+                var imagesResult = await _fileUploadService.GetByEntityAsync(FileEntityType.Asset, asset.Id);
+                dto.Images = imagesResult.Succeeded && imagesResult.Data != null ? imagesResult.Data : new List<FileUploadDto>();
+                
+                _logger.LogInformation("Asset retrieved successfully by SerialNumber. AssetId: {AssetId}, SerialNumber: {SerialNumber}, User: {UserId}", 
+                    asset.Id, trimmedSerialNumber, _currentUserService.UserId);
+                
+                return APIOperationResponse<AssetDto>.Success(dto);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving asset by SerialNumber. SerialNumber: {SerialNumber}, User: {UserId}", 
+                    serialNumber, _currentUserService.UserId);
+                return APIOperationResponse<AssetDto>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
+            }
+        }
+
         public async Task<APIOperationResponse<List<AssetDto>>> GetAllAsync()
         {
             _logger.LogInformation("Getting all assets. User: {UserId}", _currentUserService.UserId);
