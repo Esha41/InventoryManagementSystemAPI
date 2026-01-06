@@ -424,7 +424,6 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 .Concat(WriteSupply)
                 .Concat(new List<string>
                     {
-                        PlainPermissions.UpdateRequestAndSuggestLots.ToString(),
                         PlainPermissions.InventoryDashboard.ToString(),
                     }
                 )

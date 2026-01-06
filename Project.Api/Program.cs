@@ -316,19 +316,28 @@ try
     });
 
     // Configure the HTTP request pipeline.
-    // Add error handling for Swagger
-    app.UseSwagger(c =>
+    // Add error handling for Swagger - only in Development environment
+    if (app.Environment.IsDevelopment())
     {
-        c.RouteTemplate = "swagger/{documentName}/swagger.json";
-    });
-    app.UseSwaggerUI(c =>
-    {
-        c.SwaggerEndpoint("/swagger/v1/swagger.json", "Ettad API V1");
-        c.RoutePrefix = "swagger";
-    });
+        app.UseSwagger(c =>
+        {
+            c.RouteTemplate = "swagger/{documentName}/swagger.json";
+        });
+        app.UseSwaggerUI(c =>
+        {
+            c.SwaggerEndpoint("/swagger/v1/swagger.json", "Ettad API V1");
+            c.RoutePrefix = "swagger";
+        });
+    }
   
     app.UseStaticFiles();
     app.UseHttpsRedirection();
+
+    // Add HSTS (HTTP Strict Transport Security) - only in non-development environments
+    if (!app.Environment.IsDevelopment())
+    {
+        app.UseHsts();
+    }
 
     app.UseCors(corsPolicyName);
     app.UseWhen(context => context.Request.Method == "OPTIONS", appBuilder =>
