@@ -28,6 +28,7 @@ namespace Ettad.User.Services
             service.AddScoped<IUserService, UserService>();
             service.AddTransient<IPermissionService, PermissionService>();
             service.AddSingleton<ICaptchaService, CaptchaService>();
+            service.AddScoped<ITokenBlacklistService, TokenBlacklistService>();
             
 
             service.AddScoped<ICurrentUserService, CurrentUserService>();

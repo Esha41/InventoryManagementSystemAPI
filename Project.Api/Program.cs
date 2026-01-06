@@ -190,6 +190,36 @@ try
                        //ValidAudiences = validAudiences,
                        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(configuration["JWT:Secret"] ?? throw new InvalidOperationException("JWT Secret is missing")))
                    };
+                   
+                   // Add event handler to check if token is blacklisted
+                   options.Events = new JwtBearerEvents
+                   {
+                       OnTokenValidated = async context =>
+                       {
+                           // Get the token blacklist service from DI
+                           var tokenBlacklistService = context.HttpContext.RequestServices
+                               .GetRequiredService<Ettad.User.Services.Interfaces.ITokenBlacklistService>();
+                           
+                           // Extract jti claim from the token
+                           var jtiClaim = context.Principal?.Claims
+                               .FirstOrDefault(c => c.Type == System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.Jti);
+                           
+                           if (jtiClaim != null && !string.IsNullOrWhiteSpace(jtiClaim.Value))
+                           {
+                               // Check if token is blacklisted
+                               var isBlacklisted = await tokenBlacklistService.IsTokenBlacklistedAsync(
+                                   jtiClaim.Value, 
+                                   context.HttpContext.RequestAborted);
+                               
+                               if (isBlacklisted)
+                               {
+                                   // Token is blacklisted - reject the request
+                                   context.Fail("This token has been revoked.");
+                                   Log.Warning("Blacklisted token rejected. TokenId: {TokenId}", jtiClaim.Value);
+                               }
+                           }
+                       }
+                   };
                });
     var baseUrl = builder.Configuration.GetValue<string>("FileSettings:BASE_URL");
     if (!string.IsNullOrEmpty(baseUrl))
