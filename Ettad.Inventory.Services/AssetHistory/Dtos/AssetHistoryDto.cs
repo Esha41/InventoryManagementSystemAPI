@@ -25,9 +25,9 @@ namespace Ettad.Inventory.Service.AssetHistory.Dtos
         public long? NewDepartmentId { get; set; }
         public string? NewDepartmentName { get; set; }
 
-        public long? PreviousCustodianId { get; set; }
+        public string? PreviousCustodianId { get; set; }
         public string? PreviousCustodianName { get; set; }
-        public long? NewCustodianId { get; set; }
+        public string? NewCustodianId { get; set; }
         public string? NewCustodianName { get; set; }
 
         public string? PreviousLocation { get; set; }
@@ -56,8 +56,8 @@ namespace Ettad.Inventory.Service.AssetHistory.Dtos
         public AssetStatus? NewStatus { get; set; }
         public long? PreviousDepartmentId { get; set; }
         public long? NewDepartmentId { get; set; }
-        public long? PreviousCustodianId { get; set; }
-        public long? NewCustodianId { get; set; }
+        public string? PreviousCustodianId { get; set; }
+        public string? NewCustodianId { get; set; }
         public string? PreviousLocation { get; set; }
         public string? NewLocation { get; set; }
         public long? OrderId { get; set; }

@@ -1,3 +1,5 @@
+using Ettad.User.Services.DTO;
+
 namespace Ettad.Inventory.Service.AssetSupply.Dtos
 {
     /// <summary>
@@ -17,6 +19,8 @@ namespace Ettad.Inventory.Service.AssetSupply.Dtos
         public string? Notes { get; set; }
         public bool IsDelivered { get; set; }
         public DateTime? DeliveredDate { get; set; }
+        public string? CustodianId { get; set; }
+        public UserDto? Custodian { get; set; }
     }
 }
 

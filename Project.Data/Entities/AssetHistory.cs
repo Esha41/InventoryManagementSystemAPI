@@ -1,3 +1,4 @@
+using Ettad.Comman.Idenitity;
 using Ettad.CrossCutting.Comman.Base;
 using Ettad.Data.Enums;
 
@@ -52,12 +53,12 @@ namespace Ettad.Data.Entities
         /// <summary>
         /// Previous custodian (for transfers)
         /// </summary>
-        public long? PreviousCustodianId { get; set; }
+        public string? PreviousCustodianId { get; set; }
 
         /// <summary>
         /// New custodian (for assignments/transfers)
         /// </summary>
-        public long? NewCustodianId { get; set; }
+        public string? NewCustodianId { get; set; }
 
         /// <summary>
         /// Previous location (for location changes)
@@ -112,8 +113,8 @@ namespace Ettad.Data.Entities
         public AssetAssignment AssetAssignment { get; set; }
         public Department PreviousDepartment { get; set; }
         public Department NewDepartment { get; set; }
-        public Employee PreviousCustodian { get; set; }
-        public Employee NewCustodian { get; set; }
+        public ApplicationUser PreviousCustodian { get; set; }
+        public ApplicationUser NewCustodian { get; set; }
 
         #endregion
     }

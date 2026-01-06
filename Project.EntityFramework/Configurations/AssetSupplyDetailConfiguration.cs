@@ -29,10 +29,15 @@ namespace Ettad.EntityFramework.Configurations
             builder.Property(x => x.DeliveredDate)
                 .IsRequired(false);
 
+            builder.Property(x => x.CustodianId)
+                .IsRequired()
+                .HasMaxLength(450);
+
             // Indexes
             builder.HasIndex(x => x.AssetSupplyId);
             builder.HasIndex(x => x.AssetId);
             builder.HasIndex(x => x.ItemId);
+            builder.HasIndex(x => x.CustodianId);
 
             // Relationships
             builder.HasOne(x => x.AssetSupply)
@@ -51,6 +56,12 @@ namespace Ettad.EntityFramework.Configurations
                 .WithMany()
                 .IsRequired()
                 .HasForeignKey(x => x.ItemId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.HasOne(x => x.Custodian)
+                .WithMany()
+                .IsRequired()
+                .HasForeignKey(x => x.CustodianId)
                 .OnDelete(DeleteBehavior.Restrict);
         }
     }

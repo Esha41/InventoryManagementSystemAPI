@@ -53,6 +53,14 @@ namespace Ettad.EntityFramework.Configurations
             builder.Property(x => x.Metadata)
                 .IsRequired(false);
 
+            builder.Property(x => x.PreviousCustodianId)
+                .IsRequired(false)
+                .HasMaxLength(450);
+
+            builder.Property(x => x.NewCustodianId)
+                .IsRequired(false)
+                .HasMaxLength(450);
+
             // Indexes for querying history
             builder.HasIndex(x => x.AssetId);
             builder.HasIndex(x => x.ActionDate);

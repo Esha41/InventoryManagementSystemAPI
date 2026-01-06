@@ -161,7 +161,21 @@ namespace Ettad.RequestManagement.API.Controllers
             return ProcessResponse(result);
         }
 
-
+        /// <summary>
+        /// Set pickup date for an order
+        /// </summary>
+        /// <param name="id">Order ID</param>
+        /// <param name="dto">Pickup date data</param>
+        /// <returns>Success result</returns>
+        [HttpPut("{id}/set-pickup-date")]
+        [ProducesResponseType(typeof(APIOperationResponse<bool>), (int)HttpStatusCode.OK)]
+        [ProducesResponseType((int)HttpStatusCode.BadRequest)]
+        [ProducesResponseType((int)HttpStatusCode.NotFound)]
+        [CheckAuthorize("Permissions.Order.Edit")]
+        public async Task<IActionResult> SetPickupDate(long id, [FromBody] SetPickupDateDto dto)
+        {
+            var result = await _orderService.SetSupplyDateAsync(id, dto.PickupDate);
+            return ProcessResponse(result);
+        }
     }
 }
-

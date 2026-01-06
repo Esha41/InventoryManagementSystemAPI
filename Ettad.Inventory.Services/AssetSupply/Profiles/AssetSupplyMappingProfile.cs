@@ -19,7 +19,8 @@ namespace Ettad.Inventory.Service.AssetSupply.Profiles
             CreateMap<AssetSupplyDetail, AssetSupplyDetailDto>()
                 .ForMember(dest => dest.AssetSerialNumber, opt => opt.MapFrom(src => src.Asset != null ? src.Asset.SerialNumber : null))
                 .ForMember(dest => dest.AssetTag, opt => opt.MapFrom(src => src.Asset != null ? src.Asset.AssetTag : null))
-                .ForMember(dest => dest.ItemName, opt => opt.MapFrom(src => src.Item != null ? src.Item.Name : null));
+                .ForMember(dest => dest.ItemName, opt => opt.MapFrom(src => src.Item != null ? src.Item.Name : null))
+                .ForMember(dest => dest.Custodian, opt => opt.MapFrom(src => src.Custodian));
 
             // DTO to Entity mappings for Create
             CreateMap<CreateAssetSupplyDto, Ettad.Data.Entities.AssetSupply>()
@@ -59,11 +60,11 @@ namespace Ettad.Inventory.Service.AssetSupply.Profiles
                 .ForMember(dest => dest.DeletedBy, opt => opt.Ignore())
                 .ForMember(dest => dest.AssetSupply, opt => opt.Ignore())
                 .ForMember(dest => dest.Asset, opt => opt.Ignore())
-                .ForMember(dest => dest.Item, opt => opt.Ignore());
+                .ForMember(dest => dest.Item, opt => opt.Ignore())
+                .ForMember(dest => dest.Custodian, opt => opt.Ignore());
 
             // Asset to AssetToSupplyDto
             CreateMap<Asset, AssetToSupplyDto>()
-                .ForMember(dest => dest.DepotName, opt => opt.MapFrom(src => src.Depot != null ? src.Depot.NameEn : null))
                 .ForMember(dest => dest.Priority, opt => opt.Ignore());
         }
     }

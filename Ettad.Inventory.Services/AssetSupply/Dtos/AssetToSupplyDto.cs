@@ -1,3 +1,4 @@
+using Ettad.Data.Entities;
 using Ettad.Data.Enums;
 
 namespace Ettad.Inventory.Service.AssetSupply.Dtos
@@ -105,11 +106,6 @@ namespace Ettad.Inventory.Service.AssetSupply.Dtos
         public AssetStatus? Status { get; set; }
 
         /// <summary>
-        /// Status name for display
-        /// </summary>
-        public string? StatusName => Status?.ToString();
-
-        /// <summary>
         /// Date of purchase (used for FIFO ordering)
         /// </summary>
         public DateTime? PurchaseDate { get; set; }
@@ -122,7 +118,7 @@ namespace Ettad.Inventory.Service.AssetSupply.Dtos
         /// <summary>
         /// Depot name
         /// </summary>
-        public string? DepotName { get; set; }
+        public Depot? Depot { get; set; }
 
         /// <summary>
         /// Priority order for supply (1 = highest priority based on FIFO)

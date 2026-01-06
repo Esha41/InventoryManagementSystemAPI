@@ -9,7 +9,9 @@ namespace Ettad.Inventory.Service.AssetSupply
         /// Get available assets to supply for an order.
         /// Returns assets ordered by FIFO (oldest first), with serial numbers only, and not already assigned.
         /// </summary>
-        Task<APIOperationResponse<OrderAssetsToSupplyDto>> GetAssetsToSupplyAsync(long orderId);
+        /// <param name="orderId">The order ID</param>
+        /// <param name="depotIds">Optional list of depot IDs to filter assets. If provided, only assets from these depots will be returned.</param>
+        Task<APIOperationResponse<OrderAssetsToSupplyDto>> GetAssetsToSupplyAsync(long orderId, List<long>? depotIds = null);
 
         /// <summary>
         /// Get asset supply by ID

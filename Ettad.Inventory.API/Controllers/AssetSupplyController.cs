@@ -26,12 +26,14 @@ namespace Ettad.Inventory.API.Controllers
         /// <summary>
         /// Get available assets to supply for an order (FIFO order, with serial numbers, not assigned)
         /// </summary>
+        /// <param name="orderId">The order ID</param>
+        /// <param name="depotIds">Optional list of depot IDs to filter assets</param>
         [HttpGet("order/{orderId}/available-assets")]
         [ProducesResponseType(typeof(APIOperationResponse<OrderAssetsToSupplyDto>), (int)HttpStatusCode.OK)]
         [CheckAuthorize("Permissions.AssetSupply.View", "Permissions.AssetSupply.Page")]
-        public async Task<IActionResult> GetAssetsToSupply(long orderId)
+        public async Task<IActionResult> GetAssetsToSupply(long orderId, [FromQuery] List<long>? depotIds = null)
         {
-            var result = await _assetSupplyService.GetAssetsToSupplyAsync(orderId);
+            var result = await _assetSupplyService.GetAssetsToSupplyAsync(orderId, depotIds);
             return ProcessResponse(result);
         }
 

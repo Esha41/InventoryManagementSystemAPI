@@ -8,7 +8,11 @@ namespace Ettad.Inventory.Service.Assets.Profiles
     {
         public AssetMappingProfile()
         {
-            CreateMap<Asset, AssetDto>();
+            CreateMap<Asset, AssetDto>()
+                .ForMember(dest => dest.Custodian, opt => opt.MapFrom(src => src.CurrentAssignment != null ? src.CurrentAssignment.Custodian : null))
+                .ForMember(dest => dest.CustodianId, opt => opt.MapFrom(src => src.CurrentAssignment != null ? src.CurrentAssignment.CustodianId : null))
+                .ForMember(dest => dest.DepartmentId, opt => opt.MapFrom(src => src.CurrentAssignment != null ? src.CurrentAssignment.DepartmentId : null))
+                .ForMember(dest => dest.Location, opt => opt.MapFrom(src => src.CurrentAssignment != null ? src.CurrentAssignment.Location : null));
 
             CreateMap<CreateAssetDto, Asset>()
                 .ForMember(dest => dest.Id, opt => opt.Ignore())

@@ -61,10 +61,10 @@ namespace Ettad.Inventory.Service.AssetSupply
             _logger = logger;
         }
 
-        public async Task<APIOperationResponse<OrderAssetsToSupplyDto>> GetAssetsToSupplyAsync(long orderId)
+        public async Task<APIOperationResponse<OrderAssetsToSupplyDto>> GetAssetsToSupplyAsync(long orderId, List<long>? depotIds = null)
         {
-            _logger.LogInformation("Getting assets to supply for order. OrderId: {OrderId}, User: {UserId}",
-                orderId, _currentUserService.UserId);
+            _logger.LogInformation("Getting assets to supply for order. OrderId: {OrderId}, DepotIds: {DepotIds}, User: {UserId}",
+                orderId, depotIds != null ? string.Join(", ", depotIds) : "All", _currentUserService.UserId);
 
             try
             {
@@ -87,6 +87,22 @@ namespace Ettad.Inventory.Service.AssetSupply
                         ResponseType.BadRequest, "Order has no request items");
                 }
 
+                // Validate that all items in the order are Weapon type
+                var nonWeaponItems = order.RequestItems
+                    .Where(ri => !ri.IsDeleted && ri.Item != null && ri.Item.ItemType != ItemType.Weapon)
+                    .ToList();
+
+                if (nonWeaponItems.Any())
+                {
+                    var itemNames = nonWeaponItems
+                        .Select(ri => ri.Item?.Name ?? $"Item ID: {ri.ItemId}")
+                        .Distinct()
+                        .ToList();
+                    return APIOperationResponse<OrderAssetsToSupplyDto>.Fail(
+                        ResponseType.BadRequest, 
+                        $"Asset supply only handles Weapon items. The order contains non-Weapon items: {string.Join(", ", itemNames)}");
+                }
+
                 var result = new OrderAssetsToSupplyDto
                 {
                     OrderId = order.Id,
@@ -98,7 +114,7 @@ namespace Ettad.Inventory.Service.AssetSupply
                 {
                     // Query available assets for this item type
                     // Criteria: has serial number, not assigned, not deleted, ordered by purchase date (FIFO)
-                    var availableAssets = await _context.Assets
+                    var assetsQuery = _context.Assets
                         .Include(a => a.Depot)
                         .Where(a => a.ItemId == requestItem.ItemId
                             && !string.IsNullOrEmpty(a.SerialNumber)
@@ -106,7 +122,15 @@ namespace Ettad.Inventory.Service.AssetSupply
                             && !a.IsDeleted
                             && a.Status != AssetStatus.Maintenance
                             && a.Status != AssetStatus.Disposed
-                            && a.Status != AssetStatus.Lost)
+                            && a.Status != AssetStatus.Lost);
+
+                    // Filter by depot IDs if provided
+                    if (depotIds != null && depotIds.Any())
+                    {
+                        assetsQuery = assetsQuery.Where(a => depotIds.Contains(a.DepotId));
+                    }
+
+                    var availableAssets = await assetsQuery
                         .OrderBy(a => a.PurchaseDate ?? DateTime.MaxValue) // FIFO - oldest first
                         .ThenBy(a => a.Id)
                         .ToListAsync();
@@ -126,7 +150,7 @@ namespace Ettad.Inventory.Service.AssetSupply
                             Status = a.Status,
                             PurchaseDate = a.PurchaseDate,
                             DepotId = a.DepotId,
-                            DepotName = a.Depot?.NameEn,
+                            Depot = a.Depot,
                             Priority = index + 1 // Priority based on FIFO order
                         }).ToList()
                     };
@@ -260,11 +284,37 @@ namespace Ettad.Inventory.Service.AssetSupply
                     o => o.Id == dto.OrderId && !o.IsDeleted,
                     false,
                     nameof(Order.Department),
-                    nameof(Order.RequestItems));
+                    nameof(Order.Requester),
+                    $"{nameof(Order.RequestItems)}.{nameof(RequestItem.Item)}");
 
                 if (order == null)
                 {
                     return APIOperationResponse<long>.Fail(ResponseType.NotFound, "Order not found");
+                }
+
+                // Validate that order has a requester
+                if (string.IsNullOrEmpty(order.RequesterId))
+                {
+                    return APIOperationResponse<long>.Fail(ResponseType.BadRequest, "Order must have a requester to create a supply");
+                }
+
+                // Validate that all items in the order are Weapon type
+                if (order.RequestItems != null && order.RequestItems.Any())
+                {
+                    var nonWeaponItems = order.RequestItems
+                        .Where(ri => !ri.IsDeleted && ri.Item != null && ri.Item.ItemType != ItemType.Weapon)
+                        .ToList();
+
+                    if (nonWeaponItems.Any())
+                    {
+                        var itemNames = nonWeaponItems
+                            .Select(ri => ri.Item?.Name ?? $"Item ID: {ri.ItemId}")
+                            .Distinct()
+                            .ToList();
+                        return APIOperationResponse<long>.Fail(
+                            ResponseType.BadRequest, 
+                            $"Asset supply only handles Weapon items. The order contains non-Weapon items: {string.Join(", ", itemNames)}");
+                    }
                 }
 
                 // Check for existing supply
@@ -312,7 +362,7 @@ namespace Ettad.Inventory.Service.AssetSupply
                 supply.SubmissionStatus = SupplySubmissionStatus.Submitted;
                 supply.SupplyDate = order.SupplyDate ?? DateTime.UtcNow; // Use order supply date or now
                 supply.DepartmentId = order.DepartmentId; // Always use requested department
-                supply.CustodianId = dto.CustodianId; // Use provided user ID or null
+                supply.CustodianId = dto.CustodianId ?? order.RequesterId; // Use provided user ID or default to order requester
                 
                 // Calculate fulfillment status
                 // Group requested quantities
@@ -352,6 +402,7 @@ namespace Ettad.Inventory.Service.AssetSupply
                         ItemId = asset.ItemId,
                         SequenceNo = sequenceNo++,
                         ConditionOnSupply = d.ConditionOnSupply ?? asset.Condition,
+                        CustodianId = d.CustodianId ?? order.RequesterId, // Use detail-level custodian if provided, otherwise use order requester
                         Notes = d.Notes,
                         IsDelivered = true, // Auto-delivered since there is no draft
                         DeliveredDate = DateTime.UtcNow,
@@ -374,11 +425,7 @@ namespace Ettad.Inventory.Service.AssetSupply
                         OrderId = supply.OrderId,
                         AssetSupplyId = supply.Id,
                         DepartmentId = supply.DepartmentId,
-                        CustodianId = null, // Custodian in Assignment is Employee, but we used User for Supply custodian. Leaving null for now as per instructions to use User.
-                        // Ideally we should update AssetAssignment to support User Custodian too, but for now we follow the instruction.
-                        // "I will use User as Custodian instead of Employee" - implied for Supply.
-                        // Assuming assignment logic should assign to department since custodian is a User now and Assignment expects Employee.
-                        
+                        CustodianId = detail.CustodianId, // Use detail-level custodian (which defaults to order requester if not provided)
                         Location = supply.Location,
                         AssignDate = supply.SupplyDate ?? DateTime.UtcNow,
                         ExpectedReturnDate = supply.ExpectedReturnDate,
@@ -406,6 +453,7 @@ namespace Ettad.Inventory.Service.AssetSupply
                     {
                         Description = $"Asset assigned via supply #{supply.Id}",
                         NewDepartmentId = assignment.DepartmentId,
+                        NewCustodianId = assignment.CustodianId,
                         NewLocation = assignment.Location,
                         OrderId = supply.OrderId,
                         AssetSupplyId = supply.Id,
@@ -553,7 +601,7 @@ namespace Ettad.Inventory.Service.AssetSupply
 
                 // Store previous values for history
                 var previousDepartmentId = assignment.DepartmentId;
-                var previousCustodianId = assignment.CustodianId;
+                var previousCustodianId = assignment.CustodianId; // AssetHistory now uses User IDs (string?)
                 var previousLocation = assignment.Location;
 
                 // Update assignment
@@ -582,7 +630,7 @@ namespace Ettad.Inventory.Service.AssetSupply
                 {
                     Description = "Asset returned from assignment",
                     PreviousDepartmentId = previousDepartmentId,
-                    PreviousCustodianId = previousCustodianId,
+                    PreviousCustodianId = previousCustodianId, // AssetHistory now uses User IDs (string?)
                     PreviousLocation = previousLocation,
                     AssetAssignmentId = assignment.Id,
                     OrderId = assignment.OrderId,

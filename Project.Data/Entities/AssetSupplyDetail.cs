@@ -1,3 +1,4 @@
+using Ettad.Comman.Idenitity;
 using Ettad.CrossCutting.Comman.Base;
 
 namespace Ettad.Data.Entities
@@ -48,11 +49,17 @@ namespace Ettad.Data.Entities
         /// </summary>
         public DateTime? DeliveredDate { get; set; }
 
+        /// <summary>
+        /// Custodian (User) responsible for this specific asset (can override supply-level custodian)
+        /// </summary>
+        public string CustodianId { get; set; }
+
         #region Navigation Properties
 
         public AssetSupply AssetSupply { get; set; }
         public Asset Asset { get; set; }
         public BaseItem Item { get; set; }
+        public ApplicationUser Custodian { get; set; }
 
         #endregion
     }

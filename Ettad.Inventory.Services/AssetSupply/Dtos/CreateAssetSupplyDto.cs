@@ -67,6 +67,11 @@ namespace Ettad.Inventory.Service.AssetSupply.Dtos
         public string? ConditionOnSupply { get; set; }
 
         /// <summary>
+        /// Optional custodian ID (User ID) for this specific asset. If not provided, uses supply-level custodian or department.
+        /// </summary>
+        public string? CustodianId { get; set; }
+
+        /// <summary>
         /// Optional notes for this specific asset
         /// </summary>
         public string? Notes { get; set; }

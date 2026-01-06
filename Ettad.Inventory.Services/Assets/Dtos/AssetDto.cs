@@ -2,6 +2,7 @@ using Ettad.CrossCutting.Comman.FileUpload;
 using Ettad.Data.Enums;
 using Ettad.Inventory.Service.Common.Dtos;
 using Ettad.Module.lookup.Dtos;
+using Ettad.User.Services.DTO;
 
 namespace Ettad.Inventory.Service.Assets.Dtos
 {
@@ -19,7 +20,7 @@ namespace Ettad.Inventory.Service.Assets.Dtos
 
         public long? DepartmentId { get; set; }
 
-        public long? CustodianId { get; set; }
+        public string? CustodianId { get; set; }
 
         public string? Location { get; set; }
 
@@ -47,7 +48,7 @@ namespace Ettad.Inventory.Service.Assets.Dtos
 
         public DepartmentDto Department { get; set; }
 
-        public EmployeeDto Custodian { get; set; }
+        public UserDto Custodian { get; set; }
 
         public List<FileUploadDto> Images { get; set; }
 

@@ -45,7 +45,7 @@ namespace Ettad.EntityFramework.Configurations
                 .HasMaxLength(2000);
 
             builder.Property(x => x.CustodianId)
-                .IsRequired(false)
+                .IsRequired()
                 .HasMaxLength(450);
 
             // Indexes
@@ -68,7 +68,7 @@ namespace Ettad.EntityFramework.Configurations
 
             builder.HasOne(x => x.Custodian)
                 .WithMany()
-                .IsRequired(false)
+                .IsRequired()
                 .HasForeignKey(x => x.CustodianId)
                 .OnDelete(DeleteBehavior.Restrict);
 

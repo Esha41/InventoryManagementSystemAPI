@@ -36,9 +36,9 @@ namespace Ettad.Data.Entities
         public long? DepartmentId { get; set; }
 
         /// <summary>
-        /// Custodian (User) receiving the assets (optional)
-        /// </summary>
-        public string? CustodianId { get; set; }
+        /// Custodian (User) receiving the assets
+        ///</summary>
+        public string CustodianId { get; set; }
 
         /// <summary>
         /// Name of the person receiving the supply

@@ -1,23 +1,24 @@
 using AutoMapper;
-using FluentValidation;
+using AutoMapper.QueryableExtensions;
+using Ettad.Application.Common.Interfaces;
+using Ettad.Comman.Enums;
+using Ettad.Comman.Idenitity;
+using Ettad.CrossCutting.Comman.FileUpload;
+using Ettad.CrossCutting.Comman.Models;
 using Ettad.CrossCutting.Data.Repository;
 using Ettad.Data.Entities;
 using Ettad.Data.Enums;
+using Ettad.Notification.Service;
+using Ettad.RequestManagement.Service.Common;
 using Ettad.RequestManagement.Service.Orders.Dto;
 using Ettad.ResponseHandler.Consts;
 using Ettad.ResponseHandler.Models;
-using Ettad.Application.Common.Interfaces;
-using Ettad.RequestManagement.Service.Common;
+using Ettad.Workflows.Service.Interface;
+using FluentValidation;
+using Microsoft.AspNetCore.Components.Forms;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
-using Ettad.Comman.Idenitity;
 using Microsoft.Extensions.Logging;
-using Ettad.Notification.Service;
-using AutoMapper.QueryableExtensions;
-using Ettad.CrossCutting.Comman.Models;
-using Ettad.Workflows.Service.Interface;
-using Ettad.CrossCutting.Comman.FileUpload;
-using Ettad.Comman.Enums;
 using System.Linq;
 
 namespace Ettad.RequestManagement.Service.Orders
@@ -385,11 +386,61 @@ namespace Ettad.RequestManagement.Service.Orders
                     return APIOperationResponse<bool>.Fail(ResponseType.NotFound, "Order not found");
                 }
 
+                if(order.Status == RequestStatus.Rejected || order.Status == RequestStatus.Cancelled)
+                {
+                    return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, $"Cannot set supply date. The order has been {order.Status.ToString().ToLower()}.");
+                }
+
+                if(order.Status == RequestStatus.Approved)
+                {
+                    return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, "Cannot set supply date. The order has already been approved.");
+                }
+
                 order.SupplyDate = supplyDate;
                 order.ModificationDate = DateTime.UtcNow;
                 order.ModifiedBy = _currentUserService.UserId;
 
                 await _orderRepository.UpdateAsync(order);
+
+                // Notify the order requester
+                if (order.RequesterId != null)
+                {
+                    try
+                    {
+                        // Get current user details for contact information
+                        var currentUser = await _userManager.FindByIdAsync(_currentUserService.UserId ?? string.Empty);
+                        var currentUserName = currentUser?.FullNameEN ?? currentUser?.UserName ?? "the administrator";
+                        var currentUserEmail = currentUser?.Email;
+                        var currentUserPhone = currentUser?.PhoneNumber;
+
+                        // Build contact information string
+                        var contactParts = new List<string>();
+                        if (!string.IsNullOrEmpty(currentUserEmail))
+                            contactParts.Add($"email: {currentUserEmail}");
+                        if (!string.IsNullOrEmpty(currentUserPhone))
+                            contactParts.Add($"phone: {currentUserPhone}");
+
+                        var contactInfo = contactParts.Any()
+                            ? $"If this date is not suitable, please contact {currentUserName} ({string.Join(" or ", contactParts)}) to arrange an alternative."
+                            : $"If this date is not suitable, please contact {currentUserName} to arrange an alternative.";
+
+                        await _notificationHelperService.SendNotificationAsync(
+                            title: "Supply Pickup Date Set",
+                            message: $"The supply pickup date for Order #{order.RequestNo} has been set to {order.SupplyDate:yyyy-MM-dd}. {contactInfo}",
+                            entityType: "Supply",
+                            entityId: order.Id,
+                            userIds: new List<string> { order.RequesterId },
+                            senderId: _currentUserService.UserId
+                        );
+                    }
+                    catch (Exception ex)
+                    {
+                        // Log error but don't fail the operation - notifications are non-critical
+                        _logger.LogError(ex, "Error sending notification to requester. OrderId: {OrderId}, RequesterId: {RequesterId}",
+                            order.Id, order.RequesterId);
+                    }
+
+                }
 
                 return APIOperationResponse<bool>.Success(true, "Supply date set successfully");
             }
