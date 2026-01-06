@@ -228,6 +228,7 @@ namespace Ettad.User.Services.Implementation
         {
             try
             {
+
                 var ldapSettingsResponse = await _ldapSettingsService.GetLdapSettings(cancellationToken);
 
                 if (!ldapSettingsResponse.Succeeded || ldapSettingsResponse.Data == null)
@@ -270,30 +271,38 @@ namespace Ettad.User.Services.Implementation
                 }
 
                 // Check if Windows logged-in user matches LDAP username
-                var windowsIdentity = _httpContextAccessor.HttpContext?.User?.Identity?.Name
-                                      ?? WindowsIdentity.GetCurrent().Name;
+                _logger.LogInformation("Login request. IsAuthenticated: {Auth}, User: {User}",
+     _httpContextAccessor.HttpContext.User.Identity?.IsAuthenticated,_httpContextAccessor.HttpContext.User.Identity?.Name);
 
-                if (!string.IsNullOrEmpty(windowsIdentity))
+                var windowsUserFull = _httpContextAccessor.HttpContext?.User?.Identity?.Name; 
+                // Trim domain
+                var windowsUser = windowsUserFull?.Contains("\\") == true
+                    ? windowsUserFull.Split('\\')[1]
+                    : windowsUserFull;
+                _logger.LogInformation("LDAP login attempt. Username: {Username}, WindowsIdentity: {windowsUser}",
+                     loginInformation.Username, windowsUser ?? "N/A");
+                if (string.IsNullOrEmpty(windowsUser))
                 {
-                    var windowsUser = NormalizeUsername(windowsIdentity);
-                    var inputUser = NormalizeUsername(loginInformation.Username.Trim());
-
-                    if (!windowsUser.Equals(inputUser, StringComparison.OrdinalIgnoreCase))
-                    {
-                        _logger.LogWarning(
-                            "LDAP login blocked: Windows user mismatch. InputUser: {InputUser}, WindowsUser: {WindowsUser}",
-                            inputUser,
-                            windowsUser);
-
-                        await RecordLoginAttemptAsync(loginInformation.Username.Trim(), null, false, 
-                            $"Windows user mismatch. Expected: {windowsUser}, Got: {inputUser}", LoginType.LDAP, cancellationToken);
-                        return APIOperationResponse<AuthenticatedResponse>.Fail(
-                            ResponseType.Unauthorized,
-                            CommonErrorCodes.INVALID_EMAIL_OR_PASSWORD,
-                            "Windows logged-in user does not match the provided username. Please use your Windows account credentials.");
-                    }
+                    return APIOperationResponse<AuthenticatedResponse>.Fail(
+                        ResponseType.Unauthorized,
+                        CommonErrorCodes.INVALID_EMAIL_OR_PASSWORD,
+                        "Windows authentication required.");
                 }
 
+                var inputUser = NormalizeUsername(loginInformation.Username.Trim());
+
+                if (!windowsUser.Equals(inputUser, StringComparison.OrdinalIgnoreCase))
+                {
+                    _logger.LogWarning(
+                        "LDAP login blocked: Windows user mismatch. InputUser: {InputUser}, WindowsUser: {WindowsUser}",
+                        inputUser,
+                        windowsUser);
+
+                    return APIOperationResponse<AuthenticatedResponse>.Fail(
+                        ResponseType.Unauthorized,
+                        CommonErrorCodes.INVALID_EMAIL_OR_PASSWORD,
+                        "You must log in from your own Windows account.");
+                }
                 // Check if account is locked (based on username)
                 var isLocked = await IsAccountLockedAsync(loginInformation.Username.Trim(), cancellationToken);
                 if (isLocked)
@@ -460,6 +469,7 @@ namespace Ettad.User.Services.Implementation
             var refreshToken = _jwtServices.GenerateRefreshToken();
             user.RefreshToken = refreshToken;
             user.RefreshTokenExpiryDate = _dateTimeProvider.UtcNow.AddMinutes(_jwtOptions.RefreshTokenExpireInMinutes);
+          
 
             await _userRepository.UpdateAsync(user);
 
@@ -604,6 +614,107 @@ namespace Ettad.User.Services.Implementation
             return APIOperationResponse<string>.Success("Password has been reset successfully.");
         }
 
+        public async Task<APIOperationResponse<string>> LogoutAsync(CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                var userId = _currentUserService.UserId;
+                var userName = _currentUserService.UserName;
+                
+                // Check for Windows authentication
+                var windowsIdentity = _httpContextAccessor.HttpContext?.User?.Identity?.Name;
+                var isWindowsAuthenticated = !string.IsNullOrEmpty(windowsIdentity);
+                
+                if (string.IsNullOrWhiteSpace(userId))
+                {
+                    // If no userId but Windows authenticated, still allow logout
+                    if (isWindowsAuthenticated)
+                    {
+                        _logger.LogInformation("Windows user logged out (no user ID found). WindowsIdentity: {WindowsIdentity}", 
+                            windowsIdentity);
+                        return APIOperationResponse<string>.Success("Logged out successfully.");
+                    }
+                    
+                    _logger.LogWarning("Logout attempt failed: No authenticated user context available.");
+                    return APIOperationResponse<string>.Fail(
+                        ResponseType.Unauthorized,
+                        "No authenticated user found.");
+                }
+
+                var user = await _userRepository.FindByIdAsync(userId);
+                if (user == null)
+                {
+                    // If Windows authenticated but user not found in DB, still allow logout
+                    if (isWindowsAuthenticated)
+                    {
+                        _logger.LogInformation("Windows user logged out (user not found in database). UserId: {UserId}, WindowsIdentity: {WindowsIdentity}", 
+                            userId, windowsIdentity);
+                        return APIOperationResponse<string>.Success("Logged out successfully.");
+                    }
+                    
+                    _logger.LogWarning("Logout attempt failed: User not found. UserId: {UserId}", userId);
+                    return APIOperationResponse<string>.Fail(
+                        ResponseType.NotFound,
+                        "User not found.");
+                }
+
+                // Clear all tokens and set logout timestamp
+                var hadRefreshToken = !string.IsNullOrEmpty(user.RefreshToken);
+                user.RefreshToken = null;
+                user.RefreshTokenExpiryDate = null;
+               
+                await _userRepository.UpdateAsync(user);
+
+                // Clear refresh token cookie
+                var httpContext = _httpContextAccessor.HttpContext;
+                if (httpContext != null)
+                {
+                    try
+                    {
+                        httpContext.Response.Cookies.Delete("refreshToken", new Microsoft.AspNetCore.Http.CookieOptions
+                        {
+                            HttpOnly = true,
+                            Secure = true,
+                            SameSite = Microsoft.AspNetCore.Http.SameSiteMode.None
+                        });
+                        _logger.LogInformation("Refresh token cookie deleted. UserId: {UserId}", userId);
+                    }
+                    catch (Exception ex)
+                    {
+                        // Log but don't fail logout if cookie deletion fails
+                        _logger.LogWarning(ex, "Failed to delete refresh token cookie. UserId: {UserId}", userId);
+                    }
+                }
+
+                // Log logout with user type information
+                var userType = user.IsLdapUser ? "Windows/LDAP" : "Admin";
+                var logMessage = isWindowsAuthenticated 
+                    ? "Windows user logged out successfully. UserId: {UserId}, Username: {Username}, UserType: {UserType}, WindowsIdentity: {WindowsIdentity}, HadRefreshToken: {HadRefreshToken}"
+                    : "User logged out successfully. UserId: {UserId}, Username: {Username}, UserType: {UserType}, HadRefreshToken: {HadRefreshToken}";
+                
+                if (isWindowsAuthenticated)
+                {
+                    _logger.LogInformation(logMessage, userId, user.UserName, userType, windowsIdentity, hadRefreshToken);
+                }
+                else
+                {
+                    _logger.LogInformation(logMessage, userId, user.UserName, userType, hadRefreshToken);
+                }
+
+                return APIOperationResponse<string>.Success("Logged out successfully.");
+            }
+            catch (Exception ex)
+            {
+                var windowsIdentity = _httpContextAccessor.HttpContext?.User?.Identity?.Name;
+                _logger.LogError(ex, "Error occurred during logout. UserId: {UserId}, WindowsIdentity: {WindowsIdentity}", 
+                    _currentUserService.UserId, windowsIdentity ?? "N/A");
+                return APIOperationResponse<string>.Fail(
+                    ResponseType.InternalServerError,
+                    CommonErrorCodes.SERVER_ERROR,
+                    "An error occurred during logout.");
+            }
+        }
+
         #region Login Tracking Helper Methods
 
         /// <summary>
@@ -709,13 +820,62 @@ namespace Ettad.User.Services.Implementation
         }
 
         /// <summary>
-        /// Gets the User-Agent from HttpContext
+        /// Gets the User-Agent from HttpContext, enhanced with client information from headers if available
         /// </summary>
         private string? GetUserAgent()
         {
             try
             {
-                return _httpContextAccessor.HttpContext?.Request.Headers["User-Agent"].ToString();
+                var httpContext = _httpContextAccessor.HttpContext;
+                if (httpContext == null) return null;
+
+                var userAgent = httpContext.Request.Headers["User-Agent"].ToString();
+                
+                // Enhance with client information from custom headers if available
+                var clientInfoParts = new List<string>();
+                
+                var browser = httpContext.Request.Headers["X-Client-Browser"].FirstOrDefault();
+                var browserVersion = httpContext.Request.Headers["X-Client-BrowserVersion"].FirstOrDefault();
+                var os = httpContext.Request.Headers["X-Client-OS"].FirstOrDefault();
+                var osVersion = httpContext.Request.Headers["X-Client-OSVersion"].FirstOrDefault();
+                var device = httpContext.Request.Headers["X-Client-Device"].FirstOrDefault();
+                
+                // Get Windows user from HttpContext (when Windows Authentication is enabled)
+                var windowsUser = httpContext.User?.Identity?.Name;
+                if (!string.IsNullOrEmpty(windowsUser))
+                {
+                    clientInfoParts.Add($"WindowsUser: {windowsUser}");
+                }
+                
+                if (!string.IsNullOrEmpty(browser))
+                {
+                    var browserInfo = !string.IsNullOrEmpty(browserVersion) 
+                        ? $"{browser} {browserVersion}" 
+                        : browser;
+                    clientInfoParts.Add($"Browser: {browserInfo}");
+                }
+                
+                if (!string.IsNullOrEmpty(os))
+                {
+                    var osInfo = !string.IsNullOrEmpty(osVersion) 
+                        ? $"{os} {osVersion}" 
+                        : os;
+                    clientInfoParts.Add($"OS: {osInfo}");
+                }
+                
+                if (!string.IsNullOrEmpty(device))
+                {
+                    clientInfoParts.Add($"Device: {device}");
+                }
+                
+                if (clientInfoParts.Any())
+                {
+                    var enhancedUserAgent = $"{userAgent} | {string.Join(" | ", clientInfoParts)}";
+                    // Truncate if too long (max 500 chars for database)
+                    return enhancedUserAgent.Length > 500 ? enhancedUserAgent.Substring(0, 500) : enhancedUserAgent;
+                }
+                
+                return userAgent;
             }
             catch
             {

@@ -254,6 +254,108 @@ namespace Ettad.Inventory.Service.Assets
             }
         }
 
+        public async Task<APIOperationResponse<List<long>>> CreateBulkAsync(List<CreateAssetDto> inputDtos)
+        {
+            if (inputDtos == null || !inputDtos.Any())
+                return APIOperationResponse<List<long>>.Fail(ResponseType.BadRequest, "No assets provided");
+
+            _logger.LogInformation("Creating bulk assets. Count: {Count}, User: {UserId}",
+                inputDtos.Count, _currentUserService.UserId);
+
+            await using var transaction = await _context.Database.BeginTransactionAsync();
+            try
+            {
+                var createdIds = new List<long>();
+                var errorMessages = new List<string>();
+
+                // Pre-check for duplicates within the input list
+                var duplicateSerials = inputDtos
+                    .Where(x => !string.IsNullOrWhiteSpace(x.SerialNumber))
+                    .GroupBy(x => x.SerialNumber)
+                    .Where(g => g.Count() > 1)
+                    .Select(g => g.Key)
+                    .ToList();
+
+                if (duplicateSerials.Any())
+                    return APIOperationResponse<List<long>>.Fail(ResponseType.BadRequest, $"Duplicate serial numbers in request: {string.Join(", ", duplicateSerials)}");
+
+                var duplicateRfids = inputDtos
+                    .Where(x => !string.IsNullOrWhiteSpace(x.RFID))
+                    .GroupBy(x => x.RFID)
+                    .Where(g => g.Count() > 1)
+                    .Select(g => g.Key)
+                    .ToList();
+
+                if (duplicateRfids.Any())
+                    return APIOperationResponse<List<long>>.Fail(ResponseType.BadRequest, $"Duplicate RFIDs in request: {string.Join(", ", duplicateRfids)}");
+
+                // Get all relevant serials and RFIDs to check against DB in one go
+                var serialsToCheck = inputDtos.Select(x => x.SerialNumber).Where(s => !string.IsNullOrWhiteSpace(s)).ToList();
+                var rfidsToCheck = inputDtos.Select(x => x.RFID).Where(r => !string.IsNullOrWhiteSpace(r)).ToList();
+
+                if (serialsToCheck.Any())
+                {
+                    var existingSerials = await _assetRepository.FindAsync(a => !a.IsDeleted && serialsToCheck.Contains(a.SerialNumber));
+                    if (existingSerials.Any())
+                    {
+                        var foundSerials = existingSerials.Select(a => a.SerialNumber).Distinct();
+                        return APIOperationResponse<List<long>>.Fail(ResponseType.BadRequest, $"Serial numbers already exist in database: {string.Join(", ", foundSerials)}");
+                    }
+                }
+
+                if (rfidsToCheck.Any())
+                {
+                    var existingRfids = await _assetRepository.FindAsync(a => !a.IsDeleted && rfidsToCheck.Contains(a.RFID));
+                    if (existingRfids.Any())
+                    {
+                        var foundRfids = existingRfids.Select(a => a.RFID).Distinct();
+                        return APIOperationResponse<List<long>>.Fail(ResponseType.BadRequest, $"RFIDs already exist in database: {string.Join(", ", foundRfids)}");
+                    }
+                }
+
+                foreach (var dto in inputDtos)
+                {
+                    // validation
+                    var validationResult = await _createValidator.ValidateAsync(dto);
+                    if (!validationResult.IsValid)
+                    {
+                        var errors = string.Join(", ", validationResult.Errors.Select(e => e.ErrorMessage));
+                        errorMessages.Add($"Item {inputDtos.IndexOf(dto) + 1}: {errors}");
+                        continue;
+                    }
+
+                    var asset = _mapper.Map<Asset>(dto);
+                    asset.CreationDate = DateTime.UtcNow;
+                    asset.CreatedBy = _currentUserService.UserId;
+                    asset.Status = AssetStatus.Active;
+                    asset.SerialNumber = string.IsNullOrWhiteSpace(dto.SerialNumber) ? null : dto.SerialNumber.Trim();
+                    asset.RFID = string.IsNullOrWhiteSpace(dto.RFID) ? null : dto.RFID.Trim();
+
+                    await _assetRepository.AddAsync(asset);
+                    createdIds.Add(asset.Id);
+                }
+
+                if (errorMessages.Any())
+                {
+                    await transaction.RollbackAsync();
+                    return APIOperationResponse<List<long>>.Fail(ResponseType.BadRequest, string.Join("; ", errorMessages));
+                }
+
+                await transaction.CommitAsync();
+
+                _logger.LogInformation("Bulk asset creation completed successfully. Created: {Count}, User: {UserId}",
+                    createdIds.Count, _currentUserService.UserId);
+
+                return APIOperationResponse<List<long>>.Success(createdIds, "Assets created successfully");
+            }
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync();
+                _logger.LogError(ex, "Error creating bulk assets. User: {UserId}", _currentUserService.UserId);
+                return APIOperationResponse<List<long>>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
+            }
+        }
+
         public async Task<APIOperationResponse<bool>> UpdateAsync(long id, UpdateAssetDto inputDto)
         {
             _logger.LogInformation("Updating asset. AssetId: {AssetId}, User: {UserId}", 

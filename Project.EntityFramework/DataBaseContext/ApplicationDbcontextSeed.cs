@@ -108,8 +108,11 @@ namespace Ettad.EntityFramework.DataBaseContext
                 await SeedDefaultUsersForRolesAsync(context, userManager, roleManager);
                 
                 await SeedWorkflows.SeedNormalOrderWorkflowAsync(context);
-                await SeedWorkflows.SeedNoramlOrderForTrainingPurposeWorkflowAsync(context);
+                await SeedWorkflows.SeedNormalOrderForTrainingPurposeWorkflowAsync(context);
                 await SeedWorkflows.SeedOrderFromAllowanceWorkflowAsync(context);
+                await SeedWorkflows.SeedNormalOrder_Weapon_WorkflowAsync(context);
+                await SeedWorkflows.SeedNormalOrderForTrainingPurpose_Weapon_WorkflowAsync(context);
+                await SeedWorkflows.SeedOrderFromAllowance_Weapon_WorkflowAsync(context);
                 await SeedWorkflows.SeedDiscardWorkflowAsync(context);
                 await SeedWorkflows.SeedReturnWorkflowAsync(context);
             }
@@ -147,6 +150,8 @@ namespace Ettad.EntityFramework.DataBaseContext
                     {
                         ("Auditor of Ammunition Division", "مدقق شعبة الذخيرة"),
                         ("Head of Ammunition Division", "رئيس شعبة الذخيرة"),
+                        ("Auditor of Weapons Division", "مدقق شعبة السلاح"),
+                        ("Head of Weapons Division", "رئيس شعبة السلاح"),
                         ("Director of the Armament Entity", "مدير مديرية التسليح"),
                         ("Head of Logistics", "رئيس الهيئة")
                     }
@@ -301,8 +306,10 @@ namespace Ettad.EntityFramework.DataBaseContext
                 { ("Head of Military Training", "Military Training"), () => PermissionConfig.HeadOfMiltaryTraining_MilitaryTrainingEntity },
 
                 // Directorate of Armament Entity
-                { ("Auditor of Ammunition Division", "Directorate of Armament"), () => PermissionConfig.Auditor_DirectorateOfAmmunitionEntity },
-                { ("Head of Ammunition Division", "Directorate of Armament"), () => PermissionConfig.HeadOfDivision_DirectorateOfAmmunitionEntity },
+                { ("Auditor of Ammunition Division", "Directorate of Armament"), () => PermissionConfig.AuditorOfAmmunitionDivision_DirectorateOfAmmunitionEntity },
+                { ("Head of Ammunition Division", "Directorate of Armament"), () => PermissionConfig.HeadOfAmmunitionDivision_DirectorateOfAmmunitionEntity },
+                { ("Auditor of Weapons Division", "Directorate of Armament"), () => PermissionConfig.AuditorOfWeaponsDivision_DirectorateOfAmmunitionEntity },
+                { ("Head of Weapons Division", "Directorate of Armament"), () => PermissionConfig.HeadOfWeaponsDivision_DirectorateOfAmmunitionEntity },
                 { ("Director of the Armament Entity", "Directorate of Armament"), () => PermissionConfig.DirectorOfArmament_DirectorateOfAmmunitionEntity },
                 { ("Head of Logistics", "Directorate of Armament"), () => PermissionConfig.HeadOfLogistics_DirectorateOfAmmunitionEntity },
 

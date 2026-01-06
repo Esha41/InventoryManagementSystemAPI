@@ -1,55 +1,115 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Identity;
+using Ettad.Application.Common.Interfaces;
 using Ettad.Comman.Idenitity;
-using Ettad.Common.Interfaces;
 using Ettad.CrossCutting.Comman.Idenitity;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Logging;
 
+namespace Ettad.User.Services.Implementation;
 
-namespace Ettad.User.Services
-{
+/// <summary>
+/// Service for checking user permissions with caching support
+/// </summary>
 public class PermissionService : IPermissionService
 {
+    private readonly ICurrentUserService _currentUserService;
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly RoleManager<ApplicationRole> _roleManager;
-    public PermissionService(UserManager<ApplicationUser> userManager, RoleManager<ApplicationRole> roleManager)
+    private readonly IMemoryCache _cache;
+    private readonly ILogger<PermissionService> _logger;
+    private const int CacheExpirationMinutes = 5;
+
+    public PermissionService(
+        ICurrentUserService currentUserService,
+        UserManager<ApplicationUser> userManager,
+        RoleManager<ApplicationRole> roleManager,
+        IMemoryCache cache,
+        ILogger<PermissionService> logger)
     {
+        _currentUserService = currentUserService;
         _userManager = userManager;
         _roleManager = roleManager;
+        _cache = cache;
+        _logger = logger;
+    }
+
+    public async Task<bool> HasPermissionAsync(string permissionName)
+    {
+        if (string.IsNullOrWhiteSpace(permissionName))
+            return false;
+
+        // Get all user permissions (cached)
+        var userId = _currentUserService.UserId;
+        if (string.IsNullOrEmpty(userId))
+            return false;
+
+        var permissions = await GetUserPermissions(userId);
+        
+        _logger.LogInformation("Checking permission {Permission} for user {UserId}. User has {Count} permissions: {Permissions}", 
+            permissionName, userId, permissions.Count, string.Join(", ", permissions));
+        
+        // Check if user has the permission
+        var hasPermission = permissions.Contains(permissionName, StringComparer.OrdinalIgnoreCase);
+        
+        _logger.LogInformation("Permission check result for {Permission}: {HasPermission}", permissionName, hasPermission);
+        
+        return hasPermission;
     }
 
     public async Task<List<string>> GetUserPermissions(string userId)
     {
-        var roleClaims = new List<string>();
+        if (string.IsNullOrEmpty(userId))
+            return new List<string>();
+
+        // Try to get from cache
+        var cacheKey = $"user_permissions_{userId}";
+        if (_cache.TryGetValue(cacheKey, out List<string>? cachedPermissions) && cachedPermissions != null)
+        {
+            _logger.LogInformation("Returning cached permissions for user {UserId}: {Count} permissions", userId, cachedPermissions.Count);
+            return cachedPermissions;
+        }
+
+        // Load from database
+        _logger.LogInformation("Loading permissions from database for user {UserId}", userId);
+        var permissions = new List<string>();
 
         var user = await _userManager.FindByIdAsync(userId);
         if (user == null)
-            return new List<string>();
+        {
+            _logger.LogWarning("User {UserId} not found", userId);
+            return permissions;
+        }
 
-        var roles = await _userManager.GetRolesAsync(user);
+        var userRoles = await _userManager.GetRolesAsync(user);
+        _logger.LogInformation("User {UserId} has {Count} roles: {Roles}", userId, userRoles.Count, string.Join(", ", userRoles));
 
-        // 3. Collect claims for each role
-        foreach (var roleName in roles)
+        foreach (var roleName in userRoles)
         {
             var role = await _roleManager.FindByNameAsync(roleName);
-            if (role != null)
+            if (role == null) continue;
+
+            // Get all claims for this role
+            var roleClaims = await _roleManager.GetClaimsAsync(role);
+            _logger.LogInformation("Role {RoleName} has {Count} claims", roleName, roleClaims.Count);
+            
+            // Add both Type and Value to support different claim formats
+            foreach (var claim in roleClaims)
             {
-                var claims = await _roleManager.GetClaimsAsync(role);
-
-
-                roleClaims.AddRange(claims.Select
-                      (x =>
-                           x.Value
-                       
-
-                      ));
+                _logger.LogDebug("Role {RoleName} - Claim Type: {Type}, Value: {Value}", roleName, claim.Type, claim.Value);
+                
+                if (!string.IsNullOrWhiteSpace(claim.Type) && !permissions.Contains(claim.Type))
+                    permissions.Add(claim.Type);
+                
+                if (!string.IsNullOrWhiteSpace(claim.Value) && !permissions.Contains(claim.Value))
+                    permissions.Add(claim.Value);
             }
         }
 
-        return roleClaims;
+        _logger.LogInformation("Loaded {Count} total permissions for user {UserId}", permissions.Count, userId);
+
+        // Cache the permissions
+        _cache.Set(cacheKey, permissions, TimeSpan.FromMinutes(CacheExpirationMinutes));
+
+        return permissions;
     }
-}
 }

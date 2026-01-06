@@ -213,6 +213,26 @@ public static class MainEntities
     };
 
     [Category(CrudPermissionsGenerator.Inventory)]
+    public static readonly CrudOperation[] Weapon = new[]
+    {
+        CrudOperation.Page,
+        CrudOperation.View,
+        CrudOperation.Create,
+        CrudOperation.Edit,
+        CrudOperation.Delete,
+    };
+
+    [Category(CrudPermissionsGenerator.Inventory)]
+    public static readonly CrudOperation[] Explosive = new[]
+    {
+        CrudOperation.Page,
+        CrudOperation.View,
+        CrudOperation.Create,
+        CrudOperation.Edit,
+        CrudOperation.Delete,
+    };
+
+    [Category(CrudPermissionsGenerator.Inventory)]
     public static readonly CrudOperation[] AllowanceItem = new[]
     {
         CrudOperation.Page,

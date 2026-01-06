@@ -14,6 +14,7 @@ namespace Ettad.User.Api.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize]
     public class AccountController : ApiControllerBase
     {
         #region fields
@@ -36,6 +37,7 @@ namespace Ettad.User.Api.Controllers
 
         [Route("login")]
         [HttpPost]
+        [AllowAnonymous]
         public async Task<IActionResult> Login(LoginInformation request)
         {
 
@@ -81,6 +83,15 @@ namespace Ettad.User.Api.Controllers
             // Return only the CAPTCHA ID to the client, not the code
             // The client will need to display the code and send it back with the login request
             return Ok(new { captchaId, captchaCode });
+        }
+
+        [HttpPost("logout")]
+        [Authorize]
+        [ProducesResponseType((int)HttpStatusCode.OK)]
+        public async Task<IActionResult> Logout()
+        {
+            var result = await _authenticationService.LogoutAsync();
+            return ProcessResponse(result);
         }
 
     }

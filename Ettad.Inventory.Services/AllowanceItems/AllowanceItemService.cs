@@ -24,6 +24,7 @@ namespace Ettad.Inventory.Service.AllowanceItems
         private readonly IValidator<CreateUpdateAllowanceItemDto> _validator;
         private readonly ICurrentUserService _currentUserService;
         private readonly ILogger<AllowanceItemService> _logger;
+        private readonly IPermissionService _permissionService;
 
         public AllowanceItemService(
             ICrossCuttingRepository<AllowanceItem> allowanceItemRepository,
@@ -35,7 +36,8 @@ namespace Ettad.Inventory.Service.AllowanceItems
             IMapper mapper,
             IValidator<CreateUpdateAllowanceItemDto> validator,
             ICurrentUserService currentUserService,
-            ILogger<AllowanceItemService> logger)
+            ILogger<AllowanceItemService> logger,
+            IPermissionService permissionService)
         {
             _allowanceItemRepository = allowanceItemRepository;
             _departmentRepository = departmentRepository;
@@ -47,6 +49,7 @@ namespace Ettad.Inventory.Service.AllowanceItems
             _validator = validator;
             _currentUserService = currentUserService;
             _logger = logger;
+            _permissionService = permissionService;
         }
 
         public async Task<APIOperationResponse<AllowanceItemDto>> GetByIdAsync(long id)
@@ -62,9 +65,11 @@ namespace Ettad.Inventory.Service.AllowanceItems
                     return APIOperationResponse<AllowanceItemDto>.Fail(ResponseType.NotFound, "Allowance item not found");
 
                 // Check authorization: users with ViewAllDepartments permission or admin can access all departments
-                var canViewAll = _currentUserService.IsSuperAdmin || 
-                    _currentUserService.IsAdminRole || 
-                    _currentUserService.IsUserHasClaim("AllowanceItemViewAllDepartments");
+                var canViewAll = _currentUserService.IsSuperAdmin;
+                if (!canViewAll)
+                {
+                    canViewAll = await _permissionService.HasPermissionAsync("AllowanceItemViewAllDepartments");
+                }
                 var userDepartmentId = _currentUserService.DepartmentId;
 
                 if (!canViewAll)
@@ -98,26 +103,46 @@ namespace Ettad.Inventory.Service.AllowanceItems
         {
             try
             {
-                // Check if user can view all departments
-                var canViewAll = _currentUserService.IsSuperAdmin || 
-                    _currentUserService.IsAdminRole || 
-                    _currentUserService.IsUserHasClaim("AllowanceItemViewAllDepartments");
                 var userDepartmentId = _currentUserService.DepartmentId;
+                
+                // Check if user can view all departments
+                // First check SuperAdmin (from JWT)
+                var canViewAll = _currentUserService.IsSuperAdmin;
+                
+                // If not super admin, check for the specific permission using the permission service
+                if (!canViewAll)
+                {
+                    canViewAll = await _permissionService.HasPermissionAsync("AllowanceItemViewAllDepartments");
+                }
+
+                _logger.LogInformation("GetAllAsync - User: {UserId}, IsSuperAdmin: {IsSuperAdmin}, IsAdminRole: {IsAdminRole}, HasPermission: {HasPermission}, CanViewAll: {CanViewAll}, DepartmentId: {DepartmentId}", 
+                    _currentUserService.UserId,
+                    _currentUserService.IsSuperAdmin,
+                    _currentUserService.IsAdminRole,
+                    await _permissionService.HasPermissionAsync("AllowanceItemViewAllDepartments"),
+                    canViewAll,
+                    userDepartmentId);
 
                 // Build filter: non-deleted items, and filter by department if user can't view all
-                System.Linq.Expressions.Expression<System.Func<AllowanceItem, bool>> filter = a => !a.IsDeleted;
+                System.Linq.Expressions.Expression<System.Func<AllowanceItem, bool>> filter;
                 
-                if (!canViewAll && userDepartmentId.HasValue)
+                if (canViewAll)
+                {
+                    // User can view all departments - no department filter
+                    filter = a => !a.IsDeleted;
+                    _logger.LogInformation("Returning allowances for ALL departments. User: {UserId}", _currentUserService.UserId);
+                }
+                else if (userDepartmentId.HasValue)
                 {
                     // Non-admin users can only see allowances for their own department
                     filter = a => !a.IsDeleted && a.DepartmentId == userDepartmentId.Value;
                     _logger.LogInformation("Filtering allowances by department. DepartmentId: {DepartmentId}, User: {UserId}", 
                         userDepartmentId.Value, _currentUserService.UserId);
                 }
-                else if (!canViewAll && !userDepartmentId.HasValue)
+                else
                 {
                     // User has no department assigned - return empty list
-                    _logger.LogWarning("User has no department assigned. UserId: {UserId}", _currentUserService.UserId);
+                    _logger.LogWarning("User has no department assigned and no view all permission. UserId: {UserId}", _currentUserService.UserId);
                     return APIOperationResponse<List<AllowanceItemDto>>.Success(new List<AllowanceItemDto>());
                 }
 
@@ -159,9 +184,11 @@ namespace Ettad.Inventory.Service.AllowanceItems
             try
             {
                 // Check authorization: users with ViewAllDepartments permission or admin can create for all departments
-                var canViewAll = _currentUserService.IsSuperAdmin || 
-                    _currentUserService.IsAdminRole || 
-                    _currentUserService.IsUserHasClaim("AllowanceItemViewAllDepartments");
+                var canViewAll = _currentUserService.IsSuperAdmin;
+                if (!canViewAll)
+                {
+                    canViewAll = await _permissionService.HasPermissionAsync("AllowanceItemViewAllDepartments");
+                }
                 var userDepartmentId = _currentUserService.DepartmentId;
 
                 if (!canViewAll)
@@ -228,9 +255,11 @@ namespace Ettad.Inventory.Service.AllowanceItems
                     return APIOperationResponse<bool>.Fail(ResponseType.NotFound, "Allowance item not found");
 
                 // Check authorization: users with ViewAllDepartments permission or admin can update for all departments
-                var canViewAll = _currentUserService.IsSuperAdmin || 
-                    _currentUserService.IsAdminRole || 
-                    _currentUserService.IsUserHasClaim("AllowanceItemViewAllDepartments");
+                var canViewAll = _currentUserService.IsSuperAdmin;
+                if (!canViewAll)
+                {
+                    canViewAll = await _permissionService.HasPermissionAsync("AllowanceItemViewAllDepartments");
+                }
                 var userDepartmentId = _currentUserService.DepartmentId;
 
                 if (!canViewAll)
@@ -288,9 +317,11 @@ namespace Ettad.Inventory.Service.AllowanceItems
                 }
 
                 // Check authorization: users with ViewAllDepartments permission or admin can delete for all departments
-                var canViewAll = _currentUserService.IsSuperAdmin || 
-                    _currentUserService.IsAdminRole || 
-                    _currentUserService.IsUserHasClaim("AllowanceItemViewAllDepartments");
+                var canViewAll = _currentUserService.IsSuperAdmin;
+                if (!canViewAll)
+                {
+                    canViewAll = await _permissionService.HasPermissionAsync("AllowanceItemViewAllDepartments");
+                }
                 var userDepartmentId = _currentUserService.DepartmentId;
 
                 if (!canViewAll)
@@ -332,9 +363,11 @@ namespace Ettad.Inventory.Service.AllowanceItems
             try
             {
                 // Check authorization: users with ViewAllDepartments permission or admin can access all departments
-                var canViewAll = _currentUserService.IsSuperAdmin || 
-                    _currentUserService.IsAdminRole || 
-                    _currentUserService.IsUserHasClaim("AllowanceItemViewAllDepartments");
+                var canViewAll = _currentUserService.IsSuperAdmin;
+                if (!canViewAll)
+                {
+                    canViewAll = await _permissionService.HasPermissionAsync("AllowanceItemViewAllDepartments");
+                }
                 var userDepartmentId = _currentUserService.DepartmentId;
 
                 if (!canViewAll)
@@ -407,9 +440,11 @@ namespace Ettad.Inventory.Service.AllowanceItems
             try
             {
                 // Check authorization: users with ViewAllDepartments permission or admin can access all departments
-                var canViewAll = _currentUserService.IsSuperAdmin || 
-                    _currentUserService.IsAdminRole || 
-                    _currentUserService.IsUserHasClaim("AllowanceItemViewAllDepartments");
+                var canViewAll = _currentUserService.IsSuperAdmin;
+                if (!canViewAll)
+                {
+                    canViewAll = await _permissionService.HasPermissionAsync("AllowanceItemViewAllDepartments");
+                }
                 var userDepartmentId = _currentUserService.DepartmentId;
 
                 if (!canViewAll)
@@ -555,9 +590,11 @@ namespace Ettad.Inventory.Service.AllowanceItems
             try
             {
                 // Check authorization: non-admin users can only create allowances for their own department
-                var canViewAll = _currentUserService.IsSuperAdmin || 
-                    _currentUserService.IsAdminRole || 
-                    _currentUserService.IsUserHasClaim("AllowanceItemViewAllDepartments");
+                var canViewAll = _currentUserService.IsSuperAdmin;
+                if (!canViewAll)
+                {
+                    canViewAll = await _permissionService.HasPermissionAsync("AllowanceItemViewAllDepartments");
+                }
                 var userDepartmentId = _currentUserService.DepartmentId;
 
                 if (!canViewAll)
@@ -658,9 +695,11 @@ namespace Ettad.Inventory.Service.AllowanceItems
             try
             {
                 // Check authorization: users with ViewAllDepartments permission or admin can access all departments
-                var canViewAll = _currentUserService.IsSuperAdmin || 
-                    _currentUserService.IsAdminRole || 
-                    _currentUserService.IsUserHasClaim("AllowanceItemViewAllDepartments");
+                var canViewAll = _currentUserService.IsSuperAdmin;
+                if (!canViewAll)
+                {
+                    canViewAll = await _permissionService.HasPermissionAsync("AllowanceItemViewAllDepartments");
+                }
                 var userDepartmentId = _currentUserService.DepartmentId;
 
                 if (!canViewAll)
@@ -775,9 +814,11 @@ namespace Ettad.Inventory.Service.AllowanceItems
             try
             {
                 // Check authorization: users with ViewAllDepartments permission or admin can access all departments
-                var canViewAll = _currentUserService.IsSuperAdmin || 
-                    _currentUserService.IsAdminRole || 
-                    _currentUserService.IsUserHasClaim("AllowanceItemViewAllDepartments");
+                var canViewAll = _currentUserService.IsSuperAdmin;
+                if (!canViewAll)
+                {
+                    canViewAll = await _permissionService.HasPermissionAsync("AllowanceItemViewAllDepartments");
+                }
                 var userDepartmentId = _currentUserService.DepartmentId;
 
                 if (!canViewAll)
