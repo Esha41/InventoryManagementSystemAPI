@@ -32,6 +32,7 @@ namespace Ettad.RequestManagement.Service.Orders
         private readonly ICrossCuttingRepository<Supply> _supplyRepository;
         private readonly ICrossCuttingRepository<SupplyDetail> _supplyDetailRepository;
         private readonly ICrossCuttingRepository<FileUplodDetails> _fileDetailsRepository;
+        private readonly ICrossCuttingRepository<BaseItem> _baseItemRepository;
         private readonly IWorkflowApprovalService _workflowApprovalService;
         private readonly IMapper _mapper;
         private readonly IValidator<CreateOrderDto> _createValidator;
@@ -50,6 +51,7 @@ namespace Ettad.RequestManagement.Service.Orders
             ICrossCuttingRepository<Supply> supplyRepository,
             ICrossCuttingRepository<SupplyDetail> supplyDetailRepository,
             ICrossCuttingRepository<FileUplodDetails> fileDetailsRepository,
+            ICrossCuttingRepository<BaseItem> baseItemRepository,
             IWorkflowApprovalService workflowApprovalService,
             IMapper mapper,
             IValidator<CreateOrderDto> createValidator,
@@ -67,6 +69,7 @@ namespace Ettad.RequestManagement.Service.Orders
             _supplyRepository = supplyRepository;
             _supplyDetailRepository = supplyDetailRepository;
             _fileDetailsRepository = fileDetailsRepository;
+            _baseItemRepository = baseItemRepository;
             _workflowApprovalService = workflowApprovalService;
             _mapper = mapper;
             _createValidator = createValidator;
@@ -210,6 +213,46 @@ namespace Ettad.RequestManagement.Service.Orders
                     return APIOperationResponse<long>.Fail(ResponseType.BadRequest, "Request purpose must be of type Order");
                 }
 
+                // Validate item type combinations and determine if this is a weapon order
+                bool isWeaponOrder = false;
+                if (inputDto.RequestItems != null && inputDto.RequestItems.Any())
+                {
+                    var itemIds = inputDto.RequestItems.Select(ri => ri.ItemId).Distinct().ToList();
+                    var items = await _baseItemRepository.FindAsync(
+                        item => itemIds.Contains(item.Id) && !item.IsDeleted);
+
+                    if (items.Count() != itemIds.Count)
+                    {
+                        var foundIds = items.Select(i => i.Id).ToList();
+                        var missingIds = itemIds.Except(foundIds).ToList();
+                        _logger.LogWarning("Some items not found. Missing ItemIds: {MissingIds}, User: {UserId}",
+                            string.Join(", ", missingIds), currentUserId);
+                        return APIOperationResponse<long>.Fail(ResponseType.BadRequest, 
+                            $"One or more items not found. Item IDs: {string.Join(", ", missingIds)}");
+                    }
+
+                    var itemTypes = items.Select(i => i.ItemType).Distinct().ToList();
+                    var hasWeapon = itemTypes.Contains(ItemType.Weapon);
+                    var hasAmmunition = itemTypes.Contains(ItemType.Ammunition);
+                    var hasExplosive = itemTypes.Contains(ItemType.Explosive);
+                    var hasOtherTypes = itemTypes.Any(t => t != ItemType.Weapon && t != ItemType.Ammunition && t != ItemType.Explosive);
+
+                    // Rule 1: Weapons cannot be ordered with anything else
+                    if (hasWeapon && (hasAmmunition || hasExplosive || hasOtherTypes))
+                    {
+                        _logger.LogWarning("Invalid order: Weapons cannot be ordered with other item types. ItemTypes: {ItemTypes}, User: {UserId}",
+                            string.Join(", ", itemTypes), currentUserId);
+                        return APIOperationResponse<long>.Fail(ResponseType.BadRequest, 
+                            "Weapons cannot be ordered with other item types. All items in a weapon order must be weapons.");
+                    }
+
+                    // Determine if this is a weapon order (all items are weapons)
+                    isWeaponOrder = items.All(i => i.ItemType == ItemType.Weapon);
+
+                    // Rule 2: Ammunition and Explosive can be ordered together (already satisfied by Rule 1)
+                    // Rule 3: All items must be of the same type if ordering weapons (enforced by Rule 1)
+                }
+
                 // Step 1: Save files first (before creating order) to create FileUplodMaster records
                 List<long> savedFileMasterIds = null;
                 if (files != null && files.Count > 0)
@@ -302,22 +345,54 @@ namespace Ettad.RequestManagement.Service.Orders
                     }
                 }
 
-                var workflowType = createdOrder.IsFromAllowance 
-                    ? WorkflowType.OrderFromAllowance 
-                    : createdOrder.RequestPurposeId == 4 ? WorkflowType.NormalOrderForTrainingPurpose : WorkflowType.NormalOrder;
+                // Determine which workflow to start for the created order.
+                // Priority and rules:
+                // 1) If the order was created from an allowance (reserved items), always use
+                //    `WorkflowType.OrderFromAllowance` (or `OrderFromAllowance_Weapon` for weapons) because allowance-based orders follow a different approval path.
+                // 2) Otherwise, if the request purpose represents a "Training Order" (currently coded as Id == 4),
+                //    use `WorkflowType.NormalOrderForTrainingPurpose` (or `NormalOrderForTrainingPurpose_Weapon` for weapons) - training orders have a specific workflow.
+                // 3) For all other non-allowance orders, use the default `WorkflowType.NormalOrder` (or `NormalOrder_Weapon` for weapons).
+                //
+                // Note:
+                // - The numeric literal `4` is a magic number that represents the seeded RequestPurpose for "Training Order".
+                //   Replace this with a named constant (e.g. `RequestPurposeIds.TrainingOrder`) and keep the seed/migration in sync
+                //   to avoid brittle code and accidental mismatches.
+                // - The allowance check takes precedence: if an order is both "from allowance" and a training purpose,
+                //   it will use the allowance workflow.
+                // - Weapon orders use weapon-specific workflows: if all items are weapons, use weapon workflow variants.
+                
+                WorkflowType workflowType;
+                if (createdOrder.IsFromAllowance)
+                {
+                    workflowType = isWeaponOrder 
+                        ? WorkflowType.OrderFromAllowance_Weapon 
+                        : WorkflowType.OrderFromAllowance;
+                }
+                else if (createdOrder.RequestPurposeId == 4)
+                {
+                    workflowType = isWeaponOrder 
+                        ? WorkflowType.NormalOrderForTrainingPurpose_Weapon 
+                        : WorkflowType.NormalOrderForTrainingPurpose;
+                }
+                else
+                {
+                    workflowType = isWeaponOrder 
+                        ? WorkflowType.NormalOrder_Weapon 
+                        : WorkflowType.NormalOrder;
+                }
 
                 // Start workflow for the order
                 var workflowStarted = await _workflowApprovalService.StartWorkflowAsync(createdOrder.Id, workflowType);
 
                 if (workflowStarted)
                 {
-                    _logger.LogInformation("Workflow started successfully for order. OrderId: {OrderId}, IsFromAllowance: {IsFromAllowance}, User: {UserId}",
-                        createdOrder.Id, createdOrder.IsFromAllowance, currentUserId);
+                    _logger.LogInformation("Workflow started successfully for order. OrderId: {OrderId}, WorkflowType: {WorkflowType}, IsFromAllowance: {IsFromAllowance}, IsWeaponOrder: {IsWeaponOrder}, User: {UserId}",
+                        createdOrder.Id, workflowType, createdOrder.IsFromAllowance, isWeaponOrder, currentUserId);
                 }
                 else
                 {
-                    _logger.LogWarning("Failed to start workflow for order. OrderId: {OrderId}, IsFromAllowance: {IsFromAllowance}, User: {UserId}",
-                        createdOrder.Id, createdOrder.IsFromAllowance, currentUserId);
+                    _logger.LogWarning("Failed to start workflow for order. OrderId: {OrderId}, WorkflowType: {WorkflowType}, IsFromAllowance: {IsFromAllowance}, IsWeaponOrder: {IsWeaponOrder}, User: {UserId}",
+                        createdOrder.Id, workflowType, createdOrder.IsFromAllowance, isWeaponOrder, currentUserId);
                 }
 
                 // Send notification
