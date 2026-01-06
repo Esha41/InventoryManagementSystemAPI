@@ -108,10 +108,10 @@ namespace Ettad.EntityFramework.DataBaseContext
                 await SeedDefaultUsersForRolesAsync(context, userManager, roleManager);
                 
                 await SeedWorkflows.SeedNormalOrderWorkflowAsync(context);
-                await SeedWorkflows.SeedNoramlOrderForTrainingPurposeWorkflowAsync(context);
+                await SeedWorkflows.SeedNormalOrderForTrainingPurposeWorkflowAsync(context);
                 await SeedWorkflows.SeedOrderFromAllowanceWorkflowAsync(context);
                 await SeedWorkflows.SeedNormalOrder_Weapon_WorkflowAsync(context);
-                await SeedWorkflows.SeedNoramlOrderForTrainingPurpose_Weapon_WorkflowAsync(context);
+                await SeedWorkflows.SeedNormalOrderForTrainingPurpose_Weapon_WorkflowAsync(context);
                 await SeedWorkflows.SeedOrderFromAllowance_Weapon_WorkflowAsync(context);
                 await SeedWorkflows.SeedDiscardWorkflowAsync(context);
                 await SeedWorkflows.SeedReturnWorkflowAsync(context);
