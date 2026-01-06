@@ -263,6 +263,16 @@ public static class MainEntities
     };
 
     [Category(CrudPermissionsGenerator.Inventory)]
+    public static readonly CrudOperation[] AssetSupply = new[]
+    {
+        CrudOperation.Page,
+        CrudOperation.View,
+        CrudOperation.Create,
+        CrudOperation.Edit,
+        CrudOperation.Delete,
+    };
+
+    [Category(CrudPermissionsGenerator.Inventory)]
     public static readonly CrudOperation[] Employee = new[]
     {
         CrudOperation.Page,
