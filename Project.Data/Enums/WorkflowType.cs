@@ -8,13 +8,13 @@ namespace Ettad.Data.Enums
 {
     public enum WorkflowType
     {
-        NoramlOrder = 1,
+        NormalOrder = 1,
         OrderFromAllowance = 2,
         Return = 3,
         Discard = 4,
-        NoramlOrderForTrainingPurpose = 5,
-        NoramlOrder_Weapon = 1,
-        OrderFromAllowance_Weapon = 2,
-        NoramlOrderForTrainingPurpose_Weapon = 5
+        NormalOrderForTrainingPurpose = 5,
+        NormalOrder_Weapon = 6,
+        OrderFromAllowance_Weapon = 7,
+        NormalOrderForTrainingPurpose_Weapon = 8
     }
 }

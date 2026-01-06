@@ -313,7 +313,7 @@ namespace Ettad.RequestManagement.Service.Orders
                 //   it will use the allowance workflow.
                 var workflowType = createdOrder.IsFromAllowance 
                     ? WorkflowType.OrderFromAllowance 
-                    : createdOrder.RequestPurposeId == 4 ? WorkflowType.NoramlOrderForTrainingPurpose : WorkflowType.NoramlOrder;
+                    : createdOrder.RequestPurposeId == 4 ? WorkflowType.NormalOrderForTrainingPurpose : WorkflowType.NormalOrder;
 
                 // Start workflow for the order
                 var workflowStarted = await _workflowApprovalService.StartWorkflowAsync(createdOrder.Id, workflowType);

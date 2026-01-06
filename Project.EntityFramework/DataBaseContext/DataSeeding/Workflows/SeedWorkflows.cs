@@ -18,7 +18,7 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding.Workflows
             {
                 await SeedWorkflowAsync(
                     context,
-                    WorkflowType.NoramlOrder,
+                    WorkflowType.NormalOrder,
                     "Normal Order Workflow",
                     GetNormalOrderSteps);
             }
@@ -29,15 +29,15 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding.Workflows
             }
         }
 
-        public static async Task SeedNoramlOrderForTrainingPurposeWorkflowAsync(ApplicationDbContext context)
+        public static async Task SeedNormalOrderForTrainingPurposeWorkflowAsync(ApplicationDbContext context)
         {
             try
             {
                 await SeedWorkflowAsync(
                     context,
-                    WorkflowType.NoramlOrderForTrainingPurpose,
-                    "Noraml Order for Training Purpose Workflow",
-                    GetNoramlOrderForTrainingPurposeSteps);
+                    WorkflowType.NormalOrderForTrainingPurpose,
+                    "Normal Order for Training Purpose Workflow",
+                    GetNormalOrderForTrainingPurposeSteps);
             }
             catch (Exception ex)
             {
@@ -69,7 +69,7 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding.Workflows
             {
                 await SeedWorkflowAsync(
                     context,
-                    WorkflowType.NoramlOrder_Weapon,
+                    WorkflowType.NormalOrder_Weapon,
                     "Normal Order Workflow (Weapon)",
                     GetNormalOrder_Weapon_Steps);
             }
@@ -80,15 +80,15 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding.Workflows
             }
         }
 
-        public static async Task SeedNoramlOrderForTrainingPurpose_Weapon_WorkflowAsync(ApplicationDbContext context)
+        public static async Task SeedNormalOrderForTrainingPurpose_Weapon_WorkflowAsync(ApplicationDbContext context)
         {
             try
             {
                 await SeedWorkflowAsync(
                     context,
-                    WorkflowType.NoramlOrderForTrainingPurpose_Weapon,
-                    "Noraml Order for Training Purpose Workflow (Weapon)",
-                    GetNoramlOrderForTrainingPurpose_Weapon_Steps);
+                    WorkflowType.NormalOrderForTrainingPurpose_Weapon,
+                    "Normal Order for Training Purpose Workflow (Weapon)",
+                    GetNormalOrderForTrainingPurpose_Weapon_Steps);
             }
             catch (Exception ex)
             {
@@ -148,7 +148,7 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding.Workflows
             }
         }
 
-        private static List<WorkflowStepSeedDefinition> GetNoramlOrderForTrainingPurposeSteps()
+        private static List<WorkflowStepSeedDefinition> GetNormalOrderForTrainingPurposeSteps()
         {
             return new List<WorkflowStepSeedDefinition>
             {
@@ -283,7 +283,7 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding.Workflows
             };
         }
 
-        private static List<WorkflowStepSeedDefinition> GetNoramlOrderForTrainingPurpose_Weapon_Steps()
+        private static List<WorkflowStepSeedDefinition> GetNormalOrderForTrainingPurpose_Weapon_Steps()
         {
             return new List<WorkflowStepSeedDefinition>
             {
