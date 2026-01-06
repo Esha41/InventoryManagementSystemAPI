@@ -51,6 +51,15 @@ namespace Ettad.Inventory.API.Controllers
             var result = await _assetService.CreateAsync(dto, files);
             return ProcessResponse(result);
         }
+        
+        [HttpPost("Bulk")]
+        [ProducesResponseType((int)HttpStatusCode.Created)]
+        [CheckAuthorize("Permissions.Asset.Create")]
+        public async Task<IActionResult> BulkCreate([FromBody] List<CreateAssetDto> dtos)
+        {
+            var result = await _assetService.CreateBulkAsync(dtos);
+            return ProcessResponse(result);
+        }
 
         [HttpPut("{id}")]
         [ProducesResponseType((int)HttpStatusCode.OK)]

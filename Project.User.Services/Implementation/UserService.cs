@@ -71,7 +71,8 @@ public class UserService : IUserService
 
     public async Task<APIOperationResponse<List<UserDto>>> GetAllAsync()
     {
-        _logger.LogInformation("Getting all users. RequestedBy: {RequestedBy}", _currentUserService.UserId);
+        _logger.LogInformation("Getting all users. RequestedBy: {RequestedBy}, IsSuperAdmin: {IsSuperAdmin}", 
+            _currentUserService.UserId, _currentUserService.IsSuperAdmin);
         
 
         var users = await _userManager.Users
@@ -82,6 +83,10 @@ public class UserService : IUserService
 
         // 2️⃣ Get all roles upfront to avoid repeated DB calls
         var allRoles = await _roleManager.Roles.ToListAsync();
+        
+        // Get superadmin role IDs
+        var superAdminRoleIds = allRoles.Where(r => r.IsSuperAdmin).Select(r => r.Id).ToHashSet();
+        var superAdminRoleNames = allRoles.Where(r => r.IsSuperAdmin).Select(r => r.Name).ToHashSet();
 
         var mapped = new List<UserDto>();
 
@@ -94,10 +99,25 @@ public class UserService : IUserService
 
             // 4️⃣ Map role names → role IDs using pre-fetched roles
             PopulateRoles(dto, roleNames, allRoles);
+            
+            // 5️⃣ Filter out superadmin users if the requesting user is not a superadmin
+            if (!_currentUserService.IsSuperAdmin)
+            {
+                // Check if this user has any superadmin roles
+                var hasSuperAdminRole = roleNames.Any(roleName => superAdminRoleNames.Contains(roleName));
+                
+                if (hasSuperAdminRole)
+                {
+                    _logger.LogDebug("Filtering out superadmin user from results. UserId: {UserId}, Username: {Username}", 
+                        user.Id, user.UserName);
+                    continue; // Skip this user
+                }
+            }
+            
             mapped.Add(dto);
         }
 
-        _logger.LogInformation("Successfully retrieved {UserCount} users. RequestedBy: {RequestedBy}", 
+        _logger.LogInformation("Successfully retrieved {UserCount} users (after filtering). RequestedBy: {RequestedBy}", 
             mapped.Count, _currentUserService.UserId);
         return APIOperationResponse<List<UserDto>>.Success(mapped);
     }
@@ -233,6 +253,23 @@ public class UserService : IUserService
                 dto.Id, _currentUserService.UserId);
             return APIOperationResponse<UserDto>.Fail(ResponseType.NotFound, "User not found");
         }
+        
+        // 2️⃣ Check if target user is a superadmin and requesting user is not
+        if (!_currentUserService.IsSuperAdmin)
+        {
+            var userRoles = await _userManager.GetRolesAsync(user);
+            var allRoles = await _roleManager.Roles.ToListAsync();
+            var hasSuperAdminRole = userRoles.Any(roleName => 
+                allRoles.Any(r => r.Name == roleName && r.IsSuperAdmin));
+                
+            if (hasSuperAdminRole)
+            {
+                _logger.LogWarning("User update denied: Normal admin attempted to update superadmin user. TargetUserId: {TargetUserId}, UpdatedBy: {UpdatedBy}", 
+                    dto.Id, _currentUserService.UserId);
+                return APIOperationResponse<UserDto>.Fail(ResponseType.Forbidden, 
+                    "You do not have permission to update superadmin users");
+            }
+        }
 
         var oldUsername = user.UserName;
         
@@ -328,6 +365,23 @@ public class UserService : IUserService
             _logger.LogWarning("User deletion failed: User not found or already deleted. TargetUserId: {TargetUserId}, DeletedBy: {DeletedBy}", 
                 id, _currentUserService.UserId);
             return APIOperationResponse<bool>.Fail(ResponseType.NotFound, "User not found");
+        }
+        
+        // Check if target user is a superadmin and requesting user is not
+        if (!_currentUserService.IsSuperAdmin)
+        {
+            var userRoles = await _userManager.GetRolesAsync(user);
+            var allRoles = await _roleManager.Roles.ToListAsync();
+            var hasSuperAdminRole = userRoles.Any(roleName => 
+                allRoles.Any(r => r.Name == roleName && r.IsSuperAdmin));
+                
+            if (hasSuperAdminRole)
+            {
+                _logger.LogWarning("User deletion denied: Normal admin attempted to delete superadmin user. TargetUserId: {TargetUserId}, DeletedBy: {DeletedBy}", 
+                    id, _currentUserService.UserId);
+                return APIOperationResponse<bool>.Fail(ResponseType.Forbidden, 
+                    "You do not have permission to delete superadmin users");
+            }
         }
 
         var username = user.UserName;
