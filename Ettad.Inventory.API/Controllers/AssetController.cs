@@ -49,9 +49,9 @@ namespace Ettad.Inventory.API.Controllers
         [HttpGet]
         [ProducesResponseType((int)HttpStatusCode.OK)]
         [CheckAuthorize("Permissions.Asset.View", "Permissions.Asset.Page")]
-        public async Task<IActionResult> GetAll()
+        public async Task<IActionResult> GetAll([FromQuery] long? depotId = null)
         {
-            var result = await _assetService.GetAllAsync();
+            var result = await _assetService.GetAllAsync(depotId);
             return ProcessResponse(result);
         }
 

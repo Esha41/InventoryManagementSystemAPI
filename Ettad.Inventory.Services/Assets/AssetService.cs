@@ -2,6 +2,7 @@ using AutoMapper;
 using FluentValidation;
 using Microsoft.EntityFrameworkCore;
 using System.Linq;
+using System.Linq.Expressions;
 using Ettad.CrossCutting.Data.Repository;
 using Ettad.CrossCutting.Comman.FileUpload;
 using Ettad.Comman.Enums;
@@ -139,14 +140,21 @@ namespace Ettad.Inventory.Service.Assets
             }
         }
 
-        public async Task<APIOperationResponse<List<AssetDto>>> GetAllAsync()
+        public async Task<APIOperationResponse<List<AssetDto>>> GetAllAsync(long? depotId = null)
         {
-            _logger.LogInformation("Getting all assets. User: {UserId}", _currentUserService.UserId);
+            _logger.LogInformation("Getting all assets. DepotId: {DepotId}, User: {UserId}", depotId, _currentUserService.UserId);
             
             try
             {
+                // Build filter predicate
+                Expression<Func<Asset, bool>> filter = a => !a.IsDeleted;
+                if (depotId.HasValue && depotId.Value > 0)
+                {
+                    filter = a => !a.IsDeleted && a.DepotId == depotId.Value;
+                }
+
                 var assets = await _assetRepository.FindAsync(
-                    a => !a.IsDeleted,
+                    filter,
                     false,
                     nameof(Asset.Item),
                     nameof(Asset.Depot),
@@ -154,7 +162,31 @@ namespace Ettad.Inventory.Service.Assets
                     $"{nameof(Asset.CurrentAssignment)}.{nameof(AssetAssignment.Department)}"
                 );
 
-                var dtos = _mapper.Map<List<AssetDto>>(assets);
+                // Map assets individually to handle any mapping issues gracefully
+                var dtos = new List<AssetDto>();
+                foreach (var asset in assets)
+                {
+                    try
+                    {
+                        var dto = _mapper.Map<AssetDto>(asset);
+                        if (dto != null)
+                        {
+                            dtos.Add(dto);
+                        }
+                    }
+                    catch (AutoMapperMappingException mapEx)
+                    {
+                        _logger.LogWarning(mapEx, "Failed to map asset. AssetId: {AssetId}, SerialNumber: {SerialNumber}, User: {UserId}", 
+                            asset.Id, asset.SerialNumber, _currentUserService.UserId);
+                        // Continue with other assets - don't fail entire request
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Unexpected error mapping asset. AssetId: {AssetId}, SerialNumber: {SerialNumber}, User: {UserId}", 
+                            asset.Id, asset.SerialNumber, _currentUserService.UserId);
+                        // Continue with other assets
+                    }
+                }
                 
                 // Populate images for all assets in a single database query
                 var entityIds = dtos.Select(d => d.Id).ToList();
