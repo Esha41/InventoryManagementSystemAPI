@@ -12,6 +12,9 @@ namespace Ettad.Data.Enums
         OrderFromAllowance = 2,
         Return = 3,
         Discard = 4,
-        NoramlOrderForTrainingPurpose = 5
+        NoramlOrderForTrainingPurpose = 5,
+        NoramlOrder_Weapon = 1,
+        OrderFromAllowance_Weapon = 2,
+        NoramlOrderForTrainingPurpose_Weapon = 5
     }
 }

@@ -368,7 +368,7 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
 
         #region Directorate of Ammunition entity
 
-        public static List<string> Auditor_DirectorateOfAmmunitionEntity =
+        public static List<string> AuditorOfAmmunitionDivision_DirectorateOfAmmunitionEntity =
             ReadLookups
                 .Concat(ReadItems)
                 .Concat(ReadAllowanceItem)                
@@ -379,7 +379,7 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 .Concat(RequestReciever)
                 .ToList();
 
-        public static List<string> HeadOfDivision_DirectorateOfAmmunitionEntity =
+        public static List<string> HeadOfAmmunitionDivision_DirectorateOfAmmunitionEntity =
             ReadLookups
                 .Concat(ReadItems)
                 .Concat(ReadAllowanceItem)
@@ -393,6 +393,37 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 .Concat(WriteSupply)
                 .Concat(new List<string> 
                     { 
+                        PlainPermissions.UpdateRequestAndSuggestLots.ToString(),
+                        PlainPermissions.InventoryDashboard.ToString(),
+                    }
+                )
+                .ToList();
+
+        public static List<string> AuditorOfWeaponsDivision_DirectorateOfAmmunitionEntity =
+            ReadLookups
+                .Concat(ReadItems)
+                .Concat(ReadAllowanceItem)
+                .Concat(Dashboard)
+                .Concat(Forecast)
+                .Concat(Notifications)
+                .Concat(WriteOrderDiscardReturn)
+                .Concat(RequestReciever)
+                .ToList();
+
+        public static List<string> HeadOfWeaponsDivision_DirectorateOfAmmunitionEntity =
+            ReadLookups
+                .Concat(ReadItems)
+                .Concat(ReadAllowanceItem)
+                .Concat(ReadInventory)
+                .Concat(Dashboard)
+                .Concat(Forecast)
+                .Concat(Notifications)
+                .Concat(WriteOrderDiscardReturn)
+                .Concat(RequestReciever)
+                .Concat(ReadSupply)
+                .Concat(WriteSupply)
+                .Concat(new List<string>
+                    {
                         PlainPermissions.UpdateRequestAndSuggestLots.ToString(),
                         PlainPermissions.InventoryDashboard.ToString(),
                     }
