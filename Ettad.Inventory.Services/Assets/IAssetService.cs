@@ -10,6 +10,7 @@ namespace Ettad.Inventory.Service.Assets
         Task<APIOperationResponse<List<AssetDto>>> GetAllAsync();
         Task<APIOperationResponse<AssetDto>> GetByIdAsync(long id);
         Task<APIOperationResponse<long>> CreateAsync(CreateAssetDto inputDto, List<IFormFile>? files = null);
+        Task<APIOperationResponse<List<long>>> CreateBulkAsync(List<CreateAssetDto> inputDtos);
         Task<APIOperationResponse<bool>> UpdateAsync(long id, UpdateAssetDto inputDto);
         Task<APIOperationResponse<bool>> DeleteAsync(long id);
         Task<APIOperationResponse<ImportResult<CreateAssetDto>>> ImportAsync(IFormFile file, long depotId);
