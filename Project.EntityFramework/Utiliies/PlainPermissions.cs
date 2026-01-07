@@ -21,6 +21,8 @@ namespace Ettad.Data.Enums
         CanImportData,
         [Category(PlainPermissionsGenerator.SystemFeatures)]
         EmailLogs,
+        [Category(PlainPermissionsGenerator.SystemFeatures)]
+        AdminImportExport,
 
         [Category(PlainPermissionsGenerator.Workflow)]
         UpdateRequestAndSuggestLots,
