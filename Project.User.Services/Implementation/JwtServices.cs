@@ -70,6 +70,11 @@ namespace Ettad.User.Services.Implementation
             var expires = now.AddMinutes(_jwtOptions.AccessTokenExpireInMinutes);
 
             var claims = await BuildUserClaimsAsync(user);
+            
+            // Add unique JWT ID (jti) claim for token blacklisting support
+            // This allows us to invalidate specific tokens when users logout
+            var tokenId = Guid.NewGuid().ToString();
+            claims.Add(new Claim(JwtRegisteredClaimNames.Jti, tokenId));
 
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtOptions.Secret));
             var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);

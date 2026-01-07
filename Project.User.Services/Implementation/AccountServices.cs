@@ -38,6 +38,7 @@ namespace Ettad.User.Services.Implementation
         private readonly ILogger<AccountServices> _logger;
         private readonly IHttpContextAccessor _httpContextAccessor;
         private readonly ICaptchaService _captchaService;
+        private readonly ITokenBlacklistService _tokenBlacklistService;
 
         private readonly ApplicationDbContext _context;
         
@@ -54,7 +55,7 @@ namespace Ettad.User.Services.Implementation
             IOptions<JwtOptions> jwtOptions,
             IOptions<AdminUsersOptions> adminUsers, UserManager<ApplicationUser> userRepository,
             SignInManager<ApplicationUser> signInManager, RoleManager<ApplicationRole> roleManager, ICurrentUserService currentUserService, IEmailSender emailSender,
-            ILogger<AccountServices> logger, ApplicationDbContext context, IHttpContextAccessor httpContextAccessor, ICaptchaService captchaService)
+            ILogger<AccountServices> logger, ApplicationDbContext context, IHttpContextAccessor httpContextAccessor, ICaptchaService captchaService, ITokenBlacklistService tokenBlacklistService)
         {
             _jwtServices = jwtServices ?? throw new ArgumentNullException(nameof(jwtServices));
             _ldapSettingsService = ldapSettingsService ?? throw new ArgumentNullException(nameof(ldapSettingsService));
@@ -72,6 +73,7 @@ namespace Ettad.User.Services.Implementation
             _logger = logger;
             _httpContextAccessor = httpContextAccessor;
             _captchaService = captchaService;
+            _tokenBlacklistService = tokenBlacklistService ?? throw new ArgumentNullException(nameof(tokenBlacklistService));
         }
 
         public async Task<APIOperationResponse<AuthenticatedResponse>> Login(
@@ -658,6 +660,61 @@ namespace Ettad.User.Services.Implementation
                         "User not found.");
                 }
 
+                // Blacklist the current JWT token
+                var httpContext = _httpContextAccessor.HttpContext;
+                if (httpContext != null)
+                {
+                    try
+                    {
+                        // Extract JWT token from Authorization header
+                        var authHeader = httpContext.Request.Headers["Authorization"].FirstOrDefault();
+                        if (!string.IsNullOrEmpty(authHeader) && authHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+                        {
+                            var token = authHeader.Substring("Bearer ".Length).Trim();
+                            
+                            // Extract jti claim from the token
+                            var handler = new System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler();
+                            if (handler.CanReadToken(token))
+                            {
+                                var jwtToken = handler.ReadJwtToken(token);
+                                var jtiClaim = jwtToken.Claims.FirstOrDefault(c => c.Type == System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.Jti);
+                                
+                                if (jtiClaim != null && !string.IsNullOrWhiteSpace(jtiClaim.Value))
+                                {
+                                    // Get token expiration
+                                    var expirationClaim = jwtToken.Claims.FirstOrDefault(c => c.Type == System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.Exp);
+                                    DateTime expiresAt = DateTime.UtcNow.AddMinutes(_jwtOptions.AccessTokenExpireInMinutes);
+                                    
+                                    if (expirationClaim != null && long.TryParse(expirationClaim.Value, out long exp))
+                                    {
+                                        expiresAt = DateTimeOffset.FromUnixTimeSeconds(exp).UtcDateTime;
+                                    }
+                                    
+                                    // Add token to blacklist
+                                    await _tokenBlacklistService.BlacklistTokenAsync(
+                                        jtiClaim.Value, 
+                                        userId, 
+                                        expiresAt, 
+                                        "User logout", 
+                                        cancellationToken);
+                                    
+                                    _logger.LogInformation("JWT token blacklisted on logout. TokenId: {TokenId}, UserId: {UserId}", 
+                                        jtiClaim.Value, userId);
+                                }
+                                else
+                                {
+                                    _logger.LogWarning("JWT token does not contain jti claim. UserId: {UserId}", userId);
+                                }
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        // Log but don't fail logout if token blacklisting fails
+                        _logger.LogWarning(ex, "Failed to blacklist JWT token on logout. UserId: {UserId}", userId);
+                    }
+                }
+
                 // Clear all tokens and set logout timestamp
                 var hadRefreshToken = !string.IsNullOrEmpty(user.RefreshToken);
                 user.RefreshToken = null;
@@ -666,7 +723,6 @@ namespace Ettad.User.Services.Implementation
                 await _userRepository.UpdateAsync(user);
 
                 // Clear refresh token cookie
-                var httpContext = _httpContextAccessor.HttpContext;
                 if (httpContext != null)
                 {
                     try

@@ -62,6 +62,12 @@ namespace Ettad.EntityFramework.DataBaseContext
         public DbSet<Supply> Supplies { get; set; }
         public DbSet<SupplyDetail> SupplyDetails { get; set; }
 
+        // Asset Management
+        public DbSet<AssetAssignment> AssetAssignments { get; set; }
+        public DbSet<AssetSupply> AssetSupplies { get; set; }
+        public DbSet<AssetSupplyDetail> AssetSupplyDetails { get; set; }
+        public DbSet<AssetHistory> AssetHistory { get; set; }
+
         public DbSet<ApplicationEntity> ApplicationEntities { get;set;}
         public DbSet<RoleApplicationEntity> RoleApplicationEntities { get; set; }
         public DbSet<WorkFlowType> WorkFlowTypes { get; set; }
@@ -71,6 +77,7 @@ namespace Ettad.EntityFramework.DataBaseContext
         public DbSet<FileUplodMaster> FileUplodMasters { get; set; }
         public DbSet<FileUplodDetails> FileUplodDetails { get; set; }
         public DbSet<LoginAttempt> LoginAttempts { get; set; }
+        public DbSet<BlacklistedToken> BlacklistedTokens { get; set; }
        
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

@@ -40,6 +40,9 @@ namespace Ettad.Data.Enums
         [Category(PlainPermissionsGenerator.Workflow)]
         CannotRejectRequest,
 
+        [Category(PlainPermissionsGenerator.Workflow)]
+        ReviewWeaponSupply,
+
         [Category(PlainPermissionsGenerator.Inventory)]
         AllowanceItemViewAllDepartments,
     }

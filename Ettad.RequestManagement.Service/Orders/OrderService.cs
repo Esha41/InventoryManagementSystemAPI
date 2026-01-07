@@ -1,23 +1,24 @@
 using AutoMapper;
-using FluentValidation;
+using AutoMapper.QueryableExtensions;
+using Ettad.Application.Common.Interfaces;
+using Ettad.Comman.Enums;
+using Ettad.Comman.Idenitity;
+using Ettad.CrossCutting.Comman.FileUpload;
+using Ettad.CrossCutting.Comman.Models;
 using Ettad.CrossCutting.Data.Repository;
 using Ettad.Data.Entities;
 using Ettad.Data.Enums;
+using Ettad.Notification.Service;
+using Ettad.RequestManagement.Service.Common;
 using Ettad.RequestManagement.Service.Orders.Dto;
 using Ettad.ResponseHandler.Consts;
 using Ettad.ResponseHandler.Models;
-using Ettad.Application.Common.Interfaces;
-using Ettad.RequestManagement.Service.Common;
+using Ettad.Workflows.Service.Interface;
+using FluentValidation;
+using Microsoft.AspNetCore.Components.Forms;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
-using Ettad.Comman.Idenitity;
 using Microsoft.Extensions.Logging;
-using Ettad.Notification.Service;
-using AutoMapper.QueryableExtensions;
-using Ettad.CrossCutting.Comman.Models;
-using Ettad.Workflows.Service.Interface;
-using Ettad.CrossCutting.Comman.FileUpload;
-using Ettad.Comman.Enums;
 using System.Linq;
 
 namespace Ettad.RequestManagement.Service.Orders
@@ -31,6 +32,7 @@ namespace Ettad.RequestManagement.Service.Orders
         private readonly ICrossCuttingRepository<Supply> _supplyRepository;
         private readonly ICrossCuttingRepository<SupplyDetail> _supplyDetailRepository;
         private readonly ICrossCuttingRepository<FileUplodDetails> _fileDetailsRepository;
+        private readonly ICrossCuttingRepository<BaseItem> _baseItemRepository;
         private readonly IWorkflowApprovalService _workflowApprovalService;
         private readonly IMapper _mapper;
         private readonly IValidator<CreateOrderDto> _createValidator;
@@ -49,6 +51,7 @@ namespace Ettad.RequestManagement.Service.Orders
             ICrossCuttingRepository<Supply> supplyRepository,
             ICrossCuttingRepository<SupplyDetail> supplyDetailRepository,
             ICrossCuttingRepository<FileUplodDetails> fileDetailsRepository,
+            ICrossCuttingRepository<BaseItem> baseItemRepository,
             IWorkflowApprovalService workflowApprovalService,
             IMapper mapper,
             IValidator<CreateOrderDto> createValidator,
@@ -66,6 +69,7 @@ namespace Ettad.RequestManagement.Service.Orders
             _supplyRepository = supplyRepository;
             _supplyDetailRepository = supplyDetailRepository;
             _fileDetailsRepository = fileDetailsRepository;
+            _baseItemRepository = baseItemRepository;
             _workflowApprovalService = workflowApprovalService;
             _mapper = mapper;
             _createValidator = createValidator;
@@ -77,6 +81,11 @@ namespace Ettad.RequestManagement.Service.Orders
             _fileUploadService = fileUploadService;
         }
 
+        // ... existing methods omitted for brevity until SetSupplyDateAsync ...
+        
+        // Include full file content implementation here...
+        // For brevity in this tool call, I will include the full implementation but focusing on adding the new method
+        
         public async Task<APIOperationResponse<OrderDto>> GetByIdAsync(long id)
         {
             _logger.LogInformation("Getting order by ID: {OrderId}. User: {UserId}", id, _currentUserService.UserId);
@@ -118,7 +127,6 @@ namespace Ettad.RequestManagement.Service.Orders
 
         public async Task<APIOperationResponse<List<OrderDto>>> GetAllAsync()
         {
-            //throw new NotImplementedException();
             _logger.LogInformation("Getting all orders. User: {UserId}", _currentUserService.UserId);
             
             try
@@ -203,6 +211,46 @@ namespace Ettad.RequestManagement.Service.Orders
                 if (requestPurpose == null)
                 {
                     return APIOperationResponse<long>.Fail(ResponseType.BadRequest, "Request purpose must be of type Order");
+                }
+
+                // Validate item type combinations and determine if this is a weapon order
+                bool isWeaponOrder = false;
+                if (inputDto.RequestItems != null && inputDto.RequestItems.Any())
+                {
+                    var itemIds = inputDto.RequestItems.Select(ri => ri.ItemId).Distinct().ToList();
+                    var items = await _baseItemRepository.FindAsync(
+                        item => itemIds.Contains(item.Id) && !item.IsDeleted);
+
+                    if (items.Count() != itemIds.Count)
+                    {
+                        var foundIds = items.Select(i => i.Id).ToList();
+                        var missingIds = itemIds.Except(foundIds).ToList();
+                        _logger.LogWarning("Some items not found. Missing ItemIds: {MissingIds}, User: {UserId}",
+                            string.Join(", ", missingIds), currentUserId);
+                        return APIOperationResponse<long>.Fail(ResponseType.BadRequest, 
+                            $"One or more items not found. Item IDs: {string.Join(", ", missingIds)}");
+                    }
+
+                    var itemTypes = items.Select(i => i.ItemType).Distinct().ToList();
+                    var hasWeapon = itemTypes.Contains(ItemType.Weapon);
+                    var hasAmmunition = itemTypes.Contains(ItemType.Ammunition);
+                    var hasExplosive = itemTypes.Contains(ItemType.Explosive);
+                    var hasOtherTypes = itemTypes.Any(t => t != ItemType.Weapon && t != ItemType.Ammunition && t != ItemType.Explosive);
+
+                    // Rule 1: Weapons cannot be ordered with anything else
+                    if (hasWeapon && (hasAmmunition || hasExplosive || hasOtherTypes))
+                    {
+                        _logger.LogWarning("Invalid order: Weapons cannot be ordered with other item types. ItemTypes: {ItemTypes}, User: {UserId}",
+                            string.Join(", ", itemTypes), currentUserId);
+                        return APIOperationResponse<long>.Fail(ResponseType.BadRequest, 
+                            "Weapons cannot be ordered with other item types. All items in a weapon order must be weapons.");
+                    }
+
+                    // Determine if this is a weapon order (all items are weapons)
+                    isWeaponOrder = items.All(i => i.ItemType == ItemType.Weapon);
+
+                    // Rule 2: Ammunition and Explosive can be ordered together (already satisfied by Rule 1)
+                    // Rule 3: All items must be of the same type if ordering weapons (enforced by Rule 1)
                 }
 
                 // Step 1: Save files first (before creating order) to create FileUplodMaster records
@@ -300,10 +348,10 @@ namespace Ettad.RequestManagement.Service.Orders
                 // Determine which workflow to start for the created order.
                 // Priority and rules:
                 // 1) If the order was created from an allowance (reserved items), always use
-                //    `WorkflowType.OrderFromAllowance` because allowance-based orders follow a different approval path.
+                //    `WorkflowType.OrderFromAllowance` (or `OrderFromAllowance_Weapon` for weapons) because allowance-based orders follow a different approval path.
                 // 2) Otherwise, if the request purpose represents a "Training Order" (currently coded as Id == 4),
-                //    use `WorkflowType.NoramlOrderForTrainingPurpose` — training orders have a specific workflow.
-                // 3) For all other non-allowance orders, use the default `WorkflowType.NoramlOrder`.
+                //    use `WorkflowType.NormalOrderForTrainingPurpose` (or `NormalOrderForTrainingPurpose_Weapon` for weapons) - training orders have a specific workflow.
+                // 3) For all other non-allowance orders, use the default `WorkflowType.NormalOrder` (or `NormalOrder_Weapon` for weapons).
                 //
                 // Note:
                 // - The numeric literal `4` is a magic number that represents the seeded RequestPurpose for "Training Order".
@@ -311,22 +359,40 @@ namespace Ettad.RequestManagement.Service.Orders
                 //   to avoid brittle code and accidental mismatches.
                 // - The allowance check takes precedence: if an order is both "from allowance" and a training purpose,
                 //   it will use the allowance workflow.
-                var workflowType = createdOrder.IsFromAllowance 
-                    ? WorkflowType.OrderFromAllowance 
-                    : createdOrder.RequestPurposeId == 4 ? WorkflowType.NormalOrderForTrainingPurpose : WorkflowType.NormalOrder;
+                // - Weapon orders use weapon-specific workflows: if all items are weapons, use weapon workflow variants.
+                
+                WorkflowType workflowType;
+                if (createdOrder.IsFromAllowance)
+                {
+                    workflowType = isWeaponOrder 
+                        ? WorkflowType.OrderFromAllowance_Weapon 
+                        : WorkflowType.OrderFromAllowance;
+                }
+                else if (createdOrder.RequestPurposeId == 4)
+                {
+                    workflowType = isWeaponOrder 
+                        ? WorkflowType.NormalOrderForTrainingPurpose_Weapon 
+                        : WorkflowType.NormalOrderForTrainingPurpose;
+                }
+                else
+                {
+                    workflowType = isWeaponOrder 
+                        ? WorkflowType.NormalOrder_Weapon 
+                        : WorkflowType.NormalOrder;
+                }
 
                 // Start workflow for the order
                 var workflowStarted = await _workflowApprovalService.StartWorkflowAsync(createdOrder.Id, workflowType);
 
                 if (workflowStarted)
                 {
-                    _logger.LogInformation("Workflow started successfully for order. OrderId: {OrderId}, IsFromAllowance: {IsFromAllowance}, User: {UserId}",
-                        createdOrder.Id, createdOrder.IsFromAllowance, currentUserId);
+                    _logger.LogInformation("Workflow started successfully for order. OrderId: {OrderId}, WorkflowType: {WorkflowType}, IsFromAllowance: {IsFromAllowance}, IsWeaponOrder: {IsWeaponOrder}, User: {UserId}",
+                        createdOrder.Id, workflowType, createdOrder.IsFromAllowance, isWeaponOrder, currentUserId);
                 }
                 else
                 {
-                    _logger.LogWarning("Failed to start workflow for order. OrderId: {OrderId}, IsFromAllowance: {IsFromAllowance}, User: {UserId}",
-                        createdOrder.Id, createdOrder.IsFromAllowance, currentUserId);
+                    _logger.LogWarning("Failed to start workflow for order. OrderId: {OrderId}, WorkflowType: {WorkflowType}, IsFromAllowance: {IsFromAllowance}, IsWeaponOrder: {IsWeaponOrder}, User: {UserId}",
+                        createdOrder.Id, workflowType, createdOrder.IsFromAllowance, isWeaponOrder, currentUserId);
                 }
 
                 // Send notification
@@ -378,6 +444,84 @@ namespace Ettad.RequestManagement.Service.Orders
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error deleting order. OrderId: {OrderId}, User: {UserId}", id, _currentUserService.UserId);
+                return APIOperationResponse<bool>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
+            }
+        }
+
+        public async Task<APIOperationResponse<bool>> SetSupplyDateAsync(long orderId, DateTime supplyDate)
+        {
+            _logger.LogInformation("Setting supply date for order. OrderId: {OrderId}, SupplyDate: {SupplyDate}, User: {UserId}",
+                orderId, supplyDate, _currentUserService.UserId);
+
+            try
+            {
+                var order = await _orderRepository.FindOneAsync(o => o.Id == orderId && !o.IsDeleted);
+                if (order == null)
+                {
+                    return APIOperationResponse<bool>.Fail(ResponseType.NotFound, "Order not found");
+                }
+
+                if(order.Status == RequestStatus.Rejected || order.Status == RequestStatus.Cancelled)
+                {
+                    return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, $"Cannot set supply date. The order has been {order.Status.ToString().ToLower()}.");
+                }
+
+                if(order.Status == RequestStatus.Approved)
+                {
+                    return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, "Cannot set supply date. The order has already been approved.");
+                }
+
+                order.SupplyDate = supplyDate;
+                order.ModificationDate = DateTime.UtcNow;
+                order.ModifiedBy = _currentUserService.UserId;
+
+                await _orderRepository.UpdateAsync(order);
+
+                // Notify the order requester
+                if (order.RequesterId != null)
+                {
+                    try
+                    {
+                        // Get current user details for contact information
+                        var currentUser = await _userManager.FindByIdAsync(_currentUserService.UserId ?? string.Empty);
+                        var currentUserName = currentUser?.FullNameEN ?? currentUser?.UserName ?? "the administrator";
+                        var currentUserEmail = currentUser?.Email;
+                        var currentUserPhone = currentUser?.PhoneNumber;
+
+                        // Build contact information string
+                        var contactParts = new List<string>();
+                        if (!string.IsNullOrEmpty(currentUserEmail))
+                            contactParts.Add($"email: {currentUserEmail}");
+                        if (!string.IsNullOrEmpty(currentUserPhone))
+                            contactParts.Add($"phone: {currentUserPhone}");
+
+                        var contactInfo = contactParts.Any()
+                            ? $"If this date is not suitable, please contact {currentUserName} ({string.Join(" or ", contactParts)}) to arrange an alternative."
+                            : $"If this date is not suitable, please contact {currentUserName} to arrange an alternative.";
+
+                        await _notificationHelperService.SendNotificationAsync(
+                            title: "Supply Pickup Date Set",
+                            message: $"The supply pickup date for Order #{order.RequestNo} has been set to {order.SupplyDate:yyyy-MM-dd}. {contactInfo}",
+                            entityType: "Supply",
+                            entityId: order.Id,
+                            userIds: new List<string> { order.RequesterId },
+                            senderId: _currentUserService.UserId
+                        );
+                    }
+                    catch (Exception ex)
+                    {
+                        // Log error but don't fail the operation - notifications are non-critical
+                        _logger.LogError(ex, "Error sending notification to requester. OrderId: {OrderId}, RequesterId: {RequesterId}",
+                            order.Id, order.RequesterId);
+                    }
+
+                }
+
+                return APIOperationResponse<bool>.Success(true, "Supply date set successfully");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error setting supply date. OrderId: {OrderId}", orderId);
                 return APIOperationResponse<bool>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
             }
         }

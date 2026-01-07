@@ -34,12 +34,24 @@ namespace Ettad.Inventory.API.Controllers
             return ProcessResponse(result);
         }
 
+        /// <summary>
+        /// Get asset by serial number
+        /// </summary>
+        [HttpGet("serial/{serialNumber}")]
+        [ProducesResponseType((int)HttpStatusCode.OK)]
+        [CheckAuthorize("Permissions.Asset.View", "Permissions.Asset.Page")]
+        public async Task<IActionResult> GetBySerialNumber(string serialNumber)
+        {
+            var result = await _assetService.GetBySerialNumberAsync(serialNumber);
+            return ProcessResponse(result);
+        }
+
         [HttpGet]
         [ProducesResponseType((int)HttpStatusCode.OK)]
         [CheckAuthorize("Permissions.Asset.View", "Permissions.Asset.Page")]
-        public async Task<IActionResult> GetAll()
+        public async Task<IActionResult> GetAll([FromQuery] long? depotId = null)
         {
-            var result = await _assetService.GetAllAsync();
+            var result = await _assetService.GetAllAsync(depotId);
             return ProcessResponse(result);
         }
 

@@ -12,5 +12,10 @@
         public string UsageLocation { get; set; }
         public int? NumberOfOfficer { get; set; }
         public int? NumberOfOtherRank { get; set; } 
+        
+        /// <summary>
+        /// Date when the order should be supplied
+        /// </summary>
+        public DateTime? SupplyDate { get; set; }
     }
 }

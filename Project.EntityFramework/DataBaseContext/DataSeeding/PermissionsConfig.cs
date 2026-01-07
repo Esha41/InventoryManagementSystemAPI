@@ -424,7 +424,6 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 .Concat(WriteSupply)
                 .Concat(new List<string>
                     {
-                        PlainPermissions.UpdateRequestAndSuggestLots.ToString(),
                         PlainPermissions.InventoryDashboard.ToString(),
                     }
                 )
@@ -688,6 +687,9 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                         PlainPermissions.SubmitSupply.ToString(),
                         PlainPermissions.InventoryDashboard.ToString(),
                         PlainPermissions.CannotRejectRequest.ToString(),
+                        PlainPermissions.ReviewWeaponSupply.ToString(),
+                        "Permissions.Depots.View",
+                        "Permissions.SystemUsers.View",
                     }
                 )
                 .ToList();

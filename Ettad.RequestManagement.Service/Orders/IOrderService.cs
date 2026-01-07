@@ -17,5 +17,8 @@ namespace Ettad.RequestManagement.Service.Orders
         Task<APIOperationResponse<bool>> UpdateOrderItemQuantityAsync(long orderId, long itemId, long newQuantity);
         Task<APIOperationResponse<bool>> DeleteOrderItemAsync(long orderId, long itemId);
         Task<APIOperationResponse<AllowanceVerificationDto>> VerifyItemAllowanceAsync(long itemId, long requestedQuantity);
+        
+        // Supply Date Management
+        Task<APIOperationResponse<bool>> SetSupplyDateAsync(long orderId, DateTime supplyDate);
     }
 }

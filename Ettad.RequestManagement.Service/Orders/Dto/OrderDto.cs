@@ -16,6 +16,11 @@ namespace Ettad.RequestManagement.Service.Orders.Dto
         public string UsageLocation { get; set; }
         public int? NumberOfOfficer { get; set; }
         public int? NumberOfOtherRank { get; set; }
+        
+        /// <summary>
+        /// Date when the order should be supplied
+        /// </summary>
+        public DateTime? SupplyDate { get; set; }
         #endregion
 
         //#region Navigation Names (Order-Specific - Flattened for convenience)

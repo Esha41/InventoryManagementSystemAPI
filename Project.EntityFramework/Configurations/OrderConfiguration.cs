@@ -39,6 +39,9 @@ namespace Ettad.EntityFramework.Configurations
 
             builder.Property(x => x.NumberOfOtherRank)
                 .IsRequired(false);
+
+            builder.Property(x => x.SupplyDate)
+                .IsRequired(false);
         }
     }
 }

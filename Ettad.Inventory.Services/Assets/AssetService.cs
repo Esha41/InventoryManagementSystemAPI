@@ -2,6 +2,7 @@ using AutoMapper;
 using FluentValidation;
 using Microsoft.EntityFrameworkCore;
 using System.Linq;
+using System.Linq.Expressions;
 using Ettad.CrossCutting.Data.Repository;
 using Ettad.CrossCutting.Comman.FileUpload;
 using Ettad.Comman.Enums;
@@ -66,8 +67,8 @@ namespace Ettad.Inventory.Service.Assets
                     false,
                     nameof(Asset.Item),
                     nameof(Asset.Depot),
-                    nameof(Asset.Department),
-                    nameof(Asset.Custodian)
+                    $"{nameof(Asset.CurrentAssignment)}.{nameof(AssetAssignment.Custodian)}",
+                    $"{nameof(Asset.CurrentAssignment)}.{nameof(AssetAssignment.Department)}"
                 );
 
                 if (asset == null)
@@ -92,22 +93,100 @@ namespace Ettad.Inventory.Service.Assets
             }
         }
 
-        public async Task<APIOperationResponse<List<AssetDto>>> GetAllAsync()
+        public async Task<APIOperationResponse<AssetDto>> GetBySerialNumberAsync(string serialNumber)
         {
-            _logger.LogInformation("Getting all assets. User: {UserId}", _currentUserService.UserId);
+            _logger.LogInformation("Getting asset by SerialNumber. SerialNumber: {SerialNumber}, User: {UserId}", 
+                serialNumber, _currentUserService.UserId);
             
             try
             {
-                var assets = await _assetRepository.FindAsync(
-                    a => !a.IsDeleted,
+                if (string.IsNullOrWhiteSpace(serialNumber))
+                    return APIOperationResponse<AssetDto>.Fail(ResponseType.BadRequest, "Serial number is required");
+
+                var trimmedSerialNumber = serialNumber.Trim();
+                
+                var asset = await _assetRepository.FindOneAsync(
+                    a => !a.IsDeleted && a.SerialNumber != null && a.SerialNumber == trimmedSerialNumber,
                     false,
                     nameof(Asset.Item),
                     nameof(Asset.Depot),
-                    nameof(Asset.Department),
-                    nameof(Asset.Custodian)
+                    $"{nameof(Asset.CurrentAssignment)}.{nameof(AssetAssignment.Custodian)}",
+                    $"{nameof(Asset.CurrentAssignment)}.{nameof(AssetAssignment.Department)}"
                 );
 
-                var dtos = _mapper.Map<List<AssetDto>>(assets);
+                if (asset == null)
+                {
+                    _logger.LogWarning("Asset not found by SerialNumber. SerialNumber: {SerialNumber}, User: {UserId}", 
+                        trimmedSerialNumber, _currentUserService.UserId);
+                    return APIOperationResponse<AssetDto>.Fail(ResponseType.NotFound, "Asset not found");
+                }
+
+                var dto = _mapper.Map<AssetDto>(asset);
+                
+                // Get images for this asset
+                var imagesResult = await _fileUploadService.GetByEntityAsync(FileEntityType.Asset, asset.Id);
+                dto.Images = imagesResult.Succeeded && imagesResult.Data != null ? imagesResult.Data : new List<FileUploadDto>();
+                
+                _logger.LogInformation("Asset retrieved successfully by SerialNumber. AssetId: {AssetId}, SerialNumber: {SerialNumber}, User: {UserId}", 
+                    asset.Id, trimmedSerialNumber, _currentUserService.UserId);
+                
+                return APIOperationResponse<AssetDto>.Success(dto);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving asset by SerialNumber. SerialNumber: {SerialNumber}, User: {UserId}", 
+                    serialNumber, _currentUserService.UserId);
+                return APIOperationResponse<AssetDto>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
+            }
+        }
+
+        public async Task<APIOperationResponse<List<AssetDto>>> GetAllAsync(long? depotId = null)
+        {
+            _logger.LogInformation("Getting all assets. DepotId: {DepotId}, User: {UserId}", depotId, _currentUserService.UserId);
+            
+            try
+            {
+                // Build filter predicate
+                Expression<Func<Asset, bool>> filter = a => !a.IsDeleted;
+                if (depotId.HasValue && depotId.Value > 0)
+                {
+                    filter = a => !a.IsDeleted && a.DepotId == depotId.Value;
+                }
+
+                var assets = await _assetRepository.FindAsync(
+                    filter,
+                    false,
+                    nameof(Asset.Item),
+                    nameof(Asset.Depot),
+                    $"{nameof(Asset.CurrentAssignment)}.{nameof(AssetAssignment.Custodian)}",
+                    $"{nameof(Asset.CurrentAssignment)}.{nameof(AssetAssignment.Department)}"
+                );
+
+                // Map assets individually to handle any mapping issues gracefully
+                var dtos = new List<AssetDto>();
+                foreach (var asset in assets)
+                {
+                    try
+                    {
+                        var dto = _mapper.Map<AssetDto>(asset);
+                        if (dto != null)
+                        {
+                            dtos.Add(dto);
+                        }
+                    }
+                    catch (AutoMapperMappingException mapEx)
+                    {
+                        _logger.LogWarning(mapEx, "Failed to map asset. AssetId: {AssetId}, SerialNumber: {SerialNumber}, User: {UserId}", 
+                            asset.Id, asset.SerialNumber, _currentUserService.UserId);
+                        // Continue with other assets - don't fail entire request
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Unexpected error mapping asset. AssetId: {AssetId}, SerialNumber: {SerialNumber}, User: {UserId}", 
+                            asset.Id, asset.SerialNumber, _currentUserService.UserId);
+                        // Continue with other assets
+                    }
+                }
                 
                 // Populate images for all assets in a single database query
                 var entityIds = dtos.Select(d => d.Id).ToList();

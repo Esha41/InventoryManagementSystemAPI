@@ -28,10 +28,6 @@ namespace Ettad.EntityFramework.Configurations
             builder.HasIndex(x => x.RFID)
                 .HasFilter("[RFID] IS NOT NULL AND [IsDeleted] = 0");
 
-            builder.Property(x => x.Location)
-                .IsRequired(false)
-                .HasMaxLength(1000);
-
             builder.Property(x => x.Status)
                 .IsRequired(false)
                 .HasConversion<int>();
@@ -58,6 +54,19 @@ namespace Ettad.EntityFramework.Configurations
                 .IsRequired(false)
                 .HasMaxLength(5000);
 
+            builder.Property(x => x.IsAssigned)
+                .IsRequired()
+                .HasDefaultValue(false);
+
+            builder.Property(x => x.CurrentAssignmentId)
+                .IsRequired(false);
+
+            // Index for quick lookup of assigned/unassigned assets
+            builder.HasIndex(x => x.IsAssigned);
+
+            // Index for finding assets by item type
+            builder.HasIndex(x => x.ItemId);
+
             // Foreign key relationships
             builder.HasOne(x => x.Item)
                 .WithMany()
@@ -71,16 +80,11 @@ namespace Ettad.EntityFramework.Configurations
                 .HasForeignKey(x => x.DepotId)
                 .OnDelete(DeleteBehavior.Restrict);
 
-            builder.HasOne(x => x.Department)
+            // Self-referencing relationship for current assignment
+            builder.HasOne(x => x.CurrentAssignment)
                 .WithMany()
                 .IsRequired(false)
-                .HasForeignKey(x => x.DepartmentId)
-                .OnDelete(DeleteBehavior.Restrict);
-
-            builder.HasOne(x => x.Custodian)
-                .WithMany()
-                .IsRequired(false)
-                .HasForeignKey(x => x.CustodianId)
+                .HasForeignKey(x => x.CurrentAssignmentId)
                 .OnDelete(DeleteBehavior.Restrict);
         }
     }
