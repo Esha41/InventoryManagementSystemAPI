@@ -200,6 +200,19 @@ namespace Ettad.User.Services.Implementation
                     "server.invalidLogin");
             }
 
+            // Check if account is active
+            if (!user.IsActive)
+            {
+                _logger.LogWarning("Account disabled login attempt. Username: {Username}", 
+                    loginInformation.Username);
+                await RecordLoginAttemptAsync(loginInformation.Username, user.Id, false, 
+                    "Account is disabled", LoginType.Admin, cancellationToken);
+                return APIOperationResponse<AuthenticatedResponse>.Fail(
+                    ResponseType.Forbidden,
+                    CommonErrorCodes.INVALID_EMAIL_OR_PASSWORD,
+                    "Your account has been disabled. Please contact your administrator.");
+            }
+
             var signInResult = await _signInManager.CheckPasswordSignInAsync(user, loginInformation.Password, lockoutOnFailure: false);
             if (!signInResult.Succeeded)
             {
@@ -415,6 +428,18 @@ namespace Ettad.User.Services.Implementation
                             ResponseType.Unauthorized,
                             CommonErrorCodes.INVALID_EMAIL_OR_PASSWORD,
                             "server.invalidLogin");
+                    }
+
+                    // Check if LDAP user is active
+                    if (!user.IsActive)
+                    {
+                        _logger.LogWarning("LDAP login failed: Account is disabled. Username: {Username}, UserId: {UserId}",
+                            user.UserName, user.Id);
+                        await RecordLoginAttemptAsync(resolvedUsername, user.Id, false, "Account is disabled", LoginType.LDAP, cancellationToken);
+                        return APIOperationResponse<AuthenticatedResponse>.Fail(
+                            ResponseType.Forbidden,
+                            CommonErrorCodes.INVALID_EMAIL_OR_PASSWORD,
+                            "Your account has been disabled. Please contact your administrator.");
                     }
 
                     _logger.LogInformation(

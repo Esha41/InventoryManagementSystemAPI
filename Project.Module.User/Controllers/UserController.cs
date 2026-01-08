@@ -97,6 +97,14 @@ namespace Ettad.User.API.Controllers
             return ProcessResponse(response);
         }
 
+        [HttpPut("{id}/toggle-status")]
+        [CheckAuthorize("Permissions.SystemUsers.Edit")]
+        public async Task<IActionResult> ToggleStatus(string id)
+        {
+            var response = await _userService.ToggleUserStatusAsync(id);
+            return ProcessResponse(response);
+        }
+
         [HttpPut("change-password")]
         [Authorize]
         public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordDto dto)

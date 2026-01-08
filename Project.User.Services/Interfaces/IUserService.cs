@@ -23,6 +23,7 @@ namespace Ettad.User.Services.Interfaces
         Task<APIOperationResponse<List<UserDto>>> GetByRoleIdsAsync(IEnumerable<string> roleIds);
         Task<APIOperationResponse<List<UserDto>>> GetSuperAdminsAsync();
         Task<APIOperationResponse<UserDto>> GetCurrentUserAsync();
+        Task<APIOperationResponse<bool>> ToggleUserStatusAsync(string id);
         Task<APIOperationResponse<bool>> ChangePasswordAsync(ChangePasswordDto dto);
     }
 }

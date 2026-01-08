@@ -186,6 +186,7 @@ public class UserService : IUserService
             FullNameEN = dto.FullNameEN,
             FullNameAR = dto.FullNameAR,
             LdapUserName = dto.LdapUserName,
+            IsActive = dto.IsActive
         };
 
         // 2️⃣ Create user in DB
@@ -284,6 +285,7 @@ public class UserService : IUserService
         user.FullNameEN = dto.FullNameEN;
         user.FullNameAR = dto.FullNameAR;
         user.LdapUserName= dto.LdapUserName;
+        user.IsActive = dto.IsActive;
         // 3️⃣ Update roles
         if (dto.RoleIds != null)
         {
@@ -700,6 +702,54 @@ public class UserService : IUserService
             .ToList();
     }
 
+    public async Task<APIOperationResponse<bool>> ToggleUserStatusAsync(string id)
+    {
+        _logger.LogInformation("Toggling user status. TargetUserId: {TargetUserId}, RequestedBy: {RequestedBy}", 
+            id, _currentUserService.UserId);
+        
+        var user = await _userManager.Users
+            .FirstOrDefaultAsync(u => u.Id == id && !u.IsDeleted);
+        
+        if (user == null)
+        {
+            _logger.LogWarning("User status toggle failed: User not found. TargetUserId: {TargetUserId}, RequestedBy: {RequestedBy}", 
+                id, _currentUserService.UserId);
+            return APIOperationResponse<bool>.NotFound("User not found.");
+        }
+
+        // Prevent toggling superadmin status if current user is not a superadmin
+        if (!_currentUserService.IsSuperAdmin)
+        {
+            var userRoles = await _userManager.GetRolesAsync(user);
+            var allRoles = await _roleManager.Roles.ToListAsync();
+            var hasSuperAdminRole = userRoles.Any(roleName => 
+                allRoles.Any(r => r.Name == roleName && r.IsSuperAdmin));
+                
+            if (hasSuperAdminRole)
+            {
+                _logger.LogWarning("User status toggle denied: Normal admin attempted to toggle superadmin. TargetUserId: {TargetUserId}, RequestedBy: {RequestedBy}", 
+                    id, _currentUserService.UserId);
+                return APIOperationResponse<bool>.Fail(ResponseType.Forbidden, 
+                    "You do not have permission to disable superadmin users");
+            }
+        }
+
+        user.IsActive = !user.IsActive;
+        var result = await _userManager.UpdateAsync(user);
+
+        if (!result.Succeeded)
+        {
+            var errors = string.Join(",", result.Errors.Select(e => e.Description));
+            _logger.LogError("Failed to toggle user status. UserId: {UserId}, Errors: {Errors}", id, errors);
+            return APIOperationResponse<bool>.Fail(ResponseType.InternalServerError, errors);
+        }
+
+        _logger.LogInformation("User status toggled successfully. UserId: {UserId}, NewStatus: {IsActive}, RequestedBy: {RequestedBy}", 
+            id, user.IsActive, _currentUserService.UserId);
+        
+        return APIOperationResponse<bool>.Success(true, $"User {(user.IsActive ? "enabled" : "disabled")} successfully");
+    }
+
     private UserDto MapToDto(ApplicationUser user)
     {
         var dto = new UserDto
@@ -709,6 +759,7 @@ public class UserService : IUserService
             Email = user.Email ?? string.Empty,
             IsLdapUser = user.IsLdapUser,
             IsSuperAdmin = user.IsSuperAdmin,
+            IsActive = user.IsActive,
             ExtraEmployeesView = user.ExtraEmployeesView ?? string.Empty,
             DeparmentId = user.DepartmentId,
             FullNameEN = user.FullNameEN ?? string.Empty,
