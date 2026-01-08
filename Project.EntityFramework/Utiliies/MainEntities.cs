@@ -517,4 +517,14 @@ public static class MainEntities
         CrudOperation.View,
         CrudOperation.Edit,
     };
+
+    [Category(CrudPermissionsGenerator.General)]
+    public static readonly CrudOperation[] LdapSettings = new[]
+    {
+        CrudOperation.Page,
+        CrudOperation.View,
+        CrudOperation.Create,
+        CrudOperation.Edit,
+        CrudOperation.Delete,
+    };
 }

@@ -1,4 +1,4 @@
-﻿using Ettad.Application.Common.Interfaces;
+using Ettad.Application.Common.Interfaces;
 using Ettad.Comman.Enums;
 using Ettad.CrossCutting.Comman.Constants;
 using Ettad.CrossCutting.Comman.FileUpload;
@@ -1228,13 +1228,32 @@ namespace Ettad.Workflows.Service.Imeplemention
             var userDepartmentId = _currentUserService.DepartmentId;
             List<long> allowedRequestIds;
 
-            // If superadmin, get all request IDs (still filter by department if user has one)
+            // Roles that are restricted to their own department
+            var restrictedRoles = new List<string>
+            {
+                WorkflowRoleNames.SupplyOfficer,
+                WorkflowRoleNames.RequestingEntityCommander
+            };
+
+            // Get user's role names to check if they are restricted
+            var userRoleNames = await _context.Set<IdentityUserRole<string>>()
+                .Where(ur => ur.UserId == currentUserId)
+                .Join(_context.Roles,
+                    ur => ur.RoleId,
+                    r => r.Id,
+                    (ur, r) => r.Name)
+                .ToListAsync();
+
+            var shouldFilterByDepartment = userDepartmentId.HasValue && 
+                userRoleNames.Any(roleName => restrictedRoles.Contains(roleName));
+
+            // If superadmin, get all request IDs (still filter by department if user has restricted role)
             if (_currentUserService.IsSuperAdmin)
             {
                 var query = _context.BaseRequests.Where(br => !br.IsDeleted);
                 
-                // Filter by department if user has a departmentId
-                if (userDepartmentId.HasValue)
+                // Filter by department only if user has a restricted role
+                if (shouldFilterByDepartment)
                 {
                     query = query.Where(br => br.DepartmentId == userDepartmentId.Value);
                 }
@@ -1271,8 +1290,8 @@ namespace Ettad.Workflows.Service.Imeplemention
                                            )
                                        select br;
                     
-                    // Filter by department if user has a departmentId
-                    if (userDepartmentId.HasValue)
+                    // Filter by department only if user has a restricted role
+                    if (shouldFilterByDepartment)
                     {
                         workflowQuery = workflowQuery.Where(br => br.DepartmentId == userDepartmentId.Value);
                     }
@@ -1286,8 +1305,8 @@ namespace Ettad.Workflows.Service.Imeplemention
                 // Get request IDs where the user is the requester
                 var requesterQuery = _context.BaseRequests.Where(br => !br.IsDeleted && br.RequesterId == currentUserId);
                 
-                // Filter by department if user has a departmentId
-                if (userDepartmentId.HasValue)
+                // Filter by department only if user has a restricted role
+                if (shouldFilterByDepartment)
                 {
                     requesterQuery = requesterQuery.Where(br => br.DepartmentId == userDepartmentId.Value);
                 }
@@ -1734,6 +1753,25 @@ namespace Ettad.Workflows.Service.Imeplemention
             var userDepartmentId = _currentUserService.DepartmentId;
             bool hasPermission = false;
 
+            // Roles that are restricted to their own department
+            var restrictedRoles = new List<string>
+            {
+                WorkflowRoleNames.SupplyOfficer,
+                WorkflowRoleNames.RequestingEntityCommander
+            };
+
+            // Get user's role names to check if they are restricted
+            var userRoleNames = await _context.Set<IdentityUserRole<string>>()
+                .Where(ur => ur.UserId == currentUserId)
+                .Join(_context.Roles,
+                    ur => ur.RoleId,
+                    r => r.Id,
+                    (ur, r) => r.Name)
+                .ToListAsync();
+
+            var shouldFilterByDepartment = userDepartmentId.HasValue && 
+                userRoleNames.Any(roleName => restrictedRoles.Contains(roleName));
+
             // Check if request exists and is not deleted
             var requestExists = await _context.BaseRequests
                 .AnyAsync(br => br.Id == requestId && !br.IsDeleted);
@@ -1741,13 +1779,13 @@ namespace Ettad.Workflows.Service.Imeplemention
             if (!requestExists)
                 return null;
 
-            // If superadmin, check permission (still filter by department if user has one)
+            // If superadmin, check permission (still filter by department if user has restricted role)
             if (_currentUserService.IsSuperAdmin)
             {
                 var query = _context.BaseRequests.Where(br => br.Id == requestId && !br.IsDeleted);
                 
-                // Filter by department if user has a departmentId
-                if (userDepartmentId.HasValue)
+                // Filter by department only if user has a restricted role
+                if (shouldFilterByDepartment)
                 {
                     query = query.Where(br => br.DepartmentId == userDepartmentId.Value);
                 }
@@ -1785,8 +1823,8 @@ namespace Ettad.Workflows.Service.Imeplemention
                                            )
                                        select br;
                     
-                    // Filter by department if user has a departmentId
-                    if (userDepartmentId.HasValue)
+                    // Filter by department only if user has a restricted role
+                    if (shouldFilterByDepartment)
                     {
                         workflowQuery = workflowQuery.Where(br => br.DepartmentId == userDepartmentId.Value);
                     }
@@ -1797,8 +1835,8 @@ namespace Ettad.Workflows.Service.Imeplemention
                 // Check if user is the requester
                 var requesterQuery = _context.BaseRequests.Where(br => br.Id == requestId && !br.IsDeleted && br.RequesterId == currentUserId);
                 
-                // Filter by department if user has a departmentId
-                if (userDepartmentId.HasValue)
+                // Filter by department only if user has a restricted role
+                if (shouldFilterByDepartment)
                 {
                     requesterQuery = requesterQuery.Where(br => br.DepartmentId == userDepartmentId.Value);
                 }
