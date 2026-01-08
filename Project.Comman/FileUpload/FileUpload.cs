@@ -40,6 +40,17 @@ namespace Ettad.CrossCutting.Comman.FileUpload
                 return APIOperationResponse<string>.BadRequest("File is empty.");
             }
 
+            // Get max file size from configuration (defaults to 30 MB if not set)
+            var maxFileSizeMB = _configuration.GetValue<int>("FileSettings:MaxFileSizeMB", 30);
+            var maxFileSizeBytes = maxFileSizeMB * 1024L * 1024L;
+
+            // Validate file type and size using FileValidationHelper
+            var validationResult = FileValidationHelper.ValidateFile(file, maxFileSizeBytes);
+            if (!validationResult.IsValid)
+            {
+                return APIOperationResponse<string>.BadRequest(validationResult.ErrorMessage);
+            }
+
             try
             {
                 // Get upload path from appsettings.json
