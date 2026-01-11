@@ -202,6 +202,15 @@ public static class MainEntities
         CrudOperation.Edit
     };
 
+    [Category(CrudPermissionsGenerator.UserManagement)]
+    public static readonly CrudOperation[] UserDelegations = new[]
+    {
+        CrudOperation.Page,
+        CrudOperation.View,
+        CrudOperation.Create,
+        CrudOperation.Delete
+    };
+
     [Category(CrudPermissionsGenerator.Inventory)]
     public static readonly CrudOperation[] Ammunition = new[]
     {

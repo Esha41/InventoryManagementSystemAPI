@@ -20,6 +20,7 @@ namespace Ettad.EntityFramework.Utiliies
         public const string SystemFeatures = "System Features";
         public const string Workflow = "Workflow";
         public const string Inventory = "Inventory";
+        public const string UserManagement = "User Management";
 
         public static string GetCategory(this PlainPermissions source)
         {

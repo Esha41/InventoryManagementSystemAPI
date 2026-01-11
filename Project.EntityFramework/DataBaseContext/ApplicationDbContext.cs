@@ -78,6 +78,7 @@ namespace Ettad.EntityFramework.DataBaseContext
         public DbSet<FileUplodDetails> FileUplodDetails { get; set; }
         public DbSet<LoginAttempt> LoginAttempts { get; set; }
         public DbSet<BlacklistedToken> BlacklistedTokens { get; set; }
+        public DbSet<UserDelegation> UserDelegations { get; set; }
        
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

@@ -290,6 +290,20 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
             "Permissions.WarehousePage.Edit",
             "Permissions.WarehousePage.Delete",
         };
+
+        public static List<string> ReadDelegation = new()
+        {
+            "Permissions.UserDelegations.Page",
+            "Permissions.UserDelegations.View",
+        };
+
+        public static List<string> WriteDelegation = new()
+        {
+            "Permissions.UserDelegations.Page",
+            "Permissions.UserDelegations.View",
+            "Permissions.UserDelegations.Create",
+            "Permissions.UserDelegations.Delete",
+        };
        
         public static List<string> RequestReciever =
             ReadRequestReciever

@@ -30,6 +30,7 @@ namespace Ettad.User.Services
             service.AddSingleton<ICaptchaService, CaptchaService>();
             service.AddScoped<ITokenBlacklistService, TokenBlacklistService>();
             service.AddScoped<IAdminAnalyticsService, AdminAnalyticsService>();
+            service.AddScoped<IUserDelegationService, UserDelegationService>();
             
 
             service.AddScoped<ICurrentUserService, CurrentUserService>();
