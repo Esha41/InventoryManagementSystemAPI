@@ -57,6 +57,10 @@ namespace Ettad.User.Services.DTO
         public int PendingReturns { get; set; }
         public int PendingDiscards { get; set; }
         public int TotalPending { get; set; }
+        public int NewRequests { get; set; }
+        public int InProgressRequests { get; set; }
+        public int CompletedRequests { get; set; }
+        public int RejectedRequests { get; set; }
         public double AvgApprovalTime { get; set; }
         public double SlaCompliance { get; set; }
         public DateTime LastUpdated { get; set; }

@@ -241,6 +241,26 @@ namespace Ettad.User.Services.Implementation
 
                 var totalPending = pendingOrders + pendingReturns + pendingDiscards;
 
+                // Get new requests count (status = New only)
+                var newRequests = await _context.Orders.Where(o => !o.IsDeleted && o.Status == RequestStatus.New).CountAsync();
+                newRequests += await _context.Returns.Where(r => !r.IsDeleted && r.Status == RequestStatus.New).CountAsync();
+                newRequests += await _context.Discards.Where(d => !d.IsDeleted && d.Status == RequestStatus.New).CountAsync();
+
+                // Get in-progress requests count (status = UnderProcess)
+                var inProgressRequests = await _context.Orders.Where(o => !o.IsDeleted && o.Status == RequestStatus.UnderProcess).CountAsync();
+                inProgressRequests += await _context.Returns.Where(r => !r.IsDeleted && r.Status == RequestStatus.UnderProcess).CountAsync();
+                inProgressRequests += await _context.Discards.Where(d => !d.IsDeleted && d.Status == RequestStatus.UnderProcess).CountAsync();
+
+                // Get completed requests count (status = Approved or Completed)
+                var completedRequests = await _context.Orders.Where(o => !o.IsDeleted && o.Status == RequestStatus.Approved).CountAsync();
+                completedRequests += await _context.Returns.Where(r => !r.IsDeleted && r.Status == RequestStatus.Approved).CountAsync();
+                completedRequests += await _context.Discards.Where(d => !d.IsDeleted && d.Status == RequestStatus.Approved).CountAsync();
+
+                // Get rejected requests count (status = Rejected)
+                var rejectedRequests = await _context.Orders.Where(o => !o.IsDeleted && o.Status == RequestStatus.Rejected).CountAsync();
+                rejectedRequests += await _context.Returns.Where(r => !r.IsDeleted && r.Status == RequestStatus.Rejected).CountAsync();
+                rejectedRequests += await _context.Discards.Where(d => !d.IsDeleted && d.Status == RequestStatus.Rejected).CountAsync();
+
                 // TODO: Calculate average approval time from request history
                 var avgApprovalTime = 0.0; // Placeholder
 
@@ -253,6 +273,10 @@ namespace Ettad.User.Services.Implementation
                     PendingReturns = pendingReturns,
                     PendingDiscards = pendingDiscards,
                     TotalPending = totalPending,
+                    NewRequests = newRequests,
+                    InProgressRequests = inProgressRequests,
+                    CompletedRequests = completedRequests,
+                    RejectedRequests = rejectedRequests,
                     AvgApprovalTime = avgApprovalTime,
                     SlaCompliance = slaCompliance,
                     LastUpdated = DateTime.UtcNow
