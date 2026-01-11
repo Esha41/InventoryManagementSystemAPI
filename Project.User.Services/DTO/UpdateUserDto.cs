@@ -6,6 +6,7 @@ namespace Ettad.User.Services.DTO
         public string UserName { get; set; }
        // public string Email { get; set; }
         public bool IsLdapUser { get; set; }
+        public bool IsActive { get; set; }
         public string ExtraEmployeesView { get; set; }
         public int? OrganizationId { get; set; }
         public int? DepartmentId { get; set; }
