@@ -4,7 +4,6 @@ using System.Runtime.InteropServices;
 using System.Text.Json;
 using System.Threading.Tasks;
 using Hangfire;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Ettad.Application.Common.Interfaces;
 using Ettad.CrossCutting.Data.Repository;
@@ -21,20 +20,17 @@ namespace Ettad.Inventory.Service.Monitoring
         private readonly ICurrentUserService _currentUserService;
         private readonly ILogger<LowStockMonitorSettingsService> _logger;
         private readonly IRecurringJobManager? _recurringJobManager;
-        private readonly IServiceProvider? _serviceProvider;
 
         public LowStockMonitorSettingsService(
             ICrossCuttingRepository<Settings> settingsRepository,
             ICurrentUserService currentUserService,
             ILogger<LowStockMonitorSettingsService> logger,
-            IRecurringJobManager? recurringJobManager = null,
-            IServiceProvider? serviceProvider = null)
+            IRecurringJobManager? recurringJobManager = null)
         {
             _settingsRepository = settingsRepository;
             _currentUserService = currentUserService;
             _logger = logger;
             _recurringJobManager = recurringJobManager;
-            _serviceProvider = serviceProvider;
         }
 
         public async Task<APIOperationResponse<LowStockNotificationSettingsDto>> GetSettingsAsync()
@@ -180,17 +176,14 @@ namespace Ettad.Inventory.Service.Monitoring
                     scheduleTime, utcTime, cronExpression);
                 
                 // Update Hangfire recurring job immediately if available
-                if (_recurringJobManager != null && _serviceProvider != null)
+                if (_recurringJobManager != null)
                 {
                     try
                     {
-                        // Set the service provider for the job
-                        LowStockMonitorJob.SetServiceProvider(_serviceProvider);
-                        
-                        // Use the same pattern as Program.cs - Hangfire will resolve the service from DI when executing
-                        _recurringJobManager.AddOrUpdate(
+                        // Register recurring job - Hangfire resolves LowStockMonitorJob from DI at execution time
+                        _recurringJobManager.AddOrUpdate<LowStockMonitorJob>(
                             LowStockMonitorConstants.JOB_ID,
-                            () => LowStockMonitorJob.Execute(),
+                            job => job.ExecuteAsync(),
                             cronExpression);
                         _logger.LogInformation("Hangfire recurring job '{JobId}' updated with new schedule: {CronExpression}", 
                             LowStockMonitorConstants.JOB_ID, cronExpression);
@@ -204,7 +197,7 @@ namespace Ettad.Inventory.Service.Monitoring
                 }
                 else
                 {
-                    _logger.LogWarning("IRecurringJobManager or IServiceProvider not available. Schedule saved to database but job will use new schedule on next application restart.");
+                    _logger.LogWarning("IRecurringJobManager not available. Schedule saved to database but job will use new schedule on next application restart.");
                     return APIOperationResponse<bool>.Success(true, "Schedule saved successfully. Note: The recurring job will be updated on next application restart.");
                 }
             }
