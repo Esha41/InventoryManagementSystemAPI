@@ -11,6 +11,7 @@ using Ettad.Notification.Service;
 using Ettad.ResponseHandler.Consts;
 using Ettad.ResponseHandler.Models;
 using Ettad.User.Services.DTO;
+using Ettad.User.Services.Interfaces;
 using Ettad.Workflow.Service.Interface;
 using Ettad.Workflows.Service.DTO;
 using Ettad.Workflows.Service.Events;
@@ -29,6 +30,7 @@ namespace Ettad.Workflows.Service.Imeplemention
         private readonly ICurrentUserService _currentUserService;
         private readonly INotificationHelperService _notificationHelperService;
         private readonly IWorkflowStepNotifierService _workflowStepNotifierService;
+        private readonly IUserDelegationService _userDelegationService;
         private readonly ILogger<WorkflowApprovalService> _logger;
         private readonly IMediator _mediator;
         private readonly IFileUploadService _fileUploadService;
@@ -39,6 +41,7 @@ namespace Ettad.Workflows.Service.Imeplemention
             ICurrentUserService currentUserService, 
             INotificationHelperService notificationHelperService,
             IWorkflowStepNotifierService workflowStepNotifierService,
+            IUserDelegationService userDelegationService,
             ILogger<WorkflowApprovalService> logger,
             IMediator mediator,
             IFileUploadService fileUploadService,
@@ -48,6 +51,7 @@ namespace Ettad.Workflows.Service.Imeplemention
             _currentUserService = currentUserService;
             _notificationHelperService = notificationHelperService;
             _workflowStepNotifierService = workflowStepNotifierService;
+            _userDelegationService = userDelegationService;
             _logger = logger;
             _mediator = mediator;
             _fileUploadService = fileUploadService;
@@ -186,8 +190,21 @@ namespace Ettad.Workflows.Service.Imeplemention
                 .Select(ur => ur.RoleId)
                 .ToListAsync();
 
-            if (!userRoleIds.Any())
-                return Enumerable.Empty<WorkflowApprovalWithOrderDto>();
+            // 1.5 Get active delegations (users who delegated to current user)
+            var activeDelegatorIds = await _userDelegationService.GetActiveDelegatorsForUserAsync(currentUserId);
+            var delegatorRoleIds = new List<string>();
+            
+            if (activeDelegatorIds != null && activeDelegatorIds.Any())
+            {
+                delegatorRoleIds = await _context.Set<IdentityUserRole<string>>()
+                    .Where(ur => activeDelegatorIds.Contains(ur.UserId))
+                    .Select(ur => ur.RoleId)
+                    .ToListAsync();
+            }
+
+            // Ensure lists are not null for Contains queries (though EF handles this, it's safer)
+            if (userRoleIds == null) userRoleIds = new List<string>();
+            if (delegatorRoleIds == null) delegatorRoleIds = new List<string>();
 
             // 2. Query workflow approval steps joined with workflow steps and base requests
             var query = from ws in _context.WorkflowApprovalSteps
@@ -196,12 +213,23 @@ namespace Ettad.Workflows.Service.Imeplemention
                         join wfs in _context.WorkflowSteps
                             on ws.WorkflowStepId equals wfs.Id
                         where
-                            // Step assigned directly to this user
-                            ws.ApproverUserId == currentUserId
-                            // OR user role matches main approver
-                            || userRoleIds.Contains(wfs.ApplicationRoleId)
-                            // OR user role matches higher approval
-                            || (!string.IsNullOrEmpty(wfs.HigherApprovalRoleId) && userRoleIds.Contains(wfs.HigherApprovalRoleId))
+                            ws.IsCurrent // Only fetch current active steps
+                            && (
+                                // Step assigned directly to this user
+                                ws.ApproverUserId == currentUserId
+                                // OR user role matches main approver
+                                || userRoleIds.Contains(wfs.ApplicationRoleId)
+                                // OR user role matches higher approval
+                                || (!string.IsNullOrEmpty(wfs.HigherApprovalRoleId) && userRoleIds.Contains(wfs.HigherApprovalRoleId))
+                                
+                                // --- Delegation Logic ---
+                                // OR step assigned to a delegator
+                                || (activeDelegatorIds.Contains(ws.ApproverUserId))
+                                // OR delegator matches main approver role
+                                || delegatorRoleIds.Contains(wfs.ApplicationRoleId)
+                                // OR delegator matches higher approval role
+                                || (!string.IsNullOrEmpty(wfs.HigherApprovalRoleId) && delegatorRoleIds.Contains(wfs.HigherApprovalRoleId))
+                            )
 
                         select new WorkflowApprovalWithOrderDto
                         {
@@ -237,11 +265,13 @@ namespace Ettad.Workflows.Service.Imeplemention
                             RequesterId = br.RequesterId,
                             RequestPurposeId = br.RequestPurposeId,
                             RequestDate =br.CreationDate,
+                            IsDelegation = ws.IsDelegation,
 
                             WorkflowApprovalStepId = ws.Id
                         };
 
-            return await query.ToListAsync();
+            var result = await query.ToListAsync();
+            return result;
         }
 
         public async Task<APIOperationResponse<bool>> ProcessActionAsync(ApproveRejectWorkflowApprovalDto model)
@@ -868,21 +898,55 @@ namespace Ettad.Workflows.Service.Imeplemention
             if (step == null)
                 return null;
 
-            // Permission check
-            var workflowStep = step.WorkflowStep;
-            var userRoles = await _context.Set<IdentityUserRole<string>>()
-                .Where(ur => ur.UserId == _currentUserService.UserId)
+            var currentUserId = _currentUserService.UserId;
+            if (_currentUserService.IsSuperAdmin)
+                return step;
+
+            // 1. Get current user's roles
+            var userRoleIds = await _context.Set<IdentityUserRole<string>>()
+                .Where(ur => ur.UserId == currentUserId)
                 .Select(ur => ur.RoleId)
                 .ToListAsync();
 
+            var workflowStep = step.WorkflowStep;
             var allowedRoles = new List<string> { workflowStep.ApplicationRoleId };
             if (!string.IsNullOrEmpty(workflowStep.HigherApprovalRoleId))
                 allowedRoles.Add(workflowStep.HigherApprovalRoleId);
 
-            if (!_currentUserService.IsSuperAdmin && !userRoles.Any(r => allowedRoles.Contains(r)))
-                throw new UnauthorizedAccessException("User cannot approve/reject this step");
+            // 2. Check direct authorization
+            bool isDirectlyAuthorized = (step.ApproverUserId == currentUserId) || 
+                                      userRoleIds.Any(r => allowedRoles.Contains(r));
 
-            return step;
+            if (isDirectlyAuthorized)
+                return step;
+
+            // 3. Check delegation authorization
+            // Fetch active delegators using business logic (Qatar time)
+            var activeDelegatorIds = await _userDelegationService.GetActiveDelegatorsForUserAsync(currentUserId);
+            
+            if (activeDelegatorIds != null && activeDelegatorIds.Any())
+            {
+                // Check if step is specifically assigned to a delegator
+                if (activeDelegatorIds.Contains(step.ApproverUserId))
+                {
+                    step.IsDelegation = 1;
+                    return step;
+                }
+
+                // Check if any delegator has the required role
+                var delegatorRoleIds = await _context.Set<IdentityUserRole<string>>()
+                    .Where(ur => activeDelegatorIds.Contains(ur.UserId))
+                    .Select(ur => ur.RoleId)
+                    .ToListAsync();
+
+                if (delegatorRoleIds.Any(r => allowedRoles.Contains(r)))
+                {
+                    step.IsDelegation = 1;
+                    return step;
+                }
+            }
+
+            throw new UnauthorizedAccessException("User cannot approve/reject this step");
         }
 
         /// <summary>
@@ -1226,6 +1290,32 @@ namespace Ettad.Workflows.Service.Imeplemention
         {
             var currentUserId = _currentUserService.UserId;
             var userDepartmentId = _currentUserService.DepartmentId;
+
+            // --- DELEGATION & ROLE PRE-FETCHING START ---
+            // Get all role IDs for current user and their delegators
+            var userRoleIds = await _context.Set<IdentityUserRole<string>>()
+                .Where(ur => ur.UserId == currentUserId)
+                .Select(ur => ur.RoleId)
+                .ToListAsync();
+
+            var activeDelegatorIds = await _userDelegationService.GetActiveDelegatorsForUserAsync(currentUserId);
+            
+            var delegatorRoleIds = new List<string>();
+            if (activeDelegatorIds.Any())
+            {
+                delegatorRoleIds = await _context.Set<IdentityUserRole<string>>()
+                    .Where(ur => activeDelegatorIds.Contains(ur.UserId))
+                    .Select(ur => ur.RoleId)
+                    .ToListAsync();
+            }
+
+            // Pre-fetch all relevant role names for name-based matching later
+            var allRelevantRoleNames = await _context.Set<IdentityUserRole<string>>()
+                .Where(ur => ur.UserId == currentUserId || activeDelegatorIds.Contains(ur.UserId))
+                .Join(_context.Roles, ur => ur.RoleId, r => r.Id, (ur, r) => r.Name)
+                .ToListAsync();
+            // --- DELEGATION & ROLE PRE-FETCHING END ---
+
             List<long> allowedRequestIds;
 
             // Roles that are restricted to their own department
@@ -1262,16 +1352,10 @@ namespace Ettad.Workflows.Service.Imeplemention
             }
             else
             {
-                // Get all role IDs of current user
-                var userRoleIds = await _context.Set<IdentityUserRole<string>>()
-                    .Where(ur => ur.UserId == currentUserId)
-                    .Select(ur => ur.RoleId)
-                    .ToListAsync();
-
-                // Get request IDs that the user has permission to approve
+                // Get request IDs that the user has permission to approve (including delegation)
                 var workflowRequestIds = new List<long>();
                 
-                if (userRoleIds.Any())
+                if (userRoleIds.Any() || activeDelegatorIds.Any())
                 {
                     var workflowQuery = from ws in _context.WorkflowApprovalSteps
                                        join br in _context.BaseRequests
@@ -1281,12 +1365,14 @@ namespace Ettad.Workflows.Service.Imeplemention
                                        where
                                            !br.IsDeleted &&
                                            (
-                                               // Step assigned directly to this user
-                                               ws.ApproverUserId == currentUserId
-                                               // OR user role matches main approver
-                                               || userRoleIds.Contains(wfs.ApplicationRoleId)
-                                               // OR user role matches higher approval
-                                               || (!string.IsNullOrEmpty(wfs.HigherApprovalRoleId) && userRoleIds.Contains(wfs.HigherApprovalRoleId))
+                                               // Direct Assignment (User OR Delegator)
+                                               (ws.ApproverUserId == currentUserId || activeDelegatorIds.Contains(ws.ApproverUserId)) ||
+                                               
+                                               // Role Assignment (User Role OR Delegator Role)
+                                               (
+                                                   (userRoleIds.Contains(wfs.ApplicationRoleId) || delegatorRoleIds.Contains(wfs.ApplicationRoleId)) ||
+                                                   (!string.IsNullOrEmpty(wfs.HigherApprovalRoleId) && (userRoleIds.Contains(wfs.HigherApprovalRoleId) || delegatorRoleIds.Contains(wfs.HigherApprovalRoleId)))
+                                               )
                                            )
                                        select br;
                     
@@ -1626,43 +1712,42 @@ namespace Ettad.Workflows.Service.Imeplemention
                                     ? nextPendingStep.HigherApprovalRoleNameAr
                                     : nextPendingStep.ApplicationRoleNameAr;
                                 
-                                // Calculate IsCurrentUserApprover
+                                // Calculate IsCurrentUserApprover (including delegation)
                                 bool isCurrentUserApprover = false;
-                                
-                                if (!string.IsNullOrEmpty(nextPendingStep.ApproverUserId))
+
+                                if (_currentUserService.IsSuperAdmin)
                                 {
-                                    // If assigned to specific user, strict check
-                                    isCurrentUserApprover = nextPendingStep.ApproverUserId == currentUserId;
+                                    isCurrentUserApprover = true;
+                                }
+                                else if (!string.IsNullOrEmpty(nextPendingStep.ApproverUserId))
+                                {
+                                    // If assigned to specific user, check direct OR delegator
+                                    isCurrentUserApprover = nextPendingStep.ApproverUserId == currentUserId || 
+                                                           activeDelegatorIds.Contains(nextPendingStep.ApproverUserId);
                                 }
                                 else
                                 {
-                                    // Check role requirements
+                                    // Check role requirements (User Roles OR Delegator Roles)
                                     string requiredRoleId = isHigherApprovalStep ? nextPendingStep.HigherApprovalRoleId : nextPendingStep.ApplicationRoleId;
                                     string requiredRoleName = roleNameToUse;
-                                    var currentUserRoles = _currentUserService.Roles ?? new List<string>();
 
                                     // Check Role ID match
-                                    if (!string.IsNullOrEmpty(requiredRoleId) && currentUserRoles.Contains(requiredRoleId))
+                                    if (!string.IsNullOrEmpty(requiredRoleId))
                                     {
-                                        isCurrentUserApprover = true;
+                                        if (userRoleIds.Contains(requiredRoleId) || delegatorRoleIds.Contains(requiredRoleId))
+                                        {
+                                            isCurrentUserApprover = true;
+                                        }
                                     }
+                                    
                                     // Check Role Name match (if ID didn't match)
-                                    else if (!string.IsNullOrEmpty(requiredRoleName))
+                                    if (!isCurrentUserApprover && !string.IsNullOrEmpty(requiredRoleName))
                                     {
-                                         // Strict name match
-                                         if (currentUserRoles.Contains(requiredRoleName))
+                                         var normalizedRequired = requiredRoleName.ToLower().Replace(" ", "").Replace(".", "").Replace("_", "").Replace("-", "").Replace("(", "").Replace(")", "");
+                                         
+                                         if (allRelevantRoleNames.Any(r => !string.IsNullOrEmpty(r) && r.ToLower().Replace(" ", "").Replace(".", "").Replace("_", "").Replace("-", "").Replace("(", "").Replace(")", "") == normalizedRequired))
                                          {
                                              isCurrentUserApprover = true;
-                                         }
-                                         // Fuzzy/Normalized match fallback
-                                         else 
-                                         {
-                                             var normalizedRequired = requiredRoleName.ToLower().Replace(" ", "").Replace(".", "").Replace("_", "").Replace("-", "").Replace("(", "").Replace(")", "");
-                                             // Check if any user role matches normalized required role
-                                             if (currentUserRoles.Any(r => r.ToLower().Replace(" ", "").Replace(".", "").Replace("_", "").Replace("-", "").Replace("(", "").Replace(")", "") == normalizedRequired))
-                                             {
-                                                 isCurrentUserApprover = true;
-                                             }
                                          }
                                     }
                                 }
@@ -1751,6 +1836,32 @@ namespace Ettad.Workflows.Service.Imeplemention
         {
             var currentUserId = _currentUserService.UserId;
             var userDepartmentId = _currentUserService.DepartmentId;
+
+            // --- DELEGATION & ROLE PRE-FETCHING START ---
+            // Get all role IDs for current user and their delegators
+            var userRoleIds = await _context.Set<IdentityUserRole<string>>()
+                .Where(ur => ur.UserId == currentUserId)
+                .Select(ur => ur.RoleId)
+                .ToListAsync();
+
+            var activeDelegatorIds = await _userDelegationService.GetActiveDelegatorsForUserAsync(currentUserId);
+            
+            var delegatorRoleIds = new List<string>();
+            if (activeDelegatorIds.Any())
+            {
+                delegatorRoleIds = await _context.Set<IdentityUserRole<string>>()
+                    .Where(ur => activeDelegatorIds.Contains(ur.UserId))
+                    .Select(ur => ur.RoleId)
+                    .ToListAsync();
+            }
+
+            // Pre-fetch all relevant role names for name-based matching later
+            var allRelevantRoleNames = await _context.Set<IdentityUserRole<string>>()
+                .Where(ur => ur.UserId == currentUserId || activeDelegatorIds.Contains(ur.UserId))
+                .Join(_context.Roles, ur => ur.RoleId, r => r.Id, (ur, r) => r.Name)
+                .ToListAsync();
+            // --- DELEGATION & ROLE PRE-FETCHING END ---
+
             bool hasPermission = false;
 
             // Roles that are restricted to their own department
@@ -1794,16 +1905,10 @@ namespace Ettad.Workflows.Service.Imeplemention
             }
             else
             {
-                // Get all role IDs of current user
-                var userRoleIds = await _context.Set<IdentityUserRole<string>>()
-                    .Where(ur => ur.UserId == currentUserId)
-                    .Select(ur => ur.RoleId)
-                    .ToListAsync();
-
-                // Check if user has permission to approve this request
+                // Check if user has permission to approve this request (including delegation)
                 var hasWorkflowPermission = false;
                 
-                if (userRoleIds.Any())
+                if (userRoleIds.Any() || activeDelegatorIds.Any())
                 {
                     var workflowQuery = from ws in _context.WorkflowApprovalSteps
                                        join br in _context.BaseRequests
@@ -1814,12 +1919,14 @@ namespace Ettad.Workflows.Service.Imeplemention
                                            br.Id == requestId &&
                                            !br.IsDeleted &&
                                            (
-                                               // Step assigned directly to this user
-                                               ws.ApproverUserId == currentUserId
-                                               // OR user role matches main approver
-                                               || userRoleIds.Contains(wfs.ApplicationRoleId)
-                                               // OR user role matches higher approval
-                                               || (!string.IsNullOrEmpty(wfs.HigherApprovalRoleId) && userRoleIds.Contains(wfs.HigherApprovalRoleId))
+                                               // 1. Direct Assignment (User OR Delegators)
+                                               (ws.ApproverUserId == currentUserId || activeDelegatorIds.Contains(ws.ApproverUserId)) ||
+                                               
+                                               // 2. Role Assignment (User Role OR Delegator Role)
+                                               (
+                                                   (userRoleIds.Contains(wfs.ApplicationRoleId) || delegatorRoleIds.Contains(wfs.ApplicationRoleId)) ||
+                                                   (!string.IsNullOrEmpty(wfs.HigherApprovalRoleId) && (userRoleIds.Contains(wfs.HigherApprovalRoleId) || delegatorRoleIds.Contains(wfs.HigherApprovalRoleId)))
+                                               )
                                            )
                                        select br;
                     
@@ -2200,44 +2307,43 @@ namespace Ettad.Workflows.Service.Imeplemention
                                 ? nextPendingStep.HigherApprovalRoleNameAr
                                 : nextPendingStep.ApplicationRoleNameAr;
                             
-                            // Calculate IsCurrentUserApprover
+                            // Calculate IsCurrentUserApprover (including delegation)
                             bool isCurrentUserApprover = false;
-                            
-                            if (!string.IsNullOrEmpty(nextPendingStep.ApproverUserId))
+
+                            if (_currentUserService.IsSuperAdmin)
                             {
-                                // If assigned to specific user, strict check
-                                isCurrentUserApprover = nextPendingStep.ApproverUserId == currentUserId;
+                                isCurrentUserApprover = true;
+                            }
+                            else if (!string.IsNullOrEmpty(nextPendingStep.ApproverUserId))
+                            {
+                                // If assigned to specific user, check direct OR delegator
+                                isCurrentUserApprover = nextPendingStep.ApproverUserId == currentUserId || 
+                                                       activeDelegatorIds.Contains(nextPendingStep.ApproverUserId);
                             }
                             else
                             {
-                                // Check role requirements
+                                // Check role requirements (User Roles OR Delegator Roles)
                                 string requiredRoleId = isHigherApprovalStep ? nextPendingStep.HigherApprovalRoleId : nextPendingStep.ApplicationRoleId;
                                 string requiredRoleName = roleNameToUse;
-                                var currentUserRoles = _currentUserService.Roles ?? new List<string>();
 
                                 // Check Role ID match
-                                if (!string.IsNullOrEmpty(requiredRoleId) && currentUserRoles.Contains(requiredRoleId))
+                                if (!string.IsNullOrEmpty(requiredRoleId))
                                 {
-                                    isCurrentUserApprover = true;
+                                    if (userRoleIds.Contains(requiredRoleId) || delegatorRoleIds.Contains(requiredRoleId))
+                                    {
+                                        isCurrentUserApprover = true;
+                                    }
                                 }
+                                
                                 // Check Role Name match (if ID didn't match)
-                                else if (!string.IsNullOrEmpty(requiredRoleName))
+                                if (!isCurrentUserApprover && !string.IsNullOrEmpty(requiredRoleName))
                                 {
-                                     // Strict name match
-                                     if (currentUserRoles.Contains(requiredRoleName))
+                                     var normalizedRequired = requiredRoleName.ToLower().Replace(" ", "").Replace(".", "").Replace("_", "").Replace("-", "").Replace("(", "").Replace(")", "");
+                                     
+                                     if (allRelevantRoleNames.Any(r => !string.IsNullOrEmpty(r) && r.ToLower().Replace(" ", "").Replace(".", "").Replace("_", "").Replace("-", "").Replace("(", "").Replace(")", "") == normalizedRequired))
                                      {
                                          isCurrentUserApprover = true;
                                      }
-                                     // Fuzzy/Normalized match fallback
-                                     else 
-                                     {
-                                         var normalizedRequired = requiredRoleName.ToLower().Replace(" ", "").Replace(".", "").Replace("_", "").Replace("-", "").Replace("(", "").Replace(")", "");
-                                         // Check if any user role matches normalized required role
-                                         if (currentUserRoles.Any(r => r.ToLower().Replace(" ", "").Replace(".", "").Replace("_", "").Replace("-", "").Replace("(", "").Replace(")", "") == normalizedRequired))
-                                         {
-                                             isCurrentUserApprover = true;
-                                         }
-                                    }
                                 }
                             }
 
