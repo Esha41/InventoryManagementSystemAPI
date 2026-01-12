@@ -435,12 +435,10 @@ try
             ?? LowStockMonitorConstants.DEFAULT_CRON_EXPRESSION; // Default: 6:15 AM UTC (9:15 AM Qatar time, UTC+3)
 
 
-        // Set the service provider for the job
-        LowStockMonitorJob.SetServiceProvider(app.Services);
-        
-        recurringJobManager.AddOrUpdate(
+        // Register recurring job - Hangfire resolves LowStockMonitorJob from DI at execution time
+        recurringJobManager.AddOrUpdate<LowStockMonitorJob>(
             LowStockMonitorConstants.JOB_ID,
-            () => LowStockMonitorJob.Execute(),
+            job => job.ExecuteAsync(),
             lowStockCronExpression);
         
         Log.Information("Low Stock Monitor job registered with schedule: {Schedule}", lowStockCronExpression);

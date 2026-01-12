@@ -1,35 +1,26 @@
-using System;
+using System.Threading.Tasks;
 using Hangfire;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace Ettad.Inventory.Service.Monitoring
 {
     /// <summary>
-    /// Static wrapper class for Hangfire job execution.
-    /// Hangfire requires static methods for job execution.
-    /// This method uses a static service provider to resolve services from DI.
+    /// Hangfire job class for low stock monitoring.
+    /// This class uses Hangfire's built-in dependency injection - 
+    /// Hangfire resolves ILowStockMonitorBackgroundService from DI at execution time.
     /// </summary>
-    public static class LowStockMonitorJob
+    public class LowStockMonitorJob
     {
-        private static IServiceProvider? _serviceProvider;
+        private readonly ILowStockMonitorBackgroundService _backgroundService;
 
-        public static void SetServiceProvider(IServiceProvider serviceProvider)
+        public LowStockMonitorJob(ILowStockMonitorBackgroundService backgroundService)
         {
-            _serviceProvider = serviceProvider;
+            _backgroundService = backgroundService;
         }
 
         [AutomaticRetry(Attempts = 3)]
-        public static void Execute()
+        public async Task ExecuteAsync()
         {
-            if (_serviceProvider == null)
-            {
-                throw new InvalidOperationException("Service provider is not available. Make sure LowStockMonitorJob.SetServiceProvider() is called during application startup.");
-            }
-
-            using var scope = _serviceProvider.CreateScope();
-            var backgroundService = scope.ServiceProvider.GetRequiredService<ILowStockMonitorBackgroundService>();
-            backgroundService.CheckAndNotifyAsync().GetAwaiter().GetResult();
+            await _backgroundService.CheckAndNotifyAsync();
         }
     }
 }
-
