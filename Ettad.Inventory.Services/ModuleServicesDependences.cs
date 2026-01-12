@@ -72,6 +72,7 @@ namespace Ettad.Inventory.Service
             services.AddScoped<ILowStockMonitorBackgroundService, LowStockMonitorBackgroundService>();
             services.AddScoped<ILowStockMonitorSettingsService, LowStockMonitorSettingsService>();
             services.AddScoped<LowStockEmailTemplateService>();
+            services.AddScoped<LowStockMonitorJob>();
             services.AddScoped<IExcelImportService, ExcelImportService>();
 
             // Asset Supply Services
