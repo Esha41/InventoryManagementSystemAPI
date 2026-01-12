@@ -24,6 +24,7 @@ namespace Ettad.Workflows.Service.DTO
         public string? Comments { get; set; }
         public bool IsCurrent { get; set; }
         public string? ApproverUserId { get; set; }
+        public int? IsDelegation { get; set; }
 
         // BaseRequest properties (br)
         public long BaseRequestId { get; set; }

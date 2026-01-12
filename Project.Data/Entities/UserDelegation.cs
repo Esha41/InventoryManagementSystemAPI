@@ -1,15 +1,13 @@
 using Ettad.Comman.Idenitity;
+using Ettad.CrossCutting.Comman.Base;
 using System;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Ettad.Data.Entities
 {
-    public class UserDelegation
+    public class UserDelegation : FullAuditEntity<int>
     {
-        [Key]
-        public int Id { get; set; }
-
         [Required]
         public string DelegatorUserId { get; set; }
 
@@ -31,14 +29,5 @@ namespace Ettad.Data.Entities
         public string Reason { get; set; }
 
         public bool IsActive { get; set; } = true;
-
-        [Required]
-        public string CreatedBy { get; set; }
-
-        [Required]
-        public DateTime CreatedDate { get; set; } = DateTime.UtcNow;
-
-        public string ModifiedBy { get; set; }
-        public DateTime? ModifiedDate { get; set; }
     }
 }

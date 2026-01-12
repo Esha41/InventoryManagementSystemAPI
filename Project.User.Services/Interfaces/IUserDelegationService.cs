@@ -7,12 +7,14 @@ namespace Ettad.User.Services.Interfaces
 {
     public interface IUserDelegationService
     {
-        Task<APIOperationResponse<UserDelegationDto>> CreateDelegationAsync(CreateUserDelegationDto dto);
+        Task<APIOperationResponse<bool>> CreateDelegationAsync(CreateUserDelegationDto dto);
         
         Task<APIOperationResponse<bool>> RevokeDelegationAsync(int delegationId);
         
         Task<APIOperationResponse<List<UserDelegationDto>>> GetMyDelegationsAsync(); 
         
-        Task<List<string>> GetActiveDelegatorsForUserAsync(string delegateeUserId); 
+        Task<List<string>> GetActiveDelegatorsForUserAsync(string delegateeUserId);
+
+        Task<APIOperationResponse<List<UserDto>>> GetAvailableUsersAsync(); 
     }
 }

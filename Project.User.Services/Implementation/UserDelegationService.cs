@@ -35,51 +35,23 @@ namespace Ettad.User.Services.Implementation
             _logger = logger;
         }
 
-        public async Task<APIOperationResponse<UserDelegationDto>> CreateDelegationAsync(CreateUserDelegationDto dto)
+        public async Task<APIOperationResponse<bool>> CreateDelegationAsync(CreateUserDelegationDto dto)
         {
             var currentUserId = _currentUserService.UserId;
-            // Use Qatar Time (UTC+3) for business logic validations as the user operates in this timezone
-            var qatarNow = DateTime.UtcNow.AddHours(3);
-
+            
             // Adjust EndDate to be the end of the day (Inclusive)
             dto.EndDate = dto.EndDate.Date.AddDays(1).AddTicks(-1);
 
-            if (dto.StartDate > dto.EndDate)
+            // 1. Validation Logic
+            var validationResult = await ValidateDelegationAsync(dto, currentUserId);
+            if (!validationResult.Succeeded)
             {
-                return APIOperationResponse<UserDelegationDto>.Fail(ResponseType.BadRequest, "Start date must be before end date.");
+                return APIOperationResponse<bool>.Fail(
+                    (ResponseType)validationResult.StatusCode, 
+                    validationResult.Message);
             }
 
-            if (dto.StartDate.Date < qatarNow.Date)
-            {
-                 // Allow same day start (in Qatar time), but warn if date is strictly in the past
-                 if (dto.EndDate < qatarNow)
-                     return APIOperationResponse<UserDelegationDto>.Fail(ResponseType.BadRequest, "End date must be in the future.");
-            }
-
-            if (dto.DelegateeUserId == currentUserId)
-            {
-                return APIOperationResponse<UserDelegationDto>.Fail(ResponseType.BadRequest, "You cannot delegate to yourself.");
-            }
-
-            // check if delegatee exists
-            var delegatee = await _userManager.FindByIdAsync(dto.DelegateeUserId);
-            if (delegatee == null)
-            {
-                return APIOperationResponse<UserDelegationDto>.Fail(ResponseType.NotFound, "Delegatee user not found.");
-            }
-
-            // Check overlap
-            var hasOverlap = await _context.UserDelegations
-                .AnyAsync(d => d.DelegatorUserId == currentUserId &&
-                               d.IsActive &&
-                               d.StartDate < dto.EndDate &&
-                               dto.StartDate < d.EndDate);
-
-            if (hasOverlap)
-            {
-                return APIOperationResponse<UserDelegationDto>.Fail(ResponseType.BadRequest, "You already have an active delegation overlapping with this period.");
-            }
-
+            // 2. Creation Logic
             var entity = new UserDelegation
             {
                 DelegatorUserId = currentUserId,
@@ -89,17 +61,57 @@ namespace Ettad.User.Services.Implementation
                 Reason = dto.Reason,
                 IsActive = true,
                 CreatedBy = currentUserId,
-                CreatedDate = DateTime.UtcNow 
+                CreationDate = DateTime.UtcNow 
             };
 
             _context.UserDelegations.Add(entity);
             await _context.SaveChangesAsync();
 
-            // Load relations for DTO
-            await _context.Entry(entity).Reference(e => e.DelegateeUser).LoadAsync();
-            await _context.Entry(entity).Reference(e => e.DelegatorUser).LoadAsync();
+            return APIOperationResponse<bool>.Success(true, "Delegation created successfully.");
+        }
 
-            return APIOperationResponse<UserDelegationDto>.Success(MapToDto(entity));
+        private async Task<APIOperationResponse<bool>> ValidateDelegationAsync(CreateUserDelegationDto dto, string currentUserId)
+        {
+            // Use Qatar Time (UTC+3) for business logic validations
+            var qatarNow = DateTime.UtcNow.AddHours(3);
+
+            if (dto.StartDate > dto.EndDate)
+            {
+                return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, "Start date must be before end date.");
+            }
+
+            if (dto.StartDate.Date < qatarNow.Date)
+            {
+                // Allow same day start (in Qatar time), but warn if date is strictly in the past
+                if (dto.EndDate < qatarNow)
+                    return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, "End date must be in the future.");
+            }
+
+            if (dto.DelegateeUserId == currentUserId)
+            {
+                return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, "You cannot delegate to yourself.");
+            }
+
+            // check if delegatee exists
+            var delegatee = await _userManager.FindByIdAsync(dto.DelegateeUserId);
+            if (delegatee == null)
+            {
+                return APIOperationResponse<bool>.Fail(ResponseType.NotFound, "Delegatee user not found.");
+            }
+
+            // Check overlap
+            var hasOverlap = await _context.UserDelegations
+                .AnyAsync(d => d.DelegatorUserId == currentUserId &&
+                               d.IsActive && !d.IsDeleted &&
+                               d.StartDate < dto.EndDate &&
+                               dto.StartDate < d.EndDate);
+
+            if (hasOverlap)
+            {
+                return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, "You already have an active delegation overlapping with this period.");
+            }
+
+            return APIOperationResponse<bool>.Success(true);
         }
 
         public async Task<List<string>> GetActiveDelegatorsForUserAsync(string delegateeUserId)
@@ -109,7 +121,7 @@ namespace Ettad.User.Services.Implementation
             
             return await _context.UserDelegations
                 .Where(d => d.DelegateeUserId == delegateeUserId &&
-                            d.IsActive &&
+                            d.IsActive && !d.IsDeleted &&
                             d.StartDate <= qatarNow &&
                             d.EndDate >= qatarNow)
                 .Select(d => d.DelegatorUserId)
@@ -123,7 +135,7 @@ namespace Ettad.User.Services.Implementation
             var delegations = await _context.UserDelegations
                 .Include(d => d.DelegateeUser)
                 .Include(d => d.DelegatorUser)
-                .Where(d => d.DelegatorUserId == currentUserId)
+                .Where(d => d.DelegatorUserId == currentUserId && !d.IsDeleted)
                 .OrderByDescending(d => d.StartDate)
                 .ToListAsync();
 
@@ -131,11 +143,35 @@ namespace Ettad.User.Services.Implementation
             return APIOperationResponse<List<UserDelegationDto>>.Success(dtos);
         }
 
+        public async Task<APIOperationResponse<List<UserDto>>> GetAvailableUsersAsync()
+        {
+            var currentUserId = _currentUserService.UserId;
+
+            var users = await _userManager.Users
+                .Where(u => u.Id != currentUserId && u.IsActive && !u.IsDeleted)
+                .Select(u => new UserDto
+                {
+                    Id = u.Id,
+                    UserName = u.UserName,
+                    FullNameEN = u.FullNameEN,
+                    FullNameAR = u.FullNameAR,
+                    Email = u.Email,
+                    IsActive = u.IsActive,
+                    MilitoryId = u.MilitoryId,
+                    DeparmentId = u.DepartmentId,
+                    RankId = u.RankId
+                })
+                .ToListAsync();
+
+            return APIOperationResponse<List<UserDto>>.Success(users);
+        }
+
         public async Task<APIOperationResponse<bool>> RevokeDelegationAsync(int delegationId)
         {
             var currentUserId = _currentUserService.UserId;
 
-            var delegation = await _context.UserDelegations.FindAsync(delegationId);
+            var delegation = await _context.UserDelegations
+                .FirstOrDefaultAsync(d => d.Id == delegationId && !d.IsDeleted);
             if (delegation == null)
             {
                 return APIOperationResponse<bool>.Fail(ResponseType.NotFound, "Delegation not found.");
@@ -148,7 +184,7 @@ namespace Ettad.User.Services.Implementation
 
             delegation.IsActive = false;
             delegation.ModifiedBy = currentUserId;
-            delegation.ModifiedDate = DateTime.UtcNow;
+            delegation.ModificationDate = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();
             return APIOperationResponse<bool>.Success(true, "Delegation revoked successfully.");
@@ -178,7 +214,7 @@ namespace Ettad.User.Services.Implementation
                 EndDate = entity.EndDate,
                 Reason = entity.Reason,
                 IsActive = entity.IsActive,
-                CreatedDate = entity.CreatedDate,
+                CreatedDate = entity.CreationDate,
                 Status = status
             };
         }
