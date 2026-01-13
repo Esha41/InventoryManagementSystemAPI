@@ -18,6 +18,8 @@ namespace Ettad.User.Services.DTO
         public string Reason { get; set; }
         public bool IsActive { get; set; }
         public DateTime CreatedDate { get; set; }
-        public string Status { get; set; } 
+        public string Status { get; set; }
+        public int DelegationStatus { get; set; } // 0 = Pending, 1 = Approved, 2 = Rejected
+        public bool IsIncoming { get; set; }
     }
 }
