@@ -13,6 +13,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using MediatR;
+using Ettad.User.Services.Events;
 
 namespace Ettad.User.Services.Implementation
 {
@@ -22,17 +24,20 @@ namespace Ettad.User.Services.Implementation
         private readonly ICurrentUserService _currentUserService;
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly ILogger<UserDelegationService> _logger;
+        private readonly IMediator _mediator;
 
         public UserDelegationService(
             ApplicationDbContext context,
             ICurrentUserService currentUserService,
             UserManager<ApplicationUser> userManager,
-            ILogger<UserDelegationService> logger)
+            ILogger<UserDelegationService> logger,
+            IMediator mediator)
         {
             _context = context;
             _currentUserService = currentUserService;
             _userManager = userManager;
             _logger = logger;
+            _mediator = mediator;
         }
 
         public async Task<APIOperationResponse<bool>> CreateDelegationAsync(CreateUserDelegationDto dto)
@@ -60,6 +65,7 @@ namespace Ettad.User.Services.Implementation
                 EndDate = dto.EndDate,
                 Reason = dto.Reason,
                 IsActive = true,
+                DelegationStatus = 0, // Pending approval
                 CreatedBy = currentUserId,
                 CreationDate = DateTime.UtcNow 
             };
@@ -67,7 +73,18 @@ namespace Ettad.User.Services.Implementation
             _context.UserDelegations.Add(entity);
             await _context.SaveChangesAsync();
 
-            return APIOperationResponse<bool>.Success(true, "Delegation created successfully.");
+            // Publish event for notification handling
+            await _mediator.Publish(new DelegationCreatedEvent
+            {
+                DelegationId = entity.Id,
+                DelegatorUserId = currentUserId,
+                DelegateeUserId = dto.DelegateeUserId,
+                StartDate = dto.StartDate,
+                EndDate = dto.EndDate,
+                Reason = dto.Reason
+            });
+
+            return APIOperationResponse<bool>.Success(true, "Delegation request sent successfully. Awaiting approval from delegatee.");
         }
 
         private async Task<APIOperationResponse<bool>> ValidateDelegationAsync(CreateUserDelegationDto dto, string currentUserId)
@@ -122,6 +139,7 @@ namespace Ettad.User.Services.Implementation
             return await _context.UserDelegations
                 .Where(d => d.DelegateeUserId == delegateeUserId &&
                             d.IsActive && !d.IsDeleted &&
+                            d.DelegationStatus == 1 && // Only approved delegations
                             d.StartDate <= qatarNow &&
                             d.EndDate >= qatarNow)
                 .Select(d => d.DelegatorUserId)
@@ -132,14 +150,19 @@ namespace Ettad.User.Services.Implementation
         {
             var currentUserId = _currentUserService.UserId;
 
+            // Fetch delegations where I am the delegator (outgoing) 
+            // OR where I am the delegatee (incoming) AND it's already approved/rejected
             var delegations = await _context.UserDelegations
                 .Include(d => d.DelegateeUser)
                 .Include(d => d.DelegatorUser)
-                .Where(d => d.DelegatorUserId == currentUserId && !d.IsDeleted)
+                .Where(d => !d.IsDeleted && (
+                    d.DelegatorUserId == currentUserId || 
+                    (d.DelegateeUserId == currentUserId && d.DelegationStatus != 0)
+                ))
                 .OrderByDescending(d => d.StartDate)
                 .ToListAsync();
 
-            var dtos = delegations.Select(MapToDto).ToList();
+            var dtos = delegations.Select(d => MapToDto(d, currentUserId)).ToList();
             return APIOperationResponse<List<UserDelegationDto>>.Success(dtos);
         }
 
@@ -190,7 +213,106 @@ namespace Ettad.User.Services.Implementation
             return APIOperationResponse<bool>.Success(true, "Delegation revoked successfully.");
         }
 
+        public async Task<APIOperationResponse<bool>> ApproveDelegationAsync(int delegationId)
+        {
+            var currentUserId = _currentUserService.UserId;
+
+            var delegation = await _context.UserDelegations
+                .Include(d => d.DelegatorUser)
+                .FirstOrDefaultAsync(d => d.Id == delegationId && !d.IsDeleted);
+
+            if (delegation == null)
+                return APIOperationResponse<bool>.Fail(ResponseType.NotFound, "Delegation not found.");
+
+            if (delegation.DelegateeUserId != currentUserId)
+                return APIOperationResponse<bool>.Fail(ResponseType.Forbidden, "You can only approve delegations assigned to you.");
+
+            if (delegation.DelegationStatus != 0)
+                return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, "This delegation has already been processed.");
+
+            delegation.DelegationStatus = 1; // Approved
+            delegation.ModifiedBy = currentUserId;
+            delegation.ModificationDate = DateTime.UtcNow;
+
+            await _context.SaveChangesAsync();
+
+            // Publish event for notification handling
+            var delegatee = await _userManager.FindByIdAsync(currentUserId);
+            var delegateeName = delegatee?.FullNameEN ?? delegatee?.FullNameAR ?? delegatee?.UserName ?? "Unknown";
+
+            await _mediator.Publish(new DelegationApprovedEvent
+            {
+                DelegationId = delegation.Id,
+                DelegatorUserId = delegation.DelegatorUserId,
+                DelegateeUserId = currentUserId,
+                DelegateeName = delegateeName
+            });
+
+            return APIOperationResponse<bool>.Success(true, "Delegation approved successfully.");
+        }
+
+        public async Task<APIOperationResponse<bool>> RejectDelegationAsync(int delegationId)
+        {
+            var currentUserId = _currentUserService.UserId;
+
+            var delegation = await _context.UserDelegations
+                .Include(d => d.DelegatorUser)
+                .FirstOrDefaultAsync(d => d.Id == delegationId && !d.IsDeleted);
+
+            if (delegation == null)
+                return APIOperationResponse<bool>.Fail(ResponseType.NotFound, "Delegation not found.");
+
+            if (delegation.DelegateeUserId != currentUserId)
+                return APIOperationResponse<bool>.Fail(ResponseType.Forbidden, "You can only reject delegations assigned to you.");
+
+            if (delegation.DelegationStatus != 0)
+                return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, "This delegation has already been processed.");
+
+            delegation.DelegationStatus = 2; // Rejected
+            delegation.IsActive = false;
+            delegation.ModifiedBy = currentUserId;
+            delegation.ModificationDate = DateTime.UtcNow;
+
+            await _context.SaveChangesAsync();
+
+            // Publish event for notification handling
+            var delegatee = await _userManager.FindByIdAsync(currentUserId);
+            var delegateeName = delegatee?.FullNameEN ?? delegatee?.FullNameAR ?? delegatee?.UserName ?? "Unknown";
+
+            await _mediator.Publish(new DelegationRejectedEvent
+            {
+                DelegationId = delegation.Id,
+                DelegatorUserId = delegation.DelegatorUserId,
+                DelegateeUserId = currentUserId,
+                DelegateeName = delegateeName
+            });
+
+            return APIOperationResponse<bool>.Success(true, "Delegation rejected successfully.");
+        }
+
+        public async Task<APIOperationResponse<List<UserDelegationDto>>> GetPendingDelegationsAsync()
+        {
+            var currentUserId = _currentUserService.UserId;
+
+            var delegations = await _context.UserDelegations
+                .Include(d => d.DelegateeUser)
+                .Include(d => d.DelegatorUser)
+                .Where(d => d.DelegateeUserId == currentUserId && 
+                            !d.IsDeleted && 
+                            d.DelegationStatus == 0) // Pending only
+                .OrderByDescending(d => d.CreationDate)
+                .ToListAsync();
+
+            var dtos = delegations.Select(MapToDto).ToList();
+            return APIOperationResponse<List<UserDelegationDto>>.Success(dtos);
+        }
+
         private UserDelegationDto MapToDto(UserDelegation entity)
+        {
+            return MapToDto(entity, _currentUserService.UserId);
+        }
+
+        private UserDelegationDto MapToDto(UserDelegation entity, string currentUserId)
         {
             // Map status based on Qatar Time
             var qatarNow = DateTime.UtcNow.AddHours(3);
@@ -215,8 +337,37 @@ namespace Ettad.User.Services.Implementation
                 Reason = entity.Reason,
                 IsActive = entity.IsActive,
                 CreatedDate = entity.CreationDate,
-                Status = status
+                Status = status,
+                DelegationStatus = entity.DelegationStatus,
+                IsIncoming = entity.DelegateeUserId == currentUserId
             };
+        }
+
+        public async Task<APIOperationResponse<List<UserDelegationDto>>> GetAllDelegationsAsync()
+        {
+            var delegations = await _context.UserDelegations
+                .Include(d => d.DelegatorUser)
+                .Include(d => d.DelegateeUser)
+                .Where(d => !d.IsDeleted)
+                .OrderByDescending(d => d.CreationDate)
+                .ToListAsync();
+
+            var dtos = delegations.Select(MapToDto).ToList();
+            return APIOperationResponse<List<UserDelegationDto>>.Success(dtos);
+        }
+
+        public async Task<APIOperationResponse<List<UserDelegationDto>>> GetDelegationHistoryAsync()
+        {
+            // Get all delegations including inactive/expired ones
+            var delegations = await _context.UserDelegations
+                .Include(d => d.DelegatorUser)
+                .Include(d => d.DelegateeUser)
+                .Where(d => !d.IsDeleted)
+                .OrderByDescending(d => d.CreationDate)
+                .ToListAsync();
+
+            var dtos = delegations.Select(MapToDto).ToList();
+            return APIOperationResponse<List<UserDelegationDto>>.Success(dtos);
         }
     }
 }

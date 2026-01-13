@@ -11,6 +11,7 @@ using Ettad.RequestManagement.Service.Interfaces;
 using Ettad.ResponseHandler.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity;
+using Ettad.User.Services.Interfaces;
 using System.Linq;
 
 namespace Ettad.RequestManagement.Service.Implementation
@@ -19,15 +20,18 @@ namespace Ettad.RequestManagement.Service.Implementation
     {
         private readonly ApplicationDbContext _context;
         private readonly ICurrentUserService _currentUserService;
+        private readonly IUserDelegationService _userDelegationService;
         private readonly IMapper _mapper;
 
         public RequestService(
             ApplicationDbContext context,
             ICurrentUserService currentUserService,
+            IUserDelegationService userDelegationService,
             IMapper mapper)
         {
             _context = context;
             _currentUserService = currentUserService;
+            _userDelegationService = userDelegationService;
             _mapper = mapper;
         }
 
@@ -201,16 +205,7 @@ namespace Ettad.RequestManagement.Service.Implementation
             }
 
             // --- DELEGATION LOGIC START ---
-            // Use Qatar Time (UTC+3) for business logic validations as the user operates in this timezone
-            var qatarNow = DateTime.UtcNow.AddHours(3);
-            
-            var activeDelegatorIds = await _context.UserDelegations
-                .Where(d => d.DelegateeUserId == userId &&
-                            d.IsActive &&
-                            d.StartDate <= qatarNow &&
-                            d.EndDate >= qatarNow)
-                .Select(d => d.DelegatorUserId)
-                .ToListAsync();
+            var activeDelegatorIds = await _userDelegationService.GetActiveDelegatorsForUserAsync(userId);
 
             var delegatorRoleNames = new List<string>();
             if (activeDelegatorIds.Any())

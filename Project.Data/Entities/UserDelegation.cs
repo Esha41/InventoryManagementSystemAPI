@@ -29,5 +29,10 @@ namespace Ettad.Data.Entities
         public string Reason { get; set; }
 
         public bool IsActive { get; set; } = true;
+
+        /// <summary>
+        /// Status of delegation: 0 = Pending, 1 = Approved, 2 = Rejected
+        /// </summary>
+        public int DelegationStatus { get; set; } = 0; // 0 = Pending by default
     }
 }

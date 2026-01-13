@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using System.Reflection;
 using Ettad.Notification.Service.Hubs;
 using Ettad.Notification.Service.EmailTemplate;
+using MediatR;
 
 namespace Ettad.Notification.Service
 {
@@ -17,6 +18,9 @@ namespace Ettad.Notification.Service
             // Register FluentValidation validators from this assembly
             services.AddValidatorsFromAssembly(Assembly.GetExecutingAssembly());
 
+            // Register MediatR handlers from this assembly
+            services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(Assembly.GetExecutingAssembly()));
+
             // Register SignalR
             services.AddSignalR();
 
@@ -29,4 +33,3 @@ namespace Ettad.Notification.Service
         }
     }
 }
-

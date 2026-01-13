@@ -15,6 +15,17 @@ namespace Ettad.User.Services.Interfaces
         
         Task<List<string>> GetActiveDelegatorsForUserAsync(string delegateeUserId);
 
-        Task<APIOperationResponse<List<UserDto>>> GetAvailableUsersAsync(); 
+        Task<APIOperationResponse<List<UserDto>>> GetAvailableUsersAsync();
+
+        Task<APIOperationResponse<bool>> ApproveDelegationAsync(int delegationId);
+
+        Task<APIOperationResponse<bool>> RejectDelegationAsync(int delegationId);
+
+        Task<APIOperationResponse<List<UserDelegationDto>>> GetPendingDelegationsAsync();
+
+        // Admin methods
+        Task<APIOperationResponse<List<UserDelegationDto>>> GetAllDelegationsAsync();
+
+        Task<APIOperationResponse<List<UserDelegationDto>>> GetDelegationHistoryAsync();
     }
 }
