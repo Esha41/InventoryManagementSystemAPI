@@ -232,8 +232,14 @@ namespace Ettad.EntityFramework.DataBaseContext
 
                         if (existingRole != null)
                         {
-                            // Assign permissions to role based on PermissionConfig
-                            await AssignPermissionsToRoleAsync(roleManager, existingRole, roleNameEn, entity.NameEn);
+                            // Only assign permissions if role was just created (has no existing permissions)
+                            // This prevents overwriting manually configured permissions on restart
+                            var existingClaims = await roleManager.GetClaimsAsync(existingRole);
+                            if (!existingClaims.Any())
+                            {
+                                // Assign permissions to role based on PermissionConfig only for new roles
+                                await AssignPermissionsToRoleAsync(roleManager, existingRole, roleNameEn, entity.NameEn);
+                            }
 
                             // Check if role-entity link already exists
                             var existingLink = await context.RoleApplicationEntities
