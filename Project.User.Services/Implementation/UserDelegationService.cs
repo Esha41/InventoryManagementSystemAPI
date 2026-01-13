@@ -230,6 +230,9 @@ namespace Ettad.User.Services.Implementation
             if (delegation.DelegationStatus != 0)
                 return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, "This delegation has already been processed.");
 
+            if (!delegation.IsActive)
+                return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, "This delegation has been revoked or is no longer active.");
+
             delegation.DelegationStatus = 1; // Approved
             delegation.ModifiedBy = currentUserId;
             delegation.ModificationDate = DateTime.UtcNow;
@@ -268,6 +271,9 @@ namespace Ettad.User.Services.Implementation
             if (delegation.DelegationStatus != 0)
                 return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, "This delegation has already been processed.");
 
+            if (!delegation.IsActive)
+                return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, "This delegation has been revoked or is no longer active.");
+
             delegation.DelegationStatus = 2; // Rejected
             delegation.IsActive = false;
             delegation.ModifiedBy = currentUserId;
@@ -299,6 +305,7 @@ namespace Ettad.User.Services.Implementation
                 .Include(d => d.DelegatorUser)
                 .Where(d => d.DelegateeUserId == currentUserId && 
                             !d.IsDeleted && 
+                            d.IsActive && 
                             d.DelegationStatus == 0) // Pending only
                 .OrderByDescending(d => d.CreationDate)
                 .ToListAsync();
