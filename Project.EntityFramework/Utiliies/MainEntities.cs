@@ -314,6 +314,13 @@ public static class MainEntities
         CrudOperation.Delete
     };
 
+    [Category(CrudPermissionsGenerator.Dashboard)]
+    public static readonly CrudOperation[] Analytics = new[]
+    {
+        CrudOperation.Page,
+        CrudOperation.View,
+    };
+
     // ==============================
     // REQUEST MANAGEMENT
     // ==============================
