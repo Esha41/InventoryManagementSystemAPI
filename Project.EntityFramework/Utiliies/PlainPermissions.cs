@@ -23,6 +23,8 @@ namespace Ettad.Data.Enums
         EmailLogs,
         [Category(PlainPermissionsGenerator.SystemFeatures)]
         AdminImportExport,
+        [Category(PlainPermissionsGenerator.SystemFeatures)]
+        StockNotificationSettingsPage,
 
         [Category(PlainPermissionsGenerator.Workflow)]
         UpdateRequestAndSuggestLots,
