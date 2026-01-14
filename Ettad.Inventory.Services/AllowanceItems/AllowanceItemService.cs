@@ -9,6 +9,7 @@ using Ettad.ResponseHandler.Models;
 using Ettad.Application.Common.Interfaces;
 using Ettad.Data.Enums;
 using Microsoft.Extensions.Logging;
+using Ettad.CrossCutting.Comman.Time;
 
 namespace Ettad.Inventory.Service.AllowanceItems
 {
@@ -25,6 +26,7 @@ namespace Ettad.Inventory.Service.AllowanceItems
         private readonly ICurrentUserService _currentUserService;
         private readonly ILogger<AllowanceItemService> _logger;
         private readonly IPermissionService _permissionService;
+        private readonly IDateTimeProvider _dateTimeProvider;
 
         public AllowanceItemService(
             ICrossCuttingRepository<AllowanceItem> allowanceItemRepository,
@@ -37,7 +39,8 @@ namespace Ettad.Inventory.Service.AllowanceItems
             IValidator<CreateUpdateAllowanceItemDto> validator,
             ICurrentUserService currentUserService,
             ILogger<AllowanceItemService> logger,
-            IPermissionService permissionService)
+            IPermissionService permissionService,
+            IDateTimeProvider dateTimeProvider)
         {
             _allowanceItemRepository = allowanceItemRepository;
             _departmentRepository = departmentRepository;
@@ -50,6 +53,7 @@ namespace Ettad.Inventory.Service.AllowanceItems
             _currentUserService = currentUserService;
             _logger = logger;
             _permissionService = permissionService;
+            _dateTimeProvider = dateTimeProvider;
         }
 
         public async Task<APIOperationResponse<AllowanceItemDto>> GetByIdAsync(long id)
@@ -220,7 +224,7 @@ namespace Ettad.Inventory.Service.AllowanceItems
 
                 // Map DTO to entity
                 var allowanceItem = _mapper.Map<AllowanceItem>(inputDto);
-                allowanceItem.CreationDate = DateTime.Now;
+                allowanceItem.CreationDate = _dateTimeProvider.Now;
                 allowanceItem.CreatedBy = _currentUserService.UserId;
 
                 // Add to repository
@@ -288,7 +292,7 @@ namespace Ettad.Inventory.Service.AllowanceItems
 
                 // Map updates to entity
                 _mapper.Map(inputDto, existingAllowanceItem);
-                existingAllowanceItem.ModificationDate = DateTime.Now;
+                existingAllowanceItem.ModificationDate = _dateTimeProvider.Now;
                 existingAllowanceItem.ModifiedBy = _currentUserService.UserId;
 
                 // Update in repository
@@ -657,7 +661,7 @@ namespace Ettad.Inventory.Service.AllowanceItems
                     {
                         // Update existing quantity
                         existing.Quantity = itemDto.Quantity;
-                        existing.ModificationDate = DateTime.Now;
+                        existing.ModificationDate = _dateTimeProvider.Now;
                         existing.ModifiedBy = _currentUserService.UserId;
                         await _allowanceItemRepository.UpdateAsync(existing);
                         updatedCount++;
@@ -666,7 +670,7 @@ namespace Ettad.Inventory.Service.AllowanceItems
                     {
                         // Create new
                         var allowanceItem = _mapper.Map<AllowanceItem>(createDto);
-                        allowanceItem.CreationDate = DateTime.Now;
+                        allowanceItem.CreationDate = _dateTimeProvider.Now;
                         allowanceItem.CreatedBy = _currentUserService.UserId;
 
                         await _allowanceItemRepository.AddAsync(allowanceItem);

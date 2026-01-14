@@ -18,6 +18,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Ettad.CrossCutting.Comman.Time;
 
 namespace Ettad.RequestManagement.Service.SupplyManagement
 {
@@ -43,6 +44,7 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
 		private readonly UserManager<ApplicationUser> _userManager;
 		private readonly ILogger<SupplyService> _logger;
 		private readonly IFileUploadService _fileUploadService;
+		private readonly IDateTimeProvider _dateTimeProvider;
 
 	public SupplyService(
 			ApplicationDbContext context,
@@ -64,7 +66,8 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
 			INotificationHelperService notificationHelperService,
 			UserManager<ApplicationUser> userManager,
 			ILogger<SupplyService> logger,
-			IFileUploadService fileUploadService)
+			IFileUploadService fileUploadService,
+			IDateTimeProvider dateTimeProvider)
 		{
 			_context = context;
 			_inventoryService = inventoryService;
@@ -86,6 +89,7 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
 			_userManager = userManager;
 			_logger = logger;
 			_fileUploadService = fileUploadService;
+			_dateTimeProvider = dateTimeProvider;
 		}
 
 		public async Task<APIOperationResponse<OrderSupplySuggestionDto>> GetSupplySuggestionAsync(long orderId, List<long>? depotIds = null)
@@ -508,7 +512,7 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
 				// Map DTO to entity
 				var supply = _mapper.Map<Supply>(inputDto);
 				supply.SubmissionStatus = SupplySubmissionStatus.Draft; // Always start with Draft submission status
-				supply.CreationDate = DateTime.Now;
+				supply.CreationDate = _dateTimeProvider.Now;
 				supply.CreatedBy = _currentUserService.UserId;
 
 				// Map supply details
@@ -516,7 +520,7 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
 					.Select(d =>
 					{
 						var detail = _mapper.Map<SupplyDetail>(d);
-						detail.CreationDate = DateTime.Now;
+						detail.CreationDate = _dateTimeProvider.Now;
 						detail.CreatedBy = _currentUserService.UserId;
 						return detail;
 					})
@@ -593,7 +597,7 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
 
 				// Map updates to entity
 				_mapper.Map(inputDto, supply);
-				supply.ModificationDate = DateTime.Now;
+				supply.ModificationDate = _dateTimeProvider.Now;
 				supply.ModifiedBy = _currentUserService.UserId;
 
 				await _supplyRepository.UpdateAsync(supply);
@@ -707,7 +711,7 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
 				// Create new supply detail
 				var detail = _mapper.Map<SupplyDetail>(detailDto);
 				detail.SupplyId = supplyId;
-				detail.CreationDate = DateTime.Now;
+				detail.CreationDate = _dateTimeProvider.Now;
 				detail.CreatedBy = _currentUserService.UserId;
 
 				var createdDetail = await _supplyDetailRepository.AddAsync(detail);
@@ -718,7 +722,7 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
 
 				// Recalculate fulfillment status using already loaded supply
 				supply.FulfillmentStatus = CalculateFulfillmentStatus(supply);
-				supply.ModificationDate = DateTime.Now;
+				supply.ModificationDate = _dateTimeProvider.Now;
 				supply.ModifiedBy = _currentUserService.UserId;
 				await _supplyRepository.UpdateAsync(supply);
 
@@ -828,7 +832,7 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
 
 				// Update detail
 				_mapper.Map(detailDto, detail);
-				detail.ModificationDate = DateTime.Now;
+				detail.ModificationDate = _dateTimeProvider.Now;
 				detail.ModifiedBy = _currentUserService.UserId;
 
 				await _supplyDetailRepository.UpdateAsync(detail);
@@ -836,7 +840,7 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
 				// Recalculate fulfillment status after updating detail
 				// Use the already loaded supply to avoid tracking conflicts
 				supply.FulfillmentStatus = CalculateFulfillmentStatus(supply);
-				supply.ModificationDate = DateTime.Now;
+				supply.ModificationDate = _dateTimeProvider.Now;
 				supply.ModifiedBy = _currentUserService.UserId;
 				await _supplyRepository.UpdateAsync(supply);
 
@@ -912,7 +916,7 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
 			var detailEntity = new SupplyDetail { Id = detailId };
 			_context.Attach(detailEntity);
 			detailEntity.IsDeleted = true;
-			detailEntity.DeletionDate = DateTime.Now;
+			detailEntity.DeletionDate = _dateTimeProvider.Now;
 			detailEntity.DeletedBy = _currentUserService.UserId;
 			_context.Entry(detailEntity).Property(x => x.IsDeleted).IsModified = true;
 			_context.Entry(detailEntity).Property(x => x.DeletionDate).IsModified = true;
@@ -935,7 +939,7 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
 			{
 				// Recalculate fulfillment status with the reloaded supply
 				updatedSupply.FulfillmentStatus = CalculateFulfillmentStatus(updatedSupply);
-				updatedSupply.ModificationDate = DateTime.Now;
+				updatedSupply.ModificationDate = _dateTimeProvider.Now;
 				updatedSupply.ModifiedBy = _currentUserService.UserId;
 				await _supplyRepository.UpdateAsync(updatedSupply);
 			}
@@ -1087,7 +1091,7 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
 					var detailEntity = new SupplyDetail { Id = detailId };
 					_context.Attach(detailEntity);
 					detailEntity.IsDeleted = true;
-					detailEntity.DeletionDate = DateTime.Now;
+					detailEntity.DeletionDate = _dateTimeProvider.Now;
 					detailEntity.DeletedBy = _currentUserService.UserId;
 					_context.Entry(detailEntity).Property(x => x.IsDeleted).IsModified = true;
 					_context.Entry(detailEntity).Property(x => x.DeletionDate).IsModified = true;
@@ -1105,7 +1109,7 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
 				{
 					var newDetail = _mapper.Map<SupplyDetail>(detailDto);
 					newDetail.SupplyId = supplyId;
-					newDetail.CreationDate = DateTime.Now;
+					newDetail.CreationDate = _dateTimeProvider.Now;
 					newDetail.CreatedBy = _currentUserService.UserId;
 					_context.Set<SupplyDetail>().Add(newDetail);
 					createdDetails.Add(newDetail);
@@ -1122,7 +1126,7 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
 				var supplyToUpdate = new Supply { Id = supplyId };
 				_context.Attach(supplyToUpdate);
 				supplyToUpdate.FulfillmentStatus = fulfillmentStatus;
-				supplyToUpdate.ModificationDate = DateTime.Now;
+				supplyToUpdate.ModificationDate = _dateTimeProvider.Now;
 				supplyToUpdate.ModifiedBy = _currentUserService.UserId;
 				_context.Entry(supplyToUpdate).Property(x => x.FulfillmentStatus).IsModified = true;
 				_context.Entry(supplyToUpdate).Property(x => x.ModificationDate).IsModified = true;
@@ -1215,7 +1219,7 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
 				supply.Notes = inputDto.Notes;
 				supply.SubmissionStatus = SupplySubmissionStatus.Submitted;
 				supply.FulfillmentStatus = CalculateFulfillmentStatus(supply);
-				supply.ModificationDate = DateTime.Now;
+				supply.ModificationDate = _dateTimeProvider.Now;
 				supply.ModifiedBy = _currentUserService.UserId;
 
 				await _supplyRepository.UpdateAsync(supply);
@@ -1466,7 +1470,7 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
 
 				// Update only the SupplyDate field
 				supply.SupplyDate = inputDto.SupplyDate;
-				supply.ModificationDate = DateTime.Now;
+				supply.ModificationDate = _dateTimeProvider.Now;
 				supply.ModifiedBy = _currentUserService.UserId;
 
 				await _supplyRepository.UpdateAsync(supply);
@@ -1546,7 +1550,7 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
 
 				// Update only the SupplyDate field
 				supply.SupplyDate = inputDto.SupplyDate;
-				supply.ModificationDate = DateTime.Now;
+				supply.ModificationDate = _dateTimeProvider.Now;
 				supply.ModifiedBy = _currentUserService.UserId;
 
 				await _supplyRepository.UpdateAsync(supply);

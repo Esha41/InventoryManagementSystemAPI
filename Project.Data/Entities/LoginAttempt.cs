@@ -13,7 +13,7 @@ namespace Ettad.Data.Entities
         public string? FailureReason { get; set; }
         public string? IpAddress { get; set; }
         public string? UserAgent { get; set; }
-        public DateTime AttemptDate { get; set; } = DateTime.Now;
+        public DateTime AttemptDate { get; set; }
         public LoginType LoginType { get; set; }
 
         // Navigation property

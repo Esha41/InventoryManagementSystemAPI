@@ -13,6 +13,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Ettad.Data.Entities.Workflows;
+using Ettad.CrossCutting.Comman.Time;
 
 namespace Ettad.Workflows.Service.Command.CreateWorkflow
 {
@@ -33,7 +34,8 @@ namespace Ettad.Workflows.Service.Command.CreateWorkflow
         public CreateWorkflowCommandHandler(
             ApplicationDbContext context,
             ICurrentUserService currentUserService,
-            ILogger<CreateWorkflowCommandHandler> logger)
+            ILogger<CreateWorkflowCommandHandler> logger,
+            IDateTimeProvider dateTimeProvider)
         {
             _context = context;
             _currentUserService = currentUserService;
@@ -42,7 +44,7 @@ namespace Ettad.Workflows.Service.Command.CreateWorkflow
 
         public async Task<APIOperationResponse<WorkflowDto>> Handle(CreateWorkflowCommand request, CancellationToken cancellationToken)
         {
-            _logger.LogInformation("Starting workflow creation for {WorkflowName} at {Time}", request.WorkflowName, DateTime.Now);
+            _logger.LogInformation("Starting workflow creation for {WorkflowName} at {Time}", request.WorkflowName, _dateTimeProvider.Now);
 
             try
             {
@@ -58,7 +60,7 @@ namespace Ettad.Workflows.Service.Command.CreateWorkflow
                     WorkflowType = request.WorkflowType,
                     IsActive = request.IsActive,
                     CreatedBy = _currentUserService.UserName,
-                    CreationDate = DateTime.Now
+                    CreationDate = _dateTimeProvider.Now
                 };
 
                 _context.Workflows.Add(workflow);
@@ -91,12 +93,12 @@ namespace Ettad.Workflows.Service.Command.CreateWorkflow
 
                 var workflowDto = MapToWorkflowDto(createdWorkflow);
 
-                _logger.LogInformation("Workflow created successfully with ID {WorkflowId} at {Time}", workflow.Id, DateTime.Now);
+                _logger.LogInformation("Workflow created successfully with ID {WorkflowId} at {Time}", workflow.Id, _dateTimeProvider.Now);
                 return APIOperationResponse<WorkflowDto>.Success(workflowDto, "Workflow created successfully.");
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error while creating workflow {WorkflowName} at {Time}", request.WorkflowName, DateTime.Now);
+                _logger.LogError(ex, "Error while creating workflow {WorkflowName} at {Time}", request.WorkflowName, _dateTimeProvider.Now);
                 return APIOperationResponse<WorkflowDto>.ServerError($"Workflow creation failed: {ex.Message}");
             }
         }
@@ -119,7 +121,7 @@ namespace Ettad.Workflows.Service.Command.CreateWorkflow
                     foreach (var existingWorkflow in existingActiveWorkflows)
                     {
                         existingWorkflow.IsActive = false;
-                        existingWorkflow.ModificationDate = DateTime.Now;
+                        existingWorkflow.ModificationDate = _dateTimeProvider.Now;
                         existingWorkflow.ModifiedBy = _currentUserService.UserName;
                     }
 
@@ -156,7 +158,7 @@ namespace Ettad.Workflows.Service.Command.CreateWorkflow
                     ReserveQty = step.ReserveQty,
                     CanReturn = step.CanReturn,
                     CreatedBy = _currentUserService.UserName,
-                    CreationDate = DateTime.Now
+                    CreationDate = _dateTimeProvider.Now
                 }).ToList();
 
                 _context.WorkflowSteps.AddRange(stepsToAdd);

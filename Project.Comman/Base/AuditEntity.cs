@@ -9,7 +9,7 @@ namespace Ettad.CrossCutting.Comman.Base
 {
     public class AuditEntity<T> : BaseEntity<T>
     {
-        public DateTime CreationDate { get; set; } = DateTime.Now;
+        public DateTime CreationDate { get; set; }
 
         public DateTime? ModificationDate { get; set; }
         public string ModifiedBy { get; set; }
@@ -17,7 +17,7 @@ namespace Ettad.CrossCutting.Comman.Base
     }
     public class AuditEntity
     {
-        public DateTime CreationDate { get; set; } = DateTime.Now;
+        public DateTime CreationDate { get; set; }
         public DateTime? ModificationDate { get; set; }
         public string ModifiedBy { get; set; }
         public string CreatedBy { get; set; }

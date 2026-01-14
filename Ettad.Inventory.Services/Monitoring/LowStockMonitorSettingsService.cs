@@ -11,6 +11,7 @@ using Ettad.Data.Entities.Settings;
 using Ettad.Inventory.Service.Monitoring.Dtos;
 using Ettad.ResponseHandler.Consts;
 using Ettad.ResponseHandler.Models;
+using Ettad.CrossCutting.Comman.Time;
 
 namespace Ettad.Inventory.Service.Monitoring
 {
@@ -20,17 +21,20 @@ namespace Ettad.Inventory.Service.Monitoring
         private readonly ICurrentUserService _currentUserService;
         private readonly ILogger<LowStockMonitorSettingsService> _logger;
         private readonly IRecurringJobManager? _recurringJobManager;
+        private readonly IDateTimeProvider _dateTimeProvider;
 
         public LowStockMonitorSettingsService(
             ICrossCuttingRepository<Settings> settingsRepository,
             ICurrentUserService currentUserService,
             ILogger<LowStockMonitorSettingsService> logger,
-            IRecurringJobManager? recurringJobManager = null)
+            IRecurringJobManager? recurringJobManager = null,
+            IDateTimeProvider dateTimeProvider = null)
         {
             _settingsRepository = settingsRepository;
             _currentUserService = currentUserService;
             _logger = logger;
             _recurringJobManager = recurringJobManager;
+            _dateTimeProvider = dateTimeProvider ?? throw new ArgumentNullException(nameof(dateTimeProvider));
         }
 
         public async Task<APIOperationResponse<LowStockNotificationSettingsDto>> GetSettingsAsync()
@@ -72,7 +76,7 @@ namespace Ettad.Inventory.Service.Monitoring
                         Key = LowStockMonitorConstants.SETTINGS_KEY,
                         Group = LowStockMonitorConstants.SETTINGS_GROUP,
                         Value = jsonValue,
-                        CreationDate = DateTime.Now,
+                        CreationDate = _dateTimeProvider.Now,
                         CreatedBy = _currentUserService.UserId
                     };
                     await _settingsRepository.AddAsync(setting);
@@ -80,7 +84,7 @@ namespace Ettad.Inventory.Service.Monitoring
                 else
                 {
                     setting.Value = jsonValue;
-                    setting.ModificationDate = DateTime.Now;
+                    setting.ModificationDate = _dateTimeProvider.Now;
                     setting.ModifiedBy = _currentUserService.UserId;
                     await _settingsRepository.UpdateAsync(setting);
                 }
@@ -129,7 +133,7 @@ namespace Ettad.Inventory.Service.Monitoring
                         Key = LowStockMonitorConstants.SCHEDULE_SETTINGS_KEY,
                         Group = LowStockMonitorConstants.SCHEDULE_SETTINGS_GROUP,
                         Value = cronExpression,
-                        CreationDate = DateTime.Now,
+                        CreationDate = _dateTimeProvider.Now,
                         CreatedBy = _currentUserService.UserId
                     };
                     await _settingsRepository.AddAsync(setting);
@@ -137,7 +141,7 @@ namespace Ettad.Inventory.Service.Monitoring
                 else
                 {
                     setting.Value = cronExpression;
-                    setting.ModificationDate = DateTime.Now;
+                    setting.ModificationDate = _dateTimeProvider.Now;
                     setting.ModifiedBy = _currentUserService.UserId;
                     await _settingsRepository.UpdateAsync(setting);
                 }

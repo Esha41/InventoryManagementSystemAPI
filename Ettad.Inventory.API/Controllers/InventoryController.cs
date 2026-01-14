@@ -14,6 +14,7 @@ using OfficeOpenXml;
 using OfficeOpenXml.DataValidation;
 using Microsoft.EntityFrameworkCore;
 using Ettad.EntityFramework.DataBaseContext;
+using Ettad.CrossCutting.Comman.Time;
 
 namespace Ettad.Inventory.API.Controllers
 {
@@ -26,17 +27,20 @@ namespace Ettad.Inventory.API.Controllers
         private readonly IExcelExportService _excelExportService;
         private readonly ILogger<InventoryController> _logger;
         private readonly ApplicationDbContext _context;
+        private readonly IDateTimeProvider _dateTimeProvider;
 
         public InventoryController(
             IInventoryService inventoryService,
             IExcelExportService excelExportService,
             ILogger<InventoryController> logger,
-            ApplicationDbContext context)
+            ApplicationDbContext context,
+            IDateTimeProvider dateTimeProvider)
         {
             _inventoryService = inventoryService;
             _excelExportService = excelExportService;
             _logger = logger;
             _context = context;
+            _dateTimeProvider = dateTimeProvider;
             
             // Set EPPlus license context
             ExcelPackage.License.SetNonCommercialPersonal("Ettad");
@@ -288,7 +292,7 @@ namespace Ettad.Inventory.API.Controllers
 
                 // Generate filename with timestamp and optional type filter
                 var typeFilter = itemType.HasValue ? $"_{itemType.Value}" : "";
-                var fileName = $"Inventory_Summary{typeFilter}_{DateTime.Now:yyyyMMdd_HHmmss}.xlsx";
+                var fileName = $"Inventory_Summary{typeFilter}_{_dateTimeProvider.Now:yyyyMMdd_HHmmss}.xlsx";
 
                 _logger.LogInformation("Excel export completed successfully. File: {FileName}, Size: {Size} bytes", fileName, excelData.Length);
 

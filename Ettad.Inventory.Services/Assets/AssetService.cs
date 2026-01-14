@@ -17,6 +17,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Ettad.EntityFramework.DataBaseContext;
 using OfficeOpenXml;
+using Ettad.CrossCutting.Comman.Time;
 using OfficeOpenXml.DataValidation;
 
 namespace Ettad.Inventory.Service.Assets
@@ -32,6 +33,7 @@ namespace Ettad.Inventory.Service.Assets
         private readonly IFileUploadService _fileUploadService;
         private readonly IExcelImportService _excelImportService;
         private readonly ApplicationDbContext _context;
+        private readonly IDateTimeProvider _dateTimeProvider;
 
         public AssetService(
             ICrossCuttingRepository<Asset> assetRepository,
@@ -42,7 +44,8 @@ namespace Ettad.Inventory.Service.Assets
             ILogger<AssetService> logger,
             IFileUploadService fileUploadService,
             IExcelImportService excelImportService,
-            ApplicationDbContext context)
+            ApplicationDbContext context,
+            IDateTimeProvider dateTimeProvider)
         {
             _assetRepository = assetRepository;
             _mapper = mapper;
@@ -53,6 +56,7 @@ namespace Ettad.Inventory.Service.Assets
             _fileUploadService = fileUploadService;
             _excelImportService = excelImportService;
             _context = context;
+            _dateTimeProvider = dateTimeProvider;
         }
 
         public async Task<APIOperationResponse<AssetDto>> GetByIdAsync(long id)
@@ -241,7 +245,7 @@ namespace Ettad.Inventory.Service.Assets
 
                 // Map DTO to entity
                 var asset = _mapper.Map<Asset>(inputDto);
-                asset.CreationDate = DateTime.Now;
+                asset.CreationDate = _dateTimeProvider.Now;
                 asset.CreatedBy = _currentUserService.UserId;
                 asset.Status = AssetStatus.Active; // Set default status to Active when creating
                 asset.SerialNumber = string.IsNullOrWhiteSpace(inputDto.SerialNumber) ? null : inputDto.SerialNumber.Trim();
@@ -357,7 +361,7 @@ namespace Ettad.Inventory.Service.Assets
                     }
 
                     var asset = _mapper.Map<Asset>(dto);
-                    asset.CreationDate = DateTime.Now;
+                    asset.CreationDate = _dateTimeProvider.Now;
                     asset.CreatedBy = _currentUserService.UserId;
                     asset.Status = AssetStatus.Active;
                     asset.SerialNumber = string.IsNullOrWhiteSpace(dto.SerialNumber) ? null : dto.SerialNumber.Trim();
@@ -420,7 +424,7 @@ namespace Ettad.Inventory.Service.Assets
 
                 // Map updates to entity
                 _mapper.Map(inputDto, existingAsset);
-                existingAsset.ModificationDate = DateTime.Now;
+                existingAsset.ModificationDate = _dateTimeProvider.Now;
                 existingAsset.ModifiedBy = _currentUserService.UserId;
                 existingAsset.SerialNumber = string.IsNullOrWhiteSpace(inputDto.SerialNumber) ? null : inputDto.SerialNumber.Trim();
                 existingAsset.RFID = string.IsNullOrWhiteSpace(inputDto.RFID) ? null : inputDto.RFID.Trim();
@@ -648,7 +652,7 @@ namespace Ettad.Inventory.Service.Assets
 
                         // Create asset entity
                         var asset = _mapper.Map<Asset>(createDto);
-                        asset.CreationDate = DateTime.Now;
+                        asset.CreationDate = _dateTimeProvider.Now;
                         asset.CreatedBy = _currentUserService.UserId;
                         asset.Status = AssetStatus.Active;
 
@@ -974,8 +978,8 @@ namespace Ettad.Inventory.Service.Assets
                 templateSheet.Cells[2, 3].Value = "";
                 templateSheet.Cells[2, 4].Value = "";
                 templateSheet.Cells[2, 5].Value = "";
-                templateSheet.Cells[2, 6].Value = DateTime.Now.ToString("yyyy-MM-dd");
-                templateSheet.Cells[2, 7].Value = DateTime.Now.AddYears(1).ToString("yyyy-MM-dd");
+                templateSheet.Cells[2, 6].Value = _dateTimeProvider.Now.ToString("yyyy-MM-dd");
+                templateSheet.Cells[2, 7].Value = _dateTimeProvider.Now.AddYears(1).ToString("yyyy-MM-dd");
                 templateSheet.Cells[2, 8].Value = "";
                 templateSheet.Cells[2, 9].Value = 0;
                 templateSheet.Cells[2, 10].Value = "";

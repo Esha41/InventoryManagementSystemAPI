@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using OfficeOpenXml;
 using System.Net;
+using Ettad.CrossCutting.Comman.Time;
 
 namespace Ettad.Inventory.API.Controllers
 {
@@ -20,6 +21,7 @@ namespace Ettad.Inventory.API.Controllers
         public AssetController(IAssetService assetService)
         {
             _assetService = assetService;
+            _dateTimeProvider = dateTimeProvider;
             
             // Set EPPlus license context
             ExcelPackage.License.SetNonCommercialPersonal("Ettad");
@@ -153,7 +155,7 @@ namespace Ettad.Inventory.API.Controllers
                     return StatusCode(500, new { message = "Failed to generate template", errors = templateResult.Errors });
                 }
 
-                var fileName = $"Asset_Import_Template_Depot_{depotId}_{DateTime.Now:yyyyMMdd}.xlsx";
+                var fileName = $"Asset_Import_Template_Depot_{depotId}_{_dateTimeProvider.Now:yyyyMMdd}.xlsx";
                 
                 return File(
                     templateResult.Data,

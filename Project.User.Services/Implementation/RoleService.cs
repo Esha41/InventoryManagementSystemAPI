@@ -285,7 +285,7 @@ namespace Ettad.User.Services.Implementation
                         RoleId = role.Id,
                         ApplicationEntityId = entityId,
                         CreatedBy = "system", // replace with current user if available
-                        CreationDate = DateTime.Now
+                        CreationDate = _dateTimeProvider.Now
                     });
                 }
 

@@ -13,6 +13,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Ettad.CrossCutting.Comman.Time;
 
 namespace Ettad.Workflows.Service.Command.UpdateWorkflow
 {
@@ -31,6 +32,7 @@ namespace Ettad.Workflows.Service.Command.UpdateWorkflow
         private readonly ICurrentUserService _currentUserService;
         private readonly ILogger<UpdateWorkflowCommandHandler> _logger;
         private readonly IMapper _mapper;
+        private readonly IDateTimeProvider _dateTimeProvider;
 
         public UpdateWorkflowCommandHandler(
             ApplicationDbContext context,
@@ -42,6 +44,7 @@ namespace Ettad.Workflows.Service.Command.UpdateWorkflow
             _currentUserService = currentUserService;
             _logger = logger;
             _mapper = mapper;
+            _dateTimeProvider = dateTimeProvider;
         }
 
         public async Task<APIOperationResponse<WorkflowDto>> Handle(UpdateWorkflowCommand request, CancellationToken cancellationToken)
@@ -78,7 +81,7 @@ namespace Ettad.Workflows.Service.Command.UpdateWorkflow
                 {
                     wf.IsActive = false;
                     wf.ModifiedBy = _currentUserService.UserName;
-                    wf.ModificationDate = DateTime.Now;
+                    wf.ModificationDate = _dateTimeProvider.Now;
                 }
             }
 
@@ -87,7 +90,7 @@ namespace Ettad.Workflows.Service.Command.UpdateWorkflow
             workflow.WorkflowType = request.WorkflowType;
             workflow.IsActive = request.IsActive;
             workflow.ModifiedBy = _currentUserService.UserName;
-            workflow.ModificationDate = DateTime.Now;
+            workflow.ModificationDate = _dateTimeProvider.Now;
 
             await UpdateWorkflowSteps(workflow, request.WorkflowSteps, cancellationToken);
 
@@ -127,7 +130,7 @@ namespace Ettad.Workflows.Service.Command.UpdateWorkflow
                     step.ReserveQty = dto.ReserveQty;
                     step.CanReturn = dto.CanReturn;
                     step.ModifiedBy = _currentUserService.UserName;
-                    step.ModificationDate = DateTime.Now;
+                    step.ModificationDate = _dateTimeProvider.Now;
                 }
                 else
                 {
@@ -144,7 +147,7 @@ namespace Ettad.Workflows.Service.Command.UpdateWorkflow
                         ReserveQty = dto.ReserveQty,
                         CanReturn = dto.CanReturn,
                         CreatedBy = _currentUserService.UserName,
-                        CreationDate = DateTime.Now
+                        CreationDate = _dateTimeProvider.Now
                     });
                 }
             }

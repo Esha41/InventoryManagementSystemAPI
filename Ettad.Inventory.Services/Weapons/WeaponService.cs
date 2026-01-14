@@ -18,6 +18,7 @@ using Ettad.Inventory.Services.Common;
 using OfficeOpenXml;
 using OfficeOpenXml.DataValidation;
 using Ettad.EntityFramework.DataBaseContext;
+using Ettad.CrossCutting.Comman.Time;
 
 namespace Ettad.Inventory.Service.Weapons
 {
@@ -31,6 +32,7 @@ namespace Ettad.Inventory.Service.Weapons
         private readonly IFileUploadService _fileUploadService;
         private readonly IExcelImportService _excelImportService;
         private readonly ApplicationDbContext _context;
+        private readonly IDateTimeProvider _dateTimeProvider;
 
         public WeaponService(
             ICrossCuttingRepository<Weapon> weaponRepository,
@@ -40,7 +42,8 @@ namespace Ettad.Inventory.Service.Weapons
             ILogger<WeaponService> logger,
             IFileUploadService fileUploadService,
             IExcelImportService excelImportService,
-            ApplicationDbContext context)
+            ApplicationDbContext context,
+            IDateTimeProvider dateTimeProvider)
         {
             _weaponRepository = weaponRepository;
             _mapper = mapper;
@@ -50,6 +53,7 @@ namespace Ettad.Inventory.Service.Weapons
             _fileUploadService = fileUploadService;
             _excelImportService = excelImportService;
             _context = context;
+            _dateTimeProvider = dateTimeProvider;
             
             // Set EPPlus license context
             ExcelPackage.License.SetNonCommercialPersonal("Ettad");
@@ -182,7 +186,7 @@ namespace Ettad.Inventory.Service.Weapons
                 // Map DTO to entity
                 var weapon = _mapper.Map<Weapon>(inputDto);
                 weapon.ItemType = ItemType.Weapon;
-                weapon.CreationDate = DateTime.Now;
+                weapon.CreationDate = _dateTimeProvider.Now;
                 weapon.CreatedBy = _currentUserService.UserId;
                 weapon.Nsn = string.IsNullOrWhiteSpace(inputDto.Nsn) ? null : inputDto.Nsn.Trim();
 
@@ -265,7 +269,7 @@ namespace Ettad.Inventory.Service.Weapons
 
                 // Map updates to entity
                 _mapper.Map(inputDto, existingWeapon);
-                existingWeapon.ModificationDate = DateTime.Now;
+                existingWeapon.ModificationDate = _dateTimeProvider.Now;
                 existingWeapon.ModifiedBy = _currentUserService.UserId;
                 existingWeapon.Nsn = string.IsNullOrWhiteSpace(inputDto.Nsn) ? null : inputDto.Nsn.Trim();
 

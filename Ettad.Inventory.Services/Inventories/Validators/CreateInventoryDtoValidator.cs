@@ -1,12 +1,16 @@
 using FluentValidation;
 using Ettad.Inventory.Service.Inventories.Dtos;
+using Ettad.CrossCutting.Comman.Time;
 
 namespace Ettad.Inventory.Service.Inventories.Validators
 {
     public class CreateInventoryDtoValidator : AbstractValidator<CreateInventoryDto>
     {
-        public CreateInventoryDtoValidator()
+        private readonly IDateTimeProvider _dateTimeProvider;
+
+        public CreateInventoryDtoValidator(IDateTimeProvider dateTimeProvider)
         {
+            _dateTimeProvider = dateTimeProvider;
             RuleFor(x => x.DepoId)
                 .GreaterThan(0).WithMessage("Depot is required");
 
@@ -15,11 +19,11 @@ namespace Ettad.Inventory.Service.Inventories.Validators
                 .When(x => !string.IsNullOrEmpty(x.InvoiceNumber));
 
             RuleFor(x => x.InvoiceDate)
-                .Must(date => !date.HasValue || date.Value <= DateTime.Now)
+                .Must(date => !date.HasValue || date.Value <= _dateTimeProvider.Now)
                 .WithMessage("Invoice date cannot be in the future");
 
             RuleFor(x => x.RecievedDate)
-                .Must(date => !date.HasValue || date.Value <= DateTime.Now)
+                .Must(date => !date.HasValue || date.Value <= _dateTimeProvider.Now)
                 .WithMessage("Received date cannot be in the future");
 
             RuleFor(x => x.InventoryDetails)
@@ -34,8 +38,11 @@ namespace Ettad.Inventory.Service.Inventories.Validators
 
     public class CreateInventoryDetailDtoValidator : AbstractValidator<CreateInventoryDetailDto>
     {
-        public CreateInventoryDetailDtoValidator()
+        private readonly IDateTimeProvider _dateTimeProvider;
+
+        public CreateInventoryDetailDtoValidator(IDateTimeProvider dateTimeProvider)
         {
+            _dateTimeProvider = dateTimeProvider;
             RuleFor(x => x.ItemId)
                 .GreaterThan(0).WithMessage("Item is required");
 
@@ -50,7 +57,7 @@ namespace Ettad.Inventory.Service.Inventories.Validators
                 .WithMessage("Batch number cannot exceed 500 characters");
 
             RuleFor(x => x.ExpiryDate)
-                .Must(date => !date.HasValue || date.Value > DateTime.Now)
+                .Must(date => !date.HasValue || date.Value > _dateTimeProvider.Now)
                 .WithMessage("Expiry date must be in the future");
 
             RuleFor(x => x.SupplierId)

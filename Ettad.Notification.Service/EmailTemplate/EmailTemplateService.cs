@@ -6,6 +6,7 @@ using Ettad.CrossCutting.Data.Repository;
 using Ettad.Data.Entities;
 using Ettad.Data.Enums;
 using System.Net;
+using Ettad.CrossCutting.Comman.Time;
 
 namespace Ettad.Notification.Service.EmailTemplate
 {
@@ -14,15 +15,18 @@ namespace Ettad.Notification.Service.EmailTemplate
         private readonly ILogger<EmailTemplateService> _logger;
         private readonly IServiceProvider _serviceProvider;
         private readonly IWebHostEnvironment _webHostEnvironment;
+        private readonly IDateTimeProvider _dateTimeProvider;
 
         public EmailTemplateService(
             ILogger<EmailTemplateService> logger,
             IServiceProvider serviceProvider,
-            IWebHostEnvironment webHostEnvironment)
+            IWebHostEnvironment webHostEnvironment,
+            IDateTimeProvider dateTimeProvider)
         {
             _logger = logger;
             _serviceProvider = serviceProvider;
             _webHostEnvironment = webHostEnvironment;
+            _dateTimeProvider = dateTimeProvider;
         }
 
         public async Task<string> RenderEmailTemplateAsync(
@@ -39,7 +43,7 @@ namespace Ettad.Notification.Service.EmailTemplate
                 // Load HTML template from file
                 var template = await LoadEmailTemplateAsync();
                 
-                var now = updateDate ?? DateTime.Now;
+                var now = updateDate ?? _dateTimeProvider.Now;
                 
                 // Replace parameters in template
                 template = template.Replace("{{TITLE}}", WebUtility.HtmlEncode(title));

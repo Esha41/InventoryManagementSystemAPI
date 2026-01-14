@@ -16,6 +16,7 @@ using Ettad.Inventory.Services.Common;
 using OfficeOpenXml;
 using OfficeOpenXml.DataValidation;
 using Ettad.EntityFramework.DataBaseContext;
+using Ettad.CrossCutting.Comman.Time;
 
 namespace Ettad.Inventory.Service.Explosives
 {
@@ -29,6 +30,7 @@ namespace Ettad.Inventory.Service.Explosives
         private readonly IFileUploadService _fileUploadService;
         private readonly IExcelImportService _excelImportService;
         private readonly ApplicationDbContext _context;
+        private readonly IDateTimeProvider _dateTimeProvider;
 
         public ExplosiveService(
             ICrossCuttingRepository<Explosive> explosiveRepository,
@@ -38,7 +40,8 @@ namespace Ettad.Inventory.Service.Explosives
             ILogger<ExplosiveService> logger,
             IFileUploadService fileUploadService,
             IExcelImportService excelImportService,
-            ApplicationDbContext context)
+            ApplicationDbContext context,
+            IDateTimeProvider dateTimeProvider)
         {
             _explosiveRepository = explosiveRepository;
             _mapper = mapper;
@@ -48,6 +51,7 @@ namespace Ettad.Inventory.Service.Explosives
             _fileUploadService = fileUploadService;
             _excelImportService = excelImportService;
             _context = context;
+            _dateTimeProvider = dateTimeProvider;
             
             // Set EPPlus license context
             ExcelPackage.License.SetNonCommercialPersonal("Ettad");
@@ -158,7 +162,7 @@ namespace Ettad.Inventory.Service.Explosives
                 // Map DTO to entity
                 var explosive = _mapper.Map<Explosive>(inputDto);
                 explosive.ItemType = ItemType.Explosive;
-                explosive.CreationDate = DateTime.Now;
+                explosive.CreationDate = _dateTimeProvider.Now;
                 explosive.CreatedBy = _currentUserService.UserId;
                 explosive.Nsn = string.IsNullOrWhiteSpace(inputDto.Nsn) ? null : inputDto.Nsn.Trim();
 
@@ -232,7 +236,7 @@ namespace Ettad.Inventory.Service.Explosives
 
                 // Map updates to entity
                 _mapper.Map(inputDto, existingExplosive);
-                existingExplosive.ModificationDate = DateTime.Now;
+                existingExplosive.ModificationDate = _dateTimeProvider.Now;
                 existingExplosive.ModifiedBy = _currentUserService.UserId;
                 existingExplosive.Nsn = string.IsNullOrWhiteSpace(inputDto.Nsn) ? null : inputDto.Nsn.Trim();
 
