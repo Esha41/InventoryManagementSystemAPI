@@ -1,19 +1,10 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.ComponentModel;
 using System.Reflection;
 using Ettad.Data.Enums;
 using Ettad.CrossCutting.Comman.Models.Identity;
-//using Ettad.Application.Common.DTOs.Identity;
-//using Ettad.Infrastructure.Enums;
+
 namespace Ettad.EntityFramework.Utiliies
 {
-
- 
-
     public static class PlainPermissionsGenerator
     {
         public const string Dashboard = "Dashboard";
@@ -21,6 +12,7 @@ namespace Ettad.EntityFramework.Utiliies
         public const string Workflow = "Workflow";
         public const string Inventory = "Inventory";
         public const string UserManagement = "User Management";
+        public const string Reports = "Reports";
 
         public static string GetCategory(this PlainPermissions source)
         {

@@ -10,21 +10,30 @@ namespace Ettad.Data.Enums
 
         [Category(PlainPermissionsGenerator.Dashboard)]
         InventoryDashboard,
+      
         [Category(PlainPermissionsGenerator.Dashboard)]
         Forecast_view,
 
         [Category(PlainPermissionsGenerator.SystemFeatures)]
         CanChangePassword,
+      
         [Category(PlainPermissionsGenerator.SystemFeatures)]
         CanGenerateReport,
+   
         [Category(PlainPermissionsGenerator.SystemFeatures)]
         CanImportData,
+    
         [Category(PlainPermissionsGenerator.SystemFeatures)]
         EmailLogs,
+      
         [Category(PlainPermissionsGenerator.SystemFeatures)]
         AdminImportExport,
+      
         [Category(PlainPermissionsGenerator.SystemFeatures)]
         StockNotificationSettingsPage,
+      
+        [Category(PlainPermissionsGenerator.Reports)]
+        InventorySummaryReportPage,
 
         [Category(PlainPermissionsGenerator.Workflow)]
         UpdateRequestAndSuggestLots,
