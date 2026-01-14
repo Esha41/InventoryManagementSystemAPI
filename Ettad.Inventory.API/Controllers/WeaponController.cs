@@ -21,6 +21,7 @@ namespace Ettad.Inventory.API.Controllers
         public WeaponController(IWeaponService weaponService, IDateTimeProvider dateTimeProvider)
         {
             _weaponService = weaponService;
+            _dateTimeProvider = dateTimeProvider;
         }
 
         [HttpGet]

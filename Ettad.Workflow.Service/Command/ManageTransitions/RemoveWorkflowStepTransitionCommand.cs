@@ -25,6 +25,7 @@ namespace Ettad.Workflows.Service.Command.ManageTransitions
         public RemoveWorkflowStepTransitionCommandHandler(ApplicationDbContext context, IDateTimeProvider dateTimeProvider)
         {
             _context = context;
+            _dateTimeProvider = dateTimeProvider;
         }
 
         public async Task<APIOperationResponse<bool>> Handle(RemoveWorkflowStepTransitionCommand request, CancellationToken cancellationToken)
