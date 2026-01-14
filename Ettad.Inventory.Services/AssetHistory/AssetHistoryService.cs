@@ -8,6 +8,7 @@ using Ettad.EntityFramework.DataBaseContext;
 using Ettad.Inventory.Service.AssetHistory.Dtos;
 using Ettad.ResponseHandler.Consts;
 using Ettad.ResponseHandler.Models;
+using Ettad.CrossCutting.Comman.Time;
 
 namespace Ettad.Inventory.Service.AssetHistory
 {
@@ -18,19 +19,22 @@ namespace Ettad.Inventory.Service.AssetHistory
         private readonly IMapper _mapper;
         private readonly ICurrentUserService _currentUserService;
         private readonly ILogger<AssetHistoryService> _logger;
+        private readonly IDateTimeProvider _dateTimeProvider;
 
         public AssetHistoryService(
             ApplicationDbContext context,
             ICrossCuttingRepository<Ettad.Data.Entities.AssetHistory> historyRepository,
             IMapper mapper,
             ICurrentUserService currentUserService,
-            ILogger<AssetHistoryService> logger)
+            ILogger<AssetHistoryService> logger,
+            IDateTimeProvider dateTimeProvider)
         {
             _context = context;
             _historyRepository = historyRepository;
             _mapper = mapper;
             _currentUserService = currentUserService;
             _logger = logger;
+            _dateTimeProvider = dateTimeProvider;
         }
 
         public async Task RecordHistoryAsync(long assetId, AssetHistoryActionType actionType, AssetHistoryContext context)
@@ -41,7 +45,7 @@ namespace Ettad.Inventory.Service.AssetHistory
                 {
                     AssetId = assetId,
                     ActionType = actionType,
-                    ActionDate = DateTime.UtcNow,
+                    ActionDate = _dateTimeProvider.Now,
                     Description = context.Description,
                     PreviousStatus = context.PreviousStatus,
                     NewStatus = context.NewStatus,
@@ -58,7 +62,7 @@ namespace Ettad.Inventory.Service.AssetHistory
                     PerformedByUserName = _currentUserService.UserName,
                     Notes = context.Notes,
                     Metadata = context.Metadata,
-                    CreationDate = DateTime.UtcNow,
+                    CreationDate = _dateTimeProvider.Now,
                     CreatedBy = _currentUserService.UserId
                 };
 

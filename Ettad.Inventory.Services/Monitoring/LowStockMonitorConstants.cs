@@ -8,7 +8,7 @@ namespace Ettad.Inventory.Service.Monitoring
         public const string SCHEDULE_SETTINGS_GROUP = "BackgroundJobs";
         public const string JOB_ID = "LowStockMonitor";
         public const string DEFAULT_ROLE_NAME = "Head of Depo Division (Inventory)";
-        public const string DEFAULT_CRON_EXPRESSION = "15 6 * * *"; // Default: 6:15 AM UTC (9:15 AM Qatar time, UTC+3)
+        public const string DEFAULT_CRON_EXPRESSION = "15 9 * * *"; // Default: 9:15 AM local time
     }
 }
 

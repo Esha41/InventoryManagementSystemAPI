@@ -28,7 +28,7 @@ namespace Ettad.Data.Entities.Workflows
 
         public int IsDelagation { get; set; } // Using enum
 
-        public DateTime? ApprovedDate { get; set; } = DateTime.Now;
+        public DateTime? ApprovedDate { get; set; }
 
         [Required]
         public ApprovalStatus Status { get; set; } // Using enum

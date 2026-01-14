@@ -1,4 +1,4 @@
-﻿using Ettad.Application.Common.Interfaces;
+using Ettad.Application.Common.Interfaces;
 using Ettad.Comman.Idenitity;
 using Ettad.CrossCutting.Comman.Idenitity;
 using Ettad.Data.Entities;
@@ -14,6 +14,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using System.Collections.Generic;
 using System.Linq;
+using Ettad.CrossCutting.Comman.Time;
 
 public class UserService : IUserService
 {
@@ -22,11 +23,13 @@ public class UserService : IUserService
   //  private readonly CrossCuttingRepository<EmployeeContact> _employeeRepository;
     private readonly ICurrentUserService _currentUserService;
     private readonly ILogger<UserService> _logger;
+    private readonly IDateTimeProvider _dateTimeProvider;
     
     
     private readonly ApplicationDbContext _context;
     public UserService(UserManager<ApplicationUser> userManager, RoleManager<ApplicationRole> roleManager
-         , ICurrentUserService currentUserService, ILogger<UserService> logger, ApplicationDbContext context)
+         , ICurrentUserService currentUserService, ILogger<UserService> logger, ApplicationDbContext context,
+         IDateTimeProvider dateTimeProvider)
        
     {
         _userManager = userManager;
@@ -35,6 +38,7 @@ public class UserService : IUserService
        // _employeeRepository = employeeRepository;
         _currentUserService = currentUserService;
         _logger = logger;
+        _dateTimeProvider = dateTimeProvider;
     }
 
     public async Task<APIOperationResponse<UserDto>> GetByIdAsync(string id)
@@ -390,7 +394,7 @@ public class UserService : IUserService
 
         // Soft delete: Set IsDeleted flag instead of actually deleting
         user.IsDeleted = true;
-        user.DeletionDate = DateTime.UtcNow;
+        user.DeletionDate = _dateTimeProvider.Now;
         user.DeletedBy = _currentUserService.UserId;
 
         var result = await _userManager.UpdateAsync(user);

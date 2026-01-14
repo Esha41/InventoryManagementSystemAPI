@@ -14,6 +14,7 @@ using Ettad.ResponseHandler.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using SettingsEntity = Ettad.Data.Entities.Settings.Settings;
+using Ettad.CrossCutting.Comman.Time;
 
 namespace Ettad.LdapSettings.Services.Implementation
 {
@@ -25,14 +26,17 @@ namespace Ettad.LdapSettings.Services.Implementation
         private readonly ApplicationDbContext _dbContext;
         private readonly LdapOptions _fallbackLdapOptions;
         private readonly ICurrentUserService _currentUserService;
+        private readonly IDateTimeProvider _dateTimeProvider;
 
         public LdapSettingsService(
             ApplicationDbContext dbContext,
             ICurrentUserService currentUserService,
+            IDateTimeProvider dateTimeProvider,
             IOptions<LdapOptions>? fallbackOptions = null)
         {
             _dbContext = dbContext ?? throw new ArgumentNullException(nameof(dbContext));
             _currentUserService = currentUserService ?? throw new ArgumentNullException(nameof(currentUserService));
+            _dateTimeProvider = dateTimeProvider ?? throw new ArgumentNullException(nameof(dateTimeProvider));
             _fallbackLdapOptions = fallbackOptions?.Value ?? new LdapOptions();
         }
 
@@ -72,9 +76,7 @@ namespace Ettad.LdapSettings.Services.Implementation
                     if (settingsToUpdate.TryGetValue(kvp.Key, out var existingSetting))
                     {
                         existingSetting.Value = value;
-                        existingSetting.ModificationDate = RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
-                            ? TimeZoneInfo.ConvertTime(DateTime.Now, TimeZoneInfo.FindSystemTimeZoneById("Arab Standard Time"))
-                            : TimeZoneInfo.ConvertTime(DateTime.Now, TimeZoneInfo.FindSystemTimeZoneById("Asia/Riyadh"));
+                        existingSetting.ModificationDate = _dateTimeProvider.Now;
                         existingSetting.ModifiedBy = userId;
                         _dbContext.Settings.Update(existingSetting);
                     }

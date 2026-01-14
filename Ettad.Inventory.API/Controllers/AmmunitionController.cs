@@ -1,4 +1,4 @@
-﻿using Ettad.CrossCutting.Common.Security;
+using Ettad.CrossCutting.Common.Security;
 using Ettad.Data.Enums;
 using Ettad.Inventory.Service.Ammunitions;
 using Ettad.Inventory.Service.Ammunitions.Dtos;
@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using OfficeOpenXml;
 using System.Net;
+using Ettad.CrossCutting.Comman.Time;
 
 namespace Ettad.Inventory.API.Controllers
 {
@@ -19,13 +20,16 @@ namespace Ettad.Inventory.API.Controllers
     {
         private readonly IAmmunitionService _ammunitionService;
         private readonly ILogger<AmmunitionController> _logger;
+        private readonly IDateTimeProvider _dateTimeProvider;
 
         public AmmunitionController(
             IAmmunitionService ammunitionService,
-            ILogger<AmmunitionController> logger)
+            ILogger<AmmunitionController> logger,
+            IDateTimeProvider dateTimeProvider)
         {
             _ammunitionService = ammunitionService;
             _logger = logger;
+            _dateTimeProvider = dateTimeProvider;
             
             // Set EPPlus license context
             ExcelPackage.License.SetNonCommercialPersonal("Ettad");
@@ -109,7 +113,7 @@ namespace Ettad.Inventory.API.Controllers
                     return StatusCode(500, new { message = "Failed to generate template", errors = templateResult.Errors });
                 }
 
-                var fileName = $"Ammunition_Import_Template_{DateTime.UtcNow:yyyyMMdd}.xlsx";
+                var fileName = $"Ammunition_Import_Template_{_dateTimeProvider.Now:yyyyMMdd}.xlsx";
                 
                 _logger.LogInformation("Ammunition import template generated successfully. Language: {Language}, FileSize: {FileSize} bytes", 
                     language, templateResult.Data.Length);

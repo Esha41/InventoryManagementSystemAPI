@@ -13,6 +13,7 @@ using Ettad.EntityFramework.DataBaseContext;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using System;
+using Ettad.CrossCutting.Comman.Time;
 using InventoryEntity = Ettad.Data.Entities.Inventory;
 using InventoryDetailEntity = Ettad.Data.Entities.InventoryDetail;
 
@@ -34,6 +35,7 @@ namespace Ettad.Inventory.Service.Inventories
         private readonly IExcelImportService _excelImportService;
         private readonly ICurrentUserService _currentUserService;
         private readonly ILogger<InventoryService> _logger;
+        private readonly IDateTimeProvider _dateTimeProvider;
 
         public InventoryService(
             ApplicationDbContext context,
@@ -49,7 +51,8 @@ namespace Ettad.Inventory.Service.Inventories
             IValidator<UpdateInventoryDto> updateValidator,
             IExcelImportService excelImportService,
             ICurrentUserService currentUserService,
-            ILogger<InventoryService> logger)
+            ILogger<InventoryService> logger,
+            IDateTimeProvider dateTimeProvider)
         {
             _context = context;
             _inventoryRepository = inventoryRepository;
@@ -65,6 +68,7 @@ namespace Ettad.Inventory.Service.Inventories
             _excelImportService = excelImportService;
             _currentUserService = currentUserService;
             _logger = logger;
+            _dateTimeProvider = dateTimeProvider;
         }
 
         public async Task<APIOperationResponse<InventoryDto>> GetByIdAsync(long id)
@@ -166,7 +170,7 @@ namespace Ettad.Inventory.Service.Inventories
 
                 // Map DTO to entity
                 var inventory = _mapper.Map<InventoryEntity>(inputDto);
-                inventory.CreationDate = DateTime.UtcNow;
+                inventory.CreationDate = _dateTimeProvider.Now;
                 inventory.CreatedBy = _currentUserService.UserId;
 
                 // Map inventory details
@@ -221,7 +225,7 @@ namespace Ettad.Inventory.Service.Inventories
 
                 // Map updates to entity (excluding InventoryDetails)
                 _mapper.Map(inputDto, existingInventory);
-                existingInventory.ModificationDate = DateTime.UtcNow;
+                existingInventory.ModificationDate = _dateTimeProvider.Now;
                 existingInventory.ModifiedBy = _currentUserService.UserId;
 
                 // Handle inventory details updates
@@ -549,7 +553,7 @@ namespace Ettad.Inventory.Service.Inventories
                     bool isEmptyLot = remainingQuantity <= 0;
 
                     // Check if the lot is expired (expiry date is in the past)
-                    bool isExpired = lot.ExpiryDate.HasValue && lot.ExpiryDate.Value.Date < DateTime.UtcNow.Date;
+                    bool isExpired = lot.ExpiryDate.HasValue && lot.ExpiryDate.Value.Date < _dateTimeProvider.Now.Date;
 
                     // Use AutoMapper to create the base mapping
                     var lotDetail = _mapper.Map<LotDetailDto>(lot);
@@ -660,7 +664,7 @@ namespace Ettad.Inventory.Service.Inventories
                     usedQuantityByLot.Count + reservedQuantityByLot.Count, itemId);
 
                 // Filter and sort available lots (not expired, not empty, FEFO order)
-                var currentDate = DateTime.UtcNow.Date;
+                var currentDate = _dateTimeProvider.Now.Date;
                 var availableLots = new List<LotDetailDto>();
                 long remainingQuantityNeeded = requiredQuantity;
 
@@ -793,7 +797,7 @@ namespace Ettad.Inventory.Service.Inventories
                 lotDetail.RemainingQuantity = Math.Max(0, remainingQuantity);
                 lotDetail.IsEmptyLot = remainingQuantity <= 0;
                 lotDetail.IsExpired = inventoryDetail.ExpiryDate.HasValue == true &&
-                                      inventoryDetail.ExpiryDate.Value.Date < DateTime.UtcNow.Date;
+                                      inventoryDetail.ExpiryDate.Value.Date < _dateTimeProvider.Now.Date;
 
                 _logger.LogInformation("Lot details retrieved successfully. Lot: {Lot}, Remaining: {Remaining}, User: {UserId}",
                     lotNumber, lotDetail.RemainingQuantity, _currentUserService.UserId);
@@ -1327,7 +1331,7 @@ namespace Ettad.Inventory.Service.Inventories
 
                             // Create inventory entity
                             var inventory = _mapper.Map<InventoryEntity>(createDto);
-                            inventory.CreationDate = DateTime.UtcNow;
+                            inventory.CreationDate = _dateTimeProvider.Now;
                             inventory.CreatedBy = _currentUserService.UserId;
                             inventory.InventoryDetails = inventoryDetails
                                 .Select(d => _mapper.Map<InventoryDetailEntity>(d))

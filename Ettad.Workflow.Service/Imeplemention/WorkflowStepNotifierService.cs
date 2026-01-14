@@ -7,6 +7,7 @@ using Ettad.Workflow.Service.DTO;
 using Ettad.Workflow.Service.Interface;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Ettad.CrossCutting.Comman.Time;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -22,11 +23,13 @@ namespace Ettad.Workflow.Service.Imeplemention
         private readonly ApplicationDbContext _context;
         private readonly ICurrentUserService _currentUserService;
         private readonly ILogger<WorkflowStepNotifierService> _logger;
+        private readonly IDateTimeProvider _dateTimeProvider;
 
         public WorkflowStepNotifierService(
             ApplicationDbContext context,
             ICurrentUserService currentUserService,
-            ILogger<WorkflowStepNotifierService> logger)
+            ILogger<WorkflowStepNotifierService> logger,
+            IDateTimeProvider dateTimeProvider)
         {
             _context = context;
             _currentUserService = currentUserService;
@@ -142,7 +145,7 @@ namespace Ettad.Workflow.Service.Imeplemention
                 // Add new notifiers
                 var newNotifiers = new List<WorkflowStepNotifier>();
                 var currentUser = _currentUserService.UserName ?? "SYSTEM";
-                var now = DateTime.UtcNow;
+                var now = _dateTimeProvider.Now;
 
                 if (dto.UserIds != null && dto.UserIds.Any())
                 {
@@ -223,7 +226,7 @@ namespace Ettad.Workflow.Service.Imeplemention
                 }
 
                 var currentUser = _currentUserService.UserName ?? "SYSTEM";
-                var now = DateTime.UtcNow;
+                var now = _dateTimeProvider.Now;
                 var newNotifiers = new List<WorkflowStepNotifier>();
 
                 // Process UserIds

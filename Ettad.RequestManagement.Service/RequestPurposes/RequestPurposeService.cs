@@ -7,6 +7,7 @@ using Ettad.RequestManagement.Service.RequestPurposes.Dtos;
 using Ettad.ResponseHandler.Consts;
 using Ettad.ResponseHandler.Models;
 using Ettad.Application.Common.Interfaces;
+using Ettad.CrossCutting.Comman.Time;
 
 namespace Ettad.RequestManagement.Service.RequestPurposes
 {
@@ -16,17 +17,20 @@ namespace Ettad.RequestManagement.Service.RequestPurposes
         private readonly IMapper _mapper;
         private readonly IValidator<CreateUpdateRequestPurposeDto> _validator;
         private readonly ICurrentUserService _currentUserService;
+        private readonly IDateTimeProvider _dateTimeProvider;
 
         public RequestPurposeService(
             ICrossCuttingRepository<RequestPurpose> requestPurposeRepository,
             IMapper mapper,
             IValidator<CreateUpdateRequestPurposeDto> validator,
-            ICurrentUserService currentUserService)
+            ICurrentUserService currentUserService,
+            IDateTimeProvider dateTimeProvider)
         {
             _requestPurposeRepository = requestPurposeRepository;
             _mapper = mapper;
             _validator = validator;
             _currentUserService = currentUserService;
+            _dateTimeProvider = dateTimeProvider;
         }
 
         public async Task<APIOperationResponse<long>> CreateForDiscardAsync(CreateUpdateRequestPurposeDto inputDto)
@@ -57,7 +61,7 @@ namespace Ettad.RequestManagement.Service.RequestPurposes
 
                 var requestPurpose = _mapper.Map<RequestPurpose>(inputDto);
                 requestPurpose.RequestType = requestType;
-                requestPurpose.CreationDate = DateTime.UtcNow;
+                requestPurpose.CreationDate = _dateTimeProvider.Now;
                 requestPurpose.CreatedBy = _currentUserService.UserId;
 
                 var created = await _requestPurposeRepository.AddAsync(requestPurpose);
@@ -155,7 +159,7 @@ namespace Ettad.RequestManagement.Service.RequestPurposes
                     return APIOperationResponse<bool>.Fail(ResponseType.NotFound, "Request purpose not found");
 
                 _mapper.Map(inputDto, existing);
-                existing.ModificationDate = DateTime.UtcNow;
+                existing.ModificationDate = _dateTimeProvider.Now;
                 existing.ModifiedBy = _currentUserService.UserId;
 
                 await _requestPurposeRepository.UpdateAsync(existing);

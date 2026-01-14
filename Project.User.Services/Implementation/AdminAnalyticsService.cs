@@ -7,6 +7,7 @@ using Ettad.User.Services.DTO;
 using Ettad.User.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Ettad.CrossCutting.Comman.Time;
 
 namespace Ettad.User.Services.Implementation
 {
@@ -14,13 +15,16 @@ namespace Ettad.User.Services.Implementation
     {
         private readonly ApplicationDbContext _context;
         private readonly ILogger<AdminAnalyticsService> _logger;
+        private readonly IDateTimeProvider _dateTimeProvider;
 
         public AdminAnalyticsService(
             ApplicationDbContext context,
-            ILogger<AdminAnalyticsService> logger)
+            ILogger<AdminAnalyticsService> logger,
+            IDateTimeProvider dateTimeProvider)
         {
             _context = context ?? throw new ArgumentNullException(nameof(context));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _dateTimeProvider = dateTimeProvider ?? throw new ArgumentNullException(nameof(dateTimeProvider));
         }
 
         public async Task<APIOperationResponse<SystemHealthMetricsDto>> GetSystemHealthMetricsAsync()
@@ -30,7 +34,7 @@ namespace Ettad.User.Services.Implementation
                 _logger.LogInformation("Fetching system health metrics");
 
                 // Get active users count (users who logged in within last 24 hours)
-                var last24Hours = DateTime.UtcNow.AddHours(-24);
+                var last24Hours = _dateTimeProvider.Now.AddHours(-24);
                 var activeUsers = await _context.LoginAttempts
                     .AsNoTracking()
                     .Where(la => la.IsSuccessful && la.AttemptDate >= last24Hours)
@@ -52,7 +56,7 @@ namespace Ettad.User.Services.Implementation
                     .CountAsync();
 
                 // Calculate error rate (failed logins in last hour)
-                var lastHour = DateTime.UtcNow.AddHours(-1);
+                var lastHour = _dateTimeProvider.Now.AddHours(-1);
                 var totalLoginAttempts = await _context.LoginAttempts
                     .Where(la => la.AttemptDate >= lastHour)
                     .CountAsync();
@@ -90,7 +94,7 @@ namespace Ettad.User.Services.Implementation
                     ActiveRequests = activeRequests,
                     ErrorRate = Math.Round(errorRate, 2),
                     Status = status,
-                    LastUpdated = DateTime.UtcNow
+                    LastUpdated = _dateTimeProvider.Now
                 };
 
                 _logger.LogInformation("System health metrics retrieved successfully");
@@ -121,7 +125,7 @@ namespace Ettad.User.Services.Implementation
                     DiskUsage = 38.7,
                     DatabaseConnections = 12,
                     AvgQueryTime = 85.4,
-                    LastUpdated = DateTime.UtcNow
+                    LastUpdated = _dateTimeProvider.Now
                 };
 
                 _logger.LogInformation("Performance metrics retrieved successfully");
@@ -149,7 +153,7 @@ namespace Ettad.User.Services.Implementation
                     .CountAsync();
 
                 // Get daily active users (logged in today)
-                var today = DateTime.UtcNow.Date;
+                var today = _dateTimeProvider.Now.Date;
                 var dailyActiveUsers = await _context.LoginAttempts
                     .Where(la => la.IsSuccessful && la.AttemptDate >= today)
                     .Select(la => la.UserId)
@@ -202,7 +206,7 @@ namespace Ettad.User.Services.Implementation
                     NewUsersToday = newUsersToday,
                     TotalUsers = totalUsers,
                     TopDepartments = departmentStats,
-                    LastUpdated = DateTime.UtcNow
+                    LastUpdated = _dateTimeProvider.Now
                 };
 
                 _logger.LogInformation("User activity metrics retrieved successfully");
@@ -279,7 +283,7 @@ namespace Ettad.User.Services.Implementation
                     RejectedRequests = rejectedRequests,
                     AvgApprovalTime = avgApprovalTime,
                     SlaCompliance = slaCompliance,
-                    LastUpdated = DateTime.UtcNow
+                    LastUpdated = _dateTimeProvider.Now
                 };
 
                 _logger.LogInformation("Request metrics retrieved successfully");
@@ -309,7 +313,7 @@ namespace Ettad.User.Services.Implementation
                 if (period.ToLower() == "yearly")
                 {
                     // Aggregation for the last 12 months
-                    var startDate = DateTime.UtcNow.Date.AddMonths(-11).AddDays(-(DateTime.UtcNow.Day - 1));
+                    var startDate = _dateTimeProvider.Now.Date.AddMonths(-11).AddDays(-(_dateTimeProvider.Now.Day - 1));
                     var rawRequests = await _context.BaseRequests
                         .AsNoTracking()
                         .Where(r => r.CreationDate >= startDate && !r.IsDeleted)
@@ -335,7 +339,7 @@ namespace Ettad.User.Services.Implementation
                         _ => 7 
                     };
 
-                    var startDate = DateTime.UtcNow.Date.AddDays(-(days - 1));
+                    var startDate = _dateTimeProvider.Now.Date.AddDays(-(days - 1));
 
                     var rawTrends = await _context.BaseRequests
                         .AsNoTracking()
@@ -351,7 +355,7 @@ namespace Ettad.User.Services.Implementation
 
                     for (int i = days - 1; i >= 0; i--)
                     {
-                        var date = DateTime.UtcNow.Date.AddDays(-i);
+                        var date = _dateTimeProvider.Now.Date.AddDays(-i);
                         dates.Add(date.ToString("MMM dd"));
                         
                         orders.Add(rawTrends.FirstOrDefault(x => x.Date == date && x.Type == RequestType.Order)?.Count ?? 0);

@@ -16,6 +16,7 @@ using Ettad.Inventory.Services.Common;
 using OfficeOpenXml;
 using OfficeOpenXml.DataValidation;
 using Ettad.EntityFramework.DataBaseContext;
+using Ettad.CrossCutting.Comman.Time;
 
 namespace Ettad.Inventory.Service.Ammunitions
 {
@@ -30,6 +31,7 @@ namespace Ettad.Inventory.Service.Ammunitions
         private readonly IFileUploadService _fileUploadService;
         private readonly IExcelImportService _excelImportService;
         private readonly ApplicationDbContext _context;
+        private readonly IDateTimeProvider _dateTimeProvider;
 
         public AmmunitionService(
             ICrossCuttingRepository<Ammunition> ammunitionRepository,
@@ -40,7 +42,8 @@ namespace Ettad.Inventory.Service.Ammunitions
             ILogger<AmmunitionService> logger,
             IFileUploadService fileUploadService,
             IExcelImportService excelImportService,
-            ApplicationDbContext context)
+            ApplicationDbContext context,
+            IDateTimeProvider dateTimeProvider)
         {
             _ammunitionRepository = ammunitionRepository;
             _fileDetailsRepository = fileDetailsRepository;
@@ -51,6 +54,7 @@ namespace Ettad.Inventory.Service.Ammunitions
             _fileUploadService = fileUploadService;
             _excelImportService = excelImportService;
             _context = context;
+            _dateTimeProvider = dateTimeProvider;
             
             // Set EPPlus license context
             ExcelPackage.License.SetNonCommercialPersonal("Ettad");
@@ -238,7 +242,7 @@ namespace Ettad.Inventory.Service.Ammunitions
                 var ammunition = _mapper.Map<Ammunition>(inputDto);
                 ammunition.AmmunitionType = AmmunitionType.Small;
                 ammunition.ItemType = ItemType.Ammunition;
-                ammunition.CreationDate = DateTime.UtcNow;
+                ammunition.CreationDate = _dateTimeProvider.Now;
                 ammunition.CreatedBy = _currentUserService.UserId;
                 ammunition.Nsn = string.IsNullOrWhiteSpace(inputDto.Nsn) ? null : inputDto.Nsn.Trim();
 
@@ -321,7 +325,7 @@ namespace Ettad.Inventory.Service.Ammunitions
                 // Map updates to entity
                 _mapper.Map(inputDto, existingAmmunition);
                 existingAmmunition.AmmunitionType = AmmunitionType.Small;
-                existingAmmunition.ModificationDate = DateTime.UtcNow;
+                existingAmmunition.ModificationDate = _dateTimeProvider.Now;
                 existingAmmunition.ModifiedBy = _currentUserService.UserId;
                 existingAmmunition.Nsn = string.IsNullOrWhiteSpace(inputDto.Nsn) ? null : inputDto.Nsn.Trim();
 

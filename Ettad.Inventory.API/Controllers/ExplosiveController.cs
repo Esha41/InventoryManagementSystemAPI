@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using OfficeOpenXml;
 using System.Net;
+using Ettad.CrossCutting.Comman.Time;
 
 namespace Ettad.Inventory.API.Controllers
 {
@@ -21,10 +22,12 @@ namespace Ettad.Inventory.API.Controllers
 
         public ExplosiveController(
             IExplosiveService explosiveService,
-            ILogger<ExplosiveController> logger)
+            ILogger<ExplosiveController> logger,
+            IDateTimeProvider dateTimeProvider)
         {
             _explosiveService = explosiveService;
             _logger = logger;
+            _dateTimeProvider = dateTimeProvider;
             
             // Set EPPlus license context
             ExcelPackage.License.SetNonCommercialPersonal("Ettad");
@@ -98,7 +101,7 @@ namespace Ettad.Inventory.API.Controllers
                     return StatusCode(500, new { message = "Failed to generate template", errors = templateResult.Errors });
                 }
 
-                var fileName = $"Explosive_Import_Template_{DateTime.UtcNow:yyyyMMdd}.xlsx";
+                var fileName = $"Explosive_Import_Template_{_dateTimeProvider.Now:yyyyMMdd}.xlsx";
                 
                 _logger.LogInformation("Explosive import template generated successfully. Language: {Language}, FileSize: {FileSize} bytes", 
                     language, templateResult.Data.Length);

@@ -11,6 +11,7 @@ using Ettad.Data.Entities.Settings;
 using Ettad.Inventory.Service.Monitoring.Dtos;
 using Ettad.ResponseHandler.Consts;
 using Ettad.ResponseHandler.Models;
+using Ettad.CrossCutting.Comman.Time;
 
 namespace Ettad.Inventory.Service.Monitoring
 {
@@ -20,17 +21,20 @@ namespace Ettad.Inventory.Service.Monitoring
         private readonly ICurrentUserService _currentUserService;
         private readonly ILogger<LowStockMonitorSettingsService> _logger;
         private readonly IRecurringJobManager? _recurringJobManager;
+        private readonly IDateTimeProvider _dateTimeProvider;
 
         public LowStockMonitorSettingsService(
             ICrossCuttingRepository<Settings> settingsRepository,
             ICurrentUserService currentUserService,
             ILogger<LowStockMonitorSettingsService> logger,
-            IRecurringJobManager? recurringJobManager = null)
+            IRecurringJobManager? recurringJobManager = null,
+            IDateTimeProvider dateTimeProvider = null)
         {
             _settingsRepository = settingsRepository;
             _currentUserService = currentUserService;
             _logger = logger;
             _recurringJobManager = recurringJobManager;
+            _dateTimeProvider = dateTimeProvider ?? throw new ArgumentNullException(nameof(dateTimeProvider));
         }
 
         public async Task<APIOperationResponse<LowStockNotificationSettingsDto>> GetSettingsAsync()
@@ -72,7 +76,7 @@ namespace Ettad.Inventory.Service.Monitoring
                         Key = LowStockMonitorConstants.SETTINGS_KEY,
                         Group = LowStockMonitorConstants.SETTINGS_GROUP,
                         Value = jsonValue,
-                        CreationDate = DateTime.UtcNow,
+                        CreationDate = _dateTimeProvider.Now,
                         CreatedBy = _currentUserService.UserId
                     };
                     await _settingsRepository.AddAsync(setting);
@@ -80,7 +84,7 @@ namespace Ettad.Inventory.Service.Monitoring
                 else
                 {
                     setting.Value = jsonValue;
-                    setting.ModificationDate = DateTime.UtcNow;
+                    setting.ModificationDate = _dateTimeProvider.Now;
                     setting.ModifiedBy = _currentUserService.UserId;
                     await _settingsRepository.UpdateAsync(setting);
                 }
@@ -115,39 +119,9 @@ namespace Ettad.Inventory.Service.Monitoring
         {
             try
             {
-                // Convert local time to UTC (assuming scheduleTime is in Qatar time UTC+3)
-                // If scheduleTime.Kind is Unspecified, assume it's Qatar local time
-                DateTime utcTime;
-                if (scheduleTime.Kind == DateTimeKind.Unspecified)
-                {
-                    // Assume Qatar time, convert to UTC
-                    // Use platform-specific timezone ID (Windows: "Arab Standard Time", Linux: "Asia/Riyadh")
-                    TimeZoneInfo qatarTimeZone;
-                    try
-                    {
-                        qatarTimeZone = RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
-                            ? TimeZoneInfo.FindSystemTimeZoneById("Arab Standard Time")
-                            : TimeZoneInfo.FindSystemTimeZoneById("Asia/Riyadh");
-                        utcTime = TimeZoneInfo.ConvertTimeToUtc(scheduleTime, qatarTimeZone);
-                    }
-                    catch (TimeZoneNotFoundException)
-                    {
-                        // Fallback: assume UTC+3 offset if timezone not found
-                        _logger.LogWarning("Qatar timezone not found, using UTC+3 offset as fallback");
-                        utcTime = scheduleTime.AddHours(-3);
-                    }
-                }
-                else if (scheduleTime.Kind == DateTimeKind.Local)
-                {
-                    utcTime = scheduleTime.ToUniversalTime();
-                }
-                else
-                {
-                    utcTime = scheduleTime; // Already UTC
-                }
-
+                // Use local time directly for cron expression
                 // Convert to cron expression format: "minute hour * * *" (daily at specified time)
-                var cronExpression = $"{utcTime.Minute} {utcTime.Hour} * * *";
+                var cronExpression = $"{scheduleTime.Minute} {scheduleTime.Hour} * * *";
 
                 var setting = await _settingsRepository.FindOneAsync(
                     s => s.Key == LowStockMonitorConstants.SCHEDULE_SETTINGS_KEY && s.Group == LowStockMonitorConstants.SCHEDULE_SETTINGS_GROUP);
@@ -159,7 +133,7 @@ namespace Ettad.Inventory.Service.Monitoring
                         Key = LowStockMonitorConstants.SCHEDULE_SETTINGS_KEY,
                         Group = LowStockMonitorConstants.SCHEDULE_SETTINGS_GROUP,
                         Value = cronExpression,
-                        CreationDate = DateTime.UtcNow,
+                        CreationDate = _dateTimeProvider.Now,
                         CreatedBy = _currentUserService.UserId
                     };
                     await _settingsRepository.AddAsync(setting);
@@ -167,13 +141,13 @@ namespace Ettad.Inventory.Service.Monitoring
                 else
                 {
                     setting.Value = cronExpression;
-                    setting.ModificationDate = DateTime.UtcNow;
+                    setting.ModificationDate = _dateTimeProvider.Now;
                     setting.ModifiedBy = _currentUserService.UserId;
                     await _settingsRepository.UpdateAsync(setting);
                 }
 
-                _logger.LogInformation("Low Stock Monitor schedule updated to: {ScheduleTime} (UTC: {UtcTime}, Cron: {CronExpression})", 
-                    scheduleTime, utcTime, cronExpression);
+                _logger.LogInformation("Low Stock Monitor schedule updated to: {ScheduleTime} (Cron: {CronExpression})", 
+                    scheduleTime, cronExpression);
                 
                 // Update Hangfire recurring job immediately if available
                 if (_recurringJobManager != null)

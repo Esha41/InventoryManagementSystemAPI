@@ -6,6 +6,7 @@ using Ettad.ResponseHandler.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Net;
+using Ettad.CrossCutting.Comman.Time;
 
 namespace Ettad.Inventory.API.Controllers
 {
@@ -15,8 +16,9 @@ namespace Ettad.Inventory.API.Controllers
     public class WeaponController : ApiControllerBase
     {
         private readonly IWeaponService _weaponService;
+        private readonly IDateTimeProvider _dateTimeProvider;
 
-        public WeaponController(IWeaponService weaponService)
+        public WeaponController(IWeaponService weaponService, IDateTimeProvider dateTimeProvider)
         {
             _weaponService = weaponService;
         }
@@ -105,7 +107,7 @@ namespace Ettad.Inventory.API.Controllers
                     return StatusCode((int)HttpStatusCode.InternalServerError, templateResult.Message);
                 }
 
-                var fileName = $"Weapon_Import_Template_{language}_{DateTime.UtcNow:yyyyMMddHHmmss}.xlsx";
+                var fileName = $"Weapon_Import_Template_{language}_{_dateTimeProvider.Now:yyyyMMddHHmmss}.xlsx";
                 return File(templateResult.Data, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", fileName);
             }
             catch (Exception ex)

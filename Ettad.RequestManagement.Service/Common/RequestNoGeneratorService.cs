@@ -2,6 +2,7 @@ using Ettad.CrossCutting.Data.Repository;
 using Ettad.Data.Entities;
 using Ettad.Data.Enums;
 using Microsoft.EntityFrameworkCore;
+using Ettad.CrossCutting.Comman.Time;
 
 namespace Ettad.RequestManagement.Service.Common
 {
@@ -9,13 +10,16 @@ namespace Ettad.RequestManagement.Service.Common
     {
         private readonly ICrossCuttingRepository<BaseRequest> _requestRepository;
         private readonly ICrossCuttingRepository<Department> _departmentRepository;
+        private readonly IDateTimeProvider _dateTimeProvider;
 
         public RequestNoGeneratorService(
             ICrossCuttingRepository<BaseRequest> requestRepository,
-            ICrossCuttingRepository<Department> departmentRepository)
+            ICrossCuttingRepository<Department> departmentRepository,
+            IDateTimeProvider dateTimeProvider)
         {
             _requestRepository = requestRepository;
             _departmentRepository = departmentRepository;
+            _dateTimeProvider = dateTimeProvider;
         }
 
         public async Task<string> GenerateRequestNoAsync(RequestType requestType, long departmentId)
@@ -31,7 +35,7 @@ namespace Ettad.RequestManagement.Service.Common
             var prefix = GetRequestTypePrefix(requestType);
 
             // Get the next sequential number for this request type
-            var currentYear = DateTime.UtcNow.Year;
+            var currentYear = _dateTimeProvider.Now.Year;
             var nextNumber = await GetNextSequenceNumberAsync(requestType, currentYear);
 
             // Format: PREFIX-Year-AutoNumber-DepartmentCode

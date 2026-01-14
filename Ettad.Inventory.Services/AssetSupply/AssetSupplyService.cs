@@ -12,6 +12,7 @@ using Ettad.Inventory.Service.AssetHistory;
 using Ettad.Inventory.Service.AssetHistory.Dtos;
 using Ettad.ResponseHandler.Consts;
 using Ettad.ResponseHandler.Models;
+using Ettad.CrossCutting.Comman.Time;
 
 namespace Ettad.Inventory.Service.AssetSupply
 {
@@ -30,6 +31,7 @@ namespace Ettad.Inventory.Service.AssetSupply
         private readonly IValidator<ReturnMultipleAssetsDto> _returnMultipleValidator;
         private readonly ICurrentUserService _currentUserService;
         private readonly ILogger<AssetSupplyService> _logger;
+        private readonly IDateTimeProvider _dateTimeProvider;
 
         public AssetSupplyService(
             ApplicationDbContext context,
@@ -44,7 +46,8 @@ namespace Ettad.Inventory.Service.AssetSupply
             IValidator<ReturnAssetDto> returnValidator,
             IValidator<ReturnMultipleAssetsDto> returnMultipleValidator,
             ICurrentUserService currentUserService,
-            ILogger<AssetSupplyService> logger)
+            ILogger<AssetSupplyService> logger,
+            IDateTimeProvider dateTimeProvider)
         {
             _context = context;
             _assetSupplyRepository = assetSupplyRepository;
@@ -360,7 +363,7 @@ namespace Ettad.Inventory.Service.AssetSupply
                 // Create supply entity
                 var supply = _mapper.Map<Ettad.Data.Entities.AssetSupply>(dto);
                 supply.SubmissionStatus = SupplySubmissionStatus.Submitted;
-                supply.SupplyDate = order.SupplyDate ?? DateTime.UtcNow; // Use order supply date or now
+                supply.SupplyDate = order.SupplyDate ?? _dateTimeProvider.Now; // Use order supply date or now
                 supply.DepartmentId = order.DepartmentId; // Always use requested department
                 supply.CustodianId = dto.CustodianId ?? order.RequesterId; // Use provided user ID or default to order requester
                 
@@ -388,7 +391,7 @@ namespace Ettad.Inventory.Service.AssetSupply
                 }
                 supply.FulfillmentStatus = fullyFulfilled ? SupplyFulfillmentStatus.Fully : SupplyFulfillmentStatus.Partial;
 
-                supply.CreationDate = DateTime.UtcNow;
+                supply.CreationDate = _dateTimeProvider.Now;
                 supply.CreatedBy = _currentUserService.UserId;
 
                 // Create supply details
@@ -405,8 +408,8 @@ namespace Ettad.Inventory.Service.AssetSupply
                         CustodianId = d.CustodianId ?? order.RequesterId, // Use detail-level custodian if provided, otherwise use order requester
                         Notes = d.Notes,
                         IsDelivered = true, // Auto-delivered since there is no draft
-                        DeliveredDate = DateTime.UtcNow,
-                        CreationDate = DateTime.UtcNow,
+                        DeliveredDate = _dateTimeProvider.Now,
+                        CreationDate = _dateTimeProvider.Now,
                         CreatedBy = _currentUserService.UserId
                     };
                 }).ToList();
@@ -427,7 +430,7 @@ namespace Ettad.Inventory.Service.AssetSupply
                         DepartmentId = supply.DepartmentId,
                         CustodianId = detail.CustodianId, // Use detail-level custodian (which defaults to order requester if not provided)
                         Location = supply.Location,
-                        AssignDate = supply.SupplyDate ?? DateTime.UtcNow,
+                        AssignDate = supply.SupplyDate ?? _dateTimeProvider.Now,
                         ExpectedReturnDate = supply.ExpectedReturnDate,
                         Status = AssetAssignmentStatus.Active,
                         Purpose = order.UsagePurpose,
@@ -435,7 +438,7 @@ namespace Ettad.Inventory.Service.AssetSupply
                         ReceiverName = supply.ReceiverName,
                         ReceiverMilitaryId = supply.ReceiverMilitaryId,
                         ReceiverRankId = supply.ReceiverRankId,
-                        CreationDate = DateTime.UtcNow,
+                        CreationDate = _dateTimeProvider.Now,
                         CreatedBy = _currentUserService.UserId
                     };
 
@@ -445,7 +448,7 @@ namespace Ettad.Inventory.Service.AssetSupply
                     // Update asset
                     asset.IsAssigned = true;
                     asset.CurrentAssignmentId = assignment.Id;
-                    asset.ModificationDate = DateTime.UtcNow;
+                    asset.ModificationDate = _dateTimeProvider.Now;
                     asset.ModifiedBy = _currentUserService.UserId;
 
                     // Record history
@@ -606,13 +609,13 @@ namespace Ettad.Inventory.Service.AssetSupply
 
                 // Update assignment
                 assignment.Status = AssetAssignmentStatus.Returned;
-                assignment.ActualReturnDate = dto.ReturnDate ?? DateTime.UtcNow;
+                assignment.ActualReturnDate = dto.ReturnDate ?? _dateTimeProvider.Now;
                 assignment.ConditionOnReturn = dto.ConditionOnReturn;
                 if (!string.IsNullOrEmpty(dto.Notes))
                     assignment.Notes = string.IsNullOrEmpty(assignment.Notes)
                         ? dto.Notes
                         : $"{assignment.Notes}\n{dto.Notes}";
-                assignment.ModificationDate = DateTime.UtcNow;
+                assignment.ModificationDate = _dateTimeProvider.Now;
                 assignment.ModifiedBy = _currentUserService.UserId;
 
                 // Update asset
@@ -620,7 +623,7 @@ namespace Ettad.Inventory.Service.AssetSupply
                 asset.CurrentAssignmentId = null;
                 if (!string.IsNullOrEmpty(dto.ConditionOnReturn))
                     asset.Condition = dto.ConditionOnReturn;
-                asset.ModificationDate = DateTime.UtcNow;
+                asset.ModificationDate = _dateTimeProvider.Now;
                 asset.ModifiedBy = _currentUserService.UserId;
 
                 await _context.SaveChangesAsync();

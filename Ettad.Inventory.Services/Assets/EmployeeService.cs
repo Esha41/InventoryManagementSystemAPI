@@ -7,6 +7,7 @@ using Ettad.ResponseHandler.Consts;
 using Ettad.ResponseHandler.Models;
 using Ettad.Application.Common.Interfaces;
 using Microsoft.Extensions.Logging;
+using Ettad.CrossCutting.Comman.Time;
 
 namespace Ettad.Inventory.Service.Assets
 {
@@ -17,19 +18,22 @@ namespace Ettad.Inventory.Service.Assets
         private readonly IValidator<CreateUpdateEmployeeDto> _validator;
         private readonly ICurrentUserService _currentUserService;
         private readonly ILogger<EmployeeService> _logger;
+        private readonly IDateTimeProvider _dateTimeProvider;
 
         public EmployeeService(
             ICrossCuttingRepository<Employee> employeeRepository,
             IMapper mapper,
             IValidator<CreateUpdateEmployeeDto> validator,
             ICurrentUserService currentUserService,
-            ILogger<EmployeeService> logger)
+            ILogger<EmployeeService> logger,
+            IDateTimeProvider dateTimeProvider)
         {
             _employeeRepository = employeeRepository;
             _mapper = mapper;
             _validator = validator;
             _currentUserService = currentUserService;
             _logger = logger;
+            _dateTimeProvider = dateTimeProvider;
         }
 
         public async Task<APIOperationResponse<EmployeeDto>> GetByIdAsync(long id)
@@ -109,7 +113,7 @@ namespace Ettad.Inventory.Service.Assets
 
                 // Map DTO to entity
                 var employee = _mapper.Map<Employee>(inputDto);
-                employee.CreationDate = DateTime.UtcNow;
+                employee.CreationDate = _dateTimeProvider.Now;
                 employee.CreatedBy = _currentUserService.UserId;
 
                 // Add to repository
@@ -149,7 +153,7 @@ namespace Ettad.Inventory.Service.Assets
 
                 // Map updates to entity
                 _mapper.Map(inputDto, existingEmployee);
-                existingEmployee.ModificationDate = DateTime.UtcNow;
+                existingEmployee.ModificationDate = _dateTimeProvider.Now;
                 existingEmployee.ModifiedBy = _currentUserService.UserId;
 
                 // Update in repository

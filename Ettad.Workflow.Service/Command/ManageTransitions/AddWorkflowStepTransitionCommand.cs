@@ -10,6 +10,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Ettad.ResponseHandler.Consts;
+using Ettad.CrossCutting.Comman.Time;
 
 namespace Ettad.Workflows.Service.Command.ManageTransitions
 {
@@ -23,11 +24,13 @@ namespace Ettad.Workflows.Service.Command.ManageTransitions
     {
         private readonly ApplicationDbContext _context;
         private readonly ICurrentUserService _currentUserService;
+        private readonly IDateTimeProvider _dateTimeProvider;
 
-        public SetWorkflowStepTransitionsCommandHandler(ApplicationDbContext context, ICurrentUserService currentUserService)
+        public SetWorkflowStepTransitionsCommandHandler(ApplicationDbContext context, ICurrentUserService currentUserService, IDateTimeProvider dateTimeProvider)
         {
             _context = context;
             _currentUserService = currentUserService;
+            _dateTimeProvider = dateTimeProvider;
         }
 
         public async Task<APIOperationResponse<bool>> Handle(SetWorkflowStepTransitionsCommand request, CancellationToken cancellationToken)
@@ -100,7 +103,7 @@ namespace Ettad.Workflows.Service.Command.ManageTransitions
                     SourceWorkflowStepId = request.SourceStepId,
                     TargetWorkflowStepId = targetId,
                     CreatedBy = _currentUserService.UserName ?? "System",
-                    CreationDate = DateTime.UtcNow
+                    CreationDate = _dateTimeProvider.Now
                 }).ToList();
 
                 _context.WorkflowStepTransitions.AddRange(newTransitions);
@@ -111,14 +114,14 @@ namespace Ettad.Workflows.Service.Command.ManageTransitions
             if (finalTransitionCount > 0 && !sourceStep.CanSkip)
             {
                 sourceStep.CanSkip = true;
-                sourceStep.ModificationDate = DateTime.UtcNow;
+                sourceStep.ModificationDate = _dateTimeProvider.Now;
                 sourceStep.ModifiedBy = _currentUserService.UserName ?? "System";
             }
             else if (finalTransitionCount == 0 && sourceStep.CanSkip)
             {
                 // Disable CanSkip if no transitions remain
                 sourceStep.CanSkip = false;
-                sourceStep.ModificationDate = DateTime.UtcNow;
+                sourceStep.ModificationDate = _dateTimeProvider.Now;
                 sourceStep.ModifiedBy = _currentUserService.UserName ?? "System";
             }
 

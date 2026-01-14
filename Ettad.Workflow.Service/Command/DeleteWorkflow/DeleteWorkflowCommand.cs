@@ -5,6 +5,7 @@ using Ettad.Application.Common.Interfaces;
 using Ettad.EntityFramework.DataBaseContext;
 using Ettad.ResponseHandler.Models;
 using System;
+using Ettad.CrossCutting.Comman.Time;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -25,6 +26,7 @@ namespace Ettad.Workflows.Service.Command.DeleteWorkflow
         private readonly ApplicationDbContext _context;
         private readonly ICurrentUserService _currentUserService;
         private readonly ILogger<DeleteWorkflowCommandHandler> _logger;
+        private readonly IDateTimeProvider _dateTimeProvider;
 
         public DeleteWorkflowCommandHandler(
             ApplicationDbContext context,
@@ -34,6 +36,7 @@ namespace Ettad.Workflows.Service.Command.DeleteWorkflow
             _context = context;
             _currentUserService = currentUserService;
             _logger = logger;
+            _dateTimeProvider = dateTimeProvider;
         }
 
         public async Task<APIOperationResponse<bool>> Handle(DeleteWorkflowCommand request, CancellationToken cancellationToken)
@@ -53,7 +56,7 @@ namespace Ettad.Workflows.Service.Command.DeleteWorkflow
                 entity.IsDeleted = true;
                 entity.IsActive = false;
                 entity.ModifiedBy = _currentUserService.UserName;
-                entity.ModificationDate = DateTime.UtcNow;
+                entity.ModificationDate = _dateTimeProvider.Now;
 
                 await _context.SaveChangesAsync(cancellationToken);
 

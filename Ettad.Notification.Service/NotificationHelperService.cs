@@ -9,6 +9,7 @@ using Ettad.Notification.Service.Dtos;
 using Ettad.Notification.Service.Hubs;
 using Ettad.Notification.Service.EmailTemplate;
 using Ettad.User.Services.Helpers;
+using Ettad.CrossCutting.Comman.Time;
 
 namespace Ettad.Notification.Service
 {
@@ -29,7 +30,8 @@ namespace Ettad.Notification.Service
             RoleManager<ApplicationRole> roleManager,
             IEmailSender emailSender,
             IEmailTemplateService emailTemplateService,
-            ILogger<NotificationHelperService> logger)
+            ILogger<NotificationHelperService> logger,
+            IDateTimeProvider dateTimeProvider)
         {
             _notificationService = notificationService;
             _hubContext = hubContext;
@@ -38,6 +40,7 @@ namespace Ettad.Notification.Service
             _emailSender = emailSender;
             _emailTemplateService = emailTemplateService;
             _logger = logger;
+            _dateTimeProvider = dateTimeProvider;
         }
 
         public async Task SendNotificationAsync(
@@ -124,7 +127,7 @@ namespace Ettad.Notification.Service
                 EntityType = entityType,
                 EntityId = entityId,
                 SenderId = senderId,
-                CreationDate = DateTime.UtcNow,
+                CreationDate = _dateTimeProvider.Now,
                 IsRead = false
             };
 
@@ -172,7 +175,7 @@ namespace Ettad.Notification.Service
 
                 // Build email body once for all users
                 var emailBody = await _emailTemplateService.RenderEmailTemplateAsync(
-                    title, message, entityType, entityId, 0, DateTime.UtcNow, htmlContent);
+                    title, message, entityType, entityId, 0, _dateTimeProvider.Now, htmlContent);
 
                 _logger.LogInformation("Email template rendered successfully. Body length: {BodyLength} characters", emailBody?.Length ?? 0);
 

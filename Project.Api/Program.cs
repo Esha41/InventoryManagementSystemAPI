@@ -425,14 +425,14 @@ try
         var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
 
         // Read schedule from Settings table, fallback to appsettings.json, then default
-        // Note: Cron expressions are in UTC timezone. For Qatar (UTC+3), subtract 3 hours from local time.
-        // Example: 9:15 AM Qatar time = 6:15 AM UTC = "15 6 * * *"
+        // Note: Cron expressions use local time.
+        // Example: 9:15 AM local time = "15 9 * * *"
         var scheduleSetting = await context.Settings
             .FirstOrDefaultAsync(s => s.Key == LowStockMonitorConstants.SCHEDULE_SETTINGS_KEY && s.Group == LowStockMonitorConstants.SCHEDULE_SETTINGS_GROUP);
         
         var lowStockCronExpression = scheduleSetting?.Value 
             ?? app.Configuration.GetValue<string>("BackgroundJobs:LowStockMonitor:CronExpression") 
-            ?? LowStockMonitorConstants.DEFAULT_CRON_EXPRESSION; // Default: 6:15 AM UTC (9:15 AM Qatar time, UTC+3)
+            ?? LowStockMonitorConstants.DEFAULT_CRON_EXPRESSION; // Default: 9:15 AM local time
 
 
         // Register recurring job - Hangfire resolves LowStockMonitorJob from DI at execution time

@@ -395,7 +395,7 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding.Workflows
                 IsDeleted = false,
                 IsSpecialOrReserved = false,
                 CreatedBy = SystemUser,
-                CreationDate = DateTime.UtcNow
+                CreationDate = DateTime.Now
             };
 
             await context.Workflows.AddAsync(workflow);
@@ -432,7 +432,7 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding.Workflows
                     $"Cannot seed {workflowName} because these entities are missing: {string.Join(", ", missingEntities)}");
             }
 
-            var utcNow = DateTime.UtcNow;
+            var utcNow = DateTime.Now;
             var steps = definitions.Select(definition => new WorkflowStep
             {
                 WorkflowId = workflow.Id,

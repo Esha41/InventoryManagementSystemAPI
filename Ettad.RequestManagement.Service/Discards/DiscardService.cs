@@ -17,6 +17,7 @@ using Ettad.Workflows.Service.Interface;
 using Microsoft.AspNetCore.Http;
 using Ettad.CrossCutting.Comman.FileUpload;
 using Ettad.Comman.Enums;
+using Ettad.CrossCutting.Comman.Time;
 
 namespace Ettad.RequestManagement.Service.Discards
 {
@@ -35,6 +36,7 @@ namespace Ettad.RequestManagement.Service.Discards
         private readonly ILogger<DiscardService> _logger;
         private readonly IFileUploadService _fileUploadService;
         private readonly ICrossCuttingRepository<FileUplodDetails> _fileDetailsRepository;
+        private readonly IDateTimeProvider _dateTimeProvider;
 
         public DiscardService(
             ICrossCuttingRepository<Discard> discardRepository,
@@ -49,7 +51,8 @@ namespace Ettad.RequestManagement.Service.Discards
             UserManager<ApplicationUser> userManager,
             ILogger<DiscardService> logger,
             IFileUploadService fileUploadService,
-            ICrossCuttingRepository<FileUplodDetails> fileDetailsRepository)
+            ICrossCuttingRepository<FileUplodDetails> fileDetailsRepository,
+            IDateTimeProvider dateTimeProvider)
         {
             _discardRepository = discardRepository;
             _requestItemRepository = requestItemRepository;
@@ -64,6 +67,7 @@ namespace Ettad.RequestManagement.Service.Discards
             _logger = logger;
             _fileUploadService = fileUploadService;
             _fileDetailsRepository = fileDetailsRepository;
+            _dateTimeProvider = dateTimeProvider;
         }
 
         public async Task<APIOperationResponse<DiscardDto>> GetByIdAsync(long id)
@@ -210,7 +214,7 @@ namespace Ettad.RequestManagement.Service.Discards
                 
                 discard.RequestType = RequestType.Discard;
                 discard.Status = RequestStatus.New; // Always set to New when creating
-                discard.CreationDate = DateTime.UtcNow;
+                discard.CreationDate = _dateTimeProvider.Now;
                 discard.CreatedBy = currentUserId;
                 discard.RequesterId = currentUserId;
 
@@ -314,7 +318,7 @@ namespace Ettad.RequestManagement.Service.Discards
                 
                 // Update priority
                 existingDiscard.Priority = priority;
-                existingDiscard.ModificationDate = DateTime.UtcNow;
+                existingDiscard.ModificationDate = _dateTimeProvider.Now;
                 existingDiscard.ModifiedBy = _currentUserService.UserId;
 
                 // Update in repository

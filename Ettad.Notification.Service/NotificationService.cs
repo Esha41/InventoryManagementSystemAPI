@@ -8,6 +8,7 @@ using Ettad.ResponseHandler.Consts;
 using Ettad.ResponseHandler.Models;
 using Ettad.User.Services.Interfaces;
 using System.Collections.Generic;
+using Ettad.CrossCutting.Comman.Time;
 using System.Linq;
 using NotificationEntity = Ettad.Data.Entities.Notification;
 
@@ -22,6 +23,7 @@ namespace Ettad.Notification.Service
         private readonly IValidator<CreateNotificationDto> _validator;
         private readonly ICurrentUserService _currentUserService;
         private readonly IUserService _userService;
+        private readonly IDateTimeProvider _dateTimeProvider;
 
         public NotificationService(
             ICrossCuttingRepository<NotificationEntity> notificationRepository,
@@ -29,7 +31,8 @@ namespace Ettad.Notification.Service
             IUserService userService,
             IMapper mapper,
             IValidator<CreateNotificationDto> validator,
-            ICurrentUserService currentUserService)
+            ICurrentUserService currentUserService,
+            IDateTimeProvider dateTimeProvider)
         {
             _notificationRepository = notificationRepository;
             _receiverRepository = receiverRepository;
@@ -61,7 +64,7 @@ namespace Ettad.Notification.Service
                     EntityType = dto.EntityType,
                     EntityId = dto.EntityId,
                     SenderId = dto.SenderId, // Don't default - let caller decide (null = system notification)
-                    CreationDate = DateTime.UtcNow,
+                    CreationDate = _dateTimeProvider.Now,
                     CreatedBy = _currentUserService.UserId // Audit: who created the record (null for system jobs)
                 };
 
@@ -162,7 +165,7 @@ namespace Ettad.Notification.Service
                 }
 
                 receiver.IsRead = true;
-                receiver.ReadAt = DateTime.UtcNow;
+                receiver.ReadAt = _dateTimeProvider.Now;
 
                 await _receiverRepository.UpdateAsync(receiver);
 
@@ -188,7 +191,7 @@ namespace Ettad.Notification.Service
                     return APIOperationResponse<bool>.Success(true, "No unread notifications");
                 }
 
-                var now = DateTime.UtcNow;
+                var now = _dateTimeProvider.Now;
                 foreach (var receiver in receivers)
                 {
                     receiver.IsRead = true;

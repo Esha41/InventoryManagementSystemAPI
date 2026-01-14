@@ -3,16 +3,19 @@ using Project.Module.ProjectPlus.Models;
 using Project.Module.ProjectPlus.Queries;
 using Project.ResponseHandler.ResponseBuilder;
 using Project.ResponseHandler.ResponseModel;
+using Ettad.CrossCutting.Comman.Time;
 
 namespace Project.Module.ProjectPlus.Handlers
 {
     public class GetProjectQueryHandler : IRequestHandler<GetProjectQuery, ApiResponse>
     {
         private readonly IResponseBuilder _responseBuilder;
+        private readonly IDateTimeProvider _dateTimeProvider;
 
-        public GetProjectQueryHandler(IResponseBuilder responseBuilder)
+        public GetProjectQueryHandler(IResponseBuilder responseBuilder, IDateTimeProvider dateTimeProvider)
         {
             _responseBuilder = responseBuilder;
+            _dateTimeProvider = dateTimeProvider;
         }
 
         public async Task<ApiResponse> Handle(GetProjectQuery request, CancellationToken cancellationToken)
@@ -28,8 +31,8 @@ namespace Project.Module.ProjectPlus.Handlers
                         Id = 1,
                         Name = "Sample Project",
                         Description = "This is a sample project",
-                        StartDate = DateTime.Now,
-                        EndDate = DateTime.Now.AddMonths(6),
+                        StartDate = _dateTimeProvider.Now,
+                        EndDate = _dateTimeProvider.Now.AddMonths(6),
                         Status = "Active",
                         Budget = 100000,
                         IsActive = true

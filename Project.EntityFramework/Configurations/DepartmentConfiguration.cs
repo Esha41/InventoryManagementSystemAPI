@@ -1,4 +1,4 @@
-﻿using Ettad.Data.Entities;
+using Ettad.Data.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -35,6 +35,11 @@ namespace Ettad.EntityFramework.Configurations
             builder.HasIndex(x => x.Code)
                 .IsUnique()
                 .HasFilter("[IsDeleted] = 0");
+
+            // Configure CreationDate to use database default - prevents EF Core from comparing it in seeded data
+            builder.Property(x => x.CreationDate)
+                .ValueGeneratedOnAdd()
+                .HasDefaultValueSql("GETDATE()");
 
             builder.HasData(
                 new Department

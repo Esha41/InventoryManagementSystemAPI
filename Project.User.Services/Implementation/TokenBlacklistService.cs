@@ -6,6 +6,7 @@ using Microsoft.Extensions.Logging;
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using Ettad.CrossCutting.Comman.Time;
 
 namespace Ettad.User.Services.Implementation
 {
@@ -16,13 +17,16 @@ namespace Ettad.User.Services.Implementation
     {
         private readonly ApplicationDbContext _context;
         private readonly ILogger<TokenBlacklistService> _logger;
+        private readonly IDateTimeProvider _dateTimeProvider;
 
         public TokenBlacklistService(
             ApplicationDbContext context,
-            ILogger<TokenBlacklistService> logger)
+            ILogger<TokenBlacklistService> logger,
+            IDateTimeProvider dateTimeProvider)
         {
             _context = context ?? throw new ArgumentNullException(nameof(context));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _dateTimeProvider = dateTimeProvider ?? throw new ArgumentNullException(nameof(dateTimeProvider));
         }
 
         /// <summary>
@@ -57,7 +61,7 @@ namespace Ettad.User.Services.Implementation
                 {
                     TokenId = tokenId,
                     UserId = userId,
-                    BlacklistedAt = DateTime.UtcNow,
+                    BlacklistedAt = _dateTimeProvider.Now,
                     ExpiresAt = expiresAt,
                     Reason = reason
                 };
@@ -89,7 +93,7 @@ namespace Ettad.User.Services.Implementation
             try
             {
                 var isBlacklisted = await _context.BlacklistedTokens
-                    .AnyAsync(bt => bt.TokenId == tokenId && bt.ExpiresAt > DateTime.UtcNow, cancellationToken);
+                    .AnyAsync(bt => bt.TokenId == tokenId && bt.ExpiresAt > _dateTimeProvider.Now, cancellationToken);
 
                 if (isBlacklisted)
                 {
@@ -115,7 +119,7 @@ namespace Ettad.User.Services.Implementation
         {
             try
             {
-                var now = DateTime.UtcNow;
+                var now = _dateTimeProvider.Now;
                 var expiredTokens = await _context.BlacklistedTokens
                     .Where(bt => bt.ExpiresAt <= now)
                     .ToListAsync(cancellationToken);

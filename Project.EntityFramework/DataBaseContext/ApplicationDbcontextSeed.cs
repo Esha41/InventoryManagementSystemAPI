@@ -1,4 +1,4 @@
-﻿using Ettad.Comman.Idenitity;
+using Ettad.Comman.Idenitity;
 using Ettad.CrossCutting.Comman.Idenitity;
 using Ettad.Data.Entities;
 using Ettad.EntityFramework.DataBaseContext.DataSeeding;
@@ -194,7 +194,7 @@ namespace Ettad.EntityFramework.DataBaseContext
                 }
             };
 
-            var utcNow = DateTime.UtcNow;
+            var utcNow = DateTime.Now;
             var roleApplicationEntities = new List<RoleApplicationEntity>();
 
             // Create roles for each entity
@@ -592,7 +592,7 @@ namespace Ettad.EntityFramework.DataBaseContext
                     return; // Already seeded via configuration
                 }
 
-                var utcNow = DateTime.UtcNow;
+                var utcNow = DateTime.Now;
 
                 // Seed ApplicationEntities based on the image
                 var applicationEntities = new[]

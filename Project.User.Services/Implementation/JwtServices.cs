@@ -66,7 +66,7 @@ namespace Ettad.User.Services.Implementation
                 .FirstOrDefaultAsync(u => u.Id == userId)
                        ?? throw new Exception("server.invalidLogin");
 
-            var now = _dateTimeProvider.UtcNow;
+            var now = _dateTimeProvider.Now;
             var expires = now.AddMinutes(_jwtOptions.AccessTokenExpireInMinutes);
 
             var claims = await BuildUserClaimsAsync(user);
@@ -95,7 +95,7 @@ namespace Ettad.User.Services.Implementation
             return new AuthenticatedResponse
             {
                 AccessToken = tokenString,
-                ExpiresAt = expires.ToLocalTime() // optional: present local time to caller
+                ExpiresAt = expires // present local time to caller
             };
         }
 
@@ -130,13 +130,13 @@ namespace Ettad.User.Services.Implementation
             if (user.RefreshToken != userRefreshToken.RefreshToken)
                 throw new ApiException("server.invalidRefreshToken");
 
-            if (!user.RefreshTokenExpiryDate.HasValue || user.RefreshTokenExpiryDate.Value < _dateTimeProvider.UtcNow)
+            if (!user.RefreshTokenExpiryDate.HasValue || user.RefreshTokenExpiryDate.Value < _dateTimeProvider.Now)
                 throw new ApiException("server.refreshTokenExpired");
 
             // Issue a new refresh token and save
             var newRefresh = GenerateRefreshToken();
             user.RefreshToken = newRefresh;
-            user.RefreshTokenExpiryDate = _dateTimeProvider.UtcNow.AddMinutes(_jwtOptions.RefreshTokenExpireInMinutes);
+            user.RefreshTokenExpiryDate = _dateTimeProvider.Now.AddMinutes(_jwtOptions.RefreshTokenExpireInMinutes);
 
             var updateResult = await _userManager.UpdateAsync(user);
             if (!updateResult.Succeeded)

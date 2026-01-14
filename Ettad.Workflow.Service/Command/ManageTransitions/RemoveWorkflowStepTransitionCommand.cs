@@ -7,6 +7,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using Ettad.ResponseHandler.Consts;
+using Ettad.CrossCutting.Comman.Time;
 
 namespace Ettad.Workflows.Service.Command.ManageTransitions
 {
@@ -19,8 +20,9 @@ namespace Ettad.Workflows.Service.Command.ManageTransitions
     public class RemoveWorkflowStepTransitionCommandHandler : IRequestHandler<RemoveWorkflowStepTransitionCommand, APIOperationResponse<bool>>
     {
         private readonly ApplicationDbContext _context;
+        private readonly IDateTimeProvider _dateTimeProvider;
 
-        public RemoveWorkflowStepTransitionCommandHandler(ApplicationDbContext context)
+        public RemoveWorkflowStepTransitionCommandHandler(ApplicationDbContext context, IDateTimeProvider dateTimeProvider)
         {
             _context = context;
         }
@@ -45,7 +47,7 @@ namespace Ettad.Workflows.Service.Command.ManageTransitions
                 if (sourceStep != null)
                 {
                     sourceStep.CanSkip = false;
-                    sourceStep.ModificationDate = DateTime.UtcNow;
+                    sourceStep.ModificationDate = _dateTimeProvider.Now;
                 }
             }
 

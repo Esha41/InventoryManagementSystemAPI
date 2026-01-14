@@ -1,4 +1,4 @@
-﻿using Ettad.Application.Common.Interfaces;
+using Ettad.Application.Common.Interfaces;
 using Ettad.Comman.Idenitity;
 using Ettad.CrossCutting.Comman.Exception;
 using Ettad.CrossCutting.Comman.Idenitity;
@@ -495,7 +495,7 @@ namespace Ettad.User.Services.Implementation
         {
             var refreshToken = _jwtServices.GenerateRefreshToken();
             user.RefreshToken = refreshToken;
-            user.RefreshTokenExpiryDate = _dateTimeProvider.UtcNow.AddMinutes(_jwtOptions.RefreshTokenExpireInMinutes);
+            user.RefreshTokenExpiryDate = _dateTimeProvider.Now.AddMinutes(_jwtOptions.RefreshTokenExpireInMinutes);
           
 
             await _userRepository.UpdateAsync(user);
@@ -708,11 +708,11 @@ namespace Ettad.User.Services.Implementation
                                 {
                                     // Get token expiration
                                     var expirationClaim = jwtToken.Claims.FirstOrDefault(c => c.Type == System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.Exp);
-                                    DateTime expiresAt = DateTime.UtcNow.AddMinutes(_jwtOptions.AccessTokenExpireInMinutes);
+                                    DateTime expiresAt = _dateTimeProvider.Now.AddMinutes(_jwtOptions.AccessTokenExpireInMinutes);
                                     
                                     if (expirationClaim != null && long.TryParse(expirationClaim.Value, out long exp))
                                     {
-                                        expiresAt = DateTimeOffset.FromUnixTimeSeconds(exp).UtcDateTime;
+                                        expiresAt = DateTimeOffset.FromUnixTimeSeconds(exp).LocalDateTime;
                                     }
                                     
                                     // Add token to blacklist
@@ -803,7 +803,7 @@ namespace Ettad.User.Services.Implementation
         /// </summary>
         private async Task<bool> IsAccountLockedAsync(string username, CancellationToken cancellationToken)
         {
-            var lockoutThreshold = DateTime.UtcNow.AddMinutes(-LOCKOUT_DURATION_MINUTES);
+            var lockoutThreshold = _dateTimeProvider.Now.AddMinutes(-LOCKOUT_DURATION_MINUTES);
             
             var failedAttempts = await _context.LoginAttempts
                 .Where(la => la.Username == username 
@@ -819,7 +819,7 @@ namespace Ettad.User.Services.Implementation
         /// </summary>
         private async Task<bool> IsCaptchaRequiredAsync(string username, CancellationToken cancellationToken)
         {
-            var lockoutThreshold = DateTime.UtcNow.AddMinutes(-LOCKOUT_DURATION_MINUTES);
+            var lockoutThreshold = _dateTimeProvider.Now.AddMinutes(-LOCKOUT_DURATION_MINUTES);
             
             var failedAttempts = await _context.LoginAttempts
                 .Where(la => la.Username == username 
@@ -853,7 +853,7 @@ namespace Ettad.User.Services.Implementation
                     IpAddress = GetClientIpAddress(),
                     UserAgent = GetUserAgent(),
                     LoginType = loginType,
-                    AttemptDate = DateTime.UtcNow
+                    AttemptDate = _dateTimeProvider.Now
                 };
 
                 _context.LoginAttempts.Add(loginAttempt);

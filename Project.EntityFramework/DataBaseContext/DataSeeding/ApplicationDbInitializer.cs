@@ -194,7 +194,7 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 return; // Already seeded
             }
 
-            var utcNow = DateTime.UtcNow;
+            var utcNow = DateTime.Now;
 
             var suppliers = new[]
             {
@@ -222,7 +222,7 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 return; // Already seeded
             }
 
-            var utcNow = DateTime.UtcNow;
+            var utcNow = DateTime.Now;
 
             var manufacturers = new[]
             {
@@ -291,7 +291,7 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 return; // Already seeded
             }
 
-            var utcNow = DateTime.UtcNow;
+            var utcNow = DateTime.Now;
 
             var ammunitions = new[]
             {
@@ -699,7 +699,7 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 return; // Already seeded
             }
 
-            var utcNow = DateTime.UtcNow;
+            var utcNow = DateTime.Now;
 
             var weapons = new[]
             {
@@ -893,7 +893,7 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 return; // Already seeded
             }
 
-            var utcNow = DateTime.UtcNow;
+            var utcNow = DateTime.Now;
 
             var explosives = new[]
             {
@@ -1105,7 +1105,7 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 return;
             }
 
-            var utcNow = DateTime.UtcNow;
+            var utcNow = DateTime.Now;
             var random = new Random(2025);
             var inventories = new List<Inventory>();
             int invoiceSequence = 1;
@@ -1308,7 +1308,7 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 { "EXP-012", 10000 }  // M6 Electric Blasting Cap
             };
 
-            var utcNow = DateTime.UtcNow;
+            var utcNow = DateTime.Now;
             var currentYear = utcNow.Year;
             var allowanceItems = new List<AllowanceItem>();
 

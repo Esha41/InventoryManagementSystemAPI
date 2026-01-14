@@ -1,4 +1,4 @@
-﻿using Ettad.CrossCutting.Comman.Base;
+using Ettad.CrossCutting.Comman.Base;
 using Ettad.CrossCutting.Comman.Idenitity;
 using Ettad.Data.Enums;
 using System;
@@ -27,7 +27,7 @@ namespace Ettad.Data.Entities.Workflows
 
         public int IsDelegation { get; set; }
 
-        public DateTime? ApprovedDate { get; set; } = DateTime.Now;
+        public DateTime? ApprovedDate { get; set; }
 
         [Required]
         public RequestStatus Status { get; set; } // Using enum
