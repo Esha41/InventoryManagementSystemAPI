@@ -359,57 +359,54 @@ public class UserService : IUserService
 
 
     public async Task<APIOperationResponse<bool>> DeleteAsync(string id)
+{
+    _logger.LogInformation("Soft deleting user. TargetUserId: {TargetUserId}, DeletedBy: {DeletedBy}", 
+        id, _currentUserService.UserId);
+    
+    var user = await _userManager.Users
+        .FirstOrDefaultAsync(u => u.Id == id && !u.IsDeleted);
+    
+    if (user == null)
     {
-        _logger.LogInformation("Soft deleting user. TargetUserId: {TargetUserId}, DeletedBy: {DeletedBy}", 
+        _logger.LogWarning("User deletion failed: User not found or already deleted. TargetUserId: {TargetUserId}, DeletedBy: {DeletedBy}", 
             id, _currentUserService.UserId);
+        return APIOperationResponse<bool>.Fail(ResponseType.NotFound, "User not found");
+    }
+    
+    // Check if target user is a superadmin - superadmins cannot be deleted
+    var userRoles = await _userManager.GetRolesAsync(user);
+    var allRoles = await _roleManager.Roles.ToListAsync();
+    var hasSuperAdminRole = userRoles.Any(roleName => 
+        allRoles.Any(r => r.Name == roleName && r.IsSuperAdmin));
         
-        var user = await _userManager.Users
-            .FirstOrDefaultAsync(u => u.Id == id && !u.IsDeleted);
-        
-        if (user == null)
-        {
-            _logger.LogWarning("User deletion failed: User not found or already deleted. TargetUserId: {TargetUserId}, DeletedBy: {DeletedBy}", 
-                id, _currentUserService.UserId);
-            return APIOperationResponse<bool>.Fail(ResponseType.NotFound, "User not found");
-        }
-        
-        // Check if target user is a superadmin and requesting user is not
-        if (!_currentUserService.IsSuperAdmin)
-        {
-            var userRoles = await _userManager.GetRolesAsync(user);
-            var allRoles = await _roleManager.Roles.ToListAsync();
-            var hasSuperAdminRole = userRoles.Any(roleName => 
-                allRoles.Any(r => r.Name == roleName && r.IsSuperAdmin));
-                
-            if (hasSuperAdminRole)
-            {
-                _logger.LogWarning("User deletion denied: Normal admin attempted to delete superadmin user. TargetUserId: {TargetUserId}, DeletedBy: {DeletedBy}", 
-                    id, _currentUserService.UserId);
-                return APIOperationResponse<bool>.Fail(ResponseType.Forbidden, 
-                    "You do not have permission to delete superadmin users");
-            }
-        }
+    if (hasSuperAdminRole)
+    {
+        _logger.LogWarning("User deletion denied: Cannot delete superadmin user. TargetUserId: {TargetUserId}, DeletedBy: {DeletedBy}", 
+            id, _currentUserService.UserId);
+        return APIOperationResponse<bool>.Fail(ResponseType.Forbidden, 
+            "Superadmin users cannot be deleted");
+    }
 
-        var username = user.UserName;
+    var username = user.UserName;
 
         // Soft delete: Set IsDeleted flag instead of actually deleting
         user.IsDeleted = true;
         user.DeletionDate = _dateTimeProvider.Now;
         user.DeletedBy = _currentUserService.UserId;
 
-        var result = await _userManager.UpdateAsync(user);
-        if (!result.Succeeded)
-        {
-            var errors = string.Join(",", result.Errors.Select(e => e.Description));
-            _logger.LogWarning("User soft deletion failed: {Errors}. TargetUserId: {TargetUserId}, Username: {Username}, DeletedBy: {DeletedBy}", 
-                errors, id, username, _currentUserService.UserId);
-            return APIOperationResponse<bool>.Fail(ResponseType.InternalServerError, errors);
-        }
-
-        _logger.LogInformation("User soft deleted successfully. TargetUserId: {TargetUserId}, Username: {Username}, DeletedBy: {DeletedBy}", 
-            id, username, _currentUserService.UserId);
-        return APIOperationResponse<bool>.Success(true, "User deleted successfully");
+    var result = await _userManager.UpdateAsync(user);
+    if (!result.Succeeded)
+    {
+        var errors = string.Join(",", result.Errors.Select(e => e.Description));
+        _logger.LogWarning("User soft deletion failed: {Errors}. TargetUserId: {TargetUserId}, Username: {Username}, DeletedBy: {DeletedBy}", 
+            errors, id, username, _currentUserService.UserId);
+        return APIOperationResponse<bool>.Fail(ResponseType.InternalServerError, errors);
     }
+
+    _logger.LogInformation("User soft deleted successfully. TargetUserId: {TargetUserId}, Username: {Username}, DeletedBy: {DeletedBy}", 
+        id, username, _currentUserService.UserId);
+    return APIOperationResponse<bool>.Success(true, "User deleted successfully");
+}
 
     //public async Task<APIOperationResponse<List<UserRoleDto>>> GetUserRolesAsync(string userId)
     //{
@@ -707,52 +704,49 @@ public class UserService : IUserService
     }
 
     public async Task<APIOperationResponse<bool>> ToggleUserStatusAsync(string id)
+{
+    _logger.LogInformation("Toggling user status. TargetUserId: {TargetUserId}, RequestedBy: {RequestedBy}", 
+        id, _currentUserService.UserId);
+    
+    var user = await _userManager.Users
+        .FirstOrDefaultAsync(u => u.Id == id && !u.IsDeleted);
+    
+    if (user == null)
     {
-        _logger.LogInformation("Toggling user status. TargetUserId: {TargetUserId}, RequestedBy: {RequestedBy}", 
+        _logger.LogWarning("User status toggle failed: User not found. TargetUserId: {TargetUserId}, RequestedBy: {RequestedBy}", 
             id, _currentUserService.UserId);
-        
-        var user = await _userManager.Users
-            .FirstOrDefaultAsync(u => u.Id == id && !u.IsDeleted);
-        
-        if (user == null)
-        {
-            _logger.LogWarning("User status toggle failed: User not found. TargetUserId: {TargetUserId}, RequestedBy: {RequestedBy}", 
-                id, _currentUserService.UserId);
-            return APIOperationResponse<bool>.NotFound("User not found.");
-        }
-
-        // Prevent toggling superadmin status if current user is not a superadmin
-        if (!_currentUserService.IsSuperAdmin)
-        {
-            var userRoles = await _userManager.GetRolesAsync(user);
-            var allRoles = await _roleManager.Roles.ToListAsync();
-            var hasSuperAdminRole = userRoles.Any(roleName => 
-                allRoles.Any(r => r.Name == roleName && r.IsSuperAdmin));
-                
-            if (hasSuperAdminRole)
-            {
-                _logger.LogWarning("User status toggle denied: Normal admin attempted to toggle superadmin. TargetUserId: {TargetUserId}, RequestedBy: {RequestedBy}", 
-                    id, _currentUserService.UserId);
-                return APIOperationResponse<bool>.Fail(ResponseType.Forbidden, 
-                    "You do not have permission to disable superadmin users");
-            }
-        }
-
-        user.IsActive = !user.IsActive;
-        var result = await _userManager.UpdateAsync(user);
-
-        if (!result.Succeeded)
-        {
-            var errors = string.Join(",", result.Errors.Select(e => e.Description));
-            _logger.LogError("Failed to toggle user status. UserId: {UserId}, Errors: {Errors}", id, errors);
-            return APIOperationResponse<bool>.Fail(ResponseType.InternalServerError, errors);
-        }
-
-        _logger.LogInformation("User status toggled successfully. UserId: {UserId}, NewStatus: {IsActive}, RequestedBy: {RequestedBy}", 
-            id, user.IsActive, _currentUserService.UserId);
-        
-        return APIOperationResponse<bool>.Success(true, $"User {(user.IsActive ? "enabled" : "disabled")} successfully");
+        return APIOperationResponse<bool>.NotFound("User not found.");
     }
+
+    // Prevent toggling superadmin status - superadmins cannot be deactivated
+    var userRoles = await _userManager.GetRolesAsync(user);
+    var allRoles = await _roleManager.Roles.ToListAsync();
+    var hasSuperAdminRole = userRoles.Any(roleName => 
+        allRoles.Any(r => r.Name == roleName && r.IsSuperAdmin));
+        
+    if (hasSuperAdminRole)
+    {
+        _logger.LogWarning("User status toggle denied: Cannot toggle superadmin user status. TargetUserId: {TargetUserId}, RequestedBy: {RequestedBy}", 
+            id, _currentUserService.UserId);
+        return APIOperationResponse<bool>.Fail(ResponseType.Forbidden, 
+            "Superadmin users cannot be deactivated");
+    }
+
+    user.IsActive = !user.IsActive;
+    var result = await _userManager.UpdateAsync(user);
+
+    if (!result.Succeeded)
+    {
+        var errors = string.Join(",", result.Errors.Select(e => e.Description));
+        _logger.LogError("Failed to toggle user status. UserId: {UserId}, Errors: {Errors}", id, errors);
+        return APIOperationResponse<bool>.Fail(ResponseType.InternalServerError, errors);
+    }
+
+    _logger.LogInformation("User status toggled successfully. UserId: {UserId}, NewStatus: {IsActive}, RequestedBy: {RequestedBy}", 
+        id, user.IsActive, _currentUserService.UserId);
+    
+    return APIOperationResponse<bool>.Success(true, $"User {(user.IsActive ? "enabled" : "disabled")} successfully");
+}
 
     private UserDto MapToDto(ApplicationUser user)
     {

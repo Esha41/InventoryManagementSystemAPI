@@ -321,28 +321,35 @@ public static class MainEntities
         CrudOperation.View,
     };
 
+    [Category(CrudPermissionsGenerator.Dashboard)]
+    public static readonly CrudOperation[] AdminDashboard = new[]
+    {
+        CrudOperation.Page,
+        CrudOperation.View,
+    };
+
     // ==============================
     // REQUEST MANAGEMENT
     // ==============================
-    //[Category(CrudPermissionsGenerator.Requests)]
-    //public static readonly CrudOperation[] NewRequest = new[]
-    //{
-    //    CrudOperation.Page,
-    //    CrudOperation.View,
-    //    CrudOperation.Create,
-    //    CrudOperation.Edit,
-    //    CrudOperation.Delete
-    //};
+    [Category(CrudPermissionsGenerator.Requests)]
+    public static readonly CrudOperation[] NewRequest = new[]
+    {
+        CrudOperation.Page,
+        CrudOperation.View,
+        CrudOperation.Create,
+        CrudOperation.Edit,
+        CrudOperation.Delete
+    };
 
-    //[Category(CrudPermissionsGenerator.Requests)]
-    //public static readonly CrudOperation[] ReturnRequest = new[]
-    //{
-    //    CrudOperation.Page,
-    //    CrudOperation.View,
-    //    CrudOperation.Create,
-    //    CrudOperation.Edit,
-    //    CrudOperation.Delete
-    //};
+    [Category(CrudPermissionsGenerator.Requests)]
+    public static readonly CrudOperation[] ReturnRequest = new[]
+    {
+        CrudOperation.Page,
+        CrudOperation.View,
+        CrudOperation.Create,
+        CrudOperation.Edit,
+        CrudOperation.Delete
+    };
 
     [Category(CrudPermissionsGenerator.Requests)]
     public static readonly CrudOperation[] Discard = new[]
