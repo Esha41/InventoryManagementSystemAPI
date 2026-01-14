@@ -40,6 +40,7 @@ namespace Ettad.Notification.Service
             _mapper = mapper;
             _validator = validator;
             _currentUserService = currentUserService;
+            _dateTimeProvider = dateTimeProvider;
         }
 
         public async Task<APIOperationResponse<long>> CreateNotificationAsync(CreateNotificationDto dto)
