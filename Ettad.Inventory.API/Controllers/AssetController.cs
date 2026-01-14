@@ -17,8 +17,9 @@ namespace Ettad.Inventory.API.Controllers
     public class AssetController : ApiControllerBase
     {
         private readonly IAssetService _assetService;
+        private readonly IDateTimeProvider _dateTimeProvider;
 
-        public AssetController(IAssetService assetService)
+        public AssetController(IAssetService assetService, IDateTimeProvider dateTimeProvider)
         {
             _assetService = assetService;
             _dateTimeProvider = dateTimeProvider;

@@ -31,7 +31,8 @@ namespace Ettad.Workflows.Service.Command.DeleteWorkflow
         public DeleteWorkflowCommandHandler(
             ApplicationDbContext context,
             ICurrentUserService currentUserService,
-            ILogger<DeleteWorkflowCommandHandler> logger)
+            ILogger<DeleteWorkflowCommandHandler> logger,
+            IDateTimeProvider dateTimeProvider)
         {
             _context = context;
             _currentUserService = currentUserService;

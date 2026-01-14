@@ -19,6 +19,7 @@ namespace Ettad.Inventory.API.Controllers
     {
         private readonly IExplosiveService _explosiveService;
         private readonly ILogger<ExplosiveController> _logger;
+        private readonly IDateTimeProvider _dateTimeProvider;
 
         public ExplosiveController(
             IExplosiveService explosiveService,

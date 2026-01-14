@@ -22,6 +22,7 @@ namespace Ettad.Notification.Service
         private readonly IEmailSender _emailSender;
         private readonly IEmailTemplateService _emailTemplateService;
         private readonly ILogger<NotificationHelperService> _logger;
+        private readonly IDateTimeProvider _dateTimeProvider;
 
         public NotificationHelperService(
             INotificationService notificationService,

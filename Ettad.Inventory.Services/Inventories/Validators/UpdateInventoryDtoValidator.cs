@@ -32,14 +32,17 @@ namespace Ettad.Inventory.Service.Inventories.Validators
                 .WithMessage("At least one inventory detail is required");
 
             RuleForEach(x => x.InventoryDetails)
-                .SetValidator(new UpdateInventoryDetailDtoValidator());
+                .SetValidator(new UpdateInventoryDetailDtoValidator(_dateTimeProvider));
         }
     }
 
     public class UpdateInventoryDetailDtoValidator : AbstractValidator<UpdateInventoryDetailDto>
     {
-        public UpdateInventoryDetailDtoValidator()
+        private readonly IDateTimeProvider _dateTimeProvider;
+
+        public UpdateInventoryDetailDtoValidator(IDateTimeProvider dateTimeProvider)
         {
+            _dateTimeProvider = dateTimeProvider;
             RuleFor(x => x.ItemId)
                 .GreaterThan(0).WithMessage("Item is required");
 
