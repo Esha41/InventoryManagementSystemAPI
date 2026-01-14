@@ -38,7 +38,8 @@ namespace Ettad.Workflows.Service.Command.UpdateWorkflow
             ApplicationDbContext context,
             ICurrentUserService currentUserService,
             ILogger<UpdateWorkflowCommandHandler> logger,
-            IMapper mapper)
+            IMapper mapper,
+            IDateTimeProvider dateTimeProvider)
         {
             _context = context;
             _currentUserService = currentUserService;

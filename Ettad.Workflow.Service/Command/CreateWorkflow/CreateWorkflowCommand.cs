@@ -30,6 +30,7 @@ namespace Ettad.Workflows.Service.Command.CreateWorkflow
         private readonly ApplicationDbContext _context;
         private readonly ICurrentUserService _currentUserService;
         private readonly ILogger<CreateWorkflowCommandHandler> _logger;
+        private readonly IDateTimeProvider _dateTimeProvider;
 
         public CreateWorkflowCommandHandler(
             ApplicationDbContext context,
@@ -40,6 +41,7 @@ namespace Ettad.Workflows.Service.Command.CreateWorkflow
             _context = context;
             _currentUserService = currentUserService;
             _logger = logger;
+            _dateTimeProvider = dateTimeProvider;
         }
 
         public async Task<APIOperationResponse<WorkflowDto>> Handle(CreateWorkflowCommand request, CancellationToken cancellationToken)
