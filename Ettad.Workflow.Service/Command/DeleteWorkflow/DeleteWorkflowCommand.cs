@@ -53,7 +53,7 @@ namespace Ettad.Workflows.Service.Command.DeleteWorkflow
                 entity.IsDeleted = true;
                 entity.IsActive = false;
                 entity.ModifiedBy = _currentUserService.UserName;
-                entity.ModificationDate = DateTime.UtcNow;
+                entity.ModificationDate = DateTime.Now;
 
                 await _context.SaveChangesAsync(cancellationToken);
 

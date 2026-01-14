@@ -15,6 +15,7 @@ using Ettad.Data.Enums;
 using SettingsEntity = Ettad.Data.Entities.Settings.Settings;
 using System.Text.RegularExpressions;
 using System.ComponentModel.DataAnnotations;
+using Ettad.CrossCutting.Comman.Time;
 
 namespace Ettad.User.Services.Implementation;
 
@@ -22,12 +23,14 @@ public class SettingsProvider : ISettingsProvider
 {
     private readonly ApplicationDbContext _dbContext;
     private readonly ICurrentUserService _currentUserService;
+    private readonly IDateTimeProvider _dateTimeProvider;
     private const string EmailGroup = "EMAIL";
 
-    public SettingsProvider(ApplicationDbContext dbContext, ICurrentUserService currentUserService)
+    public SettingsProvider(ApplicationDbContext dbContext, ICurrentUserService currentUserService, IDateTimeProvider dateTimeProvider)
     {
         _dbContext = dbContext ?? throw new ArgumentNullException(nameof(dbContext));
         _currentUserService = currentUserService ?? throw new ArgumentNullException(nameof(currentUserService));
+        _dateTimeProvider = dateTimeProvider ?? throw new ArgumentNullException(nameof(dateTimeProvider));
     }
 
     public async Task<EmailConfiguration> getEmailSettings(CancellationToken cancellationToken = default)
@@ -106,9 +109,7 @@ public class SettingsProvider : ISettingsProvider
                 {
                     // Update existing setting
                     existingSetting.Value = kvp.Value;
-                    existingSetting.ModificationDate = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) 
-                        ? TimeZoneInfo.ConvertTime(DateTime.Now, TimeZoneInfo.FindSystemTimeZoneById("Arab Standard Time"))
-                        : TimeZoneInfo.ConvertTime(DateTime.Now, TimeZoneInfo.FindSystemTimeZoneById("Asia/Riyadh"));
+                    existingSetting.ModificationDate = _dateTimeProvider.Now;
                     existingSetting.ModifiedBy = userId;
                     _dbContext.Settings.Update(existingSetting);
                 }

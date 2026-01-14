@@ -20,6 +20,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Logging;
 using System.Linq;
+using Ettad.CrossCutting.Comman.Time;
 
 namespace Ettad.RequestManagement.Service.Orders
 {
@@ -42,6 +43,7 @@ namespace Ettad.RequestManagement.Service.Orders
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly ILogger<OrderService> _logger;
         private readonly IFileUploadService _fileUploadService;
+        private readonly IDateTimeProvider _dateTimeProvider;
 
         public OrderService(
             ICrossCuttingRepository<Order> orderRepository,
@@ -60,7 +62,8 @@ namespace Ettad.RequestManagement.Service.Orders
             INotificationHelperService notificationHelperService,
             UserManager<ApplicationUser> userManager,
             ILogger<OrderService> logger,
-            IFileUploadService fileUploadService)
+            IFileUploadService fileUploadService,
+            IDateTimeProvider dateTimeProvider)
         {
             _orderRepository = orderRepository;
             _requestItemRepository = requestItemRepository;
@@ -79,6 +82,7 @@ namespace Ettad.RequestManagement.Service.Orders
             _userManager = userManager;
             _logger = logger;
             _fileUploadService = fileUploadService;
+            _dateTimeProvider = dateTimeProvider;
         }
 
         // ... existing methods omitted for brevity until SetSupplyDateAsync ...
@@ -285,7 +289,7 @@ namespace Ettad.RequestManagement.Service.Orders
                 var order = _mapper.Map<Order>(inputDto);
                 order.RequestType = RequestType.Order; // Always set request type to Order
                 order.Status = RequestStatus.New; // Always set initial status to New
-                order.CreationDate = DateTime.UtcNow;
+                order.CreationDate = _dateTimeProvider.Now;
                 order.CreatedBy = currentUserId;
                 order.DepartmentId = departmentId.Value;
                 order.RequesterId = currentUserId;
@@ -308,7 +312,7 @@ namespace Ettad.RequestManagement.Service.Orders
                     
                     foreach (var item in requestItems)
                     {
-                        item.CreationDate = DateTime.UtcNow;
+                        item.CreationDate = _dateTimeProvider.Now;
                         item.CreatedBy = _currentUserService.UserId;
                         order.RequestItems.Add(item);
                     }
@@ -472,7 +476,7 @@ namespace Ettad.RequestManagement.Service.Orders
                 }
 
                 order.SupplyDate = supplyDate;
-                order.ModificationDate = DateTime.UtcNow;
+                order.ModificationDate = _dateTimeProvider.Now;
                 order.ModifiedBy = _currentUserService.UserId;
 
                 await _orderRepository.UpdateAsync(order);
@@ -582,7 +586,7 @@ namespace Ettad.RequestManagement.Service.Orders
                 // Create new request item
                 var newItem = _mapper.Map<RequestItem>(itemDto);
                 newItem.RequestId = orderId;
-                newItem.CreationDate = DateTime.UtcNow;
+                newItem.CreationDate = _dateTimeProvider.Now;
                 newItem.CreatedBy = _currentUserService.UserId;
 
                 var createdItem = await _requestItemRepository.AddAsync(newItem);
@@ -636,7 +640,7 @@ namespace Ettad.RequestManagement.Service.Orders
 
                 var oldQuantity = requestItem.Quantity;
                 requestItem.Quantity = newQuantity;
-                requestItem.ModificationDate = DateTime.UtcNow;
+                requestItem.ModificationDate = _dateTimeProvider.Now;
                 requestItem.ModifiedBy = _currentUserService.UserId;
 
                 await _requestItemRepository.UpdateAsync(requestItem);
@@ -723,7 +727,7 @@ namespace Ettad.RequestManagement.Service.Orders
                         "Department not found for current user. Cannot verify allowance.");
                 }
 
-                var currentYear = DateTime.UtcNow.Year;
+                var currentYear = _dateTimeProvider.Now.Year;
                 var verification = await CalculateAllowanceAvailabilityAsync(itemId, departmentId.Value, currentYear);
                 verification.RequestedQuantity = requestedQuantity;
 
@@ -744,7 +748,7 @@ namespace Ettad.RequestManagement.Service.Orders
             long departmentId)
         {
             var errors = new List<string>();
-            var currentYear = DateTime.UtcNow.Year;
+            var currentYear = _dateTimeProvider.Now.Year;
 
             if (requestItems == null || !requestItems.Any())
             {

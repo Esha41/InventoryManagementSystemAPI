@@ -23,7 +23,7 @@ namespace Ettad.Data.Entities
         /// <summary>
         /// When the token was blacklisted (typically on logout)
         /// </summary>
-        public DateTime BlacklistedAt { get; set; } = DateTime.UtcNow;
+        public DateTime BlacklistedAt { get; set; } = DateTime.Now;
         
         /// <summary>
         /// When the token expires - used for automatic cleanup

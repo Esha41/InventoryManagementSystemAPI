@@ -1,4 +1,4 @@
-﻿using AutoMapper;
+using AutoMapper;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -78,7 +78,7 @@ namespace Ettad.Workflows.Service.Command.UpdateWorkflow
                 {
                     wf.IsActive = false;
                     wf.ModifiedBy = _currentUserService.UserName;
-                    wf.ModificationDate = DateTime.UtcNow;
+                    wf.ModificationDate = DateTime.Now;
                 }
             }
 
@@ -87,7 +87,7 @@ namespace Ettad.Workflows.Service.Command.UpdateWorkflow
             workflow.WorkflowType = request.WorkflowType;
             workflow.IsActive = request.IsActive;
             workflow.ModifiedBy = _currentUserService.UserName;
-            workflow.ModificationDate = DateTime.UtcNow;
+            workflow.ModificationDate = DateTime.Now;
 
             await UpdateWorkflowSteps(workflow, request.WorkflowSteps, cancellationToken);
 
@@ -127,7 +127,7 @@ namespace Ettad.Workflows.Service.Command.UpdateWorkflow
                     step.ReserveQty = dto.ReserveQty;
                     step.CanReturn = dto.CanReturn;
                     step.ModifiedBy = _currentUserService.UserName;
-                    step.ModificationDate = DateTime.UtcNow;
+                    step.ModificationDate = DateTime.Now;
                 }
                 else
                 {
@@ -144,7 +144,7 @@ namespace Ettad.Workflows.Service.Command.UpdateWorkflow
                         ReserveQty = dto.ReserveQty,
                         CanReturn = dto.CanReturn,
                         CreatedBy = _currentUserService.UserName,
-                        CreationDate = DateTime.UtcNow
+                        CreationDate = DateTime.Now
                     });
                 }
             }

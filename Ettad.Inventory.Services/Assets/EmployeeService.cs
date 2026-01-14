@@ -109,7 +109,7 @@ namespace Ettad.Inventory.Service.Assets
 
                 // Map DTO to entity
                 var employee = _mapper.Map<Employee>(inputDto);
-                employee.CreationDate = DateTime.UtcNow;
+                employee.CreationDate = DateTime.Now;
                 employee.CreatedBy = _currentUserService.UserId;
 
                 // Add to repository
@@ -149,7 +149,7 @@ namespace Ettad.Inventory.Service.Assets
 
                 // Map updates to entity
                 _mapper.Map(inputDto, existingEmployee);
-                existingEmployee.ModificationDate = DateTime.UtcNow;
+                existingEmployee.ModificationDate = DateTime.Now;
                 existingEmployee.ModifiedBy = _currentUserService.UserId;
 
                 // Update in repository

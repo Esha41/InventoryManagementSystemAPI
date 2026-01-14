@@ -142,7 +142,7 @@ namespace Ettad.Workflow.Service.Imeplemention
                 // Add new notifiers
                 var newNotifiers = new List<WorkflowStepNotifier>();
                 var currentUser = _currentUserService.UserName ?? "SYSTEM";
-                var now = DateTime.UtcNow;
+                var now = DateTime.Now;
 
                 if (dto.UserIds != null && dto.UserIds.Any())
                 {
@@ -223,7 +223,7 @@ namespace Ettad.Workflow.Service.Imeplemention
                 }
 
                 var currentUser = _currentUserService.UserName ?? "SYSTEM";
-                var now = DateTime.UtcNow;
+                var now = DateTime.Now;
                 var newNotifiers = new List<WorkflowStepNotifier>();
 
                 // Process UserIds

@@ -1,4 +1,4 @@
-﻿using AutoMapper;
+using AutoMapper;
 using AutoMapper.QueryableExtensions;
 using Ettad.Application.Common.Interfaces;
 using Ettad.Comman.Idenitity;
@@ -16,6 +16,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
+using Ettad.CrossCutting.Comman.Time;
 
 namespace Ettad.User.Services.Implementation
 {
@@ -27,6 +28,7 @@ namespace Ettad.User.Services.Implementation
         private readonly ApplicationDbContext _context;
         private readonly ICurrentUserService _currentUserService;
         private readonly IMemoryCache _cache;
+        private readonly IDateTimeProvider _dateTimeProvider;
 
         // Protected role names that cannot be updated or deleted (used in business logic)
         private static readonly HashSet<string> ProtectedRoleNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
@@ -37,7 +39,7 @@ namespace Ettad.User.Services.Implementation
             "Head of Depo Division (Inventory)"
         };
 
-        public RoleService(RoleManager<ApplicationRole> roleManager, UserManager<ApplicationUser> userManager, ICurrentUserService currentUserService, IMapper mapper , ApplicationDbContext context, IMemoryCache cache)
+        public RoleService(RoleManager<ApplicationRole> roleManager, UserManager<ApplicationUser> userManager, ICurrentUserService currentUserService, IMapper mapper , ApplicationDbContext context, IMemoryCache cache, IDateTimeProvider dateTimeProvider)
         {
             _roleManager = roleManager;
             _userManager = userManager;
@@ -45,6 +47,7 @@ namespace Ettad.User.Services.Implementation
             _mapper = mapper;
             _context = context;
             _cache = cache;
+            _dateTimeProvider = dateTimeProvider;
         }
 
         /// <summary>
@@ -208,7 +211,7 @@ namespace Ettad.User.Services.Implementation
                             RoleId = newRole.Id,
                             ApplicationEntityId = entityId,
                             CreatedBy = "system", // replace with current user if available
-                            CreationDate = DateTime.UtcNow
+                            CreationDate = _dateTimeProvider.Now
                         });
                     }
                 }
@@ -282,7 +285,7 @@ namespace Ettad.User.Services.Implementation
                         RoleId = role.Id,
                         ApplicationEntityId = entityId,
                         CreatedBy = "system", // replace with current user if available
-                        CreationDate = DateTime.UtcNow
+                        CreationDate = DateTime.Now
                     });
                 }
 

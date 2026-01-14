@@ -158,7 +158,7 @@ namespace Ettad.Inventory.Service.Explosives
                 // Map DTO to entity
                 var explosive = _mapper.Map<Explosive>(inputDto);
                 explosive.ItemType = ItemType.Explosive;
-                explosive.CreationDate = DateTime.UtcNow;
+                explosive.CreationDate = DateTime.Now;
                 explosive.CreatedBy = _currentUserService.UserId;
                 explosive.Nsn = string.IsNullOrWhiteSpace(inputDto.Nsn) ? null : inputDto.Nsn.Trim();
 
@@ -232,7 +232,7 @@ namespace Ettad.Inventory.Service.Explosives
 
                 // Map updates to entity
                 _mapper.Map(inputDto, existingExplosive);
-                existingExplosive.ModificationDate = DateTime.UtcNow;
+                existingExplosive.ModificationDate = DateTime.Now;
                 existingExplosive.ModifiedBy = _currentUserService.UserId;
                 existingExplosive.Nsn = string.IsNullOrWhiteSpace(inputDto.Nsn) ? null : inputDto.Nsn.Trim();
 

@@ -288,7 +288,7 @@ namespace Ettad.Inventory.API.Controllers
 
                 // Generate filename with timestamp and optional type filter
                 var typeFilter = itemType.HasValue ? $"_{itemType.Value}" : "";
-                var fileName = $"Inventory_Summary{typeFilter}_{DateTime.UtcNow:yyyyMMdd_HHmmss}.xlsx";
+                var fileName = $"Inventory_Summary{typeFilter}_{DateTime.Now:yyyyMMdd_HHmmss}.xlsx";
 
                 _logger.LogInformation("Excel export completed successfully. File: {FileName}, Size: {Size} bytes", fileName, excelData.Length);
 

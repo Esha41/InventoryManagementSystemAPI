@@ -105,7 +105,7 @@ namespace Ettad.Inventory.API.Controllers
                     return StatusCode((int)HttpStatusCode.InternalServerError, templateResult.Message);
                 }
 
-                var fileName = $"Weapon_Import_Template_{language}_{DateTime.UtcNow:yyyyMMddHHmmss}.xlsx";
+                var fileName = $"Weapon_Import_Template_{language}_{DateTime.Now:yyyyMMddHHmmss}.xlsx";
                 return File(templateResult.Data, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", fileName);
             }
             catch (Exception ex)

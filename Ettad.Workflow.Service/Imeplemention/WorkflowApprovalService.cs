@@ -530,10 +530,10 @@ namespace Ettad.Workflows.Service.Imeplemention
 
             step.Status = RequestStatus.Approved;
             step.ApproverUserId = _currentUserService.UserId;
-            step.ApprovedDate = DateTime.UtcNow;
+            step.ApprovedDate = DateTime.Now;
             step.IsCurrent = false;
             step.ModifiedBy = _currentUserService.UserId;
-            step.ModificationDate = DateTime.UtcNow;
+            step.ModificationDate = DateTime.Now;
 
             var baseRequest = await _context.BaseRequests
                 .FirstOrDefaultAsync(x => x.Id == step.TargetRequestId);
@@ -645,7 +645,7 @@ namespace Ettad.Workflows.Service.Imeplemention
                     IsCurrent = true,
                     ReturnToStepId = nextReturnToStepId, // Pass along the ReturnToStepId if we're still progressing back
                     CreatedBy = _currentUserService.UserId,
-                    CreationDate = DateTime.UtcNow
+                    CreationDate = DateTime.Now
                 };
 
                 _context.WorkflowApprovalSteps.Add(nextApproval);
@@ -690,7 +690,7 @@ namespace Ettad.Workflows.Service.Imeplemention
             }
 
             baseRequest.ModifiedBy = _currentUserService.UserId;
-            baseRequest.ModificationDate = DateTime.UtcNow;
+            baseRequest.ModificationDate = DateTime.Now;
 
             // Publish event
             await _mediator.Publish(new WorkflowStepApprovedEvent
@@ -723,10 +723,10 @@ namespace Ettad.Workflows.Service.Imeplemention
 
             step.Status = RequestStatus.Rejected;
             step.ApproverUserId = _currentUserService.UserId;
-            step.ApprovedDate = DateTime.UtcNow;
+            step.ApprovedDate = DateTime.Now;
             step.IsCurrent = false;
             step.ModifiedBy = _currentUserService.UserId;
-            step.ModificationDate = DateTime.UtcNow;
+            step.ModificationDate = DateTime.Now;
 
             var baseRequest = await _context.BaseRequests.FirstOrDefaultAsync(x => x.Id == step.TargetRequestId);
             if (baseRequest == null) return;
@@ -743,7 +743,7 @@ namespace Ettad.Workflows.Service.Imeplemention
             {
                 s.IsCurrent = false;
                 s.ModifiedBy = _currentUserService.UserId;
-                s.ModificationDate = DateTime.UtcNow;
+                s.ModificationDate = DateTime.Now;
             }
 
             baseRequest.Status = RequestStatus.Rejected;
@@ -761,7 +761,7 @@ namespace Ettad.Workflows.Service.Imeplemention
             );
 
             baseRequest.ModifiedBy = _currentUserService.UserId;
-            baseRequest.ModificationDate = DateTime.UtcNow;
+            baseRequest.ModificationDate = DateTime.Now;
 
             // Delete the draft supply record and its details for this order if any 
             if (baseRequest.RequestType == RequestType.Order)
@@ -832,10 +832,10 @@ namespace Ettad.Workflows.Service.Imeplemention
             // Mark current step as returned for review
             step.Status = RequestStatus.ReturnedForReview;
             step.ApproverUserId = _currentUserService.UserId;
-            step.ApprovedDate = DateTime.UtcNow;
+            step.ApprovedDate = DateTime.Now;
             step.IsCurrent = false;
             step.ModifiedBy = _currentUserService.UserId;
-            step.ModificationDate = DateTime.UtcNow;
+            step.ModificationDate = DateTime.Now;
 
             var baseRequest = await _context.BaseRequests
                 .FirstOrDefaultAsync(x => x.Id == step.TargetRequestId);
@@ -854,7 +854,7 @@ namespace Ettad.Workflows.Service.Imeplemention
                 IsCurrent = true,
                 ReturnToStepId = step.WorkflowStepId, // When this step is approved, return to the original step
                 CreatedBy = _currentUserService.UserId,
-                CreationDate = DateTime.UtcNow
+                CreationDate = DateTime.Now
             };
 
             _context.WorkflowApprovalSteps.Add(returnApproval);
@@ -882,7 +882,7 @@ namespace Ettad.Workflows.Service.Imeplemention
             await SendNotificationsToStepNotifiersOnWorkflowStartAsync(returnToWorkflowStep.Id, baseRequest.Id);
 
             baseRequest.ModifiedBy = _currentUserService.UserId;
-            baseRequest.ModificationDate = DateTime.UtcNow;
+            baseRequest.ModificationDate = DateTime.Now;
         }
 
         // Helper: get current approval step by request ID
@@ -921,7 +921,7 @@ namespace Ettad.Workflows.Service.Imeplemention
                 return step;
 
             // 3. Check delegation authorization
-            // Fetch active delegators using business logic (Qatar time)
+            // Fetch active delegators using business logic
             var activeDelegatorIds = await _userDelegationService.GetActiveDelegatorsForUserAsync(currentUserId);
             
             if (activeDelegatorIds != null && activeDelegatorIds.Any())
@@ -1025,11 +1025,11 @@ namespace Ettad.Workflows.Service.Imeplemention
                 NewRequestStatus = newStatus,
                 Comments = comments,
                 ChangedBy = changedBy,
-                ChangedAt = DateTime.UtcNow,
+                ChangedAt = DateTime.Now,
                 CreatedBy = changedBy,
-                CreationDate = DateTime.UtcNow,
+                CreationDate = DateTime.Now,
                 ModifiedBy = changedBy,
-                ModificationDate = DateTime.UtcNow
+                ModificationDate = DateTime.Now
             });
 
             await Task.CompletedTask;
@@ -1050,7 +1050,7 @@ namespace Ettad.Workflows.Service.Imeplemention
                 Status = RequestStatus.New,
                 IsCurrent = true,
                 CreatedBy = _currentUserService.UserId,
-                CreationDate = DateTime.UtcNow
+                CreationDate = DateTime.Now
             };
 
             _context.WorkflowApprovalSteps.Add(higherApproval);
@@ -1234,7 +1234,7 @@ namespace Ettad.Workflows.Service.Imeplemention
                                 RequestType = workflowType,
                                 Status = RequestStatus.New,
                                 IsCurrent = true,
-                                CreationDate = DateTime.UtcNow,
+                                CreationDate = DateTime.Now,
                                 CreatedBy = _currentUserService.UserId
                             };
 

@@ -39,7 +39,7 @@ namespace Ettad.Notification.Service.EmailTemplate
                 // Load HTML template from file
                 var template = await LoadEmailTemplateAsync();
                 
-                var now = updateDate ?? DateTime.UtcNow;
+                var now = updateDate ?? DateTime.Now;
                 
                 // Replace parameters in template
                 template = template.Replace("{{TITLE}}", WebUtility.HtmlEncode(title));

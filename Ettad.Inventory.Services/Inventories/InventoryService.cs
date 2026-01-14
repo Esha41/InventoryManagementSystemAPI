@@ -166,7 +166,7 @@ namespace Ettad.Inventory.Service.Inventories
 
                 // Map DTO to entity
                 var inventory = _mapper.Map<InventoryEntity>(inputDto);
-                inventory.CreationDate = DateTime.UtcNow;
+                inventory.CreationDate = DateTime.Now;
                 inventory.CreatedBy = _currentUserService.UserId;
 
                 // Map inventory details
@@ -221,7 +221,7 @@ namespace Ettad.Inventory.Service.Inventories
 
                 // Map updates to entity (excluding InventoryDetails)
                 _mapper.Map(inputDto, existingInventory);
-                existingInventory.ModificationDate = DateTime.UtcNow;
+                existingInventory.ModificationDate = DateTime.Now;
                 existingInventory.ModifiedBy = _currentUserService.UserId;
 
                 // Handle inventory details updates
@@ -549,7 +549,7 @@ namespace Ettad.Inventory.Service.Inventories
                     bool isEmptyLot = remainingQuantity <= 0;
 
                     // Check if the lot is expired (expiry date is in the past)
-                    bool isExpired = lot.ExpiryDate.HasValue && lot.ExpiryDate.Value.Date < DateTime.UtcNow.Date;
+                    bool isExpired = lot.ExpiryDate.HasValue && lot.ExpiryDate.Value.Date < DateTime.Now.Date;
 
                     // Use AutoMapper to create the base mapping
                     var lotDetail = _mapper.Map<LotDetailDto>(lot);
@@ -660,7 +660,7 @@ namespace Ettad.Inventory.Service.Inventories
                     usedQuantityByLot.Count + reservedQuantityByLot.Count, itemId);
 
                 // Filter and sort available lots (not expired, not empty, FEFO order)
-                var currentDate = DateTime.UtcNow.Date;
+                var currentDate = DateTime.Now.Date;
                 var availableLots = new List<LotDetailDto>();
                 long remainingQuantityNeeded = requiredQuantity;
 
@@ -793,7 +793,7 @@ namespace Ettad.Inventory.Service.Inventories
                 lotDetail.RemainingQuantity = Math.Max(0, remainingQuantity);
                 lotDetail.IsEmptyLot = remainingQuantity <= 0;
                 lotDetail.IsExpired = inventoryDetail.ExpiryDate.HasValue == true &&
-                                      inventoryDetail.ExpiryDate.Value.Date < DateTime.UtcNow.Date;
+                                      inventoryDetail.ExpiryDate.Value.Date < DateTime.Now.Date;
 
                 _logger.LogInformation("Lot details retrieved successfully. Lot: {Lot}, Remaining: {Remaining}, User: {UserId}",
                     lotNumber, lotDetail.RemainingQuantity, _currentUserService.UserId);
@@ -1327,7 +1327,7 @@ namespace Ettad.Inventory.Service.Inventories
 
                             // Create inventory entity
                             var inventory = _mapper.Map<InventoryEntity>(createDto);
-                            inventory.CreationDate = DateTime.UtcNow;
+                            inventory.CreationDate = DateTime.Now;
                             inventory.CreatedBy = _currentUserService.UserId;
                             inventory.InventoryDetails = inventoryDetails
                                 .Select(d => _mapper.Map<InventoryDetailEntity>(d))

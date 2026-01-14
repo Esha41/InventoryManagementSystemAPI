@@ -153,7 +153,7 @@ namespace Ettad.Inventory.API.Controllers
                     return StatusCode(500, new { message = "Failed to generate template", errors = templateResult.Errors });
                 }
 
-                var fileName = $"Asset_Import_Template_Depot_{depotId}_{DateTime.UtcNow:yyyyMMdd}.xlsx";
+                var fileName = $"Asset_Import_Template_Depot_{depotId}_{DateTime.Now:yyyyMMdd}.xlsx";
                 
                 return File(
                     templateResult.Data,

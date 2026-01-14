@@ -1,4 +1,4 @@
-﻿using Ettad.Data.Entities.Workflows;
+using Ettad.Data.Entities.Workflows;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using System;
@@ -19,7 +19,9 @@ namespace Ettad.EntityFramework.Configurations
 
             builder.Property(x => x.OldRequestStatus).IsRequired();
             builder.Property(x => x.NewRequestStatus).IsRequired();
-            builder.Property(x => x.ChangedAt).HasDefaultValueSql("GETUTCDATE()");
+            builder.Property(x => x.ChangedAt)
+                .ValueGeneratedOnAdd()
+                .HasDefaultValueSql("GETDATE()");
           
 
             builder.Property(x => x.Comments).HasMaxLength(1000).IsRequired(false);

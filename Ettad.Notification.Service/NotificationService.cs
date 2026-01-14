@@ -61,7 +61,7 @@ namespace Ettad.Notification.Service
                     EntityType = dto.EntityType,
                     EntityId = dto.EntityId,
                     SenderId = dto.SenderId, // Don't default - let caller decide (null = system notification)
-                    CreationDate = DateTime.UtcNow,
+                    CreationDate = DateTime.Now,
                     CreatedBy = _currentUserService.UserId // Audit: who created the record (null for system jobs)
                 };
 
@@ -162,7 +162,7 @@ namespace Ettad.Notification.Service
                 }
 
                 receiver.IsRead = true;
-                receiver.ReadAt = DateTime.UtcNow;
+                receiver.ReadAt = DateTime.Now;
 
                 await _receiverRepository.UpdateAsync(receiver);
 
@@ -188,7 +188,7 @@ namespace Ettad.Notification.Service
                     return APIOperationResponse<bool>.Success(true, "No unread notifications");
                 }
 
-                var now = DateTime.UtcNow;
+                var now = DateTime.Now;
                 foreach (var receiver in receivers)
                 {
                     receiver.IsRead = true;

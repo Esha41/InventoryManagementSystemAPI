@@ -30,6 +30,11 @@ namespace Ettad.EntityFramework.Configurations
             builder.HasIndex(x => x.NameEn)
                 .IsUnique();
 
+            // Configure CreationDate to use database default - prevents EF Core from comparing it in seeded data
+            builder.Property(x => x.CreationDate)
+                .ValueGeneratedOnAdd()
+                .HasDefaultValueSql("GETDATE()");
+
             // Seed data
             builder.HasData(
                 // Order purposes

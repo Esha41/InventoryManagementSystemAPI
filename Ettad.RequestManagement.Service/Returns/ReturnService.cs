@@ -17,6 +17,7 @@ using Ettad.Workflows.Service.Interface;
 using Microsoft.AspNetCore.Http;
 using Ettad.CrossCutting.Comman.FileUpload;
 using Ettad.Comman.Enums;
+using Ettad.CrossCutting.Comman.Time;
 
 namespace Ettad.RequestManagement.Service.Returns
 {
@@ -35,6 +36,7 @@ namespace Ettad.RequestManagement.Service.Returns
         private readonly ILogger<ReturnService> _logger;
         private readonly IFileUploadService _fileUploadService;
         private readonly ICrossCuttingRepository<FileUplodDetails> _fileDetailsRepository;
+        private readonly IDateTimeProvider _dateTimeProvider;
 
         public ReturnService(
             ICrossCuttingRepository<Return> returnRepository,
@@ -49,7 +51,8 @@ namespace Ettad.RequestManagement.Service.Returns
             UserManager<ApplicationUser> userManager,
             ILogger<ReturnService> logger,
             IFileUploadService fileUploadService,
-            ICrossCuttingRepository<FileUplodDetails> fileDetailsRepository)
+            ICrossCuttingRepository<FileUplodDetails> fileDetailsRepository,
+            IDateTimeProvider dateTimeProvider)
         {
             _returnRepository = returnRepository;
             _requestItemRepository = requestItemRepository;
@@ -64,6 +67,7 @@ namespace Ettad.RequestManagement.Service.Returns
             _logger = logger;
             _fileUploadService = fileUploadService;
             _fileDetailsRepository = fileDetailsRepository;
+            _dateTimeProvider = dateTimeProvider;
         }
 
         public async Task<APIOperationResponse<ReturnDto>> GetByIdAsync(long id)
@@ -208,7 +212,7 @@ namespace Ettad.RequestManagement.Service.Returns
                 
                 returnEntity.RequestType = RequestType.Return;
                 returnEntity.Status = RequestStatus.New; // Always set to New when creating
-                returnEntity.CreationDate = DateTime.UtcNow;
+                returnEntity.CreationDate = _dateTimeProvider.Now;
                 returnEntity.CreatedBy = currentUserId;
                 returnEntity.RequesterId = currentUserId;
 
@@ -312,7 +316,7 @@ namespace Ettad.RequestManagement.Service.Returns
                 
                 // Update priority
                 existingReturn.Priority = priority;
-                existingReturn.ModificationDate = DateTime.UtcNow;
+                existingReturn.ModificationDate = _dateTimeProvider.Now;
                 existingReturn.ModifiedBy = _currentUserService.UserId;
 
                 // Update in repository

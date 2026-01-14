@@ -5,6 +5,7 @@ using Ettad.ResponseHandler.Models;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
+using Ettad.CrossCutting.Comman.Time;
 
 namespace Ettad.CrossCutting.Comman.FileUpload
 {
@@ -23,11 +24,13 @@ namespace Ettad.CrossCutting.Comman.FileUpload
     {
         private readonly IWebHostEnvironment _environment;
         private readonly IConfiguration _configuration;
+        private readonly IDateTimeProvider _dateTimeProvider;
 
-        public FileStorageService(IWebHostEnvironment environment, IConfiguration configuration)
+        public FileStorageService(IWebHostEnvironment environment, IConfiguration configuration, IDateTimeProvider dateTimeProvider)
         {
             _environment = environment;
             _configuration = configuration;
+            _dateTimeProvider = dateTimeProvider;
         }
 
         public async Task<APIOperationResponse<string>> SaveFileAsync(
@@ -61,7 +64,7 @@ namespace Ettad.CrossCutting.Comman.FileUpload
                 }
 
                 // Generate file name as FileEntityType_datetime (e.g., Item_2024-01-15_14-30-45)
-                var dateTime = DateTime.UtcNow.ToString("yyyy-MM-dd_HH-mm-ss");
+                var dateTime = _dateTimeProvider.Now.ToString("yyyy-MM-dd_HH-mm-ss");
                 var fileNamePrefix = $"{fileEntityType}_{dateTime}";
                 
                 // Save files on the file server <UploadPath>\Uploads\{FileEntityType}

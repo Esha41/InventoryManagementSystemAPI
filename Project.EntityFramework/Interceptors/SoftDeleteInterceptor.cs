@@ -3,16 +3,19 @@ using Microsoft.EntityFrameworkCore.Diagnostics;
 using Ettad.CrossCutting.Comman.Base;
 using Ettad.Application.Common.Interfaces;
 using System.Runtime.InteropServices;
+using Ettad.CrossCutting.Comman.Time;
 
 namespace Ettad.EntityFramework.Interceptors
 {
     public class SoftDeleteInterceptor : SaveChangesInterceptor
     {
         private readonly ICurrentUserService _currentUserService;
+        private readonly IDateTimeProvider _dateTimeProvider;
 
-        public SoftDeleteInterceptor(ICurrentUserService currentUserService)
+        public SoftDeleteInterceptor(ICurrentUserService currentUserService, IDateTimeProvider dateTimeProvider)
         {
             _currentUserService = currentUserService;
+            _dateTimeProvider = dateTimeProvider;
         }
 
         public override InterceptionResult<int> SavingChanges(
@@ -54,7 +57,7 @@ namespace Ettad.EntityFramework.Interceptors
                     entry.State = EntityState.Modified;
 
                     // Set soft delete properties
-                    var deletionDate = DateTime.UtcNow;
+                    var deletionDate = _dateTimeProvider.Now;
                     softDeletableEntity.IsDeleted = true;
                     softDeletableEntity.DeletionDate = deletionDate;
                     softDeletableEntity.DeletedBy = _currentUserService.UserId;

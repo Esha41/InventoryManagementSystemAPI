@@ -98,7 +98,7 @@ namespace Ettad.Inventory.API.Controllers
                     return StatusCode(500, new { message = "Failed to generate template", errors = templateResult.Errors });
                 }
 
-                var fileName = $"Explosive_Import_Template_{DateTime.UtcNow:yyyyMMdd}.xlsx";
+                var fileName = $"Explosive_Import_Template_{DateTime.Now:yyyyMMdd}.xlsx";
                 
                 _logger.LogInformation("Explosive import template generated successfully. Language: {Language}, FileSize: {FileSize} bytes", 
                     language, templateResult.Data.Length);

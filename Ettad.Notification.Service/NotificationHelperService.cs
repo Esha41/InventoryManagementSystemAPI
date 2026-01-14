@@ -124,7 +124,7 @@ namespace Ettad.Notification.Service
                 EntityType = entityType,
                 EntityId = entityId,
                 SenderId = senderId,
-                CreationDate = DateTime.UtcNow,
+                CreationDate = DateTime.Now,
                 IsRead = false
             };
 
@@ -172,7 +172,7 @@ namespace Ettad.Notification.Service
 
                 // Build email body once for all users
                 var emailBody = await _emailTemplateService.RenderEmailTemplateAsync(
-                    title, message, entityType, entityId, 0, DateTime.UtcNow, htmlContent);
+                    title, message, entityType, entityId, 0, DateTime.Now, htmlContent);
 
                 _logger.LogInformation("Email template rendered successfully. Body length: {BodyLength} characters", emailBody?.Length ?? 0);
 

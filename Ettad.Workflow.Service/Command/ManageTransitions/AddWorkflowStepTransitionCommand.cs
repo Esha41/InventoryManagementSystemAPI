@@ -100,7 +100,7 @@ namespace Ettad.Workflows.Service.Command.ManageTransitions
                     SourceWorkflowStepId = request.SourceStepId,
                     TargetWorkflowStepId = targetId,
                     CreatedBy = _currentUserService.UserName ?? "System",
-                    CreationDate = DateTime.UtcNow
+                    CreationDate = DateTime.Now
                 }).ToList();
 
                 _context.WorkflowStepTransitions.AddRange(newTransitions);
@@ -111,14 +111,14 @@ namespace Ettad.Workflows.Service.Command.ManageTransitions
             if (finalTransitionCount > 0 && !sourceStep.CanSkip)
             {
                 sourceStep.CanSkip = true;
-                sourceStep.ModificationDate = DateTime.UtcNow;
+                sourceStep.ModificationDate = DateTime.Now;
                 sourceStep.ModifiedBy = _currentUserService.UserName ?? "System";
             }
             else if (finalTransitionCount == 0 && sourceStep.CanSkip)
             {
                 // Disable CanSkip if no transitions remain
                 sourceStep.CanSkip = false;
-                sourceStep.ModificationDate = DateTime.UtcNow;
+                sourceStep.ModificationDate = DateTime.Now;
                 sourceStep.ModifiedBy = _currentUserService.UserName ?? "System";
             }
 

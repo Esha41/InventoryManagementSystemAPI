@@ -41,7 +41,7 @@ namespace Ettad.Inventory.Service.AssetHistory
                 {
                     AssetId = assetId,
                     ActionType = actionType,
-                    ActionDate = DateTime.UtcNow,
+                    ActionDate = DateTime.Now,
                     Description = context.Description,
                     PreviousStatus = context.PreviousStatus,
                     NewStatus = context.NewStatus,
@@ -58,7 +58,7 @@ namespace Ettad.Inventory.Service.AssetHistory
                     PerformedByUserName = _currentUserService.UserName,
                     Notes = context.Notes,
                     Metadata = context.Metadata,
-                    CreationDate = DateTime.UtcNow,
+                    CreationDate = DateTime.Now,
                     CreatedBy = _currentUserService.UserId
                 };
 

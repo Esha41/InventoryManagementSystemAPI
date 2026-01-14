@@ -15,6 +15,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using MediatR;
 using Ettad.User.Services.Events;
+using Ettad.CrossCutting.Comman.Time;
 
 namespace Ettad.User.Services.Implementation
 {
@@ -25,19 +26,22 @@ namespace Ettad.User.Services.Implementation
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly ILogger<UserDelegationService> _logger;
         private readonly IMediator _mediator;
+        private readonly IDateTimeProvider _dateTimeProvider;
 
         public UserDelegationService(
             ApplicationDbContext context,
             ICurrentUserService currentUserService,
             UserManager<ApplicationUser> userManager,
             ILogger<UserDelegationService> logger,
-            IMediator mediator)
+            IMediator mediator,
+            IDateTimeProvider dateTimeProvider)
         {
             _context = context;
             _currentUserService = currentUserService;
             _userManager = userManager;
             _logger = logger;
             _mediator = mediator;
+            _dateTimeProvider = dateTimeProvider;
         }
 
         public async Task<APIOperationResponse<bool>> CreateDelegationAsync(CreateUserDelegationDto dto)
@@ -67,7 +71,7 @@ namespace Ettad.User.Services.Implementation
                 IsActive = true,
                 DelegationStatus = 0, // Pending approval
                 CreatedBy = currentUserId,
-                CreationDate = DateTime.UtcNow 
+                CreationDate = _dateTimeProvider.Now 
             };
 
             _context.UserDelegations.Add(entity);
@@ -89,18 +93,18 @@ namespace Ettad.User.Services.Implementation
 
         private async Task<APIOperationResponse<bool>> ValidateDelegationAsync(CreateUserDelegationDto dto, string currentUserId)
         {
-            // Use Qatar Time (UTC+3) for business logic validations
-            var qatarNow = DateTime.UtcNow.AddHours(3);
+            // Use local time for business logic validations
+            var now = _dateTimeProvider.Now;
 
             if (dto.StartDate > dto.EndDate)
             {
                 return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, "Start date must be before end date.");
             }
 
-            if (dto.StartDate.Date < qatarNow.Date)
+            if (dto.StartDate.Date < now.Date)
             {
-                // Allow same day start (in Qatar time), but warn if date is strictly in the past
-                if (dto.EndDate < qatarNow)
+                // Allow same day start, but warn if date is strictly in the past
+                if (dto.EndDate < now)
                     return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, "End date must be in the future.");
             }
 
@@ -133,15 +137,15 @@ namespace Ettad.User.Services.Implementation
 
         public async Task<List<string>> GetActiveDelegatorsForUserAsync(string delegateeUserId)
         {
-            // Use Qatar Time (UTC+3) for checking active status
-            var qatarNow = DateTime.UtcNow.AddHours(3);
+            // Use local time for checking active status
+            var now = _dateTimeProvider.Now;
             
             return await _context.UserDelegations
                 .Where(d => d.DelegateeUserId == delegateeUserId &&
                             d.IsActive && !d.IsDeleted &&
                             d.DelegationStatus == 1 && // Only approved delegations
-                            d.StartDate <= qatarNow &&
-                            d.EndDate >= qatarNow)
+                            d.StartDate <= now &&
+                            d.EndDate >= now)
                 .Select(d => d.DelegatorUserId)
                 .ToListAsync();
         }
@@ -207,7 +211,7 @@ namespace Ettad.User.Services.Implementation
 
             delegation.IsActive = false;
             delegation.ModifiedBy = currentUserId;
-            delegation.ModificationDate = DateTime.UtcNow;
+            delegation.ModificationDate = _dateTimeProvider.Now;
 
             await _context.SaveChangesAsync();
             return APIOperationResponse<bool>.Success(true, "Delegation revoked successfully.");
@@ -235,7 +239,7 @@ namespace Ettad.User.Services.Implementation
 
             delegation.DelegationStatus = 1; // Approved
             delegation.ModifiedBy = currentUserId;
-            delegation.ModificationDate = DateTime.UtcNow;
+            delegation.ModificationDate = _dateTimeProvider.Now;
 
             await _context.SaveChangesAsync();
 
@@ -277,7 +281,7 @@ namespace Ettad.User.Services.Implementation
             delegation.DelegationStatus = 2; // Rejected
             delegation.IsActive = false;
             delegation.ModifiedBy = currentUserId;
-            delegation.ModificationDate = DateTime.UtcNow;
+            delegation.ModificationDate = _dateTimeProvider.Now;
 
             await _context.SaveChangesAsync();
 
@@ -321,13 +325,13 @@ namespace Ettad.User.Services.Implementation
 
         private UserDelegationDto MapToDto(UserDelegation entity, string currentUserId)
         {
-            // Map status based on Qatar Time
-            var qatarNow = DateTime.UtcNow.AddHours(3);
+            // Map status based on local time
+            var now = _dateTimeProvider.Now;
             string status = "Expired";
             if (entity.IsActive)
             {
-                if (qatarNow < entity.StartDate) status = "Future";
-                else if (qatarNow >= entity.StartDate && qatarNow <= entity.EndDate) status = "Active";
+                if (now < entity.StartDate) status = "Future";
+                else if (now >= entity.StartDate && now <= entity.EndDate) status = "Active";
             }
 
             return new UserDelegationDto

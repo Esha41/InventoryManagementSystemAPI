@@ -241,7 +241,7 @@ namespace Ettad.Inventory.Service.Assets
 
                 // Map DTO to entity
                 var asset = _mapper.Map<Asset>(inputDto);
-                asset.CreationDate = DateTime.UtcNow;
+                asset.CreationDate = DateTime.Now;
                 asset.CreatedBy = _currentUserService.UserId;
                 asset.Status = AssetStatus.Active; // Set default status to Active when creating
                 asset.SerialNumber = string.IsNullOrWhiteSpace(inputDto.SerialNumber) ? null : inputDto.SerialNumber.Trim();
@@ -357,7 +357,7 @@ namespace Ettad.Inventory.Service.Assets
                     }
 
                     var asset = _mapper.Map<Asset>(dto);
-                    asset.CreationDate = DateTime.UtcNow;
+                    asset.CreationDate = DateTime.Now;
                     asset.CreatedBy = _currentUserService.UserId;
                     asset.Status = AssetStatus.Active;
                     asset.SerialNumber = string.IsNullOrWhiteSpace(dto.SerialNumber) ? null : dto.SerialNumber.Trim();
@@ -420,7 +420,7 @@ namespace Ettad.Inventory.Service.Assets
 
                 // Map updates to entity
                 _mapper.Map(inputDto, existingAsset);
-                existingAsset.ModificationDate = DateTime.UtcNow;
+                existingAsset.ModificationDate = DateTime.Now;
                 existingAsset.ModifiedBy = _currentUserService.UserId;
                 existingAsset.SerialNumber = string.IsNullOrWhiteSpace(inputDto.SerialNumber) ? null : inputDto.SerialNumber.Trim();
                 existingAsset.RFID = string.IsNullOrWhiteSpace(inputDto.RFID) ? null : inputDto.RFID.Trim();
@@ -648,7 +648,7 @@ namespace Ettad.Inventory.Service.Assets
 
                         // Create asset entity
                         var asset = _mapper.Map<Asset>(createDto);
-                        asset.CreationDate = DateTime.UtcNow;
+                        asset.CreationDate = DateTime.Now;
                         asset.CreatedBy = _currentUserService.UserId;
                         asset.Status = AssetStatus.Active;
 

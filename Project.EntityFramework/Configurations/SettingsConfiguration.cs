@@ -1,4 +1,4 @@
-﻿using Ettad.Data.Entities;
+using Ettad.Data.Entities;
 using Ettad.Data.Entities.Settings;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -31,6 +31,12 @@ namespace Ettad.EntityFramework.Configurations
             builder.Property(x => x.Group)
                    .HasColumnType("nvarchar(max)")
                    .IsRequired(false); // nullable
+
+            // Configure CreationDate to use database default - prevents EF Core from comparing it in seeded data
+            builder.Property(x => x.CreationDate)
+                .ValueGeneratedOnAdd()
+                .HasDefaultValueSql("GETDATE()");
+
             builder.HasData(
        new Settings
        {

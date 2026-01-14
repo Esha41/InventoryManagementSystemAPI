@@ -75,8 +75,12 @@ namespace Ettad.EntityFramework.Configurations
                 .HasForeignKey(x => x.BulletDiameterUnitId)
                 .OnDelete(DeleteBehavior.Restrict);
 
+            // Configure CreationDate to use database default - prevents EF Core from comparing it in seeded data
+            builder.Property(x => x.CreationDate)
+                .ValueGeneratedOnAdd()
+                .HasDefaultValueSql("GETDATE()");
+
             // Seed data
-            var seedDate = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc);
             builder.HasData(
                 new Ammunition
                 {
@@ -101,7 +105,6 @@ namespace Ettad.EntityFramework.Configurations
                     HazardDivisionId = 1,
                     Price = 0.65m,
                     MinimumQuantity = 200,
-                    CreationDate = seedDate,
                     IsDeleted = false,
                     AmmunitionType = AmmunitionType.Small
                 },
@@ -128,7 +131,6 @@ namespace Ettad.EntityFramework.Configurations
                     HazardDivisionId = 2,
                     Price = 1.25m,
                     MinimumQuantity = 150,
-                    CreationDate = seedDate,
                     IsDeleted = false,
                     AmmunitionType = AmmunitionType.Small
                 },
@@ -155,7 +157,6 @@ namespace Ettad.EntityFramework.Configurations
                     HazardDivisionId = 3,
                     Price = 0.70m,
                     MinimumQuantity = 200,
-                    CreationDate = seedDate,
                     IsDeleted = false,
                     AmmunitionType = AmmunitionType.Small
                 },
@@ -182,7 +183,6 @@ namespace Ettad.EntityFramework.Configurations
                     HazardDivisionId = 1,
                     Price = 3.50m,
                     MinimumQuantity = 50,
-                    CreationDate = seedDate,
                     IsDeleted = false,
                     AmmunitionType = AmmunitionType.Small
                 },
@@ -209,7 +209,6 @@ namespace Ettad.EntityFramework.Configurations
                     HazardDivisionId = 2,
                     Price = 1.50m,
                     MinimumQuantity = 100,
-                    CreationDate = seedDate,
                     IsDeleted = false,
                     AmmunitionType = AmmunitionType.Small
                 },
@@ -236,7 +235,6 @@ namespace Ettad.EntityFramework.Configurations
                     HazardDivisionId = 3,
                     Price = 0.75m,
                     MinimumQuantity = 150,
-                    CreationDate = seedDate,
                     IsDeleted = false,
                     AmmunitionType = AmmunitionType.Small
                 },
@@ -263,7 +261,6 @@ namespace Ettad.EntityFramework.Configurations
                     HazardDivisionId = 1,
                     Price = 2.50m,
                     MinimumQuantity = 50,
-                    CreationDate = seedDate,
                     IsDeleted = false,
                     AmmunitionType = AmmunitionType.Small
                 },
@@ -290,7 +287,6 @@ namespace Ettad.EntityFramework.Configurations
                     HazardDivisionId = 2,
                     Price = 0.60m,
                     MinimumQuantity = 200,
-                    CreationDate = seedDate,
                     IsDeleted = false,
                     AmmunitionType = AmmunitionType.Small
                 },
@@ -317,7 +313,6 @@ namespace Ettad.EntityFramework.Configurations
                     HazardDivisionId = 3,
                     Price = 0.80m,
                     MinimumQuantity = 150,
-                    CreationDate = seedDate,
                     IsDeleted = false,
                     AmmunitionType = AmmunitionType.Small
                 }

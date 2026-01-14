@@ -45,7 +45,7 @@ namespace Ettad.Workflows.Service.Command.ManageTransitions
                 if (sourceStep != null)
                 {
                     sourceStep.CanSkip = false;
-                    sourceStep.ModificationDate = DateTime.UtcNow;
+                    sourceStep.ModificationDate = DateTime.Now;
                 }
             }
 

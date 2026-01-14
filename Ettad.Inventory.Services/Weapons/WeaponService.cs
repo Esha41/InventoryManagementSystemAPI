@@ -182,7 +182,7 @@ namespace Ettad.Inventory.Service.Weapons
                 // Map DTO to entity
                 var weapon = _mapper.Map<Weapon>(inputDto);
                 weapon.ItemType = ItemType.Weapon;
-                weapon.CreationDate = DateTime.UtcNow;
+                weapon.CreationDate = DateTime.Now;
                 weapon.CreatedBy = _currentUserService.UserId;
                 weapon.Nsn = string.IsNullOrWhiteSpace(inputDto.Nsn) ? null : inputDto.Nsn.Trim();
 
@@ -265,7 +265,7 @@ namespace Ettad.Inventory.Service.Weapons
 
                 // Map updates to entity
                 _mapper.Map(inputDto, existingWeapon);
-                existingWeapon.ModificationDate = DateTime.UtcNow;
+                existingWeapon.ModificationDate = DateTime.Now;
                 existingWeapon.ModifiedBy = _currentUserService.UserId;
                 existingWeapon.Nsn = string.IsNullOrWhiteSpace(inputDto.Nsn) ? null : inputDto.Nsn.Trim();
 
