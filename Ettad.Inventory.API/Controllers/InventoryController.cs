@@ -88,22 +88,22 @@ namespace Ettad.Inventory.API.Controllers
         [HttpPost("Import")]
         [ProducesResponseType((int)HttpStatusCode.OK)]
         [CheckAuthorize("Permissions.Inventory.Create")]
-        public async Task<IActionResult> Import(IFormFile file, [FromForm] long depotId)
+        public async Task<IActionResult> Import(IFormFile file, [FromForm] long depotId, [FromQuery] string language = "en")
         {
             if (file == null || file.Length == 0)
             {
                 return BadRequest(new { message = "File is required" });
             }
-
+ 
             if (depotId <= 0)
             {
                 return BadRequest(new { message = "Valid depot ID is required" });
             }
-
-            _logger.LogInformation("Inventory import request received. DepotId: {DepotId}, FileName: {FileName}, FileSize: {FileSize}",
-                depotId, file.FileName, file.Length);
-
-            var result = await _inventoryService.ImportAsync(file, depotId);
+ 
+            _logger.LogInformation("Inventory import request received. DepotId: {DepotId}, FileName: {FileName}, Language: {Language}",
+                depotId, file.FileName, language);
+ 
+            var result = await _inventoryService.ImportAsync(file, depotId, language);
             return ProcessResponse(result);
         }
 
@@ -113,22 +113,22 @@ namespace Ettad.Inventory.API.Controllers
         [HttpPost("ImportPreview")]
         [ProducesResponseType((int)HttpStatusCode.OK)]
         [CheckAuthorize("Permissions.Inventory.Create")]
-        public async Task<IActionResult> ImportPreview(IFormFile file, [FromForm] long depotId)
+        public async Task<IActionResult> ImportPreview(IFormFile file, [FromForm] long depotId, [FromQuery] string language = "en")
         {
             if (file == null || file.Length == 0)
             {
                 return BadRequest(new { message = "File is required" });
             }
-
+ 
             if (depotId <= 0)
             {
                 return BadRequest(new { message = "Valid depot ID is required" });
             }
-
-            _logger.LogInformation("Inventory import preview request received. DepotId: {DepotId}, FileName: {FileName}, FileSize: {FileSize}",
-                depotId, file.FileName, file.Length);
-
-            var result = await _inventoryService.ImportPreviewAsync(file, depotId);
+ 
+            _logger.LogInformation("Inventory import preview request received. DepotId: {DepotId}, FileName: {FileName}, Language: {Language}",
+                depotId, file.FileName, language);
+ 
+            var result = await _inventoryService.ImportPreviewAsync(file, depotId, language);
             return ProcessResponse(result);
         }
 
@@ -352,7 +352,7 @@ namespace Ettad.Inventory.API.Controllers
         [ProducesResponseType((int)HttpStatusCode.BadRequest)]
         [ProducesResponseType((int)HttpStatusCode.InternalServerError)]
         [CheckAuthorize("Permissions.Inventory.Create")]
-        public async Task<IActionResult> GenerateImportTemplate([FromQuery] long depotId)
+        public async Task<IActionResult> GenerateImportTemplate([FromQuery] long depotId, [FromQuery] string language = "en")
         {
             try
             {
@@ -361,7 +361,7 @@ namespace Ettad.Inventory.API.Controllers
                     return BadRequest(new { message = "Valid depot ID is required" });
                 }
 
-                _logger.LogInformation("Generating inventory import template. DepotId: {DepotId}", depotId);
+                _logger.LogInformation("Generating inventory import template. DepotId: {DepotId}, Language: {Language}", depotId, language);
 
                 // Load all items (ammunition, weapons, explosives)
                 var ammunitions = await _context.Ammunitions
@@ -412,12 +412,19 @@ namespace Ettad.Inventory.API.Controllers
                 var templateSheet = package.Workbook.Worksheets.Add("Import Template");
                 
                 // Headers - Item Name with dropdown, Item ID removed (auto-resolved from ItemNo)
-                var headers = new[]
-                {
-                    "Item Name", "Lot", "Supplier", "Manufacturer", "Country",
-                    "Original Quantity", "Batch No", "Expiry Date", "Ready For Issue",
-                    "Invoice Number", "Invoice Date", "Received Date", "Notes"
-                };
+                var headers = language == "ar"
+                    ? new[]
+                    {
+                        "اسم الصنف", "الدفعة", "المورد", "المصنع", "بلد المنشأ",
+                        "الكمية الأصلية", "رقم التشغيلة", "تاريخ الانتهاء", "جاهز للصرف",
+                        "رقم الفاتورة", "تاريخ الفاتورة", "تاريخ الاستلام", "ملاحظات"
+                    }
+                    : new[]
+                    {
+                        "Item Name", "Lot", "Supplier", "Manufacturer", "Country",
+                        "Original Quantity", "Batch No", "Expiry Date", "Ready For Issue",
+                        "Invoice Number", "Invoice Date", "Received Date", "Notes"
+                    };
 
                 for (int col = 1; col <= headers.Length; col++)
                 {

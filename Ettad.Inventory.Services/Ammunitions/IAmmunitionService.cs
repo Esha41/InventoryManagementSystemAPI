@@ -14,8 +14,8 @@ namespace Ettad.Inventory.Service.Ammunitions
         Task<APIOperationResponse<long>> CreateAsync(CreateUpdateAmmunitionDto inputDto, List<IFormFile>? files = null);
         Task<APIOperationResponse<bool>> UpdateAsync(long id, CreateUpdateAmmunitionDto inputDto);
         Task<APIOperationResponse<bool>> DeleteAsync(long id);
-        Task<APIOperationResponse<ImportResult<CreateUpdateAmmunitionDto>>> ImportAsync(IFormFile file);
-        Task<APIOperationResponse<ImportResult<CreateUpdateAmmunitionDto>>> ImportPreviewAsync(IFormFile file);
+        Task<APIOperationResponse<ImportResult<CreateUpdateAmmunitionDto>>> ImportAsync(IFormFile file, string language = "en");
+        Task<APIOperationResponse<ImportResult<CreateUpdateAmmunitionDto>>> ImportPreviewAsync(IFormFile file, string language = "en");
         Task<APIOperationResponse<byte[]>> GenerateImportTemplateAsync(string language = "en");
     }
 }

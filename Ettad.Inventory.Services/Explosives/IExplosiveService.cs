@@ -13,8 +13,8 @@ namespace Ettad.Inventory.Service.Explosives
         Task<APIOperationResponse<long>> CreateAsync(CreateUpdateExplosiveDto inputDto, List<IFormFile>? files = null);
         Task<APIOperationResponse<bool>> UpdateAsync(long id, CreateUpdateExplosiveDto inputDto);
         Task<APIOperationResponse<bool>> DeleteAsync(long id);
-        Task<APIOperationResponse<ImportResult<CreateUpdateExplosiveDto>>> ImportAsync(IFormFile file);
-        Task<APIOperationResponse<ImportResult<CreateUpdateExplosiveDto>>> ImportPreviewAsync(IFormFile file);
+        Task<APIOperationResponse<ImportResult<CreateUpdateExplosiveDto>>> ImportAsync(IFormFile file, string language = "en");
+        Task<APIOperationResponse<ImportResult<CreateUpdateExplosiveDto>>> ImportPreviewAsync(IFormFile file, string language = "en");
         Task<APIOperationResponse<byte[]>> GenerateImportTemplateAsync(string language = "en");
     }
 }

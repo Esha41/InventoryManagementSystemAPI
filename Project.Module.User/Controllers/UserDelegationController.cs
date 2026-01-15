@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 
 namespace Ettad.User.API.Controllers
 {
+/*
     [Authorize]
     [ApiController]
     [Route("api/[controller]")]
@@ -94,4 +95,5 @@ namespace Ettad.User.API.Controllers
             return ProcessResponse(response);
         }
     }
+*/
 }

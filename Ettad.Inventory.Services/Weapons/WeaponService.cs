@@ -320,14 +320,14 @@ namespace Ettad.Inventory.Service.Weapons
             }
         }
 
-        public async Task<APIOperationResponse<ImportResult<CreateUpdateWeaponDto>>> ImportAsync(IFormFile file)
+        public async Task<APIOperationResponse<ImportResult<CreateUpdateWeaponDto>>> ImportAsync(IFormFile file, string language = "en")
         {
-            _logger.LogInformation("Importing weapons from file. FileName: {FileName}, User: {UserId}", 
-                file?.FileName, _currentUserService.UserId);
+            _logger.LogInformation("Importing weapons from file. FileName: {FileName}, Language: {Language}, User: {UserId}", 
+                file?.FileName, language, _currentUserService.UserId);
             
             try
             {
-                var mappings = GetColumnMappings();
+                var mappings = GetColumnMappings(language);
                 var importResult = await _excelImportService.ImportFromExcelAsync<WeaponImportDto>(file, mappings);
 
                 // Load all lookup data for resolution
@@ -523,11 +523,14 @@ namespace Ettad.Inventory.Service.Weapons
             }
         }
 
-        public async Task<APIOperationResponse<ImportResult<CreateUpdateWeaponDto>>> ImportPreviewAsync(IFormFile file)
+        public async Task<APIOperationResponse<ImportResult<CreateUpdateWeaponDto>>> ImportPreviewAsync(IFormFile file, string language = "en")
         {
+            _logger.LogInformation("Previewing weapon import. FileName: {FileName}, Language: {Language}, User: {UserId}", 
+                file?.FileName, language, _currentUserService.UserId);
+
             try
             {
-                var mappings = GetColumnMappings();
+                var mappings = GetColumnMappings(language);
                 var importResult = await _excelImportService.ImportFromExcelAsync<WeaponImportDto>(file, mappings);
 
                 // Load lookup data for resolution
@@ -552,6 +555,7 @@ namespace Ettad.Inventory.Service.Weapons
                     int rowNumber = 2; // Start from row 2 (row 1 is headers)
                     foreach (var importDto in importResult.SuccessfulRecords)
                     {
+                        var rowErrors = new List<string>();
                         var dto = new CreateUpdateWeaponDto
                         {
                             // Basic fields
@@ -571,7 +575,7 @@ namespace Ettad.Inventory.Service.Weapons
                             YearOfManufacture = importDto.YearOfManufacture,
                             Model = importDto.Model
                         };
-
+ 
                         // Resolve Lookups
                         if (!string.IsNullOrWhiteSpace(importDto.CaliberUnit))
                         {
@@ -601,20 +605,12 @@ namespace Ettad.Inventory.Service.Weapons
                                 (i.NameAr != null && i.NameAr.Equals(importDto.Type, StringComparison.OrdinalIgnoreCase)));
                             dto.TypeId = item?.Id;
                         }
-
-                        // Validate
+ 
+                        // Validate using FluentValidation
                         var validationResult = await _validator.ValidateAsync(dto);
                         if (!validationResult.IsValid)
                         {
-                            finalResult.Errors.Add(new ImportError 
-                            { 
-                                RowNumber = rowNumber,
-                                ErrorMessage = $"Row {rowNumber}: Validation failed: {string.Join(", ", validationResult.Errors.Select(e => e.ErrorMessage))}", 
-                                ColumnName = "N/A",
-                                RowData = dto // Include the row data for preview
-                            });
-                            rowNumber++;
-                            continue;
+                            rowErrors.AddRange(validationResult.Errors.Select(e => e.ErrorMessage));
                         }
                         
                         // Check for duplicate ItemNo within the import file
@@ -623,17 +619,19 @@ namespace Ettad.Inventory.Service.Weapons
                             var itemNoKey = dto.ItemNo.Trim();
                             if (seenItemNos.Contains(itemNoKey))
                             {
-                                finalResult.Errors.Add(new ImportError 
-                                { 
-                                    RowNumber = rowNumber,
-                                    ErrorMessage = $"Row {rowNumber}: Item No '{dto.ItemNo}' appears multiple times in the import file", 
-                                    ColumnName = "Item No",
-                                    RowData = dto
-                                });
-                                rowNumber++;
-                                continue;
+                                rowErrors.Add($"Item No '{dto.ItemNo}' appears multiple times in the import file");
                             }
-                            seenItemNos.Add(itemNoKey);
+                            else
+                            {
+                                seenItemNos.Add(itemNoKey);
+                                
+                                // Check if ItemNo exists in database
+                                var existing = await _weaponRepository.FindOneAsync(w => !w.IsDeleted && w.ItemNo == itemNoKey);
+                                if (existing != null)
+                                {
+                                    rowErrors.Add($"Item No '{dto.ItemNo}' already exists in the database");
+                                }
+                            }
                         }
                         
                         // Check for duplicate NSN within the import file
@@ -642,36 +640,35 @@ namespace Ettad.Inventory.Service.Weapons
                             var nsnKey = dto.Nsn.Trim();
                             if (seenNsns.Contains(nsnKey))
                             {
-                                finalResult.Errors.Add(new ImportError 
-                                { 
-                                    RowNumber = rowNumber,
-                                    ErrorMessage = $"Row {rowNumber}: NSN '{dto.Nsn}' appears multiple times in the import file", 
-                                    ColumnName = "NSN",
-                                    RowData = dto // Include the row data for preview
-                                });
-                                rowNumber++;
-                                continue;
+                                rowErrors.Add($"NSN '{dto.Nsn}' appears multiple times in the import file");
                             }
-                            seenNsns.Add(nsnKey);
-                            
-                            // Also check if NSN exists in database
-                            var existing = await _weaponRepository.FindOneAsync(w => !w.IsDeleted && w.Nsn == nsnKey);
-                            if (existing != null)
+                            else
                             {
-                                finalResult.Errors.Add(new ImportError 
-                                { 
-                                    RowNumber = rowNumber,
-                                    ErrorMessage = $"Row {rowNumber}: NSN '{dto.Nsn}' already exists in the database", 
-                                    ColumnName = "NSN",
-                                    RowData = dto // Include the row data for preview
-                                });
-                                rowNumber++;
-                                continue;
+                                seenNsns.Add(nsnKey);
+                                
+                                // Also check if NSN exists in database
+                                var existing = await _weaponRepository.FindOneAsync(w => !w.IsDeleted && w.Nsn == nsnKey);
+                                if (existing != null)
+                                {
+                                    rowErrors.Add($"NSN '{dto.Nsn}' already exists in the database");
+                                }
                             }
                         }
-
-                        finalResult.SuccessfulRecords.Add(dto);
-                        rowNumber++;
+ 
+                        if (rowErrors.Any())
+                        {
+                            finalResult.Errors.Add(new ImportError 
+                            { 
+                                RowNumber = importDto.RowNumber,
+                                ErrorMessage = $"Row {importDto.RowNumber}: {string.Join("; ", rowErrors)}", 
+                                ColumnName = "N/A",
+                                RowData = dto
+                            });
+                        }
+                        else
+                        {
+                            finalResult.SuccessfulRecords.Add(dto);
+                        }
                     }
                 }
 
@@ -684,9 +681,9 @@ namespace Ettad.Inventory.Service.Weapons
             }
         }
 
-        private Dictionary<string, string> GetColumnMappings()
+        private Dictionary<string, string> GetColumnMappings(string language = "en")
         {
-            return new Dictionary<string, string>
+            var mappings = new Dictionary<string, string>
             {
                 // English headers
                 { "Name*", nameof(WeaponImportDto.Name) },
@@ -706,12 +703,13 @@ namespace Ettad.Inventory.Service.Weapons
                 { "Classification", nameof(WeaponImportDto.Classification) },
                 { "Type", nameof(WeaponImportDto.Type) },
                 { "Notes", nameof(WeaponImportDto.Notes) },
-                
-                // Arabic headers (same mappings)
+ 
+                // Arabic headers
                 { "الاسم*", nameof(WeaponImportDto.Name) },
                 { "رقم الصنف*", nameof(WeaponImportDto.ItemNo) },
                 { "رقم الجزء", nameof(WeaponImportDto.PartNo) },
-                // Note: "NSN" is the same in both languages, so it's already mapped above
+                { "رقم NSN", nameof(WeaponImportDto.Nsn) },
+                // "NSN" is already in English block
                 { "السعر", nameof(WeaponImportDto.Price) },
                 { "الكمية الدنيا", nameof(WeaponImportDto.MinimumQuantity) },
                 { "العيار", nameof(WeaponImportDto.Caliber) },
@@ -726,6 +724,8 @@ namespace Ettad.Inventory.Service.Weapons
                 { "النوع", nameof(WeaponImportDto.Type) },
                 { "ملاحظات", nameof(WeaponImportDto.Notes) }
             };
+ 
+            return mappings;
         }
 
         public async Task<APIOperationResponse<byte[]>> GenerateImportTemplateAsync(string language = "en")

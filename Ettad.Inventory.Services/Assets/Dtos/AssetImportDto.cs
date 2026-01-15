@@ -2,6 +2,7 @@ namespace Ettad.Inventory.Service.Assets.Dtos
 {
     public class AssetImportDto
     {
+        public int RowNumber { get; set; }
         // Item identification (by name or ItemNo)
         public string? ItemName { get; set; }
         public string? ItemNo { get; set; }

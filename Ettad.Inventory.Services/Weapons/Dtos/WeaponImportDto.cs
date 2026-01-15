@@ -4,6 +4,7 @@ namespace Ettad.Inventory.Service.Weapons.Dtos
 {
     public class WeaponImportDto
     {
+        public int RowNumber { get; set; }
         // Base Item Properties
         public string Name { get; set; }
         public string ItemNo { get; set; }

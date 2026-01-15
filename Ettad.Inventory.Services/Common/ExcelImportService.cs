@@ -108,6 +108,13 @@ namespace Ettad.Inventory.Services.Common
 
                             if (rowHasData)
                             {
+                                // Set RowNumber if property exists
+                                var rowNumProp = typeof(T).GetProperty("RowNumber", BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase);
+                                if (rowNumProp != null && rowNumProp.CanWrite && rowNumProp.PropertyType == typeof(int))
+                                {
+                                    rowNumProp.SetValue(item, row);
+                                }
+
                                 // Optional: Add Data Annotation Validation here if needed
                                 var ctx = new ValidationContext(item);
                                 var validationResults = new List<ValidationResult>();
@@ -119,7 +126,8 @@ namespace Ettad.Inventory.Services.Common
                                          { 
                                              RowNumber = row, 
                                              ErrorMessage = validationError.ErrorMessage,
-                                             ColumnName = string.Join(", ", validationError.MemberNames)
+                                             ColumnName = string.Join(", ", validationError.MemberNames),
+                                             RowData = item
                                          });
                                     }
                                 }
@@ -140,7 +148,8 @@ namespace Ettad.Inventory.Services.Common
                             result.Errors.Add(new ImportError 
                             { 
                                 RowNumber = row, 
-                                ErrorMessage = $"Error processing row: {msg}" 
+                                ErrorMessage = $"Error processing row: {msg}",
+                                RowData = null // Can't reliably provide RowData here
                             });
                         }
                     }

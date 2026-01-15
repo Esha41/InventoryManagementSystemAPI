@@ -14,8 +14,8 @@ namespace Ettad.Inventory.Service.Assets
         Task<APIOperationResponse<List<long>>> CreateBulkAsync(List<CreateAssetDto> inputDtos);
         Task<APIOperationResponse<bool>> UpdateAsync(long id, UpdateAssetDto inputDto);
         Task<APIOperationResponse<bool>> DeleteAsync(long id);
-        Task<APIOperationResponse<ImportResult<CreateAssetDto>>> ImportAsync(IFormFile file, long depotId);
-        Task<APIOperationResponse<ImportResult<CreateAssetDto>>> ImportPreviewAsync(IFormFile file, long depotId);
+        Task<APIOperationResponse<ImportResult<CreateAssetDto>>> ImportAsync(IFormFile file, long depotId, string language = "en");
+        Task<APIOperationResponse<ImportResult<CreateAssetDto>>> ImportPreviewAsync(IFormFile file, long depotId, string language = "en");
         Task<APIOperationResponse<byte[]>> GenerateImportTemplateAsync(long depotId, string language = "en");
     }
 }

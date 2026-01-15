@@ -1069,15 +1069,15 @@ namespace Ettad.Inventory.Service.Inventories
             }
         }
 
-        public async Task<APIOperationResponse<ImportResult<InventoryImportRowDto>>> ImportAsync(IFormFile file, long depotId)
+        public async Task<APIOperationResponse<ImportResult<InventoryImportRowDto>>> ImportAsync(IFormFile file, long depotId, string language = "en")
         {
-            _logger.LogInformation("Starting inventory import. DepotId: {DepotId}, User: {UserId}", 
-                depotId, _currentUserService.UserId);
-
+            _logger.LogInformation("Starting inventory import. DepotId: {DepotId}, Language: {Language}, User: {UserId}", 
+                depotId, language, _currentUserService.UserId);
+ 
             try
             {
                 // Parse Excel file
-                var mappings = GetColumnMappings();
+                var mappings = GetColumnMappings(language);
                 var importResult = await _excelImportService.ImportFromExcelAsync<InventoryImportRowDto>(file, mappings);
 
                 if (importResult.SuccessCount == 0)
@@ -1394,15 +1394,15 @@ namespace Ettad.Inventory.Service.Inventories
             }
         }
 
-        public async Task<APIOperationResponse<ImportResult<InventoryImportRowDto>>> ImportPreviewAsync(IFormFile file, long depotId)
+        public async Task<APIOperationResponse<ImportResult<InventoryImportRowDto>>> ImportPreviewAsync(IFormFile file, long depotId, string language = "en")
         {
-            _logger.LogInformation("Starting inventory import preview. DepotId: {DepotId}, User: {UserId}", 
-                depotId, _currentUserService.UserId);
-
+            _logger.LogInformation("Starting inventory import preview. DepotId: {DepotId}, Language: {Language}, User: {UserId}", 
+                depotId, language, _currentUserService.UserId);
+ 
             try
             {
                 // Parse Excel file
-                var mappings = GetColumnMappings();
+                var mappings = GetColumnMappings(language);
                 var importResult = await _excelImportService.ImportFromExcelAsync<InventoryImportRowDto>(file, mappings);
 
                 if (importResult.SuccessCount == 0)
@@ -1559,8 +1559,10 @@ namespace Ettad.Inventory.Service.Inventories
                         importResult.SuccessfulRecords.Remove(row);
                         importResult.Errors.Add(new ImportError
                         {
+                            RowNumber = row.RowNumber > 0 ? row.RowNumber : 0,
                             ErrorMessage = string.Join("; ", rowErrors),
-                            ColumnName = "N/A"
+                            ColumnName = "N/A",
+                            RowData = row
                         });
                     }
                 }
@@ -1581,13 +1583,14 @@ namespace Ettad.Inventory.Service.Inventories
             }
         }
 
-        private Dictionary<string, string> GetColumnMappings()
+        private Dictionary<string, string> GetColumnMappings(string language = "en")
         {
-            return new Dictionary<string, string>
+            var mappings = new Dictionary<string, string>
             {
-                { "Item Name", nameof(InventoryImportRowDto.ItemName) }, // Primary: Item Name dropdown
-                { "Item No", nameof(InventoryImportRowDto.ItemNo) }, // Backward compatibility: direct Item No entry
-                { "Item ID", nameof(InventoryImportRowDto.ItemId) }, // Optional: auto-resolved from ItemNo if not provided
+                // English headers
+                { "Item Name", nameof(InventoryImportRowDto.ItemName) },
+                { "Item No", nameof(InventoryImportRowDto.ItemNo) },
+                { "Item ID", nameof(InventoryImportRowDto.ItemId) },
                 { "Lot", nameof(InventoryImportRowDto.Lot) },
                 { "Supplier", nameof(InventoryImportRowDto.Supplier) },
                 { "Manufacturer", nameof(InventoryImportRowDto.Manufacturer) },
@@ -1599,8 +1602,27 @@ namespace Ettad.Inventory.Service.Inventories
                 { "Invoice Number", nameof(InventoryImportRowDto.InvoiceNumber) },
                 { "Invoice Date", nameof(InventoryImportRowDto.InvoiceDate) },
                 { "Received Date", nameof(InventoryImportRowDto.ReceivedDate) },
-                { "Notes", nameof(InventoryImportRowDto.Notes) }
+                { "Notes", nameof(InventoryImportRowDto.Notes) },
+ 
+                // Arabic headers
+                { "اسم الصنف", nameof(InventoryImportRowDto.ItemName) },
+                { "رقم الصنف", nameof(InventoryImportRowDto.ItemNo) },
+                { "رقم التعريف", nameof(InventoryImportRowDto.ItemId) },
+                { "الدفعة", nameof(InventoryImportRowDto.Lot) },
+                { "المورد", nameof(InventoryImportRowDto.Supplier) },
+                { "المصنع", nameof(InventoryImportRowDto.Manufacturer) },
+                { "بلد المنشأ", nameof(InventoryImportRowDto.Country) },
+                { "الكمية الأصلية", nameof(InventoryImportRowDto.OriginalQuantity) },
+                { "رقم التشغيلة", nameof(InventoryImportRowDto.BatchNo) },
+                { "تاريخ الانتهاء", nameof(InventoryImportRowDto.ExpiryDate) },
+                { "جاهز للصرف", nameof(InventoryImportRowDto.ReadyForIssue) },
+                { "رقم الفاتورة", nameof(InventoryImportRowDto.InvoiceNumber) },
+                { "تاريخ الفاتورة", nameof(InventoryImportRowDto.InvoiceDate) },
+                { "تاريخ الاستلام", nameof(InventoryImportRowDto.ReceivedDate) },
+                { "ملاحظات", nameof(InventoryImportRowDto.Notes) }
             };
+ 
+            return mappings;
         }
 
         private async Task<List<BaseItem>> LoadAllItemsAsync()

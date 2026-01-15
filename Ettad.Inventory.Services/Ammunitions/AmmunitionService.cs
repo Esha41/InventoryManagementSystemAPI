@@ -376,14 +376,14 @@ namespace Ettad.Inventory.Service.Ammunitions
                 return APIOperationResponse<bool>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
             }
         }
-        public async Task<APIOperationResponse<ImportResult<CreateUpdateAmmunitionDto>>> ImportAsync(IFormFile file)
+        public async Task<APIOperationResponse<ImportResult<CreateUpdateAmmunitionDto>>> ImportAsync(IFormFile file, string language = "en")
         {
-            _logger.LogInformation("Importing ammunitions from file. FileName: {FileName}, User: {UserId}", 
-                file?.FileName, _currentUserService.UserId);
+            _logger.LogInformation("Importing ammunitions from file. FileName: {FileName}, Language: {Language}, User: {UserId}", 
+                file?.FileName, language, _currentUserService.UserId);
             
             try
             {
-                var mappings = GetColumnMappings();
+                var mappings = GetColumnMappings(language);
                 var importResult = await _excelImportService.ImportFromExcelAsync<AmmunitionImportDto>(file, mappings);
 
                 // Load all lookup data for resolution
@@ -651,11 +651,14 @@ namespace Ettad.Inventory.Service.Ammunitions
             }
         }
 
-        public async Task<APIOperationResponse<ImportResult<CreateUpdateAmmunitionDto>>> ImportPreviewAsync(IFormFile file)
+        public async Task<APIOperationResponse<ImportResult<CreateUpdateAmmunitionDto>>> ImportPreviewAsync(IFormFile file, string language = "en")
         {
+            _logger.LogInformation("Previewing ammunition import. FileName: {FileName}, Language: {Language}, User: {UserId}", 
+                file?.FileName, language, _currentUserService.UserId);
+                
             try
             {
-                var mappings = GetColumnMappings();
+                var mappings = GetColumnMappings(language);
                 var importResult = await _excelImportService.ImportFromExcelAsync<AmmunitionImportDto>(file, mappings);
 
                 // Load all lookup data for resolution
@@ -687,6 +690,7 @@ namespace Ettad.Inventory.Service.Ammunitions
                     int rowNumber = 2; // Start from row 2 (row 1 is headers)
                     foreach (var importDto in importResult.SuccessfulRecords)
                     {
+                        var rowErrors = new List<string>();
                         var dto = new CreateUpdateAmmunitionDto
                         {
                             // Basic fields
@@ -708,8 +712,11 @@ namespace Ettad.Inventory.Service.Ammunitions
                             Primer = importDto.Primer,
                             TotalWeight = importDto.TotalWeight
                         };
-
+ 
                         // Resolve Lookups
+                        // ... (keep lookup resolution logic but append errors if not found for mandatory fields if needed, 
+                        // but usually validation handles missing IDs)
+ 
                         // Bullet Diameter Unit
                         if (!string.IsNullOrWhiteSpace(importDto.BulletDiameterUnit))
                         {
@@ -718,7 +725,7 @@ namespace Ettad.Inventory.Service.Ammunitions
                                 (u.NameAr != null && u.NameAr.Equals(importDto.BulletDiameterUnit, StringComparison.OrdinalIgnoreCase)));
                             dto.BulletDiameterUnitId = unit?.Id;
                         }
-
+ 
                         // Case Type
                         if (!string.IsNullOrWhiteSpace(importDto.CaseType))
                         {
@@ -727,7 +734,7 @@ namespace Ettad.Inventory.Service.Ammunitions
                                 (u.NameAr != null && u.NameAr.Equals(importDto.CaseType, StringComparison.OrdinalIgnoreCase)));
                             dto.CaseTypeId = item?.Id;
                         }
-
+ 
                         // Propellant
                         if (!string.IsNullOrWhiteSpace(importDto.Propellant))
                         {
@@ -736,7 +743,7 @@ namespace Ettad.Inventory.Service.Ammunitions
                                 (u.NameAr != null && u.NameAr.Equals(importDto.Propellant, StringComparison.OrdinalIgnoreCase)));
                             dto.PropellantId = item?.Id;
                         }
-
+ 
                         // Compatibility
                         if (!string.IsNullOrWhiteSpace(importDto.Compatibility))
                         {
@@ -745,7 +752,7 @@ namespace Ettad.Inventory.Service.Ammunitions
                                 (u.NameAr != null && u.NameAr.Equals(importDto.Compatibility, StringComparison.OrdinalIgnoreCase)));
                             dto.CompatibilityId = item?.Id;
                         }
-
+ 
                         // Hazard Division
                         if (!string.IsNullOrWhiteSpace(importDto.HazardDivision))
                         {
@@ -754,7 +761,7 @@ namespace Ettad.Inventory.Service.Ammunitions
                                 (u.NameAr != null && u.NameAr.Equals(importDto.HazardDivision, StringComparison.OrdinalIgnoreCase)));
                             dto.HazardDivisionId = item?.Id;
                         }
-
+ 
                         // Nature Option
                         if (!string.IsNullOrWhiteSpace(importDto.NatureOption))
                         {
@@ -763,7 +770,7 @@ namespace Ettad.Inventory.Service.Ammunitions
                                 (u.NameAr != null && u.NameAr.Equals(importDto.NatureOption, StringComparison.OrdinalIgnoreCase)));
                             dto.NatureOptionId = item?.Id;
                         }
-
+ 
                         // Primary Purpose
                         if (!string.IsNullOrWhiteSpace(importDto.PrimaryPurpose))
                         {
@@ -772,7 +779,7 @@ namespace Ettad.Inventory.Service.Ammunitions
                                 (u.NameAr != null && u.NameAr.Equals(importDto.PrimaryPurpose, StringComparison.OrdinalIgnoreCase)));
                             dto.PrimaryPurposId = item?.Id;
                         }
-
+ 
                         // Projectile Color
                         if (!string.IsNullOrWhiteSpace(importDto.ProjectileColor))
                         {
@@ -781,7 +788,7 @@ namespace Ettad.Inventory.Service.Ammunitions
                                 (u.NameAr != null && u.NameAr.Equals(importDto.ProjectileColor, StringComparison.OrdinalIgnoreCase)));
                             dto.ProjectileColorId = item?.Id;
                         }
-
+ 
                         // Projectile Material
                         if (!string.IsNullOrWhiteSpace(importDto.ProjectileMaterial))
                         {
@@ -790,7 +797,7 @@ namespace Ettad.Inventory.Service.Ammunitions
                                 (u.NameAr != null && u.NameAr.Equals(importDto.ProjectileMaterial, StringComparison.OrdinalIgnoreCase)));
                             dto.ProjectailMaterialId = item?.Id;
                         }
-
+ 
                         // Classification
                         if (!string.IsNullOrWhiteSpace(importDto.Classification))
                         {
@@ -799,7 +806,7 @@ namespace Ettad.Inventory.Service.Ammunitions
                                 (u.NameAr != null && u.NameAr.Equals(importDto.Classification, StringComparison.OrdinalIgnoreCase)));
                             dto.ClassificationId = item?.Id;
                         }
-
+ 
                         // Type
                         if (!string.IsNullOrWhiteSpace(importDto.Type))
                         {
@@ -808,20 +815,12 @@ namespace Ettad.Inventory.Service.Ammunitions
                                 (u.NameAr != null && u.NameAr.Equals(importDto.Type, StringComparison.OrdinalIgnoreCase)));
                             dto.TypeId = item?.Id;
                         }
-
-                        // Validate
+ 
+                        // Validate using FluentValidation
                         var validationResult = await _validator.ValidateAsync(dto);
                         if (!validationResult.IsValid)
                         {
-                            finalResult.Errors.Add(new ImportError
-                            {
-                                RowNumber = rowNumber,
-                                ErrorMessage = $"Row {rowNumber}: Validation failed: {string.Join(", ", validationResult.Errors.Select(e => e.ErrorMessage))}",
-                                ColumnName = "N/A",
-                                RowData = dto // Include the row data for preview
-                            });
-                            rowNumber++;
-                            continue;
+                            rowErrors.AddRange(validationResult.Errors.Select(e => e.ErrorMessage));
                         }
                         
                         // Check for duplicate ItemNo within the import file
@@ -830,17 +829,19 @@ namespace Ettad.Inventory.Service.Ammunitions
                             var itemNoKey = dto.ItemNo.Trim();
                             if (seenItemNos.Contains(itemNoKey))
                             {
-                                finalResult.Errors.Add(new ImportError 
-                                { 
-                                    RowNumber = rowNumber,
-                                    ErrorMessage = $"Row {rowNumber}: Item No '{dto.ItemNo}' appears multiple times in the import file", 
-                                    ColumnName = "Item No",
-                                    RowData = dto
-                                });
-                                rowNumber++;
-                                continue;
+                                rowErrors.Add($"Item No '{dto.ItemNo}' appears multiple times in the import file");
                             }
-                            seenItemNos.Add(itemNoKey);
+                            else
+                            {
+                                seenItemNos.Add(itemNoKey);
+                                
+                                // Check if ItemNo exists in database
+                                var existing = await _ammunitionRepository.FindOneAsync(e => !e.IsDeleted && e.ItemNo == itemNoKey);
+                                if (existing != null)
+                                {
+                                    rowErrors.Add($"Item No '{dto.ItemNo}' already exists in the database");
+                                }
+                            }
                         }
                         
                         // Check for duplicate NSN within the import file
@@ -849,36 +850,35 @@ namespace Ettad.Inventory.Service.Ammunitions
                             var nsnKey = dto.Nsn.Trim();
                             if (seenNsns.Contains(nsnKey))
                             {
-                                finalResult.Errors.Add(new ImportError 
-                                { 
-                                    RowNumber = rowNumber,
-                                    ErrorMessage = $"Row {rowNumber}: NSN '{dto.Nsn}' appears multiple times in the import file", 
-                                    ColumnName = "NSN",
-                                    RowData = dto // Include the row data for preview
-                                });
-                                rowNumber++;
-                                continue;
+                                rowErrors.Add($"NSN '{dto.Nsn}' appears multiple times in the import file");
                             }
-                            seenNsns.Add(nsnKey);
-                            
-                            // Also check if NSN exists in database
-                            var existing = await _ammunitionRepository.FindOneAsync(e => !e.IsDeleted && e.Nsn == nsnKey);
-                            if (existing != null)
+                            else
                             {
-                                finalResult.Errors.Add(new ImportError 
-                                { 
-                                    RowNumber = rowNumber,
-                                    ErrorMessage = $"Row {rowNumber}: NSN '{dto.Nsn}' already exists in the database", 
-                                    ColumnName = "NSN",
-                                    RowData = dto // Include the row data for preview
-                                });
-                                rowNumber++;
-                                continue;
+                                seenNsns.Add(nsnKey);
+                                
+                                // Also check if NSN exists in database
+                                var existing = await _ammunitionRepository.FindOneAsync(e => !e.IsDeleted && e.Nsn == nsnKey);
+                                if (existing != null)
+                                {
+                                    rowErrors.Add($"NSN '{dto.Nsn}' already exists in the database");
+                                }
                             }
                         }
                         
-                        finalResult.SuccessfulRecords.Add(dto);
-                        rowNumber++;
+                        if (rowErrors.Any())
+                        {
+                            finalResult.Errors.Add(new ImportError
+                            {
+                                RowNumber = importDto.RowNumber,
+                                ErrorMessage = $"Row {importDto.RowNumber}: {string.Join("; ", rowErrors)}",
+                                ColumnName = "N/A",
+                                RowData = dto
+                            });
+                        }
+                        else
+                        {
+                            finalResult.SuccessfulRecords.Add(dto);
+                        }
                     }
                 }
 
@@ -890,11 +890,11 @@ namespace Ettad.Inventory.Service.Ammunitions
             }
         }
 
-        private Dictionary<string, string> GetColumnMappings()
+        private Dictionary<string, string> GetColumnMappings(string language = "en")
         {
-            return new Dictionary<string, string>
+            var mappings = new Dictionary<string, string>
             {
-                // Basic fields (Matching headers with asterisks from template)
+                // English headers
                 { "Name*", nameof(AmmunitionImportDto.Name) },
                 { "Item No*", nameof(AmmunitionImportDto.ItemNo) },
                 { "Part No", nameof(AmmunitionImportDto.PartNo) },
@@ -902,15 +902,11 @@ namespace Ettad.Inventory.Service.Ammunitions
                 { "NSN", nameof(AmmunitionImportDto.Nsn) },
                 { "Price", nameof(AmmunitionImportDto.Price) },
                 { "Minimum Quantity", nameof(AmmunitionImportDto.MinimumQuantity) },
-                
-                // Physical properties
                 { "Bullet Diameter", nameof(AmmunitionImportDto.BulletDiameter) },
                 { "Bullet Diameter Unit", nameof(AmmunitionImportDto.BulletDiameterUnit) },
                 { "Total Weight", nameof(AmmunitionImportDto.TotalWeight) },
                 { "Is Linked", nameof(AmmunitionImportDto.IsLinked) },
                 { "Primer", nameof(AmmunitionImportDto.Primer) },
-                
-                // Lookup fields
                 { "Case Type", nameof(AmmunitionImportDto.CaseType) },
                 { "Propellant", nameof(AmmunitionImportDto.Propellant) },
                 { "Compatibility", nameof(AmmunitionImportDto.Compatibility) },
@@ -919,15 +915,44 @@ namespace Ettad.Inventory.Service.Ammunitions
                 { "Primary Purpose", nameof(AmmunitionImportDto.PrimaryPurpose) },
                 { "Projectile Color", nameof(AmmunitionImportDto.ProjectileColor) },
                 { "Projectile Material", nameof(AmmunitionImportDto.ProjectileMaterial) },
-                
-                // Additional fields
                 { "UN Number", nameof(AmmunitionImportDto.UNNumber) },
                 { "Distribution", nameof(AmmunitionImportDto.Distribution) },
                 { "Reference No", nameof(AmmunitionImportDto.ReferenceNo) },
                 { "Classification", nameof(AmmunitionImportDto.Classification) },
                 { "Type", nameof(AmmunitionImportDto.Type) },
-                { "Notes", nameof(AmmunitionImportDto.Notes) }
+                { "Notes", nameof(AmmunitionImportDto.Notes) },
+ 
+                // Arabic headers
+                { "الاسم*", nameof(AmmunitionImportDto.Name) },
+                { "رقم الصنف*", nameof(AmmunitionImportDto.ItemNo) },
+                { "رقم الجزء", nameof(AmmunitionImportDto.PartNo) },
+                { "رقم ARM", nameof(AmmunitionImportDto.ArmNumber) },
+                { "رقم NSN", nameof(AmmunitionImportDto.Nsn) }, // Support "رقم NSN"
+                // "NSN" is already in English block
+                { "السعر", nameof(AmmunitionImportDto.Price) },
+                { "الكمية الدنيا", nameof(AmmunitionImportDto.MinimumQuantity) },
+                { "قطر الرصاصة", nameof(AmmunitionImportDto.BulletDiameter) },
+                { "وحدة قطر الرصاصة", nameof(AmmunitionImportDto.BulletDiameterUnit) },
+                { "الوزن الكلي", nameof(AmmunitionImportDto.TotalWeight) },
+                { "مرتبط", nameof(AmmunitionImportDto.IsLinked) },
+                { "الكبسولة", nameof(AmmunitionImportDto.Primer) },
+                { "نوع الغلاف", nameof(AmmunitionImportDto.CaseType) },
+                { "المادة الدافعة", nameof(AmmunitionImportDto.Propellant) },
+                { "التوافق", nameof(AmmunitionImportDto.Compatibility) },
+                { "قسم الخطر", nameof(AmmunitionImportDto.HazardDivision) },
+                { "خيار الطبيعة", nameof(AmmunitionImportDto.NatureOption) },
+                { "الغرض الأساسي", nameof(AmmunitionImportDto.PrimaryPurpose) },
+                { "لون المقذوف", nameof(AmmunitionImportDto.ProjectileColor) },
+                { "مادة المقذوف", nameof(AmmunitionImportDto.ProjectileMaterial) },
+                { "رقم الأمم المتحدة", nameof(AmmunitionImportDto.UNNumber) },
+                { "التوزيع", nameof(AmmunitionImportDto.Distribution) },
+                { "الرقم المرجعي", nameof(AmmunitionImportDto.ReferenceNo) },
+                { "التصنيف", nameof(AmmunitionImportDto.Classification) },
+                { "النوع", nameof(AmmunitionImportDto.Type) },
+                { "ملاحظات", nameof(AmmunitionImportDto.Notes) }
             };
+ 
+            return mappings;
         }
 
         public async Task<APIOperationResponse<byte[]>> GenerateImportTemplateAsync(string language = "en")

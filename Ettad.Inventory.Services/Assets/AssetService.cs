@@ -475,15 +475,15 @@ namespace Ettad.Inventory.Service.Assets
             }
         }
 
-        public async Task<APIOperationResponse<ImportResult<CreateAssetDto>>> ImportAsync(IFormFile file, long depotId)
+        public async Task<APIOperationResponse<ImportResult<CreateAssetDto>>> ImportAsync(IFormFile file, long depotId, string language = "en")
         {
-            _logger.LogInformation("Starting asset import. DepotId: {DepotId}, User: {UserId}", 
-                depotId, _currentUserService.UserId);
-
+            _logger.LogInformation("Starting asset import. DepotId: {DepotId}, Language: {Language}, User: {UserId}", 
+                depotId, language, _currentUserService.UserId);
+ 
             try
             {
                 // Parse Excel file
-                var mappings = GetColumnMappings();
+                var mappings = GetColumnMappings(language);
                 var importResult = await _excelImportService.ImportFromExcelAsync<AssetImportDto>(file, mappings);
 
                 if (importResult.SuccessCount == 0)
@@ -712,15 +712,15 @@ namespace Ettad.Inventory.Service.Assets
             }
         }
 
-        public async Task<APIOperationResponse<ImportResult<CreateAssetDto>>> ImportPreviewAsync(IFormFile file, long depotId)
+        public async Task<APIOperationResponse<ImportResult<CreateAssetDto>>> ImportPreviewAsync(IFormFile file, long depotId, string language = "en")
         {
-            _logger.LogInformation("Starting asset import preview. DepotId: {DepotId}, User: {UserId}", 
-                depotId, _currentUserService.UserId);
-
+            _logger.LogInformation("Starting asset import preview. DepotId: {DepotId}, Language: {Language}, User: {UserId}", 
+                depotId, language, _currentUserService.UserId);
+ 
             try
             {
                 // Parse Excel file
-                var mappings = GetColumnMappings();
+                var mappings = GetColumnMappings(language);
                 var importResult = await _excelImportService.ImportFromExcelAsync<AssetImportDto>(file, mappings);
 
                 if (importResult.SuccessCount == 0)
@@ -844,8 +844,10 @@ namespace Ettad.Inventory.Service.Assets
                         importResult.SuccessfulRecords.Remove(row);
                         importResult.Errors.Add(new ImportError
                         {
+                            RowNumber = row.RowNumber > 0 ? row.RowNumber : 0, // Should be populated by ExcelImportService
                             ErrorMessage = string.Join("; ", rowErrors),
-                            ColumnName = "N/A"
+                            ColumnName = "N/A",
+                            RowData = row
                         });
                         continue;
                     }
@@ -1034,10 +1036,11 @@ namespace Ettad.Inventory.Service.Assets
             }
         }
 
-        private Dictionary<string, string> GetColumnMappings()
+        private Dictionary<string, string> GetColumnMappings(string language = "en")
         {
-            return new Dictionary<string, string>
+            var mappings = new Dictionary<string, string>
             {
+                // English headers
                 { "Item Name", nameof(AssetImportDto.ItemName) },
                 { "Item No", nameof(AssetImportDto.ItemNo) },
                 { "Item ID", nameof(AssetImportDto.ItemId) },
@@ -1049,11 +1052,13 @@ namespace Ettad.Inventory.Service.Assets
                 { "Condition", nameof(AssetImportDto.Condition) },
                 { "Purchase Price", nameof(AssetImportDto.PurchasePrice) },
                 { "Notes", nameof(AssetImportDto.Notes) },
-                // Arabic column names
+ 
+                // Arabic headers
                 { "اسم الصنف", nameof(AssetImportDto.ItemName) },
                 { "رقم الصنف", nameof(AssetImportDto.ItemNo) },
+                { "رقم التعريف", nameof(AssetImportDto.ItemId) },
                 { "رقم التسلسل", nameof(AssetImportDto.SerialNumber) },
-                // Note: "RFID" is the same in both languages, so it's already mapped above
+                { "RFID*", nameof(AssetImportDto.RFID) }, // Sometimes templates have RFID in English even in Arabic template
                 { "علامة الأصل", nameof(AssetImportDto.AssetTag) },
                 { "تاريخ الشراء", nameof(AssetImportDto.PurchaseDate) },
                 { "تاريخ انتهاء الضمان", nameof(AssetImportDto.WarrantyExpiryDate) },
@@ -1061,6 +1066,11 @@ namespace Ettad.Inventory.Service.Assets
                 { "سعر الشراء", nameof(AssetImportDto.PurchasePrice) },
                 { "ملاحظات", nameof(AssetImportDto.Notes) }
             };
+ 
+            // Add RFID without asterisk if needed
+            if (!mappings.ContainsKey("RFID")) mappings.Add("RFID", nameof(AssetImportDto.RFID));
+ 
+            return mappings;
         }
 
         private async Task<List<BaseItem>> LoadAllItemsAsync()

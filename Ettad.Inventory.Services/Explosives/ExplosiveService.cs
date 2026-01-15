@@ -283,14 +283,14 @@ namespace Ettad.Inventory.Service.Explosives
 
 
 
-        public async Task<APIOperationResponse<ImportResult<CreateUpdateExplosiveDto>>> ImportAsync(IFormFile file)
+        public async Task<APIOperationResponse<ImportResult<CreateUpdateExplosiveDto>>> ImportAsync(IFormFile file, string language = "en")
         {
-            _logger.LogInformation("Importing explosives from file. FileName: {FileName}, User: {UserId}", 
-                file?.FileName, _currentUserService.UserId);
+            _logger.LogInformation("Importing explosives from file. FileName: {FileName}, Language: {Language}, User: {UserId}", 
+                file?.FileName, language, _currentUserService.UserId);
             
             try
             {
-                var mappings = GetColumnMappings();
+                var mappings = GetColumnMappings(language);
                 var importResult = await _excelImportService.ImportFromExcelAsync<ExplosiveImportDto>(file, mappings);
 
                 // Load lookup data for resolution
@@ -482,16 +482,14 @@ namespace Ettad.Inventory.Service.Explosives
             }
         }
         
-        public async Task<APIOperationResponse<ImportResult<CreateUpdateExplosiveDto>>> ImportPreviewAsync(IFormFile file)
+        public async Task<APIOperationResponse<ImportResult<CreateUpdateExplosiveDto>>> ImportPreviewAsync(IFormFile file, string language = "en")
         {
-            // Preview logic would ideally mirror ImportAsync but without saving
-            // For brevity, defaulting to not implemented or just parsing check
-            // Or I can copy the resolution logic but skip CreateAsync.
-            // Let's implement full preview resolution logic.
-            
+            _logger.LogInformation("Previewing explosive import. FileName: {FileName}, Language: {Language}, User: {UserId}", 
+                file?.FileName, language, _currentUserService.UserId);
+                
            try
             {
-                var mappings = GetColumnMappings();
+                var mappings = GetColumnMappings(language);
                 var importResult = await _excelImportService.ImportFromExcelAsync<ExplosiveImportDto>(file, mappings);
 
                  // Load lookup data for resolution
@@ -515,6 +513,7 @@ namespace Ettad.Inventory.Service.Explosives
                     int rowNumber = 2; // Start from row 2 (row 1 is headers)
                     foreach (var importDto in importResult.SuccessfulRecords)
                     {
+                        var rowErrors = new List<string>();
                         var dto = new CreateUpdateExplosiveDto
                         {
                             // Basic fields
@@ -529,7 +528,7 @@ namespace Ettad.Inventory.Service.Explosives
                             UNNumber = importDto.UNNumber,
                             Notes = importDto.Notes
                         };
-
+ 
                         // Resolve Lookups
                         if (!string.IsNullOrWhiteSpace(importDto.HazardDivision))
                         {
@@ -557,20 +556,12 @@ namespace Ettad.Inventory.Service.Explosives
                             if (Enum.TryParse<ExplosiveUnit>(importDto.NEQUnit, true, out var unitValue))
                                 dto.Unit = unitValue;
                         }
-
-                        // Validate
+ 
+                        // Validate using FluentValidation
                         var validationResult = await _validator.ValidateAsync(dto);
                         if (!validationResult.IsValid)
                         {
-                            finalResult.Errors.Add(new ImportError 
-                            { 
-                                RowNumber = rowNumber,
-                                ErrorMessage = $"Row {rowNumber}: Validation failed: {string.Join(", ", validationResult.Errors.Select(e => e.ErrorMessage))}", 
-                                ColumnName = "N/A",
-                                RowData = dto
-                            });
-                            rowNumber++;
-                            continue;
+                            rowErrors.AddRange(validationResult.Errors.Select(e => e.ErrorMessage));
                         }
                         
                         // Check for duplicate ItemNo within the import file
@@ -579,17 +570,19 @@ namespace Ettad.Inventory.Service.Explosives
                             var itemNoKey = dto.ItemNo.Trim();
                             if (seenItemNos.Contains(itemNoKey))
                             {
-                                finalResult.Errors.Add(new ImportError 
-                                { 
-                                    RowNumber = rowNumber,
-                                    ErrorMessage = $"Row {rowNumber}: Item No '{dto.ItemNo}' appears multiple times in the import file", 
-                                    ColumnName = "Item No",
-                                    RowData = dto
-                                });
-                                rowNumber++;
-                                continue;
+                                rowErrors.Add($"Item No '{dto.ItemNo}' appears multiple times in the import file");
                             }
-                            seenItemNos.Add(itemNoKey);
+                            else
+                            {
+                                seenItemNos.Add(itemNoKey);
+                                
+                                // Check if ItemNo exists in database
+                                var existing = await _explosiveRepository.FindOneAsync(e => !e.IsDeleted && e.ItemNo == itemNoKey);
+                                if (existing != null)
+                                {
+                                    rowErrors.Add($"Item No '{dto.ItemNo}' already exists in the database");
+                                }
+                            }
                         }
                         
                         // Check for duplicate NSN within the import file
@@ -598,36 +591,35 @@ namespace Ettad.Inventory.Service.Explosives
                             var nsnKey = dto.Nsn.Trim();
                             if (seenNsns.Contains(nsnKey))
                             {
-                                finalResult.Errors.Add(new ImportError 
-                                { 
-                                    RowNumber = rowNumber,
-                                    ErrorMessage = $"Row {rowNumber}: NSN '{dto.Nsn}' appears multiple times in the import file", 
-                                    ColumnName = "NSN",
-                                    RowData = dto
-                                });
-                                rowNumber++;
-                                continue;
+                                rowErrors.Add($"NSN '{dto.Nsn}' appears multiple times in the import file");
                             }
-                            seenNsns.Add(nsnKey);
-                            
-                            // Also check if NSN exists in database
-                            var existing = await _explosiveRepository.FindOneAsync(e => !e.IsDeleted && e.Nsn == nsnKey);
-                            if (existing != null)
+                            else
                             {
-                                finalResult.Errors.Add(new ImportError 
-                                { 
-                                    RowNumber = rowNumber,
-                                    ErrorMessage = $"Row {rowNumber}: NSN '{dto.Nsn}' already exists in the database", 
-                                    ColumnName = "NSN",
-                                    RowData = dto
-                                });
-                                rowNumber++;
-                                continue;
+                                seenNsns.Add(nsnKey);
+                                
+                                // Also check if NSN exists in database
+                                var existing = await _explosiveRepository.FindOneAsync(e => !e.IsDeleted && e.Nsn == nsnKey);
+                                if (existing != null)
+                                {
+                                    rowErrors.Add($"NSN '{dto.Nsn}' already exists in the database");
+                                }
                             }
                         }
                         
-                        finalResult.SuccessfulRecords.Add(dto);
-                        rowNumber++;
+                        if (rowErrors.Any())
+                        {
+                            finalResult.Errors.Add(new ImportError 
+                            { 
+                                RowNumber = importDto.RowNumber,
+                                ErrorMessage = $"Row {importDto.RowNumber}: {string.Join("; ", rowErrors)}", 
+                                ColumnName = "N/A",
+                                RowData = dto
+                            });
+                        }
+                        else
+                        {
+                            finalResult.SuccessfulRecords.Add(dto);
+                        }
                     }
                 }
                 
@@ -639,9 +631,9 @@ namespace Ettad.Inventory.Service.Explosives
             }
         }
 
-        private Dictionary<string, string> GetColumnMappings()
+        private Dictionary<string, string> GetColumnMappings(string language = "en")
         {
-            return new Dictionary<string, string>
+            var mappings = new Dictionary<string, string>
             {
                 // English headers
                 { "Name*", nameof(ExplosiveImportDto.Name) },
@@ -658,11 +650,13 @@ namespace Ettad.Inventory.Service.Explosives
                 { "Classification", nameof(ExplosiveImportDto.Classification) },
                 { "Type", nameof(ExplosiveImportDto.Type) },
                 { "Notes", nameof(ExplosiveImportDto.Notes) },
-                
-                // Arabic headers (same mappings)
+ 
+                // Arabic headers
                 { "الاسم*", nameof(ExplosiveImportDto.Name) },
                 { "رقم الصنف*", nameof(ExplosiveImportDto.ItemNo) },
                 { "رقم الجزء", nameof(ExplosiveImportDto.PartNo) },
+                { "رقم NSN", nameof(ExplosiveImportDto.Nsn) },
+                // "NSN" is already in English block
                 { "السعر", nameof(ExplosiveImportDto.Price) },
                 { "الكمية الدنيا", nameof(ExplosiveImportDto.MinimumQuantity) },
                 { "رقم الأمم المتحدة", nameof(ExplosiveImportDto.UNNumber) },
@@ -674,6 +668,8 @@ namespace Ettad.Inventory.Service.Explosives
                 { "النوع", nameof(ExplosiveImportDto.Type) },
                 { "ملاحظات", nameof(ExplosiveImportDto.Notes) }
             };
+ 
+            return mappings;
         }
 
         public async Task<APIOperationResponse<byte[]>> GenerateImportTemplateAsync(string language = "en")

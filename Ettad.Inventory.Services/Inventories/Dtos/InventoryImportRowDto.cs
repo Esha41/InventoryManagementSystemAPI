@@ -6,6 +6,7 @@ namespace Ettad.Inventory.Service.Inventories.Dtos
     /// </summary>
     public class InventoryImportRowDto
     {
+        public int RowNumber { get; set; }
         public string? ItemName { get; set; } // "ItemName (ItemNo)" format from dropdown
         public string ItemNo { get; set; } = string.Empty;
         public long? ItemId { get; set; }

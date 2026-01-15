@@ -100,19 +100,19 @@ namespace Ettad.Inventory.API.Controllers
         [HttpPost("Import")]
         [ProducesResponseType((int)HttpStatusCode.OK)]
         [CheckAuthorize("Permissions.Asset.Create")]
-        public async Task<IActionResult> Import(IFormFile file, [FromForm] long depotId)
+        public async Task<IActionResult> Import(IFormFile file, [FromForm] long depotId, [FromQuery] string language = "en")
         {
             if (file == null || file.Length == 0)
             {
                 return BadRequest(new { message = "File is required" });
             }
-
+ 
             if (depotId <= 0)
             {
                 return BadRequest(new { message = "Valid depot ID is required" });
             }
-
-            var result = await _assetService.ImportAsync(file, depotId);
+ 
+            var result = await _assetService.ImportAsync(file, depotId, language);
             return ProcessResponse(result);
         }
 
@@ -122,19 +122,19 @@ namespace Ettad.Inventory.API.Controllers
         [HttpPost("ImportPreview")]
         [ProducesResponseType((int)HttpStatusCode.OK)]
         [CheckAuthorize("Permissions.Asset.Create")]
-        public async Task<IActionResult> ImportPreview(IFormFile file, [FromForm] long depotId)
+        public async Task<IActionResult> ImportPreview(IFormFile file, [FromForm] long depotId, [FromQuery] string language = "en")
         {
             if (file == null || file.Length == 0)
             {
                 return BadRequest(new { message = "File is required" });
             }
-
+ 
             if (depotId <= 0)
             {
                 return BadRequest(new { message = "Valid depot ID is required" });
             }
-
-            var result = await _assetService.ImportPreviewAsync(file, depotId);
+ 
+            var result = await _assetService.ImportPreviewAsync(file, depotId, language);
             return ProcessResponse(result);
         }
 
