@@ -12,6 +12,7 @@ using Ettad.Inventory.Service.Inventories;
 using Ettad.Inventory.Service.Inventories.Dtos;
 using Ettad.Notification.Service;
 using Ettad.RequestManagement.Service.SupplyManagement.Dtos;
+using Ettad.Application.Common.Interfaces;
 using Ettad.ResponseHandler.Consts;
 using Ettad.ResponseHandler.Models;
 using Microsoft.AspNetCore.Http;
@@ -45,6 +46,7 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
 		private readonly ILogger<SupplyService> _logger;
 		private readonly IFileUploadService _fileUploadService;
 		private readonly IDateTimeProvider _dateTimeProvider;
+		private readonly IOrderItemTrackingService _orderItemTrackingService;
 
 	public SupplyService(
 			ApplicationDbContext context,
@@ -67,7 +69,8 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
 			UserManager<ApplicationUser> userManager,
 			ILogger<SupplyService> logger,
 			IFileUploadService fileUploadService,
-			IDateTimeProvider dateTimeProvider)
+			IDateTimeProvider dateTimeProvider,
+			IOrderItemTrackingService orderItemTrackingService)
 		{
 			_context = context;
 			_inventoryService = inventoryService;
@@ -90,6 +93,7 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
 			_logger = logger;
 			_fileUploadService = fileUploadService;
 			_dateTimeProvider = dateTimeProvider;
+			_orderItemTrackingService = orderItemTrackingService;
 		}
 
 		public async Task<APIOperationResponse<OrderSupplySuggestionDto>> GetSupplySuggestionAsync(long orderId, List<long>? depotIds = null)
@@ -537,6 +541,37 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
 
                 // Add to repository
                 var createdSupply = await _supplyRepository.AddAsync(supply);
+
+				// Record history for each supply detail
+				try
+				{
+					var departmentId = _currentUserService.DepartmentId ?? order.DepartmentId;
+					var userName = _currentUserService.UserName ?? "System";
+
+					foreach (var detail in createdSupply.SupplyDetails)
+					{
+						var historyContext = new OrderItemHistoryContext
+						{
+							OrderId = order.Id,
+							ItemId = detail.ItemId,
+							ActionType = OrderItemActionType.Supplied,
+							OrderStatus = order.Status,
+							SuppliedQuantity = detail.Quantity,
+							DepartmentId = departmentId,
+							ModifiedByUserId = _currentUserService.UserId,
+							ModifiedByUserName = userName,
+							SupplyId = createdSupply.Id,
+							SupplyDetailId = detail.Id,
+							Description = $"Item supplied - quantity: {detail.Quantity}"
+						};
+
+						await _orderItemTrackingService.RecordHistoryAsync(historyContext);
+					}
+				}
+				catch (Exception ex)
+				{
+					_logger.LogWarning(ex, "Failed to record history for supply creation. SupplyId: {SupplyId}", createdSupply.Id);
+				}
 
 				_logger.LogInformation("Supply created successfully. SupplyId: {SupplyId}, OrderId: {OrderId}, DetailCount: {DetailCount}, User: {UserId}",
 					createdSupply.Id, supply.OrderId, supply.SupplyDetails.Count, _currentUserService.UserId);

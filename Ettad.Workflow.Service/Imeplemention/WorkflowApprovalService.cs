@@ -16,6 +16,7 @@ using Ettad.Workflow.Service.Interface;
 using Ettad.Workflows.Service.DTO;
 using Ettad.Workflows.Service.Events;
 using Ettad.Workflows.Service.Interface;
+using Ettad.Application.Common.Interfaces;
 using MediatR;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
@@ -37,6 +38,7 @@ namespace Ettad.Workflows.Service.Imeplemention
         private readonly IFileUploadService _fileUploadService;
         private readonly ICrossCuttingRepository<FileUplodDetails> _fileDetailsRepository;
         private readonly IDateTimeProvider _dateTimeProvider;
+        private readonly IOrderItemTrackingService _orderItemTrackingService;
 
         public WorkflowApprovalService(
             ApplicationDbContext context, 
@@ -48,7 +50,8 @@ namespace Ettad.Workflows.Service.Imeplemention
             IMediator mediator,
             IFileUploadService fileUploadService,
             ICrossCuttingRepository<FileUplodDetails> fileDetailsRepository,
-            IDateTimeProvider dateTimeProvider)
+            IDateTimeProvider dateTimeProvider,
+            IOrderItemTrackingService orderItemTrackingService)
         {
             _context = context;
             _currentUserService = currentUserService;
@@ -60,6 +63,7 @@ namespace Ettad.Workflows.Service.Imeplemention
             _fileUploadService = fileUploadService;
             _fileDetailsRepository = fileDetailsRepository;
             _dateTimeProvider = dateTimeProvider;
+            _orderItemTrackingService = orderItemTrackingService;
         }
      
         public async Task<IEnumerable<WorkflowApprovalStepDto>> GetAllAsync()
@@ -679,6 +683,19 @@ namespace Ettad.Workflows.Service.Imeplemention
             {
                 //  Final approval — now notify requester
                 baseRequest.Status = RequestStatus.Approved;
+
+                // Record final approval history for orders
+                if (baseRequest.RequestType == RequestType.Order)
+                {
+                    try
+                    {
+                        await _orderItemTrackingService.RecordFinalApprovalHistoryAsync(baseRequest.Id, step.Id);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to record final approval history. OrderId: {OrderId}", baseRequest.Id);
+                    }
+                }
 
                 var approver = await _context.Users.FirstOrDefaultAsync(u => u.Id == _currentUserService.UserId);
 

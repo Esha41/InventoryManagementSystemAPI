@@ -1,0 +1,21 @@
+using AutoMapper;
+using Ettad.Data.Entities;
+using Ettad.Application.Common.Interfaces;
+
+namespace Ettad.RequestManagement.Service.OrderItemTracking.Profiles
+{
+    public class OrderItemHistoryMappingProfile : Profile
+    {
+        public OrderItemHistoryMappingProfile()
+        {
+            CreateMap<OrderItemHistory, OrderItemHistoryDto>()
+                .ForMember(dest => dest.OrderRequestNo, opt => opt.Ignore())
+                .ForMember(dest => dest.ItemName, opt => opt.Ignore())
+                .ForMember(dest => dest.ItemNo, opt => opt.Ignore())
+                .ForMember(dest => dest.DepartmentName, opt => opt.Ignore())
+                .ForMember(dest => dest.DepartmentNameAr, opt => opt.Ignore())
+                .ForMember(dest => dest.DepartmentNameEn, opt => opt.Ignore())
+                .ForMember(dest => dest.WorkflowStepName, opt => opt.Ignore());
+        }
+    }
+}

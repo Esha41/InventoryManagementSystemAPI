@@ -32,6 +32,7 @@ namespace Ettad.Inventory.Service.AssetSupply
         private readonly ICurrentUserService _currentUserService;
         private readonly ILogger<AssetSupplyService> _logger;
         private readonly IDateTimeProvider _dateTimeProvider;
+        private readonly IOrderItemTrackingService _orderItemTrackingService;
 
         public AssetSupplyService(
             ApplicationDbContext context,
@@ -47,7 +48,8 @@ namespace Ettad.Inventory.Service.AssetSupply
             IValidator<ReturnMultipleAssetsDto> returnMultipleValidator,
             ICurrentUserService currentUserService,
             ILogger<AssetSupplyService> logger,
-            IDateTimeProvider dateTimeProvider)
+            IDateTimeProvider dateTimeProvider,
+            IOrderItemTrackingService orderItemTrackingService)
         {
             _context = context;
             _assetSupplyRepository = assetSupplyRepository;
@@ -62,6 +64,8 @@ namespace Ettad.Inventory.Service.AssetSupply
             _returnMultipleValidator = returnMultipleValidator;
             _currentUserService = currentUserService;
             _logger = logger;
+            _dateTimeProvider = dateTimeProvider;
+            _orderItemTrackingService = orderItemTrackingService;
         }
 
         public async Task<APIOperationResponse<OrderAssetsToSupplyDto>> GetAssetsToSupplyAsync(long orderId, List<long>? depotIds = null)
@@ -463,6 +467,41 @@ namespace Ettad.Inventory.Service.AssetSupply
                         AssetAssignmentId = assignment.Id,
                         Notes = supply.Notes
                     });
+                }
+
+                // Record order item history for asset supply
+                try
+                {
+                    var departmentId = _currentUserService.DepartmentId ?? order.DepartmentId;
+                    var userName = _currentUserService.UserName ?? "System";
+
+                    // Group supply details by ItemId to get quantities
+                    var supplyDetailsByItem = createdSupply.SupplyDetails
+                        .GroupBy(d => d.ItemId)
+                        .ToDictionary(g => g.Key, g => (long)g.Count());
+
+                    foreach (var itemGroup in supplyDetailsByItem)
+                    {
+                        var historyContext = new OrderItemHistoryContext
+                        {
+                            OrderId = order.Id,
+                            ItemId = itemGroup.Key,
+                            ActionType = OrderItemActionType.AssetSupplied,
+                            OrderStatus = order.Status,
+                            SuppliedQuantity = itemGroup.Value,
+                            DepartmentId = departmentId,
+                            ModifiedByUserId = _currentUserService.UserId,
+                            ModifiedByUserName = userName,
+                            AssetSupplyId = createdSupply.Id,
+                            Description = $"Asset supplied - quantity: {itemGroup.Value}"
+                        };
+
+                        await _orderItemTrackingService.RecordHistoryAsync(historyContext);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to record history for asset supply creation. SupplyId: {SupplyId}", createdSupply.Id);
                 }
 
                 await transaction.CommitAsync();

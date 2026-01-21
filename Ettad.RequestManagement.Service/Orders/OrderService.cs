@@ -14,6 +14,7 @@ using Ettad.RequestManagement.Service.Orders.Dto;
 using Ettad.ResponseHandler.Consts;
 using Ettad.ResponseHandler.Models;
 using Ettad.Workflows.Service.Interface;
+using Ettad.Application.Common.Interfaces;
 using FluentValidation;
 using Microsoft.AspNetCore.Components.Forms;
 using Microsoft.AspNetCore.Http;
@@ -44,6 +45,7 @@ namespace Ettad.RequestManagement.Service.Orders
         private readonly ILogger<OrderService> _logger;
         private readonly IFileUploadService _fileUploadService;
         private readonly IDateTimeProvider _dateTimeProvider;
+        private readonly IOrderItemTrackingService _orderItemTrackingService;
 
         public OrderService(
             ICrossCuttingRepository<Order> orderRepository,
@@ -63,7 +65,8 @@ namespace Ettad.RequestManagement.Service.Orders
             UserManager<ApplicationUser> userManager,
             ILogger<OrderService> logger,
             IFileUploadService fileUploadService,
-            IDateTimeProvider dateTimeProvider)
+            IDateTimeProvider dateTimeProvider,
+            IOrderItemTrackingService orderItemTrackingService)
         {
             _orderRepository = orderRepository;
             _requestItemRepository = requestItemRepository;
@@ -83,6 +86,7 @@ namespace Ettad.RequestManagement.Service.Orders
             _logger = logger;
             _fileUploadService = fileUploadService;
             _dateTimeProvider = dateTimeProvider;
+            _orderItemTrackingService = orderItemTrackingService;
         }
 
         // ... existing methods omitted for brevity until SetSupplyDateAsync ...
@@ -320,6 +324,42 @@ namespace Ettad.RequestManagement.Service.Orders
 
                 // Step 3: Add to repository (this will cascade save RequestItems)
                 var createdOrder = await _orderRepository.AddAsync(order);
+
+                // Record history for initial items
+                if (createdOrder.RequestItems != null && createdOrder.RequestItems.Any())
+                {
+                    try
+                    {
+                        var departmentIdForHistory = _currentUserService.DepartmentId ?? createdOrder.DepartmentId;
+                        var userName = _currentUserService.UserName ?? "System";
+
+                        foreach (var item in createdOrder.RequestItems.Where(ri => !ri.IsDeleted))
+                        {
+                            var historyContext = new OrderItemHistoryContext
+                            {
+                                OrderId = createdOrder.Id,
+                                RequestItemId = item.Id,
+                                ItemId = item.ItemId,
+                                ActionType = OrderItemActionType.Added,
+                                OrderStatus = createdOrder.Status,
+                                NewQuantity = item.Quantity,
+                                DepartmentId = departmentIdForHistory,
+                                ModifiedByUserId = _currentUserService.UserId,
+                                ModifiedByUserName = userName,
+                                WorkflowApprovalStepId = null, // No workflow step yet for new orders
+                                WorkflowStepId = null,
+                                Description = $"Item added to order (Order Status: {createdOrder.Status})"
+                            };
+
+                            await _orderItemTrackingService.RecordHistoryAsync(historyContext);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to record history for order creation. OrderId: {OrderId}", 
+                            createdOrder.Id);
+                    }
+                }
 
                 // Step 4: Link files to the order (create FileUplodDetails records) if files were saved
                 if (savedFileMasterIds != null && savedFileMasterIds.Count > 0)
@@ -591,6 +631,37 @@ namespace Ettad.RequestManagement.Service.Orders
 
                 var createdItem = await _requestItemRepository.AddAsync(newItem);
 
+                // Record history
+                try
+                {
+                    var currentStep = await _workflowApprovalService.GetCurrentApprovalStepByRequestIdAsync((int)orderId);
+                    var departmentId = _currentUserService.DepartmentId ?? order.DepartmentId;
+                    var userName = _currentUserService.UserName ?? "System";
+
+                    var historyContext = new OrderItemHistoryContext
+                    {
+                        OrderId = orderId,
+                        RequestItemId = createdItem.Id,
+                        ItemId = itemDto.ItemId,
+                        ActionType = OrderItemActionType.Added,
+                        OrderStatus = order.Status,
+                        NewQuantity = itemDto.Quantity,
+                        DepartmentId = departmentId,
+                        ModifiedByUserId = _currentUserService.UserId,
+                        ModifiedByUserName = userName,
+                        WorkflowApprovalStepId = currentStep?.Id,
+                        WorkflowStepId = currentStep?.WorkflowStepId,
+                        Description = $"Item added to order (Order Status: {order.Status})"
+                    };
+
+                    await _orderItemTrackingService.RecordHistoryAsync(historyContext);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to record history for added item. OrderId: {OrderId}, ItemId: {ItemId}", 
+                        orderId, itemDto.ItemId);
+                }
+
                 _logger.LogInformation("Item added to order successfully. OrderId: {OrderId}, ItemId: {ItemId}, RequestItemId: {RequestItemId}, User: {UserId}", 
                     orderId, itemDto.ItemId, createdItem.Id, _currentUserService.UserId);
 
@@ -645,6 +716,40 @@ namespace Ettad.RequestManagement.Service.Orders
 
                 await _requestItemRepository.UpdateAsync(requestItem);
 
+                // Record history
+                try
+                {
+                    var currentStep = await _workflowApprovalService.GetCurrentApprovalStepByRequestIdAsync((int)orderId);
+                    var departmentId = _currentUserService.DepartmentId ?? order.DepartmentId;
+                    var userName = _currentUserService.UserName ?? "System";
+                    var stepName = currentStep?.WorkflowStep?.ApplicationRole?.Name ?? "Unknown";
+
+                    var historyContext = new OrderItemHistoryContext
+                    {
+                        OrderId = orderId,
+                        RequestItemId = itemId,
+                        ItemId = requestItem.ItemId,
+                        ActionType = OrderItemActionType.QuantityModified,
+                        OrderStatus = order.Status,
+                        PreviousQuantity = oldQuantity,
+                        NewQuantity = newQuantity,
+                        DepartmentId = departmentId,
+                        ModifiedByUserId = _currentUserService.UserId,
+                        ModifiedByUserName = userName,
+                        WorkflowApprovalStepId = currentStep?.Id,
+                        WorkflowStepId = currentStep?.WorkflowStepId,
+                        Description = $"Quantity changed from {oldQuantity} to {newQuantity} (Order Status: {order.Status})" +
+                            (currentStep != null ? $" - Workflow Step: {stepName}" : "")
+                    };
+
+                    await _orderItemTrackingService.RecordHistoryAsync(historyContext);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to record history for quantity update. OrderId: {OrderId}, ItemId: {ItemId}", 
+                        orderId, itemId);
+                }
+
                 _logger.LogInformation("Order item quantity updated. OrderId: {OrderId}, ItemId: {ItemId}, OldQuantity: {OldQuantity}, NewQuantity: {NewQuantity}, User: {UserId}", 
                     orderId, itemId, oldQuantity, newQuantity, _currentUserService.UserId);
 
@@ -698,6 +803,37 @@ namespace Ettad.RequestManagement.Service.Orders
                     _logger.LogWarning("Order item not found. OrderId: {OrderId}, ItemId: {ItemId}, User: {UserId}", 
                         orderId, itemId, _currentUserService.UserId);
                     return APIOperationResponse<bool>.Fail(ResponseType.NotFound, "Order item not found");
+                }
+
+                // Record history before deletion
+                try
+                {
+                    var currentStep = await _workflowApprovalService.GetCurrentApprovalStepByRequestIdAsync((int)orderId);
+                    var departmentId = _currentUserService.DepartmentId ?? order.DepartmentId;
+                    var userName = _currentUserService.UserName ?? "System";
+
+                    var historyContext = new OrderItemHistoryContext
+                    {
+                        OrderId = orderId,
+                        RequestItemId = itemId,
+                        ItemId = requestItem.ItemId,
+                        ActionType = OrderItemActionType.Deleted,
+                        OrderStatus = order.Status,
+                        PreviousQuantity = requestItem.Quantity,
+                        DepartmentId = departmentId,
+                        ModifiedByUserId = _currentUserService.UserId,
+                        ModifiedByUserName = userName,
+                        WorkflowApprovalStepId = currentStep?.Id,
+                        WorkflowStepId = currentStep?.WorkflowStepId,
+                        Description = $"Item removed from order (Order Status: {order.Status})"
+                    };
+
+                    await _orderItemTrackingService.RecordHistoryAsync(historyContext);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to record history for deleted item. OrderId: {OrderId}, ItemId: {ItemId}", 
+                        orderId, itemId);
                 }
 
                 // Soft delete the item
