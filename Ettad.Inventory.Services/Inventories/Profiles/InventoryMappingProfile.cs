@@ -24,7 +24,10 @@ namespace Ettad.Inventory.Service.Inventories.Profiles
                 .ForMember(dest => dest.RemainingQuantity, opt => opt.Ignore()) // Will be set in service
                 .ForMember(dest => dest.IsEmptyLot, opt => opt.Ignore()) // Will be set in service
                 .ForMember(dest => dest.IsExpired, opt => opt.Ignore()) // Will be set in service
-                .ForMember(dest => dest.Depot, opt => opt.MapFrom(src => src.Inventory.Depo));
+                .ForMember(dest => dest.Depot, opt => opt.MapFrom(src => src.Inventory.Depo))
+                .ForMember(dest => dest.Supplier, opt => opt.MapFrom(src => src.Supplier))
+                .ForMember(dest => dest.Manufacturer, opt => opt.MapFrom(src => src.Manufacturer))
+                .ForMember(dest => dest.Country, opt => opt.MapFrom(src => src.Country));
             
             // Create DTO to Entity
             CreateMap<CreateInventoryDto, InventoryEntity>()
