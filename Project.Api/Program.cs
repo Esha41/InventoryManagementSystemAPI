@@ -24,6 +24,7 @@ using Ettad.Workflow.Service;
 using Ettad.Workflows.Service.Imeplemention;
 using Ettad.Workflows.Service.Interface;
 using Hangfire;
+using DevExpress.AspNetCore.Reporting;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
@@ -42,6 +43,8 @@ using System.Reflection;
 using System.Reflection;
 using System.Text;
 using System.Text.Json;
+using DevExpress.AspNetCore;
+using DevExpress.XtraReports.Web.Extensions;
 
 // Configure Serilog
 Log.Logger = new LoggerConfiguration()
@@ -93,6 +96,7 @@ try
         .AddApplicationPart(typeof(Ettad.Modules.EmailSystem.API.Controllers.EmailSettingsController).Assembly)
         .AddApplicationPart(typeof(Ettad.Modules.FileUpload.API.Controllers.FileUploadController).Assembly)
         .AddApplicationPart(typeof(Ettad.LdapSettings.APIs.Controllers.LdapSettingsController).Assembly)
+        .AddApplicationPart(typeof(Ettad.Reporting.Controllers.ReportDesignerController).Assembly) // This includes all controllers in Project.Api assembly
         .AddJsonOptions(options =>
         {
             options.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
@@ -115,6 +119,15 @@ try
     builder.Services.AddScoped<IFileStorageService, FileStorageService>();
     builder.Services.AddScoped<IFileUploadService, Ettad.Modules.FileUpload.API.Services.FileUploadService>();
     builder.Services.AddScoped<IExcelExportService, ExcelExportService>();
+
+    #region DevExpress Reporting Configuration
+    // Register DevExpress Reporting services
+    builder.Services.AddDevExpressControls();
+    
+    // Register custom report storage extension
+    builder.Services.AddScoped<ReportStorageWebExtension, Ettad.Reporting.Storage.CustomReportStorageWebExtension>();
+    #endregion
+
     // Configure Hangfire for background jobs
     var hangfireConnectionString = builder.Configuration.GetConnectionString("DefaultConnection");
     builder.Services.AddHangfire(config => config
@@ -361,6 +374,10 @@ try
     }
   
     app.UseStaticFiles();
+    
+    // DevExpress Reporting middleware - must be before UseRouting
+    app.UseDevExpressControls();
+    
     app.UseHttpsRedirection();
 
     // Add HSTS (HTTP Strict Transport Security) - only in non-development environments
@@ -389,6 +406,7 @@ try
 
     app.UseAuthorization();
 
+    // Map DevExpress Reporting endpoints
     app.MapControllers();
 
     app.MapHub<Ettad.Notification.Service.Hubs.NotificationHub>("/hubs/notification");

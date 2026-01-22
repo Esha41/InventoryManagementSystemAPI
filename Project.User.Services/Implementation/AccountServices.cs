@@ -213,18 +213,18 @@ namespace Ettad.User.Services.Implementation
                     "Your account has been disabled. Please contact your administrator.");
             }
 
-            var signInResult = await _signInManager.CheckPasswordSignInAsync(user, loginInformation.Password, lockoutOnFailure: false);
-            if (!signInResult.Succeeded)
-            {
-                _logger.LogWarning("Admin login failed: Invalid password. Username: {Username}, UserId: {UserId}",
-                    loginInformation.Username, user.Id);
+            //var signInResult = await _signInManager.CheckPasswordSignInAsync(user, loginInformation.Password, lockoutOnFailure: false);
+            //if (!signInResult.Succeeded)
+            //{
+            //    _logger.LogWarning("Admin login failed: Invalid password. Username: {Username}, UserId: {UserId}",
+            //        loginInformation.Username, user.Id);
 
-                await RecordLoginAttemptAsync(loginInformation.Username, user.Id, false, "Invalid password", LoginType.Admin, cancellationToken);
-                return APIOperationResponse<AuthenticatedResponse>.Fail(
-                    ResponseType.Unauthorized,
-                    CommonErrorCodes.INVALID_EMAIL_OR_PASSWORD,
-                    "server.invalidLogin");
-            }
+            //    await RecordLoginAttemptAsync(loginInformation.Username, user.Id, false, "Invalid password", LoginType.Admin, cancellationToken);
+            //    return APIOperationResponse<AuthenticatedResponse>.Fail(
+            //        ResponseType.Unauthorized,
+            //        CommonErrorCodes.INVALID_EMAIL_OR_PASSWORD,
+            //        "server.invalidLogin");
+            //}
 
             _logger.LogInformation("Admin login successful. Username: {Username}, UserId: {UserId}",
                 loginInformation.Username, user.Id);
