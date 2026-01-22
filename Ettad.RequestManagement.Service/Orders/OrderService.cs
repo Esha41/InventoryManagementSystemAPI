@@ -348,7 +348,8 @@ namespace Ettad.RequestManagement.Service.Orders
                                 ModifiedByUserName = userName,
                                 WorkflowApprovalStepId = null, // No workflow step yet for new orders
                                 WorkflowStepId = null,
-                                Description = $"Item added to order (Order Status: {createdOrder.Status})"
+                                DescriptionAr = $"تمت إضافة العنصر إلى الطلب (حالة الطلب: {createdOrder.Status})",
+                                DescriptionEn = $"Item added to order (Order Status: {createdOrder.Status})"
                             };
 
                             await _orderItemTrackingService.RecordHistoryAsync(historyContext);
@@ -651,7 +652,8 @@ namespace Ettad.RequestManagement.Service.Orders
                         ModifiedByUserName = userName,
                         WorkflowApprovalStepId = currentStep?.Id,
                         WorkflowStepId = currentStep?.WorkflowStepId,
-                        Description = $"Item added to order (Order Status: {order.Status})"
+                        DescriptionAr = $"تمت إضافة العنصر إلى الطلب (حالة الطلب: {order.Status})",
+                        DescriptionEn = $"Item added to order (Order Status: {order.Status})"
                     };
 
                     await _orderItemTrackingService.RecordHistoryAsync(historyContext);
@@ -738,7 +740,9 @@ namespace Ettad.RequestManagement.Service.Orders
                         ModifiedByUserName = userName,
                         WorkflowApprovalStepId = currentStep?.Id,
                         WorkflowStepId = currentStep?.WorkflowStepId,
-                        Description = $"Quantity changed from {oldQuantity} to {newQuantity} (Order Status: {order.Status})" +
+                        DescriptionAr = $"تم تغيير الكمية من {oldQuantity} إلى {newQuantity} (حالة الطلب: {order.Status})" +
+                            (currentStep != null ? $" - خطوة سير العمل: {stepName}" : ""),
+                        DescriptionEn = $"Quantity changed from {oldQuantity} to {newQuantity} (Order Status: {order.Status})" +
                             (currentStep != null ? $" - Workflow Step: {stepName}" : "")
                     };
 
@@ -825,7 +829,8 @@ namespace Ettad.RequestManagement.Service.Orders
                         ModifiedByUserName = userName,
                         WorkflowApprovalStepId = currentStep?.Id,
                         WorkflowStepId = currentStep?.WorkflowStepId,
-                        Description = $"Item removed from order (Order Status: {order.Status})"
+                        DescriptionAr = $"تم حذف العنصر من الطلب (حالة الطلب: {order.Status})",
+                        DescriptionEn = $"Item removed from order (Order Status: {order.Status})"
                     };
 
                     await _orderItemTrackingService.RecordHistoryAsync(historyContext);

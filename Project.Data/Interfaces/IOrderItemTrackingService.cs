@@ -51,6 +51,8 @@ namespace Ettad.Application.Common.Interfaces
         public int? WorkflowApprovalStepId { get; set; }
         public int? WorkflowStepId { get; set; }
         public string Description { get; set; } = string.Empty;
+        public string DescriptionAr { get; set; } = string.Empty;
+        public string DescriptionEn { get; set; } = string.Empty;
         public string? Notes { get; set; }
         public long? SupplyId { get; set; }
         public long? AssetSupplyId { get; set; }
@@ -71,10 +73,8 @@ namespace Ettad.Application.Common.Interfaces
         public string? ItemName { get; set; }
         public string? ItemNo { get; set; }
         public OrderItemActionType ActionType { get; set; }
-        public string ActionTypeName => ActionType.ToString();
         public DateTime ActionDate { get; set; }
         public RequestStatus OrderStatus { get; set; }
-        public string OrderStatusName => OrderStatus.ToString();
 
         public long? PreviousQuantity { get; set; }
         public long? NewQuantity { get; set; }
@@ -82,18 +82,21 @@ namespace Ettad.Application.Common.Interfaces
         public long? SuppliedQuantity { get; set; }
 
         public long DepartmentId { get; set; }
-        public string? DepartmentName { get; set; }
-        public string? DepartmentNameAr { get; set; }
-        public string? DepartmentNameEn { get; set; }
+        public string DepartmentNameAr { get; set; }
+        public string DepartmentNameEn { get; set; }
 
         public string ModifiedByUserId { get; set; }
         public string ModifiedByUserName { get; set; }
+        public string ModifiedByUserNameEn { get; set; }
+        public string ModifiedByUserNameAr { get; set; }
 
         public int? WorkflowApprovalStepId { get; set; }
         public int? WorkflowStepId { get; set; }
         public string? WorkflowStepName { get; set; }
 
         public string Description { get; set; } = string.Empty;
+        public string DescriptionAr { get; set; } = string.Empty;
+        public string DescriptionEn { get; set; } = string.Empty;
         public string? Notes { get; set; }
 
         public long? SupplyId { get; set; }

@@ -493,7 +493,8 @@ namespace Ettad.Inventory.Service.AssetSupply
                             ModifiedByUserId = _currentUserService.UserId,
                             ModifiedByUserName = userName,
                             AssetSupplyId = createdSupply.Id,
-                            Description = $"Asset supplied - quantity: {itemGroup.Value}"
+                            DescriptionAr = $"تم صرف الطلب - الكمية: {itemGroup.Value}",
+                            DescriptionEn = $"Asset supplied - quantity: {itemGroup.Value}"
                         };
 
                         await _orderItemTrackingService.RecordHistoryAsync(historyContext);

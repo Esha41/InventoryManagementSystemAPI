@@ -12,10 +12,13 @@ namespace Ettad.RequestManagement.Service.OrderItemTracking.Profiles
                 .ForMember(dest => dest.OrderRequestNo, opt => opt.Ignore())
                 .ForMember(dest => dest.ItemName, opt => opt.Ignore())
                 .ForMember(dest => dest.ItemNo, opt => opt.Ignore())
-                .ForMember(dest => dest.DepartmentName, opt => opt.Ignore())
                 .ForMember(dest => dest.DepartmentNameAr, opt => opt.Ignore())
                 .ForMember(dest => dest.DepartmentNameEn, opt => opt.Ignore())
-                .ForMember(dest => dest.WorkflowStepName, opt => opt.Ignore());
+                .ForMember(dest => dest.ModifiedByUserNameEn, opt => opt.Ignore())
+                .ForMember(dest => dest.ModifiedByUserNameAr, opt => opt.Ignore())
+                .ForMember(dest => dest.WorkflowStepName, opt => opt.Ignore())
+                .ForMember(dest => dest.DescriptionAr, opt => opt.Ignore())
+                .ForMember(dest => dest.DescriptionEn, opt => opt.Ignore());
         }
     }
 }

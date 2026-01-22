@@ -562,7 +562,8 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
 							ModifiedByUserName = userName,
 							SupplyId = createdSupply.Id,
 							SupplyDetailId = detail.Id,
-							Description = $"Item supplied - quantity: {detail.Quantity}"
+							DescriptionAr = $"تم توريد العنصر - الكمية: {detail.Quantity}",
+							DescriptionEn = $"Item supplied - quantity: {detail.Quantity}"
 						};
 
 						await _orderItemTrackingService.RecordHistoryAsync(historyContext);
