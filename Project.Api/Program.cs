@@ -105,11 +105,17 @@ try
             options.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
             options.JsonSerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter());
         });
-    builder.Services.ConfigureReportingServices(configurator =>
-    {
-        configurator.ConfigureReportDesigner(designer =>
+    builder.Services.ConfigureReportingServices(configurator => {
+        if (builder.Environment.IsDevelopment())
         {
-            designer.RegisterDataSourceWizardConfigFileConnectionStringsProvider();
+            configurator.UseDevelopmentMode();
+        }
+        configurator.ConfigureReportDesigner(designerConfigurator => {
+        });
+        configurator.ConfigureWebDocumentViewer(viewerConfigurator => {
+            // Use cache for document generation and export.
+            // This setting is necessary in asynchronous mode and when a report has interactive or drill down features.
+            viewerConfigurator.UseCachedReportSourceBuilder();
         });
     });
     // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
