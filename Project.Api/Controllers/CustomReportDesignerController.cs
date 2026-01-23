@@ -6,16 +6,15 @@ namespace Ettad.Reporting.Controllers
 {
     /// <summary>
     /// Custom Report Designer Controller for DevExpress Reporting
-    /// Required for the report designer functionality
-    /// This controller handles the /DXXRD endpoint automatically
+    /// Handles the /DXXRD endpoint automatically
+    /// The base ReportDesignerController handles routing automatically
     /// </summary>
     [ApiExplorerSettings(IgnoreApi = true)] // Exclude from Swagger
     public class CustomReportDesignerController : ReportDesignerController
     {
-        //public CustomReportDesignerController(IReportDesignerMvcControllerService controllerService)
-        //    : base(controllerService)
-        //{
-        //}
-
+        public CustomReportDesignerController(IReportDesignerMvcControllerService controllerService)
+            : base(controllerService)
+        {
+        }
     }
 }

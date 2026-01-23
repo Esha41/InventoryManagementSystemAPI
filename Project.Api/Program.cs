@@ -83,6 +83,9 @@ try
     // Register ICurrentUserService early so interceptor can use it
     builder.Services.AddScoped<Ettad.Application.Common.Interfaces.ICurrentUserService, Ettad.User.Services.Implementation.CurrentUserService>();
 
+    #region DevExpress Reporting Configuration
+    // Register DevExpress Reporting services
+    builder.Services.AddDevExpressControls();
     // Add services to the container.
     // Register controllers from all referenced assemblies
     builder.Services.AddControllers()
@@ -96,13 +99,19 @@ try
         .AddApplicationPart(typeof(Ettad.Modules.EmailSystem.API.Controllers.EmailSettingsController).Assembly)
         .AddApplicationPart(typeof(Ettad.Modules.FileUpload.API.Controllers.FileUploadController).Assembly)
         .AddApplicationPart(typeof(Ettad.LdapSettings.APIs.Controllers.LdapSettingsController).Assembly)
-        .AddApplicationPart(typeof(Ettad.Reporting.Controllers.ReportDesignerController).Assembly) // This includes all controllers in Project.Api assembly
+        .AddApplicationPart(typeof(Ettad.Reporting.Controllers.ReportController).Assembly) // This includes all controllers in Project.Api assembly
         .AddJsonOptions(options =>
         {
             options.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
             options.JsonSerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter());
         });
-
+    builder.Services.ConfigureReportingServices(configurator =>
+    {
+        configurator.ConfigureReportDesigner(designer =>
+        {
+            designer.RegisterDataSourceWizardConfigFileConnectionStringsProvider();
+        });
+    });
     // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
     builder.Services.AddEndpointsApiExplorer();
     builder.Services.AddScoped(typeof(CrossCuttingRepository<>));
@@ -120,9 +129,6 @@ try
     builder.Services.AddScoped<IFileUploadService, Ettad.Modules.FileUpload.API.Services.FileUploadService>();
     builder.Services.AddScoped<IExcelExportService, ExcelExportService>();
 
-    #region DevExpress Reporting Configuration
-    // Register DevExpress Reporting services
-    builder.Services.AddDevExpressControls();
     
     // Register custom report storage extension
     builder.Services.AddScoped<ReportStorageWebExtension, Ettad.Reporting.Storage.CustomReportStorageWebExtension>();
@@ -461,7 +467,7 @@ try
         
         Log.Information("Low Stock Monitor job registered with schedule: {Schedule}", lowStockCronExpression);
     }
-
+    
     Log.Information("Ettad Backend API started successfully");
     app.Run();
 }
