@@ -12,12 +12,15 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace ServerApp.Controllers
 {
+    [ApiExplorerSettings(IgnoreApi = true)]
     public class CustomWebDocumentViewerController : WebDocumentViewerController
     {
         public CustomWebDocumentViewerController(IWebDocumentViewerMvcControllerService controllerService) : base(controllerService)
         {
         }
     }
+    
+    [ApiExplorerSettings(IgnoreApi = true)]
     public class CustomReportDesignerController : ReportDesignerController
     {
         public CustomReportDesignerController(IReportDesignerMvcControllerService controllerService) : base(controllerService)
@@ -47,6 +50,7 @@ namespace ServerApp.Controllers
         }
     }
 
+    [ApiExplorerSettings(IgnoreApi = true)]
     public class CustomQueryBuilderController : QueryBuilderController
     {
         public CustomQueryBuilderController(IQueryBuilderMvcControllerService controllerService) : base(controllerService)

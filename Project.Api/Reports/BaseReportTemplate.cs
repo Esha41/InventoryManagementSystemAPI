@@ -14,6 +14,9 @@ namespace Ettad.Reporting.Reports
     {
         private TopMarginBand topMarginBand1;
         private DetailBand detailBand1;
+        private ReportHeaderBand ReportHeader;
+        private ReportFooterBand ReportFooter;
+        private XRLabel xrLabel1;
         private BottomMarginBand bottomMarginBand1;
 
         public BaseReportTemplate()
@@ -26,6 +29,9 @@ namespace Ettad.Reporting.Reports
             this.topMarginBand1 = new DevExpress.XtraReports.UI.TopMarginBand();
             this.detailBand1 = new DevExpress.XtraReports.UI.DetailBand();
             this.bottomMarginBand1 = new DevExpress.XtraReports.UI.BottomMarginBand();
+            this.ReportHeader = new DevExpress.XtraReports.UI.ReportHeaderBand();
+            this.ReportFooter = new DevExpress.XtraReports.UI.ReportFooterBand();
+            this.xrLabel1 = new DevExpress.XtraReports.UI.XRLabel();
             ((System.ComponentModel.ISupportInitialize)(this)).BeginInit();
             // 
             // topMarginBand1
@@ -40,12 +46,35 @@ namespace Ettad.Reporting.Reports
             // 
             this.bottomMarginBand1.Name = "bottomMarginBand1";
             // 
+            // ReportHeader
+            // 
+            this.ReportHeader.Controls.AddRange(new DevExpress.XtraReports.UI.XRControl[] {
+            this.xrLabel1});
+            this.ReportHeader.HeightF = 38.33333F;
+            this.ReportHeader.Name = "ReportHeader";
+            // 
+            // ReportFooter
+            // 
+            this.ReportFooter.HeightF = 47.5F;
+            this.ReportFooter.Name = "ReportFooter";
+            // 
+            // xrLabel1
+            // 
+            this.xrLabel1.LocationFloat = new DevExpress.Utils.PointFloat(134.1667F, 5.333328F);
+            this.xrLabel1.Multiline = true;
+            this.xrLabel1.Name = "xrLabel1";
+            this.xrLabel1.Padding = new DevExpress.XtraPrinting.PaddingInfo(2F, 2F, 0F, 0F, 100F);
+            this.xrLabel1.SizeF = new System.Drawing.SizeF(307.5F, 23F);
+            this.xrLabel1.Text = "This is Base report template";
+            // 
             // BaseReportTemplate
             // 
             this.Bands.AddRange(new DevExpress.XtraReports.UI.Band[] {
             this.topMarginBand1,
             this.detailBand1,
-            this.bottomMarginBand1});
+            this.bottomMarginBand1,
+            this.ReportHeader,
+            this.ReportFooter});
             this.Version = "25.2";
             ((System.ComponentModel.ISupportInitialize)(this)).EndInit();
 
