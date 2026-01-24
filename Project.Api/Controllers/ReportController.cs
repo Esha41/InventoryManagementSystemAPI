@@ -1,30 +1,117 @@
+using Ettad.CrossCutting.Common.Security;
+using Ettad.Reporting.Services;
+using Ettad.Reporting.Services.Reports.Dtos;
+using Ettad.ResponseHandler.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Net;
 using System.Security.Claims;
-using Ettad.EntityFramework.DataBaseContext;
-using Microsoft.EntityFrameworkCore;
 
 namespace Ettad.Reporting.Controllers
 {
     /// <summary>
-    /// Controller for DevExpress Web Report Designer endpoints
+    /// Controller for managing reports and DevExpress Web Report Designer endpoints
     /// </summary>
     [ApiController]
     [Route("api/[controller]")]
     [Authorize]
-    public class ReportController : ControllerBase
+    public class ReportController : ApiControllerBase
     {
-        private readonly ApplicationDbContext _context;
+        private readonly IReportService _reportService;
 
-        public ReportController(ApplicationDbContext context)
+        public ReportController(IReportService reportService)
         {
-            _context = context;
+            _reportService = reportService;
+        }
+
+        /// <summary>
+        /// Get all reports
+        /// </summary>
+        [HttpGet]
+        [ProducesResponseType((int)HttpStatusCode.OK)]
+        [CheckAuthorize("Permissions.Report.View", "Permissions.Report.Page")]
+        public async Task<IActionResult> GetAll()
+        {
+            var result = await _reportService.GetAllAsync();
+            return ProcessResponse(result);
+        }
+
+        /// <summary>
+        /// Get report by ID
+        /// </summary>
+        [HttpGet("{id}")]
+        [ProducesResponseType((int)HttpStatusCode.OK)]
+        [CheckAuthorize("Permissions.Report.View", "Permissions.Report.Page")]
+        public async Task<IActionResult> GetById(Guid id)
+        {
+            var result = await _reportService.GetByIdAsync(id);
+            return ProcessResponse(result);
+        }
+
+        /// <summary>
+        /// Get report by URL (for DevExpress ReportStorage)
+        /// </summary>
+        [HttpGet("url/{url}")]
+        [ProducesResponseType((int)HttpStatusCode.OK)]
+        [CheckAuthorize("Permissions.Report.View", "Permissions.Report.Page")]
+        public async Task<IActionResult> GetByUrl(string url)
+        {
+            var result = await _reportService.GetByUrlAsync(url);
+            return ProcessResponse(result);
+        }
+
+        /// <summary>
+        /// Create a new report
+        /// </summary>
+        [HttpPost]
+        [ProducesResponseType((int)HttpStatusCode.Created)]
+        [CheckAuthorize("Permissions.Report.Create")]
+        public async Task<IActionResult> Create([FromBody] CreateReportDto dto)
+        {
+            var result = await _reportService.CreateAsync(dto);
+            return ProcessResponse(result);
+        }
+
+        /// <summary>
+        /// Update an existing report
+        /// </summary>
+        [HttpPut("{id}")]
+        [ProducesResponseType((int)HttpStatusCode.OK)]
+        [CheckAuthorize("Permissions.Report.Edit")]
+        public async Task<IActionResult> Update(Guid id, [FromBody] UpdateReportDto dto)
+        {
+            var result = await _reportService.UpdateAsync(id, dto);
+            return ProcessResponse(result);
+        }
+
+        /// <summary>
+        /// Delete a report (soft delete)
+        /// </summary>
+        [HttpDelete("{id}")]
+        [ProducesResponseType((int)HttpStatusCode.NoContent)]
+        [CheckAuthorize("Permissions.Report.Delete")]
+        public async Task<IActionResult> Delete(Guid id)
+        {
+            var result = await _reportService.DeleteAsync(id);
+            return ProcessResponse(result);
+        }
+
+        /// <summary>
+        /// Get all report statuses
+        /// </summary>
+        [HttpGet("statuses")]
+        [ProducesResponseType((int)HttpStatusCode.OK)]
+        public async Task<IActionResult> GetReportStatuses()
+        {
+            var result = await _reportService.GetReportStatusesAsync();
+            return ProcessResponse(result);
         }
 
         /// <summary>
         /// Check if user has permission to access the report designer
         /// </summary>
         [HttpGet("can-design")]
+        [ProducesResponseType((int)HttpStatusCode.OK)]
         public IActionResult CanDesign()
         {
             var user = User;
@@ -38,57 +125,6 @@ namespace Ettad.Reporting.Controllers
                            user.IsInRole("Administrator");
 
             return Ok(new { canDesign, message = canDesign ? "User can design reports" : "User cannot design reports" });
-        }
-
-        /// <summary>
-        /// Get list of available reports for the current user
-        /// </summary>
-        [HttpGet("reports")]
-        public async Task<IActionResult> GetReports()
-        {
-            var user = User;
-            if (user == null || !user.Identity?.IsAuthenticated == true)
-            {
-                return Unauthorized();
-            }
-
-            var userId = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            var isAdmin = user.IsInRole("Administrator");
-
-            try
-            {
-                // Query reports from database
-                var query = _context.Reports
-                    .Where(r => !r.IsDeleted);
-
-                // If not admin, filter by user's reports or public reports
-                if (!isAdmin && !string.IsNullOrEmpty(userId))
-                {
-                    query = query.Where(r => r.CreatedBy == userId || r.IsPublic);
-                }
-
-                var reports = await query
-                    .OrderByDescending(r => r.CreatedDate)
-                    .Select(r => new
-                    {
-                        id = r.Id.ToString(),
-                        name = r.Name,
-                        url = r.Url,
-                        status = r.Status,
-                        createdDate = r.CreatedDate,
-                        modifiedDate = r.ModifiedDate,
-                        isPublic = r.IsPublic,
-                        description = r.Description
-                    })
-                    .ToListAsync();
-
-                return Ok(new { reports });
-            }
-            catch (Exception ex)
-            {
-                // Log error
-                return StatusCode(500, new { message = "Error retrieving reports", error = ex.Message });
-            }
         }
     }
 }

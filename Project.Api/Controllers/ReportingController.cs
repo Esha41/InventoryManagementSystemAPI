@@ -19,7 +19,7 @@ namespace ServerApp.Controllers
         {
         }
     }
-    
+
     [ApiExplorerSettings(IgnoreApi = true)]
     public class CustomReportDesignerController : ReportDesignerController
     {
@@ -33,20 +33,27 @@ namespace ServerApp.Controllers
             [FromServices] IReportDesignerModelBuilder designerModelBuilder,
             [FromForm] ReportDesignerSettingsBase designerModelSettings)
         {
-            var ds = new SqlDataSource("DefaultConnection");
+            try
+            {
+                var ds = new SqlDataSource("DefaultConnection");
 
-            // Create a SQL query to access the Products data table.
-            SelectQuery query = SelectQueryFluentBuilder.AddTable("AllowanceItem").SelectAllColumnsFromTable().Build("AllowanceItem");
-            ds.Queries.Add(query);
-            ds.RebuildResultSchema();
+                var designerModel = designerModelBuilder
+                                    .Report(reportUrl)
+                                    .DataSources(dataSources =>
+                                    {
+                                        dataSources.Add("EttadDb", ds);
+                                    })
+                                    .BuildModel();
 
-            var designerModel = designerModelBuilder.Report(reportUrl)
-                .DataSources(dataSources => {
-                    dataSources.Add("Northwind", ds);
-                })
-                .BuildModel();
-            designerModel.Assign(designerModelSettings);
-            return DesignerModel(designerModel);
+                designerModel.Assign(designerModelSettings);
+                return DesignerModel(designerModel);
+            }
+            catch (Exception ex)
+            {
+                // Log error
+                System.Diagnostics.Debug.WriteLine($"Error getting report data: {ex.Message}");
+                return null;
+            }
         }
     }
 

@@ -3,6 +3,7 @@ using DevExpress.AspNetCore.Reporting.ReportDesigner;
 using DevExpress.AspNetCore.Reporting.WebDocumentViewer;
 using DevExpress.XtraReports.UI;
 using DevExpress.XtraReports.Web.Extensions;
+using Ettad.CrossCutting.Comman.Time;
 using Ettad.Data.Entities.Reports;
 using Ettad.EntityFramework.DataBaseContext;
 using Microsoft.AspNetCore.Hosting;
@@ -20,15 +21,18 @@ namespace Ettad.Reporting.Storage
         private readonly ApplicationDbContext _context;
         private readonly IHttpContextAccessor _httpContextAccessor;
         private readonly IWebHostEnvironment _hostingEnvironment;
+        private readonly IDateTimeProvider _dateTimeProvider;
 
         public CustomReportStorageWebExtension(
             ApplicationDbContext context,
             IHttpContextAccessor httpContextAccessor,
-            IWebHostEnvironment hostingEnvironment)
+            IWebHostEnvironment hostingEnvironment,
+            IDateTimeProvider dateTimeProvider)
         {
             _context = context;
             _httpContextAccessor = httpContextAccessor;
             _hostingEnvironment = hostingEnvironment;
+            _dateTimeProvider = dateTimeProvider;
         }
 
         public override bool CanSetData(string url)
@@ -95,13 +99,13 @@ namespace Ettad.Reporting.Storage
 
                 var reports = _context.Reports
                     .Where(r => !r.IsDeleted)
-                    .OrderBy(r => r.Name)
+                    .OrderBy(r => r.ReportName)
                     .ToList();
 
                 var urls = new Dictionary<string, string>();
                 foreach (var report in reports)
                 {
-                    urls[report.Url] = report.Name;
+                    urls[report.Url] = report.ReportName;
                 }
 
                 // Add base template
@@ -144,21 +148,22 @@ namespace Ettad.Reporting.Storage
                 {
                     // Update existing report
                     existingReport.LayoutData = layoutData;
-                    existingReport.ModifiedDate = DateTime.UtcNow;
+                    existingReport.ModificationDate = _dateTimeProvider.Now;
                     existingReport.ModifiedBy = userId;
-                    existingReport.Name = report.DisplayName ?? url;
+                    existingReport.ReportName = report.DisplayName ?? url;
                 }
                 else
                 {
-                    // Create new report
+                    // Create new report (default to Draft status - ID = 1)
                     var newReport = new ReportEntity
                     {
                         Id = Guid.NewGuid(),
                         Url = url,
-                        Name = report.DisplayName ?? url,
+                        ReportName = report.DisplayName ?? url,
+                        ReportStatusId = 1, // Default to Draft
                         LayoutData = layoutData,
-                        CreatedDate = DateTime.UtcNow,
-                        CreatedBy = userId,
+                        CreationDate = _dateTimeProvider.Now,
+                        CreatedBy = userId ?? string.Empty,
                         IsDeleted = false
                     };
                     _context.Reports.Add(newReport);
@@ -206,10 +211,11 @@ namespace Ettad.Reporting.Storage
                 {
                     Id = Guid.NewGuid(),
                     Url = url,
-                    Name = report.DisplayName ?? url,
+                    ReportName = report.DisplayName ?? url,
+                    ReportStatusId = 1, // Default to Draft
                     LayoutData = layoutData,
-                    CreatedDate = DateTime.UtcNow,
-                    CreatedBy = userId,
+                    CreationDate = _dateTimeProvider.Now,
+                    CreatedBy = userId ?? string.Empty,
                     IsDeleted = false
                 };
 

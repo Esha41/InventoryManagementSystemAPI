@@ -9,14 +9,19 @@ namespace Ettad.Data.Entities.Reports
     public class ReportEntity : FullAuditEntity<Guid>
     {
         /// <summary>
+        /// Report name
+        /// </summary>
+        public string ReportName { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Report status ID (foreign key to ReportStatus table)
+        /// </summary>
+        public long ReportStatusId { get; set; }
+
+        /// <summary>
         /// Unique URL identifier for the report (used by DevExpress ReportStorage)
         /// </summary>
         public string Url { get; set; } = string.Empty;
-
-        /// <summary>
-        /// Display name of the report
-        /// </summary>
-        public string Name { get; set; } = string.Empty;
 
         /// <summary>
         /// Report description
@@ -25,13 +30,25 @@ namespace Ettad.Data.Entities.Reports
 
         /// <summary>
         /// Serialized report layout data (XML format from XtraReport.SaveLayoutToXml)
+        /// This is the main report definition that can be loaded into DevExpress Report Designer
         /// </summary>
         public byte[]? LayoutData { get; set; }
 
         /// <summary>
-        /// Report status: Draft, Published, Archived
+        /// Report type/category: Table, Chart, Dashboard, Label, etc.
         /// </summary>
-        public string Status { get; set; } = "Draft";
+        public string? ReportType { get; set; }
+
+        /// <summary>
+        /// Report parameters configuration in JSON format
+        /// Contains parameter definitions, default values, and validation rules
+        /// </summary>
+        public string? ReportParameters { get; set; }
+
+        /// <summary>
+        /// Whether the report is a template that can be used to create new reports
+        /// </summary>
+        public bool IsTemplate { get; set; } = false;
 
         /// <summary>
         /// Whether the report is publicly accessible
@@ -39,13 +56,8 @@ namespace Ettad.Data.Entities.Reports
         public bool IsPublic { get; set; } = false;
 
         /// <summary>
-        /// Date when the report was created
+        /// Navigation property for report status
         /// </summary>
-        public DateTime CreatedDate { get; set; } = DateTime.UtcNow;
-
-        /// <summary>
-        /// Date when the report was last modified
-        /// </summary>
-        public DateTime? ModifiedDate { get; set; }
+        public virtual ReportStatus? ReportStatus { get; set; }
     }
 }

@@ -134,6 +134,10 @@ try
     builder.Services.AddScoped<IFileStorageService, FileStorageService>();
     builder.Services.AddScoped<IFileUploadService, Ettad.Modules.FileUpload.API.Services.FileUploadService>();
     builder.Services.AddScoped<IExcelExportService, ExcelExportService>();
+    builder.Services.AddScoped<Ettad.CrossCutting.Comman.Time.IDateTimeProvider, Ettad.CrossCutting.Comman.Time.SystemDateTimeProvider>();
+    
+    // Register Report services
+    builder.Services.AddScoped<Ettad.Reporting.Services.IReportService, Ettad.Reporting.Services.ReportService>();
 
     
     // Register custom report storage extension
