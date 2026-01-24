@@ -10,6 +10,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
+using Ettad.Application.Common.Interfaces;
 
 namespace Ettad.Reporting.Storage
 {
@@ -22,30 +23,39 @@ namespace Ettad.Reporting.Storage
         private readonly IHttpContextAccessor _httpContextAccessor;
         private readonly IWebHostEnvironment _hostingEnvironment;
         private readonly IDateTimeProvider _dateTimeProvider;
-
+        private readonly IPermissionService _permissionService;
+        private readonly ICurrentUserService _currentUserService;
         public CustomReportStorageWebExtension(
             ApplicationDbContext context,
             IHttpContextAccessor httpContextAccessor,
             IWebHostEnvironment hostingEnvironment,
-            IDateTimeProvider dateTimeProvider)
+            IDateTimeProvider dateTimeProvider,
+            ICurrentUserService currentUserService,
+            IPermissionService permissionService)
         {
             _context = context;
+            _currentUserService = currentUserService;
             _httpContextAccessor = httpContextAccessor;
             _hostingEnvironment = hostingEnvironment;
             _dateTimeProvider = dateTimeProvider;
+            _permissionService = permissionService;
         }
 
         public override bool CanSetData(string url)
         {
-            // Check if user has permission to save reports
-            var user = _httpContextAccessor.HttpContext?.User;
-            if (user == null || !user.Identity?.IsAuthenticated == true)
+
+            // Check if user is super admin - super admins bypass all permission checks
+            var isSuperAdmin = _currentUserService.IsSuperAdmin;
+            if (isSuperAdmin)
+                return true;
+
+            // Check if user has report create or edit permissions
+            var userPermissions = _permissionService?.GetUserPermissions(_currentUserService.UserId).Result;
+            if (userPermissions == null)
                 return false;
 
-            // Check if user has report create or edit permissions, or is admin
-            return user.HasClaim("Permission", "Permissions.Report.Create") ||
-                   user.HasClaim("Permission", "Permissions.Report.Edit") ||
-                   user.IsInRole("Administrator");
+            return userPermissions.Contains("Permissions.Report.Create") ||
+                   userPermissions.Contains("Permissions.Report.Edit");
         }
 
         public override bool IsValidUrl(string url)
@@ -60,6 +70,21 @@ namespace Ettad.Reporting.Storage
         {
             try
             {
+                var isSuperAdmin = _currentUserService.IsSuperAdmin;
+
+                // Check permissions if not super admin
+                if (!isSuperAdmin)
+                {
+                    var userPermissions = _permissionService?.GetUserPermissions(_currentUserService.UserId).Result;
+                    if (userPermissions == null || 
+                        (!userPermissions.Contains("Permissions.Report.View") && 
+                         !userPermissions.Contains("Permissions.Report.Page")))
+                    {
+                        // User doesn't have permission to view reports
+                        return Array.Empty<byte>();
+                    }
+                }
+
                 // Try to get report from database
                 var report = _context.Reports
                     .FirstOrDefault(r => r.Url == url && !r.IsDeleted);
@@ -98,6 +123,26 @@ namespace Ettad.Reporting.Storage
                 if (user == null || !user.Identity?.IsAuthenticated == true)
                     return new Dictionary<string, string>();
 
+                var userId = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(userId))
+                    return new Dictionary<string, string>();
+
+                // Check if user is super admin - super admins bypass all permission checks
+                var isSuperAdmin = user.FindFirst("IsSuperAdmin")?.Value == "true";
+                
+                // Check permissions if not super admin
+                if (!isSuperAdmin)
+                {
+                    var userPermissions = _permissionService?.GetUserPermissions(userId).Result;
+                    if (userPermissions == null || 
+                        (!userPermissions.Contains("Permissions.Report.View") && 
+                         !userPermissions.Contains("Permissions.Report.Page")))
+                    {
+                        // User doesn't have permission to view reports - return empty list
+                        return new Dictionary<string, string>();
+                    }
+                }
+
                 var reports = _context.Reports
                     .Where(r => !r.IsDeleted)
                     .OrderBy(r => r.ReportName)
@@ -109,8 +154,12 @@ namespace Ettad.Reporting.Storage
                     urls[report.Url] = report.ReportName;
                 }
 
-                // Add base template
-                urls["BaseReportTemplate"] = "Base Report Template";
+                // Add base template only if user has create permission
+                if (isSuperAdmin || 
+                    (_permissionService?.GetUserPermissions(userId).Result?.Contains("Permissions.Report.Create") == true))
+                {
+                    urls["BaseReportTemplate"] = "Base Report Template";
+                }
 
                 return urls;
             }

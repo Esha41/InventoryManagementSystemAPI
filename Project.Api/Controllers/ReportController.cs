@@ -5,7 +5,6 @@ using Ettad.ResponseHandler.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Net;
-using System.Security.Claims;
 
 namespace Ettad.Reporting.Controllers
 {
@@ -101,31 +100,11 @@ namespace Ettad.Reporting.Controllers
         /// </summary>
         [HttpGet("statuses")]
         [ProducesResponseType((int)HttpStatusCode.OK)]
+        [CheckAuthorize("Permissions.Report.View", "Permissions.Report.Page")]
         public async Task<IActionResult> GetReportStatuses()
         {
             var result = await _reportService.GetReportStatusesAsync();
             return ProcessResponse(result);
-        }
-
-        /// <summary>
-        /// Check if user has permission to access the report designer
-        /// </summary>
-        [HttpGet("can-design")]
-        [ProducesResponseType((int)HttpStatusCode.OK)]
-        public IActionResult CanDesign()
-        {
-            var user = User;
-            if (user == null || !user.Identity?.IsAuthenticated == true)
-            {
-                return Unauthorized(new { canDesign = false, message = "User is not authenticated" });
-            }
-
-            // Check if user has report create or edit permissions, or is admin
-            var canDesign = user.HasClaim("Permission", "Permissions.Report.Create") ||
-                           user.HasClaim("Permission", "Permissions.Report.Edit") ||
-                           user.IsInRole("Administrator");
-
-            return Ok(new { canDesign, message = canDesign ? "User can design reports" : "User cannot design reports" });
         }
     }
 }
