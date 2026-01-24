@@ -304,6 +304,21 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
             "Permissions.UserDelegations.Create",
             "Permissions.UserDelegations.Delete",
         };
+
+        public static List<string> ReadReport = new()
+        {
+            "Permissions.Report.Page",
+            "Permissions.Report.View",
+        };
+
+        public static List<string> WriteReport = new()
+        {
+            "Permissions.Report.Page",
+            "Permissions.Report.View",
+            "Permissions.Report.Create",
+            "Permissions.Report.Edit",
+            "Permissions.Report.Delete",
+        };
        
         public static List<string> RequestReciever =
             ReadRequestReciever

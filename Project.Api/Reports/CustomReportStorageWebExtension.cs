@@ -42,9 +42,10 @@ namespace Ettad.Reporting.Storage
             if (user == null || !user.Identity?.IsAuthenticated == true)
                 return false;
 
-            // Check if user has report designer permission
-            return user.HasClaim("Permission", "ReportDesigner.Create") ||
-                   user.HasClaim("Permission", "ReportDesigner.Edit");
+            // Check if user has report create or edit permissions, or is admin
+            return user.HasClaim("Permission", "Permissions.Report.Create") ||
+                   user.HasClaim("Permission", "Permissions.Report.Edit") ||
+                   user.IsInRole("Administrator");
         }
 
         public override bool IsValidUrl(string url)

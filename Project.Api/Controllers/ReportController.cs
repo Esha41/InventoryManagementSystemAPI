@@ -120,8 +120,9 @@ namespace Ettad.Reporting.Controllers
                 return Unauthorized(new { canDesign = false, message = "User is not authenticated" });
             }
 
-            var canDesign = user.HasClaim("Permission", "ReportDesigner.Create") ||
-                           user.HasClaim("Permission", "ReportDesigner.Edit") ||
+            // Check if user has report create or edit permissions, or is admin
+            var canDesign = user.HasClaim("Permission", "Permissions.Report.Create") ||
+                           user.HasClaim("Permission", "Permissions.Report.Edit") ||
                            user.IsInRole("Administrator");
 
             return Ok(new { canDesign, message = canDesign ? "User can design reports" : "User cannot design reports" });
