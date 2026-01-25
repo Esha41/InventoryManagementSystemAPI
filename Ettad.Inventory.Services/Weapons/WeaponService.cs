@@ -19,6 +19,7 @@ using OfficeOpenXml;
 using OfficeOpenXml.DataValidation;
 using Ettad.EntityFramework.DataBaseContext;
 using Ettad.CrossCutting.Comman.Time;
+using Ettad.CrossCutting.Comman.Models;
 
 namespace Ettad.Inventory.Service.Weapons
 {
@@ -98,6 +99,65 @@ namespace Ettad.Inventory.Service.Weapons
                 _logger.LogError(ex, "Error retrieving weapon by ID. WeaponId: {WeaponId}, User: {UserId}", 
                     id, _currentUserService.UserId);
                 return APIOperationResponse<WeaponDto>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
+            }
+        }
+
+        public async Task<APIOperationResponse<PaginatedList<WeaponDto>>> GetAllPaginatedAsync(PagedListRequest request)
+        {
+            _logger.LogInformation("Getting weapons paginated. Page: {Page}, PageSize: {PageSize}, User: {UserId}", 
+                request.Page, request.PageSize, _currentUserService.UserId);
+
+            try
+            {
+                var query = _weaponRepository.Find(
+                    w => !w.IsDeleted,
+                    false,
+                    nameof(Weapon.CaliberUnit),
+                    nameof(Weapon.CountryOfManufacture),
+                    nameof(Weapon.Classification),
+                    nameof(Weapon.Type)
+                );
+
+                var paginatedEntities = await PaginatedList<Weapon>.CreateAsyncForTableBinding(query, request);
+                
+                // Map to DTOs
+                var dtos = new List<WeaponDto>();
+                if (paginatedEntities.Items.Any())
+                {
+                    dtos = _mapper.Map<List<WeaponDto>>(paginatedEntities.Items);
+
+                    // Fetch images for the visible page only
+                    var entityIds = dtos.Select(d => d.Id).ToList();
+                    var imagesResult = await _fileUploadService.GetByEntitiesAsync(FileEntityType.Weapon, entityIds);
+                    
+                    if (imagesResult.Succeeded && imagesResult.Data != null)
+                    {
+                        foreach (var dto in dtos)
+                        {
+                            if (imagesResult.Data.ContainsKey(dto.Id))
+                            {
+                                dto.Images = imagesResult.Data[dto.Id];
+                            }
+                        }
+                    }
+                }
+
+                var result = new PaginatedList<WeaponDto>(
+                    dtos,
+                    paginatedEntities.TotalCount,
+                    paginatedEntities.PageIndex,
+                    request.PageSize
+                );
+
+                _logger.LogInformation("Weapons paginated retrieved successfully. Count: {Count}, TotalCount: {TotalCount}, User: {UserId}", 
+                    dtos.Count, paginatedEntities.TotalCount, _currentUserService.UserId);
+
+                return APIOperationResponse<PaginatedList<WeaponDto>>.Success(result);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting weapons paginated. User: {UserId}", _currentUserService.UserId);
+                return APIOperationResponse<PaginatedList<WeaponDto>>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
             }
         }
 

@@ -3,6 +3,7 @@ using Ettad.Data.Enums;
 using Ettad.RequestManagement.Service.Common.Dtos;
 using Ettad.RequestManagement.Service.Interfaces;
 using Ettad.ResponseHandler.Models;
+using Ettad.CrossCutting.Comman.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Net;
@@ -90,6 +91,24 @@ namespace Ettad.RequestManagement.API.Controllers
             [FromQuery] RequestType? requestType = null)
         {
             var result = await _requestService.GetUserActionRequestsAsync(status, requestType);
+            return ProcessResponse(result);
+        }
+
+        [HttpPost("Paginated")]
+        [ProducesResponseType(typeof(APIOperationResponse<PaginatedList<BaseRequestDto>>), (int)HttpStatusCode.OK)]
+        [CheckAuthorize("Permissions.RequestReciever.View", "Permissions.RequestReciever.Page")]
+        public async Task<IActionResult> GetAllPaginated([FromBody] PagedListRequest request)
+        {
+            var result = await _requestService.GetAllPaginatedAsync(request);
+            return ProcessResponse(result);
+        }
+
+        [HttpPost("UserActionsPaginated")]
+        [ProducesResponseType(typeof(APIOperationResponse<PaginatedList<BaseRequestDto>>), (int)HttpStatusCode.OK)]
+        [Authorize]
+        public async Task<IActionResult> GetUserActionRequestsPaginated([FromBody] PagedListRequest request)
+        {
+            var result = await _requestService.GetUserActionRequestsPaginatedAsync(request);
             return ProcessResponse(result);
         }
     }

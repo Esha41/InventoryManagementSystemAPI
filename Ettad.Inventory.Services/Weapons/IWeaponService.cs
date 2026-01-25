@@ -3,12 +3,14 @@ using Ettad.ResponseHandler.Models;
 using Microsoft.AspNetCore.Http;
 using Ettad.Inventory.Services.Common;
 using Ettad.Inventory.Services.Common;
+using Ettad.CrossCutting.Comman.Models;
 
 namespace Ettad.Inventory.Service.Weapons
 {
     public interface IWeaponService
     {
         Task<APIOperationResponse<List<WeaponDto>>> GetAllAsync();
+        Task<APIOperationResponse<PaginatedList<WeaponDto>>> GetAllPaginatedAsync(PagedListRequest request);
         Task<APIOperationResponse<WeaponDto>> GetByIdAsync(long id);
 
         Task<APIOperationResponse<long>> CreateAsync(CreateUpdateWeaponDto inputDto, List<IFormFile>? files = null);
