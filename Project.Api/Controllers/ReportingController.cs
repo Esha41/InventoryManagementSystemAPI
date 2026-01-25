@@ -43,33 +43,41 @@ namespace ServerApp.Controllers
             try
             {
                 var ds = new SqlDataSource("DefaultConnection");
+                //var designerModel = designerModelBuilder.Report(reportUrl)
+                //.DataSources(dataSources => {
+                //    dataSources.Add("EttadDb", ds);
+                //})
+                //.BuildModel();
+                //designerModel.Assign(designerModelSettings);
+                //return DesignerModel(designerModel);
 
-                var tables = await _reportService.GetTableNamesAsync(cancellationToken).ConfigureAwait(false);
-                foreach (var t in tables)
-                {
-                    try
-                    {
-                        var tableRef = string.Equals(t.SchemaName, "dbo", StringComparison.OrdinalIgnoreCase)
-                            ? t.TableName
-                            : $"{t.SchemaName}.{t.TableName}";
-                        var query = SelectQueryFluentBuilder
-                            .AddTable(tableRef)
-                            .SelectAllColumnsFromTable()
-                            .Build(t.TableName);
-                        ds.Queries.Add(query);
-                    }
-                    catch (Exception ex)
-                    {
-                        System.Diagnostics.Debug.WriteLine($"Skip table {t.SchemaName}.{t.TableName}: {ex.Message}");
-                    }
-                }
+                //var ds = new SqlDataSource("DefaultConnection");
 
-                if (ds.Queries.Count > 0)
-                    ds.RebuildResultSchema();
+                //var tables = await _reportService.GetTableNamesAsync(cancellationToken).ConfigureAwait(false);
+                //foreach (var t in tables)
+                //{
+                //    try
+                //    {
+                //        var tableRef = string.Equals(t.SchemaName, "dbo", StringComparison.OrdinalIgnoreCase)
+                //            ? t.TableName
+                //            : $"{t.SchemaName}.{t.TableName}";
+                //        var query = SelectQueryFluentBuilder
+                //            .AddTable(tableRef)
+                //            .SelectAllColumnsFromTable()
+                //            .Build(t.TableName);
+                //        ds.Queries.Add(query);
+                //    }
+                //    catch (Exception ex)
+                //    {
+                //        System.Diagnostics.Debug.WriteLine($"Skip table {t.SchemaName}.{t.TableName}: {ex.Message}");
+                //    }
+                //}
+
+                //if (ds.Queries.Count > 0)
+                //    ds.RebuildResultSchema();
 
                 var designerModel = designerModelBuilder
                     .Report(reportUrl ?? "BaseReportTemplate")
-                    .DataSources(dataSources => dataSources.Add("EttadDb", ds))
                     .BuildModel();
 
                 designerModel.Assign(designerModelSettings);
