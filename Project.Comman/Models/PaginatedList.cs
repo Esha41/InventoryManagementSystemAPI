@@ -37,7 +37,7 @@ namespace Ettad.CrossCutting.Comman.Models
     // =======================================================================
     // THE PAGINATED LIST IMPLEMENTATION
     // =======================================================================
-    public class PaginatedList<T>
+    public class PaginatedList<T> where T : class
     {
         public List<T> Items { get; }
         public int PageIndex { get; }
@@ -63,14 +63,25 @@ namespace Ettad.CrossCutting.Comman.Models
                 source = source.ToFilterView(request.Filter);
             }
 
+            // Count query - optimized by filtered indexes on IsDeleted and composite indexes
+            // Filtered indexes (WHERE IsDeleted = 0) significantly improve count performance
             var count = await source.CountAsync();
+
+            // Cap the PageSize to prevent performance issues
+            const int DefaultPageSize = 10;
+            const int MaxPageSize = 1000; // Adjust strictness as needed
 
             if (request.PageSize <= 0)
             {
-                request.PageSize = count > 0 ? count : 10; // Handle PageSize=0 case
+                request.PageSize = DefaultPageSize;
+            }
+            else if (request.PageSize > MaxPageSize)
+            {
+                request.PageSize = MaxPageSize;
             }
 
             var items = await source
+                .AsNoTracking() // Performance optimization for read-only lists
                 .Skip((request.Page - 1) * request.PageSize)
                 .Take(request.PageSize)
                 .ToListAsync();

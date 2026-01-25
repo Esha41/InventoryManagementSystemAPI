@@ -13,6 +13,7 @@ using Ettad.EntityFramework.DataBaseContext;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using System;
+using Ettad.CrossCutting.Comman.Models;
 using Ettad.CrossCutting.Comman.Time;
 using InventoryEntity = Ettad.Data.Entities.Inventory;
 using InventoryDetailEntity = Ettad.Data.Entities.InventoryDetail;
@@ -799,18 +800,57 @@ namespace Ettad.Inventory.Service.Inventories
                 lotDetail.IsExpired = inventoryDetail.ExpiryDate.HasValue == true &&
                                       inventoryDetail.ExpiryDate.Value.Date < _dateTimeProvider.Now.Date;
 
-                _logger.LogInformation("Lot details retrieved successfully. Lot: {Lot}, Remaining: {Remaining}, User: {UserId}",
-                    lotNumber, lotDetail.RemainingQuantity, _currentUserService.UserId);
-
                 return APIOperationResponse<LotDetailDto>.Success(lotDetail);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting lot details by lot number. Lot: {Lot}, User: {UserId}",
+                _logger.LogError(ex, "Error getting lot details by number. Lot: {Lot}, User: {UserId}",
                     lotNumber, _currentUserService.UserId);
                 return APIOperationResponse<LotDetailDto>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
             }
         }
+
+        public async Task<APIOperationResponse<PaginatedList<InventoryDetailDto>>> GetInventoryDetailsByDepotIdPaginatedAsync(long depotId, PagedListRequest request)
+        {
+            _logger.LogInformation("Getting paginated inventory details by depot ID. DepotId: {DepotId}, Page: {Page}, PageSize: {PageSize}, User: {UserId}",
+                depotId, request.Page, request.PageSize, _currentUserService.UserId);
+
+            try
+            {
+                var query = _inventoryDetailRepository.Find(
+                    x => x.Inventory.DepoId == depotId && !x.Inventory.IsDeleted,
+                    false,
+                    nameof(InventoryDetailEntity.Item),
+                    nameof(InventoryDetailEntity.Supplier),
+                    nameof(InventoryDetailEntity.Manufacturer),
+                    nameof(InventoryDetailEntity.Country)
+                );
+
+                // Create paginated list of entities first to apply filtering and paging on database
+                var paginatedEntities = await PaginatedList<InventoryDetailEntity>.CreateAsyncForTableBinding(query, request);
+
+                // Map entities to DTOs
+                var dtos = _mapper.Map<List<InventoryDetailDto>>(paginatedEntities.Items);
+
+                // Create paginated list of DTOs
+                var result = new PaginatedList<InventoryDetailDto>(
+                    dtos,
+                    paginatedEntities.TotalCount,
+                    paginatedEntities.PageIndex,
+                    request.PageSize
+                );
+
+                return APIOperationResponse<PaginatedList<InventoryDetailDto>>.Success(result);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting paginated inventory details. DepotId: {DepotId}, User: {UserId}",
+                    depotId, _currentUserService.UserId);
+                return APIOperationResponse<PaginatedList<InventoryDetailDto>>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
+            }
+        }
+
+
 
         public async Task<APIOperationResponse<List<ItemInventorySummaryDto>>> GetInventorySummaryForAllItemsAsync()
         {

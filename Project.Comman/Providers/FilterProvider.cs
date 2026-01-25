@@ -91,7 +91,7 @@ namespace Ettad.CrossCutting.Comman.Providers
 
             if (filter.Operator == "doesnotcontain")
             {
-                return $"(!{filter.Field}.ToString().{comparison}(@{index}))";
+                return $"(!{filter.Field}.{comparison}(@{index}))";
             }
 
             if (comparison == "StartsWith" || comparison == "EndsWith" || comparison == "Contains")

@@ -80,6 +80,16 @@ namespace Ettad.EntityFramework.Configurations
                 .ValueGeneratedOnAdd()
                 .HasDefaultValueSql("GETDATE()");
 
+            // Performance indexes for pagination, filtering, and sorting
+            // Note: IsDeleted, TypeId, ClassificationId, Name are in BaseItems table
+            // CaseTypeId, HazardDivisionId, CompatibilityId are in Ammunitions table
+            // We can only create composite indexes within the same table
+            
+            // Single-column indexes on Ammunition-specific properties (in Ammunitions table)
+            builder.HasIndex(x => x.CaseTypeId);
+            builder.HasIndex(x => x.HazardDivisionId);
+            builder.HasIndex(x => x.CompatibilityId);
+
             // Seed data
             builder.HasData(
                 new Ammunition

@@ -18,6 +18,14 @@ namespace Ettad.EntityFramework.Configurations
                 .HasForeignKey(x => x.HazardDivisionId)
                 .IsRequired(false)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            // Performance indexes for pagination, filtering, and sorting
+            // Note: IsDeleted, TypeId, ClassificationId, Name are in BaseItems table
+            // HazardDivisionId is in Explosives table
+            // We can only create composite indexes within the same table
+            
+            // Single-column index on Explosive-specific property (in Explosives table)
+            builder.HasIndex(x => x.HazardDivisionId);
         }
     }
 }
