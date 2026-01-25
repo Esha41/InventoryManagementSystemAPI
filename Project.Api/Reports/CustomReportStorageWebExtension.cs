@@ -47,6 +47,10 @@ namespace Ettad.Reporting.Storage
                    !url.Contains("..") && 
                    url.Length < 500; // Reasonable length limit
         }
+        public override bool CanSetData(string url)
+        {
+            return true;
+        }
 
         public override byte[] GetData(string url)
         {

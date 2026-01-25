@@ -1,20 +1,21 @@
-using Ettad.CrossCutting.Data.Repository;
+using DevExpress.DocumentServices.ServiceModel.DataContracts;
+using DevExpress.Office.Utils;
+using Ettad.Application.Common.Interfaces;
 using Ettad.CrossCutting.Comman.Time;
+using Ettad.CrossCutting.Data.Repository;
 using Ettad.Data.Entities.Reports;
+using Ettad.Data.Enums;
+using Ettad.EntityFramework.DataBaseContext;
 using Ettad.Reporting.Services.Reports.Dtos;
 using Ettad.ResponseHandler.Consts;
 using Ettad.ResponseHandler.Models;
-using Ettad.Application.Common.Interfaces;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using Microsoft.AspNetCore.Http;
-using Ettad.EntityFramework.DataBaseContext;
 using Project.Api.Services.Reports.Dtos;
+using System.IO;
 using System.Text;
 using System.Xml.Linq;
-using System.IO;
-using Ettad.Data.Enums;
-using DevExpress.Office.Utils;
 
 namespace Ettad.Reporting.Services
 {
@@ -203,12 +204,13 @@ namespace Ettad.Reporting.Services
                     return APIOperationResponse<Guid>.Fail(ResponseType.BadRequest, "A report with this URL already exists");
                 }
 
+                var reportId = Guid.NewGuid();
                 var report = new ReportEntity
                 {
-                    Id = Guid.NewGuid(),
+                    Id = reportId,
                     ReportName = dto.ReportName,
                     ReportStatusId = dto.ReportStatusId,
-                    Url = dto.Url,
+                    Url = reportId + "/" + dto.Url,
                     Description = dto.Description,
                     LayoutData = dto.LayoutData,
                     ReportParameters = dto.ReportParameters,
