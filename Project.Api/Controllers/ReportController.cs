@@ -4,6 +4,7 @@ using Ettad.Reporting.Services.Reports.Dtos;
 using Ettad.ResponseHandler.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Project.Api.Services.Reports.Dtos;
 using System.Net;
 
 namespace Ettad.Reporting.Controllers
@@ -84,6 +85,18 @@ namespace Ettad.Reporting.Controllers
         }
 
         /// <summary>
+        /// Set report public (Published) or private (Draft). Body: { "isPublic": true|false }.
+        /// </summary>
+        [HttpPatch("{id}/public")]
+        [ProducesResponseType((int)HttpStatusCode.OK)]
+        [CheckAuthorize("Permissions.Report.Edit")]
+        public async Task<IActionResult> SetReportPublic(Guid id, [FromBody] SetReportPublicRequestDto dto)
+        {
+            var result = await _reportService.SetReportPublicAsync(id, dto.IsPublic);
+            return ProcessResponse(result);
+        }
+
+        /// <summary>
         /// Delete a report (soft delete)
         /// </summary>
         [HttpDelete("{id}")]
@@ -104,6 +117,24 @@ namespace Ettad.Reporting.Controllers
         public async Task<IActionResult> GetReportStatuses()
         {
             var result = await _reportService.GetReportStatusesAsync();
+            return ProcessResponse(result);
+        }
+
+        /// <summary>
+        /// Import a report from a file (.repx or .xml)
+        /// </summary>
+        [HttpPost("import")]
+        [Consumes("multipart/form-data")]
+        [ProducesResponseType((int)HttpStatusCode.Created)]
+        [CheckAuthorize("Permissions.Report.Create")]
+        public async Task<IActionResult> Import([FromForm] ImportReportRequestDto request)
+        {
+            var result = await _reportService.ImportAsync(
+                request.File,
+                request.ReportName,
+                request.Url,
+                request.Description);
+
             return ProcessResponse(result);
         }
     }

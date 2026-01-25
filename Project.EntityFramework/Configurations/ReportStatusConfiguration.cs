@@ -39,29 +39,19 @@ namespace Ettad.EntityFramework.Configurations
                 {
                     Id = 1,
                     NameAr = "مسودة",
-                    NameEn = "Draft",
-                    IsDeleted = false
+                    NameEn = "Draft"
                 },
                 new ReportStatus
                 {
                     Id = 2,
-                    NameAr = "نشط",
-                    NameEn = "Active",
-                    IsDeleted = false
+                    NameAr = "منشور",
+                    NameEn = "Published"
                 },
                 new ReportStatus
                 {
                     Id = 3,
-                    NameAr = "منشور",
-                    NameEn = "Published",
-                    IsDeleted = false
-                },
-                new ReportStatus
-                {
-                    Id = 5,
                     NameAr = "غير نشط",
-                    NameEn = "Inactive",
-                    IsDeleted = false
+                    NameEn = "Inactive"
                 }
             );
         }

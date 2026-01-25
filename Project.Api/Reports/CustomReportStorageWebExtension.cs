@@ -5,56 +5,40 @@ using DevExpress.XtraReports;
 using DevExpress.XtraReports.UI;
 using DevExpress.XtraReports.Web.Extensions;
 using Ettad.Application.Common.Interfaces;
-using Ettad.CrossCutting.Comman.Time;
-using Ettad.Data.Entities.Reports;
-using Ettad.EntityFramework.DataBaseContext;
+using Ettad.Data.Enums;
+using Ettad.Reporting.Services;
+using Ettad.Reporting.Services.Reports.Dtos;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
-using Microsoft.EntityFrameworkCore;
+using System.IO;
 using System.Security.Claims;
 
 namespace Ettad.Reporting.Storage
 {
     /// <summary>
-    /// Custom report storage extension that saves reports to the database
+    /// Custom report storage extension that saves reports to the database using IReportService
     /// </summary>
     public class CustomReportStorageWebExtension : ReportStorageWebExtension
     {
-        private readonly ApplicationDbContext _context;
+        private readonly IReportService _reportService;
         private readonly IHttpContextAccessor _httpContextAccessor;
         private readonly IWebHostEnvironment _hostingEnvironment;
-        private readonly IDateTimeProvider _dateTimeProvider;
         private readonly IPermissionService _permissionService;
         private readonly ICurrentUserService _currentUserService;
+        
         public CustomReportStorageWebExtension(
-            ApplicationDbContext context,
+            IReportService reportService,
             IHttpContextAccessor httpContextAccessor,
             IWebHostEnvironment hostingEnvironment,
-            IDateTimeProvider dateTimeProvider,
             ICurrentUserService currentUserService,
             IPermissionService permissionService)
         {
-            _context = context;
+            _reportService = reportService;
             _currentUserService = currentUserService;
             _httpContextAccessor = httpContextAccessor;
             _hostingEnvironment = hostingEnvironment;
-            _dateTimeProvider = dateTimeProvider;
             _permissionService = permissionService;
         }
-
-        //public override bool CanSetData(string url)
-        //{
-
-        //    var reports = _context.Reports
-        //            .Where(r => r.Url == url && !r.IsDeleted)
-        //            .OrderBy(r => r.ReportName)
-        //            .ToList();
-        //    var urls = new Dictionary<string, string>();
-        //    foreach (var report in reports)
-        //    {
-        //        urls[report.Url] = report.ReportName;
-        //    }
-        //}
 
         public override bool IsValidUrl(string url)
         {
@@ -68,16 +52,7 @@ namespace Ettad.Reporting.Storage
         {
             try
             {
-                // Try to get report from database
-                var report = _context.Reports
-                    .FirstOrDefault(r => r.Url == url && !r.IsDeleted);
-
-                if (report != null)
-                {
-                    return report.LayoutData ?? Array.Empty<byte>();
-                }
-
-                // If not found in database, check if it's a base template
+                // If it's a base template, return it directly
                 if (url == "BaseReportTemplate")
                 {
                     var baseReport = new Ettad.Reporting.Reports.BaseReportTemplate();
@@ -86,6 +61,14 @@ namespace Ettad.Reporting.Storage
                         baseReport.SaveLayoutToXml(ms);
                         return ms.ToArray();
                     }
+                }
+
+                // Try to get report from database using service
+                var result = _reportService.GetByUrlAsync(url).GetAwaiter().GetResult();
+                
+                if (result.Succeeded && result.Data != null)
+                {
+                    return result.Data.LayoutData ?? Array.Empty<byte>();
                 }
 
                 return Array.Empty<byte>();
@@ -102,48 +85,21 @@ namespace Ettad.Reporting.Storage
         {
             try
             {
-                var user = _httpContextAccessor.HttpContext?.User;
-                if (user == null || !user.Identity?.IsAuthenticated == true)
-                    return new Dictionary<string, string>();
 
-                var userId = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-                if (string.IsNullOrEmpty(userId))
-                    return new Dictionary<string, string>();
-
-                // Check if user is super admin - super admins bypass all permission checks
-                var isSuperAdmin = user.FindFirst("IsSuperAdmin")?.Value == "true";
+                // Get all reports using service
+                var result = _reportService.GetAllAsync().GetAwaiter().GetResult();
                 
-                // Check permissions if not super admin
-                if (!isSuperAdmin)
+                var urls = new Dictionary<string, string>();
+                
+                if (result.Succeeded && result.Data != null)
                 {
-                    var userPermissions = _permissionService?.GetUserPermissions(userId).Result;
-                    if (userPermissions == null || 
-                        (!userPermissions.Contains("Permissions.Report.View") && 
-                         !userPermissions.Contains("Permissions.Report.Page")))
+                    foreach (var report in result.Data)
                     {
-                        // User doesn't have permission to view reports - return empty list
-                        return new Dictionary<string, string>();
+                        urls[report.Url] = report.ReportName;
                     }
                 }
 
-                var reports = _context.Reports
-                    .Where(r => !r.IsDeleted)
-                    .OrderBy(r => r.ReportName)
-                    .ToList();
-
-                var urls = new Dictionary<string, string>();
-                foreach (var report in reports)
-                {
-                    urls[report.Url] = report.ReportName;
-                }
-
-                // Add base template only if user has create permission
-                if (isSuperAdmin || 
-                    (_permissionService?.GetUserPermissions(userId).Result?.Contains("Permissions.Report.Create") == true))
-                {
-                    urls["BaseReportTemplate"] = "Base Report Template";
-                }
-
+                urls["BaseReportTemplate"] = "Base Report Template";
                 return urls;
             }
             catch (Exception ex)
@@ -157,14 +113,7 @@ namespace Ettad.Reporting.Storage
         {
             try
             {
-                var user = _httpContextAccessor.HttpContext?.User;
-                if (user == null || !user.Identity?.IsAuthenticated == true)
-                    throw new UnauthorizedAccessException("User is not authenticated");
-
-                var userId = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-                if (string.IsNullOrEmpty(userId))
-                    throw new UnauthorizedAccessException("User ID not found");
-
+                var displayName = report.DisplayName;
                 // Save report layout to memory stream
                 byte[] layoutData;
                 using (var ms = new MemoryStream())
@@ -173,36 +122,51 @@ namespace Ettad.Reporting.Storage
                     layoutData = ms.ToArray();
                 }
 
-                // Check if report exists
-                var existingReport = _context.Reports
-                    .FirstOrDefault(r => r.Url == url && !r.IsDeleted);
+                // Check if report exists using service
+                var existingReportResult = _reportService.GetByUrlAsync(url).GetAwaiter().GetResult();
 
-                if (existingReport != null)
+                if (existingReportResult.Succeeded && existingReportResult.Data != null)
                 {
                     // Update existing report
-                    existingReport.LayoutData = layoutData;
-                    existingReport.ModificationDate = _dateTimeProvider.Now;
-                    existingReport.ModifiedBy = userId;
-                    existingReport.ReportName = report.DisplayName ?? url;
+                    var updateDto = new UpdateReportDto
+                    {
+                        ReportName = report.DisplayName ?? url,
+                        ReportStatusId = existingReportResult.Data.ReportStatusId, // Keep existing status
+                        Url = url,
+                        Description = existingReportResult.Data.Description,
+                        LayoutData = layoutData,
+                        ReportParameters = existingReportResult.Data.ReportParameters,
+                        IsTemplate = existingReportResult.Data.IsTemplate,
+                        IsPublic = existingReportResult.Data.IsPublic
+                    };
+
+                    var updateResult = _reportService.UpdateAsync(existingReportResult.Data.Id, updateDto).GetAwaiter().GetResult();
+                    
+                    if (!updateResult.Succeeded)
+                    {
+                        throw new Exception($"Failed to update report: {updateResult.Message}");
+                    }
                 }
                 else
                 {
                     // Create new report (default to Draft status - ID = 1)
-                    var newReport = new ReportEntity
+                    var createDto = new CreateReportDto
                     {
-                        Id = Guid.NewGuid(),
-                        Url = url,
                         ReportName = report.DisplayName ?? url,
-                        ReportStatusId = 1, // Default to Draft
+                        ReportStatusId = (int)ReportStatuses.Draft, // Default to Draft
+                        Url = url,
                         LayoutData = layoutData,
-                        CreationDate = _dateTimeProvider.Now,
-                        CreatedBy = userId ?? string.Empty,
-                        IsDeleted = false
+                        IsTemplate = false,
+                        IsPublic = false
                     };
-                    _context.Reports.Add(newReport);
-                }
 
-                _context.SaveChanges();
+                    var createResult = _reportService.CreateAsync(createDto).GetAwaiter().GetResult();
+                    
+                    if (!createResult.Succeeded)
+                    {
+                        throw new Exception($"Failed to create report: {createResult.Message}");
+                    }
+                }
             }
             catch (Exception ex)
             {
@@ -215,21 +179,17 @@ namespace Ettad.Reporting.Storage
         {
             try
             {
-                var user = _httpContextAccessor.HttpContext?.User;
-                if (user == null || !user.Identity?.IsAuthenticated == true)
-                    throw new UnauthorizedAccessException("User is not authenticated");
-
-                var userId = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-                if (string.IsNullOrEmpty(userId))
-                    throw new UnauthorizedAccessException("User ID not found");
-
                 // Generate unique URL if default URL already exists
                 var url = defaultUrl;
                 var counter = 1;
-                while (_context.Reports.Any(r => r.Url == url && !r.IsDeleted))
+                
+                // Check if URL exists using service
+                var checkResult = _reportService.GetByUrlAsync(url).GetAwaiter().GetResult();
+                while (checkResult.Succeeded && checkResult.Data != null)
                 {
                     url = $"{defaultUrl}_{counter}";
                     counter++;
+                    checkResult = _reportService.GetByUrlAsync(url).GetAwaiter().GetResult();
                 }
 
                 // Save report layout
@@ -240,20 +200,23 @@ namespace Ettad.Reporting.Storage
                     layoutData = ms.ToArray();
                 }
 
-                var newReport = new ReportEntity
+                // Create new report using service
+                var createDto = new CreateReportDto
                 {
-                    Id = Guid.NewGuid(),
-                    Url = url,
                     ReportName = report.DisplayName ?? url,
-                    ReportStatusId = 1, // Default to Draft
+                    ReportStatusId = (int)ReportStatuses.Draft, // Default to Draft
+                    Url = url,
                     LayoutData = layoutData,
-                    CreationDate = _dateTimeProvider.Now,
-                    CreatedBy = userId ?? string.Empty,
-                    IsDeleted = false
+                    IsTemplate = false,
+                    IsPublic = false
                 };
 
-                _context.Reports.Add(newReport);
-                _context.SaveChanges();
+                var createResult = _reportService.CreateAsync(createDto).GetAwaiter().GetResult();
+                
+                if (!createResult.Succeeded)
+                {
+                    throw new Exception($"Failed to create report: {createResult.Message}");
+                }
 
                 return url;
             }

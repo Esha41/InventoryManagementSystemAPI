@@ -35,25 +35,10 @@ namespace Ettad.Data.Entities.Reports
         public byte[]? LayoutData { get; set; }
 
         /// <summary>
-        /// Report type/category: Table, Chart, Dashboard, Label, etc.
-        /// </summary>
-        public string? ReportType { get; set; }
-
-        /// <summary>
         /// Report parameters configuration in JSON format
         /// Contains parameter definitions, default values, and validation rules
         /// </summary>
         public string? ReportParameters { get; set; }
-
-        /// <summary>
-        /// Whether the report is a template that can be used to create new reports
-        /// </summary>
-        public bool IsTemplate { get; set; } = false;
-
-        /// <summary>
-        /// Whether the report is publicly accessible
-        /// </summary>
-        public bool IsPublic { get; set; } = false;
 
         /// <summary>
         /// Navigation property for report status

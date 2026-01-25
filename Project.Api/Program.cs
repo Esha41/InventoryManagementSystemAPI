@@ -139,7 +139,6 @@ try
     // Register Report services
     builder.Services.AddScoped<Ettad.Reporting.Services.IReportService, Ettad.Reporting.Services.ReportService>();
 
-    
     // Register custom report storage extension
     builder.Services.AddScoped<ReportStorageWebExtension, Ettad.Reporting.Storage.CustomReportStorageWebExtension>();
     #endregion

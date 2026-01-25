@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Ettad.EntityFramework.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20260120042255_initiallMigration")]
-    partial class initiallMigration
+    [Migration("20260125083726_AddReportEntityToDb")]
+    partial class AddReportEntityToDb
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -2866,6 +2866,157 @@ namespace Ettad.EntityFramework.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Ettad.Data.Entities.Reports.ReportEntity", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("CreatedBy")
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<DateTime>("CreationDate")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValueSql("GETDATE()");
+
+                    b.Property<string>("DeletedBy")
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<DateTime?>("DeletionDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
+
+                    b.Property<byte[]>("LayoutData")
+                        .HasColumnType("varbinary(max)");
+
+                    b.Property<DateTime?>("ModificationDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ModifiedBy")
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("ReportName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("ReportParameters")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<long>("ReportStatusId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasDefaultValue(1L);
+
+                    b.Property<string>("Url")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedBy")
+                        .HasFilter("[IsDeleted] = 0");
+
+                    b.HasIndex("ReportName")
+                        .HasFilter("[IsDeleted] = 0");
+
+                    b.HasIndex("ReportStatusId")
+                        .HasFilter("[IsDeleted] = 0");
+
+                    b.HasIndex("Url")
+                        .IsUnique()
+                        .HasFilter("[IsDeleted] = 0");
+
+                    b.ToTable("Reports", (string)null);
+                });
+
+            modelBuilder.Entity("Ettad.Data.Entities.Reports.ReportStatus", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("CreationDate")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValueSql("GETDATE()");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime?>("ModificationDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ModifiedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("NameAr")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("NameEn")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("NameAr")
+                        .IsUnique()
+                        .HasFilter("[IsDeleted] = 0");
+
+                    b.HasIndex("NameEn")
+                        .IsUnique()
+                        .HasFilter("[IsDeleted] = 0");
+
+                    b.ToTable("ReportStatuses", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1L,
+                            CreationDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
+                            NameAr = "مسودة",
+                            NameEn = "Draft"
+                        },
+                        new
+                        {
+                            Id = 2L,
+                            CreationDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
+                            NameAr = "منشور",
+                            NameEn = "Published"
+                        },
+                        new
+                        {
+                            Id = 3L,
+                            CreationDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
+                            NameAr = "غير نشط",
+                            NameEn = "Inactive"
+                        });
+                });
+
             modelBuilder.Entity("Ettad.Data.Entities.RequestItem", b =>
                 {
                     b.Property<long>("Id")
@@ -4854,6 +5005,17 @@ namespace Ettad.EntityFramework.Migrations
                     b.Navigation("Notification");
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Ettad.Data.Entities.Reports.ReportEntity", b =>
+                {
+                    b.HasOne("Ettad.Data.Entities.Reports.ReportStatus", "ReportStatus")
+                        .WithMany()
+                        .HasForeignKey("ReportStatusId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("ReportStatus");
                 });
 
             modelBuilder.Entity("Ettad.Data.Entities.RequestItem", b =>

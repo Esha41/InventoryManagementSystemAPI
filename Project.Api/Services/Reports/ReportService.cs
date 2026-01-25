@@ -7,7 +7,14 @@ using Ettad.ResponseHandler.Models;
 using Ettad.Application.Common.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Microsoft.AspNetCore.Http;
 using Ettad.EntityFramework.DataBaseContext;
+using Project.Api.Services.Reports.Dtos;
+using System.Text;
+using System.Xml.Linq;
+using System.IO;
+using Ettad.Data.Enums;
+using DevExpress.Office.Utils;
 
 namespace Ettad.Reporting.Services
 {
@@ -19,6 +26,11 @@ namespace Ettad.Reporting.Services
         private readonly ILogger<ReportService> _logger;
         private readonly ApplicationDbContext _context;
         private readonly IDateTimeProvider _dateTimeProvider;
+        private static readonly HashSet<string> ExcludedTables = new(StringComparer.OrdinalIgnoreCase)
+         {
+             "__EFMigrationsHistory",
+             "sysdiagrams"
+         };
 
         public ReportService(
             ICrossCuttingRepository<ReportEntity> reportRepository,
@@ -44,7 +56,7 @@ namespace Ettad.Reporting.Services
             {
                 var reports = await _context.Reports
                     .Include(r => r.ReportStatus)
-                    .Where(r => !r.IsDeleted)
+                    .Where(r => r.ReportStatusId != (int)ReportStatuses.Inactive)
                     .OrderByDescending(r => r.CreationDate)
                     .ToListAsync();
 
@@ -58,15 +70,11 @@ namespace Ettad.Reporting.Services
                     Url = r.Url,
                     Description = r.Description,
                     LayoutData = r.LayoutData,
-                    ReportType = r.ReportType,
                     ReportParameters = r.ReportParameters,
-                    IsTemplate = r.IsTemplate,
-                    IsPublic = r.IsPublic,
                     CreationDate = r.CreationDate,
                     CreatedBy = r.CreatedBy,
                     ModificationDate = r.ModificationDate,
                     ModifiedBy = r.ModifiedBy,
-                    IsDeleted = r.IsDeleted,
                     DeletionDate = r.DeletionDate,
                     DeletedBy = r.DeletedBy
                 }).ToList();
@@ -89,7 +97,7 @@ namespace Ettad.Reporting.Services
             {
                 var report = await _context.Reports
                     .Include(r => r.ReportStatus)
-                    .FirstOrDefaultAsync(r => r.Id == id && !r.IsDeleted);
+                    .FirstOrDefaultAsync(r => r.Id == id && r.ReportStatusId != (int)ReportStatuses.Inactive);
 
                 if (report == null)
                 {
@@ -107,15 +115,11 @@ namespace Ettad.Reporting.Services
                     Url = report.Url,
                     Description = report.Description,
                     LayoutData = report.LayoutData,
-                    ReportType = report.ReportType,
                     ReportParameters = report.ReportParameters,
-                    IsTemplate = report.IsTemplate,
-                    IsPublic = report.IsPublic,
                     CreationDate = report.CreationDate,
                     CreatedBy = report.CreatedBy,
                     ModificationDate = report.ModificationDate,
                     ModifiedBy = report.ModifiedBy,
-                    IsDeleted = report.IsDeleted,
                     DeletionDate = report.DeletionDate,
                     DeletedBy = report.DeletedBy
                 };
@@ -141,7 +145,7 @@ namespace Ettad.Reporting.Services
 
                 var report = await _context.Reports
                     .Include(r => r.ReportStatus)
-                    .FirstOrDefaultAsync(r => r.Url == url && !r.IsDeleted);
+                    .FirstOrDefaultAsync(r => r.Url == url && r.ReportStatusId != (int)ReportStatuses.Inactive);
 
                 if (report == null)
                 {
@@ -159,15 +163,11 @@ namespace Ettad.Reporting.Services
                     Url = report.Url,
                     Description = report.Description,
                     LayoutData = report.LayoutData,
-                    ReportType = report.ReportType,
                     ReportParameters = report.ReportParameters,
-                    IsTemplate = report.IsTemplate,
-                    IsPublic = report.IsPublic,
                     CreationDate = report.CreationDate,
                     CreatedBy = report.CreatedBy,
                     ModificationDate = report.ModificationDate,
                     ModifiedBy = report.ModifiedBy,
-                    IsDeleted = report.IsDeleted,
                     DeletionDate = report.DeletionDate,
                     DeletedBy = report.DeletedBy
                 };
@@ -190,14 +190,14 @@ namespace Ettad.Reporting.Services
             try
             {
                 // Validate that ReportStatus exists
-                var status = await _reportStatusRepository.FindOneAsync(s => s.Id == dto.ReportStatusId && !s.IsDeleted);
+                var status = await _reportStatusRepository.FindOneAsync(s => s.Id == dto.ReportStatusId);
                 if (status == null)
                 {
                     return APIOperationResponse<Guid>.Fail(ResponseType.BadRequest, "Invalid report status");
                 }
 
                 // Check if URL already exists
-                var urlExists = await _context.Reports.AnyAsync(r => r.Url == dto.Url && !r.IsDeleted);
+                var urlExists = await _context.Reports.AnyAsync(r => r.Url == dto.Url && r.ReportStatusId != (int)ReportStatuses.Inactive);
                 if (urlExists)
                 {
                     return APIOperationResponse<Guid>.Fail(ResponseType.BadRequest, "A report with this URL already exists");
@@ -211,10 +211,7 @@ namespace Ettad.Reporting.Services
                     Url = dto.Url,
                     Description = dto.Description,
                     LayoutData = dto.LayoutData,
-                    ReportType = dto.ReportType,
                     ReportParameters = dto.ReportParameters,
-                    IsTemplate = dto.IsTemplate,
-                    IsPublic = dto.IsPublic,
                     CreationDate = _dateTimeProvider.Now,
                     CreatedBy = _currentUserService.UserId ?? string.Empty
                 };
@@ -240,7 +237,7 @@ namespace Ettad.Reporting.Services
 
             try
             {
-                var report = await _reportRepository.FindOneAsync(r => r.Id == id && !r.IsDeleted);
+                var report = await _reportRepository.FindOneAsync(r => r.Id == id && r.ReportStatusId != (int)ReportStatuses.Inactive);
 
                 if (report == null)
                 {
@@ -248,34 +245,16 @@ namespace Ettad.Reporting.Services
                     return APIOperationResponse<bool>.Fail(ResponseType.NotFound, "Report not found");
                 }
 
-                // Validate that ReportStatus exists
-                var status = await _reportStatusRepository.FindOneAsync(s => s.Id == dto.ReportStatusId && !s.IsDeleted);
-                if (status == null)
-                {
-                    return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, "Invalid report status");
-                }
-
-                // Check if URL already exists (excluding current report)
-                var urlExists = await _context.Reports.AnyAsync(r => r.Url == dto.Url && r.Id != id && !r.IsDeleted);
-                if (urlExists)
-                {
-                    return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, "A report with this URL already exists");
-                }
-
                 report.ReportName = dto.ReportName;
                 report.ReportStatusId = dto.ReportStatusId;
                 report.Url = dto.Url;
                 report.Description = dto.Description;
                 report.LayoutData = dto.LayoutData;
-                report.ReportType = dto.ReportType;
                 report.ReportParameters = dto.ReportParameters;
-                report.IsTemplate = dto.IsTemplate;
-                report.IsPublic = dto.IsPublic;
                 report.ModificationDate = _dateTimeProvider.Now;
                 report.ModifiedBy = _currentUserService.UserId;
 
                 await _reportRepository.UpdateAsync(report);
-                await _context.SaveChangesAsync();
 
                 _logger.LogInformation("Report updated successfully. ReportId: {ReportId}, User: {UserId}", id, _currentUserService.UserId);
                 return APIOperationResponse<bool>.Success(true);
@@ -287,13 +266,72 @@ namespace Ettad.Reporting.Services
             }
         }
 
+        public async Task<APIOperationResponse<ReportDto>> SetReportPublicAsync(Guid id, bool isPublic)
+        {
+            _logger.LogInformation("Setting report public/private. ReportId: {ReportId}, IsPublic: {IsPublic}, User: {UserId}", id, isPublic, _currentUserService.UserId);
+
+            try
+            {
+                var report = await _context.Reports
+                    .Include(r => r.ReportStatus)
+                    .FirstOrDefaultAsync(r => r.Id == id && r.ReportStatusId != (int)ReportStatuses.Inactive);
+
+                if (report == null)
+                {
+                    _logger.LogWarning("Report not found. ReportId: {ReportId}, User: {UserId}", id, _currentUserService.UserId);
+                    return APIOperationResponse<ReportDto>.Fail(ResponseType.NotFound, "Report not found");
+                }
+
+                report.ReportStatusId = isPublic ? (int)ReportStatuses.Published : (int)ReportStatuses.Draft;
+                report.ModificationDate = _dateTimeProvider.Now;
+                report.ModifiedBy = _currentUserService.UserId;
+
+                await _reportRepository.UpdateAsync(report);
+                await _context.SaveChangesAsync();
+
+                var updated = await _context.Reports
+                    .Include(r => r.ReportStatus)
+                    .FirstAsync(r => r.Id == id);
+
+                var dto = new ReportDto
+                {
+                    Id = updated.Id,
+                    ReportName = updated.ReportName,
+                    ReportStatusId = updated.ReportStatusId,
+                    ReportStatusNameEn = updated.ReportStatus?.NameEn ?? string.Empty,
+                    ReportStatusNameAr = updated.ReportStatus?.NameAr ?? string.Empty,
+                    Url = updated.Url,
+                    Description = updated.Description,
+                    LayoutData = updated.LayoutData,
+                    ReportParameters = updated.ReportParameters,
+                    CreationDate = updated.CreationDate,
+                    CreatedBy = updated.CreatedBy,
+                    ModificationDate = updated.ModificationDate,
+                    ModifiedBy = updated.ModifiedBy,
+                    IsTemplate = false,
+                    IsPublic = isPublic,
+                    IsDeleted = updated.IsDeleted,
+                    DeletionDate = updated.DeletionDate,
+                    DeletedBy = updated.DeletedBy
+                };
+
+                _logger.LogInformation("Report set to {Status}. ReportId: {ReportId}, User: {UserId}", isPublic ? "Published" : "Draft", id, _currentUserService.UserId);
+                return APIOperationResponse<ReportDto>.Success(dto);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error setting report public/private. ReportId: {ReportId}, User: {UserId}", id, _currentUserService.UserId);
+                return APIOperationResponse<ReportDto>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
+            }
+        }
+
         public async Task<APIOperationResponse<bool>> DeleteAsync(Guid id)
         {
             _logger.LogInformation("Deleting report. ReportId: {ReportId}, User: {UserId}", id, _currentUserService.UserId);
 
             try
             {
-                var report = await _reportRepository.FindOneAsync(r => r.Id == id && !r.IsDeleted);
+                var report = await _reportRepository.FindOneAsync(r => r.Id == id && r.ReportStatusId != (int)ReportStatuses.Inactive);
 
                 if (report == null)
                 {
@@ -301,7 +339,8 @@ namespace Ettad.Reporting.Services
                     return APIOperationResponse<bool>.Fail(ResponseType.NotFound, "Report not found");
                 }
 
-                // Soft delete
+                // Soft delete via status
+                report.ReportStatusId = (int)ReportStatuses.Inactive;
                 report.IsDeleted = true;
                 report.DeletionDate = _dateTimeProvider.Now;
                 report.DeletedBy = _currentUserService.UserId;
@@ -325,7 +364,7 @@ namespace Ettad.Reporting.Services
 
             try
             {
-                var statuses = await _reportStatusRepository.FindAsync(s => !s.IsDeleted);
+                var statuses = await _reportStatusRepository.GetAllAsync();
 
                 var dtos = statuses.Select(s => new ReportStatusDto
                 {
@@ -342,6 +381,185 @@ namespace Ettad.Reporting.Services
                 _logger.LogError(ex, "Error retrieving report statuses. User: {UserId}", _currentUserService.UserId);
                 return APIOperationResponse<List<ReportStatusDto>>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
             }
+        }
+
+        public async Task<IReadOnlyList<TableSchemaInfo>> GetTableNamesAsync(CancellationToken cancellationToken = default)
+        {
+            const string sql = @"
+                                SELECT 
+                                    t.TABLE_SCHEMA AS SchemaName, 
+                                    t.TABLE_NAME AS TableName 
+                                FROM INFORMATION_SCHEMA.TABLES t
+                                WHERE t.TABLE_TYPE = 'BASE TABLE' 
+                                  AND t.TABLE_CATALOG = DB_NAME()
+                                  AND t.TABLE_NAME NOT IN ('__EFMigrationsHistory', 'sysdiagrams')
+                                ORDER BY t.TABLE_SCHEMA, t.TABLE_NAME";
+
+            var rows = await _context.Database
+                .SqlQueryRaw<TableSchemaInfoDto>(sql)
+                .ToListAsync(cancellationToken);
+
+            return rows
+                .Select(r => new TableSchemaInfo(r.SchemaName ?? "dbo", r.TableName ?? ""))
+                .Where(t => !string.IsNullOrEmpty(t.TableName) && !ExcludedTables.Contains(t.TableName))
+                .ToList();
+        }
+
+        public async Task<APIOperationResponse<Guid>> ImportAsync(IFormFile file, string? reportName = null, string? url = null, string? description = null)
+        {
+            _logger.LogInformation("Importing report from file. FileName: {FileName}, User: {UserId}", file?.FileName, _currentUserService.UserId);
+
+            try
+            {
+                if (file == null || file.Length == 0)
+                {
+                    return APIOperationResponse<Guid>.Fail(ResponseType.BadRequest, "No file provided");
+                }
+
+                // Validate file extension (.repx or .xml)
+                var allowedExtensions = new[] { ".repx", ".xml" };
+                var fileExtension = Path.GetExtension(file.FileName)?.ToLowerInvariant();
+                if (string.IsNullOrEmpty(fileExtension) || !allowedExtensions.Contains(fileExtension))
+                {
+                    return APIOperationResponse<Guid>.Fail(ResponseType.BadRequest, 
+                        $"Invalid file type. Only {string.Join(", ", allowedExtensions)} files are allowed.");
+                }
+
+                // Validate file size (max 10MB)
+                const long maxFileSize = 10 * 1024 * 1024; // 10MB
+                if (file.Length > maxFileSize)
+                {
+                    return APIOperationResponse<Guid>.Fail(ResponseType.BadRequest, 
+                        $"File size exceeds maximum allowed size of {maxFileSize / (1024 * 1024)}MB");
+                }
+
+                // Read file content
+                byte[] layoutData;
+                using (var memoryStream = new MemoryStream())
+                {
+                    await file.CopyToAsync(memoryStream);
+                    layoutData = memoryStream.ToArray();
+                }
+
+                // Validate XML format
+                try
+                {
+                    var xmlContent = Encoding.UTF8.GetString(layoutData);
+                    XDocument.Parse(xmlContent); // Validate XML structure
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Invalid XML format in imported file. FileName: {FileName}", file.FileName);
+                    return APIOperationResponse<Guid>.Fail(ResponseType.BadRequest, 
+                        "Invalid file format. The file must be a valid DevExpress report XML file.");
+                }
+
+                // Extract report name from filename if not provided
+                var finalReportName = reportName ?? Path.GetFileNameWithoutExtension(file.FileName);
+                if (string.IsNullOrWhiteSpace(finalReportName))
+                {
+                    finalReportName = $"Imported Report {DateTime.Now:yyyyMMddHHmmss}";
+                }
+
+                // Generate unique URL from report name if not provided
+                var baseUrl = !string.IsNullOrWhiteSpace(url) 
+                    ? url.Trim() 
+                    : GenerateUrlFromName(finalReportName);
+                
+                // Validate URL format
+                if (!IsValidUrl(baseUrl))
+                {
+                    return APIOperationResponse<Guid>.Fail(ResponseType.BadRequest, 
+                        "Invalid URL format. URL can only contain letters, numbers, underscores, and hyphens.");
+                }
+                
+                var finalUrl = baseUrl;
+                var counter = 1;
+                while (await _context.Reports.AnyAsync(r => r.Url == finalUrl && r.ReportStatusId != (int)ReportStatuses.Inactive))
+                {
+                    finalUrl = $"{baseUrl}_{counter}";
+                    counter++;
+                }
+
+                // Validate that ReportStatus exists (default to Draft = 1)
+                var status = await _reportStatusRepository.FindOneAsync(s => s.Id == 1);
+                if (status == null)
+                {
+                    return APIOperationResponse<Guid>.Fail(ResponseType.BadRequest, "Default report status not found");
+                }
+
+                // Create report entity
+                var report = new ReportEntity
+                {
+                    Id = Guid.NewGuid(),
+                    ReportName = finalReportName,
+                    ReportStatusId = 1, // Default to Draft
+                    Url = finalUrl,
+                    Description = description,
+                    LayoutData = layoutData,
+                    CreationDate = _dateTimeProvider.Now,
+                    CreatedBy = _currentUserService.UserId ?? string.Empty
+                };
+
+                await _reportRepository.AddAsync(report);
+                await _context.SaveChangesAsync();
+
+                _logger.LogInformation("Report imported successfully. ReportId: {ReportId}, ReportName: {ReportName}, User: {UserId}", 
+                    report.Id, finalReportName, _currentUserService.UserId);
+
+                return APIOperationResponse<Guid>.Success(report.Id);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error importing report. FileName: {FileName}, User: {UserId}", file?.FileName, _currentUserService.UserId);
+                return APIOperationResponse<Guid>.Fail(ResponseType.InternalServerError, $"An error occurred while importing the report: {ex.Message}");
+            }
+        }
+
+        private string GenerateUrlFromName(string name)
+        {
+            // Convert report name to URL-friendly format
+            var url = name.Trim();
+            // Replace spaces and special characters with underscores
+            url = System.Text.RegularExpressions.Regex.Replace(url, @"[^a-zA-Z0-9_-]", "_");
+            // Remove multiple consecutive underscores
+            url = System.Text.RegularExpressions.Regex.Replace(url, @"_+", "_");
+            // Remove leading/trailing underscores
+            url = url.Trim('_');
+            // Ensure it's not empty
+            if (string.IsNullOrEmpty(url))
+            {
+                url = $"report_{DateTime.Now:yyyyMMddHHmmss}";
+            }
+            return url;
+        }
+
+        private bool IsValidUrl(string url)
+        {
+            if (string.IsNullOrWhiteSpace(url))
+            {
+                return false;
+            }
+
+            // Check for invalid characters (only allow alphanumeric, underscore, hyphen)
+            if (System.Text.RegularExpressions.Regex.IsMatch(url, @"[^a-zA-Z0-9_-]"))
+            {
+                return false;
+            }
+
+            // Check for path traversal attempts
+            if (url.Contains("..") || url.Contains("/") || url.Contains("\\"))
+            {
+                return false;
+            }
+
+            // Check length
+            if (url.Length > 500)
+            {
+                return false;
+            }
+
+            return true;
         }
     }
 }

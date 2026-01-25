@@ -2894,16 +2894,6 @@ namespace Ettad.EntityFramework.Migrations
                         .HasColumnType("bit")
                         .HasDefaultValue(false);
 
-                    b.Property<bool>("IsPublic")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bit")
-                        .HasDefaultValue(false);
-
-                    b.Property<bool>("IsTemplate")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bit")
-                        .HasDefaultValue(false);
-
                     b.Property<byte[]>("LayoutData")
                         .HasColumnType("varbinary(max)");
 
@@ -2927,10 +2917,6 @@ namespace Ettad.EntityFramework.Migrations
                         .HasColumnType("bigint")
                         .HasDefaultValue(1L);
 
-                    b.Property<string>("ReportType")
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
                     b.Property<string>("Url")
                         .IsRequired()
                         .HasMaxLength(500)
@@ -2945,9 +2931,6 @@ namespace Ettad.EntityFramework.Migrations
                         .HasFilter("[IsDeleted] = 0");
 
                     b.HasIndex("ReportStatusId")
-                        .HasFilter("[IsDeleted] = 0");
-
-                    b.HasIndex("ReportType")
                         .HasFilter("[IsDeleted] = 0");
 
                     b.HasIndex("Url")
@@ -3018,20 +3001,12 @@ namespace Ettad.EntityFramework.Migrations
                             Id = 2L,
                             CreationDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             IsDeleted = false,
-                            NameAr = "نشط",
-                            NameEn = "Active"
-                        },
-                        new
-                        {
-                            Id = 3L,
-                            CreationDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
-                            IsDeleted = false,
                             NameAr = "منشور",
                             NameEn = "Published"
                         },
                         new
                         {
-                            Id = 5L,
+                            Id = 3L,
                             CreationDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             IsDeleted = false,
                             NameAr = "غير نشط",

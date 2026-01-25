@@ -30,17 +30,8 @@ namespace Ettad.EntityFramework.Configurations
             builder.Property(r => r.LayoutData)
                 .HasColumnType("varbinary(max)");
 
-            builder.Property(r => r.ReportType)
-                .HasMaxLength(100);
-
             builder.Property(r => r.ReportParameters)
                 .HasColumnType("nvarchar(max)");
-
-            builder.Property(r => r.IsTemplate)
-                .HasDefaultValue(false);
-
-            builder.Property(r => r.IsPublic)
-                .HasDefaultValue(false);
 
             // Audit fields configuration
             builder.Property(r => r.CreationDate)
@@ -83,9 +74,6 @@ namespace Ettad.EntityFramework.Configurations
                 .HasFilter("[IsDeleted] = 0");
 
             builder.HasIndex(r => r.ReportStatusId)
-                .HasFilter("[IsDeleted] = 0");
-
-            builder.HasIndex(r => r.ReportType)
                 .HasFilter("[IsDeleted] = 0");
 
             builder.HasIndex(r => r.CreatedBy)
