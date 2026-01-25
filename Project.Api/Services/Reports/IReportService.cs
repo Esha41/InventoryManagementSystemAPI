@@ -13,6 +13,7 @@ namespace Ettad.Reporting.Services
         Task<APIOperationResponse<bool>> UpdateAsync(Guid id, UpdateReportDto dto);
         Task<APIOperationResponse<ReportDto>> SetReportPublicAsync(Guid id, bool isPublic);
         Task<APIOperationResponse<bool>> DeleteAsync(Guid id);
+        Task<bool> IsReportExists(string name);
         Task<APIOperationResponse<List<ReportStatusDto>>> GetReportStatusesAsync();
         Task<APIOperationResponse<Guid>> ImportAsync(IFormFile file, string? reportName = null, string? url = null, string? description = null);
 

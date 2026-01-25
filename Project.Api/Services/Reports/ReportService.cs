@@ -142,7 +142,7 @@ namespace Ettad.Reporting.Services
             try
             {
                 if (string.IsNullOrWhiteSpace(url))
-                    return APIOperationResponse<ReportDto>.Fail(ResponseType.BadRequest, "URL is required");
+                    return APIOperationResponse<ReportDto>.BadRequest("URL is required");
 
                 var report = await _context.Reports
                     .Include(r => r.ReportStatus)
@@ -190,18 +190,11 @@ namespace Ettad.Reporting.Services
 
             try
             {
-                // Validate that ReportStatus exists
-                var status = await _reportStatusRepository.FindOneAsync(s => s.Id == dto.ReportStatusId);
-                if (status == null)
+                // Check if report name already exists
+                var nameExists = await _context.Reports.AnyAsync(r => r.ReportName == dto.ReportName && r.ReportStatusId != (int)ReportStatuses.Inactive);
+                if (nameExists)
                 {
-                    return APIOperationResponse<Guid>.Fail(ResponseType.BadRequest, "Invalid report status");
-                }
-
-                // Check if URL already exists
-                var urlExists = await _context.Reports.AnyAsync(r => r.Url == dto.Url && r.ReportStatusId != (int)ReportStatuses.Inactive);
-                if (urlExists)
-                {
-                    return APIOperationResponse<Guid>.Fail(ResponseType.BadRequest, "A report with this URL already exists");
+                    return APIOperationResponse<Guid>.BadRequest("Report with this name already exists, give another.");
                 }
 
                 var reportId = Guid.NewGuid();
@@ -245,6 +238,16 @@ namespace Ettad.Reporting.Services
                 {
                     _logger.LogWarning("Report not found for update. ReportId: {ReportId}, User: {UserId}", id, _currentUserService.UserId);
                     return APIOperationResponse<bool>.Fail(ResponseType.NotFound, "Report not found");
+                }
+
+                // Check if report name already exists (excluding current report)
+                if (report.ReportName != dto.ReportName)
+                {
+                    var nameExists = await _context.Reports.AnyAsync(r => r.ReportName == dto.ReportName && r.Id != id && r.ReportStatusId != (int)ReportStatuses.Inactive);
+                    if (nameExists)
+                    {
+                        return APIOperationResponse<bool>.BadRequest("Report with this name already exists, give another.");
+                    }
                 }
 
                 report.ReportName = dto.ReportName;
@@ -415,7 +418,7 @@ namespace Ettad.Reporting.Services
             {
                 if (file == null || file.Length == 0)
                 {
-                    return APIOperationResponse<Guid>.Fail(ResponseType.BadRequest, "No file provided");
+                    return APIOperationResponse<Guid>.BadRequest("No file provided");
                 }
 
                 // Validate file extension (.repx or .xml)
@@ -423,16 +426,14 @@ namespace Ettad.Reporting.Services
                 var fileExtension = Path.GetExtension(file.FileName)?.ToLowerInvariant();
                 if (string.IsNullOrEmpty(fileExtension) || !allowedExtensions.Contains(fileExtension))
                 {
-                    return APIOperationResponse<Guid>.Fail(ResponseType.BadRequest, 
-                        $"Invalid file type. Only {string.Join(", ", allowedExtensions)} files are allowed.");
+                    return APIOperationResponse<Guid>.BadRequest($"Invalid file type. Only {string.Join(", ", allowedExtensions)} files are allowed.");
                 }
 
                 // Validate file size (max 10MB)
                 const long maxFileSize = 10 * 1024 * 1024; // 10MB
                 if (file.Length > maxFileSize)
                 {
-                    return APIOperationResponse<Guid>.Fail(ResponseType.BadRequest, 
-                        $"File size exceeds maximum allowed size of {maxFileSize / (1024 * 1024)}MB");
+                    return APIOperationResponse<Guid>.BadRequest($"File size exceeds maximum allowed size of {maxFileSize / (1024 * 1024)}MB");
                 }
 
                 // Read file content
@@ -452,8 +453,7 @@ namespace Ettad.Reporting.Services
                 catch (Exception ex)
                 {
                     _logger.LogWarning(ex, "Invalid XML format in imported file. FileName: {FileName}", file.FileName);
-                    return APIOperationResponse<Guid>.Fail(ResponseType.BadRequest, 
-                        "Invalid file format. The file must be a valid DevExpress report XML file.");
+                    return APIOperationResponse<Guid>.BadRequest("Invalid file format. The file must be a valid DevExpress report XML file.");
                 }
 
                 // Extract report name from filename if not provided
@@ -461,6 +461,13 @@ namespace Ettad.Reporting.Services
                 if (string.IsNullOrWhiteSpace(finalReportName))
                 {
                     finalReportName = $"Imported Report {DateTime.Now:yyyyMMddHHmmss}";
+                }
+
+                // Check if report name already exists
+                var nameExists = await _context.Reports.AnyAsync(r => r.ReportName == finalReportName && r.ReportStatusId != (int)ReportStatuses.Inactive);
+                if (nameExists)
+                {
+                    return APIOperationResponse<Guid>.BadRequest("Report with this name already exists, give another.");
                 }
 
                 // Generate unique URL from report name if not provided
@@ -471,8 +478,7 @@ namespace Ettad.Reporting.Services
                 // Validate URL format
                 if (!IsValidUrl(baseUrl))
                 {
-                    return APIOperationResponse<Guid>.Fail(ResponseType.BadRequest, 
-                        "Invalid URL format. URL can only contain letters, numbers, underscores, and hyphens.");
+                    return APIOperationResponse<Guid>.BadRequest("Invalid URL format. URL can only contain letters, numbers, underscores, and hyphens.");
                 }
                 
                 var finalUrl = baseUrl;
@@ -487,7 +493,7 @@ namespace Ettad.Reporting.Services
                 var status = await _reportStatusRepository.FindOneAsync(s => s.Id == 1);
                 if (status == null)
                 {
-                    return APIOperationResponse<Guid>.Fail(ResponseType.BadRequest, "Default report status not found");
+                    return APIOperationResponse<Guid>.BadRequest("Default report status not found");
                 }
 
                 // Create report entity
@@ -562,6 +568,19 @@ namespace Ettad.Reporting.Services
             }
 
             return true;
+        }
+
+        public async Task<bool> IsReportExists(string name)
+        {
+            var reportExist = false;
+            var report = await _reportRepository.FindOneAsync(r => r.ReportName == name && r.ReportStatusId != (int)ReportStatuses.Inactive);
+
+            if (report == null)
+                return reportExist;
+            reportExist = true;
+
+            return reportExist;
+
         }
     }
 }
