@@ -77,12 +77,12 @@ namespace Ettad.Reporting.Reports
                 var logoPath = GetLogoPath();
                 if (File.Exists(logoPath))
                 {
-                    xrPictureBoxLogo.ImageSource = new DevExpress.XtraPrinting.Drawing.ImageSource(logoPath);
+                 //   xrPictureBoxLogo.ImageSource = new DevExpress.XtraPrinting.Drawing.ImageSource(logoPath);
                 }
             }
             
             // Apply language localization
-            ApplyLanguageLocalization();
+            //ApplyLanguageLocalization();
         }
 
         private void InitializeComponent()
@@ -1041,11 +1041,11 @@ namespace Ettad.Reporting.Reports
                 xrLabelReportTitle.Text = title;
         }
 
-        public void SetReportSubtitle(string subtitle)
-        {
-            if (xrLabelReportSubtitle != null)
-                xrLabelReportSubtitle.Text = subtitle;
-        }
+        //public void SetReportSubtitle(string subtitle)
+        //{
+        //    if (xrLabelReportSubtitle != null)
+        //        xrLabelReportSubtitle.Text = subtitle;
+        //}
 
         public void SetCompanyName(string companyName)
         {
