@@ -47,13 +47,23 @@ public class CheckAuthorizeAttribute : AuthorizeAttribute, IAsyncAuthorizationFi
         }
 
         // ---------------------------------------------------------
+        // PERMISSION CHECK
+        // ---------------------------------------------------------
+        var permissionService = httpContext.RequestServices.GetService<IPermissionService>();
+        var userPolicies = await permissionService?.GetUserPermissions(userId); 
+
+        if (userPolicies == null || !userPolicies.Intersect(RequiredPolicies).Any())
+        {
+            context.Result = new StatusCodeResult((int)System.Net.HttpStatusCode.Forbidden);
+            return; // Exit if permission denied
+        }
+
+        // ---------------------------------------------------------
         // DELEGATION CHECK: Block if user is delegating authority
         // ---------------------------------------------------------
-        // We use IDelegationAuthorizationService to avoid circular dependency
         var delegationService = httpContext.RequestServices.GetService<IDelegationAuthorizationService>();
         if (delegationService != null)
         {
-            // Safer approach: Check HTTP Method.
             var method = httpContext.Request.Method.ToUpper();
             if (method != "GET" && method != "OPTIONS" && method != "HEAD")
             {
@@ -68,17 +78,6 @@ public class CheckAuthorizeAttribute : AuthorizeAttribute, IAsyncAuthorizationFi
                      return;
                  }
             }
-        }
-
-        // ---------------------------------------------------------
-        // PERMISSION CHECK
-        // ---------------------------------------------------------
-        var permissionService = httpContext.RequestServices.GetService<IPermissionService>();
-        var userPolicies = await permissionService?.GetUserPermissions(userId); // Use await if async
-
-        if (userPolicies == null || !userPolicies.Intersect(RequiredPolicies).Any())
-        {
-            context.Result = new StatusCodeResult((int)System.Net.HttpStatusCode.Forbidden);
         }
     }
 }
