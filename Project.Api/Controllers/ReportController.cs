@@ -90,9 +90,9 @@ namespace Ettad.Reporting.Controllers
         [HttpPatch("{id}/public")]
         [ProducesResponseType((int)HttpStatusCode.OK)]
         [CheckAuthorize("Permissions.Report.Edit")]
-        public async Task<IActionResult> SetReportPublic(Guid id, [FromBody] SetReportPublicRequestDto dto)
+        public async Task<IActionResult> SetReportPublic(Guid id, bool isPublic)
         {
-            var result = await _reportService.SetReportPublicAsync(id, dto.IsPublic);
+            var result = await _reportService.SetReportPublicAsync(id, isPublic);
             return ProcessResponse(result);
         }
 

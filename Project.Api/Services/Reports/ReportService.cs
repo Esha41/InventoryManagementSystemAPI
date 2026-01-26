@@ -326,8 +326,6 @@ namespace Ettad.Reporting.Services
                     CreatedBy = updated.CreatedBy,
                     ModificationDate = updated.ModificationDate,
                     ModifiedBy = updated.ModifiedBy,
-                    IsTemplate = false,
-                    IsPublic = isPublic,
                     IsDeleted = updated.IsDeleted,
                     DeletionDate = updated.DeletionDate,
                     DeletedBy = updated.DeletedBy

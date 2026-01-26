@@ -20,13 +20,6 @@ namespace Ettad.Reporting.Services.Reports.Dtos
 
         public byte[]? LayoutData { get; set; }
 
-        [MaxLength(100)]
-        public string? ReportType { get; set; }
-
         public string? ReportParameters { get; set; }
-
-        public bool IsTemplate { get; set; } = false;
-
-        public bool IsPublic { get; set; } = false;
     }
 }

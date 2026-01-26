@@ -120,9 +120,7 @@ namespace Ettad.Reporting.Storage
                     Url = url,
                     Description = existingReportResult.Data.Description,
                     LayoutData = layoutData,
-                    ReportParameters = existingReportResult.Data.ReportParameters,
-                    IsTemplate = existingReportResult.Data.IsTemplate,
-                    IsPublic = existingReportResult.Data.IsPublic
+                    ReportParameters = existingReportResult.Data.ReportParameters
                 };
 
                 var updateResult = _reportService.UpdateAsync(existingReportResult.Data.Id, updateDto).GetAwaiter().GetResult();
@@ -174,9 +172,7 @@ namespace Ettad.Reporting.Storage
                     ReportName = reportName ?? url,
                     ReportStatusId = (int)ReportStatuses.Draft, // Default to Draft
                     Url = url,
-                    LayoutData = layoutData,
-                    IsTemplate = false,
-                    IsPublic = false
+                    LayoutData = layoutData
                 };
 
                 var createResult = _reportService.CreateAsync(createDto).GetAwaiter().GetResult();

@@ -10,10 +10,7 @@ namespace Ettad.Reporting.Services.Reports.Dtos
         public string Url { get; set; } = string.Empty;
         public string? Description { get; set; }
         public byte[]? LayoutData { get; set; }
-        public string? ReportType { get; set; }
         public string? ReportParameters { get; set; }
-        public bool IsTemplate { get; set; }
-        public bool IsPublic { get; set; }
         public DateTime CreationDate { get; set; }
         public string CreatedBy { get; set; } = string.Empty;
         public DateTime? ModificationDate { get; set; }
