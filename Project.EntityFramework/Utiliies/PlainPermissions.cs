@@ -62,6 +62,9 @@ namespace Ettad.Data.Enums
         [Category(PlainPermissionsGenerator.Workflow)]
         ReviewWeaponSupply,
 
+        [Category(PlainPermissionsGenerator.Workflow)]
+        UpdateRequestItems,
+
         [Category(PlainPermissionsGenerator.Inventory)]
         AllowanceItemViewAllDepartments,
     }
