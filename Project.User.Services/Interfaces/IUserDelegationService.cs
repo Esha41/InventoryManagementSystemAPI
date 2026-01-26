@@ -27,5 +27,13 @@ namespace Ettad.User.Services.Interfaces
         Task<APIOperationResponse<List<UserDelegationDto>>> GetAllDelegationsAsync();
 
         Task<APIOperationResponse<List<UserDelegationDto>>> GetDelegationHistoryAsync();
+
+        Task<APIOperationResponse<bool>> GetAllowCrossDepartmentDelegationAsync();
+        Task<APIOperationResponse<bool>> UpdateAllowCrossDepartmentDelegationAsync(bool allow);
+
+        Task<APIOperationResponse<bool>> GetAllowDelegatorActionAsync();
+        Task<APIOperationResponse<bool>> UpdateAllowDelegatorActionAsync(bool allow);
+
+        Task<bool> IsUserRestrictedByDelegationAsync(string userId);
     }
 }
