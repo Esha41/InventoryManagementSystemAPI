@@ -4,6 +4,7 @@ using Ettad.EntityFramework.DataBaseContext;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Ettad.EntityFramework.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260121132709_OrderHistory")]
+    partial class OrderHistory
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -818,7 +821,7 @@ namespace Ettad.EntityFramework.Migrations
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Name")
-                        .HasColumnType("nvarchar(450)");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Notes")
                         .HasMaxLength(5000)
@@ -849,21 +852,10 @@ namespace Ettad.EntityFramework.Migrations
 
                     b.HasIndex("ClassificationId");
 
-                    b.HasIndex("IsDeleted")
-                        .HasFilter("[IsDeleted] = 0");
-
                     b.HasIndex("ItemNo")
                         .IsUnique();
 
-                    b.HasIndex("Name");
-
                     b.HasIndex("TypeId");
-
-                    b.HasIndex("ClassificationId", "IsDeleted")
-                        .HasFilter("[IsDeleted] = 0");
-
-                    b.HasIndex("TypeId", "IsDeleted")
-                        .HasFilter("[IsDeleted] = 0");
 
                     b.ToTable("BaseItems", (string)null);
 

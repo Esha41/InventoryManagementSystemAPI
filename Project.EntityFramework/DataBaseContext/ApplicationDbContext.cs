@@ -67,6 +67,7 @@ namespace Ettad.EntityFramework.DataBaseContext
         public DbSet<AssetSupply> AssetSupplies { get; set; }
         public DbSet<AssetSupplyDetail> AssetSupplyDetails { get; set; }
         public DbSet<AssetHistory> AssetHistory { get; set; }
+        public DbSet<OrderItemHistory> OrderItemHistory { get; set; }
 
         public DbSet<ApplicationEntity> ApplicationEntities { get;set;}
         public DbSet<RoleApplicationEntity> RoleApplicationEntities { get; set; }

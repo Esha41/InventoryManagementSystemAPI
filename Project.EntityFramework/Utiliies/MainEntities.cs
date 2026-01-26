@@ -322,6 +322,13 @@ public static class MainEntities
     };
 
     [Category(CrudPermissionsGenerator.Dashboard)]
+    public static readonly CrudOperation[] AdvancedAnalytics = new[]
+    {
+        CrudOperation.Page,
+        CrudOperation.View,
+    };
+
+    [Category(CrudPermissionsGenerator.Dashboard)]
     public static readonly CrudOperation[] AdminDashboard = new[]
     {
         CrudOperation.Page,

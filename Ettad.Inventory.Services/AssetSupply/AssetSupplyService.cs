@@ -13,6 +13,8 @@ using Ettad.Inventory.Service.AssetHistory.Dtos;
 using Ettad.ResponseHandler.Consts;
 using Ettad.ResponseHandler.Models;
 using Ettad.CrossCutting.Comman.Time;
+using Ettad.Workflows.Service.Interface;
+using Ettad.Workflows.Service.DTO;
 
 namespace Ettad.Inventory.Service.AssetSupply
 {
@@ -32,6 +34,8 @@ namespace Ettad.Inventory.Service.AssetSupply
         private readonly ICurrentUserService _currentUserService;
         private readonly ILogger<AssetSupplyService> _logger;
         private readonly IDateTimeProvider _dateTimeProvider;
+        private readonly IOrderItemTrackingService _orderItemTrackingService;
+        private readonly IWorkflowApprovalService _workflowApprovalService;
 
         public AssetSupplyService(
             ApplicationDbContext context,
@@ -47,7 +51,9 @@ namespace Ettad.Inventory.Service.AssetSupply
             IValidator<ReturnMultipleAssetsDto> returnMultipleValidator,
             ICurrentUserService currentUserService,
             ILogger<AssetSupplyService> logger,
-            IDateTimeProvider dateTimeProvider)
+            IDateTimeProvider dateTimeProvider,
+            IOrderItemTrackingService orderItemTrackingService,
+            IWorkflowApprovalService workflowApprovalService)
         {
             _context = context;
             _assetSupplyRepository = assetSupplyRepository;
@@ -62,6 +68,9 @@ namespace Ettad.Inventory.Service.AssetSupply
             _returnMultipleValidator = returnMultipleValidator;
             _currentUserService = currentUserService;
             _logger = logger;
+            _dateTimeProvider = dateTimeProvider;
+            _orderItemTrackingService = orderItemTrackingService;
+            _workflowApprovalService = workflowApprovalService;
         }
 
         public async Task<APIOperationResponse<OrderAssetsToSupplyDto>> GetAssetsToSupplyAsync(long orderId, List<long>? depotIds = null)
@@ -271,7 +280,6 @@ namespace Ettad.Inventory.Service.AssetSupply
             _logger.LogInformation("Creating and submitting asset supply. OrderId: {OrderId}, AssetCount: {AssetCount}, User: {UserId}",
                 dto.OrderId, dto.SupplyDetails?.Count ?? 0, _currentUserService.UserId);
 
-            using var transaction = await _context.Database.BeginTransactionAsync();
             try
             {
                 // Validate input
@@ -329,6 +337,50 @@ namespace Ettad.Inventory.Service.AssetSupply
                     return APIOperationResponse<long>.Fail(ResponseType.BadRequest,
                         $"A supply already exists for this order. Supply ID: {existingSupply.Id}");
                 }
+
+                // Store order data before detaching to avoid tracking conflicts
+                var orderId = order.Id;
+                var orderDepartmentId = order.DepartmentId;
+
+                // Detach Order entity to avoid tracking conflicts when workflow approval loads it
+                _context.Entry(order).State = EntityState.Detached;
+
+                // Approve workflow step for the order BEFORE starting our transaction
+                // This must be done outside our transaction because ProcessActionAsync starts its own transaction
+                try
+                {
+                    if (orderId > 0)
+                    {
+                        var approveDto = new ApproveRejectWorkflowApprovalDto
+                        {
+                            BaseRequestID = orderId,
+                            Action = RequestStatus.Approved,
+                            IsApproved = true,
+                            Comments = dto.Notes,
+                            SendToHigherApproval = false
+                        };
+
+                        var approveResult = await _workflowApprovalService.ProcessActionAsync(approveDto);
+                        if (!approveResult.Succeeded)
+                        {
+                            _logger.LogWarning("Failed to approve workflow step for order. OrderId: {OrderId}, Error: {Error}", 
+                                orderId, approveResult.Message);
+                            return APIOperationResponse<long>.Fail(ResponseType.BadRequest, 
+                                $"Failed to approve workflow step: {approveResult.Message}");
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error approving workflow step for order. OrderId: {OrderId}", orderId);
+                    return APIOperationResponse<long>.Fail(ResponseType.InternalServerError, 
+                        $"Failed to approve workflow step: {ex.Message}");
+                }
+
+                // Now start our transaction for creating the asset supply
+                using var transaction = await _context.Database.BeginTransactionAsync();
+                try
+                {
 
                 // Validate all assets
                 var assetIds = dto.SupplyDetails.Select(d => d.AssetId).ToList();
@@ -465,17 +517,86 @@ namespace Ettad.Inventory.Service.AssetSupply
                     });
                 }
 
-                await transaction.CommitAsync();
+                // Record order item history for asset supply
+                try
+                {
+                    var departmentId = _currentUserService.DepartmentId ?? orderDepartmentId;
+                    var userName = _currentUserService.UserName ?? "System";
 
-                _logger.LogInformation("Asset supply created and submitted. SupplyId: {SupplyId}, OrderId: {OrderId}, User: {UserId}",
-                    createdSupply.Id, dto.OrderId, _currentUserService.UserId);
+                    // Group supply details by ItemId to get quantities
+                    var supplyDetailsByItem = createdSupply.SupplyDetails
+                        .GroupBy(d => d.ItemId)
+                        .ToDictionary(g => g.Key, g => (long)g.Count());
 
-                return APIOperationResponse<long>.Success(createdSupply.Id, "Asset supply created and submitted successfully");
+                    var suppliedItemIds = supplyDetailsByItem.Keys.ToList();
+                    var orderItems = order.RequestItems?.Where(ri => !ri.IsDeleted).ToList() ?? new List<RequestItem>();
+
+                    // Record history for supplied items
+                    foreach (var itemGroup in supplyDetailsByItem)
+                    {
+                        var historyContext = new OrderItemHistoryContext
+                        {
+                            OrderId = orderId,
+                            ItemId = itemGroup.Key,
+                            ActionType = OrderItemActionType.AssetSupplied,
+                            OrderStatus = RequestStatus.Approved,
+                            SuppliedQuantity = itemGroup.Value,
+                            DepartmentId = departmentId,
+                            ModifiedByUserId = _currentUserService.UserId,
+                            ModifiedByUserName = userName,
+                            AssetSupplyId = createdSupply.Id,
+                            Description = $"Asset supplied - quantity: {itemGroup.Value}"
+                        };
+
+                        await _orderItemTrackingService.RecordHistoryAsync(historyContext);
+                    }
+
+                    // Record history for unsupplied items (items in order but not in supply)
+                    foreach (var orderItem in orderItems.Where(ri => !suppliedItemIds.Contains(ri.ItemId)))
+                    {
+                        var historyContext = new OrderItemHistoryContext
+                        {
+                            OrderId = orderId,
+                            RequestItemId = orderItem.Id,
+                            ItemId = orderItem.ItemId,
+                            ActionType = OrderItemActionType.AssetSupplied,
+                            OrderStatus = RequestStatus.Approved,
+                            SuppliedQuantity = 0,
+                            DepartmentId = departmentId,
+                            ModifiedByUserId = _currentUserService.UserId,
+                            ModifiedByUserName = userName,
+                            AssetSupplyId = createdSupply.Id,
+                            Description = $"Asset not yet supplied",
+                            Notes = "This item is not yet supplied"
+                        };
+
+                        await _orderItemTrackingService.RecordHistoryAsync(historyContext);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to record history for asset supply creation. SupplyId: {SupplyId}", createdSupply.Id);
+                }
+
+                    await transaction.CommitAsync();
+
+                    _logger.LogInformation("Asset supply created and submitted. SupplyId: {SupplyId}, OrderId: {OrderId}, User: {UserId}",
+                        createdSupply.Id, dto.OrderId, _currentUserService.UserId);
+
+                    return APIOperationResponse<long>.Success(createdSupply.Id, "Asset supply created and submitted successfully");
+                }
+                catch (Exception ex)
+                {
+                    await transaction.RollbackAsync();
+                    _logger.LogError(ex, "Error creating asset supply. OrderId: {OrderId}, User: {UserId}",
+                        dto.OrderId, _currentUserService.UserId);
+                    return APIOperationResponse<long>.Fail(
+                        ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
+                }
             }
             catch (Exception ex)
             {
-                await transaction.RollbackAsync();
-                _logger.LogError(ex, "Error creating asset supply. OrderId: {OrderId}, User: {UserId}",
+                _logger.LogError(ex, "Error in CreateAndSubmitAsync. OrderId: {OrderId}, User: {UserId}",
                     dto.OrderId, _currentUserService.UserId);
                 return APIOperationResponse<long>.Fail(
                     ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
