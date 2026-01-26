@@ -1,8 +1,11 @@
+using DevExpress.CodeParser;
 using DevExpress.DocumentServices.ServiceModel.DataContracts;
 using DevExpress.Office.Utils;
+using DevExpress.XtraRichEdit.Import.Html;
 using Ettad.Application.Common.Interfaces;
 using Ettad.CrossCutting.Comman.Time;
 using Ettad.CrossCutting.Data.Repository;
+using Ettad.Data.Entities;
 using Ettad.Data.Entities.Reports;
 using Ettad.Data.Enums;
 using Ettad.EntityFramework.DataBaseContext;
@@ -21,31 +24,30 @@ namespace Ettad.Reporting.Services
 {
     public class ReportService : IReportService
     {
+        private readonly ApplicationDbContext _context;
         private readonly ICrossCuttingRepository<ReportEntity> _reportRepository;
         private readonly ICrossCuttingRepository<ReportStatus> _reportStatusRepository;
         private readonly ICurrentUserService _currentUserService;
         private readonly ILogger<ReportService> _logger;
-        private readonly ApplicationDbContext _context;
         private readonly IDateTimeProvider _dateTimeProvider;
-        private static readonly HashSet<string> ExcludedTables = new(StringComparer.OrdinalIgnoreCase)
-         {
-             "__EFMigrationsHistory",
-             "sysdiagrams"
-         };
+        //private static readonly HashSet<string> ExcludedTables = new(StringComparer.OrdinalIgnoreCase)
+        // {
+        //     "__EFMigrationsHistory",
+        //     "sysdiagrams"
+        // };
 
         public ReportService(
             ICrossCuttingRepository<ReportEntity> reportRepository,
             ICrossCuttingRepository<ReportStatus> reportStatusRepository,
-            ICurrentUserService currentUserService,
+            ICurrentUserService currentUserService, ApplicationDbContext context,
             ILogger<ReportService> logger,
-            ApplicationDbContext context,
             IDateTimeProvider dateTimeProvider)
         {
+            _context = context;
             _reportRepository = reportRepository;
             _reportStatusRepository = reportStatusRepository;
             _currentUserService = currentUserService;
             _logger = logger;
-            _context = context;
             _dateTimeProvider = dateTimeProvider;
         }
 
@@ -55,11 +57,15 @@ namespace Ettad.Reporting.Services
 
             try
             {
-                var reports = await _context.Reports
-                    .Include(r => r.ReportStatus)
-                    .Where(r => r.ReportStatusId != (int)ReportStatuses.Inactive)
-                    .OrderByDescending(r => r.CreationDate)
-                    .ToListAsync();
+                System.Linq.Expressions.Expression<System.Func<ReportEntity, bool>> filter;
+
+                filter = r => r.ReportStatusId != (int)ReportStatuses.Inactive;
+
+                var reports = await _reportRepository.FindAsync(
+                                r => r.ReportStatusId != (int)ReportStatuses.Inactive,
+                                false,
+                                nameof(ReportEntity.ReportStatus)
+                            );
 
                 var dtos = reports.Select(r => new ReportDto
                 {
@@ -96,9 +102,10 @@ namespace Ettad.Reporting.Services
 
             try
             {
-                var report = await _context.Reports
-                    .Include(r => r.ReportStatus)
-                    .FirstOrDefaultAsync(r => r.Id == id && r.ReportStatusId != (int)ReportStatuses.Inactive);
+                var report = await _reportRepository.FindOneAsync(
+                  x => x.Id == id && x.ReportStatusId != (int)ReportStatuses.Inactive,
+                  false,
+                  nameof(ReportEntity.ReportStatus));
 
                 if (report == null)
                 {
@@ -143,10 +150,10 @@ namespace Ettad.Reporting.Services
             {
                 if (string.IsNullOrWhiteSpace(url))
                     return APIOperationResponse<ReportDto>.BadRequest("URL is required");
-
-                var report = await _context.Reports
-                    .Include(r => r.ReportStatus)
-                    .FirstOrDefaultAsync(r => r.Url == url && r.ReportStatusId != (int)ReportStatuses.Inactive);
+                var report = await _reportRepository.FindOneAsync(
+                                      x => x.Url == url && x.ReportStatusId != (int)ReportStatuses.Inactive,
+                                      false,
+                                      nameof(ReportEntity.ReportStatus));
 
                 if (report == null)
                 {
@@ -191,8 +198,12 @@ namespace Ettad.Reporting.Services
             try
             {
                 // Check if report name already exists
-                var nameExists = await _context.Reports.AnyAsync(r => r.ReportName == dto.ReportName && r.ReportStatusId != (int)ReportStatuses.Inactive);
-                if (nameExists)
+
+                var reportEntity = await _reportRepository.FindOneAsync(
+                                      x => x.ReportName == dto.ReportName && x.ReportStatusId != (int)ReportStatuses.Inactive,
+                                      false,
+                                      nameof(ReportEntity.ReportStatus));
+                if (reportEntity!=null)
                 {
                     return APIOperationResponse<Guid>.BadRequest("Report with this name already exists, give another.");
                 }
@@ -212,7 +223,6 @@ namespace Ettad.Reporting.Services
                 };
 
                 await _reportRepository.AddAsync(report);
-                await _context.SaveChangesAsync();
 
                 _logger.LogInformation("Report created successfully. ReportId: {ReportId}, ReportName: {ReportName}, User: {UserId}", 
                     report.Id, dto.ReportName, _currentUserService.UserId);
@@ -232,7 +242,10 @@ namespace Ettad.Reporting.Services
 
             try
             {
-                var report = await _reportRepository.FindOneAsync(r => r.Id == id && r.ReportStatusId != (int)ReportStatuses.Inactive);
+                var report = await _reportRepository.FindOneAsync(
+                  x => x.Id == id && x.ReportStatusId != (int)ReportStatuses.Inactive,
+                  false,
+                  nameof(ReportEntity.ReportStatus));
 
                 if (report == null)
                 {
@@ -243,8 +256,8 @@ namespace Ettad.Reporting.Services
                 // Check if report name already exists (excluding current report)
                 if (report.ReportName != dto.ReportName)
                 {
-                    var nameExists = await _context.Reports.AnyAsync(r => r.ReportName == dto.ReportName && r.Id != id && r.ReportStatusId != (int)ReportStatuses.Inactive);
-                    if (nameExists)
+                    var reportEntity = await _reportRepository.FindOneAsync(r => r.ReportName == dto.ReportName && r.ReportStatusId != (int)ReportStatuses.Inactive);
+                    if (reportEntity != null)
                     {
                         return APIOperationResponse<bool>.BadRequest("Report with this name already exists, give another.");
                     }
@@ -336,8 +349,11 @@ namespace Ettad.Reporting.Services
 
             try
             {
-                var report = await _reportRepository.FindOneAsync(r => r.Id == id && r.ReportStatusId != (int)ReportStatuses.Inactive);
-
+                var report = await _reportRepository.FindOneAsync(
+                                  x => x.Id == id && x.ReportStatusId != (int)ReportStatuses.Inactive,
+                                  false,
+                                  nameof(ReportEntity.ReportStatus));
+              
                 if (report == null)
                 {
                     _logger.LogWarning("Report not found for deletion. ReportId: {ReportId}, User: {UserId}", id, _currentUserService.UserId);
@@ -351,7 +367,6 @@ namespace Ettad.Reporting.Services
                 report.DeletedBy = _currentUserService.UserId;
 
                 await _reportRepository.UpdateAsync(report);
-                await _context.SaveChangesAsync();
 
                 _logger.LogInformation("Report deleted successfully. ReportId: {ReportId}, User: {UserId}", id, _currentUserService.UserId);
                 return APIOperationResponse<bool>.Success(true);
@@ -388,141 +403,141 @@ namespace Ettad.Reporting.Services
             }
         }
 
-        public async Task<IReadOnlyList<TableSchemaInfo>> GetTableNamesAsync(CancellationToken cancellationToken = default)
-        {
-            const string sql = @"
-                                SELECT 
-                                    t.TABLE_SCHEMA AS SchemaName, 
-                                    t.TABLE_NAME AS TableName 
-                                FROM INFORMATION_SCHEMA.TABLES t
-                                WHERE t.TABLE_TYPE = 'BASE TABLE' 
-                                  AND t.TABLE_CATALOG = DB_NAME()
-                                  AND t.TABLE_NAME NOT IN ('__EFMigrationsHistory', 'sysdiagrams')
-                                ORDER BY t.TABLE_SCHEMA, t.TABLE_NAME";
+        //public async Task<IReadOnlyList<TableSchemaInfo>> GetTableNamesAsync(CancellationToken cancellationToken = default)
+        //{
+        //    const string sql = @"
+        //                        SELECT 
+        //                            t.TABLE_SCHEMA AS SchemaName, 
+        //                            t.TABLE_NAME AS TableName 
+        //                        FROM INFORMATION_SCHEMA.TABLES t
+        //                        WHERE t.TABLE_TYPE = 'BASE TABLE' 
+        //                          AND t.TABLE_CATALOG = DB_NAME()
+        //                          AND t.TABLE_NAME NOT IN ('__EFMigrationsHistory', 'sysdiagrams')
+        //                        ORDER BY t.TABLE_SCHEMA, t.TABLE_NAME";
 
-            var rows = await _context.Database
-                .SqlQueryRaw<TableSchemaInfoDto>(sql)
-                .ToListAsync(cancellationToken);
+        //    var rows = await _context.Database
+        //        .SqlQueryRaw<TableSchemaInfoDto>(sql)
+        //        .ToListAsync(cancellationToken);
 
-            return rows
-                .Select(r => new TableSchemaInfo(r.SchemaName ?? "dbo", r.TableName ?? ""))
-                .Where(t => !string.IsNullOrEmpty(t.TableName) && !ExcludedTables.Contains(t.TableName))
-                .ToList();
-        }
+        //    return rows
+        //        .Select(r => new TableSchemaInfo(r.SchemaName ?? "dbo", r.TableName ?? ""))
+        //        .Where(t => !string.IsNullOrEmpty(t.TableName) && !ExcludedTables.Contains(t.TableName))
+        //        .ToList();
+        //}
 
-        public async Task<APIOperationResponse<Guid>> ImportAsync(IFormFile file, string? reportName = null, string? url = null, string? description = null)
-        {
-            _logger.LogInformation("Importing report from file. FileName: {FileName}, User: {UserId}", file?.FileName, _currentUserService.UserId);
+        //public async Task<APIOperationResponse<Guid>> ImportAsync(IFormFile file, string? reportName = null, string? url = null, string? description = null)
+        //{
+        //    _logger.LogInformation("Importing report from file. FileName: {FileName}, User: {UserId}", file?.FileName, _currentUserService.UserId);
 
-            try
-            {
-                if (file == null || file.Length == 0)
-                {
-                    return APIOperationResponse<Guid>.BadRequest("No file provided");
-                }
+        //    try
+        //    {
+        //        if (file == null || file.Length == 0)
+        //        {
+        //            return APIOperationResponse<Guid>.BadRequest("No file provided");
+        //        }
 
-                // Validate file extension (.repx or .xml)
-                var allowedExtensions = new[] { ".repx", ".xml" };
-                var fileExtension = Path.GetExtension(file.FileName)?.ToLowerInvariant();
-                if (string.IsNullOrEmpty(fileExtension) || !allowedExtensions.Contains(fileExtension))
-                {
-                    return APIOperationResponse<Guid>.BadRequest($"Invalid file type. Only {string.Join(", ", allowedExtensions)} files are allowed.");
-                }
+        //        // Validate file extension (.repx or .xml)
+        //        var allowedExtensions = new[] { ".repx", ".xml" };
+        //        var fileExtension = Path.GetExtension(file.FileName)?.ToLowerInvariant();
+        //        if (string.IsNullOrEmpty(fileExtension) || !allowedExtensions.Contains(fileExtension))
+        //        {
+        //            return APIOperationResponse<Guid>.BadRequest($"Invalid file type. Only {string.Join(", ", allowedExtensions)} files are allowed.");
+        //        }
 
-                // Validate file size (max 10MB)
-                const long maxFileSize = 10 * 1024 * 1024; // 10MB
-                if (file.Length > maxFileSize)
-                {
-                    return APIOperationResponse<Guid>.BadRequest($"File size exceeds maximum allowed size of {maxFileSize / (1024 * 1024)}MB");
-                }
+        //        // Validate file size (max 10MB)
+        //        const long maxFileSize = 10 * 1024 * 1024; // 10MB
+        //        if (file.Length > maxFileSize)
+        //        {
+        //            return APIOperationResponse<Guid>.BadRequest($"File size exceeds maximum allowed size of {maxFileSize / (1024 * 1024)}MB");
+        //        }
 
-                // Read file content
-                byte[] layoutData;
-                using (var memoryStream = new MemoryStream())
-                {
-                    await file.CopyToAsync(memoryStream);
-                    layoutData = memoryStream.ToArray();
-                }
+        //        // Read file content
+        //        byte[] layoutData;
+        //        using (var memoryStream = new MemoryStream())
+        //        {
+        //            await file.CopyToAsync(memoryStream);
+        //            layoutData = memoryStream.ToArray();
+        //        }
 
-                // Validate XML format
-                try
-                {
-                    var xmlContent = Encoding.UTF8.GetString(layoutData);
-                    XDocument.Parse(xmlContent); // Validate XML structure
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex, "Invalid XML format in imported file. FileName: {FileName}", file.FileName);
-                    return APIOperationResponse<Guid>.BadRequest("Invalid file format. The file must be a valid DevExpress report XML file.");
-                }
+        //        // Validate XML format
+        //        try
+        //        {
+        //            var xmlContent = Encoding.UTF8.GetString(layoutData);
+        //            XDocument.Parse(xmlContent); // Validate XML structure
+        //        }
+        //        catch (Exception ex)
+        //        {
+        //            _logger.LogWarning(ex, "Invalid XML format in imported file. FileName: {FileName}", file.FileName);
+        //            return APIOperationResponse<Guid>.BadRequest("Invalid file format. The file must be a valid DevExpress report XML file.");
+        //        }
 
-                // Extract report name from filename if not provided
-                var finalReportName = reportName ?? Path.GetFileNameWithoutExtension(file.FileName);
-                if (string.IsNullOrWhiteSpace(finalReportName))
-                {
-                    finalReportName = $"Imported Report {DateTime.Now:yyyyMMddHHmmss}";
-                }
+        //        // Extract report name from filename if not provided
+        //        var finalReportName = reportName ?? Path.GetFileNameWithoutExtension(file.FileName);
+        //        if (string.IsNullOrWhiteSpace(finalReportName))
+        //        {
+        //            finalReportName = $"Imported Report {DateTime.Now:yyyyMMddHHmmss}";
+        //        }
 
-                // Check if report name already exists
-                var nameExists = await _context.Reports.AnyAsync(r => r.ReportName == finalReportName && r.ReportStatusId != (int)ReportStatuses.Inactive);
-                if (nameExists)
-                {
-                    return APIOperationResponse<Guid>.BadRequest("Report with this name already exists, give another.");
-                }
+        //        // Check if report name already exists
+        //        var reportEntity = await _reportRepository.FindOneAsync(r => r.ReportName == finalReportName && r.ReportStatusId != (int)ReportStatuses.Inactive);
+        //        if (reportEntity != null)
+        //        {
+        //            return APIOperationResponse<Guid>.BadRequest("Report with this name already exists, give another.");
+        //        }
 
-                // Generate unique URL from report name if not provided
-                var baseUrl = !string.IsNullOrWhiteSpace(url) 
-                    ? url.Trim() 
-                    : GenerateUrlFromName(finalReportName);
+        //        // Generate unique URL from report name if not provided
+        //        var baseUrl = !string.IsNullOrWhiteSpace(url) 
+        //            ? url.Trim() 
+        //            : GenerateUrlFromName(finalReportName);
                 
-                // Validate URL format
-                if (!IsValidUrl(baseUrl))
-                {
-                    return APIOperationResponse<Guid>.BadRequest("Invalid URL format. URL can only contain letters, numbers, underscores, and hyphens.");
-                }
+        //        // Validate URL format
+        //        if (!IsValidUrl(baseUrl))
+        //        {
+        //            return APIOperationResponse<Guid>.BadRequest("Invalid URL format. URL can only contain letters, numbers, underscores, and hyphens.");
+        //        }
                 
-                var finalUrl = baseUrl;
-                var counter = 1;
-                while (await _context.Reports.AnyAsync(r => r.Url == finalUrl && r.ReportStatusId != (int)ReportStatuses.Inactive))
-                {
-                    finalUrl = $"{baseUrl}_{counter}";
-                    counter++;
-                }
+        //        var finalUrl = baseUrl;
+        //        var counter = 1;
 
-                // Validate that ReportStatus exists (default to Draft = 1)
-                var status = await _reportStatusRepository.FindOneAsync(s => s.Id == 1);
-                if (status == null)
-                {
-                    return APIOperationResponse<Guid>.BadRequest("Default report status not found");
-                }
+        //        while (await _context.Reports.AnyAsync(r => r.Url == finalUrl && r.ReportStatusId != (int)ReportStatuses.Inactive))
+        //        {
+        //            finalUrl = $"{baseUrl}_{counter}";
+        //            counter++;
+        //        }
 
-                // Create report entity
-                var report = new ReportEntity
-                {
-                    Id = Guid.NewGuid(),
-                    ReportName = finalReportName,
-                    ReportStatusId = 1, // Default to Draft
-                    Url = finalUrl,
-                    Description = description,
-                    LayoutData = layoutData,
-                    CreationDate = _dateTimeProvider.Now,
-                    CreatedBy = _currentUserService.UserId ?? string.Empty
-                };
+        //        // Validate that ReportStatus exists (default to Draft = 1)
+        //        var status = await _reportStatusRepository.FindOneAsync(s => s.Id == 1);
+        //        if (status == null)
+        //        {
+        //            return APIOperationResponse<Guid>.BadRequest("Default report status not found");
+        //        }
 
-                await _reportRepository.AddAsync(report);
-                await _context.SaveChangesAsync();
+        //        // Create report entity
+        //        var report = new ReportEntity
+        //        {
+        //            Id = Guid.NewGuid(),
+        //            ReportName = finalReportName,
+        //            ReportStatusId = 1, // Default to Draft
+        //            Url = finalUrl,
+        //            Description = description,
+        //            LayoutData = layoutData,
+        //            CreationDate = _dateTimeProvider.Now,
+        //            CreatedBy = _currentUserService.UserId ?? string.Empty
+        //        };
 
-                _logger.LogInformation("Report imported successfully. ReportId: {ReportId}, ReportName: {ReportName}, User: {UserId}", 
-                    report.Id, finalReportName, _currentUserService.UserId);
+        //        await _reportRepository.AddAsync(report);
 
-                return APIOperationResponse<Guid>.Success(report.Id);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error importing report. FileName: {FileName}, User: {UserId}", file?.FileName, _currentUserService.UserId);
-                return APIOperationResponse<Guid>.Fail(ResponseType.InternalServerError, $"An error occurred while importing the report: {ex.Message}");
-            }
-        }
+        //        _logger.LogInformation("Report imported successfully. ReportId: {ReportId}, ReportName: {ReportName}, User: {UserId}", 
+        //            report.Id, finalReportName, _currentUserService.UserId);
+
+        //        return APIOperationResponse<Guid>.Success(report.Id);
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        _logger.LogError(ex, "Error importing report. FileName: {FileName}, User: {UserId}", file?.FileName, _currentUserService.UserId);
+        //        return APIOperationResponse<Guid>.Fail(ResponseType.InternalServerError, $"An error occurred while importing the report: {ex.Message}");
+        //    }
+        //}
 
         private string GenerateUrlFromName(string name)
         {
@@ -573,7 +588,11 @@ namespace Ettad.Reporting.Services
         public async Task<bool> IsReportExists(string name)
         {
             var reportExist = false;
-            var report = await _reportRepository.FindOneAsync(r => r.ReportName == name && r.ReportStatusId != (int)ReportStatuses.Inactive);
+
+            var report = await _reportRepository.FindOneAsync(
+                                  x => x.ReportName == name && x.ReportStatusId != (int)ReportStatuses.Inactive,
+                                  false,
+                                  nameof(ReportEntity.ReportStatus));
 
             if (report == null)
                 return reportExist;

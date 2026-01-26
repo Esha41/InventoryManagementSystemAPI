@@ -94,7 +94,11 @@ namespace Ettad.Reporting.Storage
 
         public override void SetData(XtraReport report, string url)
         {
-            var reportName = report.Name;
+            if(report.Name!=report.DisplayName)
+                report.DisplayName = report.Name;
+
+            var reportName = report.DisplayName;
+
             // Save report layout to memory stream
             byte[] layoutData;
             using (var ms = new MemoryStream())
@@ -141,7 +145,8 @@ namespace Ettad.Reporting.Storage
                 // Generate unique URL if default URL already exists
                 var url = defaultUrl;
                 var counter = 1;
-                var reportName = report.Name;
+                var reportName = report.DisplayName;
+                report.Name = report.DisplayName;
 
                 if (ReportExists(reportName))
                     throw new Exception($"Report with name '{reportName}' already exists.");

@@ -123,19 +123,19 @@ namespace Ettad.Reporting.Controllers
         /// <summary>
         /// Import a report from a file (.repx or .xml)
         /// </summary>
-        [HttpPost("import")]
-        [Consumes("multipart/form-data")]
-        [ProducesResponseType((int)HttpStatusCode.Created)]
-        [CheckAuthorize("Permissions.Report.Create")]
-        public async Task<IActionResult> Import([FromForm] ImportReportRequestDto request)
-        {
-            var result = await _reportService.ImportAsync(
-                request.File,
-                request.ReportName,
-                request.Url,
-                request.Description);
+        //[HttpPost("import")]
+        //[Consumes("multipart/form-data")]
+        //[ProducesResponseType((int)HttpStatusCode.Created)]
+        //[CheckAuthorize("Permissions.Report.Create")]
+        //public async Task<IActionResult> Import([FromForm] ImportReportRequestDto request)
+        //{
+        //    var result = await _reportService.ImportAsync(
+        //        request.File,
+        //        request.ReportName,
+        //        request.Url,
+        //        request.Description);
 
-            return ProcessResponse(result);
-        }
+        //    return ProcessResponse(result);
+        //}
     }
 }

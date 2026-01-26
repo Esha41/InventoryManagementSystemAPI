@@ -15,13 +15,8 @@ namespace Ettad.Reporting.Services
         Task<APIOperationResponse<bool>> DeleteAsync(Guid id);
         Task<bool> IsReportExists(string name);
         Task<APIOperationResponse<List<ReportStatusDto>>> GetReportStatusesAsync();
-        Task<APIOperationResponse<Guid>> ImportAsync(IFormFile file, string? reportName = null, string? url = null, string? description = null);
-
-        /// <summary>
-        /// Returns all user tables (schema + name) for the configured database.
-        /// Excludes system tables (e.g. __EFMigrationsHistory, sysdiagrams).
-        /// </summary>
-        Task<IReadOnlyList<TableSchemaInfo>> GetTableNamesAsync(CancellationToken cancellationToken = default);
+        //Task<APIOperationResponse<Guid>> ImportAsync(IFormFile file, string? reportName = null, string? url = null, string? description = null);
+       // Task<IReadOnlyList<TableSchemaInfo>> GetTableNamesAsync(CancellationToken cancellationToken = default);
     }
 
     public record TableSchemaInfo(string SchemaName, string TableName);
