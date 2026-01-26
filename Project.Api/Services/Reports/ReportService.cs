@@ -199,14 +199,14 @@ namespace Ettad.Reporting.Services
             {
                 // Check if report name already exists
 
-                var reportEntity = await _reportRepository.FindOneAsync(
-                                      x => x.ReportName == dto.ReportName && x.ReportStatusId != (int)ReportStatuses.Inactive,
-                                      false,
-                                      nameof(ReportEntity.ReportStatus));
-                if (reportEntity!=null)
-                {
-                    return APIOperationResponse<Guid>.BadRequest("Report with this name already exists, give another.");
-                }
+                //var reportEntity = await _reportRepository.FindOneAsync(
+                //                      x => x.ReportName == dto.ReportName && x.ReportStatusId != (int)ReportStatuses.Inactive,
+                //                      false,
+                //                      nameof(ReportEntity.ReportStatus));
+                //if (reportEntity!=null)
+                //{
+                //    return APIOperationResponse<Guid>.BadRequest("Report with this name already exists, give another.");
+                //}
 
                 var reportId = Guid.NewGuid();
                 var report = new ReportEntity

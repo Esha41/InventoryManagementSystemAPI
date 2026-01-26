@@ -1,4 +1,5 @@
 using DevExpress.XtraReports.UI;
+using DevExpress.XtraReports.Web.ClientControls;
 using DevExpress.XtraReports.Web.Extensions;
 using Ettad.Application.Common.Interfaces;
 using Ettad.Data.Enums;
@@ -56,7 +57,7 @@ namespace Ettad.Reporting.Storage
 
                 return Array.Empty<byte>();
             }
-            catch (Exception ex)
+            catch (FaultException ex)
             {
                 // Log error
                 System.Diagnostics.Debug.WriteLine($"Error getting report data: {ex.Message}");
@@ -68,7 +69,6 @@ namespace Ettad.Reporting.Storage
         {
             try
             {
-
                 // Get all reports using service
                 var result = _reportService.GetAllAsync().GetAwaiter().GetResult();
 
@@ -85,7 +85,7 @@ namespace Ettad.Reporting.Storage
                 urls["BaseReportTemplate"] = "Base Report Template";
                 return urls;
             }
-            catch (Exception ex)
+            catch (FaultException ex)
             {
                 System.Diagnostics.Debug.WriteLine($"Error getting report URLs: {ex.Message}");
                 return new Dictionary<string, string>();
@@ -94,7 +94,7 @@ namespace Ettad.Reporting.Storage
 
         public override void SetData(XtraReport report, string url)
         {
-            if(report.Name!=report.DisplayName)
+            if (report.Name != report.DisplayName)
                 report.DisplayName = report.Name;
 
             var reportName = report.DisplayName;
@@ -127,7 +127,7 @@ namespace Ettad.Reporting.Storage
 
                 if (!updateResult.Succeeded)
                 {
-                    throw new Exception($"Failed to update report: {updateResult.Message}");
+                    throw new FaultException($"Failed to update report: {updateResult.Message}");
                 }
             }
         }
@@ -138,57 +138,49 @@ namespace Ettad.Reporting.Storage
 
         public override string SetNewData(XtraReport report, string defaultUrl)
         {
-            try
+            // Generate unique URL if default URL already exists
+            var url = defaultUrl;
+            var counter = 1;
+            var reportName = report.DisplayName;
+            report.Name = report.DisplayName;
+
+            if (ReportExists(reportName))
+                throw new FaultException("Report with this name already exists, Try another.");
+
+            // Check if URL exists using service
+            var checkResult = _reportService.GetByUrlAsync(url).GetAwaiter().GetResult();
+            while (checkResult.Succeeded && checkResult.Data != null)
             {
-                // Generate unique URL if default URL already exists
-                var url = defaultUrl;
-                var counter = 1;
-                var reportName = report.DisplayName;
-                report.Name = report.DisplayName;
-
-                if (ReportExists(reportName))
-                    throw new Exception($"Report with name '{reportName}' already exists.");
-
-                // Check if URL exists using service
-                var checkResult = _reportService.GetByUrlAsync(url).GetAwaiter().GetResult();
-                while (checkResult.Succeeded && checkResult.Data != null)
-                {
-                    url = $"{defaultUrl}_{counter}";
-                    counter++;
-                    checkResult = _reportService.GetByUrlAsync(url).GetAwaiter().GetResult();
-                }
-
-                // Save report layout
-                byte[] layoutData;
-                using (var ms = new MemoryStream())
-                {
-                    report.SaveLayoutToXml(ms);
-                    layoutData = ms.ToArray();
-                }
-
-                // Create new report using service
-                var createDto = new CreateReportDto
-                {
-                    ReportName = reportName ?? url,
-                    ReportStatusId = (int)ReportStatuses.Draft, // Default to Draft
-                    Url = url,
-                    LayoutData = layoutData
-                };
-
-                var createResult = _reportService.CreateAsync(createDto).GetAwaiter().GetResult();
-
-                if (!createResult.Succeeded)
-                {
-                    throw new Exception($"Failed to create report: {createResult.Message}");
-                }
-
-                return url;
+                url = $"{defaultUrl}_{counter}";
+                counter++;
+                checkResult = _reportService.GetByUrlAsync(url).GetAwaiter().GetResult();
             }
-            catch (Exception ex)
+
+            // Save report layout
+            byte[] layoutData;
+            using (var ms = new MemoryStream())
             {
-                System.Diagnostics.Debug.WriteLine($"Error creating new report: {ex.Message}");
-                throw;
+                report.SaveLayoutToXml(ms);
+                layoutData = ms.ToArray();
             }
+
+            // Create new report using service
+            var createDto = new CreateReportDto
+            {
+                ReportName = reportName ?? url,
+                ReportStatusId = (int)ReportStatuses.Draft, // Default to Draft
+                Url = url,
+                LayoutData = layoutData
+            };
+
+            var createResult = _reportService.CreateAsync(createDto).GetAwaiter().GetResult();
+
+            if (!createResult.Succeeded)
+            {
+                throw new FaultException(createResult.Message);
+            }
+
+            return url;
         }
     }
 }
