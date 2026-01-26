@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Mvc;
 using OfficeOpenXml;
 using System.Net;
 using Ettad.CrossCutting.Comman.Time;
+using Ettad.CrossCutting.Comman.Models;
 
 namespace Ettad.Inventory.API.Controllers
 {
@@ -55,6 +56,15 @@ namespace Ettad.Inventory.API.Controllers
         public async Task<IActionResult> GetAll([FromQuery] long? depotId = null)
         {
             var result = await _assetService.GetAllAsync(depotId);
+            return ProcessResponse(result);
+        }
+
+        [HttpPost("search")]
+        [ProducesResponseType((int)HttpStatusCode.OK)]
+        [CheckAuthorize("Permissions.Asset.View", "Permissions.Asset.Page")]
+        public async Task<IActionResult> Search([FromQuery] long? depotId, [FromBody] PagedListRequest request)
+        {
+            var result = await _assetService.GetAssetsPaginatedAsync(depotId, request);
             return ProcessResponse(result);
         }
 

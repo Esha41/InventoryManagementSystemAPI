@@ -19,11 +19,71 @@ using Ettad.EntityFramework.DataBaseContext;
 using OfficeOpenXml;
 using Ettad.CrossCutting.Comman.Time;
 using OfficeOpenXml.DataValidation;
+using Ettad.CrossCutting.Comman.Models;
 
 namespace Ettad.Inventory.Service.Assets
 {
     public class AssetService : IAssetService
     {
+        // ... (existing fields)
+
+        public async Task<APIOperationResponse<PaginatedList<AssetDto>>> GetAssetsPaginatedAsync(long? depotId, PagedListRequest request)
+        {
+            _logger.LogInformation("Getting assets paginated. DepotId: {DepotId}, Page: {Page}, PageSize: {PageSize}, User: {UserId}", 
+                depotId, request.Page, request.PageSize, _currentUserService.UserId);
+
+            try
+            {
+                var query = _assetRepository.Find(
+                    a => !a.IsDeleted && (!depotId.HasValue || a.DepotId == depotId.Value),
+                    false,
+                    nameof(Asset.Item),
+                    nameof(Asset.Depot),
+                    $"{nameof(Asset.CurrentAssignment)}.{nameof(AssetAssignment.Custodian)}",
+                    $"{nameof(Asset.CurrentAssignment)}.{nameof(AssetAssignment.Department)}"
+                );
+
+                var paginatedEntities = await PaginatedList<Asset>.CreateAsyncForTableBinding(query, request);
+                
+                // Map to DTOs
+                var dtos = new List<AssetDto>();
+                if (paginatedEntities.Items.Any())
+                {
+                    dtos = _mapper.Map<List<AssetDto>>(paginatedEntities.Items);
+
+                    // Fetch images for the visible page only
+                    var entityIds = dtos.Select(d => d.Id).ToList();
+                    var imagesResult = await _fileUploadService.GetByEntitiesAsync(FileEntityType.Asset, entityIds);
+                    
+                    if (imagesResult.Succeeded && imagesResult.Data != null)
+                    {
+                        foreach (var dto in dtos)
+                        {
+                            if (imagesResult.Data.ContainsKey(dto.Id))
+                            {
+                                dto.Images = imagesResult.Data[dto.Id];
+                            }
+                        }
+                    }
+                }
+
+                var result = new PaginatedList<AssetDto>(
+                    dtos,
+                    paginatedEntities.TotalCount,
+                    paginatedEntities.PageIndex,
+                    request.PageSize // Use requested page size
+                );
+
+                return APIOperationResponse<PaginatedList<AssetDto>>.Success(result);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting assets paginated. DepotId: {DepotId}, User: {UserId}", 
+                    depotId, _currentUserService.UserId);
+                return APIOperationResponse<PaginatedList<AssetDto>>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
+            }
+        }
+
         private readonly ICrossCuttingRepository<Asset> _assetRepository;
         private readonly IMapper _mapper;
         private readonly IValidator<CreateAssetDto> _createValidator;

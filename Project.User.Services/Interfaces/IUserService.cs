@@ -1,4 +1,5 @@
 using Ettad.ResponseHandler.Models;
+using Ettad.CrossCutting.Comman.Models;
 using Ettad.Services.DataTransferObject.AuthenticationDto;
 using Ettad.User.Services.DTO;
 using System;
@@ -13,8 +14,8 @@ namespace Ettad.User.Services.Interfaces
     public interface IUserService
     {
         Task<APIOperationResponse<UserDto>> GetByIdAsync(string id);
-        Task<APIOperationResponse<List<UserDto>>> GetAllAsync();
-        // Task<APIOperationResponse<List<UserDto>>> GetAllUserAsync();
+        Task<APIOperationResponse<PaginatedList<UserDto>>> GetAllAsync(CrossCutting.Comman.Models.PagedListRequest request);
+        Task<APIOperationResponse<List<UserDto>>> GetAllForExportAsync(FilterData filter);
         Task<APIOperationResponse<UserDto>> CreateAsync(CreateUserDto dto);
         Task<APIOperationResponse<UserDto>> UpdateAsync(UpdateUserDto dto);
         Task<APIOperationResponse<bool>> DeleteAsync(string id);
@@ -25,5 +26,6 @@ namespace Ettad.User.Services.Interfaces
         Task<APIOperationResponse<UserDto>> GetCurrentUserAsync();
         Task<APIOperationResponse<bool>> ToggleUserStatusAsync(string id);
         Task<APIOperationResponse<bool>> ChangePasswordAsync(ChangePasswordDto dto);
+        Task<APIOperationResponse<UserSummaryDto>> GetUsersSummaryAsync();
     }
 }

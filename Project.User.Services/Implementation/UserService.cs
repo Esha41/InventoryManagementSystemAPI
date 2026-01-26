@@ -14,7 +14,9 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using System.Collections.Generic;
 using System.Linq;
+using System.Linq;
 using Ettad.CrossCutting.Comman.Time;
+using Ettad.CrossCutting.Comman.Models;
 
 public class UserService : IUserService
 {
@@ -73,57 +75,114 @@ public class UserService : IUserService
     //    return APIOperationResponse<List<UserDto>>.Success(mapped); 
     //}
 
-    public async Task<APIOperationResponse<List<UserDto>>> GetAllAsync()
+    private IQueryable<ApplicationUser> GetUsersQuery(FilterData filter)
     {
-        _logger.LogInformation("Getting all users. RequestedBy: {RequestedBy}, IsSuperAdmin: {IsSuperAdmin}", 
-            _currentUserService.UserId, _currentUserService.IsSuperAdmin);
-        
-
-        var users = await _userManager.Users
+        var query = _userManager.Users
             .Where(u => !u.IsDeleted)
             .Include(u => u.Department)
             .Include(u => u.Rank)
+            .AsNoTracking();
+
+        // Filter out superadmin users if the requesting user is not a superadmin
+        if (!_currentUserService.IsSuperAdmin)
+        {
+            var superAdminRoleIds = _context.Roles
+                .Where(r => r.IsSuperAdmin)
+                .Select(r => r.Id);
+
+            var userRoles = _context.UserRoles; // Provided by IdentityDbContext
+
+            query = query.Where(u => !userRoles.Any(ur => ur.UserId == u.Id && superAdminRoleIds.Contains(ur.RoleId)));
+        }
+
+        if (filter != null)
+        {
+            if (!string.IsNullOrEmpty(filter.Value) && string.IsNullOrEmpty(filter.Field) && (filter.Filters == null || !filter.Filters.Any()))
+            {
+                // Global search across multiple fields
+                var searchTerm = filter.Value.ToLower();
+                query = query.Where(u => 
+                    (u.UserName != null && u.UserName.Contains(searchTerm)) || 
+                    (u.Email != null && u.Email.Contains(searchTerm)) || 
+                    (u.FullNameEN != null && u.FullNameEN.Contains(searchTerm)) || 
+                    (u.FullNameAR != null && u.FullNameAR.Contains(searchTerm)) || 
+                    (u.MilitoryId != null && u.MilitoryId.Contains(searchTerm)));
+            }
+            else
+            {
+                // Use standard FilterProvider for specific field filters
+                query = Ettad.CrossCutting.Comman.Providers.FilterProvider.ToFilterView(query, filter);
+            }
+        }
+
+        return query;
+    }
+
+    public async Task<APIOperationResponse<PaginatedList<UserDto>>> GetAllAsync(PagedListRequest request)
+    {
+        _logger.LogInformation("Getting users (Paginated). RequestedBy: {RequestedBy}, IsSuperAdmin: {IsSuperAdmin}, Page: {Page}, PageSize: {PageSize}",
+            _currentUserService.UserId, _currentUserService.IsSuperAdmin, request.Page, request.PageSize);
+
+        var query = GetUsersQuery(request.Filter);
+
+        // Apply Pagination & Filtering (Using the utility we updated)
+        var paginatedUsers = await PaginatedList<ApplicationUser>.CreateAsyncForTableBinding(query, request);
+
+        // Map to DTOs and Batch Load Roles
+        var userDtos = await MapToDtosWithRolesAsync(paginatedUsers.Items);
+
+        var result = new PaginatedList<UserDto>(userDtos, paginatedUsers.TotalCount, paginatedUsers.PageIndex, request.PageSize);
+      
+        return APIOperationResponse<PaginatedList<UserDto>>.Success(result);
+    }
+
+    public async Task<APIOperationResponse<List<UserDto>>> GetAllForExportAsync(FilterData filter)
+    {
+        _logger.LogInformation("Getting all users for export. RequestedBy: {RequestedBy}, IsSuperAdmin: {IsSuperAdmin}",
+            _currentUserService.UserId, _currentUserService.IsSuperAdmin);
+
+        var query = GetUsersQuery(filter);
+
+        // Apply filtering but NO pagination
+        if (filter != null)
+        {
+            query = Ettad.CrossCutting.Comman.Providers.FilterProvider.ToFilterView(query, filter);
+        }
+
+        var users = await query.ToListAsync();
+        var userDtos = await MapToDtosWithRolesAsync(users);
+
+        return APIOperationResponse<List<UserDto>>.Success(userDtos);
+    }
+
+    private async Task<List<UserDto>> MapToDtosWithRolesAsync(List<ApplicationUser> users)
+    {
+        if (!users.Any()) return new List<UserDto>();
+
+        var userIds = users.Select(u => u.Id).ToList();
+        
+        // Batch fetch all roles for these users in one query
+        var userRolesMapping = await _context.UserRoles
+            .Where(ur => userIds.Contains(ur.UserId))
+            .Join(_context.Roles, ur => ur.RoleId, r => r.Id, (ur, r) => new { ur.UserId, Role = r })
             .ToListAsync();
 
-        // 2️⃣ Get all roles upfront to avoid repeated DB calls
-        var allRoles = await _roleManager.Roles.ToListAsync();
-        
-        // Get superadmin role IDs
-        var superAdminRoleIds = allRoles.Where(r => r.IsSuperAdmin).Select(r => r.Id).ToHashSet();
-        var superAdminRoleNames = allRoles.Where(r => r.IsSuperAdmin).Select(r => r.Name).ToHashSet();
-
-        var mapped = new List<UserDto>();
+        var allRoles = await _roleManager.Roles.AsNoTracking().ToListAsync();
+        var userDtos = new List<UserDto>();
 
         foreach (var user in users)
         {
             var dto = MapToDto(user);
-
-            // 3️⃣ Get user roles (names)
-            var roleNames = await _userManager.GetRolesAsync(user);
-
-            // 4️⃣ Map role names → role IDs using pre-fetched roles
+            var roleNames = userRolesMapping
+                .Where(m => m.UserId == user.Id)
+                .Select(m => m.Role.Name!)
+                .ToList();
+            
             PopulateRoles(dto, roleNames, allRoles);
-            
-            // 5️⃣ Filter out superadmin users if the requesting user is not a superadmin
-            if (!_currentUserService.IsSuperAdmin)
-            {
-                // Check if this user has any superadmin roles
-                var hasSuperAdminRole = roleNames.Any(roleName => superAdminRoleNames.Contains(roleName));
-                
-                if (hasSuperAdminRole)
-                {
-                    _logger.LogDebug("Filtering out superadmin user from results. UserId: {UserId}, Username: {Username}", 
-                        user.Id, user.UserName);
-                    continue; // Skip this user
-                }
-            }
-            
-            mapped.Add(dto);
+            userDtos.Add(dto);
         }
 
-        _logger.LogInformation("Successfully retrieved {UserCount} users (after filtering). RequestedBy: {RequestedBy}", 
-            mapped.Count, _currentUserService.UserId);
-        return APIOperationResponse<List<UserDto>>.Success(mapped);
+        return userDtos;
     }
 
 
@@ -798,4 +857,34 @@ public class UserService : IUserService
             NameEn = rank.NameEn,
             IsDeleted = rank.IsDeleted
         };
+
+    public async Task<APIOperationResponse<UserSummaryDto>> GetUsersSummaryAsync()
+    {
+        _logger.LogInformation("Getting users summary. RequestedBy: {RequestedBy}", _currentUserService.UserId);
+
+        var query = _userManager.Users.Where(u => !u.IsDeleted);
+
+        // Filter out superadmin users if the requesting user is not a superadmin
+        if (!_currentUserService.IsSuperAdmin)
+        {
+            var superAdminRoleIds = _context.Roles
+                .Where(r => r.IsSuperAdmin)
+                .Select(r => r.Id);
+
+            var userRoles = _context.UserRoles;
+            query = query.Where(u => !userRoles.Any(ur => ur.UserId == u.Id && superAdminRoleIds.Contains(ur.RoleId)));
+        }
+
+        var stats = await query
+            .GroupBy(u => 1)
+            .Select(g => new UserSummaryDto
+            {
+                TotalUsers = g.Count(),
+                ActiveUsers = g.Count(u => u.IsActive),
+                InactiveUsers = g.Count(u => !u.IsActive)
+            })
+            .FirstOrDefaultAsync();
+
+        return APIOperationResponse<UserSummaryDto>.Success(stats ?? new UserSummaryDto());
+    }
 }

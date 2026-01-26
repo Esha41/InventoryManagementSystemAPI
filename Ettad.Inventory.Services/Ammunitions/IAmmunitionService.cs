@@ -3,6 +3,7 @@ using Ettad.Inventory.Service.Ammunitions.Dtos;
 using Ettad.Inventory.Services.Common;
 using Ettad.ResponseHandler.Models;
 using Microsoft.AspNetCore.Http;
+using Ettad.CrossCutting.Comman.Models;
 
 namespace Ettad.Inventory.Service.Ammunitions
 {
@@ -10,6 +11,7 @@ namespace Ettad.Inventory.Service.Ammunitions
     {
         Task<APIOperationResponse<AmmunitionDto>> GetByIdAsync(long id);
         Task<APIOperationResponse<List<AmmunitionDto>>> GetAllAsync();
+        Task<APIOperationResponse<PaginatedList<AmmunitionDto>>> GetAllPaginatedAsync(PagedListRequest request);
         Task<APIOperationResponse<List<AmmunitionDto>>> GetByTypeAsync(AmmunitionType ammunitionType);
         Task<APIOperationResponse<long>> CreateAsync(CreateUpdateAmmunitionDto inputDto, List<IFormFile>? files = null);
         Task<APIOperationResponse<bool>> UpdateAsync(long id, CreateUpdateAmmunitionDto inputDto);

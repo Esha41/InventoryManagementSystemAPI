@@ -42,9 +42,9 @@ namespace Ettad.User.API.Controllers
 
         [HttpGet]
         [CheckAuthorize("Permissions.SystemUsers.View", "Permissions.SystemUsers.page")]
-        public async Task<IActionResult> GetAll()
+        public async Task<IActionResult> GetAll([FromQuery] Ettad.CrossCutting.Comman.Models.PagedListRequest request)
         {
-            var response = await _userService.GetAllAsync();
+            var response = await _userService.GetAllAsync(request);
             return ProcessResponse(response);
         }
         //[HttpGet]
@@ -102,6 +102,13 @@ namespace Ettad.User.API.Controllers
         public async Task<IActionResult> ToggleStatus(string id)
         {
             var response = await _userService.ToggleUserStatusAsync(id);
+            return ProcessResponse(response);
+        }
+        [HttpGet("Summary")]
+        [CheckAuthorize("Permissions.SystemUsers.View", "Permissions.SystemUsers.page")]
+        public async Task<IActionResult> GetSummary()
+        {
+            var response = await _userService.GetUsersSummaryAsync();
             return ProcessResponse(response);
         }
 

@@ -17,6 +17,7 @@ using OfficeOpenXml;
 using OfficeOpenXml.DataValidation;
 using Ettad.EntityFramework.DataBaseContext;
 using Ettad.CrossCutting.Comman.Time;
+using Ettad.CrossCutting.Comman.Models;
 
 namespace Ettad.Inventory.Service.Ammunitions
 {
@@ -149,6 +150,72 @@ namespace Ettad.Inventory.Service.Ammunitions
             {
                 _logger.LogError(ex, "Error retrieving all ammunitions. User: {UserId}", _currentUserService.UserId);
                 return APIOperationResponse<List<AmmunitionDto>>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
+            }
+        }
+
+        public async Task<APIOperationResponse<PaginatedList<AmmunitionDto>>> GetAllPaginatedAsync(PagedListRequest request)
+        {
+            _logger.LogInformation("Getting ammunitions paginated. Page: {Page}, PageSize: {PageSize}, User: {UserId}", 
+                request.Page, request.PageSize, _currentUserService.UserId);
+
+            try
+            {
+                var query = _ammunitionRepository.Find(
+                    a => !a.IsDeleted,
+                    false,
+                    nameof(Ammunition.BulletDiameterUnit),
+                    nameof(Ammunition.NatureOption),
+                    nameof(Ammunition.PrimaryPurpos),
+                    nameof(Ammunition.ProjectileColor),
+                    nameof(Ammunition.ProjectailMaterial),
+                    nameof(Ammunition.CaseType),
+                    nameof(Ammunition.Propellant),
+                    nameof(Ammunition.Compatibility),
+                    nameof(Ammunition.HazardDivision),
+                    nameof(Ammunition.Classification),
+                    nameof(Ammunition.Type)
+                );
+
+                var paginatedEntities = await PaginatedList<Ammunition>.CreateAsyncForTableBinding(query, request);
+                
+                // Map to DTOs
+                var dtos = new List<AmmunitionDto>();
+                if (paginatedEntities.Items.Any())
+                {
+                    dtos = _mapper.Map<List<AmmunitionDto>>(paginatedEntities.Items);
+
+                    // Fetch images for the visible page only
+                    var entityIds = dtos.Select(d => d.Id).ToList();
+                    var imagesResult = await _fileUploadService.GetByEntitiesAsync(FileEntityType.Ammunition, entityIds);
+                    
+                    if (imagesResult.Succeeded && imagesResult.Data != null)
+                    {
+                        foreach (var dto in dtos)
+                        {
+                            if (imagesResult.Data.ContainsKey(dto.Id))
+                            {
+                                dto.Images = imagesResult.Data[dto.Id];
+                            }
+                        }
+                    }
+                }
+
+                var result = new PaginatedList<AmmunitionDto>(
+                    dtos,
+                    paginatedEntities.TotalCount,
+                    paginatedEntities.PageIndex,
+                    request.PageSize
+                );
+
+                _logger.LogInformation("Ammunitions paginated retrieved successfully. Count: {Count}, TotalCount: {TotalCount}, User: {UserId}", 
+                    dtos.Count, paginatedEntities.TotalCount, _currentUserService.UserId);
+
+                return APIOperationResponse<PaginatedList<AmmunitionDto>>.Success(result);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting ammunitions paginated. User: {UserId}", _currentUserService.UserId);
+                return APIOperationResponse<PaginatedList<AmmunitionDto>>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
             }
         }
 

@@ -4,6 +4,7 @@ using Ettad.EntityFramework.DataBaseContext;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Ettad.EntityFramework.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260125122848_filter-indexes")]
+    partial class filterindexes
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -2476,138 +2479,6 @@ namespace Ettad.EntityFramework.Migrations
                     b.ToTable("NotificationReceivers", (string)null);
                 });
 
-            modelBuilder.Entity("Ettad.Data.Entities.OrderItemHistory", b =>
-                {
-                    b.Property<long>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
-
-                    b.Property<DateTime>("ActionDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<int>("ActionType")
-                        .HasColumnType("int");
-
-                    b.Property<long?>("ApprovedQuantity")
-                        .HasColumnType("bigint");
-
-                    b.Property<long?>("AssetSupplyDetailId")
-                        .HasColumnType("bigint");
-
-                    b.Property<long?>("AssetSupplyId")
-                        .HasColumnType("bigint");
-
-                    b.Property<string>("CreatedBy")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<DateTime>("CreationDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("DeletedBy")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<DateTime?>("DeletionDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<long>("DepartmentId")
-                        .HasColumnType("bigint");
-
-                    b.Property<string>("Description")
-                        .IsRequired()
-                        .HasMaxLength(2000)
-                        .HasColumnType("nvarchar(2000)");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("bit");
-
-                    b.Property<long>("ItemId")
-                        .HasColumnType("bigint");
-
-                    b.Property<DateTime?>("ModificationDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("ModifiedBy")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("ModifiedByUserId")
-                        .IsRequired()
-                        .HasMaxLength(450)
-                        .HasColumnType("nvarchar(450)");
-
-                    b.Property<string>("ModifiedByUserName")
-                        .IsRequired()
-                        .HasMaxLength(255)
-                        .HasColumnType("nvarchar(255)");
-
-                    b.Property<long?>("NewQuantity")
-                        .HasColumnType("bigint");
-
-                    b.Property<string>("Notes")
-                        .HasMaxLength(2000)
-                        .HasColumnType("nvarchar(2000)");
-
-                    b.Property<long>("OrderId")
-                        .HasColumnType("bigint");
-
-                    b.Property<int>("OrderStatus")
-                        .HasColumnType("int");
-
-                    b.Property<long?>("PreviousQuantity")
-                        .HasColumnType("bigint");
-
-                    b.Property<long?>("RequestItemId")
-                        .HasColumnType("bigint");
-
-                    b.Property<long?>("SuppliedQuantity")
-                        .HasColumnType("bigint");
-
-                    b.Property<long?>("SupplyDetailId")
-                        .HasColumnType("bigint");
-
-                    b.Property<long?>("SupplyId")
-                        .HasColumnType("bigint");
-
-                    b.Property<int?>("WorkflowApprovalStepId")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("WorkflowStepId")
-                        .HasColumnType("int");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ActionDate");
-
-                    b.HasIndex("ActionType");
-
-                    b.HasIndex("AssetSupplyDetailId");
-
-                    b.HasIndex("AssetSupplyId");
-
-                    b.HasIndex("DepartmentId");
-
-                    b.HasIndex("ItemId");
-
-                    b.HasIndex("ModifiedByUserId");
-
-                    b.HasIndex("OrderId");
-
-                    b.HasIndex("RequestItemId");
-
-                    b.HasIndex("SupplyDetailId");
-
-                    b.HasIndex("SupplyId");
-
-                    b.HasIndex("WorkflowApprovalStepId");
-
-                    b.HasIndex("WorkflowStepId");
-
-                    b.HasIndex("OrderId", "ItemId");
-
-                    b.ToTable("OrderItemHistory", (string)null);
-                });
-
             modelBuilder.Entity("Ettad.Data.Entities.PrimaryPurpos", b =>
                 {
                     b.Property<long>("Id")
@@ -4994,90 +4865,6 @@ namespace Ettad.EntityFramework.Migrations
                     b.Navigation("Notification");
 
                     b.Navigation("User");
-                });
-
-            modelBuilder.Entity("Ettad.Data.Entities.OrderItemHistory", b =>
-                {
-                    b.HasOne("Ettad.Data.Entities.AssetSupplyDetail", "AssetSupplyDetail")
-                        .WithMany()
-                        .HasForeignKey("AssetSupplyDetailId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.HasOne("Ettad.Data.Entities.AssetSupply", "AssetSupply")
-                        .WithMany()
-                        .HasForeignKey("AssetSupplyId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.HasOne("Ettad.Data.Entities.Department", "Department")
-                        .WithMany()
-                        .HasForeignKey("DepartmentId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("Ettad.Data.Entities.BaseItem", "Item")
-                        .WithMany()
-                        .HasForeignKey("ItemId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("Ettad.Comman.Idenitity.ApplicationUser", "ModifiedByUser")
-                        .WithMany()
-                        .HasForeignKey("ModifiedByUserId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("Ettad.Data.Entities.Order", "Order")
-                        .WithMany()
-                        .HasForeignKey("OrderId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("Ettad.Data.Entities.RequestItem", "RequestItem")
-                        .WithMany()
-                        .HasForeignKey("RequestItemId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.HasOne("Ettad.Data.Entities.SupplyDetail", "SupplyDetail")
-                        .WithMany()
-                        .HasForeignKey("SupplyDetailId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.HasOne("Ettad.Data.Entities.Supply", "Supply")
-                        .WithMany()
-                        .HasForeignKey("SupplyId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.HasOne("Ettad.Data.Entities.Workflows.WorkflowApprovalStep", "WorkflowApprovalStep")
-                        .WithMany()
-                        .HasForeignKey("WorkflowApprovalStepId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.HasOne("Ettad.Data.Entities.Workflows.WorkflowStep", "WorkflowStep")
-                        .WithMany()
-                        .HasForeignKey("WorkflowStepId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.Navigation("AssetSupply");
-
-                    b.Navigation("AssetSupplyDetail");
-
-                    b.Navigation("Department");
-
-                    b.Navigation("Item");
-
-                    b.Navigation("ModifiedByUser");
-
-                    b.Navigation("Order");
-
-                    b.Navigation("RequestItem");
-
-                    b.Navigation("Supply");
-
-                    b.Navigation("SupplyDetail");
-
-                    b.Navigation("WorkflowApprovalStep");
-
-                    b.Navigation("WorkflowStep");
                 });
 
             modelBuilder.Entity("Ettad.Data.Entities.RequestItem", b =>

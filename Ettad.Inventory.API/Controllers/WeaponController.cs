@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Net;
 using Ettad.CrossCutting.Comman.Time;
+using Ettad.CrossCutting.Comman.Models;
 
 namespace Ettad.Inventory.API.Controllers
 {
@@ -30,6 +31,15 @@ namespace Ettad.Inventory.API.Controllers
         public async Task<IActionResult> GetAll()
         {
             var result = await _weaponService.GetAllAsync();
+            return ProcessResponse(result);
+        }
+
+        [HttpPost("Paginated")]
+        [ProducesResponseType(typeof(APIOperationResponse<PaginatedList<WeaponDto>>), (int)HttpStatusCode.OK)]
+        [CheckAuthorize("Permissions.Weapon.View", "Permissions.Weapon.Page")]
+        public async Task<IActionResult> GetAllPaginated([FromBody] PagedListRequest request)
+        {
+            var result = await _weaponService.GetAllPaginatedAsync(request);
             return ProcessResponse(result);
         }
 
