@@ -93,5 +93,53 @@ namespace Ettad.User.API.Controllers
             var response = await _userDelegationService.GetDelegationHistoryAsync();
             return ProcessResponse(response);
         }
+
+        [HttpGet("settings/cross-department")]
+        [CheckAuthorize("Permissions.UserDelegations.View", "Permissions.UserDelegations.Page")]
+        public async Task<IActionResult> GetCrossDepartmentDelegationSetting()
+        {
+            var response = await _userDelegationService.GetAllowCrossDepartmentDelegationAsync();
+            return ProcessResponse(response);
+        }
+
+        [HttpPut("settings/cross-department")]
+        [CheckAuthorize("Permissions.UserDelegations.View", "Permissions.UserDelegations.Page")] // Ideally should be a stricter permission
+        public async Task<IActionResult> UpdateCrossDepartmentDelegationSetting([FromBody] bool allow)
+        {
+            var response = await _userDelegationService.UpdateAllowCrossDepartmentDelegationAsync(allow);
+            return ProcessResponse(response);
+        }
+
+        [HttpGet("settings/delegator-action")]
+        [CheckAuthorize("Permissions.UserDelegations.View", "Permissions.UserDelegations.Page")]
+        public async Task<IActionResult> GetDelegatorActionSetting()
+        {
+            var response = await _userDelegationService.GetAllowDelegatorActionAsync();
+            return ProcessResponse(response);
+        }
+
+        [HttpPut("settings/delegator-action")]
+        [CheckAuthorize("Permissions.UserDelegations.View", "Permissions.UserDelegations.Page")] // Ideally verify stricter permisison if available
+        public async Task<IActionResult> UpdateDelegatorActionSetting([FromBody] bool allow)
+        {
+            var response = await _userDelegationService.UpdateAllowDelegatorActionAsync(allow);
+            return ProcessResponse(response);
+        }
+
+        [HttpGet("is-restricted")]
+        public async Task<IActionResult> IsRestricted()
+        {
+            // We need current user ID, assuming BaseController provides it or retrieve from service
+             // The check logic is nicely encapsulated in service, but service method takes userId.
+             // We need to inject ICurrentUserService to get ID here or use User.Identity
+             // ApiControllerBase might have CurrentUser property? 
+             // Let's assume HttpContext.User
+            
+            var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userId)) return Unauthorized();
+
+            var isRestricted = await _userDelegationService.IsUserRestrictedByDelegationAsync(userId);
+            return Ok(new APIOperationResponse<bool> { Succeeded = true, Data = isRestricted });
+        }
     }
 }

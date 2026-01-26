@@ -9,8 +9,10 @@ using Microsoft.AspNetCore.Mvc.Filters;
 using Ettad.Application.Common.Interfaces;
 using Microsoft.Extensions.DependencyInjection;
 
+using System.Threading.Tasks;
+
 [AttributeUsage(AttributeTargets.Class | AttributeTargets.Method, AllowMultiple = false, Inherited = true)]
-public class CheckAuthorizeAttribute : AuthorizeAttribute, IAuthorizationFilter
+public class CheckAuthorizeAttribute : AuthorizeAttribute, IAsyncAuthorizationFilter
 {
     public string[] RequiredPolicies { get; set; }
 
@@ -19,7 +21,7 @@ public class CheckAuthorizeAttribute : AuthorizeAttribute, IAuthorizationFilter
         RequiredPolicies = requiredPolicies;
     }
 
-    public void OnAuthorization(AuthorizationFilterContext context)
+    public async Task OnAuthorizationAsync(AuthorizationFilterContext context)
     {
         var httpContext = context.HttpContext;
         var user = httpContext.User;
@@ -30,17 +32,12 @@ public class CheckAuthorizeAttribute : AuthorizeAttribute, IAuthorizationFilter
             return;
         }
 
-        // Example: using a custom permission service or UserManager to get roles/claims from DB
-        var permissionService = httpContext.RequestServices.GetService<IPermissionService>();
         var userId = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-
         if (string.IsNullOrEmpty(userId))
         {
             context.Result = new UnauthorizedResult();
             return;
         }
-
-        var userPolicies = permissionService?.GetUserPermissions(userId).Result; // Assume it returns List<string>
 
         // Check if user is a super admin - super admins bypass all permission checks
         var isSuperAdmin = user.FindFirst("IsSuperAdmin")?.Value;
@@ -48,6 +45,36 @@ public class CheckAuthorizeAttribute : AuthorizeAttribute, IAuthorizationFilter
         {
             return; // Super admin has access to everything
         }
+
+        // ---------------------------------------------------------
+        // DELEGATION CHECK: Block if user is delegating authority
+        // ---------------------------------------------------------
+        // We use IDelegationAuthorizationService to avoid circular dependency
+        var delegationService = httpContext.RequestServices.GetService<IDelegationAuthorizationService>();
+        if (delegationService != null)
+        {
+            // Safer approach: Check HTTP Method.
+            var method = httpContext.Request.Method.ToUpper();
+            if (method != "GET" && method != "OPTIONS" && method != "HEAD")
+            {
+                 bool isRestricted = await delegationService.IsUserRestrictedAsync(userId);
+                 if (isRestricted)
+                 {
+                     context.Result = new ContentResult
+                     {
+                         StatusCode = 403,
+                         Content = "Your authority is currently delegated to another user. You cannot perform actions while delegation is active."
+                     };
+                     return;
+                 }
+            }
+        }
+
+        // ---------------------------------------------------------
+        // PERMISSION CHECK
+        // ---------------------------------------------------------
+        var permissionService = httpContext.RequestServices.GetService<IPermissionService>();
+        var userPolicies = await permissionService?.GetUserPermissions(userId); // Use await if async
 
         if (userPolicies == null || !userPolicies.Intersect(RequiredPolicies).Any())
         {
