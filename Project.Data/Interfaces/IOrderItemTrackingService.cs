@@ -51,8 +51,6 @@ namespace Ettad.Application.Common.Interfaces
         public int? WorkflowApprovalStepId { get; set; }
         public int? WorkflowStepId { get; set; }
         public string Description { get; set; } = string.Empty;
-        public string DescriptionAr { get; set; } = string.Empty;
-        public string DescriptionEn { get; set; } = string.Empty;
         public string? Notes { get; set; }
         public long? SupplyId { get; set; }
         public long? AssetSupplyId { get; set; }
@@ -95,8 +93,6 @@ namespace Ettad.Application.Common.Interfaces
         public string? WorkflowStepName { get; set; }
 
         public string Description { get; set; } = string.Empty;
-        public string DescriptionAr { get; set; } = string.Empty;
-        public string DescriptionEn { get; set; } = string.Empty;
         public string? Notes { get; set; }
 
         public long? SupplyId { get; set; }

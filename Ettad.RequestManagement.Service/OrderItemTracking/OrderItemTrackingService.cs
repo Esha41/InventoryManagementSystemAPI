@@ -58,9 +58,7 @@ namespace Ettad.RequestManagement.Service.OrderItemTracking
                     ModifiedByUserName = context.ModifiedByUserName,
                     WorkflowApprovalStepId = context.WorkflowApprovalStepId,
                     WorkflowStepId = context.WorkflowStepId,
-                    Description = (!string.IsNullOrWhiteSpace(context.DescriptionAr) || !string.IsNullOrWhiteSpace(context.DescriptionEn))
-                        ? $"{context.DescriptionAr ?? string.Empty}|||{context.DescriptionEn ?? string.Empty}"
-                        : (!string.IsNullOrWhiteSpace(context.Description) ? context.Description : string.Empty),
+                    Description = context.Description ?? string.Empty,
                     Notes = context.Notes,
                     SupplyId = context.SupplyId,
                     AssetSupplyId = context.AssetSupplyId,
@@ -129,8 +127,7 @@ namespace Ettad.RequestManagement.Service.OrderItemTracking
                         ModifiedByUserName = userName,
                         WorkflowApprovalStepId = workflowApprovalStepId,
                         WorkflowStepId = workflowApprovalStep.WorkflowStepId,
-                        DescriptionAr = $"تمت الموافقة النهائية على الطلب - الكمية المعتمدة: {requestItem.Quantity}",
-                        DescriptionEn = $"Final order approved - approved quantity: {requestItem.Quantity}",
+                        Description = $"Final order approved - approved quantity: {requestItem.Quantity}",
                         Notes = null
                     };
 
@@ -207,31 +204,6 @@ namespace Ettad.RequestManagement.Service.OrderItemTracking
                         dto.ModifiedByUserNameEn = historyEntity.ModifiedByUser?.FullNameEN ?? string.Empty;
                         dto.ModifiedByUserNameAr = historyEntity.ModifiedByUser?.FullNameAR ?? string.Empty;
                         dto.WorkflowStepName = historyEntity.WorkflowStep?.ApplicationRole?.Name;
-                        
-                        // Split description into Arabic and English
-                        if (!string.IsNullOrWhiteSpace(historyEntity.Description))
-                        {
-                            var parts = historyEntity.Description.Split(new[] { "|||" }, StringSplitOptions.None);
-                            if (parts.Length == 2)
-                            {
-                                dto.DescriptionAr = parts[0];
-                                dto.DescriptionEn = parts[1];
-                                dto.Description = historyEntity.Description; // Keep original for backward compatibility
-                            }
-                            else
-                            {
-                                // Backward compatibility: if no separator, put in English
-                                dto.DescriptionEn = historyEntity.Description;
-                                dto.DescriptionAr = string.Empty;
-                                dto.Description = historyEntity.Description;
-                            }
-                        }
-                        else
-                        {
-                            dto.Description = string.Empty;
-                            dto.DescriptionAr = string.Empty;
-                            dto.DescriptionEn = string.Empty;
-                        }
                     }
                 }
 
@@ -279,31 +251,6 @@ namespace Ettad.RequestManagement.Service.OrderItemTracking
                         dto.ModifiedByUserNameEn = historyEntity.ModifiedByUser?.FullNameEN ?? string.Empty;
                         dto.ModifiedByUserNameAr = historyEntity.ModifiedByUser?.FullNameAR ?? string.Empty;
                         dto.WorkflowStepName = historyEntity.WorkflowStep?.ApplicationRole?.Name;
-                        
-                        // Split description into Arabic and English
-                        if (!string.IsNullOrWhiteSpace(historyEntity.Description))
-                        {
-                            var parts = historyEntity.Description.Split(new[] { "|||" }, StringSplitOptions.None);
-                            if (parts.Length == 2)
-                            {
-                                dto.DescriptionAr = parts[0];
-                                dto.DescriptionEn = parts[1];
-                                dto.Description = historyEntity.Description; // Keep original for backward compatibility
-                            }
-                            else
-                            {
-                                // Backward compatibility: if no separator, put in English
-                                dto.DescriptionEn = historyEntity.Description;
-                                dto.DescriptionAr = string.Empty;
-                                dto.Description = historyEntity.Description;
-                            }
-                        }
-                        else
-                        {
-                            dto.Description = string.Empty;
-                            dto.DescriptionAr = string.Empty;
-                            dto.DescriptionEn = string.Empty;
-                        }
                     }
                 }
 
@@ -379,31 +326,6 @@ namespace Ettad.RequestManagement.Service.OrderItemTracking
                         dto.ModifiedByUserNameEn = historyEntity.ModifiedByUser?.FullNameEN ?? string.Empty;
                         dto.ModifiedByUserNameAr = historyEntity.ModifiedByUser?.FullNameAR ?? string.Empty;
                         dto.WorkflowStepName = historyEntity.WorkflowStep?.ApplicationRole?.Name;
-                        
-                        // Split description into Arabic and English
-                        if (!string.IsNullOrWhiteSpace(historyEntity.Description))
-                        {
-                            var parts = historyEntity.Description.Split(new[] { "|||" }, StringSplitOptions.None);
-                            if (parts.Length == 2)
-                            {
-                                dto.DescriptionAr = parts[0];
-                                dto.DescriptionEn = parts[1];
-                                dto.Description = historyEntity.Description; // Keep original for backward compatibility
-                            }
-                            else
-                            {
-                                // Backward compatibility: if no separator, put in English
-                                dto.DescriptionEn = historyEntity.Description;
-                                dto.DescriptionAr = string.Empty;
-                                dto.Description = historyEntity.Description;
-                            }
-                        }
-                        else
-                        {
-                            dto.Description = string.Empty;
-                            dto.DescriptionAr = string.Empty;
-                            dto.DescriptionEn = string.Empty;
-                        }
                     }
                 }
 

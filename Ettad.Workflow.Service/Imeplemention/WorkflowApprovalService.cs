@@ -907,7 +907,7 @@ namespace Ettad.Workflows.Service.Imeplemention
         }
 
         // Helper: get current approval step by request ID
-        public async Task<WorkflowApprovalStep> GetCurrentApprovalStepByRequestIdAsync(int requestId)
+        public async Task<WorkflowApprovalStep> GetCurrentApprovalStepByRequestIdAsync(long requestId)
         {
             var step = await _context.WorkflowApprovalSteps
                 .Include(x => x.WorkflowStep)
@@ -2496,7 +2496,7 @@ namespace Ettad.Workflows.Service.Imeplemention
         /// <summary>
         /// Get all previous workflow steps that can be returned to for review
         /// </summary>
-        public async Task<IEnumerable<WorkflowStepDto>> GetPreviousWorkflowStepsForReturn(int requestId)
+        public async Task<IEnumerable<WorkflowStepDto>> GetPreviousWorkflowStepsForReturn(long requestId)
         {
             // Get the current approval step for this request
             var currentApprovalStep = await _context.WorkflowApprovalSteps
