@@ -84,7 +84,7 @@ namespace Ettad.Reporting.Services
                     ModifiedBy = r.ModifiedBy,
                     DeletionDate = r.DeletionDate,
                     DeletedBy = r.DeletedBy
-                }).ToList();
+                }).OrderBy(x=>x.CreationDate).ToList();
 
                 _logger.LogInformation("Retrieved {Count} reports. User: {UserId}", dtos.Count, _currentUserService.UserId);
                 return APIOperationResponse<List<ReportDto>>.Success(dtos);
@@ -191,7 +191,7 @@ namespace Ettad.Reporting.Services
             }
         }
 
-        public async Task<APIOperationResponse<Guid>> CreateAsync(CreateReportDto dto)
+        public async Task<APIOperationResponse<string>> CreateAsync(CreateReportDto dto)
         {
             _logger.LogInformation("Creating report. ReportName: {ReportName}, User: {UserId}", dto.ReportName, _currentUserService.UserId);
 
@@ -227,12 +227,12 @@ namespace Ettad.Reporting.Services
                 _logger.LogInformation("Report created successfully. ReportId: {ReportId}, ReportName: {ReportName}, User: {UserId}", 
                     report.Id, dto.ReportName, _currentUserService.UserId);
 
-                return APIOperationResponse<Guid>.Success(report.Id);
+                return APIOperationResponse<string>.Success(report.Url);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error creating report. ReportName: {ReportName}, User: {UserId}", dto.ReportName, _currentUserService.UserId);
-                return APIOperationResponse<Guid>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
+                return APIOperationResponse<string>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
             }
         }
 

@@ -94,7 +94,7 @@ namespace Ettad.Reporting.Storage
 
         public override void SetData(XtraReport report, string url)
         {
-            if (report.Name != report.DisplayName)
+            if (string.IsNullOrWhiteSpace(report.DisplayName))
                 report.DisplayName = report.Name;
 
             var reportName = report.DisplayName;
@@ -142,7 +142,6 @@ namespace Ettad.Reporting.Storage
             var url = defaultUrl;
             var counter = 1;
             var reportName = report.DisplayName;
-            report.Name = report.DisplayName;
 
             if (ReportExists(reportName))
                 throw new FaultException("Report with this name already exists, Try another.");
@@ -171,7 +170,7 @@ namespace Ettad.Reporting.Storage
                 throw new FaultException(createResult.Message);
             }
 
-            return url;
+            return createResult.Data??url;
         }
     }
 }

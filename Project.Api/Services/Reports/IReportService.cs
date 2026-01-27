@@ -9,7 +9,7 @@ namespace Ettad.Reporting.Services
         Task<APIOperationResponse<List<ReportDto>>> GetAllAsync();
         Task<APIOperationResponse<ReportDto>> GetByIdAsync(Guid id);
         Task<APIOperationResponse<ReportDto>> GetByUrlAsync(string url);
-        Task<APIOperationResponse<Guid>> CreateAsync(CreateReportDto dto);
+        Task<APIOperationResponse<string>> CreateAsync(CreateReportDto dto);
         Task<APIOperationResponse<bool>> UpdateAsync(Guid id, UpdateReportDto dto);
         Task<APIOperationResponse<ReportDto>> SetReportPublicAsync(Guid id, bool isPublic);
         Task<APIOperationResponse<bool>> DeleteAsync(Guid id);
