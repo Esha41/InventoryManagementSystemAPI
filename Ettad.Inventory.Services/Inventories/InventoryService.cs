@@ -823,7 +823,8 @@ namespace Ettad.Inventory.Service.Inventories
                     nameof(InventoryDetailEntity.Item),
                     nameof(InventoryDetailEntity.Supplier),
                     nameof(InventoryDetailEntity.Manufacturer),
-                    nameof(InventoryDetailEntity.Country)
+                    nameof(InventoryDetailEntity.Country),
+                    nameof(InventoryDetailEntity.Inventory)
                 );
 
                 // Create paginated list of entities first to apply filtering and paging on database
