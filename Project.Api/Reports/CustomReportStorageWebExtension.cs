@@ -147,15 +147,6 @@ namespace Ettad.Reporting.Storage
             if (ReportExists(reportName))
                 throw new FaultException("Report with this name already exists, Try another.");
 
-            // Check if URL exists using service
-            var checkResult = _reportService.GetByUrlAsync(url).GetAwaiter().GetResult();
-            while (checkResult.Succeeded && checkResult.Data != null)
-            {
-                url = $"{defaultUrl}_{counter}";
-                counter++;
-                checkResult = _reportService.GetByUrlAsync(url).GetAwaiter().GetResult();
-            }
-
             // Save report layout
             byte[] layoutData;
             using (var ms = new MemoryStream())
