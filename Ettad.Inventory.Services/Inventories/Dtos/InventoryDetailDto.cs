@@ -37,6 +37,12 @@ namespace Ettad.Inventory.Service.Inventories.Dtos
 
         public bool IsLotEmpty { get; set; }
 
+        // Invoice Information (from parent Inventory)
+        public string? InvoiceNumber { get; set; }
+        public DateTime? InvoiceDate { get; set; }
+        public DateTime? RecievedDate { get; set; }
+        public string? Notes { get; set; }
+
         #region Navigation Properties
 
         public BaseItemDto Item { get; set; }
