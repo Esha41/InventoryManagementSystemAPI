@@ -12,6 +12,7 @@ namespace Ettad.Inventory.Services.Common
         public int TotalProcessed { get; set; }
         public int SuccessCount => SuccessfulRecords.Count;
         public int FailureCount => Errors.Count;
+        public List<string> ImportHeaders { get; set; } = new List<string>();
     }
 
     public class ImportError
@@ -70,14 +71,23 @@ namespace Ettad.Inventory.Services.Common
                         return result;
                     }
 
-                    // Map headers to column indices
+                    // Map headers to column indices and populate ImportHeaders
                     var headerMap = new Dictionary<string, int>();
+                    var headersFound = new HashSet<string>();
                     for (int col = 1; col <= colCount; col++)
                     {
                         var headerVal = worksheet.Cells[1, col].Text?.Trim();
-                        if (!string.IsNullOrEmpty(headerVal) && columnMappings.ContainsKey(headerVal))
+                        if (!string.IsNullOrEmpty(headerVal) && columnMappings.TryGetValue(headerVal, out var propertyName))
                         {
                             headerMap[headerVal] = col;
+                            
+                            // Add camelCase property name to result headers if not already added
+                            var camelPropertyName = System.Text.Json.JsonNamingPolicy.CamelCase.ConvertName(propertyName);
+                            if (!headersFound.Contains(camelPropertyName))
+                            {
+                                result.ImportHeaders.Add(camelPropertyName);
+                                headersFound.Add(camelPropertyName);
+                            }
                         }
                     }
 

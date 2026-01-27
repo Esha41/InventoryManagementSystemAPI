@@ -18,6 +18,10 @@ using OfficeOpenXml.DataValidation;
 using Ettad.EntityFramework.DataBaseContext;
 using Ettad.CrossCutting.Comman.Time;
 using Ettad.CrossCutting.Comman.Models;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using System;
 
 namespace Ettad.Inventory.Service.Ammunitions
 {
@@ -30,9 +34,31 @@ namespace Ettad.Inventory.Service.Ammunitions
         private readonly ICurrentUserService _currentUserService;
         private readonly ILogger<AmmunitionService> _logger;
         private readonly IFileUploadService _fileUploadService;
-        private readonly IExcelImportService _excelImportService;
         private readonly ApplicationDbContext _context;
         private readonly IDateTimeProvider _dateTimeProvider;
+        private readonly AssetImportManager<CreateUpdateAmmunitionDto, AmmunitionImportDto> _importManager;
+
+        // In-memory cache for lookups during import
+        private List<Unit> _units;
+        private List<CaseType> _caseTypes;
+        private List<Propellant> _propellants;
+        private List<Compatibility> _compatibilities;
+        private List<HazardDivision> _hazardDivisions;
+        private List<NatureOption> _natureOptions;
+        private List<PrimaryPurpos> _primaryPurposes;
+        private List<Color> _projectileColors;
+        private List<ProjectailMaterial> _projectileMaterials;
+        private List<Classification> _classifications;
+        private List<ItemTypeLookup> _itemTypes;
+
+        // Optimization: Dictionary for fast O(1) lookups during import
+        private Dictionary<string, Dictionary<string, long>> _cachedLookups = new Dictionary<string, Dictionary<string, long>>();
+        
+        // Cache for existing records to prevent N+1 queries during validation
+        private HashSet<string> _existingItemNos = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        private HashSet<string> _existingNsns = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        private HashSet<string> _newlyAddedItemNos = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        private HashSet<string> _newlyAddedNsns = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
         public AmmunitionService(
             ICrossCuttingRepository<Ammunition> ammunitionRepository,
@@ -42,7 +68,7 @@ namespace Ettad.Inventory.Service.Ammunitions
             ICurrentUserService currentUserService,
             ILogger<AmmunitionService> logger,
             IFileUploadService fileUploadService,
-            IExcelImportService excelImportService,
+            IExcelImportService excelImportService, // Kept for DI compatibility if needed elsewhere, but used by manager
             ApplicationDbContext context,
             IDateTimeProvider dateTimeProvider)
         {
@@ -53,17 +79,17 @@ namespace Ettad.Inventory.Service.Ammunitions
             _currentUserService = currentUserService;
             _logger = logger;
             _fileUploadService = fileUploadService;
-            _excelImportService = excelImportService;
             _context = context;
             _dateTimeProvider = dateTimeProvider;
             
-            // Set EPPlus license context
-            ExcelPackage.License.SetNonCommercialPersonal("Ettad");
+            _importManager = new AssetImportManager<CreateUpdateAmmunitionDto, AmmunitionImportDto>(excelImportService, 
+                new LoggerFactory().CreateLogger<AssetImportManager<CreateUpdateAmmunitionDto, AmmunitionImportDto>>());
         }
 
         public async Task<APIOperationResponse<AmmunitionDto>> GetByIdAsync(long id)
         {
-            _logger.LogInformation("Getting ammunition by ID. AmmunitionId: {AmmunitionId}, User: {UserId}", 
+           // existing implementation
+             _logger.LogInformation("Getting ammunition by ID. AmmunitionId: {AmmunitionId}, User: {UserId}", 
                 id, _currentUserService.UserId);
             
             try
@@ -89,12 +115,8 @@ namespace Ettad.Inventory.Service.Ammunitions
 
                 var dto = _mapper.Map<AmmunitionDto>(ammunition);
                 
-                // Get images for this ammunition
                 var imagesResult = await _fileUploadService.GetByEntityAsync(FileEntityType.Ammunition, ammunition.Id);
                 dto.Images = imagesResult.Succeeded && imagesResult.Data != null ? imagesResult.Data : new List<FileUploadDto>();
-                
-                _logger.LogInformation("Ammunition retrieved successfully. AmmunitionId: {AmmunitionId}, Name: {Name}, User: {UserId}", 
-                    id, dto.Name, _currentUserService.UserId);
                 
                 return APIOperationResponse<AmmunitionDto>.Success(dto);
             }
@@ -108,7 +130,8 @@ namespace Ettad.Inventory.Service.Ammunitions
 
         public async Task<APIOperationResponse<List<AmmunitionDto>>> GetAllAsync()
         {
-            _logger.LogInformation("Getting all ammunitions. User: {UserId}", _currentUserService.UserId);
+            // existing implementation
+             _logger.LogInformation("Getting all ammunitions. User: {UserId}", _currentUserService.UserId);
             
             try
             {
@@ -130,7 +153,6 @@ namespace Ettad.Inventory.Service.Ammunitions
 
                 var dtos = _mapper.Map<List<AmmunitionDto>>(ammunitions);
                 
-                // Populate images for all ammunitions in a single database query
                 var entityIds = dtos.Select(d => d.Id).ToList();
                 var imagesResult = await _fileUploadService.GetByEntitiesAsync(FileEntityType.Ammunition, entityIds);
                 if (imagesResult.Succeeded && imagesResult.Data != null)
@@ -140,9 +162,6 @@ namespace Ettad.Inventory.Service.Ammunitions
                         dto.Images = imagesResult.Data.ContainsKey(dto.Id) ? imagesResult.Data[dto.Id] : new List<FileUploadDto>();
                     }
                 }
-                
-                _logger.LogInformation("All ammunitions retrieved successfully. Count: {Count}, User: {UserId}", 
-                    dtos.Count, _currentUserService.UserId);
                 
                 return APIOperationResponse<List<AmmunitionDto>>.Success(dtos);
             }
@@ -155,7 +174,8 @@ namespace Ettad.Inventory.Service.Ammunitions
 
         public async Task<APIOperationResponse<PaginatedList<AmmunitionDto>>> GetAllPaginatedAsync(PagedListRequest request)
         {
-            _logger.LogInformation("Getting ammunitions paginated. Page: {Page}, PageSize: {PageSize}, User: {UserId}", 
+            // existing implementation
+             _logger.LogInformation("Getting ammunitions paginated. Page: {Page}, PageSize: {PageSize}, User: {UserId}", 
                 request.Page, request.PageSize, _currentUserService.UserId);
 
             try
@@ -178,13 +198,11 @@ namespace Ettad.Inventory.Service.Ammunitions
 
                 var paginatedEntities = await PaginatedList<Ammunition>.CreateAsyncForTableBinding(query, request);
                 
-                // Map to DTOs
                 var dtos = new List<AmmunitionDto>();
                 if (paginatedEntities.Items.Any())
                 {
                     dtos = _mapper.Map<List<AmmunitionDto>>(paginatedEntities.Items);
 
-                    // Fetch images for the visible page only
                     var entityIds = dtos.Select(d => d.Id).ToList();
                     var imagesResult = await _fileUploadService.GetByEntitiesAsync(FileEntityType.Ammunition, entityIds);
                     
@@ -207,9 +225,6 @@ namespace Ettad.Inventory.Service.Ammunitions
                     request.PageSize
                 );
 
-                _logger.LogInformation("Ammunitions paginated retrieved successfully. Count: {Count}, TotalCount: {TotalCount}, User: {UserId}", 
-                    dtos.Count, paginatedEntities.TotalCount, _currentUserService.UserId);
-
                 return APIOperationResponse<PaginatedList<AmmunitionDto>>.Success(result);
             }
             catch (Exception ex)
@@ -221,7 +236,8 @@ namespace Ettad.Inventory.Service.Ammunitions
 
         public async Task<APIOperationResponse<List<AmmunitionDto>>> GetByTypeAsync(AmmunitionType ammunitionType)
         {
-            _logger.LogInformation("Getting ammunitions by type. AmmunitionType: {AmmunitionType}, User: {UserId}", ammunitionType, _currentUserService.UserId);
+             // existing implementation
+              _logger.LogInformation("Getting ammunitions by type. AmmunitionType: {AmmunitionType}, User: {UserId}", ammunitionType, _currentUserService.UserId);
 
             try
             {
@@ -243,7 +259,6 @@ namespace Ettad.Inventory.Service.Ammunitions
 
                 var dtos = _mapper.Map<List<AmmunitionDto>>(ammunitions);
                 
-                // Populate images for all ammunitions in a single database query
                 var entityIds = dtos.Select(d => d.Id).ToList();
                 var imagesResult = await _fileUploadService.GetByEntitiesAsync(FileEntityType.Ammunition, entityIds);
                 if (imagesResult.Succeeded && imagesResult.Data != null)
@@ -253,9 +268,6 @@ namespace Ettad.Inventory.Service.Ammunitions
                         dto.Images = imagesResult.Data.ContainsKey(dto.Id) ? imagesResult.Data[dto.Id] : new List<FileUploadDto>();
                     }
                 }
-                
-                _logger.LogInformation("Ammunitions retrieved by type successfully. AmmunitionType: {AmmunitionType}, Count: {Count}, User: {UserId}", 
-                    ammunitionType, dtos.Count, _currentUserService.UserId);
                 
                 return APIOperationResponse<List<AmmunitionDto>>.Success(dtos);
             }
@@ -268,19 +280,16 @@ namespace Ettad.Inventory.Service.Ammunitions
 
         public async Task<APIOperationResponse<long>> CreateAsync(CreateUpdateAmmunitionDto inputDto, List<IFormFile>? files = null)
         {
-            _logger.LogInformation("Creating new ammunition. Name: {Name}, ItemNo: {ItemNo}, User: {UserId}", 
+            // existing implementation
+             _logger.LogInformation("Creating new ammunition. Name: {Name}, ItemNo: {ItemNo}, User: {UserId}", 
                 inputDto?.Name, inputDto?.ItemNo, _currentUserService.UserId);
             
             try
             {
-                // Validate input
                 var validationResult = await _validator.ValidateAsync(inputDto);
                 if (!validationResult.IsValid)
                 {
                     var errors = string.Join(", ", validationResult.Errors.Select(e => e.ErrorMessage));
-                    _logger.LogWarning("Ammunition validation failed. Errors: {ValidationErrors}, User: {UserId}", 
-                        errors, _currentUserService.UserId);
-                    
                     return APIOperationResponse<long>.Fail(ResponseType.BadRequest, errors);
                 }
 
@@ -292,20 +301,17 @@ namespace Ettad.Inventory.Service.Ammunitions
                     if (existingWithSameNsn != null)
                         return APIOperationResponse<long>.Fail(ResponseType.BadRequest, "NSN already exists");
                 }
-                List<long>? savedFileMasterIds = null;
+                
                 if (files != null && files.Any())
                 {
                     var saveFilesResult = await _fileUploadService.SaveFilesAsync(files, FileEntityType.Ammunition);
                     if (!saveFilesResult.Succeeded)
                     {
-                        _logger.LogWarning("File upload failed during ammunition creation. Error: {Error}, User: {UserId}",
-                            saveFilesResult.Message, _currentUserService.UserId);
                         return APIOperationResponse<long>.Fail(ResponseType.BadRequest,
                             $"File upload failed: {saveFilesResult.Message}");
                     }
-                    savedFileMasterIds = saveFilesResult.Data;
                 }
-                // Map DTO to entity
+                
                 var ammunition = _mapper.Map<Ammunition>(inputDto);
                 ammunition.AmmunitionType = AmmunitionType.Small;
                 ammunition.ItemType = ItemType.Ammunition;
@@ -313,61 +319,31 @@ namespace Ettad.Inventory.Service.Ammunitions
                 ammunition.CreatedBy = _currentUserService.UserId;
                 ammunition.Nsn = string.IsNullOrWhiteSpace(inputDto.Nsn) ? null : inputDto.Nsn.Trim();
 
-                // Add to repository first to get the ID
                 var createdAmmunition = await _ammunitionRepository.AddAsync(ammunition);
-                _logger.LogInformation("Ammunition created successfully. AmmunitionId: {AmmunitionId}, Name: {Name}, User: {UserId}",
-                                createdAmmunition.Id, createdAmmunition.Name, _currentUserService.UserId);
-
-                // Upload files and link them to the created ammunition using UploadFilesForEntityAsync
+ 
                 if (files != null && files.Any())
                 {
-                    var uploadFilesResult = await _fileUploadService.UploadFilesForEntityAsync(
+                    await _fileUploadService.UploadFilesForEntityAsync(
                         files, 
                         FileEntityType.Ammunition, 
                         createdAmmunition.Id);
-                    
-                    if (!uploadFilesResult.Succeeded)
-                    {
-                        _logger.LogWarning("File upload failed during ammunition creation. Error: {Error}, User: {UserId}", 
-                            uploadFilesResult.Message, _currentUserService.UserId);
-                        // Note: Ammunition is already created, but files failed to upload
-                        // This is logged but doesn't fail the operation
-                    }
-                    else
-                    {
-                        _logger.LogInformation("Files uploaded and linked to ammunition. AmmunitionId: {AmmunitionId}, FileCount: {FileCount}, User: {UserId}",
-                            createdAmmunition.Id, files.Count, _currentUserService.UserId);
-                    }
                 }
 
-                _logger.LogInformation("Ammunition creation completed successfully. AmmunitionId: {AmmunitionId}, Name: {Name}, User: {UserId}", 
-                    createdAmmunition.Id, createdAmmunition.Name, _currentUserService.UserId);
-                
                 return APIOperationResponse<long>.Success(createdAmmunition.Id, "Ammunition created successfully");
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error creating ammunition. Name: {Name}, ItemNo: {ItemNo}, User: {UserId}", 
-                    inputDto?.Name, inputDto?.ItemNo, _currentUserService.UserId);
-             
-                var errorMessage = ex.Message;
-                if (ex.InnerException != null)
-                {
-                    errorMessage += $" (Inner: {ex.InnerException.Message})";
-                }
-             
-                return APIOperationResponse<long>.Fail(ResponseType.InternalServerError, $"An error occurred: {errorMessage}");
+                _logger.LogError(ex, "Error creating ammunition");
+                var msg = ex.Message + (ex.InnerException != null ? $" (Inner: {ex.InnerException.Message})" : "");
+                return APIOperationResponse<long>.Fail(ResponseType.InternalServerError, $"An error occurred: {msg}");
             }
         }
 
         public async Task<APIOperationResponse<bool>> UpdateAsync(long id, CreateUpdateAmmunitionDto inputDto)
         {
-            _logger.LogInformation("Updating ammunition. AmmunitionId: {AmmunitionId}, Name: {Name}, User: {UserId}", 
-                id, inputDto?.Name, _currentUserService.UserId);
-            
-            try
+            // existing implementation
+             try
             {
-                // Validate input
                 var validationResult = await _validator.ValidateAsync(inputDto);
                 if (!validationResult.IsValid)
                 {
@@ -375,7 +351,6 @@ namespace Ettad.Inventory.Service.Ammunitions
                     return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, errors);
                 }
 
-                // Check if ammunition exists
                 var existingAmmunition = await _ammunitionRepository.FindOneAsync(a => a.Id == id && !a.IsDeleted);
                 if (existingAmmunition == null)
                     return APIOperationResponse<bool>.Fail(ResponseType.NotFound, "Ammunition not found");
@@ -389,579 +364,325 @@ namespace Ettad.Inventory.Service.Ammunitions
                         return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, "NSN already exists");
                 }
 
-                // Map updates to entity
                 _mapper.Map(inputDto, existingAmmunition);
                 existingAmmunition.AmmunitionType = AmmunitionType.Small;
                 existingAmmunition.ModificationDate = _dateTimeProvider.Now;
                 existingAmmunition.ModifiedBy = _currentUserService.UserId;
                 existingAmmunition.Nsn = string.IsNullOrWhiteSpace(inputDto.Nsn) ? null : inputDto.Nsn.Trim();
 
-                // Update in repository
                 await _ammunitionRepository.UpdateAsync(existingAmmunition);
-                
-                _logger.LogInformation("Ammunition updated successfully. AmmunitionId: {AmmunitionId}, Name: {Name}, User: {UserId}", 
-                    id, existingAmmunition.Name, _currentUserService.UserId);
                 
                 return APIOperationResponse<bool>.Success(true, "Ammunition updated successfully");
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error updating ammunition. AmmunitionId: {AmmunitionId}, Name: {Name}, User: {UserId}", 
-                    id, inputDto?.Name, _currentUserService.UserId);
                 return APIOperationResponse<bool>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
             }
         }
 
         public async Task<APIOperationResponse<bool>> DeleteAsync(long id)
         {
-            _logger.LogInformation("Deleting ammunition. AmmunitionId: {AmmunitionId}, User: {UserId}", 
-                id, _currentUserService.UserId);
-            
-            try
+            // existing implementation
+             try
             {
                 var ammunition = await _ammunitionRepository.FindOneAsync(a => a.Id == id && !a.IsDeleted);
                 if (ammunition == null)
                 {
-                    _logger.LogWarning("Ammunition not found for deletion. AmmunitionId: {AmmunitionId}, User: {UserId}", 
-                        id, _currentUserService.UserId);
                     return APIOperationResponse<bool>.Fail(ResponseType.NotFound, "Ammunition not found");
                 }
 
-                var name = ammunition.Name;
-                
-                // Soft delete - interceptor will handle IsDeleted, DeletionDate, and DeletedBy automatically
                 await _ammunitionRepository.DeleteAsync(ammunition);
 
-                _logger.LogInformation("Ammunition deleted successfully. AmmunitionId: {AmmunitionId}, Name: {Name}, User: {UserId}", 
-                    id, name, _currentUserService.UserId);
                 return APIOperationResponse<bool>.Success(true, "Ammunition deleted successfully");
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error deleting ammunition. AmmunitionId: {AmmunitionId}, User: {UserId}", 
-                    id, _currentUserService.UserId);
                 return APIOperationResponse<bool>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
             }
         }
+
         public async Task<APIOperationResponse<ImportResult<CreateUpdateAmmunitionDto>>> ImportAsync(IFormFile file, string language = "en")
         {
-            _logger.LogInformation("Importing ammunitions from file. FileName: {FileName}, Language: {Language}, User: {UserId}", 
-                file?.FileName, language, _currentUserService.UserId);
+            return await _importManager.ImportAsync(
+                file,
+                language,
+                items => LoadLookupsAsync(items),
+                MapImportDtoToEntityAsync,
+                ValidateDtoAsync,
+                async (dto) => await CreateAsync(dto), // Delegate creation to existing CreateAsync
+                GetColumnMappings(language));
+        }
+
+        public async Task<APIOperationResponse<ImportResult<AmmunitionImportDto>>> ImportPreviewAsync(IFormFile file, string language = "en")
+        {
+             return await _importManager.ImportPreviewAsync(
+                file,
+                language,
+                items => LoadLookupsAsync(items),
+                MapImportDtoToEntityAsync,
+                ValidateDtoAsync,
+                GetColumnMappings(language));
+        }
+
+        public async Task<APIOperationResponse<byte[]>> GenerateImportTemplateAsync(string language = "en")
+        {
+            await LoadLookupsAsync(); 
+
+             var headers = language == "ar" 
+                    ? new[]
+                    {
+                        "الاسم*", "رقم الصنف*", "رقم الجزء", "رقم ARM", "NSN", "السعر", "الكمية الدنيا",
+                        "قطر الرصاصة", "وحدة قطر الرصاصة", "الوزن الكلي", "مرتبط", "الكبسولة",
+                        "نوع الغلاف", "المادة الدافعة", "التوافق", "قسم الخطر", "خيار الطبيعة",
+                        "الغرض الأساسي", "لون المقذوف", "مادة المقذوف",
+                        "رقم الأمم المتحدة", "التوزيع", "الرقم المرجعي", "التصنيف", "النوع", "ملاحظات"
+                    }
+                    : new[]
+                    {
+                        "Name*", "Item No*", "Part No", "Arm Number", "NSN", "Price", "Minimum Quantity",
+                        "Bullet Diameter", "Bullet Diameter Unit", "Total Weight", "Is Linked", "Primer",
+                        "Case Type", "Propellant", "Compatibility", "Hazard Division", "Nature Option",
+                        "Primary Purpose", "Projectile Color", "Projectile Material",
+                        "UN Number", "Distribution", "Reference No", "Classification", "Type", "Notes"
+                    };
+
+            var firstAsset = await _context.Ammunitions
+                .Include(a => a.BulletDiameterUnit)
+                .Include(a => a.CaseType)
+                .Include(a => a.Propellant)
+                .Include(a => a.Compatibility)
+                .Include(a => a.HazardDivision)
+                .Include(a => a.NatureOption)
+                .Include(a => a.PrimaryPurpos)
+                .Include(a => a.ProjectileColor)
+                .Include(a => a.ProjectailMaterial)
+                .Include(a => a.Classification)
+                .Include(a => a.Type)
+                .FirstOrDefaultAsync(a => !a.IsDeleted);
+
+            return await _importManager.GenerateTemplateAsync(
+                language,
+                "Ammunition Import",
+                headers,
+                (sheet) => 
+                {
+                    if (firstAsset != null)
+                    {
+                        var isAr = language == "ar";
+                        sheet.Cells[2, 1].Value = firstAsset.Name;
+                        sheet.Cells[2, 2].Value = firstAsset.ItemNo;
+                        sheet.Cells[2, 3].Value = firstAsset.PartNo;
+                        sheet.Cells[2, 4].Value = firstAsset.ArmNumber;
+                        sheet.Cells[2, 5].Value = firstAsset.Nsn;
+                        sheet.Cells[2, 6].Value = firstAsset.Price;
+                        sheet.Cells[2, 7].Value = firstAsset.MinimumQuantity;
+                        sheet.Cells[2, 8].Value = firstAsset.BulletDiameter;
+                        sheet.Cells[2, 9].Value = isAr ? firstAsset.BulletDiameterUnit?.NameAr : firstAsset.BulletDiameterUnit?.NameEn;
+                        sheet.Cells[2, 10].Value = firstAsset.TotalWeight;
+                        sheet.Cells[2, 11].Value = firstAsset.IsLinked ? "Yes" : "No";
+                        sheet.Cells[2, 12].Value = firstAsset.Primer;
+                        sheet.Cells[2, 13].Value = isAr ? firstAsset.CaseType?.NameAr : firstAsset.CaseType?.NameEn;
+                        sheet.Cells[2, 14].Value = isAr ? firstAsset.Propellant?.NameAr : firstAsset.Propellant?.NameEn;
+                        sheet.Cells[2, 15].Value = isAr ? firstAsset.Compatibility?.NameAr : firstAsset.Compatibility?.NameEn;
+                        sheet.Cells[2, 16].Value = isAr ? firstAsset.HazardDivision?.NameAr : firstAsset.HazardDivision?.NameEn;
+                        sheet.Cells[2, 17].Value = isAr ? firstAsset.NatureOption?.NameAr : firstAsset.NatureOption?.NameEn;
+                        sheet.Cells[2, 18].Value = isAr ? firstAsset.PrimaryPurpos?.NameAr : firstAsset.PrimaryPurpos?.NameEn;
+                        sheet.Cells[2, 19].Value = isAr ? firstAsset.ProjectileColor?.NameAr : firstAsset.ProjectileColor?.NameEn;
+                        sheet.Cells[2, 20].Value = isAr ? firstAsset.ProjectailMaterial?.NameAr : firstAsset.ProjectailMaterial?.NameEn;
+                        sheet.Cells[2, 21].Value = firstAsset.UNNumber;
+                        sheet.Cells[2, 22].Value = firstAsset.Distribution;
+                        sheet.Cells[2, 23].Value = firstAsset.ReferenceNo;
+                        sheet.Cells[2, 24].Value = isAr ? firstAsset.Classification?.NameAr : firstAsset.Classification?.NameEn;
+                        sheet.Cells[2, 25].Value = isAr ? firstAsset.Type?.NameAr : firstAsset.Type?.NameEn;
+                        sheet.Cells[2, 26].Value = firstAsset.Notes;
+                    }
+                    else
+                    {
+                        sheet.Cells[2, 1].Value = "Sample Ammunition";
+                        sheet.Cells[2, 2].Value = "AMM-001";
+                    }
+                },
+                (package) =>
+                {
+                    CreateLookupSheet(package, "Units", _units);
+                    CreateLookupSheet(package, "CaseTypes", _caseTypes);
+                    CreateLookupSheet(package, "Propellants", _propellants);
+                    CreateLookupSheet(package, "Compatibilities", _compatibilities);
+                    CreateLookupSheet(package, "HazardDivisions", _hazardDivisions);
+                    CreateLookupSheet(package, "NatureOptions", _natureOptions);
+                    CreateLookupSheet(package, "PrimaryPurposes", _primaryPurposes);
+                    CreateLookupSheet(package, "ProjectileColors", _projectileColors);
+                    CreateLookupSheet(package, "ProjectileMaterials", _projectileMaterials);
+                    CreateLookupSheet(package, "Classifications", _classifications);
+                    CreateLookupSheet(package, "ItemTypes", _itemTypes);
+                },
+                (sheet) =>
+                {
+                    AddDataValidation(sheet, 9, "Units"); 
+                    AddYesNoValidation(sheet, 11);
+                    AddDataValidation(sheet, 13, "CaseTypes"); 
+                    AddDataValidation(sheet, 14, "Propellants"); 
+                    AddDataValidation(sheet, 15, "Compatibilities"); 
+                    AddDataValidation(sheet, 16, "HazardDivisions"); 
+                    AddDataValidation(sheet, 17, "NatureOptions"); 
+                    AddDataValidation(sheet, 18, "PrimaryPurposes"); 
+                    AddDataValidation(sheet, 19, "ProjectileColors"); 
+                    AddDataValidation(sheet, 20, "ProjectileMaterials"); 
+                    AddDataValidation(sheet, 24, "Classifications"); 
+                    AddDataValidation(sheet, 25, "ItemTypes"); 
+                }
+            );
+        }
+
+        // Helpers
+        private async Task LoadLookupsAsync(List<AmmunitionImportDto> importItems = null)
+        {
+            _units = await _context.Units.Where(u => !u.IsDeleted).ToListAsync();
+            _caseTypes = await _context.CaseTypes.Where(c => !c.IsDeleted).ToListAsync();
+            _propellants = await _context.Propellants.Where(p => !p.IsDeleted).ToListAsync();
+            _compatibilities = await _context.Compatibilities.Where(c => !c.IsDeleted).ToListAsync();
+            _hazardDivisions = await _context.HazardDivisions.Where(h => !h.IsDeleted).ToListAsync();
+            _natureOptions = await _context.NatureOptions.Where(n => !n.IsDeleted).ToListAsync();
+            _primaryPurposes = await _context.PrimaryPurposes.Where(p => !p.IsDeleted).ToListAsync();
+            _projectileColors = await _context.Colors.Where(c => !c.IsDeleted).ToListAsync();
+            _projectileMaterials = await _context.ProjectailMaterials.Where(p => !p.IsDeleted).ToListAsync();
+            _classifications = await _context.Classifications.Where(c => !c.IsDeleted).ToListAsync();
+            _itemTypes = await _context.ItemTypes.Where(i => !i.IsDeleted).ToListAsync();
+
+            // Build cache
+            _cachedLookups["Units"] = BuildLookup(_units, x => x.NameEn, x => x.NameAr, x => x.Id);
+            _cachedLookups["CaseTypes"] = BuildLookup(_caseTypes, x => x.NameEn, x => x.NameAr, x => x.Id);
+            _cachedLookups["Propellants"] = BuildLookup(_propellants, x => x.NameEn, x => x.NameAr, x => x.Id);
+            _cachedLookups["Compatibilities"] = BuildLookup(_compatibilities, x => x.NameEn, x => x.NameAr, x => x.Id);
+            _cachedLookups["HazardDivisions"] = BuildLookup(_hazardDivisions, x => x.NameEn, x => x.NameAr, x => x.Id);
+            _cachedLookups["NatureOptions"] = BuildLookup(_natureOptions, x => x.NameEn, x => x.NameAr, x => x.Id);
+            _cachedLookups["PrimaryPurposes"] = BuildLookup(_primaryPurposes, x => x.NameEn, x => x.NameAr, x => x.Id);
+            _cachedLookups["ProjectileColors"] = BuildLookup(_projectileColors, x => x.NameEn, x => x.NameAr, x => x.Id);
+            _cachedLookups["ProjectileMaterials"] = BuildLookup(_projectileMaterials, x => x.NameEn, x => x.NameAr, x => x.Id);
+            _cachedLookups["Classifications"] = BuildLookup(_classifications, x => x.NameEn, x => x.NameAr, x => x.Id);
+            _cachedLookups["ItemTypes"] = BuildLookup(_itemTypes, x => x.NameEn, x => x.NameAr, x => x.Id);
+
+            // Optimization: Bulk fetch ItemNo and NSN duplicates
+            _existingItemNos.Clear();
+            _existingNsns.Clear();
+            _newlyAddedItemNos.Clear();
+            _newlyAddedNsns.Clear();
+
+            if (importItems != null && importItems.Any())
+            {
+                var itemNos = importItems.Select(x => x.ItemNo).Where(x => !string.IsNullOrEmpty(x)).Distinct().ToList();
+                var nsns = importItems.Select(x => x.Nsn).Where(x => !string.IsNullOrEmpty(x)).Distinct().ToList();
+
+                var existingRecords = await _context.Ammunitions
+                    .Where(a => !a.IsDeleted && (itemNos.Contains(a.ItemNo) || (a.Nsn != null && nsns.Contains(a.Nsn))))
+                    .Select(a => new { a.ItemNo, a.Nsn })
+                    .ToListAsync();
+
+                foreach (var rec in existingRecords)
+                {
+                    if (!string.IsNullOrEmpty(rec.ItemNo)) _existingItemNos.Add(rec.ItemNo);
+                    if (!string.IsNullOrEmpty(rec.Nsn)) _existingNsns.Add(rec.Nsn);
+                }
+            }
+        }
+
+        private async Task<CreateUpdateAmmunitionDto> MapImportDtoToEntityAsync(AmmunitionImportDto importDto, string language)
+        {
+             var dto = new CreateUpdateAmmunitionDto
+            {
+                Name = importDto.Name,
+                ItemNo = importDto.ItemNo,
+                PartNo = importDto.PartNo,
+                Price = importDto.Price,
+                MinimumQuantity = importDto.MinimumQuantity,
+                Nsn = importDto.Nsn,
+                Distribution = importDto.Distribution,
+                ReferenceNo = importDto.ReferenceNo,
+                UNNumber = importDto.UNNumber,
+                Notes = importDto.Notes,
+                ArmNumber = importDto.ArmNumber,
+                BulletDiameter = importDto.BulletDiameter,
+                IsLinked = importDto.IsLinked,
+                Primer = importDto.Primer,
+                TotalWeight = importDto.TotalWeight
+            };
+
+            dto.BulletDiameterUnitId = FindLookupIdCached("Units", importDto.BulletDiameterUnit);
+            dto.CaseTypeId = FindLookupIdCached("CaseTypes", importDto.CaseType);
+            dto.PropellantId = FindLookupIdCached("Propellants", importDto.Propellant);
+            dto.CompatibilityId = FindLookupIdCached("Compatibilities", importDto.Compatibility);
+            dto.HazardDivisionId = FindLookupIdCached("HazardDivisions", importDto.HazardDivision);
+            dto.NatureOptionId = FindLookupIdCached("NatureOptions", importDto.NatureOption);
+            dto.PrimaryPurposId = FindLookupIdCached("PrimaryPurposes", importDto.PrimaryPurpose);
+            dto.ProjectileColorId = FindLookupIdCached("ProjectileColors", importDto.ProjectileColor);
+            dto.ProjectailMaterialId = FindLookupIdCached("ProjectileMaterials", importDto.ProjectileMaterial);
+            dto.ClassificationId = FindLookupIdCached("Classifications", importDto.Classification);
+            dto.TypeId = FindLookupIdCached("ItemTypes", importDto.Type);
+
+            return dto;
+        }
+
+        private Dictionary<string, long> BuildLookup<T>(IEnumerable<T> items, Func<T, string> getNameEn, Func<T, string> getNameAr, Func<T, long> getId)
+        {
+            var dict = new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase);
+            if (items == null) return dict;
+
+            foreach (var item in items)
+            {
+                var en = getNameEn(item);
+                if (!string.IsNullOrWhiteSpace(en) && !dict.ContainsKey(en)) dict[en] = getId(item);
+                
+                var ar = getNameAr(item);
+                if (!string.IsNullOrWhiteSpace(ar) && !dict.ContainsKey(ar)) dict[ar] = getId(item);
+            }
+            return dict;
+        }
+
+        private long? FindLookupIdCached(string key, string name)
+        {
+            if (string.IsNullOrWhiteSpace(name) || !_cachedLookups.ContainsKey(key)) return null;
+            if (_cachedLookups[key].TryGetValue(name, out var id)) return id;
+            return null;
+        }
+
+        private async Task<List<string>> ValidateDtoAsync(CreateUpdateAmmunitionDto dto)
+        {
+            var errors = new List<string>();
+            var validationResult = await _validator.ValidateAsync(dto);
+            if (!validationResult.IsValid)
+            {
+                errors.AddRange(validationResult.Errors.Select(e => e.ErrorMessage));
+            }
+
+            // Check duplicates using optimized HashSets
+            if (!string.IsNullOrWhiteSpace(dto.ItemNo))
+            {
+                 if (_existingItemNos.Contains(dto.ItemNo)) 
+                    errors.Add($"Item No '{dto.ItemNo}' already exists in the database");
+                 else if (_newlyAddedItemNos.Contains(dto.ItemNo))
+                    errors.Add($"Item No '{dto.ItemNo}' is duplicated in the current file");
+                 else
+                    _newlyAddedItemNos.Add(dto.ItemNo);
+            }
             
-            try
+            if (!string.IsNullOrWhiteSpace(dto.Nsn))
             {
-                var mappings = GetColumnMappings(language);
-                var importResult = await _excelImportService.ImportFromExcelAsync<AmmunitionImportDto>(file, mappings);
-
-                // Load all lookup data for resolution
-                var units = await _context.Units.Where(u => !u.IsDeleted).ToListAsync();
-                var caseTypes = await _context.CaseTypes.Where(c => !c.IsDeleted).ToListAsync();
-                var propellants = await _context.Propellants.Where(p => !p.IsDeleted).ToListAsync();
-                var compatibilities = await _context.Compatibilities.Where(c => !c.IsDeleted).ToListAsync();
-                var hazardDivisions = await _context.HazardDivisions.Where(h => !h.IsDeleted).ToListAsync();
-                var natureOptions = await _context.NatureOptions.Where(n => !n.IsDeleted).ToListAsync();
-                var primaryPurposes = await _context.PrimaryPurposes.Where(p => !p.IsDeleted).ToListAsync();
-                var projectileColors = await _context.Colors.Where(p => !p.IsDeleted).ToListAsync();
-                var projectileMaterials = await _context.ProjectailMaterials.Where(p => !p.IsDeleted).ToListAsync();
-                var classifications = await _context.Classifications.Where(c => !c.IsDeleted).ToListAsync();
-                var itemTypes = await _context.ItemTypes.Where(i => !i.IsDeleted).ToListAsync();
-
-                var finalResult = new ImportResult<CreateUpdateAmmunitionDto>
-                {
-                    TotalProcessed = importResult.TotalProcessed
-                };
-                
-                // Copy any initial parsing errors
-                finalResult.Errors.AddRange(importResult.Errors);
-
-                if (importResult.SuccessCount > 0)
-                {
-                    // Track NSNs and ItemNos seen in this import file to detect duplicates within the file
-                    var seenNsns = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-                    var seenItemNos = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-                    
-                    int rowNumber = 2; // Start from row 2 (row 1 is headers)
-                    foreach (var importDto in importResult.SuccessfulRecords)
-                    {
-                        try
-                        {
-                            var dto = new CreateUpdateAmmunitionDto
-                            {
-                                // Basic fields
-                                Name = importDto.Name,
-                                ItemNo = importDto.ItemNo,
-                                PartNo = importDto.PartNo,
-                                Price = importDto.Price,
-                                MinimumQuantity = importDto.MinimumQuantity,
-                                Nsn = importDto.Nsn,
-                                Distribution = importDto.Distribution,
-                                ReferenceNo = importDto.ReferenceNo,
-                                UNNumber = importDto.UNNumber,
-                                Notes = importDto.Notes,
-                                
-                                // Ammunition specific fields
-                                ArmNumber = importDto.ArmNumber,
-                                BulletDiameter = importDto.BulletDiameter,
-                                IsLinked = importDto.IsLinked,
-                                Primer = importDto.Primer,
-                                TotalWeight = importDto.TotalWeight
-                            };
-
-                            // Resolve Lookups
-                            
-                            // Bullet Diameter Unit
-                            if (!string.IsNullOrWhiteSpace(importDto.BulletDiameterUnit))
-                            {
-                                var unit = units.FirstOrDefault(u => 
-                                    (u.NameEn != null && u.NameEn.Equals(importDto.BulletDiameterUnit, StringComparison.OrdinalIgnoreCase)) || 
-                                    (u.NameAr != null && u.NameAr.Equals(importDto.BulletDiameterUnit, StringComparison.OrdinalIgnoreCase)));
-                                dto.BulletDiameterUnitId = unit?.Id;
-                            }
-
-                            // Case Type
-                            if (!string.IsNullOrWhiteSpace(importDto.CaseType))
-                            {
-                                var item = caseTypes.FirstOrDefault(u => 
-                                    (u.NameEn != null && u.NameEn.Equals(importDto.CaseType, StringComparison.OrdinalIgnoreCase)) || 
-                                    (u.NameAr != null && u.NameAr.Equals(importDto.CaseType, StringComparison.OrdinalIgnoreCase)));
-                                dto.CaseTypeId = item?.Id;
-                            }
-
-                            // Propellant
-                            if (!string.IsNullOrWhiteSpace(importDto.Propellant))
-                            {
-                                var item = propellants.FirstOrDefault(u => 
-                                    (u.NameEn != null && u.NameEn.Equals(importDto.Propellant, StringComparison.OrdinalIgnoreCase)) || 
-                                    (u.NameAr != null && u.NameAr.Equals(importDto.Propellant, StringComparison.OrdinalIgnoreCase)));
-                                dto.PropellantId = item?.Id;
-                            }
-
-                            // Compatibility
-                            if (!string.IsNullOrWhiteSpace(importDto.Compatibility))
-                            {
-                                var item = compatibilities.FirstOrDefault(u => 
-                                    (u.NameEn != null && u.NameEn.Equals(importDto.Compatibility, StringComparison.OrdinalIgnoreCase)) || 
-                                    (u.NameAr != null && u.NameAr.Equals(importDto.Compatibility, StringComparison.OrdinalIgnoreCase)));
-                                dto.CompatibilityId = item?.Id;
-                            }
-
-                            // Hazard Division
-                            if (!string.IsNullOrWhiteSpace(importDto.HazardDivision))
-                            {
-                                var item = hazardDivisions.FirstOrDefault(u => 
-                                    (u.NameEn != null && u.NameEn.Equals(importDto.HazardDivision, StringComparison.OrdinalIgnoreCase)) || 
-                                    (u.NameAr != null && u.NameAr.Equals(importDto.HazardDivision, StringComparison.OrdinalIgnoreCase)));
-                                dto.HazardDivisionId = item?.Id;
-                            }
-
-                            // Nature Option
-                            if (!string.IsNullOrWhiteSpace(importDto.NatureOption))
-                            {
-                                var item = natureOptions.FirstOrDefault(u => 
-                                    (u.NameEn != null && u.NameEn.Equals(importDto.NatureOption, StringComparison.OrdinalIgnoreCase)) || 
-                                    (u.NameAr != null && u.NameAr.Equals(importDto.NatureOption, StringComparison.OrdinalIgnoreCase)));
-                                dto.NatureOptionId = item?.Id;
-                            }
-
-                            // Primary Purpose
-                            if (!string.IsNullOrWhiteSpace(importDto.PrimaryPurpose))
-                            {
-                                var item = primaryPurposes.FirstOrDefault(u => 
-                                    (u.NameEn != null && u.NameEn.Equals(importDto.PrimaryPurpose, StringComparison.OrdinalIgnoreCase)) || 
-                                    (u.NameAr != null && u.NameAr.Equals(importDto.PrimaryPurpose, StringComparison.OrdinalIgnoreCase)));
-                                dto.PrimaryPurposId = item?.Id;
-                            }
-
-                            // Projectile Color
-                            if (!string.IsNullOrWhiteSpace(importDto.ProjectileColor))
-                            {
-                                var item = projectileColors.FirstOrDefault(u => 
-                                    (u.NameEn != null && u.NameEn.Equals(importDto.ProjectileColor, StringComparison.OrdinalIgnoreCase)) || 
-                                    (u.NameAr != null && u.NameAr.Equals(importDto.ProjectileColor, StringComparison.OrdinalIgnoreCase)));
-                                dto.ProjectileColorId = item?.Id;
-                            }
-
-                            // Projectile Material
-                            if (!string.IsNullOrWhiteSpace(importDto.ProjectileMaterial))
-                            {
-                                var item = projectileMaterials.FirstOrDefault(u => 
-                                    (u.NameEn != null && u.NameEn.Equals(importDto.ProjectileMaterial, StringComparison.OrdinalIgnoreCase)) || 
-                                    (u.NameAr != null && u.NameAr.Equals(importDto.ProjectileMaterial, StringComparison.OrdinalIgnoreCase)));
-                                dto.ProjectailMaterialId = item?.Id;
-                            }
-
-                            // Classification
-                            if (!string.IsNullOrWhiteSpace(importDto.Classification))
-                            {
-                                var item = classifications.FirstOrDefault(u => 
-                                    (u.NameEn != null && u.NameEn.Equals(importDto.Classification, StringComparison.OrdinalIgnoreCase)) || 
-                                    (u.NameAr != null && u.NameAr.Equals(importDto.Classification, StringComparison.OrdinalIgnoreCase)));
-                                dto.ClassificationId = item?.Id;
-                            }
-
-                            // Type
-                            if (!string.IsNullOrWhiteSpace(importDto.Type))
-                            {
-                                var item = itemTypes.FirstOrDefault(u => 
-                                    (u.NameEn != null && u.NameEn.Equals(importDto.Type, StringComparison.OrdinalIgnoreCase)) || 
-                                    (u.NameAr != null && u.NameAr.Equals(importDto.Type, StringComparison.OrdinalIgnoreCase)));
-                                dto.TypeId = item?.Id;
-                            }
-
-                            // Validate
-                            var validationResult = await _validator.ValidateAsync(dto);
-                            if (!validationResult.IsValid)
-                            {
-                                finalResult.Errors.Add(new ImportError 
-                                { 
-                                    RowNumber = rowNumber,
-                                    ErrorMessage = $"Row {rowNumber}: Validation failed: {string.Join(", ", validationResult.Errors.Select(e => e.ErrorMessage))}", 
-                                    ColumnName = "N/A",
-                                    RowData = dto
-                                });
-                                rowNumber++;
-                                continue;
-                            }
-
-                            // Check for duplicate ItemNo within the import file
-                            if (!string.IsNullOrWhiteSpace(dto.ItemNo))
-                            {
-                                var itemNoKey = dto.ItemNo.Trim();
-                                if (seenItemNos.Contains(itemNoKey))
-                                {
-                                    finalResult.Errors.Add(new ImportError 
-                                    { 
-                                        RowNumber = rowNumber,
-                                        ErrorMessage = $"Row {rowNumber}: Item No '{dto.ItemNo}' appears multiple times in the import file", 
-                                        ColumnName = "Item No",
-                                        RowData = dto
-                                    });
-                                    rowNumber++;
-                                    continue;
-                                }
-                                seenItemNos.Add(itemNoKey);
-                            }
-                            
-                            // Check for duplicate NSN within the import file
-                            if (!string.IsNullOrWhiteSpace(dto.Nsn))
-                            {
-                                var nsnKey = dto.Nsn.Trim();
-                                if (seenNsns.Contains(nsnKey))
-                                {
-                                    finalResult.Errors.Add(new ImportError 
-                                    { 
-                                        RowNumber = rowNumber,
-                                        ErrorMessage = $"Row {rowNumber}: NSN '{dto.Nsn}' appears multiple times in the import file", 
-                                        ColumnName = "NSN",
-                                        RowData = dto
-                                    });
-                                    rowNumber++;
-                                    continue;
-                                }
-                                seenNsns.Add(nsnKey);
-                            }
-
-                            // Create using existing CreateAsync (which also checks database duplicates)
-                            var createResult = await CreateAsync(dto);
-                            if (!createResult.Succeeded)
-                            {
-                                // Extract inner exception details for better error messages
-                                var errorMessage = createResult.Message;
-                                _logger.LogError("Row {RowNumber} creation failed: {ErrorMessage}", rowNumber, errorMessage);
-                                
-                                finalResult.Errors.Add(new ImportError 
-                                { 
-                                    RowNumber = rowNumber,
-                                    ErrorMessage = $"Row {rowNumber}: {errorMessage}", 
-                                    ColumnName = "N/A",
-                                    RowData = dto
-                                });
-                            }
-                            else
-                            {
-                                finalResult.SuccessfulRecords.Add(dto);
-                            }
-                            
-                            rowNumber++;
-                        }
-                        catch (Exception ex)
-                        {
-                            var errorMsg = ex.Message;
-                            if (ex.InnerException != null)
-                            {
-                                errorMsg += $" (Inner: {ex.InnerException.Message})";
-                            }
-                            
-                            _logger.LogError(ex, "Row {RowNumber} processing error: {ErrorMessage}", rowNumber, errorMsg);
-                            
-                            finalResult.Errors.Add(new ImportError
-                            {
-                                RowNumber = rowNumber,
-                                ErrorMessage = $"Row {rowNumber}: {errorMsg}",
-                                ColumnName = "N/A"
-                            });
-                            rowNumber++;
-                        }
-                    }
-                }
-
-                _logger.LogInformation("Ammunition import completed. FileName: {FileName}, SuccessCount: {SuccessCount}, ErrorCount: {ErrorCount}, User: {UserId}", 
-                    file?.FileName, finalResult.SuccessCount, finalResult.Errors.Count, _currentUserService.UserId);
-                
-                return APIOperationResponse<ImportResult<CreateUpdateAmmunitionDto>>.Success(finalResult, "Import processed");
+                 if (_existingNsns.Contains(dto.Nsn)) 
+                    errors.Add($"NSN '{dto.Nsn}' already exists in the database");
+                 else if (_newlyAddedNsns.Contains(dto.Nsn))
+                    errors.Add($"NSN '{dto.Nsn}' is duplicated in the current file");
+                 else
+                    _newlyAddedNsns.Add(dto.Nsn);
             }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error importing ammunitions from file. FileName: {FileName}, User: {UserId}", 
-                    file?.FileName, _currentUserService.UserId);
-                return APIOperationResponse<ImportResult<CreateUpdateAmmunitionDto>>.Fail(ResponseType.InternalServerError, ex.Message);
-            }
+
+            return errors;
         }
-
-        public async Task<APIOperationResponse<ImportResult<CreateUpdateAmmunitionDto>>> ImportPreviewAsync(IFormFile file, string language = "en")
+        
+        private Dictionary<string, string> GetColumnMappings(string language)
         {
-            _logger.LogInformation("Previewing ammunition import. FileName: {FileName}, Language: {Language}, User: {UserId}", 
-                file?.FileName, language, _currentUserService.UserId);
-                
-            try
+            // Same mapping dictionary as before
+            return new Dictionary<string, string>
             {
-                var mappings = GetColumnMappings(language);
-                var importResult = await _excelImportService.ImportFromExcelAsync<AmmunitionImportDto>(file, mappings);
-
-                // Load all lookup data for resolution
-                var units = await _context.Units.Where(u => !u.IsDeleted).ToListAsync();
-                var caseTypes = await _context.CaseTypes.Where(c => !c.IsDeleted).ToListAsync();
-                var propellants = await _context.Propellants.Where(p => !p.IsDeleted).ToListAsync();
-                var compatibilities = await _context.Compatibilities.Where(c => !c.IsDeleted).ToListAsync();
-                var hazardDivisions = await _context.HazardDivisions.Where(h => !h.IsDeleted).ToListAsync();
-                var natureOptions = await _context.NatureOptions.Where(n => !n.IsDeleted).ToListAsync();
-                var primaryPurposes = await _context.PrimaryPurposes.Where(p => !p.IsDeleted).ToListAsync();
-                var projectileColors = await _context.Colors.Where(p => !p.IsDeleted).ToListAsync();
-                var projectileMaterials = await _context.ProjectailMaterials.Where(p => !p.IsDeleted).ToListAsync();
-                var classifications = await _context.Classifications.Where(c => !c.IsDeleted).ToListAsync();
-                var itemTypes = await _context.ItemTypes.Where(i => !i.IsDeleted).ToListAsync();
-
-                var finalResult = new ImportResult<CreateUpdateAmmunitionDto>
-                {
-                    TotalProcessed = importResult.TotalProcessed
-                };
-                
-                finalResult.Errors.AddRange(importResult.Errors);
-
-                if (importResult.SuccessCount > 0)
-                {
-                    // Track NSNs and ItemNos seen in this import file to detect duplicates within the file
-                    var seenNsns = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-                    var seenItemNos = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-                    
-                    int rowNumber = 2; // Start from row 2 (row 1 is headers)
-                    foreach (var importDto in importResult.SuccessfulRecords)
-                    {
-                        var rowErrors = new List<string>();
-                        var dto = new CreateUpdateAmmunitionDto
-                        {
-                            // Basic fields
-                            Name = importDto.Name,
-                            ItemNo = importDto.ItemNo,
-                            PartNo = importDto.PartNo,
-                            Price = importDto.Price,
-                            MinimumQuantity = importDto.MinimumQuantity,
-                            Nsn = importDto.Nsn,
-                            Distribution = importDto.Distribution,
-                            ReferenceNo = importDto.ReferenceNo,
-                            UNNumber = importDto.UNNumber,
-                            Notes = importDto.Notes,
-                            
-                            // Ammunition specific fields
-                            ArmNumber = importDto.ArmNumber,
-                            BulletDiameter = importDto.BulletDiameter,
-                            IsLinked = importDto.IsLinked,
-                            Primer = importDto.Primer,
-                            TotalWeight = importDto.TotalWeight
-                        };
- 
-                        // Resolve Lookups
-                        // ... (keep lookup resolution logic but append errors if not found for mandatory fields if needed, 
-                        // but usually validation handles missing IDs)
- 
-                        // Bullet Diameter Unit
-                        if (!string.IsNullOrWhiteSpace(importDto.BulletDiameterUnit))
-                        {
-                            var unit = units.FirstOrDefault(u => 
-                                (u.NameEn != null && u.NameEn.Equals(importDto.BulletDiameterUnit, StringComparison.OrdinalIgnoreCase)) || 
-                                (u.NameAr != null && u.NameAr.Equals(importDto.BulletDiameterUnit, StringComparison.OrdinalIgnoreCase)));
-                            dto.BulletDiameterUnitId = unit?.Id;
-                        }
- 
-                        // Case Type
-                        if (!string.IsNullOrWhiteSpace(importDto.CaseType))
-                        {
-                            var item = caseTypes.FirstOrDefault(u => 
-                                (u.NameEn != null && u.NameEn.Equals(importDto.CaseType, StringComparison.OrdinalIgnoreCase)) || 
-                                (u.NameAr != null && u.NameAr.Equals(importDto.CaseType, StringComparison.OrdinalIgnoreCase)));
-                            dto.CaseTypeId = item?.Id;
-                        }
- 
-                        // Propellant
-                        if (!string.IsNullOrWhiteSpace(importDto.Propellant))
-                        {
-                            var item = propellants.FirstOrDefault(u => 
-                                (u.NameEn != null && u.NameEn.Equals(importDto.Propellant, StringComparison.OrdinalIgnoreCase)) || 
-                                (u.NameAr != null && u.NameAr.Equals(importDto.Propellant, StringComparison.OrdinalIgnoreCase)));
-                            dto.PropellantId = item?.Id;
-                        }
- 
-                        // Compatibility
-                        if (!string.IsNullOrWhiteSpace(importDto.Compatibility))
-                        {
-                            var item = compatibilities.FirstOrDefault(u => 
-                                (u.NameEn != null && u.NameEn.Equals(importDto.Compatibility, StringComparison.OrdinalIgnoreCase)) || 
-                                (u.NameAr != null && u.NameAr.Equals(importDto.Compatibility, StringComparison.OrdinalIgnoreCase)));
-                            dto.CompatibilityId = item?.Id;
-                        }
- 
-                        // Hazard Division
-                        if (!string.IsNullOrWhiteSpace(importDto.HazardDivision))
-                        {
-                            var item = hazardDivisions.FirstOrDefault(u => 
-                                (u.NameEn != null && u.NameEn.Equals(importDto.HazardDivision, StringComparison.OrdinalIgnoreCase)) || 
-                                (u.NameAr != null && u.NameAr.Equals(importDto.HazardDivision, StringComparison.OrdinalIgnoreCase)));
-                            dto.HazardDivisionId = item?.Id;
-                        }
- 
-                        // Nature Option
-                        if (!string.IsNullOrWhiteSpace(importDto.NatureOption))
-                        {
-                            var item = natureOptions.FirstOrDefault(u => 
-                                (u.NameEn != null && u.NameEn.Equals(importDto.NatureOption, StringComparison.OrdinalIgnoreCase)) || 
-                                (u.NameAr != null && u.NameAr.Equals(importDto.NatureOption, StringComparison.OrdinalIgnoreCase)));
-                            dto.NatureOptionId = item?.Id;
-                        }
- 
-                        // Primary Purpose
-                        if (!string.IsNullOrWhiteSpace(importDto.PrimaryPurpose))
-                        {
-                            var item = primaryPurposes.FirstOrDefault(u => 
-                                (u.NameEn != null && u.NameEn.Equals(importDto.PrimaryPurpose, StringComparison.OrdinalIgnoreCase)) || 
-                                (u.NameAr != null && u.NameAr.Equals(importDto.PrimaryPurpose, StringComparison.OrdinalIgnoreCase)));
-                            dto.PrimaryPurposId = item?.Id;
-                        }
- 
-                        // Projectile Color
-                        if (!string.IsNullOrWhiteSpace(importDto.ProjectileColor))
-                        {
-                            var item = projectileColors.FirstOrDefault(u => 
-                                (u.NameEn != null && u.NameEn.Equals(importDto.ProjectileColor, StringComparison.OrdinalIgnoreCase)) || 
-                                (u.NameAr != null && u.NameAr.Equals(importDto.ProjectileColor, StringComparison.OrdinalIgnoreCase)));
-                            dto.ProjectileColorId = item?.Id;
-                        }
- 
-                        // Projectile Material
-                        if (!string.IsNullOrWhiteSpace(importDto.ProjectileMaterial))
-                        {
-                            var item = projectileMaterials.FirstOrDefault(u => 
-                                (u.NameEn != null && u.NameEn.Equals(importDto.ProjectileMaterial, StringComparison.OrdinalIgnoreCase)) || 
-                                (u.NameAr != null && u.NameAr.Equals(importDto.ProjectileMaterial, StringComparison.OrdinalIgnoreCase)));
-                            dto.ProjectailMaterialId = item?.Id;
-                        }
- 
-                        // Classification
-                        if (!string.IsNullOrWhiteSpace(importDto.Classification))
-                        {
-                            var item = classifications.FirstOrDefault(u => 
-                                (u.NameEn != null && u.NameEn.Equals(importDto.Classification, StringComparison.OrdinalIgnoreCase)) || 
-                                (u.NameAr != null && u.NameAr.Equals(importDto.Classification, StringComparison.OrdinalIgnoreCase)));
-                            dto.ClassificationId = item?.Id;
-                        }
- 
-                        // Type
-                        if (!string.IsNullOrWhiteSpace(importDto.Type))
-                        {
-                            var item = itemTypes.FirstOrDefault(u => 
-                                (u.NameEn != null && u.NameEn.Equals(importDto.Type, StringComparison.OrdinalIgnoreCase)) || 
-                                (u.NameAr != null && u.NameAr.Equals(importDto.Type, StringComparison.OrdinalIgnoreCase)));
-                            dto.TypeId = item?.Id;
-                        }
- 
-                        // Validate using FluentValidation
-                        var validationResult = await _validator.ValidateAsync(dto);
-                        if (!validationResult.IsValid)
-                        {
-                            rowErrors.AddRange(validationResult.Errors.Select(e => e.ErrorMessage));
-                        }
-                        
-                        // Check for duplicate ItemNo within the import file
-                        if (!string.IsNullOrWhiteSpace(dto.ItemNo))
-                        {
-                            var itemNoKey = dto.ItemNo.Trim();
-                            if (seenItemNos.Contains(itemNoKey))
-                            {
-                                rowErrors.Add($"Item No '{dto.ItemNo}' appears multiple times in the import file");
-                            }
-                            else
-                            {
-                                seenItemNos.Add(itemNoKey);
-                                
-                                // Check if ItemNo exists in database
-                                var existing = await _ammunitionRepository.FindOneAsync(e => !e.IsDeleted && e.ItemNo == itemNoKey);
-                                if (existing != null)
-                                {
-                                    rowErrors.Add($"Item No '{dto.ItemNo}' already exists in the database");
-                                }
-                            }
-                        }
-                        
-                        // Check for duplicate NSN within the import file
-                        if (!string.IsNullOrWhiteSpace(dto.Nsn))
-                        {
-                            var nsnKey = dto.Nsn.Trim();
-                            if (seenNsns.Contains(nsnKey))
-                            {
-                                rowErrors.Add($"NSN '{dto.Nsn}' appears multiple times in the import file");
-                            }
-                            else
-                            {
-                                seenNsns.Add(nsnKey);
-                                
-                                // Also check if NSN exists in database
-                                var existing = await _ammunitionRepository.FindOneAsync(e => !e.IsDeleted && e.Nsn == nsnKey);
-                                if (existing != null)
-                                {
-                                    rowErrors.Add($"NSN '{dto.Nsn}' already exists in the database");
-                                }
-                            }
-                        }
-                        
-                        if (rowErrors.Any())
-                        {
-                            finalResult.Errors.Add(new ImportError
-                            {
-                                RowNumber = importDto.RowNumber,
-                                ErrorMessage = $"Row {importDto.RowNumber}: {string.Join("; ", rowErrors)}",
-                                ColumnName = "N/A",
-                                RowData = dto
-                            });
-                        }
-                        else
-                        {
-                            finalResult.SuccessfulRecords.Add(dto);
-                        }
-                    }
-                }
-
-                return APIOperationResponse<ImportResult<CreateUpdateAmmunitionDto>>.Success(finalResult, "Preview processed");
-            }
-            catch (Exception ex)
-            {
-                return APIOperationResponse<ImportResult<CreateUpdateAmmunitionDto>>.Fail(ResponseType.InternalServerError, ex.Message);
-            }
-        }
-
-        private Dictionary<string, string> GetColumnMappings(string language = "en")
-        {
-            var mappings = new Dictionary<string, string>
-            {
-                // English headers
                 { "Name*", nameof(AmmunitionImportDto.Name) },
                 { "Item No*", nameof(AmmunitionImportDto.ItemNo) },
                 { "Part No", nameof(AmmunitionImportDto.PartNo) },
@@ -988,14 +709,12 @@ namespace Ettad.Inventory.Service.Ammunitions
                 { "Classification", nameof(AmmunitionImportDto.Classification) },
                 { "Type", nameof(AmmunitionImportDto.Type) },
                 { "Notes", nameof(AmmunitionImportDto.Notes) },
- 
-                // Arabic headers
+                // Arabic...
                 { "الاسم*", nameof(AmmunitionImportDto.Name) },
                 { "رقم الصنف*", nameof(AmmunitionImportDto.ItemNo) },
                 { "رقم الجزء", nameof(AmmunitionImportDto.PartNo) },
                 { "رقم ARM", nameof(AmmunitionImportDto.ArmNumber) },
-                { "رقم NSN", nameof(AmmunitionImportDto.Nsn) }, // Support "رقم NSN"
-                // "NSN" is already in English block
+                { "رقم NSN", nameof(AmmunitionImportDto.Nsn) },
                 { "السعر", nameof(AmmunitionImportDto.Price) },
                 { "الكمية الدنيا", nameof(AmmunitionImportDto.MinimumQuantity) },
                 { "قطر الرصاصة", nameof(AmmunitionImportDto.BulletDiameter) },
@@ -1018,230 +737,50 @@ namespace Ettad.Inventory.Service.Ammunitions
                 { "النوع", nameof(AmmunitionImportDto.Type) },
                 { "ملاحظات", nameof(AmmunitionImportDto.Notes) }
             };
- 
-            return mappings;
         }
 
-        public async Task<APIOperationResponse<byte[]>> GenerateImportTemplateAsync(string language = "en")
+        private void CreateLookupSheet<T>(ExcelPackage package, string sheetName, List<T> items)
         {
-            try
-            {
-                _logger.LogInformation("Generating ammunition import template with all fields and lookup data. Language: {Language}", language);
-
-                // Load all lookup data from database
-                var units = await _context.Units
-                    .Where(u => !u.IsDeleted)
-                    .OrderBy(u => u.NameEn ?? u.NameAr)
-                    .ToListAsync();
-
-                var caseTypes = await _context.CaseTypes
-                    .Where(c => !c.IsDeleted)
-                    .OrderBy(c => c.NameEn ?? c.NameAr)
-                    .ToListAsync();
-
-                var propellants = await _context.Propellants
-                    .Where(p => !p.IsDeleted)
-                    .OrderBy(p => p.NameEn ?? p.NameAr)
-                    .ToListAsync();
-
-                var compatibilities = await _context.Compatibilities
-                    .Where(c => !c.IsDeleted)
-                    .OrderBy(c => c.NameEn ?? c.NameAr)
-                    .ToListAsync();
-
-                var hazardDivisions = await _context.HazardDivisions
-                    .Where(h => !h.IsDeleted)
-                    .OrderBy(h => h.NameEn ?? h.NameAr)
-                    .ToListAsync();
-
-                var natureOptions = await _context.NatureOptions
-                    .Where(n => !n.IsDeleted)
-                    .OrderBy(n => n.NameEn ?? n.NameAr)
-                    .ToListAsync();
-
-                var primaryPurposes = await _context.PrimaryPurposes
-                    .Where(p => !p.IsDeleted)
-                    .OrderBy(p => p.NameEn ?? p.NameAr)
-                    .ToListAsync();
-
-                var projectileColors = await _context.Colors
-                    .Where(p => !p.IsDeleted)
-                    .OrderBy(p => p.NameEn ?? p.NameAr)
-                    .ToListAsync();
-
-                var projectileMaterials = await _context.ProjectailMaterials
-                    .Where(p => !p.IsDeleted)
-                    .OrderBy(p => p.NameEn ?? p.NameAr)
-                    .ToListAsync();
-
-                var classifications = await _context.Classifications
-                    .Where(c => !c.IsDeleted)
-                    .OrderBy(c => c.NameEn ?? c.NameAr)
-                    .ToListAsync();
-
-                var itemTypes = await _context.ItemTypes
-                    .Where(i => !i.IsDeleted)
-                    .OrderBy(i => i.NameEn ?? i.NameAr)
-                    .ToListAsync();
-
-                // Generate Excel with EPPlus
-                using var package = new ExcelPackage();
-
-                // Main template sheet
-                var templateSheet = package.Workbook.Worksheets.Add("Ammunition Import");
-
-                // Headers - Bilingual support (English / Arabic)
-                var headers = language == "ar" 
-                    ? new[]
-                    {
-                        "الاسم*", "رقم الصنف*", "رقم الجزء", "رقم ARM", "NSN", "السعر", "الكمية الدنيا",
-                        "قطر الرصاصة", "وحدة قطر الرصاصة", "الوزن الكلي", "مرتبط", "الكبسولة",
-                        "نوع الغلاف", "المادة الدافعة", "التوافق", "قسم الخطر", "خيار الطبيعة",
-                        "الغرض الأساسي", "لون المقذوف", "مادة المقذوف",
-                        "رقم الأمم المتحدة", "التوزيع", "الرقم المرجعي", "التصنيف", "النوع", "ملاحظات"
-                    }
-                    : new[]
-                    {
-                        "Name*", "Item No*", "Part No", "Arm Number", "NSN", "Price", "Minimum Quantity",
-                        "Bullet Diameter", "Bullet Diameter Unit", "Total Weight", "Is Linked", "Primer",
-                        "Case Type", "Propellant", "Compatibility", "Hazard Division", "Nature Option",
-                        "Primary Purpose", "Projectile Color", "Projectile Material",
-                        "UN Number", "Distribution", "Reference No", "Classification", "Type", "Notes"
-                    };
-
-                // Add headers with formatting
-                for (int col = 1; col <= headers.Length; col++)
-                {
-                    templateSheet.Cells[1, col].Value = headers[col - 1];
-                    templateSheet.Cells[1, col].Style.Font.Bold = true;
-                    templateSheet.Cells[1, col].Style.Fill.PatternType = OfficeOpenXml.Style.ExcelFillStyle.Solid;
-                    templateSheet.Cells[1, col].Style.Fill.BackgroundColor.SetColor(System.Drawing.Color.LightBlue);
-                    templateSheet.Cells[1, col].Style.HorizontalAlignment = OfficeOpenXml.Style.ExcelHorizontalAlignment.Center;
-                }
-
-                // Sample data row
-                templateSheet.Cells[2, 1].Value = "6.5×55mm Swedish";
-                templateSheet.Cells[2, 2].Value = "AMM-111";
-                templateSheet.Cells[2, 3].Value = "P-655-SWE";
-                templateSheet.Cells[2, 4].Value = "ARM-111";
-                templateSheet.Cells[2, 5].Value = "1305-12-345-6789";
-                templateSheet.Cells[2, 6].Value = 4.8;
-                templateSheet.Cells[2, 7].Value = 100;
-                templateSheet.Cells[2, 8].Value = 6.5;
-                templateSheet.Cells[2, 9].Value = units.FirstOrDefault()?.NameEn ?? "";
-                templateSheet.Cells[2, 10].Value = 12.5;
-                templateSheet.Cells[2, 11].Value = "No";
-                templateSheet.Cells[2, 12].Value = "Boxer";
-
-                // Create hidden lookup sheets
-                CreateLookupSheet(package, "Units", units.Select(u => u.NameEn ?? u.NameAr ?? "").Where(n => !string.IsNullOrWhiteSpace(n)).ToList());
-                CreateLookupSheet(package, "CaseTypes", caseTypes.Select(c => c.NameEn ?? c.NameAr ?? "").Where(n => !string.IsNullOrWhiteSpace(n)).ToList());
-                CreateLookupSheet(package, "Propellants", propellants.Select(p => p.NameEn ?? p.NameAr ?? "").Where(n => !string.IsNullOrWhiteSpace(n)).ToList());
-                CreateLookupSheet(package, "Compatibilities", compatibilities.Select(c => c.NameEn ?? c.NameAr ?? "").Where(n => !string.IsNullOrWhiteSpace(n)).ToList());
-                CreateLookupSheet(package, "HazardDivisions", hazardDivisions.Select(h => h.NameEn ?? h.NameAr ?? "").Where(n => !string.IsNullOrWhiteSpace(n)).ToList());
-                CreateLookupSheet(package, "NatureOptions", natureOptions.Select(n => n.NameEn ?? n.NameAr ?? "").Where(n => !string.IsNullOrWhiteSpace(n)).ToList());
-                CreateLookupSheet(package, "PrimaryPurposes", primaryPurposes.Select(p => p.NameEn ?? p.NameAr ?? "").Where(n => !string.IsNullOrWhiteSpace(n)).ToList());
-                CreateLookupSheet(package, "ProjectileColors", projectileColors.Select(p => p.NameEn ?? p.NameAr ?? "").Where(n => !string.IsNullOrWhiteSpace(n)).ToList());
-                CreateLookupSheet(package, "ProjectileMaterials", projectileMaterials.Select(p => p.NameEn ?? p.NameAr ?? "").Where(n => !string.IsNullOrWhiteSpace(n)).ToList());
-                CreateLookupSheet(package, "Classifications", classifications.Select(c => c.NameEn ?? c.NameAr ?? "").Where(n => !string.IsNullOrWhiteSpace(n)).ToList());
-                CreateLookupSheet(package, "ItemTypes", itemTypes.Select(i => i.NameEn ?? i.NameAr ?? "").Where(n => !string.IsNullOrWhiteSpace(n)).ToList());
-
-                // Add data validation dropdowns
-                AddDataValidation(templateSheet, 9, "Units"); // Bullet Diameter Unit (column 9)
-                AddYesNoValidation(templateSheet, 11); // Is Linked (column 11)
-                AddDataValidation(templateSheet, 13, "CaseTypes"); // Case Type
-                AddDataValidation(templateSheet, 14, "Propellants"); // Propellant
-                AddDataValidation(templateSheet, 15, "Compatibilities"); // Compatibility
-                AddDataValidation(templateSheet, 16, "HazardDivisions"); // Hazard Division
-                AddDataValidation(templateSheet, 17, "NatureOptions"); // Nature Option
-                AddDataValidation(templateSheet, 18, "PrimaryPurposes"); // Primary Purpose
-                AddDataValidation(templateSheet, 19, "ProjectileColors"); // Projectile Color
-                AddDataValidation(templateSheet, 20, "ProjectileMaterials"); // Projectile Material
-                AddDataValidation(templateSheet, 24, "Classifications"); // Classification
-                AddDataValidation(templateSheet, 25, "ItemTypes"); // Type
-
-                // Set column widths
-                for (int col = 1; col <= headers.Length; col++)
-                {
-                    templateSheet.Column(col).Width = col == 26 ? 30 : 20; // Notes column wider
-                }
-
-                // Freeze header row
-                templateSheet.View.FreezePanes(2, 1);
-
-                var excelData = package.GetAsByteArray();
-
-                _logger.LogInformation("Ammunition import template generated successfully. FileSize: {FileSize} bytes, Lookup sheets: 11", 
-                    excelData.Length);
-
-                return APIOperationResponse<byte[]>.Success(excelData, "Template generated successfully");
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error generating ammunition import template");
-                return APIOperationResponse<byte[]>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
-            }
-        }
-
-        /// <summary>
-        /// Create a hidden sheet with lookup values
-        /// </summary>
-        private ExcelWorksheet CreateLookupSheet(ExcelPackage package, string sheetName, List<string> values)
-        {
+             // Helper for templates
+             var names = items.Select(x => {
+                  var nameEn = (string)x.GetType().GetProperty("NameEn")?.GetValue(x);
+                  var nameAr = (string)x.GetType().GetProperty("NameAr")?.GetValue(x);
+                  return nameEn ?? nameAr ?? "";
+             }).Where(x => !string.IsNullOrEmpty(x)).ToList();
+             
             var lookupSheet = package.Workbook.Worksheets.Add(sheetName);
             lookupSheet.Hidden = eWorkSheetHidden.Hidden;
 
-            for (int i = 0; i < values.Count; i++)
+            for (int i = 0; i < names.Count; i++)
             {
-                lookupSheet.Cells[i + 1, 1].Value = values[i];
+                lookupSheet.Cells[i + 1, 1].Value = names[i];
             }
-
-            return lookupSheet;
         }
-
-        /// <summary>
-        /// Add data validation dropdown to a column using worksheet reference
-        /// </summary>
-        private void AddDataValidation(ExcelWorksheet worksheet, int column, string lookupSheetName)
+        
+         private void AddDataValidation(ExcelWorksheet worksheet, int column, string lookupSheetName)
         {
             var columnLetter = GetColumnLetter(column);
             var validationRange = $"{columnLetter}2:{columnLetter}10000";
-
             var validation = worksheet.DataValidations.AddListValidation(validationRange);
-
             var lookupSheet = worksheet.Workbook.Worksheets[lookupSheetName];
             var lastRow = lookupSheet.Dimension?.End.Row ?? 1;
             validation.Formula.ExcelFormula = $"'{lookupSheetName}'!$A$1:$A${lastRow}";
-
             validation.ShowErrorMessage = true;
-            validation.ErrorTitle = "Invalid Value";
             validation.Error = $"Please select a value from the {lookupSheetName} list";
-            validation.ShowInputMessage = true;
-            validation.PromptTitle = "Select Value";
-            validation.Prompt = $"Select a value from the dropdown list";
         }
-
-        /// <summary>
-        /// Add Yes/No validation to a column
-        /// </summary>
+        
         private void AddYesNoValidation(ExcelWorksheet worksheet, int column)
         {
             var columnLetter = GetColumnLetter(column);
             var validationRange = $"{columnLetter}2:{columnLetter}10000";
-
             var validation = worksheet.DataValidations.AddListValidation(validationRange);
             validation.Formula.Values.Add("Yes");
             validation.Formula.Values.Add("No");
-
             validation.ShowErrorMessage = true;
-            validation.ErrorTitle = "Invalid Value";
-            validation.Error = "Please select 'Yes' or 'No'";
+             validation.Error = "Please select 'Yes' or 'No'";
         }
-
-        /// <summary>
-        /// Convert column number to Excel column letter (1 = A, 2 = B, etc.)
-        /// </summary>
-        private string GetColumnLetter(int columnNumber)
+        
+         private string GetColumnLetter(int columnNumber)
         {
             string columnLetter = "";
             while (columnNumber > 0)
