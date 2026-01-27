@@ -7,6 +7,7 @@ namespace Ettad.Reporting.Services
     public interface IReportService
     {
         Task<APIOperationResponse<List<ReportDto>>> GetAllAsync();
+        Task<APIOperationResponse<List<ReportDto>>> GetPublicReportsAsync();
         Task<APIOperationResponse<ReportDto>> GetByIdAsync(Guid id);
         Task<APIOperationResponse<ReportDto>> GetByUrlAsync(string url);
         Task<APIOperationResponse<string>> CreateAsync(CreateReportDto dto);

@@ -37,6 +37,17 @@ namespace Ettad.Reporting.Controllers
         }
 
         /// <summary>
+        /// Get all public reports (Published status) - accessible to all authenticated users
+        /// </summary>
+        [HttpGet("public")]
+        [ProducesResponseType((int)HttpStatusCode.OK)]
+        public async Task<IActionResult> GetPublicReports()
+        {
+            var result = await _reportService.GetPublicReportsAsync();
+            return ProcessResponse(result);
+        }
+
+        /// <summary>
         /// Get report by ID
         /// </summary>
         [HttpGet("{id}")]

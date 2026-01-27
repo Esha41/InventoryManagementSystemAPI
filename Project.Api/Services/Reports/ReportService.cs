@@ -96,6 +96,47 @@ namespace Ettad.Reporting.Services
             }
         }
 
+        public async Task<APIOperationResponse<List<ReportDto>>> GetPublicReportsAsync()
+        {
+            _logger.LogInformation("Getting all public reports. User: {UserId}", _currentUserService.UserId);
+
+            try
+            {
+                var reports = await _reportRepository.FindAsync(
+                                r => r.ReportStatusId == (int)ReportStatuses.Published,
+                                false,
+                                nameof(ReportEntity.ReportStatus)
+                            );
+
+                var dtos = reports.Select(r => new ReportDto
+                {
+                    Id = r.Id,
+                    ReportName = r.ReportName,
+                    ReportStatusId = r.ReportStatusId,
+                    ReportStatusNameEn = r.ReportStatus?.NameEn ?? string.Empty,
+                    ReportStatusNameAr = r.ReportStatus?.NameAr ?? string.Empty,
+                    Url = r.Url,
+                    Description = r.Description,
+                    LayoutData = r.LayoutData,
+                    ReportParameters = r.ReportParameters,
+                    CreationDate = r.CreationDate,
+                    CreatedBy = r.CreatedBy,
+                    ModificationDate = r.ModificationDate,
+                    ModifiedBy = r.ModifiedBy,
+                    DeletionDate = r.DeletionDate,
+                    DeletedBy = r.DeletedBy
+                }).OrderBy(x => x.CreationDate).ToList();
+
+                _logger.LogInformation("Retrieved {Count} public reports. User: {UserId}", dtos.Count, _currentUserService.UserId);
+                return APIOperationResponse<List<ReportDto>>.Success(dtos);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving public reports. User: {UserId}", _currentUserService.UserId);
+                return APIOperationResponse<List<ReportDto>>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
+            }
+        }
+
         public async Task<APIOperationResponse<ReportDto>> GetByIdAsync(Guid id)
         {
             _logger.LogInformation("Getting report by ID. ReportId: {ReportId}, User: {UserId}", id, _currentUserService.UserId);
