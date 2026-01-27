@@ -1074,8 +1074,57 @@ namespace Ettad.Inventory.Service.Inventories
 
         private async Task PopulateInventoryDetailsQuantitiesAsync(List<InventoryDetailDto> details)
         {
-            if (!details.Any()) return;
-// ... existing code ...
+            if (details == null || !details.Any()) return;
+
+            // Get unique item IDs and lots for batch processing
+            var itemLotPairs = details
+                .Select(d => new { d.ItemId, d.Lot })
+                .Distinct()
+                .ToList();
+
+            var itemIds = itemLotPairs.Select(p => p.ItemId).Distinct().ToList();
+            var lotNumbers = itemLotPairs.Select(p => p.Lot).Distinct().ToList();
+
+            // Fetch all supply details for these items and lots in ONE query
+            var supplyDetails = await _supplyDetailsRepository.FindAsync(
+                sd => itemIds.Contains(sd.ItemId) && lotNumbers.Contains(sd.Lot) && !sd.IsDeleted
+            );
+
+            // Fetch submission status for the associated supplies
+            var uniqueSupplyIds = supplyDetails.Select(sd => sd.SupplyId).Distinct().ToList();
+            var supplies = uniqueSupplyIds.Any()
+                ? await _supplyRepository.FindAsync(s => uniqueSupplyIds.Contains(s.Id) && !s.IsDeleted)
+                : new List<Supply>();
+
+            var supplyStatusMap = supplies.ToDictionary(s => s.Id, s => s.SubmissionStatus);
+
+            // Group supply details by ItemId and Lot for fast O(1) lookup
+            var usedQuantitiesByItemLot = supplyDetails
+                .Where(sd => supplyStatusMap.ContainsKey(sd.SupplyId) && 
+                             supplyStatusMap[sd.SupplyId] == SupplySubmissionStatus.Submitted)
+                .GroupBy(sd => new { sd.ItemId, sd.Lot })
+                .ToDictionary(g => g.Key, g => g.Sum(sd => sd.Quantity));
+
+            var reservedQuantitiesByItemLot = supplyDetails
+                .Where(sd => supplyStatusMap.ContainsKey(sd.SupplyId) && 
+                             supplyStatusMap[sd.SupplyId] == SupplySubmissionStatus.Draft)
+                .GroupBy(sd => new { sd.ItemId, sd.Lot })
+                .ToDictionary(g => g.Key, g => g.Sum(sd => sd.Quantity));
+
+            // Update DTO objects with calculated values
+            foreach (var detail in details)
+            {
+                var key = new { detail.ItemId, detail.Lot };
+                
+                long used = usedQuantitiesByItemLot.TryGetValue(key, out var usedQty) ? usedQty : 0;
+                long reserved = reservedQuantitiesByItemLot.TryGetValue(key, out var reservedQty) ? reservedQty : 0;
+                
+                detail.UsedQuantity = used;
+                detail.ReservedQuantityByOrdersOnProcessing = reserved;
+                detail.RemainingQuantity = Math.Max(0, detail.OriginalQuantity - used - reserved);
+                detail.CurrentQuantity = Math.Max(0, detail.OriginalQuantity - used);
+                detail.IsLotEmpty = detail.RemainingQuantity <= 0;
+            }
         }
 
         public async Task<APIOperationResponse<bool>> ToggleReadyForIssueAsync(long inventoryDetailId)
@@ -1591,6 +1640,12 @@ namespace Ettad.Inventory.Service.Inventories
                         if (row.OriginalQuantity <= 0)
                         {
                             rowErrors.Add($"Original Quantity must be greater than 0");
+                        }
+
+                        // Validate Expiry Date
+                        if (row.ExpiryDate.HasValue && row.ExpiryDate.Value <= _dateTimeProvider.Now)
+                        {
+                            rowErrors.Add($"Expiry date must be in the future");
                         }
                     }
 
