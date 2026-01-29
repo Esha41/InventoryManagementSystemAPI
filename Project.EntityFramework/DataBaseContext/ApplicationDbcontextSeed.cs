@@ -115,6 +115,140 @@ namespace Ettad.EntityFramework.DataBaseContext
                 await SeedWorkflows.SeedOrderFromAllowance_Weapon_WorkflowAsync(context);
                 await SeedWorkflows.SeedDiscardWorkflowAsync(context);
                 await SeedWorkflows.SeedReturnWorkflowAsync(context);
+                // ========================
+                // SYSTEM ADMIN ROLE (LIMITED)
+                // ========================
+                var systemAdminRole = new ApplicationRole
+                {
+                    Name = "System Admin",
+                    NameAr = "مدير النظام (محدود)",
+                    IsSuperAdmin = false,
+                    IsDefaultRole = false
+                };
+
+                var existingSystemAdminRole = await roleManager.FindByNameAsync(systemAdminRole.Name);
+                if (existingSystemAdminRole == null)
+                {
+                    await roleManager.CreateAsync(systemAdminRole);
+                    existingSystemAdminRole = await roleManager.FindByNameAsync(systemAdminRole.Name);
+                }
+
+                // Define Limited Admin Permissions
+                var systemAdminPermissions = new List<string>
+                {
+                    // Dashboard
+                    "Permissions.AdminDashboard.Page", 
+                    "Permissions.AdminDashboard.View",
+                    
+                    // User Management
+                    "Permissions.SystemUsers.Page", 
+                    "Permissions.SystemUsers.View",
+                    "Permissions.SystemUsers.Create",
+                    "Permissions.SystemUsers.Edit",
+                    "Permissions.SystemUsers.Delete",
+                    
+                    // Role Management (CRUD)
+                    "Permissions.Roles.Page", 
+                    "Permissions.Roles.View", 
+                    "Permissions.Roles.Create", 
+                    "Permissions.Roles.Edit", 
+                    "Permissions.Roles.Delete",
+
+                    // LDAP Settings
+                    "Permissions.LdapSettings.Page", 
+                    "Permissions.LdapSettings.View",
+
+                    // Admin Import/Export
+                    "AdminImportExport",
+
+                    // Stock Notification Settings
+                    "StockNotificationSettingsPage",
+
+                    // Workflows (CRUD)
+                    "Permissions.Workflow.Page", 
+                    "Permissions.Workflow.View", 
+                    "Permissions.Workflow.Create", 
+                    "Permissions.Workflow.Edit", 
+                    "Permissions.Workflow.Delete",
+                    "Permissions.UserDelegations.Page", 
+                    "Permissions.UserDelegations.View", 
+                    "Permissions.UserDelegations.Create", 
+                    "Permissions.UserDelegations.Delete",
+                    "Permissions.EmailSettings.Page", 
+                    "Permissions.EmailSettings.View", 
+                    "Permissions.EmailSettings.Create", 
+                    "Permissions.EmailSettings.Edit",
+
+                    "Permissions.NotificationsPage.Page",
+                    "Permissions.NotificationsPage.View",
+                    "Permissions.NotificationsPage.Edit",
+                    "Permissions.Departments.Page",
+                    "Permissions.Departments.View",
+                    "Permissions.Propellants.Page",
+                    "Permissions.Propellants.View",
+                    "Permissions.Units.Page",
+                    "Permissions.Units.View",
+                    "Permissions.ProjectailMaterials.Page",
+                    "Permissions.ProjectailMaterials.View",
+                    "Permissions.NatureOptions.Page",
+                    "Permissions.NatureOptions.View",
+                    "Permissions.PrimaryPurposes.Page",
+                    "Permissions.PrimaryPurposes.View",
+                    "Permissions.Manufacturers.Page",
+                    "Permissions.Manufacturers.View",
+
+                    "Permissions.HazardDivisions.Page",
+                    "Permissions.HazardDivisions.View",
+                    "Permissions.Countries.Page",
+                    "Permissions.Countries.View",
+                    "Permissions.CaseTypes.Page",
+                    "Permissions.CaseTypes.View",
+                    "Permissions.Compatibilities.Page",
+                    "Permissions.Compatibilities.View",
+                    "Permissions.Colors.Page",
+                    "Permissions.Colors.View",
+                    "Permissions.Supplier.Page",
+                    "Permissions.Supplier.View",
+                    "Permissions.Rank.Page",
+                    "Permissions.Rank.View",
+                    "Permissions.Classifications.Page",
+                    "Permissions.Classifications.View",
+                    "Permissions.ItemTypes.Page",
+                    "Permissions.ItemTypes.View",
+                    "Permissions.RequestPurpose.Page",
+                    "Permissions.RequestPurpose.View"
+                };
+
+                // Assign Permissions to System Admin Role
+                var currentSystemAdminClaims = await roleManager.GetClaimsAsync(existingSystemAdminRole);
+                foreach (var permission in systemAdminPermissions)
+                {
+                    if (!currentSystemAdminClaims.Any(c => c.Value == permission))
+                    {
+                        await roleManager.AddClaimAsync(existingSystemAdminRole, new Claim("Permissions", permission));
+                    }
+                }
+
+                // ========================
+                // SYSTEM ADMIN USER
+                // ========================
+                var systemAdminUser = new ApplicationUser
+                {
+                    IsLdapUser = false,
+                    IsSuperAdmin = false,
+                    EmailConfirmed = true,
+                    Email = "system.admin@localhost",
+                    UserName = "system.admin@localhost",
+                    FullNameEN = "System Admin",
+                    FullNameAR = "مدير النظام"
+                };
+
+                if (userManager.Users.All(u => u.UserName != systemAdminUser.UserName))
+                {
+                    await userManager.CreateAsync(systemAdminUser, "Password1!");
+                    await userManager.AddToRolesAsync(systemAdminUser, new[] { systemAdminRole.Name });
+                    await userManager.UpdateSecurityStampAsync(systemAdminUser);
+                }
             }
             catch (Exception ex)
             {
