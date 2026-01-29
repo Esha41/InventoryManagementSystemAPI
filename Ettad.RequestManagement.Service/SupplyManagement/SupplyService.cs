@@ -830,7 +830,9 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
 				}
 
 				// Validate lot exists and has sufficient quantity
-				var lotValidation = await ValidateLotAndQuantityAsync(detailDto.ItemId, detailDto.Lot, detailDto.Quantity);
+				// Validate lot exists and has sufficient quantity
+				// Pass supplyId to exclude current supply's usage of this lot/item from the check
+				var lotValidation = await ValidateLotAndQuantityAsync(detailDto.ItemId, detailDto.Lot, detailDto.Quantity, supplyId);
 				if (!lotValidation.IsValid)
 				{
 					var errorMessage = string.Join("; ", lotValidation.Errors);
@@ -1078,9 +1080,11 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
 				}
 
 				// Validate lot availability for all new details
+				// Validate lot availability for all new details
+				// Pass supplyId to exclude current supply's usage of this lot/item from the check
 				foreach (var detailDto in newDetails)
 				{
-					var lotValidation = await ValidateLotAndQuantityAsync(detailDto.ItemId, detailDto.Lot, detailDto.Quantity);
+					var lotValidation = await ValidateLotAndQuantityAsync(detailDto.ItemId, detailDto.Lot, detailDto.Quantity, supplyId);
 					if (!lotValidation.IsValid)
 					{
 						var errorMessage = string.Join("; ", lotValidation.Errors);
@@ -1388,7 +1392,7 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
 		/// <summary>
 		/// Validates that a lot exists and has sufficient quantity available
 		/// </summary>
-		private async Task<(bool IsValid, List<string> Errors)> ValidateLotAndQuantityAsync(long itemId, int lot, long requestedQuantity)
+		private async Task<(bool IsValid, List<string> Errors)> ValidateLotAndQuantityAsync(long itemId, int lot, long requestedQuantity, long? excludeSupplyId = null)
 		{
 			var errors = new List<string>();
 
@@ -1414,8 +1418,9 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
 
 			// Get all supply details for this lot to calculate used quantity
 			// IMPORTANT: Only count non-deleted supply details
+			// If excludeSupplyId is provided, exclude details from that supply
 			var supplyDetails = await _supplyDetailRepository.FindAsync(
-				sd => sd.ItemId == itemId && sd.Lot == lot && !sd.IsDeleted
+				sd => sd.ItemId == itemId && sd.Lot == lot && !sd.IsDeleted && (!excludeSupplyId.HasValue || sd.SupplyId != excludeSupplyId.Value)
 			);
 
 			var totalUsedQuantity = supplyDetails.Sum(sd => sd.Quantity);
