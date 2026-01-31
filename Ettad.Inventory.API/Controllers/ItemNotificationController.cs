@@ -30,7 +30,7 @@ namespace Ettad.Inventory.API.Controllers
         /// </summary>
         [HttpGet("settings")]
         [ProducesResponseType((int)HttpStatusCode.OK)]
-        [CheckAuthorize("Permissions.Inventory.View")]
+        [CheckAuthorize("StockNotificationSettingsPage")]
         public async Task<IActionResult> GetSettings()
         {
             var result = await _settingsService.GetSettingsAsync();
@@ -42,7 +42,7 @@ namespace Ettad.Inventory.API.Controllers
         /// </summary>
         [HttpPut("settings")]
         [ProducesResponseType((int)HttpStatusCode.OK)]
-        [CheckAuthorize("Permissions.Inventory.Edit")]
+        [CheckAuthorize("StockNotificationSettingsPage")]
         public async Task<IActionResult> UpdateSettings([FromBody] LowStockNotificationSettingsDto dto)
         {
             var result = await _settingsService.UpdateSettingsAsync(dto);
@@ -54,7 +54,7 @@ namespace Ettad.Inventory.API.Controllers
         /// </summary>
         [HttpGet("schedule")]
         [ProducesResponseType((int)HttpStatusCode.OK)]
-        [CheckAuthorize("Permissions.Inventory.View")]
+        [CheckAuthorize("StockNotificationSettingsPage")]
         public async Task<IActionResult> GetSchedule()
         {
             var result = await _settingsService.GetScheduleAsync();
@@ -68,7 +68,7 @@ namespace Ettad.Inventory.API.Controllers
         /// </summary>
         [HttpPut("schedule")]
         [ProducesResponseType((int)HttpStatusCode.OK)]
-        [CheckAuthorize("Permissions.Inventory.Edit")]
+        [CheckAuthorize("StockNotificationSettingsPage")]
         public async Task<IActionResult> UpdateSchedule([FromBody] UpdateScheduleDto dto)
         {
             // Service handles both database update and Hangfire job update

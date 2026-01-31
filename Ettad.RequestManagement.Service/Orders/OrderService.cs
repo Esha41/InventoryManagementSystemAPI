@@ -623,6 +623,21 @@ namespace Ettad.RequestManagement.Service.Orders
                         "Item already exists in this order. Use update quantity instead.");
                 }
 
+                // Validation for orders from allowance
+                if (order.IsFromAllowance)
+                {
+                    var allowanceValidationResult = await ValidateAllowanceForOrderAsync(
+                        new List<CreateUpdateRequestItemDto> { itemDto }, 
+                        order.DepartmentId
+                    );
+
+                    if (!allowanceValidationResult.IsValid)
+                    {
+                        var errorMessage = string.Join("; ", allowanceValidationResult.Errors);
+                        return APIOperationResponse<long>.Fail(ResponseType.BadRequest, errorMessage);
+                    }
+                }
+
                 // Create new request item
                 var newItem = _mapper.Map<RequestItem>(itemDto);
                 newItem.RequestId = orderId;
@@ -707,6 +722,19 @@ namespace Ettad.RequestManagement.Service.Orders
                     _logger.LogWarning("Order item not found. OrderId: {OrderId}, ItemId: {ItemId}, User: {UserId}", 
                         orderId, itemId, _currentUserService.UserId);
                     return APIOperationResponse<bool>.Fail(ResponseType.NotFound, "Order item not found");
+                }
+
+                // Validation for orders from allowance
+                if (order.IsFromAllowance)
+                {
+                    var currentYear = _dateTimeProvider.Now.Year;
+                    var verificationResult = await CalculateAllowanceAvailabilityAsync(requestItem.ItemId, order.DepartmentId, currentYear);
+
+                    if (!verificationResult.CanFulfillRequest || verificationResult.AvailableQuantity < newQuantity)
+                    {
+                        return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, 
+                            $"Exceeded allowance quantity. Available: {verificationResult.AvailableQuantity}");
+                    }
                 }
 
                 var oldQuantity = requestItem.Quantity;
@@ -910,7 +938,7 @@ namespace Ettad.RequestManagement.Service.Orders
                 // Check if item exists in allowance
                 if (!allowanceByItemId.ContainsKey(requestItem.ItemId))
                 {
-                    errors.Add($"Item {requestItem.ItemId} is not found in the department's allowance for year {currentYear}");
+                    errors.Add($"This item is not found in the department's allowance for year {currentYear}");
                     continue;
                 }
 
@@ -920,11 +948,7 @@ namespace Ettad.RequestManagement.Service.Orders
                 // Check if requested quantity can be fulfilled
                 if (!verification.CanFulfillRequest || verification.AvailableQuantity < requestItem.Quantity)
                 {
-                    errors.Add($"Item {requestItem.ItemId}: Requested quantity ({requestItem.Quantity}) exceeds available allowance. " +
-                              $"Available: {verification.AvailableQuantity}, " +
-                              $"Original Allowance: {verification.OriginalAllowanceQuantity}, " +
-                              $"Reserved: {verification.ReservedByOrdersUnderProcessing}, " +
-                              $"Used: {verification.UsedQuantity}");
+                    errors.Add($"Exceeded allowance quantity. Available: {verification.AvailableQuantity}");
                 }
             }
 

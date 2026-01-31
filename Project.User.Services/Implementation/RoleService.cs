@@ -31,12 +31,81 @@ namespace Ettad.User.Services.Implementation
         private readonly IDateTimeProvider _dateTimeProvider;
 
         // Protected role names that cannot be updated or deleted (used in business logic)
-        private static readonly HashSet<string> ProtectedRoleNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        private static readonly List<string> ProtectedRoleNames = new List<string>
         {
-            "Requesting Entity Commander (Order Requesting Entity)",
-            "Supply Officer (Order Requesting Entity)",
-            "Head of Ammunition Division (Directorate of Armament)",
             "Head of Depo Division (Inventory)"
+        };
+
+        private static readonly List<string> SystemAdminPermissions = new List<string>
+        {
+            "Permissions.AdminDashboard.Page", 
+            "Permissions.AdminDashboard.View",
+            "Permissions.SystemUsers.Page", 
+            "Permissions.SystemUsers.View",
+            "Permissions.SystemUsers.Create",
+            "Permissions.SystemUsers.Edit",
+            "Permissions.SystemUsers.Delete",
+            "Permissions.Roles.Page", 
+            "Permissions.Roles.View", 
+            "Permissions.Roles.Create", 
+            "Permissions.Roles.Edit", 
+            "Permissions.Roles.Delete",
+            "Permissions.LdapSettings.Page", 
+            "Permissions.LdapSettings.View",
+            "AdminImportExport",
+            "StockNotificationSettingsPage",
+            "Permissions.Workflow.Page", 
+            "Permissions.Workflow.View", 
+            "Permissions.Workflow.Create", 
+            "Permissions.Workflow.Edit", 
+            "Permissions.Workflow.Delete",
+            "Permissions.UserDelegations.Page", 
+            "Permissions.UserDelegations.View", 
+            "Permissions.UserDelegations.Create", 
+            "Permissions.UserDelegations.Delete",
+            "Permissions.EmailSettings.Page", 
+            "Permissions.EmailSettings.View", 
+            "Permissions.EmailSettings.Create", 
+            "Permissions.EmailSettings.Edit",
+
+            "Permissions.NotificationsPage.Page",
+            "Permissions.NotificationsPage.View",
+            "Permissions.NotificationsPage.Edit",
+            "Permissions.Departments.Page",
+            "Permissions.Departments.View",
+            "Permissions.Propellants.Page",
+            "Permissions.Propellants.View",
+            "Permissions.Units.Page",
+            "Permissions.Units.View",
+            "Permissions.ProjectailMaterials.Page",
+            "Permissions.ProjectailMaterials.View",
+            "Permissions.NatureOptions.Page",
+            "Permissions.NatureOptions.View",
+            "Permissions.PrimaryPurposes.Page",
+            "Permissions.PrimaryPurposes.View",
+            "Permissions.Manufacturers.Page",
+            "Permissions.Manufacturers.View",
+
+            "Permissions.HazardDivisions.Page",
+            "Permissions.HazardDivisions.View",
+            "Permissions.Countries.Page",
+            "Permissions.Countries.View",
+            "Permissions.CaseTypes.Page",
+            "Permissions.CaseTypes.View",
+            "Permissions.Compatibilities.Page",
+            "Permissions.Compatibilities.View",
+            "Permissions.Colors.Page",
+            "Permissions.Colors.View",
+            "Permissions.Supplier.Page",
+            "Permissions.Supplier.View",
+            "Permissions.Rank.Page",
+            "Permissions.Rank.View",
+            "Permissions.Classifications.Page",
+            "Permissions.Classifications.View",
+            "Permissions.ItemTypes.Page",
+            "Permissions.ItemTypes.View",
+            "Permissions.RequestPurpose.Page",
+            "Permissions.RequestPurpose.View"
         };
 
         public RoleService(RoleManager<ApplicationRole> roleManager, UserManager<ApplicationUser> userManager, ICurrentUserService currentUserService, IMapper mapper , ApplicationDbContext context, IMemoryCache cache, IDateTimeProvider dateTimeProvider)
@@ -106,7 +175,8 @@ namespace Ettad.User.Services.Implementation
                     Id = r.Id,
                     Name = r.Name,
                     NameAr = r.NameAr,
-                    IsSuperAdmin = r.IsSuperAdmin
+                    IsSuperAdmin = r.IsSuperAdmin,
+                    IsAdmin = r.IsAdmin
                 })
                 .ToListAsync();
 
@@ -135,7 +205,8 @@ namespace Ettad.User.Services.Implementation
                     Name = role.Name,
                     NameAr = role.NameAr,
                     IsDefaultRole = (bool)role.IsDefaultRole,
-                    IsSuperAdmin = role.IsSuperAdmin
+                    IsSuperAdmin = role.IsSuperAdmin,
+                    IsAdmin = role.IsAdmin
                 });
 
             // 3️⃣ Apply pagination
@@ -219,6 +290,19 @@ namespace Ettad.User.Services.Implementation
                 await _context.SaveChangesAsync();
             }
 
+            // 7️⃣ Assign System Admin Permissions if IsAdmin is true
+            if (newRole.IsAdmin)
+            {
+                var roleClaims = await _roleManager.GetClaimsAsync(newRole);
+                foreach (var permission in SystemAdminPermissions)
+                {
+                    if (!roleClaims.Any(c => c.Value == permission))
+                    {
+                        await _roleManager.AddClaimAsync(newRole, new Claim("Permissions", permission));
+                    }
+                }
+            }
+
             // 6️⃣ Return success
             return APIOperationResponse<RoleDto>.Success(roleDto, "Role created successfully.");
         }
@@ -260,6 +344,7 @@ namespace Ettad.User.Services.Implementation
             role.Name = updateRoleDto.Name;
             role.NameAr = updateRoleDto.NameAr;
             role.IsDefaultRole = updateRoleDto.IsDefaultRole;
+            role.IsAdmin = updateRoleDto.IsAdmin;
 
             var result = await _roleManager.UpdateAsync(role);
 
@@ -289,7 +374,19 @@ namespace Ettad.User.Services.Implementation
                     });
                 }
 
-                await _context.SaveChangesAsync();
+            }
+
+            // 6️⃣ Assign System Admin Permissions if IsAdmin is true
+            if (role.IsAdmin)
+            {
+                var roleClaims = await _roleManager.GetClaimsAsync(role);
+                foreach (var permission in SystemAdminPermissions)
+                {
+                    if (!roleClaims.Any(c => c.Value == permission))
+                    {
+                        await _roleManager.AddClaimAsync(role, new Claim("Permissions", permission));
+                    }
+                }
             }
 
             // 5️⃣ Map updated role to DTO and return
