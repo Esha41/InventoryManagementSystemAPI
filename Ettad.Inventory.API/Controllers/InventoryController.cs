@@ -184,18 +184,21 @@ namespace Ettad.Inventory.API.Controllers
         /// <summary>
         /// Get available lots for a specific item and quantity (excludes expired and empty lots)
         /// </summary>
+        /// <param name="itemId">Item ID</param>
+        /// <param name="quantity">Required quantity</param>
+        /// <param name="excludeSupplyId">Optional supply ID to exclude from availability calculations (useful when replacing supply details)</param>
         [HttpGet("item/{itemId}/available-lots")]
         [ProducesResponseType((int)HttpStatusCode.OK)]
         [ProducesResponseType((int)HttpStatusCode.BadRequest)]
         [CheckAuthorize("Permissions.Inventory.View", "Permissions.Inventory.Page")]
-        public async Task<IActionResult> GetAvailableLotsForQuantity(long itemId, [FromQuery] long quantity)
+        public async Task<IActionResult> GetAvailableLotsForQuantity(long itemId, [FromQuery] long quantity, [FromQuery] long? excludeSupplyId = null)
         {
             if (quantity <= 0)
             {
                 return BadRequest("Quantity must be greater than 0");
             }
 
-            var result = await _inventoryService.GetAvailableLotsForQuantityAsync(itemId, quantity);
+            var result = await _inventoryService.GetAvailableLotsForQuantityAsync(itemId, quantity, null, excludeSupplyId);
             return ProcessResponse(result);
         }
 

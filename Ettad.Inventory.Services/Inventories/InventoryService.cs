@@ -589,10 +589,10 @@ namespace Ettad.Inventory.Service.Inventories
             }
         }
 
-        public async Task<APIOperationResponse<List<LotDetailDto>>> GetAvailableLotsForQuantityAsync(long itemId, long requiredQuantity, List<long>? depotIds = null)
+        public async Task<APIOperationResponse<List<LotDetailDto>>> GetAvailableLotsForQuantityAsync(long itemId, long requiredQuantity, List<long>? depotIds = null, long? excludeSupplyId = null)
         {
-            _logger.LogInformation("Getting available lots for quantity. ItemId: {ItemId}, RequiredQuantity: {RequiredQuantity}, DepotIds: {DepotIds}, User: {UserId}",
-                itemId, requiredQuantity, depotIds != null ? string.Join(", ", depotIds) : "All", _currentUserService.UserId);
+            _logger.LogInformation("Getting available lots for quantity. ItemId: {ItemId}, RequiredQuantity: {RequiredQuantity}, DepotIds: {DepotIds}, ExcludeSupplyId: {ExcludeSupplyId}, User: {UserId}",
+                itemId, requiredQuantity, depotIds != null ? string.Join(", ", depotIds) : "All", excludeSupplyId?.ToString() ?? "None", _currentUserService.UserId);
 
             try
             {
@@ -637,11 +637,39 @@ namespace Ettad.Inventory.Service.Inventories
                     return APIOperationResponse<List<LotDetailDto>>.Success(new List<LotDetailDto>());
                 }
 
-                // Get ALL supply details for this item in ONE query
-                var allSupplyDetails = await _supplyDetailsRepository.FindAsync(sd => sd.ItemId == itemId && !sd.IsDeleted);
+                // Get ALL supply details for this item in ONE query (don't exclude at query level)
+                var allSupplyDetails = await _supplyDetailsRepository.FindAsync(
+                    sd => sd.ItemId == itemId && !sd.IsDeleted
+                );
 
                 // Get all supplies to check submission status
+                // If excludeSupplyId is provided, we need to fetch it separately to check if it's Draft
                 var supplyIds = allSupplyDetails.Select(sd => sd.SupplyId).Distinct().ToList();
+                
+                // Check if excluded supply is Draft (only exclude Draft supplies, not Submitted)
+                // Business Rule: You can only replace Draft supplies, so we only exclude Draft supplies
+                bool shouldExcludeDraftSupply = false;
+                if (excludeSupplyId.HasValue)
+                {
+                    var excludedSupply = await _supplyRepository.FindOneAsync(
+                        s => s.Id == excludeSupplyId.Value && !s.IsDeleted
+                    );
+                    // Only exclude if the supply is Draft (you can only replace Draft supplies)
+                    shouldExcludeDraftSupply = excludedSupply != null && excludedSupply.SubmissionStatus == SupplySubmissionStatus.Draft;
+                    
+                    if (shouldExcludeDraftSupply)
+                    {
+                        _logger.LogInformation("Excluding Draft supply from availability calculations. SupplyId: {SupplyId}, ItemId: {ItemId}",
+                            excludeSupplyId.Value, itemId);
+                    }
+                    
+                    // Add to supplyIds list if not already present (for status map)
+                    if (!supplyIds.Contains(excludeSupplyId.Value))
+                    {
+                        supplyIds.Add(excludeSupplyId.Value);
+                    }
+                }
+
                 var supplies = supplyIds.Any()
                     ? await _supplyRepository.FindAsync(s => supplyIds.Contains(s.Id) && !s.IsDeleted)
                     : new List<Supply>();
@@ -649,15 +677,18 @@ namespace Ettad.Inventory.Service.Inventories
                 var supplyStatusMap = supplies.ToDictionary(s => s.Id, s => s.SubmissionStatus);
 
                 // Separate supply details by submission status and group by lot
+                // Used quantities: Always count ALL Submitted supplies (never exclude - they're finalized)
                 var usedQuantityByLot = allSupplyDetails
                     .Where(sd => supplyStatusMap.ContainsKey(sd.SupplyId) && 
                                  supplyStatusMap[sd.SupplyId] == SupplySubmissionStatus.Submitted)
                     .GroupBy(sd => sd.Lot)
                     .ToDictionary(g => g.Key, g => g.Sum(sd => sd.Quantity));
 
+                // Reserved quantities: Only exclude Draft supplies if excludeSupplyId is provided and it's Draft
                 var reservedQuantityByLot = allSupplyDetails
                     .Where(sd => supplyStatusMap.ContainsKey(sd.SupplyId) && 
-                                 supplyStatusMap[sd.SupplyId] == SupplySubmissionStatus.Draft)
+                                 supplyStatusMap[sd.SupplyId] == SupplySubmissionStatus.Draft &&
+                                 (!shouldExcludeDraftSupply || sd.SupplyId != excludeSupplyId.Value))
                     .GroupBy(sd => sd.Lot)
                     .ToDictionary(g => g.Key, g => g.Sum(sd => sd.Quantity));
 
@@ -850,8 +881,6 @@ namespace Ettad.Inventory.Service.Inventories
                 return APIOperationResponse<PaginatedList<InventoryDetailDto>>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
             }
         }
-
-
 
         public async Task<APIOperationResponse<List<ItemInventorySummaryDto>>> GetInventorySummaryForAllItemsAsync()
         {
