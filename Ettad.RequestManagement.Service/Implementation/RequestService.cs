@@ -241,7 +241,7 @@ namespace Ettad.RequestManagement.Service.Implementation
             }
 
             // --- DELEGATION LOGIC START ---
-            var activeDelegatorIds = await _userDelegationService.GetActiveDelegatorsForUserAsync(userId);
+            var activeDelegatorIds = await _userDelegationService.GetActiveDelegatorsForUserAsync(userId, DelegationScope.WorkflowApproval);
 
             var delegatorRoleNames = new List<string>();
             if (activeDelegatorIds.Any())
@@ -354,7 +354,7 @@ namespace Ettad.RequestManagement.Service.Implementation
                     }
 
                     // --- DELEGATION LOGIC START ---
-                    var activeDelegatorIds = await _userDelegationService.GetActiveDelegatorsForUserAsync(userId);
+                    var activeDelegatorIds = await _userDelegationService.GetActiveDelegatorsForUserAsync(userId, DelegationScope.WorkflowApproval);
                     var delegatorRoleNames = new List<string>();
                     if (activeDelegatorIds.Any())
                     {
@@ -429,7 +429,7 @@ namespace Ettad.RequestManagement.Service.Implementation
             // Fetch IsMyTurn status
             if (dtos.Any())
             {
-                var activeDelegatorIds = await _userDelegationService.GetActiveDelegatorsForUserAsync(userId);
+                var activeDelegatorIds = await _userDelegationService.GetActiveDelegatorsForUserAsync(userId, DelegationScope.WorkflowApproval);
                 var delegatorRoleNames = new List<string>();
                 if (activeDelegatorIds.Any())
                 {
