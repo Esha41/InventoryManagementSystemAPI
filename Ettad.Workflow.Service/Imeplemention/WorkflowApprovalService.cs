@@ -198,8 +198,8 @@ namespace Ettad.Workflows.Service.Imeplemention
                 .Select(ur => ur.RoleId)
                 .ToListAsync();
 
-            // 1.5 Get active delegations (users who delegated to current user)
-            var activeDelegatorIds = await _userDelegationService.GetActiveDelegatorsForUserAsync(currentUserId);
+            // 1.5 Get active delegations (users who delegated to current user for workflow approval)
+            var activeDelegatorIds = await _userDelegationService.GetActiveDelegatorsForUserAsync(currentUserId, DelegationScope.WorkflowApproval);
             var delegatorRoleIds = new List<string>();
             
             if (activeDelegatorIds != null && activeDelegatorIds.Any())
@@ -942,8 +942,8 @@ namespace Ettad.Workflows.Service.Imeplemention
                 return step;
 
             // 3. Check delegation authorization
-            // Fetch active delegators using business logic
-            var activeDelegatorIds = await _userDelegationService.GetActiveDelegatorsForUserAsync(currentUserId);
+            // Fetch active delegators using business logic (filtered by workflow approval scope)
+            var activeDelegatorIds = await _userDelegationService.GetActiveDelegatorsForUserAsync(currentUserId, DelegationScope.WorkflowApproval);
             
             if (activeDelegatorIds != null && activeDelegatorIds.Any())
             {
@@ -1319,7 +1319,7 @@ namespace Ettad.Workflows.Service.Imeplemention
                 .Select(ur => ur.RoleId)
                 .ToListAsync();
 
-            var activeDelegatorIds = await _userDelegationService.GetActiveDelegatorsForUserAsync(currentUserId);
+            var activeDelegatorIds = await _userDelegationService.GetActiveDelegatorsForUserAsync(currentUserId, DelegationScope.WorkflowApproval);
             
             var delegatorRoleIds = new List<string>();
             if (activeDelegatorIds.Any())
@@ -1865,7 +1865,7 @@ namespace Ettad.Workflows.Service.Imeplemention
                 .Select(ur => ur.RoleId)
                 .ToListAsync();
 
-            var activeDelegatorIds = await _userDelegationService.GetActiveDelegatorsForUserAsync(currentUserId);
+            var activeDelegatorIds = await _userDelegationService.GetActiveDelegatorsForUserAsync(currentUserId, DelegationScope.WorkflowApproval);
             
             var delegatorRoleIds = new List<string>();
             if (activeDelegatorIds.Any())

@@ -1,5 +1,6 @@
 using Ettad.Application.Common.Interfaces;
 using Ettad.Data.Entities;
+using Ettad.Data.Enums;
 using Ettad.Comman.Idenitity;
 using Ettad.EntityFramework.DataBaseContext;
 using Ettad.ResponseHandler.Consts;
@@ -44,12 +45,49 @@ namespace Ettad.User.Services.Implementation
             _dateTimeProvider = dateTimeProvider;
         }
 
+        #region Scope Conversion Helpers
+
+        /// <summary>
+        /// Converts a list of DelegationScope enum values to a bitwise long for database storage.
+        /// </summary>
+        private static long ConvertScopesToLong(List<DelegationScope> scopes)
+        {
+            if (scopes == null || !scopes.Any())
+                return (long)DelegationScope.None;
+
+            return scopes.Aggregate(0L, (current, scope) => current | (long)scope);
+        }
+
+        /// <summary>
+        /// Converts a bitwise long from database to a list of DelegationScope enum values.
+        /// </summary>
+        private static List<DelegationScope> ConvertLongToScopes(long scopesLong)
+        {
+            var scopesList = new List<DelegationScope>();
+            foreach (DelegationScope scope in Enum.GetValues(typeof(DelegationScope)))
+            {
+                if (scope != DelegationScope.None && (scopesLong & (long)scope) != 0)
+                {
+                    scopesList.Add(scope);
+                }
+            }
+            return scopesList;
+        }
+
+        #endregion
+
         public async Task<APIOperationResponse<bool>> CreateDelegationAsync(CreateUserDelegationDto dto)
         {
             var currentUserId = _currentUserService.UserId;
             
             // Adjust EndDate to be the end of the day (Inclusive)
             dto.EndDate = dto.EndDate.Date.AddDays(1).AddTicks(-1);
+
+            // Validate delegation scopes - at least one must be selected
+            if (dto.DelegationScopes == null || !dto.DelegationScopes.Any())
+            {
+                return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, "At least one delegation scope must be selected.");
+            }
 
             // 1. Validation Logic
             var validationResult = await ValidateDelegationAsync(dto, currentUserId);
@@ -70,6 +108,7 @@ namespace Ettad.User.Services.Implementation
                 Reason = dto.Reason,
                 IsActive = true,
                 DelegationStatus = 0, // Pending approval
+                DelegationScopes = ConvertScopesToLong(dto.DelegationScopes),
                 CreatedBy = currentUserId,
                 CreationDate = _dateTimeProvider.Now 
             };
@@ -135,17 +174,26 @@ namespace Ettad.User.Services.Implementation
             return APIOperationResponse<bool>.Success(true);
         }
 
-        public async Task<List<string>> GetActiveDelegatorsForUserAsync(string delegateeUserId)
+        public async Task<List<string>> GetActiveDelegatorsForUserAsync(string delegateeUserId, DelegationScope? scope = null)
         {
             // Use local time for checking active status
             var now = _dateTimeProvider.Now;
             
-            return await _context.UserDelegations
+            var query = _context.UserDelegations
                 .Where(d => d.DelegateeUserId == delegateeUserId &&
                             d.IsActive && !d.IsDeleted &&
                             d.DelegationStatus == 1 && // Only approved delegations
                             d.StartDate <= now &&
-                            d.EndDate >= now)
+                            d.EndDate >= now);
+
+            // Filter by scope if provided
+            if (scope.HasValue)
+            {
+                var scopeLong = (long)scope.Value;
+                query = query.Where(d => (d.DelegationScopes & scopeLong) != 0);
+            }
+
+            return await query
                 .Select(d => d.DelegatorUserId)
                 .ToListAsync();
         }
@@ -466,7 +514,8 @@ namespace Ettad.User.Services.Implementation
                 CreatedDate = entity.CreationDate,
                 Status = status,
                 DelegationStatus = entity.DelegationStatus,
-                IsIncoming = entity.DelegateeUserId == currentUserId
+                IsIncoming = entity.DelegateeUserId == currentUserId,
+                DelegationScopes = ConvertLongToScopes(entity.DelegationScopes)
             };
         }
 
