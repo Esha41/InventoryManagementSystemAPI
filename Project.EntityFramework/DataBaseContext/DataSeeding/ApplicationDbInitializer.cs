@@ -901,7 +901,7 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 {
                     Name = "M67 Fragmentation Grenade",
                     ItemNo = "EXP-001",
-                    Unit = ExplosiveUnit.Gram,
+                    UnitId = 7, // Gram for Explosive
                     UNNumber = "UN0284",
                     HazardDivisionId = 1,
                     PartNo = "PN-EXP-001",
@@ -916,7 +916,7 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 {
                     Name = "M84 Stun Grenade",
                     ItemNo = "EXP-002",
-                    Unit = ExplosiveUnit.Gram,
+                    UnitId = 7, // Gram for Explosive
                     UNNumber = "UN0014",
                     HazardDivisionId = 1,
                     PartNo = "PN-EXP-002",
@@ -931,7 +931,7 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 {
                     Name = "M18 Smoke Grenade",
                     ItemNo = "EXP-003",
-                    Unit = ExplosiveUnit.Gram,
+                    UnitId = 7, // Gram for Explosive
                     UNNumber = "UN0015",
                     HazardDivisionId = 1,
                     PartNo = "PN-EXP-003",
@@ -946,7 +946,7 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 {
                     Name = "C4 Explosive",
                     ItemNo = "EXP-004",
-                    Unit = ExplosiveUnit.Gram,
+                    UnitId = 7, // Gram for Explosive
                     UNNumber = "UN0056",
                     HazardDivisionId = 1,
                     PartNo = "PN-EXP-004",
@@ -961,7 +961,7 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 {
                     Name = "M112 Demolition Charge",
                     ItemNo = "EXP-005",
-                    Unit = ExplosiveUnit.Gram,
+                    UnitId = 7, // Gram for Explosive
                     UNNumber = "UN0048",
                     HazardDivisionId = 1,
                     PartNo = "PN-EXP-005",
@@ -976,7 +976,7 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 {
                     Name = "M26A2 Fragmentation Grenade",
                     ItemNo = "EXP-006",
-                    Unit = ExplosiveUnit.Gram,
+                    UnitId = 7, // Gram for Explosive
                     UNNumber = "UN0285",
                     HazardDivisionId = 1,
                     PartNo = "PN-EXP-006",
@@ -991,7 +991,7 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 {
                     Name = "AN-M14 TH3 Incendiary Grenade",
                     ItemNo = "EXP-007",
-                    Unit = ExplosiveUnit.Gram,
+                    UnitId = 7, // Gram for Explosive
                     UNNumber = "UN0009",
                     HazardDivisionId = 1,
                     PartNo = "PN-EXP-007",
@@ -1006,7 +1006,7 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 {
                     Name = "M72 LAW Rocket",
                     ItemNo = "EXP-008",
-                    Unit = ExplosiveUnit.Gram,
+                    UnitId = 7, // Gram for Explosive
                     UNNumber = "UN0180",
                     HazardDivisionId = 1,
                     PartNo = "PN-EXP-008",
@@ -1021,7 +1021,7 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 {
                     Name = "M18A1 Claymore Mine",
                     ItemNo = "EXP-009",
-                    Unit = ExplosiveUnit.Gram,
+                    UnitId = 7, // Gram for Explosive
                     UNNumber = "UN0137",
                     HazardDivisionId = 1,
                     PartNo = "PN-EXP-009",
@@ -1036,7 +1036,7 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 {
                     Name = "M67 Training Grenade",
                     ItemNo = "EXP-010",
-                    Unit = ExplosiveUnit.Gram,
+                    UnitId = 7, // Gram for Explosive
                     UNNumber = "UN0110",
                     HazardDivisionId = 1,
                     PartNo = "PN-EXP-010",
@@ -1051,7 +1051,7 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 {
                     Name = "M183 Demolition Charge Assembly",
                     ItemNo = "EXP-011",
-                    Unit = ExplosiveUnit.Gram,
+                    UnitId = 7, // Gram for Explosive
                     UNNumber = "UN0118",
                     HazardDivisionId = 1,
                     PartNo = "PN-EXP-011",
@@ -1066,7 +1066,7 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 {
                     Name = "M6 Electric Blasting Cap",
                     ItemNo = "EXP-012",
-                    Unit = ExplosiveUnit.Gram,
+                    UnitId = 7, // Gram for Explosive
                     UNNumber = "UN0030",
                     HazardDivisionId = 1,
                     PartNo = "PN-EXP-012",

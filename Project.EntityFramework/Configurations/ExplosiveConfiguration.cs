@@ -10,12 +10,15 @@ namespace Ettad.EntityFramework.Configurations
         {
             builder.ToTable("Explosives");
 
-            builder.Property(x => x.Unit)
-                .IsRequired();
-
             builder.HasOne(x => x.HazardDivision)
                 .WithMany()
                 .HasForeignKey(x => x.HazardDivisionId)
+                .IsRequired(false)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.HasOne(x => x.Unit)
+                .WithMany()
+                .HasForeignKey(x => x.UnitId)
                 .IsRequired(false)
                 .OnDelete(DeleteBehavior.Restrict);
 

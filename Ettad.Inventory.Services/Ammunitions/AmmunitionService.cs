@@ -537,7 +537,7 @@ namespace Ettad.Inventory.Service.Ammunitions
         // Helpers
         private async Task LoadLookupsAsync(List<AmmunitionImportDto> importItems = null)
         {
-            _units = await _context.Units.Where(u => !u.IsDeleted).ToListAsync();
+            _units = await _context.Units.Where(u => !u.IsDeleted && u.ItemType == ItemType.Ammunition).ToListAsync();
             _caseTypes = await _context.CaseTypes.Where(c => !c.IsDeleted).ToListAsync();
             _propellants = await _context.Propellants.Where(p => !p.IsDeleted).ToListAsync();
             _compatibilities = await _context.Compatibilities.Where(c => !c.IsDeleted).ToListAsync();
@@ -547,7 +547,7 @@ namespace Ettad.Inventory.Service.Ammunitions
             _projectileColors = await _context.Colors.Where(c => !c.IsDeleted).ToListAsync();
             _projectileMaterials = await _context.ProjectailMaterials.Where(p => !p.IsDeleted).ToListAsync();
             _classifications = await _context.Classifications.Where(c => !c.IsDeleted).ToListAsync();
-            _itemTypes = await _context.ItemTypes.Where(i => !i.IsDeleted).ToListAsync();
+            _itemTypes = await _context.ItemTypes.Where(i => !i.IsDeleted && i.ItemType == ItemType.Ammunition).ToListAsync();
 
             // Build cache
             _cachedLookups["Units"] = BuildLookup(_units, x => x.NameEn, x => x.NameAr, x => x.Id);

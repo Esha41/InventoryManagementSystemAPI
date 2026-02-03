@@ -419,10 +419,10 @@ namespace Ettad.Inventory.Service.Weapons
         // Helpers
         private async Task LoadLookupsAsync(List<WeaponImportDto> importItems = null)
         {
-             _units = await _context.Units.Where(u => !u.IsDeleted).ToListAsync();
+             _units = await _context.Units.Where(u => !u.IsDeleted && u.ItemType == ItemType.Weapon).ToListAsync();
              _countries = await _context.Countries.Where(c => !c.IsDeleted).ToListAsync();
              _classifications = await _context.Classifications.Where(c => !c.IsDeleted).ToListAsync();
-             _itemTypes = await _context.ItemTypes.Where(i => !i.IsDeleted).ToListAsync();
+             _itemTypes = await _context.ItemTypes.Where(i => !i.IsDeleted && i.ItemType == ItemType.Weapon).ToListAsync();
 
              // Build cache
              _cachedLookups["Units"] = BuildLookup(_units, x => x.NameEn, x => x.NameAr, x => x.Id);

@@ -42,6 +42,7 @@ namespace Ettad.Inventory.Service.Explosives
         private List<HazardDivision> _hazardDivisions;
         private List<Classification> _classifications;
         private List<ItemTypeLookup> _itemTypes;
+        private List<Unit> _units;
 
         // Optimization: Dictionary for fast O(1) lookups during import
         private Dictionary<string, Dictionary<string, long>> _cachedLookups = new Dictionary<string, Dictionary<string, long>>();
@@ -86,7 +87,8 @@ namespace Ettad.Inventory.Service.Explosives
                     false,
                     nameof(Explosive.HazardDivision),
                     nameof(Explosive.Classification),
-                    nameof(Explosive.Type)
+                    nameof(Explosive.Type),
+                    nameof(Explosive.Unit)
                 );
 
                 if (explosive == null)
@@ -115,7 +117,8 @@ namespace Ettad.Inventory.Service.Explosives
                     false,
                     nameof(Explosive.HazardDivision),
                     nameof(Explosive.Classification),
-                    nameof(Explosive.Type)
+                    nameof(Explosive.Type),
+                    nameof(Explosive.Unit)
                 );
 
                 var dtos = _mapper.Map<List<ExplosiveDto>>(explosives);
@@ -148,7 +151,8 @@ namespace Ettad.Inventory.Service.Explosives
                     false,
                     nameof(Explosive.HazardDivision),
                     nameof(Explosive.Classification),
-                    nameof(Explosive.Type)
+                    nameof(Explosive.Type),
+                    nameof(Explosive.Unit)
                 );
 
                 var paginatedEntities = await PaginatedList<Explosive>.CreateAsyncForTableBinding(query, request);
@@ -335,14 +339,14 @@ namespace Ettad.Inventory.Service.Explosives
              var headers = language == "ar"
                     ? new[]
                     {
-                        "الاسم*", "رقم الصنف*", "رقم الجزء", "DSN", "السعر", "الكمية الدنيا",
-                        "نوع المتفجرات", "رقم الأمم المتحدة", "كمية المتفجرات الصافية", "وحدة NEQ",
+                        "الاسم*", "رقم الصنف*", "رقم الجزء", "NSN", "السعر", "الكمية الدنيا",
+                        "رقم الأمم المتحدة", "وحدة",
                         "التوزيع", "الرقم المرجعي", "قسم الخطر", "التصنيف", "النوع", "ملاحظات"
                     }
                     : new[]
                     {
                         "Name*", "Item No*", "Part No", "NSN", "Price", "Minimum Quantity",
-                        "Explosive Type", "UN Number", "Net Explosive Quantity", "NEQ Unit",
+                        "UN Number", "Unit",
                         "Distribution", "Reference No", "Hazard Division", "Classification", "Type", "Notes"
                     };
 
@@ -350,6 +354,7 @@ namespace Ettad.Inventory.Service.Explosives
                 .Include(e => e.HazardDivision)
                 .Include(e => e.Classification)
                 .Include(e => e.Type)
+                .Include(e => e.Unit)
                 .FirstOrDefaultAsync(e => !e.IsDeleted);
 
             return await _importManager.GenerateTemplateAsync(
@@ -367,21 +372,14 @@ namespace Ettad.Inventory.Service.Explosives
                         sheet.Cells[2, 4].Value = firstAsset.Nsn;
                         sheet.Cells[2, 5].Value = firstAsset.Price;
                         sheet.Cells[2, 6].Value = firstAsset.MinimumQuantity;
-                        
-                        // Note: ExplosiveType and NetExplosiveQuantity are headers in template 
-                        // but not yet mapped in DTO/Entity in current implementation.
-                        // Leaving empty or mapping if found.
-                        sheet.Cells[2, 7].Value = ""; // Explosive Type
-                        sheet.Cells[2, 8].Value = firstAsset.UNNumber;
-                        sheet.Cells[2, 9].Value = 0; // Net Explosive Quantity
-                        sheet.Cells[2, 10].Value = firstAsset.Unit.ToString(); 
-
-                        sheet.Cells[2, 11].Value = firstAsset.Distribution;
-                        sheet.Cells[2, 12].Value = firstAsset.ReferenceNo;
-                        sheet.Cells[2, 13].Value = isAr ? firstAsset.HazardDivision?.NameAr : firstAsset.HazardDivision?.NameEn;
-                        sheet.Cells[2, 14].Value = isAr ? firstAsset.Classification?.NameAr : firstAsset.Classification?.NameEn;
-                        sheet.Cells[2, 15].Value = isAr ? firstAsset.Type?.NameAr : firstAsset.Type?.NameEn;
-                        sheet.Cells[2, 16].Value = firstAsset.Notes;
+                        sheet.Cells[2, 7].Value = firstAsset.UNNumber;
+                        sheet.Cells[2, 8].Value = isAr ? firstAsset.Unit?.NameAr : firstAsset.Unit?.NameEn; // Unit
+                        sheet.Cells[2, 9].Value = firstAsset.Distribution;
+                        sheet.Cells[2, 10].Value = firstAsset.ReferenceNo;
+                        sheet.Cells[2, 11].Value = isAr ? firstAsset.HazardDivision?.NameAr : firstAsset.HazardDivision?.NameEn;
+                        sheet.Cells[2, 12].Value = isAr ? firstAsset.Classification?.NameAr : firstAsset.Classification?.NameEn;
+                        sheet.Cells[2, 13].Value = isAr ? firstAsset.Type?.NameAr : firstAsset.Type?.NameEn;
+                        sheet.Cells[2, 14].Value = firstAsset.Notes;
                     }
                     else
                     {
@@ -394,12 +392,14 @@ namespace Ettad.Inventory.Service.Explosives
                     CreateLookupSheet(package, "HazardDivisions", _hazardDivisions);
                     CreateLookupSheet(package, "Classifications", _classifications);
                     CreateLookupSheet(package, "ItemTypes", _itemTypes);
+                    CreateLookupSheet(package, "Units", _units);
                 },
                 (sheet) =>
                 {
-                    AddDataValidation(sheet, 13, "HazardDivisions"); 
-                    AddDataValidation(sheet, 14, "Classifications"); 
-                    AddDataValidation(sheet, 15, "ItemTypes"); 
+                    AddDataValidation(sheet, 8, "Units"); // Unit dropdown
+                    AddDataValidation(sheet, 11, "HazardDivisions"); 
+                    AddDataValidation(sheet, 12, "Classifications"); 
+                    AddDataValidation(sheet, 13, "ItemTypes"); 
                 }
             );
         }
@@ -411,12 +411,14 @@ namespace Ettad.Inventory.Service.Explosives
         {
              _hazardDivisions = await _context.HazardDivisions.Where(h => !h.IsDeleted).ToListAsync();
              _classifications = await _context.Classifications.Where(c => !c.IsDeleted).ToListAsync();
-             _itemTypes = await _context.ItemTypes.Where(i => !i.IsDeleted).ToListAsync();
+             _itemTypes = await _context.ItemTypes.Where(i => !i.IsDeleted && i.ItemType == ItemType.Explosive).ToListAsync();
+             _units = await _context.Units.Where(u => !u.IsDeleted && u.ItemType == ItemType.Explosive).ToListAsync();
  
              // Build cache
              _cachedLookups["HazardDivisions"] = BuildLookup(_hazardDivisions, x => x.NameEn, x => x.NameAr, x => x.Id);
              _cachedLookups["Classifications"] = BuildLookup(_classifications, x => x.NameEn, x => x.NameAr, x => x.Id);
              _cachedLookups["ItemTypes"] = BuildLookup(_itemTypes, x => x.NameEn, x => x.NameAr, x => x.Id);
+             _cachedLookups["Units"] = BuildLookup(_units, x => x.NameEn, x => x.NameAr, x => x.Id);
 
             // Optimization: Bulk fetch ItemNo and NSN duplicates
             _existingItemNos.Clear();
@@ -461,12 +463,7 @@ namespace Ettad.Inventory.Service.Explosives
             dto.HazardDivisionId = FindLookupIdCached("HazardDivisions", importDto.HazardDivision);
             dto.ClassificationId = FindLookupIdCached("Classifications", importDto.Classification);
             dto.TypeId = FindLookupIdCached("ItemTypes", importDto.Type);
-            
-             if (!string.IsNullOrWhiteSpace(importDto.NEQUnit))
-            {
-                if (Enum.TryParse<ExplosiveUnit>(importDto.NEQUnit, true, out var unitValue))
-                    dto.Unit = unitValue;
-            }
+            dto.UnitId = FindLookupIdCached("Units", importDto.NEQUnit);
 
             return dto;
         }
@@ -538,7 +535,7 @@ namespace Ettad.Inventory.Service.Explosives
                 { "Minimum Quantity", nameof(ExplosiveImportDto.MinimumQuantity) },
                 { "NSN", nameof(ExplosiveImportDto.Nsn) },
                 { "UN Number", nameof(ExplosiveImportDto.UNNumber) },
-                { "NEQ Unit", nameof(ExplosiveImportDto.NEQUnit) },
+                { "Unit", nameof(ExplosiveImportDto.NEQUnit) },
                 { "Distribution", nameof(ExplosiveImportDto.Distribution) },
                 { "Reference No", nameof(ExplosiveImportDto.ReferenceNo) },
                 { "Hazard Division", nameof(ExplosiveImportDto.HazardDivision) },
@@ -553,7 +550,7 @@ namespace Ettad.Inventory.Service.Explosives
                 { "السعر", nameof(ExplosiveImportDto.Price) },
                 { "الكمية الدنيا", nameof(ExplosiveImportDto.MinimumQuantity) },
                 { "رقم الأمم المتحدة", nameof(ExplosiveImportDto.UNNumber) },
-                { "وحدة NEQ", nameof(ExplosiveImportDto.NEQUnit) },
+                { "وحدة", nameof(ExplosiveImportDto.NEQUnit) },
                 { "التوزيع", nameof(ExplosiveImportDto.Distribution) },
                 { "الرقم المرجعي", nameof(ExplosiveImportDto.ReferenceNo) },
                 { "قسم الخطر", nameof(ExplosiveImportDto.HazardDivision) },
@@ -577,6 +574,17 @@ namespace Ettad.Inventory.Service.Explosives
             for (int i = 0; i < names.Count; i++)
             {
                 lookupSheet.Cells[i + 1, 1].Value = names[i];
+            }
+        }
+        
+        private void CreateStringListLookupSheet(ExcelPackage package, string sheetName, List<string> values)
+        {
+            var lookupSheet = package.Workbook.Worksheets.Add(sheetName);
+            lookupSheet.Hidden = eWorkSheetHidden.Hidden;
+
+            for (int i = 0; i < values.Count; i++)
+            {
+                lookupSheet.Cells[i + 1, 1].Value = values[i];
             }
         }
         
