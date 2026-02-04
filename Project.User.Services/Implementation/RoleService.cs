@@ -105,7 +105,14 @@ namespace Ettad.User.Services.Implementation
             "Permissions.ItemTypes.Page",
             "Permissions.ItemTypes.View",
             "Permissions.RequestPurpose.Page",
-            "Permissions.RequestPurpose.View"
+            "Permissions.RequestPurpose.View",
+            
+            // Lookup Tables Management
+            "Permissions.LookupTables.Page",
+            "Permissions.LookupTables.View",
+            "Permissions.LookupTables.Create",
+            "Permissions.LookupTables.Edit",
+            "Permissions.LookupTables.Delete"
         };
 
         public RoleService(RoleManager<ApplicationRole> roleManager, UserManager<ApplicationUser> userManager, ICurrentUserService currentUserService, IMapper mapper , ApplicationDbContext context, IMemoryCache cache, IDateTimeProvider dateTimeProvider)

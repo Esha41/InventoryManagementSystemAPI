@@ -216,7 +216,14 @@ namespace Ettad.EntityFramework.DataBaseContext
                     "Permissions.ItemTypes.Page",
                     "Permissions.ItemTypes.View",
                     "Permissions.RequestPurpose.Page",
-                    "Permissions.RequestPurpose.View"
+                    "Permissions.RequestPurpose.View",
+                    
+                    // Lookup Tables Management
+                    "Permissions.LookupTables.Page",
+                    "Permissions.LookupTables.View",
+                    "Permissions.LookupTables.Create",
+                    "Permissions.LookupTables.Edit",
+                    "Permissions.LookupTables.Delete"
                 };
 
                 // Assign Permissions to System Admin Role
@@ -249,6 +256,55 @@ namespace Ettad.EntityFramework.DataBaseContext
                     await userManager.AddToRolesAsync(systemAdminUser, new[] { systemAdminRole.Name });
                     await userManager.UpdateSecurityStampAsync(systemAdminUser);
                 }
+
+                // ========================
+                // CALL CENTER ADMIN ROLE (LIMITED TO MANAGE-USERS PAGE)
+                // ========================
+                var callCenterAdminRole = new ApplicationRole
+                {
+                    Name = "Call Center Admin",
+                    NameAr = "مدير مركز الاتصال",
+                    IsSuperAdmin = false,
+                    IsDefaultRole = false
+                };
+
+                var existingCallCenterAdminRole = await roleManager.FindByNameAsync(callCenterAdminRole.Name);
+                if (existingCallCenterAdminRole == null)
+                {
+                    await roleManager.CreateAsync(callCenterAdminRole);
+                    existingCallCenterAdminRole = await roleManager.FindByNameAsync(callCenterAdminRole.Name);
+                }
+
+                // Define permissions - SystemUsers CRUD operations + Roles.View to assign roles to users + Notifications
+                var callCenterAdminPermissions = new List<string>
+                {
+                    // User Management (CRUD) - Permissions needed for manage-admins page
+                    "Permissions.SystemUsers.Page", 
+                    "Permissions.SystemUsers.View",
+                    "Permissions.SystemUsers.Create",
+                    "Permissions.SystemUsers.Edit",
+                    "Permissions.SystemUsers.Delete",
+                    
+                    // Roles View - Required to view and assign roles to users
+                    "Permissions.Roles.View",
+                    
+                    // Notifications Page - Access to view and manage notifications
+                    "Permissions.NotificationsPage.Page",
+                    "Permissions.NotificationsPage.View",
+                    "Permissions.NotificationsPage.Edit"
+                };
+
+                // Assign Permissions to Call Center Admin Role
+                var currentCallCenterAdminClaims = await roleManager.GetClaimsAsync(existingCallCenterAdminRole);
+                foreach (var permission in callCenterAdminPermissions)
+                {
+                    if (!currentCallCenterAdminClaims.Any(c => c.Value == permission))
+                    {
+                        await roleManager.AddClaimAsync(existingCallCenterAdminRole, new Claim("Permissions", permission));
+                    }
+                }
+
+                // Note: Call Center Admin user is not seeded - can be created manually through the UI
             }
             catch (Exception ex)
             {
