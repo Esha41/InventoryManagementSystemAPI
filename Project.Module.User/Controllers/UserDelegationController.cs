@@ -21,6 +21,7 @@ namespace Ettad.User.API.Controllers
             _userDelegationService = userDelegationService;
         }
 
+        /*
         [HttpGet("available-users")]
         [CheckAuthorize("Permissions.UserDelegations.View", "Permissions.UserDelegations.Page")]
         public async Task<IActionResult> GetAvailableUsers()
@@ -141,5 +142,6 @@ namespace Ettad.User.API.Controllers
             var isRestricted = await _userDelegationService.IsUserRestrictedByDelegationAsync(userId);
             return Ok(new APIOperationResponse<bool> { Succeeded = true, Data = isRestricted });
         }
+        */
     }
 }
