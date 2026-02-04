@@ -24,6 +24,7 @@ namespace Ettad.ResponseHandler.Consts
         public static readonly CommonErrorCodes NotAuthorized = new CommonErrorCodes("NotAuthorized", CommonErrorCode.NotAuthorized);
         public static readonly CommonErrorCodes NOT_FOUND = new CommonErrorCodes("NOT_FOUND", CommonErrorCode.NOT_FOUND);
         public static readonly CommonErrorCodes INVALID_LDAP_SETTINGS = new CommonErrorCodes("INVALID_LDAP_SETTINGS", CommonErrorCode.INVALID_LDAP_SETTINGS);
+        public static readonly CommonErrorCodes ACCOUNT_DELETED = new CommonErrorCodes("ACCOUNT_DELETED", CommonErrorCode.ACCOUNT_DELETED);
 
         private CommonErrorCodes(string value, CommonErrorCode code)
         {
@@ -54,7 +55,8 @@ namespace Ettad.ResponseHandler.Consts
         RESOURCE_NOT_FOUND = 0011,
         NotAuthorized = 0012,
            NOT_FOUND = 0013,
-        INVALID_LDAP_SETTINGS=0014
+        INVALID_LDAP_SETTINGS=0014,
+        ACCOUNT_DELETED = 0015
 
     }
 }
