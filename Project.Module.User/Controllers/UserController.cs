@@ -81,6 +81,14 @@ namespace Ettad.User.API.Controllers
             return ProcessResponse(response);
         }
 
+        [CheckAuthorize("Permissions.SystemUsers.Edit")]
+        [HttpPut("{id}/restore")]
+        public async Task<IActionResult> Restore(string id)
+        {
+            var response = await _userService.RestoreAsync(id);
+            return ProcessResponse(response);
+        }
+
         [HttpGet("{id}/roles")]
         [CheckAuthorize("Permissions.SystemUsers.View")] 
         public async Task<IActionResult> GetUserRoles(string id)
