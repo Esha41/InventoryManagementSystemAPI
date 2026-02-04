@@ -1329,48 +1329,6 @@ namespace Ettad.EntityFramework.Migrations
                         .HasFilter("[IsDeleted] = 0");
 
                     b.ToTable("Countries", (string)null);
-
-                    b.HasData(
-                        new
-                        {
-                            Id = 1L,
-                            Code = "SA",
-                            IsDeleted = false,
-                            NameAr = "المملكة العربية السعودية",
-                            NameEn = "Saudi Arabia"
-                        },
-                        new
-                        {
-                            Id = 2L,
-                            Code = "US",
-                            IsDeleted = false,
-                            NameAr = "الولايات المتحدة الأمريكية",
-                            NameEn = "United States"
-                        },
-                        new
-                        {
-                            Id = 3L,
-                            Code = "UK",
-                            IsDeleted = false,
-                            NameAr = "المملكة المتحدة",
-                            NameEn = "United Kingdom"
-                        },
-                        new
-                        {
-                            Id = 4L,
-                            Code = "FR",
-                            IsDeleted = false,
-                            NameAr = "فرنسا",
-                            NameEn = "France"
-                        },
-                        new
-                        {
-                            Id = 5L,
-                            Code = "DE",
-                            IsDeleted = false,
-                            NameAr = "ألمانيا",
-                            NameEn = "Germany"
-                        });
                 });
 
             modelBuilder.Entity("Ettad.Data.Entities.Department", b =>
