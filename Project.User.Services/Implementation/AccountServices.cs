@@ -446,7 +446,6 @@ namespace Ettad.User.Services.Implementation
                 var loginSucceeded = await _ldapAuthenticator.ValidateAsync(
                     usernameForLdapAuth,
                     loginInformation.Password,
-                    loginWithoutPassword: false,
                     ldapSettings,
                     cancellationToken);
 
