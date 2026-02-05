@@ -1,5 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.Extensions.Hosting;
 using System;
 using System.Linq;
 using System.Threading.Tasks;
@@ -61,7 +63,12 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
             {
                 var context = services.GetRequiredService<ApplicationDbContext>();
                 
+                // Get environment to check if we're in development
+                var environment = services.GetService<IWebHostEnvironment>();
+                var isDevelopment = environment?.IsDevelopment() ?? false;
+                
                 Console.WriteLine("=== Starting Database Seeding ===");
+                Console.WriteLine($"Environment: {(isDevelopment ? "Development" : "Production")}");
                 
                 // Seed countries data
                 await SeedCountriesDataAsync(context);
@@ -79,25 +86,33 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 await SeedItemTypeLookupDataAsync(context);
                 Console.WriteLine("✓ Item Types seeded");
                 
-                // Seed ammunition data
-                await SeedAmmunitionDataAsync(context);
-                Console.WriteLine("✓ Ammunition seeded");
-                
-                // Seed weapon data
-                await SeedWeaponDataAsync(context);
-                Console.WriteLine("✓ Weapons seeded");
-                
-                // Seed explosive data
-                await SeedExplosiveDataAsync(context);
-                Console.WriteLine("✓ Explosives seeded");
-                
-                // Seed inventory data based on seeded depots and ammunitions
-                await SeedInventoryDataAsync(context);
-                Console.WriteLine("✓ Inventory seeded");
-                
-                // Seed allowance data for all departments and all items
-                await SeedAllowanceDataAsync(context);
-                Console.WriteLine("✓ Allowances seeded");
+                // Only seed items, inventory, and allowance data in Development environment
+                if (isDevelopment)
+                {
+                    // Seed ammunition data
+                    await SeedAmmunitionDataAsync(context);
+                    Console.WriteLine("✓ Ammunition seeded");
+                    
+                    // Seed weapon data
+                    await SeedWeaponDataAsync(context);
+                    Console.WriteLine("✓ Weapons seeded");
+                    
+                    // Seed explosive data
+                    await SeedExplosiveDataAsync(context);
+                    Console.WriteLine("✓ Explosives seeded");
+                    
+                    // Seed inventory data based on seeded depots and ammunitions
+                    await SeedInventoryDataAsync(context);
+                    Console.WriteLine("✓ Inventory seeded");
+                    
+                    // Seed allowance data for all departments and all items
+                    await SeedAllowanceDataAsync(context);
+                    Console.WriteLine("✓ Allowances seeded");
+                }
+                else
+                {
+                    Console.WriteLine("⚠ Skipping items, inventory, and allowance seeding (not in Development environment)");
+                }
                 
                 Console.WriteLine("=== Database Seeding Completed Successfully ===");
             }
