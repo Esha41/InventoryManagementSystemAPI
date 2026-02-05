@@ -5,8 +5,10 @@ using Ettad.EntityFramework.DataBaseContext.DataSeeding;
 using Ettad.EntityFramework.DataBaseContext.DataSeeding.Workflows;
 using Ettad.EntityFramework.Utiliies;
 using Ettad.Infrastructure.Utilities;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Hosting;
 using System.Collections.Generic;
 using System.Linq;
 using System.Security.Claims;
@@ -19,7 +21,8 @@ namespace Ettad.EntityFramework.DataBaseContext
         public static async Task SeedDefaultUserAsync(
             ApplicationDbContext context,
             UserManager<ApplicationUser> userManager,
-            RoleManager<ApplicationRole> roleManager)
+            RoleManager<ApplicationRole> roleManager,
+            IWebHostEnvironment? environment = null)
         {
             try
             {
@@ -102,10 +105,20 @@ namespace Ettad.EntityFramework.DataBaseContext
                 // ========================
                 await SeedApplicationEntitiesAndRolesAsync(context, roleManager);
                 
+                // Check if we're in Development environment
+                var isDevelopment = environment?.IsDevelopment() ?? false;
+                
                 // ========================
-                // SEED DEFAULT USERS FOR ALL ROLES
+                // SEED DEFAULT USERS FOR ALL ROLES (Development only)
                 // ========================
-                await SeedDefaultUsersForRolesAsync(context, userManager, roleManager);
+                if (isDevelopment)
+                {
+                    await SeedDefaultUsersForRolesAsync(context, userManager, roleManager);
+                }
+                else
+                {
+                    Console.WriteLine("⚠ Skipping test users seeding (not in Development environment)");
+                }
                 
                 await SeedWorkflows.SeedNormalOrderWorkflowAsync(context);
                 await SeedWorkflows.SeedNormalOrderForTrainingPurposeWorkflowAsync(context);

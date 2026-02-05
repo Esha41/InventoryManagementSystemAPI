@@ -403,7 +403,8 @@ try
             await Ettad.EntityFramework.DataBaseContext.DataSeeding.ApplicationDbInitializer.ApplyPendingMigrationsAsync(scope.ServiceProvider);
             
             var context = services.GetRequiredService<ApplicationDbContext>();
-            await ApplicationDbcontextSeed.SeedDefaultUserAsync(context, userManager, roleManager);
+            var environment = services.GetService<Microsoft.AspNetCore.Hosting.IWebHostEnvironment>();
+            await ApplicationDbcontextSeed.SeedDefaultUserAsync(context, userManager, roleManager, environment);
             await Ettad.EntityFramework.DataBaseContext.DataSeeding.ApplicationDbInitializer.SeedDefaultDataAsync(scope.ServiceProvider);
 
             Log.Information("Database migration and seeding completed successfully");
