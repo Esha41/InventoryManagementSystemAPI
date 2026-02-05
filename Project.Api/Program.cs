@@ -385,6 +385,7 @@ try
             }
         };
     });
+    ReportServiceLocator.ServiceProvider = app.Services;
 
     // Configure the HTTP request pipeline.
     // Add error handling for Swagger - only in Development environment

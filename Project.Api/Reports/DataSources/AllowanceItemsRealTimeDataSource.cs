@@ -7,30 +7,45 @@ namespace Project.Api.Reports.DataSources
 {
     public class AllowanceItemsRealTimeDataSource
     {
-        private readonly IAllowanceItemService _allowanceItemService;
-
-        public AllowanceItemsRealTimeDataSource(IAllowanceItemService service)
+        public AllowanceItemsRealTimeDataSource() { }
+        public List<AllowanceItemReportDto> Get()
         {
-            _allowanceItemService = service;
-        }
+            using var scope = ReportServiceScope.Create();
 
-        public List<AllowanceItemReportDto> GetAsync()
-        {
-            var response = _allowanceItemService.GetAllAsync().GetAwaiter().GetResult();
+            var service = scope.ServiceProvider
+                .GetRequiredService<IAllowanceItemService>();
+
+            var response = service.GetAllAsync()
+                                  .GetAwaiter()
+                                  .GetResult();
 
             if (!response.Succeeded)
-                return new List<AllowanceItemReportDto>();
+                return new();
 
             return response.Data.Select(a => new AllowanceItemReportDto
             {
                 ItemName = a.ItemName,
                 TotalQuantity = a.Quantity,
-                DepartmentId=a.DepartmentId,
-                Year=a.Year,
+                DepartmentId = a.DepartmentId,
+                Year = a.Year,
                 UsedQuantity = a.ReservedQuantityByOrdersOnProcessing,
                 ReservedQuantity = a.UsedQuantityFromAllowance,
                 RemainingQuantity = a.RemainingQuantityFromAllowance
             }).ToList();
+        }
+    }
+
+    public static class ReportServiceLocator
+    {
+        public static IServiceProvider ServiceProvider { get; set; } = default!;
+    }
+
+
+    public static class ReportServiceScope
+    {
+        public static IServiceScope Create()
+        {
+            return ReportServiceLocator.ServiceProvider.CreateScope();
         }
     }
 }

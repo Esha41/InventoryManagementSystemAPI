@@ -36,107 +36,43 @@ namespace Project.Api.Reports.Templates
         private DevExpress.XtraReports.UI.XRPictureBox xrPictureBoxLogo;
         private DevExpress.XtraReports.UI.XRLabel xrLabelReportTitle;
         private DevExpress.XtraReports.UI.XRPageInfo xrPageInfo1;
+        private ObjectDataSource objectDataSource1;
         [System.Xml.Serialization.XmlIgnore]
         [System.NonSerialized]
         private readonly IServiceScope? _scope;
         // Add this constructor
-     
+
         // 1️⃣ DESIGN-TIME constructor (Visual Studio)
         public AllowanceItemsReport()
         {
-            //_scope= scope;
             InitializeComponent();
-
-            // ⚠️ ONLY Visual Studio Designer
-            if (LicenseManager.UsageMode == LicenseUsageMode.Designtime)
-            {
-                ConfigureDesignTimeData();
-            }
-            // 👇 THIS IS THE ANSWER TO YOUR QUESTION
-            //if (LicenseManager.UsageMode == LicenseUsageMode.Designtime)
-            //{
-            //    LoadDesignTimeData();
-            //}
-            //   LoadDesignTimeData();
-            //if (IsDesignTime())
-            //{
-            //    LoadFakeData();
-            //}
-            // ConfigureDataSource(_scope);
+            AttachSchema();
         }
-        private void ConfigureDesignTimeData()
+
+        private void AttachSchema()
         {
             var ods = new ObjectDataSource
             {
-                DataSource = typeof(AllowanceItemsDesignTimeDataSource),
+                Name = "AllowanceItems",
+                DataSource = typeof(AllowanceItemsRealTimeDataSource),
                 DataMember = "Get"
             };
 
+            this.ComponentStorage.Add(ods);
             this.DataSource = ods;
         }
-        //private void LoadDesignTimeData()
-        //{
-        //    this.DataSource = new List<AllowanceItemReportDto>
-        //    {
-        //        new()
-        //        {
-        //            ItemName = "Helmet",
-        //            TotalQuantity = 100,
-        //            AllowedQuantity = 80,
-        //            ConsumedQuantity = 60,
-        //            RemainingQuantity = 20
-        //        },
-        //        new()
-        //        {
-        //            ItemName = "Safety Shoes",
-        //            TotalQuantity = 150,
-        //            AllowedQuantity = 120,
-        //            ConsumedQuantity = 40,
-        //            RemainingQuantity = 80
-        //        }
-        //    };
-        //}
 
-        //private void ConfigureDataSource(IServiceScope scope)
-        //{
-        //    var dataSource = new AllowanceItemsRealTimeDataSource(scope!.ServiceProvider);
-        //    this.DataSource = dataSource
-        //        .GetAllowanceItemsAsync()
-        //        .GetAwaiter()
-        //        .GetResult();
-        //}
-
-        private bool IsDesignTime()
+        protected override void OnDataSourceDemanded(EventArgs e)
         {
-            return LicenseManager.UsageMode == LicenseUsageMode.Designtime;
+            base.OnDataSourceDemanded(e);
+            AttachSchema();
         }
-
-        //private void LoadFakeData()
-        //{
-        //    this.DataSource = new List<AllowanceItemReportDto>
-        //{
-        //    new()
-        //    {
-        //        ItemName = "Pistol",
-        //        TotalQuantity = 100,
-        //        AllowedQuantity = 80,
-        //        ConsumedQuantity = 60,
-        //        RemainingQuantity = 20
-        //    },
-        //    new()
-        //    {
-        //        ItemName = "Weapons",
-        //        TotalQuantity = 200,
-        //        AllowedQuantity = 150,
-        //        ConsumedQuantity = 40,
-        //        RemainingQuantity = 110
-        //    }
-        //};
-        //}
 
         private void InitializeComponent()
         {
+            this.components = new System.ComponentModel.Container();
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(AllowanceItemsReport));
+            DevExpress.DataAccess.ObjectBinding.ObjectConstructorInfo objectConstructorInfo2 = new DevExpress.DataAccess.ObjectBinding.ObjectConstructorInfo();
             this.topMarginBand1 = new DevExpress.XtraReports.UI.TopMarginBand();
             this.detailBand1 = new DevExpress.XtraReports.UI.DetailBand();
             this.xrTable1 = new DevExpress.XtraReports.UI.XRTable();
@@ -148,6 +84,9 @@ namespace Project.Api.Reports.Templates
             this.xrTableCell13 = new DevExpress.XtraReports.UI.XRTableCell();
             this.bottomMarginBand1 = new DevExpress.XtraReports.UI.BottomMarginBand();
             this.ReportHeader = new DevExpress.XtraReports.UI.ReportHeaderBand();
+            this.xrPageInfo1 = new DevExpress.XtraReports.UI.XRPageInfo();
+            this.xrLabelReportTitle = new DevExpress.XtraReports.UI.XRLabel();
+            this.xrPictureBoxLogo = new DevExpress.XtraReports.UI.XRPictureBox();
             this.PageHeader = new DevExpress.XtraReports.UI.PageHeaderBand();
             this.xrTable2 = new DevExpress.XtraReports.UI.XRTable();
             this.xrTableRow2 = new DevExpress.XtraReports.UI.XRTableRow();
@@ -162,11 +101,10 @@ namespace Project.Api.Reports.Templates
             this.xrPageInfo = new DevExpress.XtraReports.UI.XRPageInfo();
             this.ReportFooter = new DevExpress.XtraReports.UI.ReportFooterBand();
             this.xrLabelReportFooter = new DevExpress.XtraReports.UI.XRLabel();
-            this.xrPictureBoxLogo = new DevExpress.XtraReports.UI.XRPictureBox();
-            this.xrLabelReportTitle = new DevExpress.XtraReports.UI.XRLabel();
-            this.xrPageInfo1 = new DevExpress.XtraReports.UI.XRPageInfo();
+            this.objectDataSource1 = new DevExpress.DataAccess.ObjectBinding.ObjectDataSource(this.components);
             ((System.ComponentModel.ISupportInitialize)(this.xrTable1)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.xrTable2)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.objectDataSource1)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this)).BeginInit();
             // 
             // topMarginBand1
@@ -203,6 +141,8 @@ namespace Project.Api.Reports.Templates
             // 
             // xrTableCell10
             // 
+            this.xrTableCell10.ExpressionBindings.AddRange(new DevExpress.XtraReports.UI.ExpressionBinding[] {
+            new DevExpress.XtraReports.UI.ExpressionBinding("BeforePrint", "Text", "[ItemName]")});
             this.xrTableCell10.Multiline = true;
             this.xrTableCell10.Name = "xrTableCell10";
             this.xrTableCell10.Text = "Column2";
@@ -210,6 +150,8 @@ namespace Project.Api.Reports.Templates
             // 
             // xrTableCell1
             // 
+            this.xrTableCell1.ExpressionBindings.AddRange(new DevExpress.XtraReports.UI.ExpressionBinding[] {
+            new DevExpress.XtraReports.UI.ExpressionBinding("BeforePrint", "Text", "[TotalQuantity]")});
             this.xrTableCell1.Multiline = true;
             this.xrTableCell1.Name = "xrTableCell1";
             this.xrTableCell1.Text = "Column3";
@@ -249,6 +191,38 @@ namespace Project.Api.Reports.Templates
             this.xrPictureBoxLogo});
             this.ReportHeader.HeightF = 99.30556F;
             this.ReportHeader.Name = "ReportHeader";
+            // 
+            // xrPageInfo1
+            // 
+            this.xrPageInfo1.LocationFloat = new DevExpress.Utils.PointFloat(0.6944444F, 65.36111F);
+            this.xrPageInfo1.Name = "xrPageInfo1";
+            this.xrPageInfo1.Padding = new DevExpress.XtraPrinting.PaddingInfo(2F, 2F, 0F, 0F, 100F);
+            this.xrPageInfo1.PageInfo = DevExpress.XtraPrinting.PageInfo.DateTime;
+            this.xrPageInfo1.SizeF = new System.Drawing.SizeF(180.8333F, 23F);
+            this.xrPageInfo1.TextFormatString = "Generated on: {0:dd/MM/yyyy HH:mm}";
+            // 
+            // xrLabelReportTitle
+            // 
+            this.xrLabelReportTitle.ExpressionBindings.AddRange(new DevExpress.XtraReports.UI.ExpressionBinding[] {
+            new DevExpress.XtraReports.UI.ExpressionBinding("BeforePrint", "Text", "Iif(?Language == \'ar\', \'عنوان التقرير\', \'Allowance Items Report\')")});
+            this.xrLabelReportTitle.Font = new DevExpress.Drawing.DXFont("Segoe UI", 16F, DevExpress.Drawing.DXFontStyle.Bold);
+            this.xrLabelReportTitle.LocationFloat = new DevExpress.Utils.PointFloat(272.6389F, 17.50001F);
+            this.xrLabelReportTitle.Multiline = true;
+            this.xrLabelReportTitle.Name = "xrLabelReportTitle";
+            this.xrLabelReportTitle.Padding = new DevExpress.XtraPrinting.PaddingInfo(2F, 2F, 0F, 0F, 100F);
+            this.xrLabelReportTitle.SizeF = new System.Drawing.SizeF(300.8331F, 28F);
+            this.xrLabelReportTitle.StylePriority.UseTextAlignment = false;
+            this.xrLabelReportTitle.Text = "Report Title";
+            this.xrLabelReportTitle.TextAlignment = DevExpress.XtraPrinting.TextAlignment.TopCenter;
+            // 
+            // xrPictureBoxLogo
+            // 
+            this.xrPictureBoxLogo.ImageAlignment = DevExpress.XtraPrinting.ImageAlignment.TopLeft;
+            this.xrPictureBoxLogo.ImageSource = new DevExpress.XtraPrinting.Drawing.ImageSource("img", resources.GetString("xrPictureBoxLogo.ImageSource"));
+            this.xrPictureBoxLogo.LocationFloat = new DevExpress.Utils.PointFloat(0F, 0F);
+            this.xrPictureBoxLogo.Name = "xrPictureBoxLogo";
+            this.xrPictureBoxLogo.SizeF = new System.Drawing.SizeF(170F, 45.50002F);
+            this.xrPictureBoxLogo.Sizing = DevExpress.XtraPrinting.ImageSizeMode.ZoomImage;
             // 
             // PageHeader
             // 
@@ -373,37 +347,12 @@ namespace Project.Api.Reports.Templates
             this.xrLabelReportFooter.Text = "End of Report";
             this.xrLabelReportFooter.TextAlignment = DevExpress.XtraPrinting.TextAlignment.MiddleCenter;
             // 
-            // xrPictureBoxLogo
+            // objectDataSource1
             // 
-            this.xrPictureBoxLogo.ImageAlignment = DevExpress.XtraPrinting.ImageAlignment.TopLeft;
-            this.xrPictureBoxLogo.ImageSource = new DevExpress.XtraPrinting.Drawing.ImageSource("img", resources.GetString("xrPictureBoxLogo.ImageSource"));
-            this.xrPictureBoxLogo.LocationFloat = new DevExpress.Utils.PointFloat(0F, 0F);
-            this.xrPictureBoxLogo.Name = "xrPictureBoxLogo";
-            this.xrPictureBoxLogo.SizeF = new System.Drawing.SizeF(170F, 45.50002F);
-            this.xrPictureBoxLogo.Sizing = DevExpress.XtraPrinting.ImageSizeMode.ZoomImage;
-            // 
-            // xrLabelReportTitle
-            // 
-            this.xrLabelReportTitle.ExpressionBindings.AddRange(new DevExpress.XtraReports.UI.ExpressionBinding[] {
-            new DevExpress.XtraReports.UI.ExpressionBinding("BeforePrint", "Text", "Iif(?Language == \'ar\', \'عنوان التقرير\', \'Allowance Items Report\')")});
-            this.xrLabelReportTitle.Font = new DevExpress.Drawing.DXFont("Segoe UI", 16F, DevExpress.Drawing.DXFontStyle.Bold);
-            this.xrLabelReportTitle.LocationFloat = new DevExpress.Utils.PointFloat(272.6389F, 17.50001F);
-            this.xrLabelReportTitle.Multiline = true;
-            this.xrLabelReportTitle.Name = "xrLabelReportTitle";
-            this.xrLabelReportTitle.Padding = new DevExpress.XtraPrinting.PaddingInfo(2F, 2F, 0F, 0F, 100F);
-            this.xrLabelReportTitle.SizeF = new System.Drawing.SizeF(300.8331F, 28F);
-            this.xrLabelReportTitle.StylePriority.UseTextAlignment = false;
-            this.xrLabelReportTitle.Text = "Report Title";
-            this.xrLabelReportTitle.TextAlignment = DevExpress.XtraPrinting.TextAlignment.TopCenter;
-            // 
-            // xrPageInfo1
-            // 
-            this.xrPageInfo1.LocationFloat = new DevExpress.Utils.PointFloat(0.6944444F, 65.36111F);
-            this.xrPageInfo1.Name = "xrPageInfo1";
-            this.xrPageInfo1.Padding = new DevExpress.XtraPrinting.PaddingInfo(2F, 2F, 0F, 0F, 100F);
-            this.xrPageInfo1.PageInfo = DevExpress.XtraPrinting.PageInfo.DateTime;
-            this.xrPageInfo1.SizeF = new System.Drawing.SizeF(180.8333F, 23F);
-            this.xrPageInfo1.TextFormatString = "Generated on: {0:dd/MM/yyyy HH:mm}";
+            this.objectDataSource1.Constructor = objectConstructorInfo2;
+            this.objectDataSource1.DataMember = "Get";
+            this.objectDataSource1.DataSource = typeof(global::Project.Api.Reports.DataSources.AllowanceItemsRealTimeDataSource);
+            this.objectDataSource1.Name = "objectDataSource1";
             // 
             // AllowanceItemsReport
             // 
@@ -415,10 +364,14 @@ namespace Project.Api.Reports.Templates
             this.PageHeader,
             this.PageFooter,
             this.ReportFooter});
+            this.ComponentStorage.AddRange(new System.ComponentModel.IComponent[] {
+            this.objectDataSource1});
+            this.DataSource = this.objectDataSource1;
             this.Margins = new DevExpress.Drawing.DXMargins(34F, 40F, 35.41667F, 38.19444F);
             this.Version = "25.2";
             ((System.ComponentModel.ISupportInitialize)(this.xrTable1)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.xrTable2)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.objectDataSource1)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this)).EndInit();
 
         }

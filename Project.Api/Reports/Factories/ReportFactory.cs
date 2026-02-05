@@ -1,7 +1,6 @@
-﻿using DevExpress.XtraReports.UI;
-using Ettad.Inventory.Service.AllowanceItems;
+﻿using DevExpress.DataAccess.ObjectBinding;
+using DevExpress.XtraReports.UI;
 using Ettad.Reporting.Reports;
-using Project.Api.Reports.DataSources;
 using Project.Api.Reports.Templates;
 
 namespace Project.Api.Reports.Factories
@@ -19,31 +18,9 @@ namespace Project.Api.Reports.Factories
         {
             return reportName switch
             {
-                "AllowanceItemsReport" =>
-                    Task.Run(() => CreateAllowanceItemsReport())
-                        .GetAwaiter()
-                        .GetResult(),
-
+                "AllowanceItemsReport" => new AllowanceItemsReport(),
                 _ => new BaseReportTemplate()
             };
-        }
-        private async Task<XtraReport> CreateAllowanceItemsReport()
-        {
-            var report = new AllowanceItemsReport();
-
-            var allowanceService = _provider.GetRequiredService<IAllowanceItemService>();
-
-            var objectDataSource = new DevExpress.DataAccess.ObjectBinding.ObjectDataSource
-            {
-                Name = "AllowanceItems",
-                DataSource = typeof(AllowanceItemsRealTimeDataSource),
-                DataMember = "GetAsync"
-            };
-
-            report.DataSource = objectDataSource;
-            report.DataMember = null;
-
-            return report;
         }
     }
 }
