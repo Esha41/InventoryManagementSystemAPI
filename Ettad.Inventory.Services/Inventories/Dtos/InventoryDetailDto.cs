@@ -41,6 +41,7 @@ namespace Ettad.Inventory.Service.Inventories.Dtos
         public string? InvoiceNumber { get; set; }
         public DateTime? InvoiceDate { get; set; }
         public DateTime? RecievedDate { get; set; }
+        public string? ContractNumber { get; set; }
         public string? Notes { get; set; }
 
         #region Navigation Properties

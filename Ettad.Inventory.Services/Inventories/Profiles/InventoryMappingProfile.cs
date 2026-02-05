@@ -18,6 +18,7 @@ namespace Ettad.Inventory.Service.Inventories.Profiles
                 .ForMember(dest => dest.InvoiceNumber, opt => opt.MapFrom(src => src.Inventory != null ? src.Inventory.InvoiceNumber : null))
                 .ForMember(dest => dest.InvoiceDate, opt => opt.MapFrom(src => src.Inventory != null ? src.Inventory.InvoiceDate : null))
                 .ForMember(dest => dest.RecievedDate, opt => opt.MapFrom(src => src.Inventory != null ? src.Inventory.RecievedDate : null))
+                .ForMember(dest => dest.ContractNumber, opt => opt.MapFrom(src => src.Inventory != null ? src.Inventory.ContractNumber : null))
                 .ForMember(dest => dest.Notes, opt => opt.MapFrom(src => src.Inventory != null ? src.Inventory.Notes : null));
             CreateMap<InventoryDetailEntity, LotDetailDto>()
                 .ForMember(dest => dest.InventoryDetailId, opt => opt.MapFrom(src => src.Id))
