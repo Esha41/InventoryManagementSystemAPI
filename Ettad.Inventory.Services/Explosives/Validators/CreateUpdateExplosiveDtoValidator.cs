@@ -15,8 +15,9 @@ namespace Ettad.Inventory.Service.Explosives.Validators
                 .NotEmpty().WithMessage("Item number is required")
                 .MaximumLength(100).WithMessage("Item number cannot exceed 100 characters");
 
-            RuleFor(x => x.Unit)
-                .IsInEnum().WithMessage("Invalid explosive unit");
+            RuleFor(x => x.UnitId)
+                .GreaterThan(0).When(x => x.UnitId.HasValue)
+                .WithMessage("Unit must be valid");
 
             RuleFor(x => x.HazardDivisionId)
                 .GreaterThan(0).When(x => x.HazardDivisionId.HasValue)

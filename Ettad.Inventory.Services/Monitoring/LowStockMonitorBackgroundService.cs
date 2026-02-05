@@ -23,6 +23,7 @@ namespace Ettad.Inventory.Service.Monitoring
         private readonly ICrossCuttingRepository<Settings> _settingsRepository;
         private readonly RoleManager<ApplicationRole> _roleManager;
         private readonly LowStockEmailTemplateService _emailTemplateService;
+        private readonly ILowStockMonitoringService _lowStockMonitoringService;
 
         public LowStockMonitorBackgroundService(
             ApplicationDbContext context,
@@ -30,7 +31,8 @@ namespace Ettad.Inventory.Service.Monitoring
             ILogger<LowStockMonitorBackgroundService> logger,
             ICrossCuttingRepository<Settings> settingsRepository,
             RoleManager<ApplicationRole> roleManager,
-            LowStockEmailTemplateService emailTemplateService)
+            LowStockEmailTemplateService emailTemplateService,
+            ILowStockMonitoringService lowStockMonitoringService)
         {
             _context = context;
             _notificationHelperService = notificationHelperService;
@@ -38,6 +40,7 @@ namespace Ettad.Inventory.Service.Monitoring
             _settingsRepository = settingsRepository;
             _roleManager = roleManager;
             _emailTemplateService = emailTemplateService;
+            _lowStockMonitoringService = lowStockMonitoringService;
         }
 
         public async Task CheckAndNotifyAsync()
@@ -46,31 +49,46 @@ namespace Ettad.Inventory.Service.Monitoring
 
             try
             {
-                var itemsToCheck = await _context.BaseItems
-                    .Where(i => i.MinimumQuantity.HasValue && i.MinimumQuantity.Value > 0 && !i.IsDeleted)
-                    .AsNoTracking()
-                    .ToListAsync();
-
-                _logger.LogInformation($"Found {itemsToCheck.Count} items with minimum quantity configured.");
-
-                var lowStockItems = new List<LowStockItemInfo>();
-
-                foreach (var item in itemsToCheck)
+                // Use the monitoring service to get low stock items
+                var lowStockItemsResult = await _lowStockMonitoringService.GetLowStockItemsAsync();
+                
+                if (!lowStockItemsResult.Succeeded || lowStockItemsResult.Data == null)
                 {
-                    var lowStockInfo = await CheckItemStockAsync(item);
-                    if (lowStockInfo != null)
+                    _logger.LogError("Failed to retrieve low stock items from monitoring service.");
+                    return;
+                }
+
+                var lowStockItemDtos = lowStockItemsResult.Data;
+
+                if (!lowStockItemDtos.Any())
+                {
+                    _logger.LogInformation("No items found below minimum stock level.");
+                    return;
+                }
+
+                // Convert DTOs to LowStockItemInfo for notification
+                var lowStockItems = new List<LowStockItemInfo>();
+                foreach (var dto in lowStockItemDtos)
+                {
+                    var item = await _context.BaseItems
+                        .FirstOrDefaultAsync(i => i.Id == dto.ItemId && !i.IsDeleted);
+                    
+                    if (item != null)
                     {
-                        lowStockItems.Add(lowStockInfo);
+                        lowStockItems.Add(new LowStockItemInfo
+                        {
+                            Item = item,
+                            TotalStock = dto.TotalStock,
+                            HoldQuantity = dto.HoldQuantity,
+                            SuppliedQuantity = dto.SuppliedQuantity,
+                            Remaining = dto.Remaining
+                        });
                     }
                 }
 
                 if (lowStockItems.Any())
                 {
                     await NotifyLowStockBatchAsync(lowStockItems);
-                }
-                else
-                {
-                    _logger.LogInformation("No items found below minimum stock level.");
                 }
 
                 _logger.LogInformation("Low Stock Check completed.");
@@ -80,45 +98,6 @@ namespace Ettad.Inventory.Service.Monitoring
                 _logger.LogError(ex, "Error occurred during Low Stock Check.");
                 throw;
             }
-        }
-
-        private async Task<LowStockItemInfo?> CheckItemStockAsync(BaseItem item)
-        {
-            var totalStock = await _context.InventoryDetails
-                .Where(id => id.ItemId == item.Id && !id.Inventory.IsDeleted)
-                .SumAsync(id => id.ItemQuantity);
-
-            var supplyDetails = await _context.SupplyDetails
-                .Include(sd => sd.Supply)
-                .Where(sd => sd.ItemId == item.Id && !sd.IsDeleted && !sd.Supply.IsDeleted)
-                .Select(sd => new { sd.Quantity, sd.Supply.SubmissionStatus })
-                .ToListAsync();
-
-            var holdQuantity = supplyDetails
-                .Where(sd => sd.SubmissionStatus == SupplySubmissionStatus.Draft)
-                .Sum(sd => sd.Quantity);
-
-            var suppliedQuantity = supplyDetails
-                .Where(sd => sd.SubmissionStatus == SupplySubmissionStatus.Submitted)
-                .Sum(sd => sd.Quantity);
-
-            var remaining = totalStock - (holdQuantity + suppliedQuantity);
-
-            _logger.LogDebug($"Item {item.Name} (ID: {item.Id}): Min={item.MinimumQuantity}, Total={totalStock}, Hold={holdQuantity}, Supplied={suppliedQuantity}, Remaining={remaining}");
-
-            if (remaining <= item.MinimumQuantity)
-            {
-                return new LowStockItemInfo
-                {
-                    Item = item,
-                    TotalStock = totalStock,
-                    HoldQuantity = holdQuantity,
-                    SuppliedQuantity = suppliedQuantity,
-                    Remaining = remaining
-                };
-            }
-
-            return null;
         }
 
         private async Task NotifyLowStockBatchAsync(List<LowStockItemInfo> lowStockItems)
@@ -208,4 +187,3 @@ namespace Ettad.Inventory.Service.Monitoring
         }
     }
 }
-

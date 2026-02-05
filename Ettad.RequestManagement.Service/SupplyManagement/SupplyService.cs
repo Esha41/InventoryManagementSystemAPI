@@ -12,6 +12,7 @@ using Ettad.Inventory.Service.Inventories;
 using Ettad.Inventory.Service.Inventories.Dtos;
 using Ettad.Notification.Service;
 using Ettad.RequestManagement.Service.SupplyManagement.Dtos;
+using Ettad.Application.Common.Interfaces;
 using Ettad.ResponseHandler.Consts;
 using Ettad.ResponseHandler.Models;
 using Microsoft.AspNetCore.Http;
@@ -19,6 +20,8 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Ettad.CrossCutting.Comman.Time;
+using Ettad.Workflows.Service.Interface;
+using Ettad.Workflows.Service.DTO;
 
 namespace Ettad.RequestManagement.Service.SupplyManagement
 {
@@ -45,6 +48,8 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
 		private readonly ILogger<SupplyService> _logger;
 		private readonly IFileUploadService _fileUploadService;
 		private readonly IDateTimeProvider _dateTimeProvider;
+		private readonly IOrderItemTrackingService _orderItemTrackingService;
+		private readonly IWorkflowApprovalService _workflowApprovalService;
 
 	public SupplyService(
 			ApplicationDbContext context,
@@ -67,7 +72,9 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
 			UserManager<ApplicationUser> userManager,
 			ILogger<SupplyService> logger,
 			IFileUploadService fileUploadService,
-			IDateTimeProvider dateTimeProvider)
+			IDateTimeProvider dateTimeProvider,
+			IOrderItemTrackingService orderItemTrackingService,
+			IWorkflowApprovalService workflowApprovalService)
 		{
 			_context = context;
 			_inventoryService = inventoryService;
@@ -90,6 +97,8 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
 			_logger = logger;
 			_fileUploadService = fileUploadService;
 			_dateTimeProvider = dateTimeProvider;
+			_orderItemTrackingService = orderItemTrackingService;
+			_workflowApprovalService = workflowApprovalService;
 		}
 
 		public async Task<APIOperationResponse<OrderSupplySuggestionDto>> GetSupplySuggestionAsync(long orderId, List<long>? depotIds = null)
@@ -821,7 +830,9 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
 				}
 
 				// Validate lot exists and has sufficient quantity
-				var lotValidation = await ValidateLotAndQuantityAsync(detailDto.ItemId, detailDto.Lot, detailDto.Quantity);
+				// Validate lot exists and has sufficient quantity
+				// Pass supplyId to exclude current supply's usage of this lot/item from the check
+				var lotValidation = await ValidateLotAndQuantityAsync(detailDto.ItemId, detailDto.Lot, detailDto.Quantity, supplyId);
 				if (!lotValidation.IsValid)
 				{
 					var errorMessage = string.Join("; ", lotValidation.Errors);
@@ -1069,9 +1080,11 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
 				}
 
 				// Validate lot availability for all new details
+				// Validate lot availability for all new details
+				// Pass supplyId to exclude current supply's usage of this lot/item from the check
 				foreach (var detailDto in newDetails)
 				{
-					var lotValidation = await ValidateLotAndQuantityAsync(detailDto.ItemId, detailDto.Lot, detailDto.Quantity);
+					var lotValidation = await ValidateLotAndQuantityAsync(detailDto.ItemId, detailDto.Lot, detailDto.Quantity, supplyId);
 					if (!lotValidation.IsValid)
 					{
 						var errorMessage = string.Join("; ", lotValidation.Errors);
@@ -1190,6 +1203,50 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
 					return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, "Supply must have at least one detail before submission.");
 				}
 
+				// Store OrderId and DepartmentId before clearing navigation property
+				var orderId = supply.OrderId;
+				var orderDepartmentId = supply.Order?.DepartmentId;
+
+				// Detach and clear Order navigation property to avoid tracking conflicts
+				// This is necessary because UpdateAsync uses Attach which tries to attach the entire entity graph
+				if (supply.Order != null)
+				{
+					_context.Entry(supply.Order).State = EntityState.Detached;
+					supply.Order = null; // Clear navigation property to prevent Attach from trying to attach it
+				}
+
+				// Approve workflow step for the order BEFORE anything else
+				try
+				{
+					if (orderId > 0)
+					{
+						var approveDto = new ApproveRejectWorkflowApprovalDto
+						{
+							BaseRequestID = orderId,
+							Action = RequestStatus.Approved,
+							IsApproved = true,
+							Comments = inputDto.Notes,
+							SendToHigherApproval = false
+						};
+
+						var approveResult = await _workflowApprovalService.ProcessActionAsync(approveDto);
+						if (!approveResult.Succeeded)
+						{
+							_logger.LogWarning("Failed to approve workflow step for order. OrderId: {OrderId}, Error: {Error}", 
+								orderId, approveResult.Message);
+							return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, 
+								$"Failed to approve workflow step: {approveResult.Message}");
+						}
+					}
+				}
+				catch (Exception ex)
+				{
+					_logger.LogError(ex, "Error approving workflow step for order. OrderId: {OrderId}, SupplyId: {SupplyId}", 
+						orderId, supply.Id);
+					return APIOperationResponse<bool>.Fail(ResponseType.InternalServerError, 
+						$"Failed to approve workflow step: {ex.Message}");
+				}
+
 				// Filter out null or empty files
 				var validFiles = files.Where(f => f != null && f.Length > 0).ToList();
 				if (!validFiles.Any())
@@ -1223,6 +1280,69 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
 				supply.ModifiedBy = _currentUserService.UserId;
 
 				await _supplyRepository.UpdateAsync(supply);
+
+				// Record history for each supply detail when submitting
+				try
+				{
+					var departmentId = _currentUserService.DepartmentId ?? orderDepartmentId ?? 0;
+					var userName = _currentUserService.UserName;
+
+					// Get all order items to find unsupplied items
+					var order = await _orderRepository.FindOneAsync(
+						o => o.Id == orderId && !o.IsDeleted,
+						false,
+						$"{nameof(Order.RequestItems)}");
+
+					var orderItems = order?.RequestItems?.Where(ri => !ri.IsDeleted).ToList() ?? new List<RequestItem>();
+					var suppliedItemIds = supply.SupplyDetails.Where(sd => !sd.IsDeleted).Select(sd => sd.ItemId).Distinct().ToList();
+
+					// Record history for supplied items
+					foreach (var detail in supply.SupplyDetails.Where(sd => !sd.IsDeleted))
+					{
+						var historyContext = new OrderItemHistoryContext
+						{
+							OrderId = orderId,
+							ItemId = detail.ItemId,
+							ActionType = OrderItemActionType.Supplied,
+							OrderStatus = RequestStatus.Approved,
+							SuppliedQuantity = detail.Quantity,
+							DepartmentId = departmentId,
+							ModifiedByUserId = _currentUserService.UserId,
+							ModifiedByUserName = userName,
+							SupplyId = supply.Id,
+							SupplyDetailId = detail.Id,
+							Description = $"Item supplied - quantity: {detail.Quantity}"
+						};
+
+						await _orderItemTrackingService.RecordHistoryAsync(historyContext);
+					}
+
+					// Record history for unsupplied items (items in order but not in supply)
+					foreach (var orderItem in orderItems.Where(ri => !suppliedItemIds.Contains(ri.ItemId)))
+					{
+						var historyContext = new OrderItemHistoryContext
+						{
+							OrderId = orderId,
+							RequestItemId = orderItem.Id,
+							ItemId = orderItem.ItemId,
+							ActionType = OrderItemActionType.Supplied,
+							OrderStatus = RequestStatus.Approved,
+							SuppliedQuantity = 0,
+							DepartmentId = departmentId,
+							ModifiedByUserId = _currentUserService.UserId,
+							ModifiedByUserName = userName,
+							SupplyId = supply.Id,
+							Description = $"Item not yet supplied",
+							Notes = "This item is not yet supplied"
+						};
+
+						await _orderItemTrackingService.RecordHistoryAsync(historyContext);
+					}
+				}
+				catch (Exception ex)
+				{
+					_logger.LogWarning(ex, "Failed to record history for supply submission. SupplyId: {SupplyId}", supply.Id);
+				}
 
 				return APIOperationResponse<bool>.Success(true, "Supply submitted successfully");
 			}
@@ -1272,7 +1392,7 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
 		/// <summary>
 		/// Validates that a lot exists and has sufficient quantity available
 		/// </summary>
-		private async Task<(bool IsValid, List<string> Errors)> ValidateLotAndQuantityAsync(long itemId, int lot, long requestedQuantity)
+		private async Task<(bool IsValid, List<string> Errors)> ValidateLotAndQuantityAsync(long itemId, int lot, long requestedQuantity, long? excludeSupplyId = null)
 		{
 			var errors = new List<string>();
 
@@ -1298,8 +1418,9 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
 
 			// Get all supply details for this lot to calculate used quantity
 			// IMPORTANT: Only count non-deleted supply details
+			// If excludeSupplyId is provided, exclude details from that supply
 			var supplyDetails = await _supplyDetailRepository.FindAsync(
-				sd => sd.ItemId == itemId && sd.Lot == lot && !sd.IsDeleted
+				sd => sd.ItemId == itemId && sd.Lot == lot && !sd.IsDeleted && (!excludeSupplyId.HasValue || sd.SupplyId != excludeSupplyId.Value)
 			);
 
 			var totalUsedQuantity = supplyDetails.Sum(sd => sd.Quantity);

@@ -13,6 +13,7 @@ using Ettad.EntityFramework.DataBaseContext;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using System;
+using Ettad.CrossCutting.Comman.Models;
 using Ettad.CrossCutting.Comman.Time;
 using InventoryEntity = Ettad.Data.Entities.Inventory;
 using InventoryDetailEntity = Ettad.Data.Entities.InventoryDetail;
@@ -588,10 +589,10 @@ namespace Ettad.Inventory.Service.Inventories
             }
         }
 
-        public async Task<APIOperationResponse<List<LotDetailDto>>> GetAvailableLotsForQuantityAsync(long itemId, long requiredQuantity, List<long>? depotIds = null)
+        public async Task<APIOperationResponse<List<LotDetailDto>>> GetAvailableLotsForQuantityAsync(long itemId, long requiredQuantity, List<long>? depotIds = null, long? excludeSupplyId = null)
         {
-            _logger.LogInformation("Getting available lots for quantity. ItemId: {ItemId}, RequiredQuantity: {RequiredQuantity}, DepotIds: {DepotIds}, User: {UserId}",
-                itemId, requiredQuantity, depotIds != null ? string.Join(", ", depotIds) : "All", _currentUserService.UserId);
+            _logger.LogInformation("Getting available lots for quantity. ItemId: {ItemId}, RequiredQuantity: {RequiredQuantity}, DepotIds: {DepotIds}, ExcludeSupplyId: {ExcludeSupplyId}, User: {UserId}",
+                itemId, requiredQuantity, depotIds != null ? string.Join(", ", depotIds) : "All", excludeSupplyId?.ToString() ?? "None", _currentUserService.UserId);
 
             try
             {
@@ -636,11 +637,39 @@ namespace Ettad.Inventory.Service.Inventories
                     return APIOperationResponse<List<LotDetailDto>>.Success(new List<LotDetailDto>());
                 }
 
-                // Get ALL supply details for this item in ONE query
-                var allSupplyDetails = await _supplyDetailsRepository.FindAsync(sd => sd.ItemId == itemId && !sd.IsDeleted);
+                // Get ALL supply details for this item in ONE query (don't exclude at query level)
+                var allSupplyDetails = await _supplyDetailsRepository.FindAsync(
+                    sd => sd.ItemId == itemId && !sd.IsDeleted
+                );
 
                 // Get all supplies to check submission status
+                // If excludeSupplyId is provided, we need to fetch it separately to check if it's Draft
                 var supplyIds = allSupplyDetails.Select(sd => sd.SupplyId).Distinct().ToList();
+                
+                // Check if excluded supply is Draft (only exclude Draft supplies, not Submitted)
+                // Business Rule: You can only replace Draft supplies, so we only exclude Draft supplies
+                bool shouldExcludeDraftSupply = false;
+                if (excludeSupplyId.HasValue)
+                {
+                    var excludedSupply = await _supplyRepository.FindOneAsync(
+                        s => s.Id == excludeSupplyId.Value && !s.IsDeleted
+                    );
+                    // Only exclude if the supply is Draft (you can only replace Draft supplies)
+                    shouldExcludeDraftSupply = excludedSupply != null && excludedSupply.SubmissionStatus == SupplySubmissionStatus.Draft;
+                    
+                    if (shouldExcludeDraftSupply)
+                    {
+                        _logger.LogInformation("Excluding Draft supply from availability calculations. SupplyId: {SupplyId}, ItemId: {ItemId}",
+                            excludeSupplyId.Value, itemId);
+                    }
+                    
+                    // Add to supplyIds list if not already present (for status map)
+                    if (!supplyIds.Contains(excludeSupplyId.Value))
+                    {
+                        supplyIds.Add(excludeSupplyId.Value);
+                    }
+                }
+
                 var supplies = supplyIds.Any()
                     ? await _supplyRepository.FindAsync(s => supplyIds.Contains(s.Id) && !s.IsDeleted)
                     : new List<Supply>();
@@ -648,15 +677,18 @@ namespace Ettad.Inventory.Service.Inventories
                 var supplyStatusMap = supplies.ToDictionary(s => s.Id, s => s.SubmissionStatus);
 
                 // Separate supply details by submission status and group by lot
+                // Used quantities: Always count ALL Submitted supplies (never exclude - they're finalized)
                 var usedQuantityByLot = allSupplyDetails
                     .Where(sd => supplyStatusMap.ContainsKey(sd.SupplyId) && 
                                  supplyStatusMap[sd.SupplyId] == SupplySubmissionStatus.Submitted)
                     .GroupBy(sd => sd.Lot)
                     .ToDictionary(g => g.Key, g => g.Sum(sd => sd.Quantity));
 
+                // Reserved quantities: Only exclude Draft supplies if excludeSupplyId is provided and it's Draft
                 var reservedQuantityByLot = allSupplyDetails
                     .Where(sd => supplyStatusMap.ContainsKey(sd.SupplyId) && 
-                                 supplyStatusMap[sd.SupplyId] == SupplySubmissionStatus.Draft)
+                                 supplyStatusMap[sd.SupplyId] == SupplySubmissionStatus.Draft &&
+                                 (!shouldExcludeDraftSupply || sd.SupplyId != excludeSupplyId.Value))
                     .GroupBy(sd => sd.Lot)
                     .ToDictionary(g => g.Key, g => g.Sum(sd => sd.Quantity));
 
@@ -799,16 +831,54 @@ namespace Ettad.Inventory.Service.Inventories
                 lotDetail.IsExpired = inventoryDetail.ExpiryDate.HasValue == true &&
                                       inventoryDetail.ExpiryDate.Value.Date < _dateTimeProvider.Now.Date;
 
-                _logger.LogInformation("Lot details retrieved successfully. Lot: {Lot}, Remaining: {Remaining}, User: {UserId}",
-                    lotNumber, lotDetail.RemainingQuantity, _currentUserService.UserId);
-
                 return APIOperationResponse<LotDetailDto>.Success(lotDetail);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting lot details by lot number. Lot: {Lot}, User: {UserId}",
+                _logger.LogError(ex, "Error getting lot details by number. Lot: {Lot}, User: {UserId}",
                     lotNumber, _currentUserService.UserId);
                 return APIOperationResponse<LotDetailDto>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
+            }
+        }
+
+        public async Task<APIOperationResponse<PaginatedList<InventoryDetailDto>>> GetInventoryDetailsByDepotIdPaginatedAsync(long depotId, PagedListRequest request)
+        {
+            _logger.LogInformation("Getting paginated inventory details by depot ID. DepotId: {DepotId}, Page: {Page}, PageSize: {PageSize}, User: {UserId}",
+                depotId, request.Page, request.PageSize, _currentUserService.UserId);
+
+            try
+            {
+                var query = _inventoryDetailRepository.Find(
+                    x => x.Inventory.DepoId == depotId && !x.Inventory.IsDeleted,
+                    false,
+                    nameof(InventoryDetailEntity.Item),
+                    nameof(InventoryDetailEntity.Supplier),
+                    nameof(InventoryDetailEntity.Manufacturer),
+                    nameof(InventoryDetailEntity.Country),
+                    nameof(InventoryDetailEntity.Inventory)
+                );
+
+                // Create paginated list of entities first to apply filtering and paging on database
+                var paginatedEntities = await PaginatedList<InventoryDetailEntity>.CreateAsyncForTableBinding(query, request);
+
+                // Map entities to DTOs
+                var dtos = _mapper.Map<List<InventoryDetailDto>>(paginatedEntities.Items);
+
+                // Create paginated list of DTOs
+                var result = new PaginatedList<InventoryDetailDto>(
+                    dtos,
+                    paginatedEntities.TotalCount,
+                    paginatedEntities.PageIndex,
+                    request.PageSize
+                );
+
+                return APIOperationResponse<PaginatedList<InventoryDetailDto>>.Success(result);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting paginated inventory details. DepotId: {DepotId}, User: {UserId}",
+                    depotId, _currentUserService.UserId);
+                return APIOperationResponse<PaginatedList<InventoryDetailDto>>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
             }
         }
 
@@ -1033,8 +1103,57 @@ namespace Ettad.Inventory.Service.Inventories
 
         private async Task PopulateInventoryDetailsQuantitiesAsync(List<InventoryDetailDto> details)
         {
-            if (!details.Any()) return;
-// ... existing code ...
+            if (details == null || !details.Any()) return;
+
+            // Get unique item IDs and lots for batch processing
+            var itemLotPairs = details
+                .Select(d => new { d.ItemId, d.Lot })
+                .Distinct()
+                .ToList();
+
+            var itemIds = itemLotPairs.Select(p => p.ItemId).Distinct().ToList();
+            var lotNumbers = itemLotPairs.Select(p => p.Lot).Distinct().ToList();
+
+            // Fetch all supply details for these items and lots in ONE query
+            var supplyDetails = await _supplyDetailsRepository.FindAsync(
+                sd => itemIds.Contains(sd.ItemId) && lotNumbers.Contains(sd.Lot) && !sd.IsDeleted
+            );
+
+            // Fetch submission status for the associated supplies
+            var uniqueSupplyIds = supplyDetails.Select(sd => sd.SupplyId).Distinct().ToList();
+            var supplies = uniqueSupplyIds.Any()
+                ? await _supplyRepository.FindAsync(s => uniqueSupplyIds.Contains(s.Id) && !s.IsDeleted)
+                : new List<Supply>();
+
+            var supplyStatusMap = supplies.ToDictionary(s => s.Id, s => s.SubmissionStatus);
+
+            // Group supply details by ItemId and Lot for fast O(1) lookup
+            var usedQuantitiesByItemLot = supplyDetails
+                .Where(sd => supplyStatusMap.ContainsKey(sd.SupplyId) && 
+                             supplyStatusMap[sd.SupplyId] == SupplySubmissionStatus.Submitted)
+                .GroupBy(sd => new { sd.ItemId, sd.Lot })
+                .ToDictionary(g => g.Key, g => g.Sum(sd => sd.Quantity));
+
+            var reservedQuantitiesByItemLot = supplyDetails
+                .Where(sd => supplyStatusMap.ContainsKey(sd.SupplyId) && 
+                             supplyStatusMap[sd.SupplyId] == SupplySubmissionStatus.Draft)
+                .GroupBy(sd => new { sd.ItemId, sd.Lot })
+                .ToDictionary(g => g.Key, g => g.Sum(sd => sd.Quantity));
+
+            // Update DTO objects with calculated values
+            foreach (var detail in details)
+            {
+                var key = new { detail.ItemId, detail.Lot };
+                
+                long used = usedQuantitiesByItemLot.TryGetValue(key, out var usedQty) ? usedQty : 0;
+                long reserved = reservedQuantitiesByItemLot.TryGetValue(key, out var reservedQty) ? reservedQty : 0;
+                
+                detail.UsedQuantity = used;
+                detail.ReservedQuantityByOrdersOnProcessing = reserved;
+                detail.RemainingQuantity = Math.Max(0, detail.OriginalQuantity - used - reserved);
+                detail.CurrentQuantity = Math.Max(0, detail.OriginalQuantity - used);
+                detail.IsLotEmpty = detail.RemainingQuantity <= 0;
+            }
         }
 
         public async Task<APIOperationResponse<bool>> ToggleReadyForIssueAsync(long inventoryDetailId)
@@ -1550,6 +1669,12 @@ namespace Ettad.Inventory.Service.Inventories
                         if (row.OriginalQuantity <= 0)
                         {
                             rowErrors.Add($"Original Quantity must be greater than 0");
+                        }
+
+                        // Validate Expiry Date
+                        if (row.ExpiryDate.HasValue && row.ExpiryDate.Value <= _dateTimeProvider.Now)
+                        {
+                            rowErrors.Add($"Expiry date must be in the future");
                         }
                     }
 

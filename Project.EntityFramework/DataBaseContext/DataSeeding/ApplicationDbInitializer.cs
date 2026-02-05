@@ -1,5 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.Extensions.Hosting;
 using System;
 using System.Linq;
 using System.Threading.Tasks;
@@ -61,7 +63,12 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
             {
                 var context = services.GetRequiredService<ApplicationDbContext>();
                 
+                // Get environment to check if we're in development
+                var environment = services.GetService<IWebHostEnvironment>();
+                var isDevelopment = environment?.IsDevelopment() ?? false;
+                
                 Console.WriteLine("=== Starting Database Seeding ===");
+                Console.WriteLine($"Environment: {(isDevelopment ? "Development" : "Production")}");
                 
                 // Seed countries data
                 await SeedCountriesDataAsync(context);
@@ -79,25 +86,33 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 await SeedItemTypeLookupDataAsync(context);
                 Console.WriteLine("✓ Item Types seeded");
                 
-                // Seed ammunition data
-                await SeedAmmunitionDataAsync(context);
-                Console.WriteLine("✓ Ammunition seeded");
-                
-                // Seed weapon data
-                await SeedWeaponDataAsync(context);
-                Console.WriteLine("✓ Weapons seeded");
-                
-                // Seed explosive data
-                await SeedExplosiveDataAsync(context);
-                Console.WriteLine("✓ Explosives seeded");
-                
-                // Seed inventory data based on seeded depots and ammunitions
-                await SeedInventoryDataAsync(context);
-                Console.WriteLine("✓ Inventory seeded");
-                
-                // Seed allowance data for all departments and all items
-                await SeedAllowanceDataAsync(context);
-                Console.WriteLine("✓ Allowances seeded");
+                // Only seed items, inventory, and allowance data in Development environment
+                if (isDevelopment)
+                {
+                    // Seed ammunition data
+                    await SeedAmmunitionDataAsync(context);
+                    Console.WriteLine("✓ Ammunition seeded");
+                    
+                    // Seed weapon data
+                    await SeedWeaponDataAsync(context);
+                    Console.WriteLine("✓ Weapons seeded");
+                    
+                    // Seed explosive data
+                    await SeedExplosiveDataAsync(context);
+                    Console.WriteLine("✓ Explosives seeded");
+                    
+                    // Seed inventory data based on seeded depots and ammunitions
+                    await SeedInventoryDataAsync(context);
+                    Console.WriteLine("✓ Inventory seeded");
+                    
+                    // Seed allowance data for all departments and all items
+                    await SeedAllowanceDataAsync(context);
+                    Console.WriteLine("✓ Allowances seeded");
+                }
+                else
+                {
+                    Console.WriteLine("⚠ Skipping items, inventory, and allowance seeding (not in Development environment)");
+                }
                 
                 Console.WriteLine("=== Database Seeding Completed Successfully ===");
             }
@@ -111,79 +126,275 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
 
         private static async Task SeedCountriesDataAsync(ApplicationDbContext context)
         {
-            // Check if countries already exist
-            if (await context.Countries.AnyAsync())
-            {
-                return; // Already seeded
-            }
+            // Get existing countries from the database
+            var existingFromDb = await context.Countries
+                .Where(c => !c.IsDeleted)
+                .Select(c => c.Code)
+                .ToListAsync();
+            var existingCodes = new HashSet<string>(existingFromDb, StringComparer.OrdinalIgnoreCase);
 
-            var countries = new List<Country>
+            // Comprehensive list of all countries in the world (ISO 3166-1 alpha-2)
+            var allCountries = new List<Country>
             {
                 new Country { Code = "AF", NameEn = "Afghanistan", NameAr = "أفغانستان", IsDeleted = false },
+                new Country { Code = "AX", NameEn = "Åland Islands", NameAr = "جزر أولاند", IsDeleted = false },
                 new Country { Code = "AL", NameEn = "Albania", NameAr = "ألبانيا", IsDeleted = false },
                 new Country { Code = "DZ", NameEn = "Algeria", NameAr = "الجزائر", IsDeleted = false },
+                new Country { Code = "AS", NameEn = "American Samoa", NameAr = "ساموا الأمريكية", IsDeleted = false },
+                new Country { Code = "AD", NameEn = "Andorra", NameAr = "أندورا", IsDeleted = false },
+                new Country { Code = "AO", NameEn = "Angola", NameAr = "أنغولا", IsDeleted = false },
+                new Country { Code = "AI", NameEn = "Anguilla", NameAr = "أنغويلا", IsDeleted = false },
+                new Country { Code = "AQ", NameEn = "Antarctica", NameAr = "القارة القطبية الجنوبية", IsDeleted = false },
+                new Country { Code = "AG", NameEn = "Antigua and Barbuda", NameAr = "أنتيغوا وباربودا", IsDeleted = false },
                 new Country { Code = "AR", NameEn = "Argentina", NameAr = "الأرجنتين", IsDeleted = false },
+                new Country { Code = "AM", NameEn = "Armenia", NameAr = "أرمينيا", IsDeleted = false },
+                new Country { Code = "AW", NameEn = "Aruba", NameAr = "أروبا", IsDeleted = false },
                 new Country { Code = "AU", NameEn = "Australia", NameAr = "أستراليا", IsDeleted = false },
                 new Country { Code = "AT", NameEn = "Austria", NameAr = "النمسا", IsDeleted = false },
+                new Country { Code = "AZ", NameEn = "Azerbaijan", NameAr = "أذربيجان", IsDeleted = false },
+                new Country { Code = "BS", NameEn = "Bahamas", NameAr = "البهاما", IsDeleted = false },
                 new Country { Code = "BH", NameEn = "Bahrain", NameAr = "البحرين", IsDeleted = false },
                 new Country { Code = "BD", NameEn = "Bangladesh", NameAr = "بنغلاديش", IsDeleted = false },
+                new Country { Code = "BB", NameEn = "Barbados", NameAr = "باربادوس", IsDeleted = false },
+                new Country { Code = "BY", NameEn = "Belarus", NameAr = "بيلاروسيا", IsDeleted = false },
                 new Country { Code = "BE", NameEn = "Belgium", NameAr = "بلجيكا", IsDeleted = false },
+                new Country { Code = "BZ", NameEn = "Belize", NameAr = "بليز", IsDeleted = false },
+                new Country { Code = "BJ", NameEn = "Benin", NameAr = "بنين", IsDeleted = false },
+                new Country { Code = "BM", NameEn = "Bermuda", NameAr = "برمودا", IsDeleted = false },
+                new Country { Code = "BT", NameEn = "Bhutan", NameAr = "بوتان", IsDeleted = false },
+                new Country { Code = "BO", NameEn = "Bolivia", NameAr = "بوليفيا", IsDeleted = false },
+                new Country { Code = "BQ", NameEn = "Bonaire, Sint Eustatius and Saba", NameAr = "بونير وسينت أوستاتيوس وسابا", IsDeleted = false },
+                new Country { Code = "BA", NameEn = "Bosnia and Herzegovina", NameAr = "البوسنة والهرسك", IsDeleted = false },
+                new Country { Code = "BW", NameEn = "Botswana", NameAr = "بوتسوانا", IsDeleted = false },
+                new Country { Code = "BV", NameEn = "Bouvet Island", NameAr = "جزيرة بوفيه", IsDeleted = false },
                 new Country { Code = "BR", NameEn = "Brazil", NameAr = "البرازيل", IsDeleted = false },
+                new Country { Code = "IO", NameEn = "British Indian Ocean Territory", NameAr = "إقليم المحيط الهندي البريطاني", IsDeleted = false },
+                new Country { Code = "BN", NameEn = "Brunei Darussalam", NameAr = "بروناي", IsDeleted = false },
                 new Country { Code = "BG", NameEn = "Bulgaria", NameAr = "بلغاريا", IsDeleted = false },
+                new Country { Code = "BF", NameEn = "Burkina Faso", NameAr = "بوركينا فاسو", IsDeleted = false },
+                new Country { Code = "BI", NameEn = "Burundi", NameAr = "بوروندي", IsDeleted = false },
+                new Country { Code = "CV", NameEn = "Cabo Verde", NameAr = "الرأس الأخضر", IsDeleted = false },
+                new Country { Code = "KH", NameEn = "Cambodia", NameAr = "كمبوديا", IsDeleted = false },
+                new Country { Code = "CM", NameEn = "Cameroon", NameAr = "الكاميرون", IsDeleted = false },
                 new Country { Code = "CA", NameEn = "Canada", NameAr = "كندا", IsDeleted = false },
+                new Country { Code = "KY", NameEn = "Cayman Islands", NameAr = "جزر كايمان", IsDeleted = false },
+                new Country { Code = "CF", NameEn = "Central African Republic", NameAr = "جمهورية أفريقيا الوسطى", IsDeleted = false },
+                new Country { Code = "TD", NameEn = "Chad", NameAr = "تشاد", IsDeleted = false },
+                new Country { Code = "CL", NameEn = "Chile", NameAr = "تشيلي", IsDeleted = false },
                 new Country { Code = "CN", NameEn = "China", NameAr = "الصين", IsDeleted = false },
+                new Country { Code = "CX", NameEn = "Christmas Island", NameAr = "جزيرة الكريسماس", IsDeleted = false },
+                new Country { Code = "CC", NameEn = "Cocos (Keeling) Islands", NameAr = "جزر كوكوس", IsDeleted = false },
                 new Country { Code = "CO", NameEn = "Colombia", NameAr = "كولومبيا", IsDeleted = false },
+                new Country { Code = "KM", NameEn = "Comoros", NameAr = "جزر القمر", IsDeleted = false },
+                new Country { Code = "CG", NameEn = "Congo", NameAr = "الكونغو", IsDeleted = false },
+                new Country { Code = "CD", NameEn = "Congo, Democratic Republic of the", NameAr = "جمهورية الكونغو الديمقراطية", IsDeleted = false },
+                new Country { Code = "CK", NameEn = "Cook Islands", NameAr = "جزر كوك", IsDeleted = false },
+                new Country { Code = "CR", NameEn = "Costa Rica", NameAr = "كوستاريكا", IsDeleted = false },
+                new Country { Code = "CI", NameEn = "Côte d'Ivoire", NameAr = "ساحل العاج", IsDeleted = false },
                 new Country { Code = "HR", NameEn = "Croatia", NameAr = "كرواتيا", IsDeleted = false },
+                new Country { Code = "CU", NameEn = "Cuba", NameAr = "كوبا", IsDeleted = false },
+                new Country { Code = "CW", NameEn = "Curaçao", NameAr = "كوراساو", IsDeleted = false },
+                new Country { Code = "CY", NameEn = "Cyprus", NameAr = "قبرص", IsDeleted = false },
                 new Country { Code = "CZ", NameEn = "Czech Republic", NameAr = "جمهورية التشيك", IsDeleted = false },
                 new Country { Code = "DK", NameEn = "Denmark", NameAr = "الدنمارك", IsDeleted = false },
+                new Country { Code = "DJ", NameEn = "Djibouti", NameAr = "جيبوتي", IsDeleted = false },
+                new Country { Code = "DM", NameEn = "Dominica", NameAr = "دومينيكا", IsDeleted = false },
+                new Country { Code = "DO", NameEn = "Dominican Republic", NameAr = "جمهورية الدومينيكان", IsDeleted = false },
+                new Country { Code = "EC", NameEn = "Ecuador", NameAr = "الإكوادور", IsDeleted = false },
                 new Country { Code = "EG", NameEn = "Egypt", NameAr = "مصر", IsDeleted = false },
+                new Country { Code = "SV", NameEn = "El Salvador", NameAr = "السلفادور", IsDeleted = false },
+                new Country { Code = "GQ", NameEn = "Equatorial Guinea", NameAr = "غينيا الاستوائية", IsDeleted = false },
+                new Country { Code = "ER", NameEn = "Eritrea", NameAr = "إريتريا", IsDeleted = false },
+                new Country { Code = "EE", NameEn = "Estonia", NameAr = "إستونيا", IsDeleted = false },
+                new Country { Code = "SZ", NameEn = "Eswatini", NameAr = "إسواتيني", IsDeleted = false },
+                new Country { Code = "ET", NameEn = "Ethiopia", NameAr = "إثيوبيا", IsDeleted = false },
+                new Country { Code = "FK", NameEn = "Falkland Islands (Malvinas)", NameAr = "جزر فوكلاند", IsDeleted = false },
+                new Country { Code = "FO", NameEn = "Faroe Islands", NameAr = "جزر فارو", IsDeleted = false },
+                new Country { Code = "FJ", NameEn = "Fiji", NameAr = "فيجي", IsDeleted = false },
                 new Country { Code = "FI", NameEn = "Finland", NameAr = "فنلندا", IsDeleted = false },
                 new Country { Code = "FR", NameEn = "France", NameAr = "فرنسا", IsDeleted = false },
+                new Country { Code = "GF", NameEn = "French Guiana", NameAr = "غيانا الفرنسية", IsDeleted = false },
+                new Country { Code = "PF", NameEn = "French Polynesia", NameAr = "بولينيزيا الفرنسية", IsDeleted = false },
+                new Country { Code = "TF", NameEn = "French Southern Territories", NameAr = "الأراضي الجنوبية الفرنسية", IsDeleted = false },
+                new Country { Code = "GA", NameEn = "Gabon", NameAr = "الغابون", IsDeleted = false },
+                new Country { Code = "GM", NameEn = "Gambia", NameAr = "غامبيا", IsDeleted = false },
+                new Country { Code = "GE", NameEn = "Georgia", NameAr = "جورجيا", IsDeleted = false },
                 new Country { Code = "DE", NameEn = "Germany", NameAr = "ألمانيا", IsDeleted = false },
+                new Country { Code = "GH", NameEn = "Ghana", NameAr = "غانا", IsDeleted = false },
+                new Country { Code = "GI", NameEn = "Gibraltar", NameAr = "جبل طارق", IsDeleted = false },
                 new Country { Code = "GR", NameEn = "Greece", NameAr = "اليونان", IsDeleted = false },
+                new Country { Code = "GL", NameEn = "Greenland", NameAr = "جرينلاند", IsDeleted = false },
+                new Country { Code = "GD", NameEn = "Grenada", NameAr = "غرينادا", IsDeleted = false },
+                new Country { Code = "GP", NameEn = "Guadeloupe", NameAr = "غوادلوب", IsDeleted = false },
+                new Country { Code = "GU", NameEn = "Guam", NameAr = "غوام", IsDeleted = false },
+                new Country { Code = "GT", NameEn = "Guatemala", NameAr = "غواتيمالا", IsDeleted = false },
+                new Country { Code = "GG", NameEn = "Guernsey", NameAr = "غيرنزي", IsDeleted = false },
+                new Country { Code = "GN", NameEn = "Guinea", NameAr = "غينيا", IsDeleted = false },
+                new Country { Code = "GW", NameEn = "Guinea-Bissau", NameAr = "غينيا بيساو", IsDeleted = false },
+                new Country { Code = "GY", NameEn = "Guyana", NameAr = "غيانا", IsDeleted = false },
+                new Country { Code = "HT", NameEn = "Haiti", NameAr = "هايتي", IsDeleted = false },
+                new Country { Code = "HM", NameEn = "Heard Island and McDonald Islands", NameAr = "جزيرة هيرد وجزر ماكدونالد", IsDeleted = false },
+                new Country { Code = "VA", NameEn = "Holy See (Vatican City State)", NameAr = "الفاتيكان", IsDeleted = false },
+                new Country { Code = "HN", NameEn = "Honduras", NameAr = "هندوراس", IsDeleted = false },
+                new Country { Code = "HK", NameEn = "Hong Kong", NameAr = "هونغ كونغ", IsDeleted = false },
                 new Country { Code = "HU", NameEn = "Hungary", NameAr = "المجر", IsDeleted = false },
+                new Country { Code = "IS", NameEn = "Iceland", NameAr = "آيسلندا", IsDeleted = false },
                 new Country { Code = "IN", NameEn = "India", NameAr = "الهند", IsDeleted = false },
                 new Country { Code = "ID", NameEn = "Indonesia", NameAr = "إندونيسيا", IsDeleted = false },
                 new Country { Code = "IR", NameEn = "Iran", NameAr = "إيران", IsDeleted = false },
                 new Country { Code = "IQ", NameEn = "Iraq", NameAr = "العراق", IsDeleted = false },
                 new Country { Code = "IE", NameEn = "Ireland", NameAr = "أيرلندا", IsDeleted = false },
-                new Country { Code = "PS", NameEn = "Palestine", NameAr = "فلسطين", IsDeleted = false },
+                new Country { Code = "IM", NameEn = "Isle of Man", NameAr = "جزيرة مان", IsDeleted = false },
                 new Country { Code = "IT", NameEn = "Italy", NameAr = "إيطاليا", IsDeleted = false },
+                new Country { Code = "JM", NameEn = "Jamaica", NameAr = "جامايكا", IsDeleted = false },
                 new Country { Code = "JP", NameEn = "Japan", NameAr = "اليابان", IsDeleted = false },
+                new Country { Code = "JE", NameEn = "Jersey", NameAr = "جيرسي", IsDeleted = false },
                 new Country { Code = "JO", NameEn = "Jordan", NameAr = "الأردن", IsDeleted = false },
+                new Country { Code = "KZ", NameEn = "Kazakhstan", NameAr = "كازاخستان", IsDeleted = false },
+                new Country { Code = "KE", NameEn = "Kenya", NameAr = "كينيا", IsDeleted = false },
+                new Country { Code = "KI", NameEn = "Kiribati", NameAr = "كيريباتي", IsDeleted = false },
+                new Country { Code = "KP", NameEn = "Korea, Democratic People's Republic of", NameAr = "كوريا الشمالية", IsDeleted = false },
+                new Country { Code = "KR", NameEn = "Korea, Republic of", NameAr = "كوريا الجنوبية", IsDeleted = false },
                 new Country { Code = "KW", NameEn = "Kuwait", NameAr = "الكويت", IsDeleted = false },
+                new Country { Code = "KG", NameEn = "Kyrgyzstan", NameAr = "قيرغيزستان", IsDeleted = false },
+                new Country { Code = "LA", NameEn = "Lao People's Democratic Republic", NameAr = "لاوس", IsDeleted = false },
+                new Country { Code = "LV", NameEn = "Latvia", NameAr = "لاتفيا", IsDeleted = false },
+                new Country { Code = "LB", NameEn = "Lebanon", NameAr = "لبنان", IsDeleted = false },
+                new Country { Code = "LS", NameEn = "Lesotho", NameAr = "ليسوتو", IsDeleted = false },
+                new Country { Code = "LR", NameEn = "Liberia", NameAr = "ليبيريا", IsDeleted = false },
+                new Country { Code = "LY", NameEn = "Libya", NameAr = "ليبيا", IsDeleted = false },
+                new Country { Code = "LI", NameEn = "Liechtenstein", NameAr = "ليختنشتاين", IsDeleted = false },
+                new Country { Code = "LT", NameEn = "Lithuania", NameAr = "ليتوانيا", IsDeleted = false },
+                new Country { Code = "LU", NameEn = "Luxembourg", NameAr = "لوكسمبورغ", IsDeleted = false },
+                new Country { Code = "MO", NameEn = "Macao", NameAr = "ماكاو", IsDeleted = false },
+                new Country { Code = "MG", NameEn = "Madagascar", NameAr = "مدغشقر", IsDeleted = false },
+                new Country { Code = "MW", NameEn = "Malawi", NameAr = "مالاوي", IsDeleted = false },
                 new Country { Code = "MY", NameEn = "Malaysia", NameAr = "ماليزيا", IsDeleted = false },
+                new Country { Code = "MV", NameEn = "Maldives", NameAr = "جزر المالديف", IsDeleted = false },
+                new Country { Code = "ML", NameEn = "Mali", NameAr = "مالي", IsDeleted = false },
+                new Country { Code = "MT", NameEn = "Malta", NameAr = "مالطا", IsDeleted = false },
+                new Country { Code = "MH", NameEn = "Marshall Islands", NameAr = "جزر مارشال", IsDeleted = false },
+                new Country { Code = "MQ", NameEn = "Martinique", NameAr = "مارتينيك", IsDeleted = false },
+                new Country { Code = "MR", NameEn = "Mauritania", NameAr = "موريتانيا", IsDeleted = false },
+                new Country { Code = "MU", NameEn = "Mauritius", NameAr = "موريشيوس", IsDeleted = false },
+                new Country { Code = "YT", NameEn = "Mayotte", NameAr = "مايوت", IsDeleted = false },
                 new Country { Code = "MX", NameEn = "Mexico", NameAr = "المكسيك", IsDeleted = false },
+                new Country { Code = "FM", NameEn = "Micronesia", NameAr = "ميكرونيزيا", IsDeleted = false },
+                new Country { Code = "MD", NameEn = "Moldova", NameAr = "مولدوفا", IsDeleted = false },
+                new Country { Code = "MC", NameEn = "Monaco", NameAr = "موناكو", IsDeleted = false },
+                new Country { Code = "MN", NameEn = "Mongolia", NameAr = "منغوليا", IsDeleted = false },
+                new Country { Code = "ME", NameEn = "Montenegro", NameAr = "الجبل الأسود", IsDeleted = false },
+                new Country { Code = "MS", NameEn = "Montserrat", NameAr = "مونتسيرات", IsDeleted = false },
+                new Country { Code = "MA", NameEn = "Morocco", NameAr = "المغرب", IsDeleted = false },
+                new Country { Code = "MZ", NameEn = "Mozambique", NameAr = "موزمبيق", IsDeleted = false },
+                new Country { Code = "MM", NameEn = "Myanmar", NameAr = "ميانمار", IsDeleted = false },
+                new Country { Code = "NA", NameEn = "Namibia", NameAr = "ناميبيا", IsDeleted = false },
+                new Country { Code = "NR", NameEn = "Nauru", NameAr = "ناورو", IsDeleted = false },
+                new Country { Code = "NP", NameEn = "Nepal", NameAr = "نيبال", IsDeleted = false },
                 new Country { Code = "NL", NameEn = "Netherlands", NameAr = "هولندا", IsDeleted = false },
+                new Country { Code = "NC", NameEn = "New Caledonia", NameAr = "كاليدونيا الجديدة", IsDeleted = false },
                 new Country { Code = "NZ", NameEn = "New Zealand", NameAr = "نيوزيلندا", IsDeleted = false },
+                new Country { Code = "NI", NameEn = "Nicaragua", NameAr = "نيكاراغوا", IsDeleted = false },
+                new Country { Code = "NE", NameEn = "Niger", NameAr = "النيجر", IsDeleted = false },
+                new Country { Code = "NG", NameEn = "Nigeria", NameAr = "نيجيريا", IsDeleted = false },
+                new Country { Code = "NU", NameEn = "Niue", NameAr = "نيوي", IsDeleted = false },
+                new Country { Code = "NF", NameEn = "Norfolk Island", NameAr = "جزيرة نورفولك", IsDeleted = false },
+                new Country { Code = "MK", NameEn = "North Macedonia", NameAr = "شمال مقدونيا", IsDeleted = false },
+                new Country { Code = "MP", NameEn = "Northern Mariana Islands", NameAr = "جزر ماريانا الشمالية", IsDeleted = false },
                 new Country { Code = "NO", NameEn = "Norway", NameAr = "النرويج", IsDeleted = false },
                 new Country { Code = "OM", NameEn = "Oman", NameAr = "عمان", IsDeleted = false },
                 new Country { Code = "PK", NameEn = "Pakistan", NameAr = "باكستان", IsDeleted = false },
+                new Country { Code = "PW", NameEn = "Palau", NameAr = "بالاو", IsDeleted = false },
+                new Country { Code = "PS", NameEn = "Palestine, State of", NameAr = "فلسطين", IsDeleted = false },
+                new Country { Code = "PA", NameEn = "Panama", NameAr = "بنما", IsDeleted = false },
+                new Country { Code = "PG", NameEn = "Papua New Guinea", NameAr = "بابوا غينيا الجديدة", IsDeleted = false },
+                new Country { Code = "PY", NameEn = "Paraguay", NameAr = "باراغواي", IsDeleted = false },
+                new Country { Code = "PE", NameEn = "Peru", NameAr = "بيرو", IsDeleted = false },
+                new Country { Code = "PH", NameEn = "Philippines", NameAr = "الفلبين", IsDeleted = false },
+                new Country { Code = "PN", NameEn = "Pitcairn", NameAr = "جزر بيتكيرن", IsDeleted = false },
                 new Country { Code = "PL", NameEn = "Poland", NameAr = "بولندا", IsDeleted = false },
                 new Country { Code = "PT", NameEn = "Portugal", NameAr = "البرتغال", IsDeleted = false },
+                new Country { Code = "PR", NameEn = "Puerto Rico", NameAr = "بورتوريكو", IsDeleted = false },
                 new Country { Code = "QA", NameEn = "Qatar", NameAr = "قطر", IsDeleted = false },
+                new Country { Code = "RE", NameEn = "Réunion", NameAr = "لا ريونيون", IsDeleted = false },
                 new Country { Code = "RO", NameEn = "Romania", NameAr = "رومانيا", IsDeleted = false },
-                new Country { Code = "RU", NameEn = "Russia", NameAr = "روسيا", IsDeleted = false },
+                new Country { Code = "RU", NameEn = "Russian Federation", NameAr = "روسيا", IsDeleted = false },
+                new Country { Code = "RW", NameEn = "Rwanda", NameAr = "رواندا", IsDeleted = false },
+                new Country { Code = "BL", NameEn = "Saint Barthélemy", NameAr = "سان بارتيليمي", IsDeleted = false },
+                new Country { Code = "SH", NameEn = "Saint Helena, Ascension and Tristan da Cunha", NameAr = "سانت هيلينا", IsDeleted = false },
+                new Country { Code = "KN", NameEn = "Saint Kitts and Nevis", NameAr = "سانت كيتس ونيفيس", IsDeleted = false },
+                new Country { Code = "LC", NameEn = "Saint Lucia", NameAr = "سانت لوسيا", IsDeleted = false },
+                new Country { Code = "MF", NameEn = "Saint Martin (French part)", NameAr = "سانت مارتن", IsDeleted = false },
+                new Country { Code = "PM", NameEn = "Saint Pierre and Miquelon", NameAr = "سانت بيير وميكلون", IsDeleted = false },
+                new Country { Code = "VC", NameEn = "Saint Vincent and the Grenadines", NameAr = "سانت فنسنت والغرينادين", IsDeleted = false },
+                new Country { Code = "WS", NameEn = "Samoa", NameAr = "ساموا", IsDeleted = false },
+                new Country { Code = "SM", NameEn = "San Marino", NameAr = "سان مارينو", IsDeleted = false },
+                new Country { Code = "ST", NameEn = "Sao Tome and Principe", NameAr = "ساو تومي وبرينسيبي", IsDeleted = false },
                 new Country { Code = "SA", NameEn = "Saudi Arabia", NameAr = "المملكة العربية السعودية", IsDeleted = false },
+                new Country { Code = "SN", NameEn = "Senegal", NameAr = "السنغال", IsDeleted = false },
+                new Country { Code = "RS", NameEn = "Serbia", NameAr = "صربيا", IsDeleted = false },
+                new Country { Code = "SC", NameEn = "Seychelles", NameAr = "سيشيل", IsDeleted = false },
+                new Country { Code = "SL", NameEn = "Sierra Leone", NameAr = "سيراليون", IsDeleted = false },
                 new Country { Code = "SG", NameEn = "Singapore", NameAr = "سنغافورة", IsDeleted = false },
+                new Country { Code = "SX", NameEn = "Sint Maarten (Dutch part)", NameAr = "سينت مارتن", IsDeleted = false },
+                new Country { Code = "SK", NameEn = "Slovakia", NameAr = "سلوفاكيا", IsDeleted = false },
+                new Country { Code = "SI", NameEn = "Slovenia", NameAr = "سلوفينيا", IsDeleted = false },
+                new Country { Code = "SB", NameEn = "Solomon Islands", NameAr = "جزر سليمان", IsDeleted = false },
+                new Country { Code = "SO", NameEn = "Somalia", NameAr = "الصومال", IsDeleted = false },
                 new Country { Code = "ZA", NameEn = "South Africa", NameAr = "جنوب أفريقيا", IsDeleted = false },
-                new Country { Code = "KR", NameEn = "South Korea", NameAr = "كوريا الجنوبية", IsDeleted = false },
-                new Country { Code = "SD", NameEn = "Sudan", NameAr = "السودان", IsDeleted = false },
+                new Country { Code = "GS", NameEn = "South Georgia and the South Sandwich Islands", NameAr = "جورجيا الجنوبية وجزر ساندويتش الجنوبية", IsDeleted = false },
+                new Country { Code = "SS", NameEn = "South Sudan", NameAr = "جنوب السودان", IsDeleted = false },
                 new Country { Code = "ES", NameEn = "Spain", NameAr = "إسبانيا", IsDeleted = false },
+                new Country { Code = "LK", NameEn = "Sri Lanka", NameAr = "سريلانكا", IsDeleted = false },
+                new Country { Code = "SD", NameEn = "Sudan", NameAr = "السودان", IsDeleted = false },
+                new Country { Code = "SR", NameEn = "Suriname", NameAr = "سورينام", IsDeleted = false },
+                new Country { Code = "SJ", NameEn = "Svalbard and Jan Mayen", NameAr = "سفالبارد ويان ماين", IsDeleted = false },
                 new Country { Code = "SE", NameEn = "Sweden", NameAr = "السويد", IsDeleted = false },
                 new Country { Code = "CH", NameEn = "Switzerland", NameAr = "سويسرا", IsDeleted = false },
-                new Country { Code = "TW", NameEn = "Taiwan", NameAr = "تايوان", IsDeleted = false },
+                new Country { Code = "SY", NameEn = "Syrian Arab Republic", NameAr = "سوريا", IsDeleted = false },
+                new Country { Code = "TW", NameEn = "Taiwan, Province of China", NameAr = "تايوان", IsDeleted = false },
+                new Country { Code = "TJ", NameEn = "Tajikistan", NameAr = "طاجيكستان", IsDeleted = false },
+                new Country { Code = "TZ", NameEn = "Tanzania, United Republic of", NameAr = "تنزانيا", IsDeleted = false },
                 new Country { Code = "TH", NameEn = "Thailand", NameAr = "تايلاند", IsDeleted = false },
+                new Country { Code = "TL", NameEn = "Timor-Leste", NameAr = "تيمور الشرقية", IsDeleted = false },
+                new Country { Code = "TG", NameEn = "Togo", NameAr = "توغو", IsDeleted = false },
+                new Country { Code = "TK", NameEn = "Tokelau", NameAr = "توكيلاو", IsDeleted = false },
+                new Country { Code = "TO", NameEn = "Tonga", NameAr = "تونغا", IsDeleted = false },
+                new Country { Code = "TT", NameEn = "Trinidad and Tobago", NameAr = "ترينيداد وتوباغو", IsDeleted = false },
+                new Country { Code = "TN", NameEn = "Tunisia", NameAr = "تونس", IsDeleted = false },
                 new Country { Code = "TR", NameEn = "Turkey", NameAr = "تركيا", IsDeleted = false },
+                new Country { Code = "TM", NameEn = "Turkmenistan", NameAr = "تركمانستان", IsDeleted = false },
+                new Country { Code = "TC", NameEn = "Turks and Caicos Islands", NameAr = "جزر تركس وكايكوس", IsDeleted = false },
+                new Country { Code = "TV", NameEn = "Tuvalu", NameAr = "توفالو", IsDeleted = false },
+                new Country { Code = "UG", NameEn = "Uganda", NameAr = "أوغندا", IsDeleted = false },
+                new Country { Code = "UA", NameEn = "Ukraine", NameAr = "أوكرانيا", IsDeleted = false },
                 new Country { Code = "AE", NameEn = "United Arab Emirates", NameAr = "الإمارات العربية المتحدة", IsDeleted = false },
-                new Country { Code = "GB", NameEn = "United Kingdom", NameAr = "المملكة المتحدة", IsDeleted = false },
-                new Country { Code = "US", NameEn = "United States", NameAr = "الولايات المتحدة الأمريكية", IsDeleted = false },
-                new Country { Code = "VN", NameEn = "Vietnam", NameAr = "فيتنام", IsDeleted = false },
-                new Country { Code = "YE", NameEn = "Yemen", NameAr = "اليمن", IsDeleted = false }
+                new Country { Code = "GB", NameEn = "United Kingdom of Great Britain and Northern Ireland", NameAr = "المملكة المتحدة", IsDeleted = false },
+                new Country { Code = "UM", NameEn = "United States Minor Outlying Islands", NameAr = "جزر الولايات المتحدة الصغيرة النائية", IsDeleted = false },
+                new Country { Code = "US", NameEn = "United States of America", NameAr = "الولايات المتحدة الأمريكية", IsDeleted = false },
+                new Country { Code = "UY", NameEn = "Uruguay", NameAr = "الأوروغواي", IsDeleted = false },
+                new Country { Code = "UZ", NameEn = "Uzbekistan", NameAr = "أوزبكستان", IsDeleted = false },
+                new Country { Code = "VU", NameEn = "Vanuatu", NameAr = "فانواتو", IsDeleted = false },
+                new Country { Code = "VE", NameEn = "Venezuela", NameAr = "فنزويلا", IsDeleted = false },
+                new Country { Code = "VN", NameEn = "Viet Nam", NameAr = "فيتنام", IsDeleted = false },
+                new Country { Code = "VG", NameEn = "Virgin Islands, British", NameAr = "جزر العذراء البريطانية", IsDeleted = false },
+                new Country { Code = "VI", NameEn = "Virgin Islands, U.S.", NameAr = "جزر العذراء الأمريكية", IsDeleted = false },
+                new Country { Code = "WF", NameEn = "Wallis and Futuna", NameAr = "واليس وفوتونا", IsDeleted = false },
+                new Country { Code = "EH", NameEn = "Western Sahara", NameAr = "الصحراء الغربية", IsDeleted = false },
+                new Country { Code = "YE", NameEn = "Yemen", NameAr = "اليمن", IsDeleted = false },
+                new Country { Code = "ZM", NameEn = "Zambia", NameAr = "زامبيا", IsDeleted = false },
+                new Country { Code = "ZW", NameEn = "Zimbabwe", NameAr = "زيمبابوي", IsDeleted = false }
             };
 
-            await context.Countries.AddRangeAsync(countries);
-            await context.SaveChangesAsync();
+            var toAdd = allCountries
+                .Where(c => !existingCodes.Contains(c.Code, StringComparer.OrdinalIgnoreCase))
+                .ToList();
+
+            if (toAdd.Count > 0)
+            {
+                await context.Countries.AddRangeAsync(toAdd);
+                await context.SaveChangesAsync();
+            }
         }
 
         private static async Task SeedSuppliersDataAsync(ApplicationDbContext context)
@@ -901,7 +1112,7 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 {
                     Name = "M67 Fragmentation Grenade",
                     ItemNo = "EXP-001",
-                    Unit = ExplosiveUnit.Gram,
+                    UnitId = 7, // Gram for Explosive
                     UNNumber = "UN0284",
                     HazardDivisionId = 1,
                     PartNo = "PN-EXP-001",
@@ -916,7 +1127,7 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 {
                     Name = "M84 Stun Grenade",
                     ItemNo = "EXP-002",
-                    Unit = ExplosiveUnit.Gram,
+                    UnitId = 7, // Gram for Explosive
                     UNNumber = "UN0014",
                     HazardDivisionId = 1,
                     PartNo = "PN-EXP-002",
@@ -931,7 +1142,7 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 {
                     Name = "M18 Smoke Grenade",
                     ItemNo = "EXP-003",
-                    Unit = ExplosiveUnit.Gram,
+                    UnitId = 7, // Gram for Explosive
                     UNNumber = "UN0015",
                     HazardDivisionId = 1,
                     PartNo = "PN-EXP-003",
@@ -946,7 +1157,7 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 {
                     Name = "C4 Explosive",
                     ItemNo = "EXP-004",
-                    Unit = ExplosiveUnit.Gram,
+                    UnitId = 7, // Gram for Explosive
                     UNNumber = "UN0056",
                     HazardDivisionId = 1,
                     PartNo = "PN-EXP-004",
@@ -961,7 +1172,7 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 {
                     Name = "M112 Demolition Charge",
                     ItemNo = "EXP-005",
-                    Unit = ExplosiveUnit.Gram,
+                    UnitId = 7, // Gram for Explosive
                     UNNumber = "UN0048",
                     HazardDivisionId = 1,
                     PartNo = "PN-EXP-005",
@@ -976,7 +1187,7 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 {
                     Name = "M26A2 Fragmentation Grenade",
                     ItemNo = "EXP-006",
-                    Unit = ExplosiveUnit.Gram,
+                    UnitId = 7, // Gram for Explosive
                     UNNumber = "UN0285",
                     HazardDivisionId = 1,
                     PartNo = "PN-EXP-006",
@@ -991,7 +1202,7 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 {
                     Name = "AN-M14 TH3 Incendiary Grenade",
                     ItemNo = "EXP-007",
-                    Unit = ExplosiveUnit.Gram,
+                    UnitId = 7, // Gram for Explosive
                     UNNumber = "UN0009",
                     HazardDivisionId = 1,
                     PartNo = "PN-EXP-007",
@@ -1006,7 +1217,7 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 {
                     Name = "M72 LAW Rocket",
                     ItemNo = "EXP-008",
-                    Unit = ExplosiveUnit.Gram,
+                    UnitId = 7, // Gram for Explosive
                     UNNumber = "UN0180",
                     HazardDivisionId = 1,
                     PartNo = "PN-EXP-008",
@@ -1021,7 +1232,7 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 {
                     Name = "M18A1 Claymore Mine",
                     ItemNo = "EXP-009",
-                    Unit = ExplosiveUnit.Gram,
+                    UnitId = 7, // Gram for Explosive
                     UNNumber = "UN0137",
                     HazardDivisionId = 1,
                     PartNo = "PN-EXP-009",
@@ -1036,7 +1247,7 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 {
                     Name = "M67 Training Grenade",
                     ItemNo = "EXP-010",
-                    Unit = ExplosiveUnit.Gram,
+                    UnitId = 7, // Gram for Explosive
                     UNNumber = "UN0110",
                     HazardDivisionId = 1,
                     PartNo = "PN-EXP-010",
@@ -1051,7 +1262,7 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 {
                     Name = "M183 Demolition Charge Assembly",
                     ItemNo = "EXP-011",
-                    Unit = ExplosiveUnit.Gram,
+                    UnitId = 7, // Gram for Explosive
                     UNNumber = "UN0118",
                     HazardDivisionId = 1,
                     PartNo = "PN-EXP-011",
@@ -1066,7 +1277,7 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 {
                     Name = "M6 Electric Blasting Cap",
                     ItemNo = "EXP-012",
-                    Unit = ExplosiveUnit.Gram,
+                    UnitId = 7, // Gram for Explosive
                     UNNumber = "UN0030",
                     HazardDivisionId = 1,
                     PartNo = "PN-EXP-012",

@@ -20,7 +20,8 @@ namespace Ettad.Inventory.Service.Explosives.Profiles
                 .ForMember(dest => dest.ItemType, opt => opt.Ignore())
                 .ForMember(dest => dest.HazardDivision, opt => opt.Ignore())
                 .ForMember(dest => dest.Classification, opt => opt.Ignore())
-                .ForMember(dest => dest.Type, opt => opt.Ignore());
+                .ForMember(dest => dest.Type, opt => opt.Ignore())
+                .ForMember(dest => dest.Unit, opt => opt.Ignore());
         }
     }
 }

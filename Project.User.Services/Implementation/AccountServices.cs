@@ -80,13 +80,21 @@ namespace Ettad.User.Services.Implementation
     LoginInformation loginInformation,
     CancellationToken cancellationToken = default)
         {
-            _logger.LogInformation("Login attempt. Username: {Username}", loginInformation?.Username);
+            var startTime = _dateTimeProvider.Now;
+            var clientIp = GetClientIpAddress();
+            var loginType = loginInformation?.IsLdap == true ? "LDAP" : "Admin";
+            
+            _logger.LogInformation(
+                "[LOGIN] Attempt started | Username: {Username} | LoginType: {LoginType} | IP: {ClientIP} | Time: {StartTime}",
+                loginInformation?.Username ?? "N/A", loginType, clientIp ?? "Unknown", startTime);
 
             try
             {
                 if (string.IsNullOrWhiteSpace(loginInformation?.Username))
                 {
-                    _logger.LogWarning("Login failed: Empty username provided");
+                    _logger.LogWarning(
+                        "[LOGIN] FAILED - Empty username | IP: {ClientIP}",
+                        clientIp);
                     await RecordLoginAttemptAsync(loginInformation?.Username, null, false, "Empty username", LoginType.Unknown, cancellationToken);
                     return APIOperationResponse<AuthenticatedResponse>.Fail(
                         ResponseType.BadRequest,
@@ -94,8 +102,29 @@ namespace Ettad.User.Services.Implementation
                         "server.invalidLogin");
                 }
                              
+                // Check if user exists (including soft-deleted) to provide proper error message
+                var userIncludingDeleted = await _userRepository.Users
+                    .FirstOrDefaultAsync(u => u.UserName == loginInformation.Username.Trim(), cancellationToken);
+
+                if (userIncludingDeleted != null && userIncludingDeleted.IsDeleted)
+                {
+                    _logger.LogWarning(
+                        "[LOGIN] FAILED - User deleted | Username: {Username} | UserId: {UserId} | IP: {ClientIP}",
+                        loginInformation.Username, userIncludingDeleted.Id, clientIp);
+                    await RecordLoginAttemptAsync(loginInformation.Username.Trim(), userIncludingDeleted.Id, false, 
+                        "User account has been deleted", LoginType.Admin, cancellationToken);
+                    return APIOperationResponse<AuthenticatedResponse>.Fail(
+                        ResponseType.Forbidden,
+                        CommonErrorCodes.ACCOUNT_DELETED,
+                        "server.accountDeleted");
+                }
+
                 var existingUser = await _userRepository.Users
                     .FirstOrDefaultAsync(u => u.UserName == loginInformation.Username.Trim() && !u.IsDeleted, cancellationToken);
+
+                _logger.LogDebug(
+                    "[LOGIN] User lookup | Username: {Username} | Found: {UserFound} | UserId: {UserId}",
+                    loginInformation.Username, existingUser != null, existingUser?.Id ?? "N/A");
 
                 // Check if account is locked (for existing users)
                 if (existingUser != null)
@@ -103,13 +132,14 @@ namespace Ettad.User.Services.Implementation
                     var isLocked = await IsAccountLockedAsync(loginInformation.Username.Trim(), cancellationToken);
                     if (isLocked)
                     {
-                        _logger.LogWarning("Login blocked: Account is locked due to too many failed attempts. Username: {Username}", 
-                            loginInformation.Username);
-                        await RecordLoginAttemptAsync(loginInformation.Username.Trim(), existingUser.Id, false, 
-                            "Account locked due to too many failed attempts", LoginType.Admin, cancellationToken);
+                        _logger.LogWarning(
+                            "[LOGIN] BLOCKED - Account locked | Username: {Username} | UserId: {UserId} | IP: {ClientIP} | Reason: Too many failed attempts",
+                            loginInformation.Username, existingUser.Id, clientIp);
+                    await RecordLoginAttemptAsync(loginInformation.Username.Trim(), existingUser.Id, false, 
+                        "Account locked due to too many failed attempts", LoginType.Admin, cancellationToken);
                         return APIOperationResponse<AuthenticatedResponse>.Fail(
                             ResponseType.Forbidden,
-                            CommonErrorCodes.INVALID_EMAIL_OR_PASSWORD,
+                            CommonErrorCodes.ACCOUNT_LOCKED,
                             "Account is temporarily locked due to too many failed login attempts. Please try again in 15 minutes.");
                     }
                 }
@@ -118,16 +148,21 @@ namespace Ettad.User.Services.Implementation
                 var captchaRequired = await IsCaptchaRequiredAsync(loginInformation.Username.Trim(), cancellationToken);
                 if (captchaRequired)
                 {
+                    _logger.LogDebug(
+                        "[LOGIN] CAPTCHA required | Username: {Username} | CaptchaProvided: {CaptchaProvided}",
+                        loginInformation.Username, !string.IsNullOrWhiteSpace(loginInformation.CaptchaId));
+
                     // If CAPTCHA is required but not provided, return error indicating CAPTCHA is needed
                     if (string.IsNullOrWhiteSpace(loginInformation.CaptchaId) || string.IsNullOrWhiteSpace(loginInformation.CaptchaCode))
                     {
-                        _logger.LogWarning("Login blocked: CAPTCHA required but not provided. Username: {Username}", 
-                            loginInformation.Username);
+                        _logger.LogWarning(
+                            "[LOGIN] BLOCKED - CAPTCHA required but not provided | Username: {Username} | IP: {ClientIP}",
+                            loginInformation.Username, clientIp);
                         await RecordLoginAttemptAsync(loginInformation.Username.Trim(), existingUser?.Id, false, 
                             "CAPTCHA required but not provided", existingUser != null ? LoginType.Admin : LoginType.Unknown, cancellationToken);
                         return APIOperationResponse<AuthenticatedResponse>.Fail(
                             ResponseType.BadRequest,
-                            CommonErrorCodes.INVALID_EMAIL_OR_PASSWORD,
+                            CommonErrorCodes.CAPTCHA_REQUIRED,
                             "CAPTCHA verification is required. Please complete the CAPTCHA and try again.");
                     }
 
@@ -135,45 +170,54 @@ namespace Ettad.User.Services.Implementation
                     var captchaValid = _captchaService.ValidateCaptcha(loginInformation.CaptchaId, loginInformation.CaptchaCode);
                     if (!captchaValid)
                     {
-                        _logger.LogWarning("Login blocked: Invalid CAPTCHA code. Username: {Username}", 
-                            loginInformation.Username);
+                        _logger.LogWarning(
+                            "[LOGIN] BLOCKED - Invalid CAPTCHA | Username: {Username} | CaptchaId: {CaptchaId} | IP: {ClientIP}",
+                            loginInformation.Username, loginInformation.CaptchaId, clientIp);
                         await RecordLoginAttemptAsync(loginInformation.Username.Trim(), existingUser?.Id, false, 
                             "Invalid CAPTCHA code", existingUser != null ? LoginType.Admin : LoginType.Unknown, cancellationToken);
                         return APIOperationResponse<AuthenticatedResponse>.Fail(
                             ResponseType.BadRequest,
-                            CommonErrorCodes.INVALID_EMAIL_OR_PASSWORD,
+                            CommonErrorCodes.CAPTCHA_INVALID,
                             "CAPTCHA verification failed. Please try again.");
                     }
+                    
+                    _logger.LogDebug("[LOGIN] CAPTCHA validated successfully | Username: {Username}", loginInformation.Username);
                 }
 
-                var isAdminLogin = existingUser != null;
-
-                _logger.LogInformation("Login type determined. Username: {Username}, IsAdminLogin: {IsAdminLogin}",
-                    loginInformation.Username, isAdminLogin);
-
-                if (isAdminLogin)
+                // If not an LDAP login and user doesn't exist, return invalid credentials
+                if (!loginInformation.IsLdap && existingUser == null)
                 {
-                    return await LoginWithAdmin(existingUser, loginInformation, cancellationToken);
-                }
-                else if (loginInformation.IsLdap)
-                {
-                    return await LoginWithLdap(loginInformation, cancellationToken);
-                }
-                else
-                {
-                    _logger.LogWarning("Login failed: LDAP not configured and user not found locally. Username: {Username}",
-                        loginInformation.Username);
-                    await RecordLoginAttemptAsync(loginInformation.Username.Trim(), null, false, 
-                        "User not found and LDAP not configured", LoginType.Unknown, cancellationToken);
+                    _logger.LogWarning(
+                        "[LOGIN] FAILED - User not found | Username: {Username} | IP: {ClientIP}",
+                        loginInformation.Username, clientIp);
+                    await RecordLoginAttemptAsync(loginInformation.Username.Trim(), null, false, "User not found", LoginType.Admin, cancellationToken);
                     return APIOperationResponse<AuthenticatedResponse>.Fail(
                         ResponseType.Unauthorized,
                         CommonErrorCodes.INVALID_EMAIL_OR_PASSWORD,
                         "server.invalidLogin");
                 }
+
+                var isAdminLogin = existingUser != null && !loginInformation.IsLdap;
+
+                _logger.LogInformation(
+                    "[LOGIN] Routing to handler | Username: {Username} | LoginType: {LoginType} | IsLocalUser: {IsLocalUser}",
+                    loginInformation.Username, isAdminLogin ? "Admin" : (loginInformation.IsLdap ? "LDAP" : "Unknown"), isAdminLogin);
+
+                if (isAdminLogin)
+                {
+                    return await LoginWithAdmin(existingUser, loginInformation, cancellationToken);
+                }
+                else
+                {
+                    return await LoginWithLdap(loginInformation, cancellationToken);
+                }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Login error occurred. Username: {Username}", loginInformation?.Username);
+                var duration = (_dateTimeProvider.Now - startTime).TotalMilliseconds;
+                _logger.LogError(ex,
+                    "[LOGIN] ERROR - Exception occurred | Username: {Username} | IP: {ClientIP} | Duration: {Duration}ms | Error: {ErrorMessage}",
+                    loginInformation?.Username ?? "N/A", clientIp, duration, ex.Message);
                 await RecordLoginAttemptAsync(loginInformation?.Username, null, false, ex.Message, LoginType.Unknown, cancellationToken);
                 return APIOperationResponse<AuthenticatedResponse>.Fail(
                     ResponseType.InternalServerError,
@@ -186,38 +230,50 @@ namespace Ettad.User.Services.Implementation
             LoginInformation loginInformation,
             CancellationToken cancellationToken)
         {
-            _logger.LogInformation("Attempting admin login. Username: {Username}", loginInformation.Username);
+            var startTime = _dateTimeProvider.Now;
+            var clientIp = GetClientIpAddress();
+            
+            _logger.LogInformation(
+                "[ADMIN LOGIN] Started | Username: {Username} | UserId: {UserId} | IP: {ClientIP}",
+                loginInformation.Username, user.Id, clientIp);
 
-            // Check if user is soft-deleted
+            // Check if user is soft-deleted (defensive check - should not happen due to filtering)
             if (user.IsDeleted)
             {
-                _logger.LogWarning("Admin login failed: User is deleted. Username: {Username}, UserId: {UserId}",
-                    loginInformation.Username, user.Id);
-                await RecordLoginAttemptAsync(loginInformation.Username, user.Id, false, "User is deleted", LoginType.Admin, cancellationToken);
+                _logger.LogWarning(
+                    "[ADMIN LOGIN] FAILED - User deleted | Username: {Username} | UserId: {UserId} | IP: {ClientIP}",
+                    loginInformation.Username, user.Id, clientIp);
+                await RecordLoginAttemptAsync(loginInformation.Username, user.Id, false, "User account has been deleted", LoginType.Admin, cancellationToken);
                 return APIOperationResponse<AuthenticatedResponse>.Fail(
-                    ResponseType.Unauthorized,
-                    CommonErrorCodes.INVALID_EMAIL_OR_PASSWORD,
-                    "server.invalidLogin");
+                    ResponseType.Forbidden,
+                    CommonErrorCodes.ACCOUNT_DELETED,
+                    "server.accountDeleted");
             }
 
-            // Check if account is active
+                // Check if account is active
             if (!user.IsActive)
             {
-                _logger.LogWarning("Account disabled login attempt. Username: {Username}", 
-                    loginInformation.Username);
+                _logger.LogWarning(
+                    "[ADMIN LOGIN] FAILED - Account disabled | Username: {Username} | UserId: {UserId} | IP: {ClientIP}",
+                    loginInformation.Username, user.Id, clientIp);
                 await RecordLoginAttemptAsync(loginInformation.Username, user.Id, false, 
                     "Account is disabled", LoginType.Admin, cancellationToken);
                 return APIOperationResponse<AuthenticatedResponse>.Fail(
                     ResponseType.Forbidden,
-                    CommonErrorCodes.INVALID_EMAIL_OR_PASSWORD,
+                    CommonErrorCodes.ACCOUNT_DISABLED,
                     "Your account has been disabled. Please contact your administrator.");
             }
+
+            _logger.LogDebug(
+                "[ADMIN LOGIN] Validating password | Username: {Username} | UserId: {UserId}",
+                loginInformation.Username, user.Id);
 
             var signInResult = await _signInManager.CheckPasswordSignInAsync(user, loginInformation.Password, lockoutOnFailure: false);
             if (!signInResult.Succeeded)
             {
-                _logger.LogWarning("Admin login failed: Invalid password. Username: {Username}, UserId: {UserId}",
-                    loginInformation.Username, user.Id);
+                _logger.LogWarning(
+                    "[ADMIN LOGIN] FAILED - Invalid password | Username: {Username} | UserId: {UserId} | IP: {ClientIP}",
+                    loginInformation.Username, user.Id, clientIp);
 
                 await RecordLoginAttemptAsync(loginInformation.Username, user.Id, false, "Invalid password", LoginType.Admin, cancellationToken);
                 return APIOperationResponse<AuthenticatedResponse>.Fail(
@@ -226,13 +282,16 @@ namespace Ettad.User.Services.Implementation
                     "server.invalidLogin");
             }
 
-            _logger.LogInformation("Admin login successful. Username: {Username}, UserId: {UserId}",
-                loginInformation.Username, user.Id);
-
             // Record successful login
             await RecordLoginAttemptAsync(loginInformation.Username, user.Id, true, null, LoginType.Admin, cancellationToken);
 
             var authResponse = await CreateAndReturnAuthResponseAsync(user, cancellationToken);
+            
+            var duration = (_dateTimeProvider.Now - startTime).TotalMilliseconds;
+            _logger.LogInformation(
+                "[ADMIN LOGIN] SUCCESS | Username: {Username} | UserId: {UserId} | IP: {ClientIP} | Duration: {Duration}ms",
+                loginInformation.Username, user.Id, clientIp, duration);
+
             return APIOperationResponse<AuthenticatedResponse>.Success(authResponse);
         }
 
@@ -241,15 +300,24 @@ namespace Ettad.User.Services.Implementation
     LoginInformation loginInformation,
     CancellationToken cancellationToken = default)
         {
+            var startTime = _dateTimeProvider.Now;
+            var clientIp = GetClientIpAddress();
+            
+            _logger.LogInformation(
+                "[LDAP LOGIN] Started | Username: {Username} | IP: {ClientIP}",
+                loginInformation?.Username ?? "N/A", clientIp);
+
             try
             {
-
+                // Step 1: Retrieve and validate LDAP settings
+                _logger.LogDebug("[LDAP LOGIN] Retrieving LDAP settings");
                 var ldapSettingsResponse = await _ldapSettingsService.GetLdapSettings(cancellationToken);
 
                 if (!ldapSettingsResponse.Succeeded || ldapSettingsResponse.Data == null)
                 {
-                    _logger.LogWarning("LDAP login attempt failed: Failed to retrieve LDAP settings. Username: {Username}",
-                        loginInformation?.Username);
+                    _logger.LogWarning(
+                        "[LDAP LOGIN] FAILED - LDAP settings unavailable | Username: {Username} | IP: {ClientIP}",
+                        loginInformation?.Username ?? "N/A", clientIp);
 
                     await RecordLoginAttemptAsync(loginInformation?.Username ?? "Unknown", null, false, 
                         "Failed to retrieve LDAP settings", LoginType.LDAP, cancellationToken);
@@ -260,11 +328,16 @@ namespace Ettad.User.Services.Implementation
                 }
 
                 var ldapSettings = ldapSettingsResponse.Data;
+                
+                _logger.LogDebug(
+                    "[LDAP LOGIN] LDAP settings loaded | Server: {Server} | Domain: {Domain} | IsActive: {IsActive}",
+                    ldapSettings.LdapServer, ldapSettings.LdapDomain, ldapSettings.IsActive);
 
                 if (!ldapSettings.IsActive)
                 {
-                    _logger.LogWarning("LDAP login attempt failed: LDAP settings inactive. Username: {Username}",
-                        loginInformation?.Username);
+                    _logger.LogWarning(
+                        "[LDAP LOGIN] FAILED - LDAP disabled | Username: {Username} | IP: {ClientIP}",
+                        loginInformation?.Username ?? "N/A", clientIp);
 
                     await RecordLoginAttemptAsync(loginInformation?.Username ?? "Unknown", null, false, 
                         "LDAP settings inactive", LoginType.LDAP, cancellationToken);
@@ -274,9 +347,10 @@ namespace Ettad.User.Services.Implementation
                         "server.invalidLdapSettings");
                 }
 
+                // Step 2: Validate input credentials
                 if (string.IsNullOrWhiteSpace(loginInformation?.Username))
                 {
-                    _logger.LogWarning("LDAP login attempt failed: Username is empty.");
+                    _logger.LogWarning("[LDAP LOGIN] FAILED - Empty username | IP: {ClientIP}", clientIp);
 
                     await RecordLoginAttemptAsync("Unknown", null, false, "Username is empty", LoginType.LDAP, cancellationToken);
                     return APIOperationResponse<AuthenticatedResponse>.Fail(
@@ -285,98 +359,114 @@ namespace Ettad.User.Services.Implementation
                         "server.invalidLogin");
                 }
 
-                // Check if Windows logged-in user matches LDAP username
-                _logger.LogInformation("Login request. IsAuthenticated: {Auth}, User: {User}",
-     _httpContextAccessor.HttpContext.User.Identity?.IsAuthenticated,_httpContextAccessor.HttpContext.User.Identity?.Name);
-
-                var windowsUserFull = _httpContextAccessor.HttpContext?.User?.Identity?.Name; 
-                // Trim domain
-                var windowsUser = windowsUserFull?.Contains("\\") == true
-                    ? windowsUserFull.Split('\\')[1]
-                    : windowsUserFull;
-                _logger.LogInformation("LDAP login attempt. Username: {Username}, WindowsIdentity: {windowsUser}",
-                     loginInformation.Username, windowsUser ?? "N/A");
-                if (string.IsNullOrEmpty(windowsUser))
-                {
-                    return APIOperationResponse<AuthenticatedResponse>.Fail(
-                        ResponseType.Unauthorized,
-                        CommonErrorCodes.INVALID_EMAIL_OR_PASSWORD,
-                        "Windows authentication required.");
-                }
-
-                var inputUser = NormalizeUsername(loginInformation.Username.Trim());
-
-                if (!windowsUser.Equals(inputUser, StringComparison.OrdinalIgnoreCase))
+                if (string.IsNullOrWhiteSpace(loginInformation?.Password))
                 {
                     _logger.LogWarning(
-                        "LDAP login blocked: Windows user mismatch. InputUser: {InputUser}, WindowsUser: {WindowsUser}",
-                        inputUser,
-                        windowsUser);
+                        "[LDAP LOGIN] FAILED - Empty password | Username: {Username} | IP: {ClientIP}",
+                        loginInformation?.Username, clientIp);
 
+                    await RecordLoginAttemptAsync(loginInformation?.Username ?? "Unknown", null, false, "Password is empty", LoginType.LDAP, cancellationToken);
                     return APIOperationResponse<AuthenticatedResponse>.Fail(
-                        ResponseType.Unauthorized,
+                        ResponseType.BadRequest,
                         CommonErrorCodes.INVALID_EMAIL_OR_PASSWORD,
-                        "You must log in from your own Windows account.");
+                        "server.invalidLogin");
                 }
-                // Check if account is locked (based on username)
+
+                // Step 3: Check account lockout status
                 var isLocked = await IsAccountLockedAsync(loginInformation.Username.Trim(), cancellationToken);
                 if (isLocked)
                 {
-                    _logger.LogWarning("LDAP login blocked: Account is locked due to too many failed attempts. Username: {Username}", 
-                        loginInformation.Username);
+                    _logger.LogWarning(
+                        "[LDAP LOGIN] BLOCKED - Account locked | Username: {Username} | IP: {ClientIP} | Reason: Too many failed attempts",
+                        loginInformation.Username, clientIp);
                     await RecordLoginAttemptAsync(loginInformation.Username.Trim(), null, false, 
                         "Account locked due to too many failed attempts", LoginType.LDAP, cancellationToken);
                     return APIOperationResponse<AuthenticatedResponse>.Fail(
                         ResponseType.Forbidden,
-                        CommonErrorCodes.INVALID_EMAIL_OR_PASSWORD,
+                        CommonErrorCodes.ACCOUNT_LOCKED,
                         "Account is temporarily locked due to too many failed login attempts. Please try again in 15 minutes.");
                 }
 
-                // Check if CAPTCHA is required (3+ failed attempts but not locked yet)
+                // Step 4: Check CAPTCHA requirement
                 var captchaRequired = await IsCaptchaRequiredAsync(loginInformation.Username.Trim(), cancellationToken);
                 if (captchaRequired)
                 {
-                    // If CAPTCHA is required but not provided, return error indicating CAPTCHA is needed
+                    _logger.LogDebug(
+                        "[LDAP LOGIN] CAPTCHA required | Username: {Username} | CaptchaProvided: {CaptchaProvided}",
+                        loginInformation.Username, !string.IsNullOrWhiteSpace(loginInformation.CaptchaId));
+
                     if (string.IsNullOrWhiteSpace(loginInformation.CaptchaId) || string.IsNullOrWhiteSpace(loginInformation.CaptchaCode))
                     {
-                        _logger.LogWarning("LDAP login blocked: CAPTCHA required but not provided. Username: {Username}", 
-                            loginInformation.Username);
+                        _logger.LogWarning(
+                            "[LDAP LOGIN] BLOCKED - CAPTCHA required but not provided | Username: {Username} | IP: {ClientIP}",
+                            loginInformation.Username, clientIp);
                         await RecordLoginAttemptAsync(loginInformation.Username.Trim(), null, false, 
                             "CAPTCHA required but not provided", LoginType.LDAP, cancellationToken);
                         return APIOperationResponse<AuthenticatedResponse>.Fail(
                             ResponseType.BadRequest,
-                            CommonErrorCodes.INVALID_EMAIL_OR_PASSWORD,
+                            CommonErrorCodes.CAPTCHA_REQUIRED,
                             "CAPTCHA verification is required. Please complete the CAPTCHA and try again.");
                     }
 
-                    // Validate CAPTCHA code
                     var captchaValid = _captchaService.ValidateCaptcha(loginInformation.CaptchaId, loginInformation.CaptchaCode);
                     if (!captchaValid)
                     {
-                        _logger.LogWarning("LDAP login blocked: Invalid CAPTCHA code. Username: {Username}", 
-                            loginInformation.Username);
+                        _logger.LogWarning(
+                            "[LDAP LOGIN] BLOCKED - Invalid CAPTCHA | Username: {Username} | CaptchaId: {CaptchaId} | IP: {ClientIP}",
+                            loginInformation.Username, loginInformation.CaptchaId, clientIp);
                         await RecordLoginAttemptAsync(loginInformation.Username.Trim(), null, false, 
                             "Invalid CAPTCHA code", LoginType.LDAP, cancellationToken);
                         return APIOperationResponse<AuthenticatedResponse>.Fail(
                             ResponseType.BadRequest,
-                            CommonErrorCodes.INVALID_EMAIL_OR_PASSWORD,
+                            CommonErrorCodes.CAPTCHA_INVALID,
                             "CAPTCHA verification failed. Please try again.");
+                    }
+                    
+                    _logger.LogDebug("[LDAP LOGIN] CAPTCHA validated successfully | Username: {Username}", loginInformation.Username);
+                }
+
+                // Step 5: Extract username without domain for LDAP authentication
+                string usernameForLdapAuth = loginInformation.Username.Trim();
+                if (usernameForLdapAuth.Contains("@"))
+                {
+                    var parts = usernameForLdapAuth.Split('@');
+                    if (parts.Length == 2)
+                    {
+                        usernameForLdapAuth = parts[0];
+                        var providedDomain = parts[1];
+
+                        // Validate that the provided domain matches the LDAP domain
+                        if (!providedDomain.Equals(ldapSettings.LdapDomain, StringComparison.OrdinalIgnoreCase))
+                        {
+                            _logger.LogWarning(
+                                "[LDAP LOGIN] FAILED - Domain mismatch | Username: {Username} | ProvidedDomain: {ProvidedDomain} | ExpectedDomain: {ExpectedDomain} | IP: {ClientIP}",
+                                loginInformation.Username, providedDomain, ldapSettings.LdapDomain, clientIp);
+                            await RecordLoginAttemptAsync(loginInformation.Username, null, false, 
+                                $"Domain mismatch. Expected domain: {ldapSettings.LdapDomain}", LoginType.LDAP, cancellationToken);
+                            return APIOperationResponse<AuthenticatedResponse>.Fail(
+                                ResponseType.Unauthorized,
+                                CommonErrorCodes.INVALID_EMAIL_OR_PASSWORD,
+                                "server.invalidLogin");
+                        }
                     }
                 }
 
-                // 🧠 Step 1: Authenticate against LDAP
+                // Step 6: Authenticate against LDAP server
+                _logger.LogDebug(
+                    "[LDAP LOGIN] Authenticating with LDAP server | Username: {Username} | UsernameForAuth: {UsernameForAuth} | Server: {Server} | Domain: {Domain}",
+                    loginInformation.Username, usernameForLdapAuth, ldapSettings.LdapServer, ldapSettings.LdapDomain);
+
                 var loginSucceeded = await _ldapAuthenticator.ValidateAsync(
-                    loginInformation.Username.Trim(),
+                    usernameForLdapAuth,
                     loginInformation.Password,
-                    loginWithoutPassword: true,
                     ldapSettings,
                     cancellationToken);
 
                 if (!loginSucceeded)
                 {
                     _logger.LogWarning(
-                        "LDAP login failed: Invalid credentials. Username: {Username}",
-                        loginInformation.Username);
+                        "[LDAP LOGIN] FAILED - Invalid LDAP credentials | Username: {Username} | Server: {Server} | IP: {ClientIP}",
+                        loginInformation.Username, ldapSettings.LdapServer, clientIp);
 
                     await RecordLoginAttemptAsync(loginInformation.Username.Trim(), null, false, "Invalid LDAP credentials", LoginType.LDAP, cancellationToken);
                     return APIOperationResponse<AuthenticatedResponse>.Fail(
@@ -385,21 +475,110 @@ namespace Ettad.User.Services.Implementation
                         "server.invalidLogin");
                 }
 
-                var resolvedUsername = $"{loginInformation.Username.Trim()}@{ldapSettings.LdapDomain}";
+                _logger.LogDebug(
+                    "[LDAP LOGIN] LDAP authentication successful | Username: {Username}",
+                    usernameForLdapAuth);
 
-                // 🧠 Step 2: Check if user exists by Username or LdapUserName (excluding soft-deleted users)
+                // Step 7: Resolve username for database storage - check if domain is already included
+                string resolvedUsername;
+                string usernameWithoutDomain = usernameForLdapAuth;
+                string originalUsername = loginInformation.Username.Trim();
+
+                // Check if original username already ends with the LDAP domain
+                var expectedDomainSuffix = $"@{ldapSettings.LdapDomain}";
+                if (originalUsername.EndsWith(expectedDomainSuffix, StringComparison.OrdinalIgnoreCase))
+                {
+                    // Username already contains the correct domain, use it as-is
+                    resolvedUsername = originalUsername;
+                    usernameWithoutDomain = originalUsername.Substring(0, originalUsername.Length - expectedDomainSuffix.Length);
+                    _logger.LogDebug(
+                        "[LDAP LOGIN] Username already contains domain | ResolvedUsername: {ResolvedUsername} | UsernameWithoutDomain: {UsernameWithoutDomain}",
+                        resolvedUsername, usernameWithoutDomain);
+                }
+                else if (originalUsername.Contains("@"))
+                {
+                    // Username contains @ but with different domain - this should have been caught in Step 5
+                    // But handle it defensively here as well
+                    var parts = originalUsername.Split('@');
+                    if (parts.Length == 2)
+                    {
+                        var providedDomain = parts[1];
+                        _logger.LogWarning(
+                            "[LDAP LOGIN] Domain mismatch detected in Step 7 | Username: {Username} | ProvidedDomain: {ProvidedDomain} | ExpectedDomain: {ExpectedDomain} | IP: {ClientIP}",
+                            originalUsername, providedDomain, ldapSettings.LdapDomain, clientIp);
+                        await RecordLoginAttemptAsync(originalUsername, null, false, 
+                            $"Domain mismatch. Expected domain: {ldapSettings.LdapDomain}", LoginType.LDAP, cancellationToken);
+                        return APIOperationResponse<AuthenticatedResponse>.Fail(
+                            ResponseType.Unauthorized,
+                            CommonErrorCodes.INVALID_EMAIL_OR_PASSWORD,
+                            "server.invalidLogin");
+                    }
+                    else
+                    {
+                        // Invalid format (multiple @ symbols)
+                        _logger.LogWarning(
+                            "[LDAP LOGIN] FAILED - Invalid username format | Username: {Username} | IP: {ClientIP}",
+                            originalUsername, clientIp);
+                        await RecordLoginAttemptAsync(originalUsername, null, false, "Invalid username format", LoginType.LDAP, cancellationToken);
+                        return APIOperationResponse<AuthenticatedResponse>.Fail(
+                            ResponseType.BadRequest,
+                            CommonErrorCodes.INVALID_USERNAME_FORMAT,
+                            "Invalid username format. Please use username or username@domain.com");
+                    }
+                }
+                else
+                {
+                    // No domain provided, add the LDAP domain
+                    resolvedUsername = $"{usernameForLdapAuth}@{ldapSettings.LdapDomain}";
+                    _logger.LogDebug(
+                        "[LDAP LOGIN] Adding domain to username | Username: {Username} | Domain: {Domain}",
+                        usernameForLdapAuth, ldapSettings.LdapDomain);
+                }
+
+                // Step 8: Look up or create local user
+                _logger.LogDebug(
+                    "[LDAP LOGIN] Looking up local user | ResolvedUsername: {ResolvedUsername}",
+                    resolvedUsername);
+
+                // Check if user exists (including soft-deleted) to provide proper error message
+                var userIncludingDeleted = await _userRepository.Users
+                    .FirstOrDefaultAsync(u => u.UserName == resolvedUsername, cancellationToken);
+
+                if (userIncludingDeleted == null)
+                {
+                    userIncludingDeleted = await _context.Users
+                        .FirstOrDefaultAsync(u => u.LdapUserName == usernameWithoutDomain, cancellationToken);
+                }
+
+                if (userIncludingDeleted != null && userIncludingDeleted.IsDeleted)
+                {
+                    _logger.LogWarning(
+                        "[LDAP LOGIN] FAILED - User deleted | Username: {Username} | UserId: {UserId} | IP: {ClientIP}",
+                        resolvedUsername, userIncludingDeleted.Id, clientIp);
+                    await RecordLoginAttemptAsync(resolvedUsername, userIncludingDeleted.Id, false, 
+                        "User account has been deleted", LoginType.LDAP, cancellationToken);
+                    return APIOperationResponse<AuthenticatedResponse>.Fail(
+                        ResponseType.Forbidden,
+                        CommonErrorCodes.ACCOUNT_DELETED,
+                        "server.accountDeleted");
+                }
+
                 var user = await _userRepository.Users
                     .FirstOrDefaultAsync(u => u.UserName == resolvedUsername && !u.IsDeleted, cancellationToken);
 
                 if (user == null)
                 {
                     user = await _context.Users
-                        .FirstOrDefaultAsync(u => u.LdapUserName == resolvedUsername && !u.IsDeleted, cancellationToken);
+                        .FirstOrDefaultAsync(u => u.LdapUserName == usernameWithoutDomain && !u.IsDeleted, cancellationToken);
                 }
 
-                // 🧩 Step 3: If user does not exist, create new
+                // Step 9: Create new user if not exists
                 if (user == null)
                 {
+                    _logger.LogInformation(
+                        "[LDAP LOGIN] Creating new local user | Username: {Username} | ResolvedUsername: {ResolvedUsername} | LdapUserName: {LdapUserName}",
+                        loginInformation.Username, resolvedUsername, usernameWithoutDomain);
+
                     user = new ApplicationUser
                     {
                         UserName = resolvedUsername,
@@ -407,66 +586,68 @@ namespace Ettad.User.Services.Implementation
                         FullNameAR = resolvedUsername,
                         FullNameEN = resolvedUsername,
                         IsLdapUser = true,
-                        LdapUserName = loginInformation.Username.Trim()
+                        LdapUserName = usernameWithoutDomain
                     };
 
                     await _userRepository.CreateAsync(user);
+                    
                     _logger.LogInformation(
-                        "LDAP user auto-created. Username: {Username}, UserId: {UserId}",
-                        user.UserName,
-                        user.Id);
+                        "[LDAP LOGIN] User created successfully | Username: {Username} | UserId: {UserId} | IP: {ClientIP}",
+                        user.UserName, user.Id, clientIp);
                 }
                 else
                 {
-                    // Check if existing user is soft-deleted
+                    _logger.LogDebug(
+                        "[LDAP LOGIN] Local user found | Username: {Username} | UserId: {UserId} | IsActive: {IsActive} | IsDeleted: {IsDeleted}",
+                        user.UserName, user.Id, user.IsActive, user.IsDeleted);
+
+                    // Check if existing user is soft-deleted (defensive check - should not happen due to filtering)
                     if (user.IsDeleted)
                     {
-                        _logger.LogWarning("LDAP login failed: User is deleted. Username: {Username}, UserId: {UserId}",
-                            user.UserName, user.Id);
-                        await RecordLoginAttemptAsync(resolvedUsername, user.Id, false, "User is deleted", LoginType.LDAP, cancellationToken);
+                        _logger.LogWarning(
+                            "[LDAP LOGIN] FAILED - User deleted | Username: {Username} | UserId: {UserId} | IP: {ClientIP}",
+                            user.UserName, user.Id, clientIp);
+                        await RecordLoginAttemptAsync(resolvedUsername, user.Id, false, "User account has been deleted", LoginType.LDAP, cancellationToken);
                         return APIOperationResponse<AuthenticatedResponse>.Fail(
-                            ResponseType.Unauthorized,
-                            CommonErrorCodes.INVALID_EMAIL_OR_PASSWORD,
-                            "server.invalidLogin");
+                            ResponseType.Forbidden,
+                            CommonErrorCodes.ACCOUNT_DELETED,
+                            "server.accountDeleted");
                     }
 
                     // Check if LDAP user is active
                     if (!user.IsActive)
                     {
-                        _logger.LogWarning("LDAP login failed: Account is disabled. Username: {Username}, UserId: {UserId}",
-                            user.UserName, user.Id);
+                        _logger.LogWarning(
+                            "[LDAP LOGIN] FAILED - Account disabled | Username: {Username} | UserId: {UserId} | IP: {ClientIP}",
+                            user.UserName, user.Id, clientIp);
                         await RecordLoginAttemptAsync(resolvedUsername, user.Id, false, "Account is disabled", LoginType.LDAP, cancellationToken);
                         return APIOperationResponse<AuthenticatedResponse>.Fail(
                             ResponseType.Forbidden,
-                            CommonErrorCodes.INVALID_EMAIL_OR_PASSWORD,
+                            CommonErrorCodes.ACCOUNT_DISABLED,
                             "Your account has been disabled. Please contact your administrator.");
                     }
-
-                    _logger.LogInformation(
-                        "LDAP user already exists. Username: {Username}, UserId: {UserId}",
-                        user.UserName,
-                        user.Id);
                 }
 
-                // 🧠 Step 4: Build authenticated response
+                // Step 10: Generate authentication response
+                _logger.LogDebug("[LDAP LOGIN] Generating auth response | UserId: {UserId}", user.Id);
                 var response = await CreateAndReturnAuthResponseAsync(user, cancellationToken);
-
-                _logger.LogInformation(
-                    "LDAP login successful. Username: {Username}, UserId: {UserId}",
-                    resolvedUsername,
-                    user.Id);
 
                 // Record successful login
                 await RecordLoginAttemptAsync(resolvedUsername, user.Id, true, null, LoginType.LDAP, cancellationToken);
+
+                var duration = (_dateTimeProvider.Now - startTime).TotalMilliseconds;
+                _logger.LogInformation(
+                    "[LDAP LOGIN] SUCCESS | Username: {Username} | UserId: {UserId} | IP: {ClientIP} | Domain: {Domain} | Duration: {Duration}ms",
+                    resolvedUsername, user.Id, clientIp, ldapSettings.LdapDomain, duration);
 
                 return APIOperationResponse<AuthenticatedResponse>.Success(response);
             }
             catch (Exception ex)
             {
-                _logger.LogError(
-                    ex,
-                    "LDAP login attempt threw exception. Username: {Username}",
-                    loginInformation?.Username);
+                var duration = (_dateTimeProvider.Now - startTime).TotalMilliseconds;
+                _logger.LogError(ex,
+                    "[LDAP LOGIN] ERROR - Exception occurred | Username: {Username} | IP: {ClientIP} | Duration: {Duration}ms | Error: {ErrorMessage}",
+                    loginInformation?.Username ?? "N/A", clientIp, duration, ex.Message);
 
                 await RecordLoginAttemptAsync(loginInformation?.Username ?? "Unknown", null, false, 
                     $"Exception: {ex.Message}", LoginType.LDAP, cancellationToken);

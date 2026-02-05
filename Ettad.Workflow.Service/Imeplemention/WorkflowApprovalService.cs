@@ -16,6 +16,7 @@ using Ettad.Workflow.Service.Interface;
 using Ettad.Workflows.Service.DTO;
 using Ettad.Workflows.Service.Events;
 using Ettad.Workflows.Service.Interface;
+using Ettad.Application.Common.Interfaces;
 using MediatR;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
@@ -37,6 +38,7 @@ namespace Ettad.Workflows.Service.Imeplemention
         private readonly IFileUploadService _fileUploadService;
         private readonly ICrossCuttingRepository<FileUplodDetails> _fileDetailsRepository;
         private readonly IDateTimeProvider _dateTimeProvider;
+        private readonly IOrderItemTrackingService _orderItemTrackingService;
 
         public WorkflowApprovalService(
             ApplicationDbContext context, 
@@ -48,7 +50,8 @@ namespace Ettad.Workflows.Service.Imeplemention
             IMediator mediator,
             IFileUploadService fileUploadService,
             ICrossCuttingRepository<FileUplodDetails> fileDetailsRepository,
-            IDateTimeProvider dateTimeProvider)
+            IDateTimeProvider dateTimeProvider,
+            IOrderItemTrackingService orderItemTrackingService)
         {
             _context = context;
             _currentUserService = currentUserService;
@@ -60,6 +63,7 @@ namespace Ettad.Workflows.Service.Imeplemention
             _fileUploadService = fileUploadService;
             _fileDetailsRepository = fileDetailsRepository;
             _dateTimeProvider = dateTimeProvider;
+            _orderItemTrackingService = orderItemTrackingService;
         }
      
         public async Task<IEnumerable<WorkflowApprovalStepDto>> GetAllAsync()
@@ -194,8 +198,8 @@ namespace Ettad.Workflows.Service.Imeplemention
                 .Select(ur => ur.RoleId)
                 .ToListAsync();
 
-            // 1.5 Get active delegations (users who delegated to current user)
-            var activeDelegatorIds = await _userDelegationService.GetActiveDelegatorsForUserAsync(currentUserId);
+            // 1.5 Get active delegations (users who delegated to current user for workflow approval)
+            var activeDelegatorIds = await _userDelegationService.GetActiveDelegatorsForUserAsync(currentUserId, DelegationScope.WorkflowApproval);
             var delegatorRoleIds = new List<string>();
             
             if (activeDelegatorIds != null && activeDelegatorIds.Any())
@@ -680,6 +684,19 @@ namespace Ettad.Workflows.Service.Imeplemention
                 //  Final approval — now notify requester
                 baseRequest.Status = RequestStatus.Approved;
 
+                // Record final approval history for orders
+                if (baseRequest.RequestType == RequestType.Order)
+                {
+                    try
+                    {
+                        await _orderItemTrackingService.RecordFinalApprovalHistoryAsync(baseRequest.Id, step.Id);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to record final approval history. OrderId: {OrderId}", baseRequest.Id);
+                    }
+                }
+
                 var approver = await _context.Users.FirstOrDefaultAsync(u => u.Id == _currentUserService.UserId);
 
                 await _notificationHelperService.SendNotificationAsync(
@@ -890,7 +907,7 @@ namespace Ettad.Workflows.Service.Imeplemention
         }
 
         // Helper: get current approval step by request ID
-        public async Task<WorkflowApprovalStep> GetCurrentApprovalStepByRequestIdAsync(int requestId)
+        public async Task<WorkflowApprovalStep> GetCurrentApprovalStepByRequestIdAsync(long requestId)
         {
             var step = await _context.WorkflowApprovalSteps
                 .Include(x => x.WorkflowStep)
@@ -925,8 +942,8 @@ namespace Ettad.Workflows.Service.Imeplemention
                 return step;
 
             // 3. Check delegation authorization
-            // Fetch active delegators using business logic
-            var activeDelegatorIds = await _userDelegationService.GetActiveDelegatorsForUserAsync(currentUserId);
+            // Fetch active delegators using business logic (filtered by workflow approval scope)
+            var activeDelegatorIds = await _userDelegationService.GetActiveDelegatorsForUserAsync(currentUserId, DelegationScope.WorkflowApproval);
             
             if (activeDelegatorIds != null && activeDelegatorIds.Any())
             {
@@ -1302,7 +1319,7 @@ namespace Ettad.Workflows.Service.Imeplemention
                 .Select(ur => ur.RoleId)
                 .ToListAsync();
 
-            var activeDelegatorIds = await _userDelegationService.GetActiveDelegatorsForUserAsync(currentUserId);
+            var activeDelegatorIds = await _userDelegationService.GetActiveDelegatorsForUserAsync(currentUserId, DelegationScope.WorkflowApproval);
             
             var delegatorRoleIds = new List<string>();
             if (activeDelegatorIds.Any())
@@ -1848,7 +1865,7 @@ namespace Ettad.Workflows.Service.Imeplemention
                 .Select(ur => ur.RoleId)
                 .ToListAsync();
 
-            var activeDelegatorIds = await _userDelegationService.GetActiveDelegatorsForUserAsync(currentUserId);
+            var activeDelegatorIds = await _userDelegationService.GetActiveDelegatorsForUserAsync(currentUserId, DelegationScope.WorkflowApproval);
             
             var delegatorRoleIds = new List<string>();
             if (activeDelegatorIds.Any())
@@ -2479,7 +2496,7 @@ namespace Ettad.Workflows.Service.Imeplemention
         /// <summary>
         /// Get all previous workflow steps that can be returned to for review
         /// </summary>
-        public async Task<IEnumerable<WorkflowStepDto>> GetPreviousWorkflowStepsForReturn(int requestId)
+        public async Task<IEnumerable<WorkflowStepDto>> GetPreviousWorkflowStepsForReturn(long requestId)
         {
             // Get the current approval step for this request
             var currentApprovalStep = await _context.WorkflowApprovalSteps

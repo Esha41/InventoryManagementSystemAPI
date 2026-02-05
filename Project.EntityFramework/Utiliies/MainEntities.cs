@@ -174,6 +174,16 @@ public static class MainEntities
         CrudOperation.Delete,
     };
 
+    [Category(CrudPermissionsGenerator.General)]
+    public static readonly CrudOperation[] LookupTables = new[]
+    {
+        CrudOperation.Page,
+        CrudOperation.View,
+        CrudOperation.Create,
+        CrudOperation.Edit,
+        CrudOperation.Delete,
+    };
+
     [Category(CrudPermissionsGenerator.UserManagement)]
     public static readonly CrudOperation[] Roles = new[]
     {
@@ -316,6 +326,13 @@ public static class MainEntities
 
     [Category(CrudPermissionsGenerator.Dashboard)]
     public static readonly CrudOperation[] Analytics = new[]
+    {
+        CrudOperation.Page,
+        CrudOperation.View,
+    };
+
+    [Category(CrudPermissionsGenerator.Dashboard)]
+    public static readonly CrudOperation[] AdvancedAnalytics = new[]
     {
         CrudOperation.Page,
         CrudOperation.View,

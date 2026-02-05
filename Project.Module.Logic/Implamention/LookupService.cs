@@ -3,6 +3,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Ettad.Application.Common.Interfaces;
 using Ettad.CrossCutting.Comman;
+using Ettad.CrossCutting.Comman.Base;
+using Ettad.CrossCutting.Comman.Time;
 using Ettad.CrossCutting.Data.Repository;
 using Ettad.Lookups.Services.Contracts;
 using Ettad.ResponseHandler.Consts;
@@ -18,17 +20,20 @@ namespace Ettad.Lookups.Services.Implementation
             private readonly ICrossCuttingRepository<T> _repository;
             protected readonly IMapper _mapper;
             protected readonly ICurrentUserService _currentUserService;
+            protected readonly IDateTimeProvider _dateTimeProvider;
             protected readonly ILogger<LookupService<T, TDto>> _logger;
 
             public LookupService(
                 ICrossCuttingRepository<T> repository, 
                 IMapper mapper, 
                 ICurrentUserService currentUserService,
+                IDateTimeProvider dateTimeProvider,
                 ILogger<LookupService<T, TDto>> logger)
             {
                 _repository = repository;
                 _mapper = mapper;
                 _currentUserService = currentUserService;
+                _dateTimeProvider = dateTimeProvider;
                 _logger = logger;
             }
 
@@ -66,6 +71,19 @@ namespace Ettad.Lookups.Services.Implementation
                         _currentUserService.UserName, typeof(T).Name, _currentUserService.OrganizationId, item);
 
                     var entity = _mapper.Map<T>(item);
+                    
+                    // Set audit fields if entity inherits from AuditEntity
+                    if (entity is AuditEntity<long> auditEntity)
+                    {
+                        auditEntity.CreationDate = _dateTimeProvider.Now;
+                        auditEntity.CreatedBy = _currentUserService.UserId;
+                    }
+                    else if (entity is AuditEntity auditEntityBase)
+                    {
+                        auditEntityBase.CreationDate = _dateTimeProvider.Now;
+                        auditEntityBase.CreatedBy = _currentUserService.UserId;
+                    }
+                    
                     var result = await _repository.AddAsync(entity);
                     
                     // Try to get Id property using reflection
@@ -77,11 +95,42 @@ namespace Ettad.Lookups.Services.Implementation
                     
                     return APIOperationResponse<T>.Success(result);
                 }
+                catch (DbUpdateException dbEx)
+                {
+                    _logger.LogError(dbEx, "Database error adding {LookupType} lookup item for Organization {OrganizationId} by User {UserName}", 
+                        typeof(T).Name, _currentUserService.OrganizationId, _currentUserService.UserName);
+                    
+                    // Extract inner exception message for better error details
+                    var errorMessage = dbEx.Message;
+                    if (dbEx.InnerException != null)
+                    {
+                        errorMessage = $"{errorMessage} {dbEx.InnerException.Message}";
+                    }
+                    
+                    // Check for unique constraint violations
+                    if (errorMessage.Contains("UNIQUE KEY") || errorMessage.Contains("unique constraint") || 
+                        errorMessage.Contains("duplicate key") || errorMessage.Contains("Cannot insert duplicate"))
+                    {
+                        return APIOperationResponse<T>.Fail(ResponseType.BadRequest, CommonErrorCodes.OPERATION_FAILED, 
+                            "A record with the same code or name already exists. Please use a unique value.");
+                    }
+                    
+                    return APIOperationResponse<T>.Fail(ResponseType.InternalServerError, CommonErrorCodes.OPERATION_FAILED, 
+                        $"Error adding lookup item: {errorMessage}");
+                }
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "Error adding {LookupType} lookup item for Organization {OrganizationId} by User {UserName}", 
                         typeof(T).Name, _currentUserService.OrganizationId, _currentUserService.UserName);
-                    return APIOperationResponse<T>.Fail(ResponseType.InternalServerError, CommonErrorCodes.OPERATION_FAILED, $"Error adding lookup item: {ex.Message}");
+                    
+                    var errorMessage = ex.Message;
+                    if (ex.InnerException != null)
+                    {
+                        errorMessage = $"{errorMessage} {ex.InnerException.Message}";
+                    }
+                    
+                    return APIOperationResponse<T>.Fail(ResponseType.InternalServerError, CommonErrorCodes.OPERATION_FAILED, 
+                        $"Error adding lookup item: {errorMessage}");
                 }
             }
 

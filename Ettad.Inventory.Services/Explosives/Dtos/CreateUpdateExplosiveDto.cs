@@ -5,7 +5,7 @@ namespace Ettad.Inventory.Service.Explosives.Dtos
 {
     public class CreateUpdateExplosiveDto : CreateUpdateBaseItemDto
     {
-        public ExplosiveUnit Unit { get; set; }
+        public long? UnitId { get; set; }
         
         public long? HazardDivisionId { get; set; }
     }
