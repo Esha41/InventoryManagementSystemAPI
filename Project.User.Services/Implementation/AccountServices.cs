@@ -184,6 +184,19 @@ namespace Ettad.User.Services.Implementation
                     _logger.LogDebug("[LOGIN] CAPTCHA validated successfully | Username: {Username}", loginInformation.Username);
                 }
 
+                // If not an LDAP login and user doesn't exist, return invalid credentials
+                if (!loginInformation.IsLdap && existingUser == null)
+                {
+                    _logger.LogWarning(
+                        "[LOGIN] FAILED - User not found | Username: {Username} | IP: {ClientIP}",
+                        loginInformation.Username, clientIp);
+                    await RecordLoginAttemptAsync(loginInformation.Username.Trim(), null, false, "User not found", LoginType.Admin, cancellationToken);
+                    return APIOperationResponse<AuthenticatedResponse>.Fail(
+                        ResponseType.Unauthorized,
+                        CommonErrorCodes.INVALID_EMAIL_OR_PASSWORD,
+                        "server.invalidLogin");
+                }
+
                 var isAdminLogin = existingUser != null && !loginInformation.IsLdap;
 
                 _logger.LogInformation(
