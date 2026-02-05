@@ -135,11 +135,11 @@ namespace Ettad.User.Services.Implementation
                         _logger.LogWarning(
                             "[LOGIN] BLOCKED - Account locked | Username: {Username} | UserId: {UserId} | IP: {ClientIP} | Reason: Too many failed attempts",
                             loginInformation.Username, existingUser.Id, clientIp);
-                        await RecordLoginAttemptAsync(loginInformation.Username.Trim(), existingUser.Id, false, 
-                            "Account locked due to too many failed attempts", LoginType.Admin, cancellationToken);
+                    await RecordLoginAttemptAsync(loginInformation.Username.Trim(), existingUser.Id, false, 
+                        "Account locked due to too many failed attempts", LoginType.Admin, cancellationToken);
                         return APIOperationResponse<AuthenticatedResponse>.Fail(
                             ResponseType.Forbidden,
-                            CommonErrorCodes.INVALID_EMAIL_OR_PASSWORD,
+                            CommonErrorCodes.ACCOUNT_LOCKED,
                             "Account is temporarily locked due to too many failed login attempts. Please try again in 15 minutes.");
                     }
                 }
@@ -162,7 +162,7 @@ namespace Ettad.User.Services.Implementation
                             "CAPTCHA required but not provided", existingUser != null ? LoginType.Admin : LoginType.Unknown, cancellationToken);
                         return APIOperationResponse<AuthenticatedResponse>.Fail(
                             ResponseType.BadRequest,
-                            CommonErrorCodes.INVALID_EMAIL_OR_PASSWORD,
+                            CommonErrorCodes.CAPTCHA_REQUIRED,
                             "CAPTCHA verification is required. Please complete the CAPTCHA and try again.");
                     }
 
@@ -177,7 +177,7 @@ namespace Ettad.User.Services.Implementation
                             "Invalid CAPTCHA code", existingUser != null ? LoginType.Admin : LoginType.Unknown, cancellationToken);
                         return APIOperationResponse<AuthenticatedResponse>.Fail(
                             ResponseType.BadRequest,
-                            CommonErrorCodes.INVALID_EMAIL_OR_PASSWORD,
+                            CommonErrorCodes.CAPTCHA_INVALID,
                             "CAPTCHA verification failed. Please try again.");
                     }
                     
@@ -250,7 +250,7 @@ namespace Ettad.User.Services.Implementation
                     "server.accountDeleted");
             }
 
-            // Check if account is active
+                // Check if account is active
             if (!user.IsActive)
             {
                 _logger.LogWarning(
@@ -260,7 +260,7 @@ namespace Ettad.User.Services.Implementation
                     "Account is disabled", LoginType.Admin, cancellationToken);
                 return APIOperationResponse<AuthenticatedResponse>.Fail(
                     ResponseType.Forbidden,
-                    CommonErrorCodes.INVALID_EMAIL_OR_PASSWORD,
+                    CommonErrorCodes.ACCOUNT_DISABLED,
                     "Your account has been disabled. Please contact your administrator.");
             }
 
@@ -383,7 +383,7 @@ namespace Ettad.User.Services.Implementation
                         "Account locked due to too many failed attempts", LoginType.LDAP, cancellationToken);
                     return APIOperationResponse<AuthenticatedResponse>.Fail(
                         ResponseType.Forbidden,
-                        CommonErrorCodes.INVALID_EMAIL_OR_PASSWORD,
+                        CommonErrorCodes.ACCOUNT_LOCKED,
                         "Account is temporarily locked due to too many failed login attempts. Please try again in 15 minutes.");
                 }
 
@@ -404,7 +404,7 @@ namespace Ettad.User.Services.Implementation
                             "CAPTCHA required but not provided", LoginType.LDAP, cancellationToken);
                         return APIOperationResponse<AuthenticatedResponse>.Fail(
                             ResponseType.BadRequest,
-                            CommonErrorCodes.INVALID_EMAIL_OR_PASSWORD,
+                            CommonErrorCodes.CAPTCHA_REQUIRED,
                             "CAPTCHA verification is required. Please complete the CAPTCHA and try again.");
                     }
 
@@ -418,7 +418,7 @@ namespace Ettad.User.Services.Implementation
                             "Invalid CAPTCHA code", LoginType.LDAP, cancellationToken);
                         return APIOperationResponse<AuthenticatedResponse>.Fail(
                             ResponseType.BadRequest,
-                            CommonErrorCodes.INVALID_EMAIL_OR_PASSWORD,
+                            CommonErrorCodes.CAPTCHA_INVALID,
                             "CAPTCHA verification failed. Please try again.");
                     }
                     
@@ -444,9 +444,9 @@ namespace Ettad.User.Services.Implementation
                             await RecordLoginAttemptAsync(loginInformation.Username, null, false, 
                                 $"Domain mismatch. Expected domain: {ldapSettings.LdapDomain}", LoginType.LDAP, cancellationToken);
                             return APIOperationResponse<AuthenticatedResponse>.Fail(
-                                ResponseType.BadRequest,
+                                ResponseType.Unauthorized,
                                 CommonErrorCodes.INVALID_EMAIL_OR_PASSWORD,
-                                $"Invalid domain. Please use the correct domain: {ldapSettings.LdapDomain}");
+                                "server.invalidLogin");
                         }
                     }
                 }
@@ -509,9 +509,9 @@ namespace Ettad.User.Services.Implementation
                         await RecordLoginAttemptAsync(originalUsername, null, false, 
                             $"Domain mismatch. Expected domain: {ldapSettings.LdapDomain}", LoginType.LDAP, cancellationToken);
                         return APIOperationResponse<AuthenticatedResponse>.Fail(
-                            ResponseType.BadRequest,
+                            ResponseType.Unauthorized,
                             CommonErrorCodes.INVALID_EMAIL_OR_PASSWORD,
-                            $"Invalid domain. Please use the correct domain: {ldapSettings.LdapDomain}");
+                            "server.invalidLogin");
                     }
                     else
                     {
@@ -522,7 +522,7 @@ namespace Ettad.User.Services.Implementation
                         await RecordLoginAttemptAsync(originalUsername, null, false, "Invalid username format", LoginType.LDAP, cancellationToken);
                         return APIOperationResponse<AuthenticatedResponse>.Fail(
                             ResponseType.BadRequest,
-                            CommonErrorCodes.INVALID_EMAIL_OR_PASSWORD,
+                            CommonErrorCodes.INVALID_USERNAME_FORMAT,
                             "Invalid username format. Please use username or username@domain.com");
                     }
                 }
@@ -623,7 +623,7 @@ namespace Ettad.User.Services.Implementation
                         await RecordLoginAttemptAsync(resolvedUsername, user.Id, false, "Account is disabled", LoginType.LDAP, cancellationToken);
                         return APIOperationResponse<AuthenticatedResponse>.Fail(
                             ResponseType.Forbidden,
-                            CommonErrorCodes.INVALID_EMAIL_OR_PASSWORD,
+                            CommonErrorCodes.ACCOUNT_DISABLED,
                             "Your account has been disabled. Please contact your administrator.");
                     }
                 }

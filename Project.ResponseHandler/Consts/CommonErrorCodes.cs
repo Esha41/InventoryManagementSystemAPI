@@ -25,6 +25,12 @@ namespace Ettad.ResponseHandler.Consts
         public static readonly CommonErrorCodes NOT_FOUND = new CommonErrorCodes("NOT_FOUND", CommonErrorCode.NOT_FOUND);
         public static readonly CommonErrorCodes INVALID_LDAP_SETTINGS = new CommonErrorCodes("INVALID_LDAP_SETTINGS", CommonErrorCode.INVALID_LDAP_SETTINGS);
         public static readonly CommonErrorCodes ACCOUNT_DELETED = new CommonErrorCodes("ACCOUNT_DELETED", CommonErrorCode.ACCOUNT_DELETED);
+        public static readonly CommonErrorCodes ACCOUNT_LOCKED = new CommonErrorCodes("ACCOUNT_LOCKED", CommonErrorCode.ACCOUNT_LOCKED);
+        public static readonly CommonErrorCodes ACCOUNT_DISABLED = new CommonErrorCodes("ACCOUNT_DISABLED", CommonErrorCode.ACCOUNT_DISABLED);
+        public static readonly CommonErrorCodes CAPTCHA_REQUIRED = new CommonErrorCodes("CAPTCHA_REQUIRED", CommonErrorCode.CAPTCHA_REQUIRED);
+        public static readonly CommonErrorCodes CAPTCHA_INVALID = new CommonErrorCodes("CAPTCHA_INVALID", CommonErrorCode.CAPTCHA_INVALID);
+        public static readonly CommonErrorCodes INVALID_DOMAIN = new CommonErrorCodes("INVALID_DOMAIN", CommonErrorCode.INVALID_DOMAIN);
+        public static readonly CommonErrorCodes INVALID_USERNAME_FORMAT = new CommonErrorCodes("INVALID_USERNAME_FORMAT", CommonErrorCode.INVALID_USERNAME_FORMAT);
 
         private CommonErrorCodes(string value, CommonErrorCode code)
         {
@@ -56,7 +62,13 @@ namespace Ettad.ResponseHandler.Consts
         NotAuthorized = 0012,
            NOT_FOUND = 0013,
         INVALID_LDAP_SETTINGS=0014,
-        ACCOUNT_DELETED = 0015
+        ACCOUNT_DELETED = 0015,
+        ACCOUNT_LOCKED = 0016,
+        ACCOUNT_DISABLED = 0017,
+        CAPTCHA_REQUIRED = 0018,
+        CAPTCHA_INVALID = 0019,
+        INVALID_DOMAIN = 0020,
+        INVALID_USERNAME_FORMAT = 0021
 
     }
 }
