@@ -1,10 +1,12 @@
 using DevExpress.XtraReports.UI;
 using DevExpress.XtraReports.Web.ClientControls;
 using DevExpress.XtraReports.Web.Extensions;
-using Ettad.Application.Common.Interfaces;
 using Ettad.Data.Enums;
+using Ettad.Inventory.Service.AllowanceItems;
 using Ettad.Reporting.Services;
 using Ettad.Reporting.Services.Reports.Dtos;
+using Project.Api.Reports.DataSources;
+using Project.Api.Reports.Factories;
 
 namespace Ettad.Reporting.Storage
 {
@@ -14,10 +16,14 @@ namespace Ettad.Reporting.Storage
     public class CustomReportStorageWebExtension : ReportStorageWebExtension
     {
         private readonly IReportService _reportService;
+        private readonly ReportFactory _reportFactory;
 
-        public CustomReportStorageWebExtension(IReportService reportService)
+        private readonly IServiceScopeFactory _scopeFactory;
+        public CustomReportStorageWebExtension(IServiceScopeFactory scopeFactory, IReportService reportService, ReportFactory reportFactory)
         {
             _reportService = reportService;
+            _reportFactory = reportFactory;
+            _scopeFactory = scopeFactory;
         }
 
         public override bool IsValidUrl(string url)
@@ -35,34 +41,20 @@ namespace Ettad.Reporting.Storage
         public override byte[] GetData(string url)
         {
             try
-            {
-                // If it's a base template, return it directly
-                if (url == "BaseReportTemplate")
-                {
-                    var baseReport = new Ettad.Reporting.Reports.BaseReportTemplate();
-                    using (var ms = new MemoryStream())
-                    {
-                        baseReport.SaveLayoutToXml(ms);
-                        return ms.ToArray();
-                    }
-                }
-
-                // Try to get report from database using service
-                var result = _reportService.GetByUrlAsync(url).GetAwaiter().GetResult();
-
-                if (result.Succeeded && result.Data != null)
-                {
-                    return result.Data.LayoutData ?? Array.Empty<byte>();
-                }
-
-                return Array.Empty<byte>();
-            }
-            catch (FaultException ex)
-            {
+            { // 1?? Try DB first
+              var result = _reportService.GetByUrlAsync(url).GetAwaiter().GetResult(); 
+                if (result.Succeeded && result.Data?.LayoutData != null) return result.Data.LayoutData; 
+                
+                // 2?? No layout in DB ? create via factory
+                var report = _reportFactory.Create(url); 
+                using var ms = new MemoryStream(); 
+                report.SaveLayoutToXml(ms); 
+                return ms.ToArray(); 
+            } 
+            catch (FaultException ex) 
+            { 
                 // Log error
-                System.Diagnostics.Debug.WriteLine($"Error getting report data: {ex.Message}");
-                return Array.Empty<byte>();
-            }
+                System.Diagnostics.Debug.WriteLine($"Error getting report data: {ex.Message}"); return Array.Empty<byte>(); } 
         }
 
         public override Dictionary<string, string> GetUrls()
@@ -170,7 +162,7 @@ namespace Ettad.Reporting.Storage
                 throw new FaultException(createResult.Message);
             }
 
-            return createResult.Data??url;
+            return createResult.Data ?? url;
         }
     }
 }

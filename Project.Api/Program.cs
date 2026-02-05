@@ -1,3 +1,7 @@
+using DevExpress.AspNetCore;
+using DevExpress.AspNetCore.Reporting;
+using DevExpress.XtraCharts;
+using DevExpress.XtraReports.Web.Extensions;
 using Ettad.Comman.Idenitity;
 using Ettad.CrossCutting.Comman.FileUpload;
 using Ettad.CrossCutting.Comman.Idenitity;
@@ -24,7 +28,6 @@ using Ettad.Workflow.Service;
 using Ettad.Workflows.Service.Imeplemention;
 using Ettad.Workflows.Service.Interface;
 using Hangfire;
-using DevExpress.AspNetCore.Reporting;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
@@ -34,6 +37,9 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using Moujam.Casiher.Comman.Models;
+using Project.Api.Reports.DataSources;
+using Project.Api.Reports.DTO;
+using Project.Api.Reports.Factories;
 using Serilog;
 using Serilog.Events;
 using Swashbuckle.AspNetCore.SwaggerGen;
@@ -43,8 +49,6 @@ using System.Reflection;
 using System.Reflection;
 using System.Text;
 using System.Text.Json;
-using DevExpress.AspNetCore;
-using DevExpress.XtraReports.Web.Extensions;
 
 // Configure Serilog
 Log.Logger = new LoggerConfiguration()
@@ -84,6 +88,7 @@ try
     builder.Services.AddScoped<Ettad.Application.Common.Interfaces.ICurrentUserService, Ettad.User.Services.Implementation.CurrentUserService>();
 
     #region DevExpress Reporting Configuration
+
     // Register DevExpress Reporting services
     builder.Services.AddDevExpressControls();
     // Add services to the container.
@@ -118,6 +123,13 @@ try
             viewerConfigurator.UseCachedReportSourceBuilder();
         });
     });
+    DevExpress.Utils.DeserializationSettings.RegisterTrustedClass(typeof(AllowanceItemReportDto));
+    DevExpress.Utils.DeserializationSettings.RegisterTrustedClass(typeof(AllowanceItemsRealTimeDataSource));
+    DevExpress.Utils.DeserializationSettings.RegisterTrustedClass(typeof(AllowanceItemsDesignTimeDataSource));
+    // Register IServiceProvider and IServiceScope as trusted types to allow ObjectDataSource deserialization
+    DevExpress.Utils.DeserializationSettings.RegisterTrustedClass(typeof(System.IServiceProvider));
+    DevExpress.Utils.DeserializationSettings.RegisterTrustedClass(typeof(Microsoft.Extensions.DependencyInjection.IServiceScope));
+
     // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
     builder.Services.AddEndpointsApiExplorer();
     builder.Services.AddScoped(typeof(CrossCuttingRepository<>));
@@ -140,6 +152,7 @@ try
     builder.Services.AddScoped<Ettad.Reporting.Services.IReportService, Ettad.Reporting.Services.ReportService>();
 
     // Register custom report storage extension
+    builder.Services.AddScoped<ReportFactory>();
     builder.Services.AddScoped<ReportStorageWebExtension, Ettad.Reporting.Storage.CustomReportStorageWebExtension>();
     #endregion
 

@@ -10,15 +10,10 @@ using Ettad.Data.Entities.Reports;
 using Ettad.Data.Enums;
 using Ettad.EntityFramework.DataBaseContext;
 using Ettad.Reporting.Services.Reports.Dtos;
+using Project.Api.Services.Reports.Dtos;
 using Ettad.ResponseHandler.Consts;
 using Ettad.ResponseHandler.Models;
-using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
-using Project.Api.Services.Reports.Dtos;
-using System.IO;
-using System.Text;
-using System.Xml.Linq;
 
 namespace Ettad.Reporting.Services
 {
@@ -439,6 +434,49 @@ namespace Ettad.Reporting.Services
             {
                 _logger.LogError(ex, "Error retrieving report statuses. User: {UserId}", _currentUserService.UserId);
                 return APIOperationResponse<List<ReportStatusDto>>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
+            }
+        }
+
+        public async Task<APIOperationResponse<List<ReportTemplateDto>>> GetTemplatesAsync()
+        {
+            _logger.LogInformation("Getting all report templates. User: {UserId}", _currentUserService.UserId);
+
+            try
+            {
+                // Get user department and permissions if needed for filtering
+                var userDepartmentId = _currentUserService.DepartmentId;
+                var canViewAll = _currentUserService.IsSuperAdmin;
+
+                var templates = new List<ReportTemplateDto>
+                {
+                    new ReportTemplateDto
+                    {
+                        Url = "BaseReportTemplate",
+                        Name = "Base Report Template",
+                        Description = "A basic report template with standard sections"
+                    },
+                    new ReportTemplateDto
+                    {
+                        Url = "AllowanceItemsReport",
+                        Name = "Allowance Items Report",
+                        Description = "Template for allowance items reporting"
+                    }
+                };
+
+                // You can add filtering logic here based on user permissions/department if needed
+                // For example:
+                // if (!canViewAll && userDepartmentId.HasValue)
+                // {
+                //     // Filter templates based on department
+                // }
+
+                _logger.LogInformation("Retrieved {Count} report templates. User: {UserId}", templates.Count, _currentUserService.UserId);
+                return APIOperationResponse<List<ReportTemplateDto>>.Success(templates);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving report templates. User: {UserId}", _currentUserService.UserId);
+                return APIOperationResponse<List<ReportTemplateDto>>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
             }
         }
 

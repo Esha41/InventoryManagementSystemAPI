@@ -132,6 +132,18 @@ namespace Ettad.Reporting.Controllers
         }
 
         /// <summary>
+        /// Get all available report templates
+        /// </summary>
+        [HttpGet("templates")]
+        [ProducesResponseType((int)HttpStatusCode.OK)]
+        [CheckAuthorize("Permissions.Report.View", "Permissions.Report.Create", "Permissions.Report.Page")]
+        public async Task<IActionResult> GetTemplates()
+        {
+            var result = await _reportService.GetTemplatesAsync();
+            return ProcessResponse(result);
+        }
+
+        /// <summary>
         /// Import a report from a file (.repx or .xml)
         /// </summary>
         //[HttpPost("import")]

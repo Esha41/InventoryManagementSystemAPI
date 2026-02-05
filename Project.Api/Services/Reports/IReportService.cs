@@ -1,6 +1,7 @@
 using Ettad.Reporting.Services.Reports.Dtos;
 using Ettad.ResponseHandler.Models;
 using Microsoft.AspNetCore.Http;
+using Project.Api.Services.Reports.Dtos;
 
 namespace Ettad.Reporting.Services
 {
@@ -16,6 +17,7 @@ namespace Ettad.Reporting.Services
         Task<APIOperationResponse<bool>> DeleteAsync(Guid id);
         Task<bool> IsReportExists(string name);
         Task<APIOperationResponse<List<ReportStatusDto>>> GetReportStatusesAsync();
+        Task<APIOperationResponse<List<ReportTemplateDto>>> GetTemplatesAsync();
         //Task<APIOperationResponse<Guid>> ImportAsync(IFormFile file, string? reportName = null, string? url = null, string? description = null);
        // Task<IReadOnlyList<TableSchemaInfo>> GetTableNamesAsync(CancellationToken cancellationToken = default);
     }
