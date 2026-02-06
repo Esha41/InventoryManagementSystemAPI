@@ -3519,7 +3519,7 @@ namespace Project.Api.Reports.Templates
             this.xrTable1.Padding = new DevExpress.XtraPrinting.PaddingInfo(2F, 2F, 0F, 0F, 100F);
             this.xrTable1.Rows.AddRange(new DevExpress.XtraReports.UI.XRTableRow[] {
             this.xrTableRow1});
-            this.xrTable1.SizeF = new System.Drawing.SizeF(775.3053F, 25F);
+            this.xrTable1.SizeF = new System.Drawing.SizeF(790.3055F, 25F);
             // 
             // xrTableRow1
             // 
@@ -3548,7 +3548,7 @@ namespace Project.Api.Reports.Templates
             this.xrTableCellSrNoDetail.Summary = xrSummary2;
             this.xrTableCellSrNoDetail.Text = "0";
             this.xrTableCellSrNoDetail.TextAlignment = DevExpress.XtraPrinting.TextAlignment.MiddleCenter;
-            this.xrTableCellSrNoDetail.Weight = 0.5D;
+            this.xrTableCellSrNoDetail.Weight = 0.39939408673907911D;
             // 
             // xrTableCell11
             // 
@@ -3563,7 +3563,7 @@ namespace Project.Api.Reports.Templates
             this.xrTableCell11.Padding = new DevExpress.XtraPrinting.PaddingInfo(5F, 5F, 5F, 5F, 100F);
             this.xrTableCell11.Text = "xrTableCell11";
             this.xrTableCell11.TextAlignment = DevExpress.XtraPrinting.TextAlignment.MiddleLeft;
-            this.xrTableCell11.Weight = 1D;
+            this.xrTableCell11.Weight = 1.2715414920502115D;
             // 
             // xrTableCell10
             // 
@@ -3578,7 +3578,7 @@ namespace Project.Api.Reports.Templates
             this.xrTableCell10.Padding = new DevExpress.XtraPrinting.PaddingInfo(5F, 5F, 5F, 5F, 100F);
             this.xrTableCell10.Text = "Column2";
             this.xrTableCell10.TextAlignment = DevExpress.XtraPrinting.TextAlignment.MiddleLeft;
-            this.xrTableCell10.Weight = 1D;
+            this.xrTableCell10.Weight = 1.0246866252284375D;
             // 
             // xrTableCell1
             // 
@@ -3594,7 +3594,7 @@ namespace Project.Api.Reports.Templates
             this.xrTableCell1.Text = "Column3";
             this.xrTableCell1.TextAlignment = DevExpress.XtraPrinting.TextAlignment.MiddleRight;
             this.xrTableCell1.TextFormatString = "{0:N2}";
-            this.xrTableCell1.Weight = 1D;
+            this.xrTableCell1.Weight = 0.91616257047178207D;
             // 
             // xrTableCell9
             // 
@@ -3610,7 +3610,7 @@ namespace Project.Api.Reports.Templates
             this.xrTableCell9.Text = "Column4";
             this.xrTableCell9.TextAlignment = DevExpress.XtraPrinting.TextAlignment.MiddleRight;
             this.xrTableCell9.TextFormatString = "{0:N2}";
-            this.xrTableCell9.Weight = 1D;
+            this.xrTableCell9.Weight = 0.88821522551048993D;
             // 
             // xrTableCell2
             // 
@@ -3626,7 +3626,7 @@ namespace Project.Api.Reports.Templates
             this.xrTableCell2.Text = "Column5";
             this.xrTableCell2.TextAlignment = DevExpress.XtraPrinting.TextAlignment.MiddleRight;
             this.xrTableCell2.TextFormatString = "{0:N2}";
-            this.xrTableCell2.Weight = 1D;
+            this.xrTableCell2.Weight = 0.88821752818831923D;
             // 
             // xrTableCell13
             // 
@@ -3642,7 +3642,7 @@ namespace Project.Api.Reports.Templates
             this.xrTableCell13.Text = "Column8";
             this.xrTableCell13.TextAlignment = DevExpress.XtraPrinting.TextAlignment.MiddleRight;
             this.xrTableCell13.TextFormatString = "{0:N2}";
-            this.xrTableCell13.Weight = 1D;
+            this.xrTableCell13.Weight = 1.2375409187818371D;
             // 
             // bottomMarginBand1
             // 
@@ -3683,7 +3683,7 @@ namespace Project.Api.Reports.Templates
             // 
             // xrLabel1
             // 
-            this.xrLabel1.LocationFloat = new DevExpress.Utils.PointFloat(573.4939F, 102.5556F);
+            this.xrLabel1.LocationFloat = new DevExpress.Utils.PointFloat(598.0834F, 102.5556F);
             this.xrLabel1.Multiline = true;
             this.xrLabel1.Name = "xrLabel1";
             this.xrLabel1.Padding = new DevExpress.XtraPrinting.PaddingInfo(2F, 2F, 0F, 0F, 100F);
@@ -3692,7 +3692,7 @@ namespace Project.Api.Reports.Templates
             // 
             // xrPageInfo1
             // 
-            this.xrPageInfo1.LocationFloat = new DevExpress.Utils.PointFloat(670.2996F, 102.5556F);
+            this.xrPageInfo1.LocationFloat = new DevExpress.Utils.PointFloat(694.889F, 102.5556F);
             this.xrPageInfo1.Name = "xrPageInfo1";
             this.xrPageInfo1.Padding = new DevExpress.XtraPrinting.PaddingInfo(2F, 2F, 0F, 0F, 100F);
             this.xrPageInfo1.PageInfo = DevExpress.XtraPrinting.PageInfo.DateTime;
@@ -3741,7 +3741,7 @@ namespace Project.Api.Reports.Templates
             this.xrTable2.Padding = new DevExpress.XtraPrinting.PaddingInfo(5F, 5F, 5F, 5F, 100F);
             this.xrTable2.Rows.AddRange(new DevExpress.XtraReports.UI.XRTableRow[] {
             this.xrTableRow2});
-            this.xrTable2.SizeF = new System.Drawing.SizeF(775.3056F, 30F);
+            this.xrTable2.SizeF = new System.Drawing.SizeF(790.3055F, 30F);
             this.xrTable2.StylePriority.UseFont = false;
             // 
             // xrTableRow2
@@ -3768,9 +3768,10 @@ namespace Project.Api.Reports.Templates
             this.xrTableCellSrNoHeader.Multiline = true;
             this.xrTableCellSrNoHeader.Name = "xrTableCellSrNoHeader";
             this.xrTableCellSrNoHeader.Padding = new DevExpress.XtraPrinting.PaddingInfo(5F, 5F, 5F, 5F, 100F);
-            this.xrTableCellSrNoHeader.Text = "Sr No";
-            this.xrTableCellSrNoHeader.TextAlignment = DevExpress.XtraPrinting.TextAlignment.MiddleCenter;
-            this.xrTableCellSrNoHeader.Weight = 0.5D;
+            this.xrTableCellSrNoHeader.StylePriority.UseTextAlignment = false;
+            this.xrTableCellSrNoHeader.Text = "Sr #";
+            this.xrTableCellSrNoHeader.TextAlignment = DevExpress.XtraPrinting.TextAlignment.MiddleLeft;
+            this.xrTableCellSrNoHeader.Weight = 0.39939435021094483D;
             // 
             // xrTableCell3
             // 
@@ -3785,7 +3786,7 @@ namespace Project.Api.Reports.Templates
             this.xrTableCell3.Padding = new DevExpress.XtraPrinting.PaddingInfo(5F, 5F, 5F, 5F, 100F);
             this.xrTableCell3.Text = "Department";
             this.xrTableCell3.TextAlignment = DevExpress.XtraPrinting.TextAlignment.MiddleLeft;
-            this.xrTableCell3.Weight = 1D;
+            this.xrTableCell3.Weight = 1.2715410333681896D;
             // 
             // xrTableCell4
             // 
@@ -3800,7 +3801,7 @@ namespace Project.Api.Reports.Templates
             this.xrTableCell4.Padding = new DevExpress.XtraPrinting.PaddingInfo(5F, 5F, 5F, 5F, 100F);
             this.xrTableCell4.Text = "Item Name";
             this.xrTableCell4.TextAlignment = DevExpress.XtraPrinting.TextAlignment.MiddleLeft;
-            this.xrTableCell4.Weight = 1D;
+            this.xrTableCell4.Weight = 1.0246866155112884D;
             // 
             // xrTableCell5
             // 
@@ -3815,7 +3816,7 @@ namespace Project.Api.Reports.Templates
             this.xrTableCell5.Padding = new DevExpress.XtraPrinting.PaddingInfo(5F, 5F, 5F, 5F, 100F);
             this.xrTableCell5.Text = "Total Quantity";
             this.xrTableCell5.TextAlignment = DevExpress.XtraPrinting.TextAlignment.MiddleRight;
-            this.xrTableCell5.Weight = 1D;
+            this.xrTableCell5.Weight = 0.9161617079864D;
             // 
             // xrTableCell6
             // 
@@ -3830,7 +3831,7 @@ namespace Project.Api.Reports.Templates
             this.xrTableCell6.Padding = new DevExpress.XtraPrinting.PaddingInfo(5F, 5F, 5F, 5F, 100F);
             this.xrTableCell6.Text = "Used Quantity";
             this.xrTableCell6.TextAlignment = DevExpress.XtraPrinting.TextAlignment.MiddleRight;
-            this.xrTableCell6.Weight = 1D;
+            this.xrTableCell6.Weight = 0.88821488573172425D;
             // 
             // xrTableCell7
             // 
@@ -3845,7 +3846,7 @@ namespace Project.Api.Reports.Templates
             this.xrTableCell7.Padding = new DevExpress.XtraPrinting.PaddingInfo(5F, 5F, 5F, 5F, 100F);
             this.xrTableCell7.Text = "Hold Quantity";
             this.xrTableCell7.TextAlignment = DevExpress.XtraPrinting.TextAlignment.MiddleRight;
-            this.xrTableCell7.Weight = 1D;
+            this.xrTableCell7.Weight = 0.88821770011463008D;
             // 
             // xrTableCell8
             // 
@@ -3858,9 +3859,10 @@ namespace Project.Api.Reports.Templates
             this.xrTableCell8.Multiline = true;
             this.xrTableCell8.Name = "xrTableCell8";
             this.xrTableCell8.Padding = new DevExpress.XtraPrinting.PaddingInfo(5F, 5F, 5F, 5F, 100F);
+            this.xrTableCell8.StylePriority.UseTextAlignment = false;
             this.xrTableCell8.Text = "Remaining Quantity";
-            this.xrTableCell8.TextAlignment = DevExpress.XtraPrinting.TextAlignment.MiddleRight;
-            this.xrTableCell8.Weight = 1D;
+            this.xrTableCell8.TextAlignment = DevExpress.XtraPrinting.TextAlignment.MiddleLeft;
+            this.xrTableCell8.Weight = 1.2375400577220093D;
             // 
             // PageFooter
             // 
@@ -3897,10 +3899,10 @@ namespace Project.Api.Reports.Templates
             // xrPageInfo
             // 
             this.xrPageInfo.Font = new DevExpress.Drawing.DXFont("Segoe UI", 8F);
-            this.xrPageInfo.LocationFloat = new DevExpress.Utils.PointFloat(670.2995F, 0F);
+            this.xrPageInfo.LocationFloat = new DevExpress.Utils.PointFloat(670.2996F, 0F);
             this.xrPageInfo.Name = "xrPageInfo";
             this.xrPageInfo.Padding = new DevExpress.XtraPrinting.PaddingInfo(2F, 2F, 0F, 0F, 100F);
-            this.xrPageInfo.SizeF = new System.Drawing.SizeF(104.7005F, 18F);
+            this.xrPageInfo.SizeF = new System.Drawing.SizeF(120.7004F, 18F);
             this.xrPageInfo.TextAlignment = DevExpress.XtraPrinting.TextAlignment.MiddleRight;
             this.xrPageInfo.TextFormatString = "Page {0} of {1}";
             // 
@@ -3924,7 +3926,7 @@ namespace Project.Api.Reports.Templates
             this.xrTableSummary.Padding = new DevExpress.XtraPrinting.PaddingInfo(2F, 2F, 0F, 0F, 100F);
             this.xrTableSummary.Rows.AddRange(new DevExpress.XtraReports.UI.XRTableRow[] {
             this.xrTableRowSummary});
-            this.xrTableSummary.SizeF = new System.Drawing.SizeF(775.3053F, 30F);
+            this.xrTableSummary.SizeF = new System.Drawing.SizeF(790.3055F, 30F);
             this.xrTableSummary.StylePriority.UseFont = false;
             // 
             // xrTableRowSummary
@@ -3951,7 +3953,7 @@ namespace Project.Api.Reports.Templates
             this.xrTableCellSrNoSummary.Multiline = true;
             this.xrTableCellSrNoSummary.Name = "xrTableCellSrNoSummary";
             this.xrTableCellSrNoSummary.Padding = new DevExpress.XtraPrinting.PaddingInfo(5F, 5F, 5F, 5F, 100F);
-            this.xrTableCellSrNoSummary.Weight = 0.5D;
+            this.xrTableCellSrNoSummary.Weight = 0.39939408673907911D;
             // 
             // xrTableCellSummaryTotal
             // 
@@ -3966,7 +3968,7 @@ namespace Project.Api.Reports.Templates
             this.xrTableCellSummaryTotal.Padding = new DevExpress.XtraPrinting.PaddingInfo(5F, 5F, 5F, 5F, 100F);
             this.xrTableCellSummaryTotal.Text = "Total";
             this.xrTableCellSummaryTotal.TextAlignment = DevExpress.XtraPrinting.TextAlignment.MiddleLeft;
-            this.xrTableCellSummaryTotal.Weight = 1D;
+            this.xrTableCellSummaryTotal.Weight = 1.2715414920502115D;
             // 
             // xrTableCellSummaryEmpty1
             // 
@@ -3979,7 +3981,7 @@ namespace Project.Api.Reports.Templates
             this.xrTableCellSummaryEmpty1.Multiline = true;
             this.xrTableCellSummaryEmpty1.Name = "xrTableCellSummaryEmpty1";
             this.xrTableCellSummaryEmpty1.Padding = new DevExpress.XtraPrinting.PaddingInfo(5F, 5F, 5F, 5F, 100F);
-            this.xrTableCellSummaryEmpty1.Weight = 1D;
+            this.xrTableCellSummaryEmpty1.Weight = 1.0246863693753454D;
             // 
             // xrTableCellSummaryTotalQty
             // 
@@ -3997,7 +3999,7 @@ namespace Project.Api.Reports.Templates
             this.xrTableCellSummaryTotalQty.Text = "0";
             this.xrTableCellSummaryTotalQty.TextAlignment = DevExpress.XtraPrinting.TextAlignment.MiddleRight;
             this.xrTableCellSummaryTotalQty.TextFormatString = "{0:N2}";
-            this.xrTableCellSummaryTotalQty.Weight = 1D;
+            this.xrTableCellSummaryTotalQty.Weight = 0.91616257047178207D;
             // 
             // xrTableCellSummaryUsedQty
             // 
@@ -4015,7 +4017,7 @@ namespace Project.Api.Reports.Templates
             this.xrTableCellSummaryUsedQty.Text = "0";
             this.xrTableCellSummaryUsedQty.TextAlignment = DevExpress.XtraPrinting.TextAlignment.MiddleRight;
             this.xrTableCellSummaryUsedQty.TextFormatString = "{0:N2}";
-            this.xrTableCellSummaryUsedQty.Weight = 1D;
+            this.xrTableCellSummaryUsedQty.Weight = 0.88821548136358208D;
             // 
             // xrTableCellSummaryReservedQty
             // 
@@ -4033,7 +4035,7 @@ namespace Project.Api.Reports.Templates
             this.xrTableCellSummaryReservedQty.Text = "0";
             this.xrTableCellSummaryReservedQty.TextAlignment = DevExpress.XtraPrinting.TextAlignment.MiddleRight;
             this.xrTableCellSummaryReservedQty.TextFormatString = "{0:N2}";
-            this.xrTableCellSummaryReservedQty.Weight = 1D;
+            this.xrTableCellSummaryReservedQty.Weight = 0.88821701648213491D;
             // 
             // xrTableCellSummaryRemainingQty
             // 
@@ -4051,7 +4053,7 @@ namespace Project.Api.Reports.Templates
             this.xrTableCellSummaryRemainingQty.Text = "0";
             this.xrTableCellSummaryRemainingQty.TextAlignment = DevExpress.XtraPrinting.TextAlignment.MiddleRight;
             this.xrTableCellSummaryRemainingQty.TextFormatString = "{0:N2}";
-            this.xrTableCellSummaryRemainingQty.Weight = 1D;
+            this.xrTableCellSummaryRemainingQty.Weight = 1.2375414304880215D;
             // 
             // xrLabelReportFooter
             // 
@@ -4059,7 +4061,7 @@ namespace Project.Api.Reports.Templates
             this.xrLabelReportFooter.LocationFloat = new DevExpress.Utils.PointFloat(0F, 30F);
             this.xrLabelReportFooter.Name = "xrLabelReportFooter";
             this.xrLabelReportFooter.Padding = new DevExpress.XtraPrinting.PaddingInfo(2F, 2F, 0F, 0F, 100F);
-            this.xrLabelReportFooter.SizeF = new System.Drawing.SizeF(775.9998F, 18F);
+            this.xrLabelReportFooter.SizeF = new System.Drawing.SizeF(791F, 18F);
             this.xrLabelReportFooter.Text = "End of Report";
             this.xrLabelReportFooter.TextAlignment = DevExpress.XtraPrinting.TextAlignment.MiddleCenter;
             // 
@@ -4128,7 +4130,7 @@ namespace Project.Api.Reports.Templates
             this.AllowanceItemDS});
             this.DataSource = this.DesignTimeDS;
             this.FilterString = "[DepartmentId] In (?Department) And [Year] In (?Year)";
-            this.Margins = new DevExpress.Drawing.DXMargins(34F, 40F, 35.41667F, 38.19444F);
+            this.Margins = new DevExpress.Drawing.DXMargins(34F, 25F, 35.41667F, 38.19444F);
             this.ParameterPanelLayoutItems.AddRange(new DevExpress.XtraReports.Parameters.ParameterPanelLayoutItem[] {
             new DevExpress.XtraReports.Parameters.ParameterLayoutItem(this.Language, DevExpress.XtraReports.Parameters.Orientation.Horizontal),
             new DevExpress.XtraReports.Parameters.ParameterLayoutItem(this.Department, DevExpress.XtraReports.Parameters.Orientation.Horizontal),
