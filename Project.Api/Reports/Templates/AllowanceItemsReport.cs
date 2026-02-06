@@ -36,26 +36,27 @@ namespace Project.Api.Reports.Templates
         private DevExpress.XtraReports.UI.XRPictureBox xrPictureBoxLogo;
         private DevExpress.XtraReports.UI.XRLabel xrLabelReportTitle;
         private DevExpress.XtraReports.UI.XRPageInfo xrPageInfo1;
-        private ObjectDataSource objectDataSource1;
         [System.Xml.Serialization.XmlIgnore]
         [System.NonSerialized]
         private readonly IServiceScope? _scope;
-        // Add this constructor
 
         // 1️⃣ DESIGN-TIME constructor (Visual Studio)
         public AllowanceItemsReport()
         {
             InitializeComponent();
-            AttachSchema();
+            AttachDesignTimeSchema();
+          //  this.DataSourceDemanded += Report_DataSourceDemanded;
         }
-
-        private void AttachSchema()
+        //private void Report_DataSourceDemanded(object sender, EventArgs e)
+        //{
+        //    this.DataSource = new AllowanceItemsRealTimeDataSource().Get();
+        //}
+        private void AttachDesignTimeSchema()
         {
             var ods = new ObjectDataSource
             {
                 Name = "AllowanceItems",
-                DataSource = typeof(AllowanceItemsRealTimeDataSource),
-                DataMember = "Get"
+                DataSource = typeof(AllowanceItemReportDto),
             };
 
             this.ComponentStorage.Add(ods);
@@ -64,15 +65,12 @@ namespace Project.Api.Reports.Templates
 
         protected override void OnDataSourceDemanded(EventArgs e)
         {
-            base.OnDataSourceDemanded(e);
-            AttachSchema();
+            this.DataSource = new AllowanceItemsRealTimeDataSource().Get();
         }
 
         private void InitializeComponent()
         {
-            this.components = new System.ComponentModel.Container();
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(AllowanceItemsReport));
-            DevExpress.DataAccess.ObjectBinding.ObjectConstructorInfo objectConstructorInfo2 = new DevExpress.DataAccess.ObjectBinding.ObjectConstructorInfo();
             this.topMarginBand1 = new DevExpress.XtraReports.UI.TopMarginBand();
             this.detailBand1 = new DevExpress.XtraReports.UI.DetailBand();
             this.xrTable1 = new DevExpress.XtraReports.UI.XRTable();
@@ -101,10 +99,8 @@ namespace Project.Api.Reports.Templates
             this.xrPageInfo = new DevExpress.XtraReports.UI.XRPageInfo();
             this.ReportFooter = new DevExpress.XtraReports.UI.ReportFooterBand();
             this.xrLabelReportFooter = new DevExpress.XtraReports.UI.XRLabel();
-            this.objectDataSource1 = new DevExpress.DataAccess.ObjectBinding.ObjectDataSource(this.components);
             ((System.ComponentModel.ISupportInitialize)(this.xrTable1)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.xrTable2)).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)(this.objectDataSource1)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this)).BeginInit();
             // 
             // topMarginBand1
@@ -347,13 +343,6 @@ namespace Project.Api.Reports.Templates
             this.xrLabelReportFooter.Text = "End of Report";
             this.xrLabelReportFooter.TextAlignment = DevExpress.XtraPrinting.TextAlignment.MiddleCenter;
             // 
-            // objectDataSource1
-            // 
-            this.objectDataSource1.Constructor = objectConstructorInfo2;
-            this.objectDataSource1.DataMember = "Get";
-            this.objectDataSource1.DataSource = typeof(global::Project.Api.Reports.DataSources.AllowanceItemsRealTimeDataSource);
-            this.objectDataSource1.Name = "objectDataSource1";
-            // 
             // AllowanceItemsReport
             // 
             this.Bands.AddRange(new DevExpress.XtraReports.UI.Band[] {
@@ -364,14 +353,10 @@ namespace Project.Api.Reports.Templates
             this.PageHeader,
             this.PageFooter,
             this.ReportFooter});
-            this.ComponentStorage.AddRange(new System.ComponentModel.IComponent[] {
-            this.objectDataSource1});
-            this.DataSource = this.objectDataSource1;
             this.Margins = new DevExpress.Drawing.DXMargins(34F, 40F, 35.41667F, 38.19444F);
             this.Version = "25.2";
             ((System.ComponentModel.ISupportInitialize)(this.xrTable1)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.xrTable2)).EndInit();
-            ((System.ComponentModel.ISupportInitialize)(this.objectDataSource1)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this)).EndInit();
 
         }
