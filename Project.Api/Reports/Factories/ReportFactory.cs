@@ -18,7 +18,7 @@ namespace Project.Api.Reports.Factories
         {
             return reportName switch
             {
-                "AllowanceItemsReport" => new AllowanceItemsReport(),
+                "AllowanceItemsReportTemplate" => new AllowanceItemsReportTemplate(),
                 _ => new BaseReportTemplate()
             };
         }

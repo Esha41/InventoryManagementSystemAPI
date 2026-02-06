@@ -457,7 +457,7 @@ namespace Ettad.Reporting.Services
                     },
                     new ReportTemplateDto
                     {
-                        Url = "AllowanceItemsReport",
+                        Url = "AllowanceItemsReportTemplate",
                         Name = "Allowance Items Report",
                         Description = "Template for allowance items reporting"
                     }
