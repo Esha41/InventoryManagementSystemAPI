@@ -4,7 +4,6 @@ using Ettad.Reporting.Services.Reports.Dtos;
 using Ettad.ResponseHandler.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Project.Api.Services.Reports.Dtos;
 using System.Net;
 
 namespace Ettad.Reporting.Controllers

@@ -2,10 +2,8 @@ using DevExpress.XtraReports.UI;
 using DevExpress.XtraReports.Web.ClientControls;
 using DevExpress.XtraReports.Web.Extensions;
 using Ettad.Data.Enums;
-using Ettad.Inventory.Service.AllowanceItems;
 using Ettad.Reporting.Services;
 using Ettad.Reporting.Services.Reports.Dtos;
-using Project.Api.Reports.DataSources;
 using Project.Api.Reports.Factories;
 
 namespace Ettad.Reporting.Storage
@@ -18,12 +16,10 @@ namespace Ettad.Reporting.Storage
         private readonly IReportService _reportService;
         private readonly ReportFactory _reportFactory;
 
-        private readonly IServiceScopeFactory _scopeFactory;
         public CustomReportStorageWebExtension(IServiceScopeFactory scopeFactory, IReportService reportService, ReportFactory reportFactory)
         {
             _reportService = reportService;
             _reportFactory = reportFactory;
-            _scopeFactory = scopeFactory;
         }
 
         public override bool IsValidUrl(string url)

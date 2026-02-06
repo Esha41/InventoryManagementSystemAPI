@@ -7,7 +7,6 @@ using DevExpress.XtraReports.Web.ReportDesigner;
 using DevExpress.XtraReports.Web.ReportDesigner.Services;
 using DevExpress.AspNetCore.Reporting.WebDocumentViewer;
 using DevExpress.AspNetCore.Reporting.WebDocumentViewer.Native.Services;
-using Ettad.Reporting.Services;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ServerApp.Controllers

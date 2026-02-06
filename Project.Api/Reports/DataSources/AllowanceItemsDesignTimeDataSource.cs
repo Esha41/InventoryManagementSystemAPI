@@ -4,7 +4,6 @@ namespace Project.Api.Reports.DataSources
 {
     public static class AllowanceItemsDesignTimeDataSource
     {
-        // Used ONLY by DevExpress designer
         public static List<AllowanceItemReportDto> Get()
         {
             return new List<AllowanceItemReportDto>
