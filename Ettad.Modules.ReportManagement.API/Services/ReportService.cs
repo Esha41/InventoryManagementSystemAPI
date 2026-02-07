@@ -4,13 +4,12 @@ using Ettad.CrossCutting.Data.Repository;
 using Ettad.Data.Entities.Reports;
 using Ettad.Data.Enums;
 using Ettad.EntityFramework.DataBaseContext;
-using Ettad.Reporting.Services.Reports.Dtos;
-using Project.Api.Services.Reports.Dtos;
 using Ettad.ResponseHandler.Consts;
 using Ettad.ResponseHandler.Models;
 using Microsoft.EntityFrameworkCore;
+using Ettad.Modules.ReportManagement.API.Services.Dtos;
 
-namespace Ettad.Reporting.Services
+namespace Ettad.Modules.ReportManagement.API.Services
 {
     public class ReportService : IReportService
     {
@@ -42,7 +41,7 @@ namespace Ettad.Reporting.Services
 
             try
             {
-                System.Linq.Expressions.Expression<System.Func<ReportEntity, bool>> filter;
+                System.Linq.Expressions.Expression<Func<ReportEntity, bool>> filter;
 
                 filter = r => r.ReportStatusId != (int)ReportStatuses.Inactive;
 

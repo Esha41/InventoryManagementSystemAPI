@@ -71,6 +71,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ettad.LdapSettings.Services
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ettad.Modules.FileUpload.API", "Ettad.Modules.FileUpload.API\Ettad.Modules.FileUpload.API.csproj", "{3A813F21-5E0A-4712-92F9-8CF5BB54B8D8}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ettad.Modules.ReportManagement.API", "Ettad.Modules.ReportManagement.API\Ettad.Modules.ReportManagement.API.csproj", "{6FB52022-243A-4A40-AC33-AE62531B9097}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -345,6 +347,18 @@ Global
 		{3A813F21-5E0A-4712-92F9-8CF5BB54B8D8}.Release|x64.Build.0 = Release|Any CPU
 		{3A813F21-5E0A-4712-92F9-8CF5BB54B8D8}.Release|x86.ActiveCfg = Release|Any CPU
 		{3A813F21-5E0A-4712-92F9-8CF5BB54B8D8}.Release|x86.Build.0 = Release|Any CPU
+		{6FB52022-243A-4A40-AC33-AE62531B9097}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6FB52022-243A-4A40-AC33-AE62531B9097}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6FB52022-243A-4A40-AC33-AE62531B9097}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{6FB52022-243A-4A40-AC33-AE62531B9097}.Debug|x64.Build.0 = Debug|Any CPU
+		{6FB52022-243A-4A40-AC33-AE62531B9097}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{6FB52022-243A-4A40-AC33-AE62531B9097}.Debug|x86.Build.0 = Debug|Any CPU
+		{6FB52022-243A-4A40-AC33-AE62531B9097}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6FB52022-243A-4A40-AC33-AE62531B9097}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6FB52022-243A-4A40-AC33-AE62531B9097}.Release|x64.ActiveCfg = Release|Any CPU
+		{6FB52022-243A-4A40-AC33-AE62531B9097}.Release|x64.Build.0 = Release|Any CPU
+		{6FB52022-243A-4A40-AC33-AE62531B9097}.Release|x86.ActiveCfg = Release|Any CPU
+		{6FB52022-243A-4A40-AC33-AE62531B9097}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -379,6 +393,7 @@ Global
 		{87514D9A-EF4A-4498-9E43-568DC69A01BE} = {1F51D699-2110-414A-8E69-433AFBE13C70}
 		{F6E2375E-888A-4584-A4BA-F2693EEBA077} = {1F51D699-2110-414A-8E69-433AFBE13C70}
 		{3A813F21-5E0A-4712-92F9-8CF5BB54B8D8} = {724F3B7A-DA79-4588-9EA4-1BC8EE03ED54}
+		{6FB52022-243A-4A40-AC33-AE62531B9097} = {724F3B7A-DA79-4588-9EA4-1BC8EE03ED54}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {ECC5B3B4-1215-4670-A666-332AAF335B64}

@@ -1,9 +1,9 @@
 ﻿using Ettad.Inventory.Service.AllowanceItems;
-using Project.Api.Reports.DTO;
 using Ettad.CrossCutting.Data.Repository;
 using Ettad.Data.Entities;
+using Ettad.Modules.ReportManagement.API.Services.Dtos;
 
-namespace Project.Api.Reports.DataSources
+namespace Ettad.Modules.ReportManagement.API.Reports.DataSources
 {
     public class AllowanceItemsDataSource
     {

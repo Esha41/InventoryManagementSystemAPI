@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace Ettad.Reporting.Services.Reports.Dtos
+namespace Ettad.Modules.ReportManagement.API.Services.Dtos
 {
     public class CreateReportDto
     {

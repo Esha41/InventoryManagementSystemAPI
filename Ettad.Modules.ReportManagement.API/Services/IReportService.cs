@@ -1,9 +1,8 @@
-using Ettad.Reporting.Services.Reports.Dtos;
 using Ettad.ResponseHandler.Models;
 using Microsoft.AspNetCore.Http;
-using Project.Api.Services.Reports.Dtos;
+using Ettad.Modules.ReportManagement.API.Services.Dtos;
 
-namespace Ettad.Reporting.Services
+namespace Ettad.Modules.ReportManagement.API.Services
 {
     public interface IReportService
     {

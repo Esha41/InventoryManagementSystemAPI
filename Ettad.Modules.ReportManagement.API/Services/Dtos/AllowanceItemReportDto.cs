@@ -1,4 +1,4 @@
-﻿namespace Project.Api.Reports.DTO
+﻿namespace Ettad.Modules.ReportManagement.API.Services.Dtos
 {
     public class AllowanceItemReportDto
     {

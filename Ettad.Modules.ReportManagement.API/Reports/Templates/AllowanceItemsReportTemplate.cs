@@ -1,9 +1,9 @@
 ﻿using DevExpress.DataAccess.ObjectBinding;
-using Project.Api.Reports.DataSources;
-using Project.Api.Reports.DTO;
+using Ettad.Modules.ReportManagement.API.Reports.DataSources;
+using Ettad.Modules.ReportManagement.API.Reports;
 using System.ComponentModel;
 
-namespace Project.Api.Reports.Templates
+namespace Ettad.Modules.ReportManagement.API.Reports.Templates
 {
     public partial class AllowanceItemsReportTemplate : DevExpress.XtraReports.UI.XtraReport
     {
@@ -4104,14 +4104,14 @@ namespace Project.Api.Reports.Templates
             // 
             this.AllowanceItemDS.Constructor = objectConstructorInfo1;
             this.AllowanceItemDS.DataMember = "Get";
-            this.AllowanceItemDS.DataSource = typeof(global::Project.Api.Reports.DataSources.AllowanceItemsDataSource);
+            this.AllowanceItemDS.DataSource = typeof(global::Ettad.Modules.ReportManagement.API.Reports.DataSources.AllowanceItemsDataSource);
             this.AllowanceItemDS.Name = "AllowanceItemDS";
             // 
             // DesignTimeDS
             // 
             this.DesignTimeDS.Constructor = objectConstructorInfo1;
             this.DesignTimeDS.DataMember = "GetDesignTimeData";
-            this.DesignTimeDS.DataSource = typeof(global::Project.Api.Reports.DataSources.AllowanceItemsDataSource);
+            this.DesignTimeDS.DataSource = typeof(global::Ettad.Modules.ReportManagement.API.Reports.DataSources.AllowanceItemsDataSource);
             this.DesignTimeDS.Name = "DesignTimeDS";
             // 
             // AllowanceItemsReportTemplate

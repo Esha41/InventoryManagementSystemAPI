@@ -1,4 +1,4 @@
-namespace Project.Api.Services.Reports.Dtos
+namespace Ettad.Modules.ReportManagement.API.Services.Dtos
 {
     public class ImportReportRequestDto
     {

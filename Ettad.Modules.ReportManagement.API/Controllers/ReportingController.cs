@@ -9,7 +9,7 @@ using DevExpress.AspNetCore.Reporting.WebDocumentViewer;
 using DevExpress.AspNetCore.Reporting.WebDocumentViewer.Native.Services;
 using Microsoft.AspNetCore.Mvc;
 
-namespace ServerApp.Controllers
+namespace Ettad.Modules.ReportManagement.API.Controllers
 {
     [ApiExplorerSettings(IgnoreApi = true)]
     public class CustomWebDocumentViewerController : WebDocumentViewerController

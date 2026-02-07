@@ -1,12 +1,12 @@
 using Ettad.CrossCutting.Common.Security;
-using Ettad.Reporting.Services;
-using Ettad.Reporting.Services.Reports.Dtos;
+using Ettad.Modules.ReportManagement.API.Services;
+using Ettad.Modules.ReportManagement.API.Services.Dtos;
 using Ettad.ResponseHandler.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Net;
 
-namespace Ettad.Reporting.Controllers
+namespace Ettad.Modules.ReportManagement.API.Controllers
 {
     /// <summary>
     /// Controller for managing reports and DevExpress Web Report Designer endpoints

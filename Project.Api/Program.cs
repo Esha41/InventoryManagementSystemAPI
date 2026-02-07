@@ -38,9 +38,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using Moujam.Casiher.Comman.Models;
-using Project.Api.Reports.DataSources;
-using Project.Api.Reports.DTO;
-using Project.Api.Reports.Factories;
+using Ettad.Modules.ReportManagement.API.Reports.DataSources;
+using Ettad.Modules.ReportManagement.API.Reports.Factories;
 using Serilog;
 using Serilog.Events;
 using Swashbuckle.AspNetCore.SwaggerGen;
@@ -50,6 +49,8 @@ using System.Reflection;
 using System.Reflection;
 using System.Text;
 using System.Text.Json;
+using Ettad.Modules.ReportManagement.API.Services;
+using Ettad.Modules.ReportManagement.API.Services.Dtos;
 
 // Configure Serilog
 Log.Logger = new LoggerConfiguration()
@@ -105,7 +106,10 @@ try
         .AddApplicationPart(typeof(Ettad.Modules.EmailSystem.API.Controllers.EmailSettingsController).Assembly)
         .AddApplicationPart(typeof(Ettad.Modules.FileUpload.API.Controllers.FileUploadController).Assembly)
         .AddApplicationPart(typeof(Ettad.LdapSettings.APIs.Controllers.LdapSettingsController).Assembly)
-        .AddApplicationPart(typeof(Ettad.Reporting.Controllers.ReportController).Assembly) // This includes all controllers in Project.Api assembly
+        .AddApplicationPart(typeof(Ettad.Modules.ReportManagement.API.Controllers.ReportController).Assembly) 
+        .AddApplicationPart(typeof(Ettad.Modules.ReportManagement.API.Controllers.CustomQueryBuilderController).Assembly) 
+        .AddApplicationPart(typeof(Ettad.Modules.ReportManagement.API.Controllers.CustomReportDesignerController).Assembly) 
+        .AddApplicationPart(typeof(Ettad.Modules.ReportManagement.API.Controllers.CustomWebDocumentViewerController).Assembly) 
         .AddJsonOptions(options =>
         {
             options.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
@@ -150,11 +154,11 @@ try
     builder.Services.AddScoped<Ettad.CrossCutting.Comman.Time.IDateTimeProvider, Ettad.CrossCutting.Comman.Time.SystemDateTimeProvider>();
     
     // Register Report services
-    builder.Services.AddScoped<Ettad.Reporting.Services.IReportService, Ettad.Reporting.Services.ReportService>();
+    builder.Services.AddScoped<IReportService, ReportService>();
 
     // Register custom report storage extension
-    builder.Services.AddScoped<ReportFactory>();
-    builder.Services.AddScoped<ReportStorageWebExtension, Ettad.Reporting.Storage.CustomReportStorageWebExtension>();
+    builder.Services.AddScoped<Ettad.Modules.ReportManagement.API.Reports.Factories.ReportFactory>();
+    builder.Services.AddScoped<ReportStorageWebExtension, Ettad.Modules.ReportManagement.API.Reports.CustomReportStorageWebExtension>();
     #endregion
 
     // Configure Hangfire for background jobs
@@ -386,7 +390,7 @@ try
             }
         };
     });
-    ReportServiceLocator.ServiceProvider = app.Services;
+    Ettad.Modules.ReportManagement.API.Reports.DataSources.ReportServiceLocator.ServiceProvider = app.Services;
 
     // Configure the HTTP request pipeline.
     // Add error handling for Swagger - only in Development environment
