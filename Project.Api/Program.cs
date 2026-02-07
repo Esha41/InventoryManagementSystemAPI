@@ -13,6 +13,7 @@ using Ettad.EntityFramework.DataBaseContext;
 using Ettad.EntityFramework.DataBaseContext.DataSeeding;
 using Ettad.EntityFramework.Interceptors;
 using Ettad.Inventory.Service;
+using Ettad.Inventory.Service.AllowanceItems;
 using Ettad.Inventory.Service.Monitoring;
 using Ettad.LdapSettings.Services;
 using Ettad.Lookups.Services.Contracts;
@@ -124,8 +125,8 @@ try
         });
     });
     DevExpress.Utils.DeserializationSettings.RegisterTrustedClass(typeof(AllowanceItemReportDto));
-    DevExpress.Utils.DeserializationSettings.RegisterTrustedClass(typeof(AllowanceItemsRealTimeDataSource));
-    DevExpress.Utils.DeserializationSettings.RegisterTrustedClass(typeof(AllowanceItemsDesignTimeDataSource));
+    DevExpress.Utils.DeserializationSettings.RegisterTrustedClass(typeof(AllowanceItemsDataSource));
+    DevExpress.Utils.DeserializationSettings.RegisterTrustedClass(typeof(IAllowanceItemService));
     // Register IServiceProvider and IServiceScope as trusted types to allow ObjectDataSource deserialization
     DevExpress.Utils.DeserializationSettings.RegisterTrustedClass(typeof(System.IServiceProvider));
     DevExpress.Utils.DeserializationSettings.RegisterTrustedClass(typeof(Microsoft.Extensions.DependencyInjection.IServiceScope));

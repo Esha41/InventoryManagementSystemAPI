@@ -37,10 +37,8 @@ namespace Project.Api.Reports.Templates
         private DevExpress.XtraReports.UI.XRPageInfo xrPageInfo1;
         private DevExpress.XtraReports.UI.XRLabel xrLabel1;
         private DevExpress.DataAccess.Sql.SqlDataSource EttadDataSource;
-        private ObjectDataSource DesignTimeDS;
         private DevExpress.XtraReports.Parameters.Parameter Language;
         private DevExpress.XtraReports.UI.XRLabel xrLabelReportTitle;
-        private ObjectDataSource AllowanceItemDS;
         private DevExpress.XtraReports.Parameters.Parameter Department;
         private DevExpress.XtraReports.Parameters.Parameter Year;
         private DevExpress.XtraReports.UI.XRLabel xrLabel3;
@@ -61,7 +59,8 @@ namespace Project.Api.Reports.Templates
         [System.Xml.Serialization.XmlIgnore]
         [System.NonSerialized]
         private readonly IServiceScope? _scope;
-        
+        private ObjectDataSource AllowanceItemDS;
+        private ObjectDataSource DesignTimeDS;
         private int _rowCounter = 0;
 
         private void detailBand1_BeforePrint(object sender, System.ComponentModel.CancelEventArgs e)
@@ -1210,9 +1209,9 @@ namespace Project.Api.Reports.Templates
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(AllowanceItemsReportTemplate));
             DevExpress.XtraReports.UI.XRSummary xrSummary1 = new DevExpress.XtraReports.UI.XRSummary();
             DevExpress.XtraReports.Parameters.StaticListLookUpSettings staticListLookUpSettings1 = new DevExpress.XtraReports.Parameters.StaticListLookUpSettings();
-            DevExpress.DataAccess.ObjectBinding.ObjectConstructorInfo objectConstructorInfo1 = new DevExpress.DataAccess.ObjectBinding.ObjectConstructorInfo();
             DevExpress.XtraReports.Parameters.DynamicListLookUpSettings dynamicListLookUpSettings1 = new DevExpress.XtraReports.Parameters.DynamicListLookUpSettings();
             DevExpress.XtraReports.Parameters.StaticListLookUpSettings staticListLookUpSettings2 = new DevExpress.XtraReports.Parameters.StaticListLookUpSettings();
+            DevExpress.DataAccess.ObjectBinding.ObjectConstructorInfo objectConstructorInfo1 = new DevExpress.DataAccess.ObjectBinding.ObjectConstructorInfo();
             this.EttadDataSource = new DevExpress.DataAccess.Sql.SqlDataSource(this.components);
             this.topMarginBand1 = new DevExpress.XtraReports.UI.TopMarginBand();
             this.detailBand1 = new DevExpress.XtraReports.UI.DetailBand();
@@ -1258,16 +1257,16 @@ namespace Project.Api.Reports.Templates
             this.xrTableCellSummaryReservedQty = new DevExpress.XtraReports.UI.XRTableCell();
             this.xrTableCellSummaryRemainingQty = new DevExpress.XtraReports.UI.XRTableCell();
             this.xrLabelReportFooter = new DevExpress.XtraReports.UI.XRLabel();
-            this.DesignTimeDS = new DevExpress.DataAccess.ObjectBinding.ObjectDataSource(this.components);
             this.Language = new DevExpress.XtraReports.Parameters.Parameter();
-            this.AllowanceItemDS = new DevExpress.DataAccess.ObjectBinding.ObjectDataSource(this.components);
             this.Department = new DevExpress.XtraReports.Parameters.Parameter();
             this.Year = new DevExpress.XtraReports.Parameters.Parameter();
+            this.AllowanceItemDS = new DevExpress.DataAccess.ObjectBinding.ObjectDataSource(this.components);
+            this.DesignTimeDS = new DevExpress.DataAccess.ObjectBinding.ObjectDataSource(this.components);
             ((System.ComponentModel.ISupportInitialize)(this.xrTable1)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.xrTable2)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.xrTableSummary)).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)(this.DesignTimeDS)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.AllowanceItemDS)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.DesignTimeDS)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this)).BeginInit();
             // 
             // EttadDataSource
@@ -4065,12 +4064,6 @@ namespace Project.Api.Reports.Templates
             this.xrLabelReportFooter.Text = "End of Report";
             this.xrLabelReportFooter.TextAlignment = DevExpress.XtraPrinting.TextAlignment.MiddleCenter;
             // 
-            // DesignTimeDS
-            // 
-            this.DesignTimeDS.DataMember = "Get";
-            this.DesignTimeDS.DataSource = typeof(global::Project.Api.Reports.DataSources.AllowanceItemsDesignTimeDataSource);
-            this.DesignTimeDS.Name = "DesignTimeDS";
-            // 
             // Language
             // 
             this.Language.AllowNull = true;
@@ -4080,13 +4073,6 @@ namespace Project.Api.Reports.Templates
             staticListLookUpSettings1.LookUpValues.Add(new DevExpress.XtraReports.Parameters.LookUpValue("en", "English"));
             staticListLookUpSettings1.LookUpValues.Add(new DevExpress.XtraReports.Parameters.LookUpValue("ar", "Arabic"));
             this.Language.ValueSourceSettings = staticListLookUpSettings1;
-            // 
-            // AllowanceItemDS
-            // 
-            this.AllowanceItemDS.Constructor = objectConstructorInfo1;
-            this.AllowanceItemDS.DataMember = "Get";
-            this.AllowanceItemDS.DataSource = typeof(global::Project.Api.Reports.DataSources.AllowanceItemsRealTimeDataSource);
-            this.AllowanceItemDS.Name = "AllowanceItemDS";
             // 
             // Department
             // 
@@ -4114,7 +4100,21 @@ namespace Project.Api.Reports.Templates
             staticListLookUpSettings2.LookUpValues.Add(new DevExpress.XtraReports.Parameters.LookUpValue(2024, "2024"));
             this.Year.ValueSourceSettings = staticListLookUpSettings2;
             // 
-            // AllowanceItemsReport
+            // AllowanceItemDS
+            // 
+            this.AllowanceItemDS.Constructor = objectConstructorInfo1;
+            this.AllowanceItemDS.DataMember = "Get";
+            this.AllowanceItemDS.DataSource = typeof(global::Project.Api.Reports.DataSources.AllowanceItemsDataSource);
+            this.AllowanceItemDS.Name = "AllowanceItemDS";
+            // 
+            // DesignTimeDS
+            // 
+            this.DesignTimeDS.Constructor = objectConstructorInfo1;
+            this.DesignTimeDS.DataMember = "GetDesignTimeData";
+            this.DesignTimeDS.DataSource = typeof(global::Project.Api.Reports.DataSources.AllowanceItemsDataSource);
+            this.DesignTimeDS.Name = "DesignTimeDS";
+            // 
+            // AllowanceItemsReportTemplate
             // 
             this.Bands.AddRange(new DevExpress.XtraReports.UI.Band[] {
             this.topMarginBand1,
@@ -4126,8 +4126,8 @@ namespace Project.Api.Reports.Templates
             this.ReportFooter});
             this.ComponentStorage.AddRange(new System.ComponentModel.IComponent[] {
             this.EttadDataSource,
-            this.DesignTimeDS,
-            this.AllowanceItemDS});
+            this.AllowanceItemDS,
+            this.DesignTimeDS});
             this.DataSource = this.DesignTimeDS;
             this.FilterString = "[DepartmentId] In (?Department) And [Year] In (?Year)";
             this.Margins = new DevExpress.Drawing.DXMargins(34F, 25F, 35.41667F, 38.19444F);
@@ -4143,8 +4143,8 @@ namespace Project.Api.Reports.Templates
             ((System.ComponentModel.ISupportInitialize)(this.xrTable1)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.xrTable2)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.xrTableSummary)).EndInit();
-            ((System.ComponentModel.ISupportInitialize)(this.DesignTimeDS)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.AllowanceItemDS)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.DesignTimeDS)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this)).EndInit();
 
         }

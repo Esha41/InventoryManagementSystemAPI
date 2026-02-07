@@ -1,11 +1,6 @@
-using DevExpress.CodeParser;
-using DevExpress.DocumentServices.ServiceModel.DataContracts;
-using DevExpress.Office.Utils;
-using DevExpress.XtraRichEdit.Import.Html;
 using Ettad.Application.Common.Interfaces;
 using Ettad.CrossCutting.Comman.Time;
 using Ettad.CrossCutting.Data.Repository;
-using Ettad.Data.Entities;
 using Ettad.Data.Entities.Reports;
 using Ettad.Data.Enums;
 using Ettad.EntityFramework.DataBaseContext;
@@ -25,11 +20,6 @@ namespace Ettad.Reporting.Services
         private readonly ICurrentUserService _currentUserService;
         private readonly ILogger<ReportService> _logger;
         private readonly IDateTimeProvider _dateTimeProvider;
-        //private static readonly HashSet<string> ExcludedTables = new(StringComparer.OrdinalIgnoreCase)
-        // {
-        //     "__EFMigrationsHistory",
-        //     "sysdiagrams"
-        // };
 
         public ReportService(
             ICrossCuttingRepository<ReportEntity> reportRepository,
@@ -480,28 +470,6 @@ namespace Ettad.Reporting.Services
             }
         }
 
-        //public async Task<IReadOnlyList<TableSchemaInfo>> GetTableNamesAsync(CancellationToken cancellationToken = default)
-        //{
-        //    const string sql = @"
-        //                        SELECT 
-        //                            t.TABLE_SCHEMA AS SchemaName, 
-        //                            t.TABLE_NAME AS TableName 
-        //                        FROM INFORMATION_SCHEMA.TABLES t
-        //                        WHERE t.TABLE_TYPE = 'BASE TABLE' 
-        //                          AND t.TABLE_CATALOG = DB_NAME()
-        //                          AND t.TABLE_NAME NOT IN ('__EFMigrationsHistory', 'sysdiagrams')
-        //                        ORDER BY t.TABLE_SCHEMA, t.TABLE_NAME";
-
-        //    var rows = await _context.Database
-        //        .SqlQueryRaw<TableSchemaInfoDto>(sql)
-        //        .ToListAsync(cancellationToken);
-
-        //    return rows
-        //        .Select(r => new TableSchemaInfo(r.SchemaName ?? "dbo", r.TableName ?? ""))
-        //        .Where(t => !string.IsNullOrEmpty(t.TableName) && !ExcludedTables.Contains(t.TableName))
-        //        .ToList();
-        //}
-
         //public async Task<APIOperationResponse<Guid>> ImportAsync(IFormFile file, string? reportName = null, string? url = null, string? description = null)
         //{
         //    _logger.LogInformation("Importing report from file. FileName: {FileName}, User: {UserId}", file?.FileName, _currentUserService.UserId);
@@ -616,51 +584,51 @@ namespace Ettad.Reporting.Services
         //    }
         //}
 
-        private string GenerateUrlFromName(string name)
-        {
-            // Convert report name to URL-friendly format
-            var url = name.Trim();
-            // Replace spaces and special characters with underscores
-            url = System.Text.RegularExpressions.Regex.Replace(url, @"[^a-zA-Z0-9_-]", "_");
-            // Remove multiple consecutive underscores
-            url = System.Text.RegularExpressions.Regex.Replace(url, @"_+", "_");
-            // Remove leading/trailing underscores
-            url = url.Trim('_');
-            // Ensure it's not empty
-            if (string.IsNullOrEmpty(url))
-            {
-                url = $"report_{DateTime.Now:yyyyMMddHHmmss}";
-            }
-            return url;
-        }
+        //private string GenerateUrlFromName(string name)
+        //{
+        //    // Convert report name to URL-friendly format
+        //    var url = name.Trim();
+        //    // Replace spaces and special characters with underscores
+        //    url = System.Text.RegularExpressions.Regex.Replace(url, @"[^a-zA-Z0-9_-]", "_");
+        //    // Remove multiple consecutive underscores
+        //    url = System.Text.RegularExpressions.Regex.Replace(url, @"_+", "_");
+        //    // Remove leading/trailing underscores
+        //    url = url.Trim('_');
+        //    // Ensure it's not empty
+        //    if (string.IsNullOrEmpty(url))
+        //    {
+        //        url = $"report_{DateTime.Now:yyyyMMddHHmmss}";
+        //    }
+        //    return url;
+        //}
 
-        private bool IsValidUrl(string url)
-        {
-            if (string.IsNullOrWhiteSpace(url))
-            {
-                return false;
-            }
+        //private bool IsValidUrl(string url)
+        //{
+        //    if (string.IsNullOrWhiteSpace(url))
+        //    {
+        //        return false;
+        //    }
 
-            // Check for invalid characters (only allow alphanumeric, underscore, hyphen)
-            if (System.Text.RegularExpressions.Regex.IsMatch(url, @"[^a-zA-Z0-9_-]"))
-            {
-                return false;
-            }
+        //    // Check for invalid characters (only allow alphanumeric, underscore, hyphen)
+        //    if (System.Text.RegularExpressions.Regex.IsMatch(url, @"[^a-zA-Z0-9_-]"))
+        //    {
+        //        return false;
+        //    }
 
-            // Check for path traversal attempts
-            if (url.Contains("..") || url.Contains("/") || url.Contains("\\"))
-            {
-                return false;
-            }
+        //    // Check for path traversal attempts
+        //    if (url.Contains("..") || url.Contains("/") || url.Contains("\\"))
+        //    {
+        //        return false;
+        //    }
 
-            // Check length
-            if (url.Length > 500)
-            {
-                return false;
-            }
+        //    // Check length
+        //    if (url.Length > 500)
+        //    {
+        //        return false;
+        //    }
 
-            return true;
-        }
+        //    return true;
+        //}
 
         public async Task<bool> IsReportExists(string name)
         {

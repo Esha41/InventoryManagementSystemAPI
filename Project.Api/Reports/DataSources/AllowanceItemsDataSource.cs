@@ -5,14 +5,10 @@ using Ettad.Data.Entities;
 
 namespace Project.Api.Reports.DataSources
 {
-    public class AllowanceItemsRealTimeDataSource
+    public class AllowanceItemsDataSource
     {
-        public AllowanceItemsRealTimeDataSource() { }
         public List<AllowanceItemReportDto> Get()
         {
-            if (ReportServiceLocator.ServiceProvider == null)
-                return AllowanceItemsDesignTimeDataSource.Get();
-
             using var scope = ReportServiceScope.Create();
 
             var allowanceService = scope.ServiceProvider.GetRequiredService<IAllowanceItemService>();
@@ -41,8 +37,59 @@ namespace Project.Api.Reports.DataSources
                 RemainingQuantity = a.RemainingQuantityFromAllowance
             }).ToList();
         }
-    }
 
+        public List<AllowanceItemReportDto> GetDesignTimeData()
+        {
+            return new List<AllowanceItemReportDto>
+            {
+                new AllowanceItemReportDto
+                {
+                    DepartmentName = "Qatar Emiri Land Forces",
+                    DepartmentId = 1,
+                    Year = 2026,
+                    ItemName = "TESTTT",
+                    TotalQuantity = 100,
+                    ReservedQuantity = 80,
+                    UsedQuantity = 40,
+                    RemainingQuantity = 60
+                },
+                new AllowanceItemReportDto
+                {
+                    DepartmentName = "Qatar Emiri Air Force",
+                    DepartmentId = 2,
+                    Year = 2026,
+                    ItemName = ".45 ACP",
+                    TotalQuantity = 200,
+                    ReservedQuantity = 150,
+                    UsedQuantity = 90,
+                    RemainingQuantity = 60
+                },
+                  new AllowanceItemReportDto
+                {
+                    DepartmentName = "Qatar Emiri Navy",
+                    DepartmentId = 3,
+                    Year = 2026,
+                    ItemName = ".50 BMG",
+                    TotalQuantity = 100,
+                    ReservedQuantity = 80,
+                    UsedQuantity = 40,
+                    RemainingQuantity = 60
+                },
+                new AllowanceItemReportDto
+                {
+                    DepartmentName = "Emiri Guard Directorate",
+                    DepartmentId = 4,
+                    Year = 2025,
+                    ItemName = "5.56x45mm NATO",
+                    TotalQuantity = 200,
+                    ReservedQuantity = 150,
+                    UsedQuantity = 90,
+                    RemainingQuantity = 60
+                }
+            };
+        }
+    }
+   
     public static class ReportServiceLocator
     {
         public static IServiceProvider ServiceProvider { get; set; } = default!;
