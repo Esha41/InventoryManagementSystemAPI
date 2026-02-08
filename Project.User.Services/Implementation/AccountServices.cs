@@ -25,7 +25,7 @@ namespace Ettad.User.Services.Implementation
     {
         private readonly IJwtServices _jwtServices;
         private readonly ILdapSettingsService _ldapSettingsService;
-      //  private readonly IUnitOfWork _unitOfWork;
+        //  private readonly IUnitOfWork _unitOfWork;
         private readonly ILdapAuthenticator _ldapAuthenticator;
         private readonly IDateTimeProvider _dateTimeProvider;
         private readonly JwtOptions _jwtOptions;
@@ -41,7 +41,7 @@ namespace Ettad.User.Services.Implementation
         private readonly ITokenBlacklistService _tokenBlacklistService;
 
         private readonly ApplicationDbContext _context;
-        
+
         // Lockout configuration constants
         private const int MAX_FAILED_ATTEMPTS = 5;
         private const int LOCKOUT_DURATION_MINUTES = 15;
@@ -83,7 +83,7 @@ namespace Ettad.User.Services.Implementation
             var startTime = _dateTimeProvider.Now;
             var clientIp = GetClientIpAddress();
             var loginType = loginInformation?.IsLdap == true ? "LDAP" : "Admin";
-            
+
             _logger.LogInformation(
                 "[LOGIN] Attempt started | Username: {Username} | LoginType: {LoginType} | IP: {ClientIP} | Time: {StartTime}",
                 loginInformation?.Username ?? "N/A", loginType, clientIp ?? "Unknown", startTime);
@@ -101,7 +101,7 @@ namespace Ettad.User.Services.Implementation
                         CommonErrorCodes.INVALID_EMAIL_OR_PASSWORD,
                         "server.invalidLogin");
                 }
-                             
+
                 // Check if user exists (including soft-deleted) to provide proper error message
                 var userIncludingDeleted = await _userRepository.Users
                     .FirstOrDefaultAsync(u => u.UserName == loginInformation.Username.Trim(), cancellationToken);
@@ -111,7 +111,7 @@ namespace Ettad.User.Services.Implementation
                     _logger.LogWarning(
                         "[LOGIN] FAILED - User deleted | Username: {Username} | UserId: {UserId} | IP: {ClientIP}",
                         loginInformation.Username, userIncludingDeleted.Id, clientIp);
-                    await RecordLoginAttemptAsync(loginInformation.Username.Trim(), userIncludingDeleted.Id, false, 
+                    await RecordLoginAttemptAsync(loginInformation.Username.Trim(), userIncludingDeleted.Id, false,
                         "User account has been deleted", LoginType.Admin, cancellationToken);
                     return APIOperationResponse<AuthenticatedResponse>.Fail(
                         ResponseType.Forbidden,
@@ -135,8 +135,8 @@ namespace Ettad.User.Services.Implementation
                         _logger.LogWarning(
                             "[LOGIN] BLOCKED - Account locked | Username: {Username} | UserId: {UserId} | IP: {ClientIP} | Reason: Too many failed attempts",
                             loginInformation.Username, existingUser.Id, clientIp);
-                    await RecordLoginAttemptAsync(loginInformation.Username.Trim(), existingUser.Id, false, 
-                        "Account locked due to too many failed attempts", LoginType.Admin, cancellationToken);
+                        await RecordLoginAttemptAsync(loginInformation.Username.Trim(), existingUser.Id, false,
+                            "Account locked due to too many failed attempts", LoginType.Admin, cancellationToken);
                         return APIOperationResponse<AuthenticatedResponse>.Fail(
                             ResponseType.Forbidden,
                             CommonErrorCodes.ACCOUNT_LOCKED,
@@ -158,7 +158,7 @@ namespace Ettad.User.Services.Implementation
                         _logger.LogWarning(
                             "[LOGIN] BLOCKED - CAPTCHA required but not provided | Username: {Username} | IP: {ClientIP}",
                             loginInformation.Username, clientIp);
-                        await RecordLoginAttemptAsync(loginInformation.Username.Trim(), existingUser?.Id, false, 
+                        await RecordLoginAttemptAsync(loginInformation.Username.Trim(), existingUser?.Id, false,
                             "CAPTCHA required but not provided", existingUser != null ? LoginType.Admin : LoginType.Unknown, cancellationToken);
                         return APIOperationResponse<AuthenticatedResponse>.Fail(
                             ResponseType.BadRequest,
@@ -173,14 +173,14 @@ namespace Ettad.User.Services.Implementation
                         _logger.LogWarning(
                             "[LOGIN] BLOCKED - Invalid CAPTCHA | Username: {Username} | CaptchaId: {CaptchaId} | IP: {ClientIP}",
                             loginInformation.Username, loginInformation.CaptchaId, clientIp);
-                        await RecordLoginAttemptAsync(loginInformation.Username.Trim(), existingUser?.Id, false, 
+                        await RecordLoginAttemptAsync(loginInformation.Username.Trim(), existingUser?.Id, false,
                             "Invalid CAPTCHA code", existingUser != null ? LoginType.Admin : LoginType.Unknown, cancellationToken);
                         return APIOperationResponse<AuthenticatedResponse>.Fail(
                             ResponseType.BadRequest,
                             CommonErrorCodes.CAPTCHA_INVALID,
                             "CAPTCHA verification failed. Please try again.");
                     }
-                    
+
                     _logger.LogDebug("[LOGIN] CAPTCHA validated successfully | Username: {Username}", loginInformation.Username);
                 }
 
@@ -232,7 +232,7 @@ namespace Ettad.User.Services.Implementation
         {
             var startTime = _dateTimeProvider.Now;
             var clientIp = GetClientIpAddress();
-            
+
             _logger.LogInformation(
                 "[ADMIN LOGIN] Started | Username: {Username} | UserId: {UserId} | IP: {ClientIP}",
                 loginInformation.Username, user.Id, clientIp);
@@ -250,13 +250,13 @@ namespace Ettad.User.Services.Implementation
                     "server.accountDeleted");
             }
 
-                // Check if account is active
+            // Check if account is active
             if (!user.IsActive)
             {
                 _logger.LogWarning(
                     "[ADMIN LOGIN] FAILED - Account disabled | Username: {Username} | UserId: {UserId} | IP: {ClientIP}",
                     loginInformation.Username, user.Id, clientIp);
-                await RecordLoginAttemptAsync(loginInformation.Username, user.Id, false, 
+                await RecordLoginAttemptAsync(loginInformation.Username, user.Id, false,
                     "Account is disabled", LoginType.Admin, cancellationToken);
                 return APIOperationResponse<AuthenticatedResponse>.Fail(
                     ResponseType.Forbidden,
@@ -275,18 +275,18 @@ namespace Ettad.User.Services.Implementation
                     "[ADMIN LOGIN] FAILED - Invalid password | Username: {Username} | UserId: {UserId} | IP: {ClientIP}",
                     loginInformation.Username, user.Id, clientIp);
 
-            //    await RecordLoginAttemptAsync(loginInformation.Username, user.Id, false, "Invalid password", LoginType.Admin, cancellationToken);
-            //    return APIOperationResponse<AuthenticatedResponse>.Fail(
-            //        ResponseType.Unauthorized,
-            //        CommonErrorCodes.INVALID_EMAIL_OR_PASSWORD,
-            //        "server.invalidLogin");
-            //}
+                await RecordLoginAttemptAsync(loginInformation.Username, user.Id, false, "Invalid password", LoginType.Admin, cancellationToken);
+                return APIOperationResponse<AuthenticatedResponse>.Fail(
+                    ResponseType.Unauthorized,
+                    CommonErrorCodes.INVALID_EMAIL_OR_PASSWORD,
+                    "server.invalidLogin");
+            }
 
             // Record successful login
             await RecordLoginAttemptAsync(loginInformation.Username, user.Id, true, null, LoginType.Admin, cancellationToken);
 
             var authResponse = await CreateAndReturnAuthResponseAsync(user, cancellationToken);
-            
+
             var duration = (_dateTimeProvider.Now - startTime).TotalMilliseconds;
             _logger.LogInformation(
                 "[ADMIN LOGIN] SUCCESS | Username: {Username} | UserId: {UserId} | IP: {ClientIP} | Duration: {Duration}ms",
@@ -302,7 +302,7 @@ namespace Ettad.User.Services.Implementation
         {
             var startTime = _dateTimeProvider.Now;
             var clientIp = GetClientIpAddress();
-            
+
             _logger.LogInformation(
                 "[LDAP LOGIN] Started | Username: {Username} | IP: {ClientIP}",
                 loginInformation?.Username ?? "N/A", clientIp);
@@ -319,7 +319,7 @@ namespace Ettad.User.Services.Implementation
                         "[LDAP LOGIN] FAILED - LDAP settings unavailable | Username: {Username} | IP: {ClientIP}",
                         loginInformation?.Username ?? "N/A", clientIp);
 
-                    await RecordLoginAttemptAsync(loginInformation?.Username ?? "Unknown", null, false, 
+                    await RecordLoginAttemptAsync(loginInformation?.Username ?? "Unknown", null, false,
                         "Failed to retrieve LDAP settings", LoginType.LDAP, cancellationToken);
                     return APIOperationResponse<AuthenticatedResponse>.Fail(
                         ResponseType.BadRequest,
@@ -328,7 +328,7 @@ namespace Ettad.User.Services.Implementation
                 }
 
                 var ldapSettings = ldapSettingsResponse.Data;
-                
+
                 _logger.LogDebug(
                     "[LDAP LOGIN] LDAP settings loaded | Server: {Server} | Domain: {Domain} | IsActive: {IsActive}",
                     ldapSettings.LdapServer, ldapSettings.LdapDomain, ldapSettings.IsActive);
@@ -339,7 +339,7 @@ namespace Ettad.User.Services.Implementation
                         "[LDAP LOGIN] FAILED - LDAP disabled | Username: {Username} | IP: {ClientIP}",
                         loginInformation?.Username ?? "N/A", clientIp);
 
-                    await RecordLoginAttemptAsync(loginInformation?.Username ?? "Unknown", null, false, 
+                    await RecordLoginAttemptAsync(loginInformation?.Username ?? "Unknown", null, false,
                         "LDAP settings inactive", LoginType.LDAP, cancellationToken);
                     return APIOperationResponse<AuthenticatedResponse>.Fail(
                         ResponseType.BadRequest,
@@ -379,7 +379,7 @@ namespace Ettad.User.Services.Implementation
                     _logger.LogWarning(
                         "[LDAP LOGIN] BLOCKED - Account locked | Username: {Username} | IP: {ClientIP} | Reason: Too many failed attempts",
                         loginInformation.Username, clientIp);
-                    await RecordLoginAttemptAsync(loginInformation.Username.Trim(), null, false, 
+                    await RecordLoginAttemptAsync(loginInformation.Username.Trim(), null, false,
                         "Account locked due to too many failed attempts", LoginType.LDAP, cancellationToken);
                     return APIOperationResponse<AuthenticatedResponse>.Fail(
                         ResponseType.Forbidden,
@@ -400,7 +400,7 @@ namespace Ettad.User.Services.Implementation
                         _logger.LogWarning(
                             "[LDAP LOGIN] BLOCKED - CAPTCHA required but not provided | Username: {Username} | IP: {ClientIP}",
                             loginInformation.Username, clientIp);
-                        await RecordLoginAttemptAsync(loginInformation.Username.Trim(), null, false, 
+                        await RecordLoginAttemptAsync(loginInformation.Username.Trim(), null, false,
                             "CAPTCHA required but not provided", LoginType.LDAP, cancellationToken);
                         return APIOperationResponse<AuthenticatedResponse>.Fail(
                             ResponseType.BadRequest,
@@ -414,14 +414,14 @@ namespace Ettad.User.Services.Implementation
                         _logger.LogWarning(
                             "[LDAP LOGIN] BLOCKED - Invalid CAPTCHA | Username: {Username} | CaptchaId: {CaptchaId} | IP: {ClientIP}",
                             loginInformation.Username, loginInformation.CaptchaId, clientIp);
-                        await RecordLoginAttemptAsync(loginInformation.Username.Trim(), null, false, 
+                        await RecordLoginAttemptAsync(loginInformation.Username.Trim(), null, false,
                             "Invalid CAPTCHA code", LoginType.LDAP, cancellationToken);
                         return APIOperationResponse<AuthenticatedResponse>.Fail(
                             ResponseType.BadRequest,
                             CommonErrorCodes.CAPTCHA_INVALID,
                             "CAPTCHA verification failed. Please try again.");
                     }
-                    
+
                     _logger.LogDebug("[LDAP LOGIN] CAPTCHA validated successfully | Username: {Username}", loginInformation.Username);
                 }
 
@@ -441,7 +441,7 @@ namespace Ettad.User.Services.Implementation
                             _logger.LogWarning(
                                 "[LDAP LOGIN] FAILED - Domain mismatch | Username: {Username} | ProvidedDomain: {ProvidedDomain} | ExpectedDomain: {ExpectedDomain} | IP: {ClientIP}",
                                 loginInformation.Username, providedDomain, ldapSettings.LdapDomain, clientIp);
-                            await RecordLoginAttemptAsync(loginInformation.Username, null, false, 
+                            await RecordLoginAttemptAsync(loginInformation.Username, null, false,
                                 $"Domain mismatch. Expected domain: {ldapSettings.LdapDomain}", LoginType.LDAP, cancellationToken);
                             return APIOperationResponse<AuthenticatedResponse>.Fail(
                                 ResponseType.Unauthorized,
@@ -506,7 +506,7 @@ namespace Ettad.User.Services.Implementation
                         _logger.LogWarning(
                             "[LDAP LOGIN] Domain mismatch detected in Step 7 | Username: {Username} | ProvidedDomain: {ProvidedDomain} | ExpectedDomain: {ExpectedDomain} | IP: {ClientIP}",
                             originalUsername, providedDomain, ldapSettings.LdapDomain, clientIp);
-                        await RecordLoginAttemptAsync(originalUsername, null, false, 
+                        await RecordLoginAttemptAsync(originalUsername, null, false,
                             $"Domain mismatch. Expected domain: {ldapSettings.LdapDomain}", LoginType.LDAP, cancellationToken);
                         return APIOperationResponse<AuthenticatedResponse>.Fail(
                             ResponseType.Unauthorized,
@@ -555,7 +555,7 @@ namespace Ettad.User.Services.Implementation
                     _logger.LogWarning(
                         "[LDAP LOGIN] FAILED - User deleted | Username: {Username} | UserId: {UserId} | IP: {ClientIP}",
                         resolvedUsername, userIncludingDeleted.Id, clientIp);
-                    await RecordLoginAttemptAsync(resolvedUsername, userIncludingDeleted.Id, false, 
+                    await RecordLoginAttemptAsync(resolvedUsername, userIncludingDeleted.Id, false,
                         "User account has been deleted", LoginType.LDAP, cancellationToken);
                     return APIOperationResponse<AuthenticatedResponse>.Fail(
                         ResponseType.Forbidden,
@@ -590,7 +590,7 @@ namespace Ettad.User.Services.Implementation
                     };
 
                     await _userRepository.CreateAsync(user);
-                    
+
                     _logger.LogInformation(
                         "[LDAP LOGIN] User created successfully | Username: {Username} | UserId: {UserId} | IP: {ClientIP}",
                         user.UserName, user.Id, clientIp);
@@ -649,7 +649,7 @@ namespace Ettad.User.Services.Implementation
                     "[LDAP LOGIN] ERROR - Exception occurred | Username: {Username} | IP: {ClientIP} | Duration: {Duration}ms | Error: {ErrorMessage}",
                     loginInformation?.Username ?? "N/A", clientIp, duration, ex.Message);
 
-                await RecordLoginAttemptAsync(loginInformation?.Username ?? "Unknown", null, false, 
+                await RecordLoginAttemptAsync(loginInformation?.Username ?? "Unknown", null, false,
                     $"Exception: {ex.Message}", LoginType.LDAP, cancellationToken);
                 return APIOperationResponse<AuthenticatedResponse>.Fail(
                     ResponseType.InternalServerError,
@@ -677,7 +677,7 @@ namespace Ettad.User.Services.Implementation
             var refreshToken = _jwtServices.GenerateRefreshToken();
             user.RefreshToken = refreshToken;
             user.RefreshTokenExpiryDate = _dateTimeProvider.Now.AddMinutes(_jwtOptions.RefreshTokenExpireInMinutes);
-          
+
 
             await _userRepository.UpdateAsync(user);
 
@@ -692,7 +692,7 @@ namespace Ettad.User.Services.Implementation
             // 1. Get the current user
             var user = await _userRepository.FindByIdAsync(_currentUserService.UserId);
             if (user == null)
-                return APIOperationResponse < List < ClaimDto >>.Success(roleClaims);
+                return APIOperationResponse<List<ClaimDto>>.Success(roleClaims);
 
             // 2. Get user roles
             var roles = await _userRepository.GetRolesAsync(user);
@@ -722,7 +722,7 @@ namespace Ettad.User.Services.Implementation
         public async Task<APIOperationResponse<string>> ForgotPasswordAsync(ForgotPasswordDto request)
         {
             _logger.LogInformation("Password reset requested. Email: {Email}", request.Email);
-            
+
             var user = await _userRepository.Users
                 .FirstOrDefaultAsync(u => u.Email == request.Email.Trim() && !u.IsDeleted);
             if (user == null)
@@ -735,16 +735,16 @@ namespace Ettad.User.Services.Implementation
             // Prevent LDAP users from resetting password (managed externally)
             if (user.IsLdapUser)
             {
-                _logger.LogWarning("Password reset denied: LDAP user attempted reset. Email: {Email}, UserId: {UserId}", 
+                _logger.LogWarning("Password reset denied: LDAP user attempted reset. Email: {Email}, UserId: {UserId}",
                     request.Email, user.Id);
                 return APIOperationResponse<string>.Fail(
-                    ResponseType.BadRequest, 
+                    ResponseType.BadRequest,
                     "LDAP users cannot reset their password through this system. Please contact your system administrator.");
             }
 
             var token = await _userRepository.GeneratePasswordResetTokenAsync(user);
 
-            _logger.LogInformation("Password reset token generated. Email: {Email}, UserId: {UserId}", 
+            _logger.LogInformation("Password reset token generated. Email: {Email}, UserId: {UserId}",
                 request.Email, user.Id);
 
             // Send reset email
@@ -770,25 +770,25 @@ namespace Ettad.User.Services.Implementation
             try
             {
                 await _emailSender.SendEmailAsync(user.Email, "Reset Password", emailBody);
-                _logger.LogInformation("Password reset email sent successfully. Email: {Email}, UserId: {UserId}", 
+                _logger.LogInformation("Password reset email sent successfully. Email: {Email}, UserId: {UserId}",
                     request.Email, user.Id);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to send password reset email. Email: {Email}, UserId: {UserId}", 
+                _logger.LogError(ex, "Failed to send password reset email. Email: {Email}, UserId: {UserId}",
                     request.Email, user.Id);
                 return APIOperationResponse<string>.Fail(
-                    ResponseType.InternalServerError, 
+                    ResponseType.InternalServerError,
                     "Failed to send password reset email. Please try again later.");
             }
-            
+
             return APIOperationResponse<string>.Success("If an account exists with this email, a password reset link has been sent.");
         }
 
         public async Task<APIOperationResponse<string>> ResetPasswordAsync(ResetPasswordDto request)
         {
             _logger.LogInformation("Password reset attempt. Email: {Email}", request.Email);
-            
+
             var user = await _userRepository.Users
                 .FirstOrDefaultAsync(u => u.Email == request.Email && !u.IsDeleted);
             if (user == null)
@@ -800,10 +800,10 @@ namespace Ettad.User.Services.Implementation
             // Prevent LDAP users from resetting password
             if (user.IsLdapUser)
             {
-                _logger.LogWarning("Password reset denied: LDAP user attempted reset. Email: {Email}, UserId: {UserId}", 
+                _logger.LogWarning("Password reset denied: LDAP user attempted reset. Email: {Email}, UserId: {UserId}",
                     request.Email, user.Id);
                 return APIOperationResponse<string>.Fail(
-                    ResponseType.BadRequest, 
+                    ResponseType.BadRequest,
                     "LDAP users cannot reset their password through this system. Please contact your system administrator.");
             }
 
@@ -811,14 +811,14 @@ namespace Ettad.User.Services.Implementation
             if (!result.Succeeded)
             {
                 var errors = string.Join(", ", result.Errors.Select(e => e.Description));
-                _logger.LogWarning("Password reset failed: Validation errors. Email: {Email}, UserId: {UserId}, Errors: {Errors}", 
+                _logger.LogWarning("Password reset failed: Validation errors. Email: {Email}, UserId: {UserId}, Errors: {Errors}",
                     request.Email, user.Id, errors);
                 return APIOperationResponse<string>.Fail(ResponseType.BadRequest, errors);
             }
 
-            _logger.LogInformation("Password reset successful. Email: {Email}, UserId: {UserId}", 
+            _logger.LogInformation("Password reset successful. Email: {Email}, UserId: {UserId}",
                 request.Email, user.Id);
-            
+
             return APIOperationResponse<string>.Success("Password has been reset successfully.");
         }
 
@@ -828,21 +828,21 @@ namespace Ettad.User.Services.Implementation
             {
                 var userId = _currentUserService.UserId;
                 var userName = _currentUserService.UserName;
-                
+
                 // Check for Windows authentication
                 var windowsIdentity = _httpContextAccessor.HttpContext?.User?.Identity?.Name;
                 var isWindowsAuthenticated = !string.IsNullOrEmpty(windowsIdentity);
-                
+
                 if (string.IsNullOrWhiteSpace(userId))
                 {
                     // If no userId but Windows authenticated, still allow logout
                     if (isWindowsAuthenticated)
                     {
-                        _logger.LogInformation("Windows user logged out (no user ID found). WindowsIdentity: {WindowsIdentity}", 
+                        _logger.LogInformation("Windows user logged out (no user ID found). WindowsIdentity: {WindowsIdentity}",
                             windowsIdentity);
                         return APIOperationResponse<string>.Success("Logged out successfully.");
                     }
-                    
+
                     _logger.LogWarning("Logout attempt failed: No authenticated user context available.");
                     return APIOperationResponse<string>.Fail(
                         ResponseType.Unauthorized,
@@ -855,11 +855,11 @@ namespace Ettad.User.Services.Implementation
                     // If Windows authenticated but user not found in DB, still allow logout
                     if (isWindowsAuthenticated)
                     {
-                        _logger.LogInformation("Windows user logged out (user not found in database). UserId: {UserId}, WindowsIdentity: {WindowsIdentity}", 
+                        _logger.LogInformation("Windows user logged out (user not found in database). UserId: {UserId}, WindowsIdentity: {WindowsIdentity}",
                             userId, windowsIdentity);
                         return APIOperationResponse<string>.Success("Logged out successfully.");
                     }
-                    
+
                     _logger.LogWarning("Logout attempt failed: User not found. UserId: {UserId}", userId);
                     return APIOperationResponse<string>.Fail(
                         ResponseType.NotFound,
@@ -877,34 +877,34 @@ namespace Ettad.User.Services.Implementation
                         if (!string.IsNullOrEmpty(authHeader) && authHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
                         {
                             var token = authHeader.Substring("Bearer ".Length).Trim();
-                            
+
                             // Extract jti claim from the token
                             var handler = new System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler();
                             if (handler.CanReadToken(token))
                             {
                                 var jwtToken = handler.ReadJwtToken(token);
                                 var jtiClaim = jwtToken.Claims.FirstOrDefault(c => c.Type == System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.Jti);
-                                
+
                                 if (jtiClaim != null && !string.IsNullOrWhiteSpace(jtiClaim.Value))
                                 {
                                     // Get token expiration
                                     var expirationClaim = jwtToken.Claims.FirstOrDefault(c => c.Type == System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.Exp);
                                     DateTime expiresAt = _dateTimeProvider.Now.AddMinutes(_jwtOptions.AccessTokenExpireInMinutes);
-                                    
+
                                     if (expirationClaim != null && long.TryParse(expirationClaim.Value, out long exp))
                                     {
                                         expiresAt = DateTimeOffset.FromUnixTimeSeconds(exp).LocalDateTime;
                                     }
-                                    
+
                                     // Add token to blacklist
                                     await _tokenBlacklistService.BlacklistTokenAsync(
-                                        jtiClaim.Value, 
-                                        userId, 
-                                        expiresAt, 
-                                        "User logout", 
+                                        jtiClaim.Value,
+                                        userId,
+                                        expiresAt,
+                                        "User logout",
                                         cancellationToken);
-                                    
-                                    _logger.LogInformation("JWT token blacklisted on logout. TokenId: {TokenId}, UserId: {UserId}", 
+
+                                    _logger.LogInformation("JWT token blacklisted on logout. TokenId: {TokenId}, UserId: {UserId}",
                                         jtiClaim.Value, userId);
                                 }
                                 else
@@ -925,7 +925,7 @@ namespace Ettad.User.Services.Implementation
                 var hadRefreshToken = !string.IsNullOrEmpty(user.RefreshToken);
                 user.RefreshToken = null;
                 user.RefreshTokenExpiryDate = null;
-               
+
                 await _userRepository.UpdateAsync(user);
 
                 // Clear refresh token cookie
@@ -950,10 +950,10 @@ namespace Ettad.User.Services.Implementation
 
                 // Log logout with user type information
                 var userType = user.IsLdapUser ? "Windows/LDAP" : "Admin";
-                var logMessage = isWindowsAuthenticated 
+                var logMessage = isWindowsAuthenticated
                     ? "Windows user logged out successfully. UserId: {UserId}, Username: {Username}, UserType: {UserType}, WindowsIdentity: {WindowsIdentity}, HadRefreshToken: {HadRefreshToken}"
                     : "User logged out successfully. UserId: {UserId}, Username: {Username}, UserType: {UserType}, HadRefreshToken: {HadRefreshToken}";
-                
+
                 if (isWindowsAuthenticated)
                 {
                     _logger.LogInformation(logMessage, userId, user.UserName, userType, windowsIdentity, hadRefreshToken);
@@ -968,7 +968,7 @@ namespace Ettad.User.Services.Implementation
             catch (Exception ex)
             {
                 var windowsIdentity = _httpContextAccessor.HttpContext?.User?.Identity?.Name;
-                _logger.LogError(ex, "Error occurred during logout. UserId: {UserId}, WindowsIdentity: {WindowsIdentity}", 
+                _logger.LogError(ex, "Error occurred during logout. UserId: {UserId}, WindowsIdentity: {WindowsIdentity}",
                     _currentUserService.UserId, windowsIdentity ?? "N/A");
                 return APIOperationResponse<string>.Fail(
                     ResponseType.InternalServerError,
@@ -985,10 +985,10 @@ namespace Ettad.User.Services.Implementation
         private async Task<bool> IsAccountLockedAsync(string username, CancellationToken cancellationToken)
         {
             var lockoutThreshold = _dateTimeProvider.Now.AddMinutes(-LOCKOUT_DURATION_MINUTES);
-            
+
             var failedAttempts = await _context.LoginAttempts
-                .Where(la => la.Username == username 
-                    && !la.IsSuccessful 
+                .Where(la => la.Username == username
+                    && !la.IsSuccessful
                     && la.AttemptDate >= lockoutThreshold)
                 .CountAsync(cancellationToken);
 
@@ -1001,10 +1001,10 @@ namespace Ettad.User.Services.Implementation
         private async Task<bool> IsCaptchaRequiredAsync(string username, CancellationToken cancellationToken)
         {
             var lockoutThreshold = _dateTimeProvider.Now.AddMinutes(-LOCKOUT_DURATION_MINUTES);
-            
+
             var failedAttempts = await _context.LoginAttempts
-                .Where(la => la.Username == username 
-                    && !la.IsSuccessful 
+                .Where(la => la.Username == username
+                    && !la.IsSuccessful
                     && la.AttemptDate >= lockoutThreshold)
                 .CountAsync(cancellationToken);
 
@@ -1016,10 +1016,10 @@ namespace Ettad.User.Services.Implementation
         /// Records a login attempt in the database
         /// </summary>
         private async Task RecordLoginAttemptAsync(
-            string username, 
-            string? userId, 
-            bool isSuccessful, 
-            string? failureReason, 
+            string username,
+            string? userId,
+            bool isSuccessful,
+            string? failureReason,
             LoginType loginType,
             CancellationToken cancellationToken)
         {
@@ -1092,51 +1092,51 @@ namespace Ettad.User.Services.Implementation
                 if (httpContext == null) return null;
 
                 var userAgent = httpContext.Request.Headers["User-Agent"].ToString();
-                
+
                 // Enhance with client information from custom headers if available
                 var clientInfoParts = new List<string>();
-                
+
                 var browser = httpContext.Request.Headers["X-Client-Browser"].FirstOrDefault();
                 var browserVersion = httpContext.Request.Headers["X-Client-BrowserVersion"].FirstOrDefault();
                 var os = httpContext.Request.Headers["X-Client-OS"].FirstOrDefault();
                 var osVersion = httpContext.Request.Headers["X-Client-OSVersion"].FirstOrDefault();
                 var device = httpContext.Request.Headers["X-Client-Device"].FirstOrDefault();
-                
+
                 // Get Windows user from HttpContext (when Windows Authentication is enabled)
                 var windowsUser = httpContext.User?.Identity?.Name;
                 if (!string.IsNullOrEmpty(windowsUser))
                 {
                     clientInfoParts.Add($"WindowsUser: {windowsUser}");
                 }
-                
+
                 if (!string.IsNullOrEmpty(browser))
                 {
-                    var browserInfo = !string.IsNullOrEmpty(browserVersion) 
-                        ? $"{browser} {browserVersion}" 
+                    var browserInfo = !string.IsNullOrEmpty(browserVersion)
+                        ? $"{browser} {browserVersion}"
                         : browser;
                     clientInfoParts.Add($"Browser: {browserInfo}");
                 }
-                
+
                 if (!string.IsNullOrEmpty(os))
                 {
-                    var osInfo = !string.IsNullOrEmpty(osVersion) 
-                        ? $"{os} {osVersion}" 
+                    var osInfo = !string.IsNullOrEmpty(osVersion)
+                        ? $"{os} {osVersion}"
                         : os;
                     clientInfoParts.Add($"OS: {osInfo}");
                 }
-                
+
                 if (!string.IsNullOrEmpty(device))
                 {
                     clientInfoParts.Add($"Device: {device}");
                 }
-                
+
                 if (clientInfoParts.Any())
                 {
                     var enhancedUserAgent = $"{userAgent} | {string.Join(" | ", clientInfoParts)}";
                     // Truncate if too long (max 500 chars for database)
                     return enhancedUserAgent.Length > 500 ? enhancedUserAgent.Substring(0, 500) : enhancedUserAgent;
                 }
-                
+
                 return userAgent;
             }
             catch
