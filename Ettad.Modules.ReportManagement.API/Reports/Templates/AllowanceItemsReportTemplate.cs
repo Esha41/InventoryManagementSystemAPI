@@ -3667,6 +3667,8 @@ namespace Ettad.Modules.ReportManagement.API.Reports.Templates
             this.xrLabel5.Name = "xrLabel5";
             this.xrLabel5.Padding = new DevExpress.XtraPrinting.PaddingInfo(2F, 2F, 0F, 0F, 100F);
             this.xrLabel5.SizeF = new System.Drawing.SizeF(47.5F, 23F);
+            this.xrLabel5.ExpressionBindings.AddRange(new DevExpress.XtraReports.UI.ExpressionBinding[] {
+            new DevExpress.XtraReports.UI.ExpressionBinding("BeforePrint", "Text", "Iif(?Language == \'ar\', \'السنة:\', \'Year:\')")});
             this.xrLabel5.Text = "Year:";
             // 
             // xrLabel3
@@ -3687,6 +3689,8 @@ namespace Ettad.Modules.ReportManagement.API.Reports.Templates
             this.xrLabel1.Name = "xrLabel1";
             this.xrLabel1.Padding = new DevExpress.XtraPrinting.PaddingInfo(2F, 2F, 0F, 0F, 100F);
             this.xrLabel1.SizeF = new System.Drawing.SizeF(96.80557F, 23F);
+            this.xrLabel1.ExpressionBindings.AddRange(new DevExpress.XtraReports.UI.ExpressionBinding[] {
+            new DevExpress.XtraReports.UI.ExpressionBinding("BeforePrint", "Text", "Iif(?Language == \'ar\', \'تم الإنشاء في:\', \'Generated on :\')")});
             this.xrLabel1.Text = "Generated on :";
             // 
             // xrPageInfo1
@@ -3709,6 +3713,8 @@ namespace Ettad.Modules.ReportManagement.API.Reports.Templates
             this.xrLabelReportTitle.Padding = new DevExpress.XtraPrinting.PaddingInfo(10F, 10F, 15F, 10F, 100F);
             this.xrLabelReportTitle.SizeF = new System.Drawing.SizeF(376F, 50F);
             this.xrLabelReportTitle.StylePriority.UseTextAlignment = false;
+            this.xrLabelReportTitle.ExpressionBindings.AddRange(new DevExpress.XtraReports.UI.ExpressionBinding[] {
+            new DevExpress.XtraReports.UI.ExpressionBinding("BeforePrint", "Text", "Iif(?Language == \'ar\', \'تقرير بنود المخصصات\', \'Allowance Items Report\')")});
             this.xrLabelReportTitle.Text = "Allowance Items Report";
             this.xrLabelReportTitle.TextAlignment = DevExpress.XtraPrinting.TextAlignment.MiddleCenter;
             // 
@@ -3768,6 +3774,8 @@ namespace Ettad.Modules.ReportManagement.API.Reports.Templates
             this.xrTableCellSrNoHeader.Name = "xrTableCellSrNoHeader";
             this.xrTableCellSrNoHeader.Padding = new DevExpress.XtraPrinting.PaddingInfo(5F, 5F, 5F, 5F, 100F);
             this.xrTableCellSrNoHeader.StylePriority.UseTextAlignment = false;
+            this.xrTableCellSrNoHeader.ExpressionBindings.AddRange(new DevExpress.XtraReports.UI.ExpressionBinding[] {
+            new DevExpress.XtraReports.UI.ExpressionBinding("BeforePrint", "Text", "Iif(?Language == \'ar\', \'م\', \'Sr #\')")});
             this.xrTableCellSrNoHeader.Text = "Sr #";
             this.xrTableCellSrNoHeader.TextAlignment = DevExpress.XtraPrinting.TextAlignment.MiddleLeft;
             this.xrTableCellSrNoHeader.Weight = 0.39939435021094483D;
@@ -3783,6 +3791,8 @@ namespace Ettad.Modules.ReportManagement.API.Reports.Templates
             this.xrTableCell3.Multiline = true;
             this.xrTableCell3.Name = "xrTableCell3";
             this.xrTableCell3.Padding = new DevExpress.XtraPrinting.PaddingInfo(5F, 5F, 5F, 5F, 100F);
+            this.xrTableCell3.ExpressionBindings.AddRange(new DevExpress.XtraReports.UI.ExpressionBinding[] {
+            new DevExpress.XtraReports.UI.ExpressionBinding("BeforePrint", "Text", "Iif(?Language == \'ar\', \'القسم\', \'Department\')")});
             this.xrTableCell3.Text = "Department";
             this.xrTableCell3.TextAlignment = DevExpress.XtraPrinting.TextAlignment.MiddleLeft;
             this.xrTableCell3.Weight = 1.2715410333681896D;
@@ -3798,6 +3808,8 @@ namespace Ettad.Modules.ReportManagement.API.Reports.Templates
             this.xrTableCell4.Multiline = true;
             this.xrTableCell4.Name = "xrTableCell4";
             this.xrTableCell4.Padding = new DevExpress.XtraPrinting.PaddingInfo(5F, 5F, 5F, 5F, 100F);
+            this.xrTableCell4.ExpressionBindings.AddRange(new DevExpress.XtraReports.UI.ExpressionBinding[] {
+            new DevExpress.XtraReports.UI.ExpressionBinding("BeforePrint", "Text", "Iif(?Language == \'ar\', \'اسم العنصر\', \'Item Name\')")});
             this.xrTableCell4.Text = "Item Name";
             this.xrTableCell4.TextAlignment = DevExpress.XtraPrinting.TextAlignment.MiddleLeft;
             this.xrTableCell4.Weight = 1.0246866155112884D;
@@ -3813,6 +3825,8 @@ namespace Ettad.Modules.ReportManagement.API.Reports.Templates
             this.xrTableCell5.Multiline = true;
             this.xrTableCell5.Name = "xrTableCell5";
             this.xrTableCell5.Padding = new DevExpress.XtraPrinting.PaddingInfo(5F, 5F, 5F, 5F, 100F);
+            this.xrTableCell5.ExpressionBindings.AddRange(new DevExpress.XtraReports.UI.ExpressionBinding[] {
+            new DevExpress.XtraReports.UI.ExpressionBinding("BeforePrint", "Text", "Iif(?Language == \'ar\', \'الكمية الإجمالية\', \'Total Quantity\')")});
             this.xrTableCell5.Text = "Total Quantity";
             this.xrTableCell5.TextAlignment = DevExpress.XtraPrinting.TextAlignment.MiddleRight;
             this.xrTableCell5.Weight = 0.9161617079864D;
@@ -3828,6 +3842,8 @@ namespace Ettad.Modules.ReportManagement.API.Reports.Templates
             this.xrTableCell6.Multiline = true;
             this.xrTableCell6.Name = "xrTableCell6";
             this.xrTableCell6.Padding = new DevExpress.XtraPrinting.PaddingInfo(5F, 5F, 5F, 5F, 100F);
+            this.xrTableCell6.ExpressionBindings.AddRange(new DevExpress.XtraReports.UI.ExpressionBinding[] {
+            new DevExpress.XtraReports.UI.ExpressionBinding("BeforePrint", "Text", "Iif(?Language == \'ar\', \'الكمية المستخدمة\', \'Used Quantity\')")});
             this.xrTableCell6.Text = "Used Quantity";
             this.xrTableCell6.TextAlignment = DevExpress.XtraPrinting.TextAlignment.MiddleRight;
             this.xrTableCell6.Weight = 0.88821488573172425D;
@@ -3843,6 +3859,8 @@ namespace Ettad.Modules.ReportManagement.API.Reports.Templates
             this.xrTableCell7.Multiline = true;
             this.xrTableCell7.Name = "xrTableCell7";
             this.xrTableCell7.Padding = new DevExpress.XtraPrinting.PaddingInfo(5F, 5F, 5F, 5F, 100F);
+            this.xrTableCell7.ExpressionBindings.AddRange(new DevExpress.XtraReports.UI.ExpressionBinding[] {
+            new DevExpress.XtraReports.UI.ExpressionBinding("BeforePrint", "Text", "Iif(?Language == \'ar\', \'الكمية المحجوزة\', \'Hold Quantity\')")});
             this.xrTableCell7.Text = "Hold Quantity";
             this.xrTableCell7.TextAlignment = DevExpress.XtraPrinting.TextAlignment.MiddleRight;
             this.xrTableCell7.Weight = 0.88821770011463008D;
@@ -3859,6 +3877,8 @@ namespace Ettad.Modules.ReportManagement.API.Reports.Templates
             this.xrTableCell8.Name = "xrTableCell8";
             this.xrTableCell8.Padding = new DevExpress.XtraPrinting.PaddingInfo(5F, 5F, 5F, 5F, 100F);
             this.xrTableCell8.StylePriority.UseTextAlignment = false;
+            this.xrTableCell8.ExpressionBindings.AddRange(new DevExpress.XtraReports.UI.ExpressionBinding[] {
+            new DevExpress.XtraReports.UI.ExpressionBinding("BeforePrint", "Text", "Iif(?Language == \'ar\', \'الكمية المتبقية\', \'Remaining Quantity\')")});
             this.xrTableCell8.Text = "Remaining Quantity";
             this.xrTableCell8.TextAlignment = DevExpress.XtraPrinting.TextAlignment.MiddleLeft;
             this.xrTableCell8.Weight = 1.2375400577220093D;
@@ -3892,6 +3912,8 @@ namespace Ettad.Modules.ReportManagement.API.Reports.Templates
             this.xrLabel6.SizeF = new System.Drawing.SizeF(573.4939F, 18F);
             this.xrLabel6.StylePriority.UseFont = false;
             this.xrLabel6.StylePriority.UseTextAlignment = false;
+            this.xrLabel6.ExpressionBindings.AddRange(new DevExpress.XtraReports.UI.ExpressionBinding[] {
+            new DevExpress.XtraReports.UI.ExpressionBinding("BeforePrint", "Text", "Iif(?Language == \'ar\', \'سري - للاستخدام الداخلي فقط\', \'Confidential – For internal use only\')")});
             this.xrLabel6.Text = "Confidential – For internal use only";
             this.xrLabel6.TextAlignment = DevExpress.XtraPrinting.TextAlignment.TopCenter;
             // 
@@ -3903,6 +3925,8 @@ namespace Ettad.Modules.ReportManagement.API.Reports.Templates
             this.xrPageInfo.Padding = new DevExpress.XtraPrinting.PaddingInfo(2F, 2F, 0F, 0F, 100F);
             this.xrPageInfo.SizeF = new System.Drawing.SizeF(120.7004F, 18F);
             this.xrPageInfo.TextAlignment = DevExpress.XtraPrinting.TextAlignment.MiddleRight;
+            this.xrPageInfo.ExpressionBindings.AddRange(new DevExpress.XtraReports.UI.ExpressionBinding[] {
+            new DevExpress.XtraReports.UI.ExpressionBinding("BeforePrint", "TextFormatString", "Iif(?Language == \'ar\', \'صفحة {0} من {1}\', \'Page {0} of {1}\')")});
             this.xrPageInfo.TextFormatString = "Page {0} of {1}";
             // 
             // ReportFooter
@@ -3965,6 +3989,8 @@ namespace Ettad.Modules.ReportManagement.API.Reports.Templates
             this.xrTableCellSummaryTotal.Multiline = true;
             this.xrTableCellSummaryTotal.Name = "xrTableCellSummaryTotal";
             this.xrTableCellSummaryTotal.Padding = new DevExpress.XtraPrinting.PaddingInfo(5F, 5F, 5F, 5F, 100F);
+            this.xrTableCellSummaryTotal.ExpressionBindings.AddRange(new DevExpress.XtraReports.UI.ExpressionBinding[] {
+            new DevExpress.XtraReports.UI.ExpressionBinding("BeforePrint", "Text", "Iif(?Language == \'ar\', \'الإجمالي\', \'Total\')")});
             this.xrTableCellSummaryTotal.Text = "Total";
             this.xrTableCellSummaryTotal.TextAlignment = DevExpress.XtraPrinting.TextAlignment.MiddleLeft;
             this.xrTableCellSummaryTotal.Weight = 1.2715414920502115D;
@@ -4061,6 +4087,8 @@ namespace Ettad.Modules.ReportManagement.API.Reports.Templates
             this.xrLabelReportFooter.Name = "xrLabelReportFooter";
             this.xrLabelReportFooter.Padding = new DevExpress.XtraPrinting.PaddingInfo(2F, 2F, 0F, 0F, 100F);
             this.xrLabelReportFooter.SizeF = new System.Drawing.SizeF(791F, 18F);
+            this.xrLabelReportFooter.ExpressionBindings.AddRange(new DevExpress.XtraReports.UI.ExpressionBinding[] {
+            new DevExpress.XtraReports.UI.ExpressionBinding("BeforePrint", "Text", "Iif(?Language == \'ar\', \'نهاية التقرير\', \'End of Report\')")});
             this.xrLabelReportFooter.Text = "End of Report";
             this.xrLabelReportFooter.TextAlignment = DevExpress.XtraPrinting.TextAlignment.MiddleCenter;
             // 
