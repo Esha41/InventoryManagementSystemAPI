@@ -1211,6 +1211,7 @@ namespace Ettad.Modules.ReportManagement.API.Reports.Templates
             DevExpress.XtraReports.Parameters.StaticListLookUpSettings staticListLookUpSettings5 = new DevExpress.XtraReports.Parameters.StaticListLookUpSettings();
             DevExpress.XtraReports.Parameters.DynamicListLookUpSettings dynamicListLookUpSettings3 = new DevExpress.XtraReports.Parameters.DynamicListLookUpSettings();
             DevExpress.XtraReports.Parameters.StaticListLookUpSettings staticListLookUpSettings6 = new DevExpress.XtraReports.Parameters.StaticListLookUpSettings();
+            DevExpress.DataAccess.ObjectBinding.ObjectConstructorInfo objectConstructorInfo1 = new DevExpress.DataAccess.ObjectBinding.ObjectConstructorInfo();
             DevExpress.DataAccess.ObjectBinding.ObjectConstructorInfo objectConstructorInfo3 = new DevExpress.DataAccess.ObjectBinding.ObjectConstructorInfo();
             this.EttadDataSource = new DevExpress.DataAccess.Sql.SqlDataSource(this.components);
             this.topMarginBand1 = new DevExpress.XtraReports.UI.TopMarginBand();
