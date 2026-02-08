@@ -10,7 +10,7 @@ namespace Ettad.User.API.Controllers
     [Authorize]
     [ApiController]
     [Route("api/admin/analytics")]
-    [CheckAuthorize("dashboard_view")]
+    [CheckAuthorize("Permissions.AdminDashboard.View")]
     public class AdminAnalyticsController : ApiControllerBase
     {
         private readonly IAdminAnalyticsService _analyticsService;

@@ -10,15 +10,12 @@ namespace Ettad.User.Services.Interfaces
     public interface ILdapAuthenticator
     {
         /// <summary>
-        /// Validates credentials against LDAP. If <paramref name="loginWithoutPassword"/> is true and <paramref name="password"/> is null,
-        /// this method will only check that an account with the given username exists in LDAP.
+        /// Validates credentials against LDAP using username and password.
         /// </summary>
-        //  Task<bool> ValidateAsync(string username, string? password, bool loginWithoutPassword, CancellationToken cancellationToken = default);
         Task<bool> ValidateAsync(
                 string username,
-                string? password,
-                bool loginWithoutPassword,
-                LdapOptions ldapOptions,        // 👈 new parameter (settings from DB)
+                string password,
+                LdapOptions ldapOptions,
                 CancellationToken cancellationToken = default);
     }
 

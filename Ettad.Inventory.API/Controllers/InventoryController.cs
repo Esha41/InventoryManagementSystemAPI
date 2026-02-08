@@ -3,6 +3,7 @@ using Ettad.Data.Enums;
 using Ettad.Data.Entities;
 using Ettad.Inventory.Service.Inventories;
 using Ettad.Inventory.Service.Inventories.Dtos;
+using Ettad.CrossCutting.Comman.Models;
 using Ettad.ResponseHandler.Models;
 using Ettad.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -67,6 +68,18 @@ namespace Ettad.Inventory.API.Controllers
         public async Task<IActionResult> GetAll()
         {
             var result = await _inventoryService.GetAllAsync();
+            return ProcessResponse(result);
+        }
+
+        /// <summary>
+        /// Get paginated inventory details by depot ID
+        /// </summary>
+        [HttpPost("depot/{depotId}/details/search")]
+        [ProducesResponseType((int)HttpStatusCode.OK)]
+        [CheckAuthorize("Permissions.Inventory.View", "Permissions.Inventory.Page")]
+        public async Task<IActionResult> GetInventoryDetailsByDepotIdPaginated(long depotId, [FromBody] PagedListRequest request)
+        {
+            var result = await _inventoryService.GetInventoryDetailsByDepotIdPaginatedAsync(depotId, request);
             return ProcessResponse(result);
         }
 
@@ -171,18 +184,21 @@ namespace Ettad.Inventory.API.Controllers
         /// <summary>
         /// Get available lots for a specific item and quantity (excludes expired and empty lots)
         /// </summary>
+        /// <param name="itemId">Item ID</param>
+        /// <param name="quantity">Required quantity</param>
+        /// <param name="excludeSupplyId">Optional supply ID to exclude from availability calculations (useful when replacing supply details)</param>
         [HttpGet("item/{itemId}/available-lots")]
         [ProducesResponseType((int)HttpStatusCode.OK)]
         [ProducesResponseType((int)HttpStatusCode.BadRequest)]
         [CheckAuthorize("Permissions.Inventory.View", "Permissions.Inventory.Page")]
-        public async Task<IActionResult> GetAvailableLotsForQuantity(long itemId, [FromQuery] long quantity)
+        public async Task<IActionResult> GetAvailableLotsForQuantity(long itemId, [FromQuery] long quantity, [FromQuery] long? excludeSupplyId = null)
         {
             if (quantity <= 0)
             {
                 return BadRequest("Quantity must be greater than 0");
             }
 
-            var result = await _inventoryService.GetAvailableLotsForQuantityAsync(itemId, quantity);
+            var result = await _inventoryService.GetAvailableLotsForQuantityAsync(itemId, quantity, null, excludeSupplyId);
             return ProcessResponse(result);
         }
 

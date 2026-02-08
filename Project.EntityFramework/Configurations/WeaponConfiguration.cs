@@ -10,6 +10,15 @@ namespace Ettad.EntityFramework.Configurations
         public void Configure(EntityTypeBuilder<Weapon> builder)
         {
             builder.ToTable("Weapons");
+
+            // Performance indexes for pagination, filtering, and sorting
+            // Note: IsDeleted, TypeId, ClassificationId, Name are in BaseItems table
+            // CountryOfManufactureId is in Weapons table
+            // We can only create composite indexes within the same table
+            
+            // Single-column index on Weapon-specific property (in Weapons table)
+            builder.HasIndex(x => x.CountryOfManufactureId);
+
             // Seed data is handled in ApplicationDbInitializer (runtime seeding)
         }
     }

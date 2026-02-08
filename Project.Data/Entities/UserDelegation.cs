@@ -34,5 +34,11 @@ namespace Ettad.Data.Entities
         /// Status of delegation: 0 = Pending, 1 = Approved, 2 = Rejected
         /// </summary>
         public int DelegationStatus { get; set; } = 0; // 0 = Pending by default
+
+        /// <summary>
+        /// Bitwise flags indicating what scopes are delegated.
+        /// Uses DelegationScope enum values: WorkflowApproval = 1, RequestManagement = 2, etc.
+        /// </summary>
+        public long DelegationScopes { get; set; }
     }
 }

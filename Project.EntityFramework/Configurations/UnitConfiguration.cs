@@ -1,4 +1,5 @@
 using Ettad.Data.Entities;
+using Ettad.Data.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -16,15 +17,19 @@ namespace Ettad.EntityFramework.Configurations
                 .IsRequired()
                 .HasMaxLength(500);
 
-            builder.HasIndex(x => x.NameAr)
-                .IsUnique()
-                .HasFilter("[IsDeleted] = 0");
-
             builder.Property(x => x.NameEn)
                 .IsRequired()
                 .HasMaxLength(500);
 
-            builder.HasIndex(x => x.NameEn)
+            builder.Property(x => x.ItemType)
+                .HasConversion<int>();
+
+            // Composite unique indexes (like ItemTypeLookup pattern)
+            builder.HasIndex(x => new { x.NameAr, x.ItemType })
+                .IsUnique()
+                .HasFilter("[IsDeleted] = 0");
+
+            builder.HasIndex(x => new { x.NameEn, x.ItemType })
                 .IsUnique()
                 .HasFilter("[IsDeleted] = 0");
 
@@ -33,13 +38,14 @@ namespace Ettad.EntityFramework.Configurations
                 .ValueGeneratedOnAdd()
                 .HasDefaultValueSql("GETDATE()");
 
-            // Seed data
+            // Seed data with ItemType
             builder.HasData(
                 new Unit
                 {
                     Id = 1,
                     NameAr = "غرام",
                     NameEn = "Gram",
+                    ItemType = ItemType.Ammunition,
                     IsDeleted = false
                 },
                 new Unit
@@ -47,6 +53,7 @@ namespace Ettad.EntityFramework.Configurations
                     Id = 2,
                     NameAr = "مليمتر",
                     NameEn = "Millimeter",
+                    ItemType = ItemType.Ammunition,
                     IsDeleted = false
                 },
                 new Unit
@@ -54,6 +61,49 @@ namespace Ettad.EntityFramework.Configurations
                     Id = 3,
                     NameAr = "قطعة",
                     NameEn = "Piece",
+                    ItemType = ItemType.Ammunition,
+                    IsDeleted = false
+                },
+                // Units for Weapon
+                new Unit
+                {
+                    Id = 4,
+                    NameAr = "غرام",
+                    NameEn = "Gram",
+                    ItemType = ItemType.Weapon,
+                    IsDeleted = false
+                },
+                new Unit
+                {
+                    Id = 5,
+                    NameAr = "مليمتر",
+                    NameEn = "Millimeter",
+                    ItemType = ItemType.Weapon,
+                    IsDeleted = false
+                },
+                new Unit
+                {
+                    Id = 6,
+                    NameAr = "قطعة",
+                    NameEn = "Piece",
+                    ItemType = ItemType.Weapon,
+                    IsDeleted = false
+                },
+                // Units for Explosive
+                new Unit
+                {
+                    Id = 7,
+                    NameAr = "غرام",
+                    NameEn = "Gram",
+                    ItemType = ItemType.Explosive,
+                    IsDeleted = false
+                },
+                new Unit
+                {
+                    Id = 8,
+                    NameAr = "متر",
+                    NameEn = "Meter",
+                    ItemType = ItemType.Explosive,
                     IsDeleted = false
                 }
             );

@@ -14,7 +14,10 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using System.Collections.Generic;
 using System.Linq;
+using System.Linq;
 using Ettad.CrossCutting.Comman.Time;
+using Ettad.CrossCutting.Comman.Models;
+using Ettad.LdapSettings.Services.Interfaces;
 
 public class UserService : IUserService
 {
@@ -24,12 +27,13 @@ public class UserService : IUserService
     private readonly ICurrentUserService _currentUserService;
     private readonly ILogger<UserService> _logger;
     private readonly IDateTimeProvider _dateTimeProvider;
+    private readonly ILdapSettingsService _ldapSettingsService;
     
     
     private readonly ApplicationDbContext _context;
     public UserService(UserManager<ApplicationUser> userManager, RoleManager<ApplicationRole> roleManager
          , ICurrentUserService currentUserService, ILogger<UserService> logger, ApplicationDbContext context,
-         IDateTimeProvider dateTimeProvider)
+         IDateTimeProvider dateTimeProvider, ILdapSettingsService ldapSettingsService)
        
     {
         _userManager = userManager;
@@ -39,6 +43,7 @@ public class UserService : IUserService
         _currentUserService = currentUserService;
         _logger = logger;
         _dateTimeProvider = dateTimeProvider;
+        _ldapSettingsService = ldapSettingsService;
     }
 
     public async Task<APIOperationResponse<UserDto>> GetByIdAsync(string id)
@@ -73,57 +78,136 @@ public class UserService : IUserService
     //    return APIOperationResponse<List<UserDto>>.Success(mapped); 
     //}
 
-    public async Task<APIOperationResponse<List<UserDto>>> GetAllAsync()
+    private IQueryable<ApplicationUser> GetUsersQuery(FilterData filter)
     {
-        _logger.LogInformation("Getting all users. RequestedBy: {RequestedBy}, IsSuperAdmin: {IsSuperAdmin}", 
-            _currentUserService.UserId, _currentUserService.IsSuperAdmin);
-        
-
-        var users = await _userManager.Users
-            .Where(u => !u.IsDeleted)
+        var query = _userManager.Users
             .Include(u => u.Department)
             .Include(u => u.Rank)
+            .AsNoTracking();
+
+        // Check if filter requests deleted users
+        bool includeDeleted = false;
+        if (filter != null)
+        {
+            // Check if IsDeleted filter is present and set to true
+            if (filter.Field == "IsDeleted" && filter.Value?.ToLower() == "true")
+            {
+                includeDeleted = true;
+            }
+            else if (filter.Filters != null && filter.Filters.Any())
+            {
+                // Check nested filters for IsDeleted = true
+                includeDeleted = filter.Filters.Any(f => 
+                    f.Field == "IsDeleted" && f.Value?.ToLower() == "true");
+            }
+        }
+
+        // Only filter out deleted users if not explicitly requested
+        if (!includeDeleted)
+        {
+            query = query.Where(u => !u.IsDeleted);
+        }
+
+        // Filter out superadmin users if the requesting user is not a superadmin
+        if (!_currentUserService.IsSuperAdmin)
+        {
+            var superAdminRoleIds = _context.Roles
+                .Where(r => r.IsSuperAdmin)
+                .Select(r => r.Id);
+
+            var userRoles = _context.UserRoles; // Provided by IdentityDbContext
+
+            query = query.Where(u => !userRoles.Any(ur => ur.UserId == u.Id && superAdminRoleIds.Contains(ur.RoleId)));
+        }
+
+        if (filter != null)
+        {
+            if (!string.IsNullOrEmpty(filter.Value) && string.IsNullOrEmpty(filter.Field) && (filter.Filters == null || !filter.Filters.Any()))
+            {
+                // Global search across multiple fields
+                var searchTerm = filter.Value.ToLower();
+                query = query.Where(u => 
+                    (u.UserName != null && u.UserName.Contains(searchTerm)) || 
+                    (u.Email != null && u.Email.Contains(searchTerm)) || 
+                    (u.FullNameEN != null && u.FullNameEN.Contains(searchTerm)) || 
+                    (u.FullNameAR != null && u.FullNameAR.Contains(searchTerm)) || 
+                    (u.MilitoryId != null && u.MilitoryId.Contains(searchTerm)));
+            }
+            else
+            {
+                // Use standard FilterProvider for specific field filters
+                query = Ettad.CrossCutting.Comman.Providers.FilterProvider.ToFilterView(query, filter);
+            }
+        }
+
+        return query;
+    }
+
+    public async Task<APIOperationResponse<PaginatedList<UserDto>>> GetAllAsync(PagedListRequest request)
+    {
+        _logger.LogInformation("Getting users (Paginated). RequestedBy: {RequestedBy}, IsSuperAdmin: {IsSuperAdmin}, Page: {Page}, PageSize: {PageSize}",
+            _currentUserService.UserId, _currentUserService.IsSuperAdmin, request.Page, request.PageSize);
+
+        var query = GetUsersQuery(request.Filter);
+
+        // Apply Pagination & Filtering (Using the utility we updated)
+        var paginatedUsers = await PaginatedList<ApplicationUser>.CreateAsyncForTableBinding(query, request);
+
+        // Map to DTOs and Batch Load Roles
+        var userDtos = await MapToDtosWithRolesAsync(paginatedUsers.Items);
+
+        var result = new PaginatedList<UserDto>(userDtos, paginatedUsers.TotalCount, paginatedUsers.PageIndex, request.PageSize);
+      
+        return APIOperationResponse<PaginatedList<UserDto>>.Success(result);
+    }
+
+    public async Task<APIOperationResponse<List<UserDto>>> GetAllForExportAsync(FilterData filter)
+    {
+        _logger.LogInformation("Getting all users for export. RequestedBy: {RequestedBy}, IsSuperAdmin: {IsSuperAdmin}",
+            _currentUserService.UserId, _currentUserService.IsSuperAdmin);
+
+        var query = GetUsersQuery(filter);
+
+        // Apply filtering but NO pagination
+        if (filter != null)
+        {
+            query = Ettad.CrossCutting.Comman.Providers.FilterProvider.ToFilterView(query, filter);
+        }
+
+        var users = await query.ToListAsync();
+        var userDtos = await MapToDtosWithRolesAsync(users);
+
+        return APIOperationResponse<List<UserDto>>.Success(userDtos);
+    }
+
+    private async Task<List<UserDto>> MapToDtosWithRolesAsync(List<ApplicationUser> users)
+    {
+        if (!users.Any()) return new List<UserDto>();
+
+        var userIds = users.Select(u => u.Id).ToList();
+        
+        // Batch fetch all roles for these users in one query
+        var userRolesMapping = await _context.UserRoles
+            .Where(ur => userIds.Contains(ur.UserId))
+            .Join(_context.Roles, ur => ur.RoleId, r => r.Id, (ur, r) => new { ur.UserId, Role = r })
             .ToListAsync();
 
-        // 2️⃣ Get all roles upfront to avoid repeated DB calls
-        var allRoles = await _roleManager.Roles.ToListAsync();
-        
-        // Get superadmin role IDs
-        var superAdminRoleIds = allRoles.Where(r => r.IsSuperAdmin).Select(r => r.Id).ToHashSet();
-        var superAdminRoleNames = allRoles.Where(r => r.IsSuperAdmin).Select(r => r.Name).ToHashSet();
-
-        var mapped = new List<UserDto>();
+        var allRoles = await _roleManager.Roles.AsNoTracking().ToListAsync();
+        var userDtos = new List<UserDto>();
 
         foreach (var user in users)
         {
             var dto = MapToDto(user);
-
-            // 3️⃣ Get user roles (names)
-            var roleNames = await _userManager.GetRolesAsync(user);
-
-            // 4️⃣ Map role names → role IDs using pre-fetched roles
+            var roleNames = userRolesMapping
+                .Where(m => m.UserId == user.Id)
+                .Select(m => m.Role.Name!)
+                .ToList();
+            
             PopulateRoles(dto, roleNames, allRoles);
-            
-            // 5️⃣ Filter out superadmin users if the requesting user is not a superadmin
-            if (!_currentUserService.IsSuperAdmin)
-            {
-                // Check if this user has any superadmin roles
-                var hasSuperAdminRole = roleNames.Any(roleName => superAdminRoleNames.Contains(roleName));
-                
-                if (hasSuperAdminRole)
-                {
-                    _logger.LogDebug("Filtering out superadmin user from results. UserId: {UserId}, Username: {Username}", 
-                        user.Id, user.UserName);
-                    continue; // Skip this user
-                }
-            }
-            
-            mapped.Add(dto);
+            userDtos.Add(dto);
         }
 
-        _logger.LogInformation("Successfully retrieved {UserCount} users (after filtering). RequestedBy: {RequestedBy}", 
-            mapped.Count, _currentUserService.UserId);
-        return APIOperationResponse<List<UserDto>>.Success(mapped);
+        return userDtos;
     }
 
 
@@ -154,6 +238,70 @@ public class UserService : IUserService
                     _currentUserService.UserId);
                 return APIOperationResponse<UserDto>.Fail(ResponseType.BadRequest, "LdapUserName or UserName is required");
             }
+
+            // Validate LDAP domain
+            var ldapSettingsResponse = await _ldapSettingsService.GetLdapSettings();
+            if (!ldapSettingsResponse.Succeeded || ldapSettingsResponse.Data == null)
+            {
+                _logger.LogWarning("User creation failed: Unable to retrieve LDAP settings. CreatedBy: {CreatedBy}", 
+                    _currentUserService.UserId);
+                return APIOperationResponse<UserDto>.Fail(ResponseType.BadRequest, "Unable to retrieve LDAP settings");
+            }
+
+            var ldapSettings = ldapSettingsResponse.Data;
+            var ldapDomain = ldapSettings.LdapDomain?.Trim() ?? string.Empty;
+
+            // Check if the username contains a domain (either DOMAIN\username or username@domain format)
+            if (username.Contains("\\"))
+            {
+                // Format: DOMAIN\username
+                var parts = username.Split('\\', 2);
+                var providedDomain = parts[0].Trim();
+                var usernameWithoutDomain = parts[1].Trim();
+
+                if (!providedDomain.Equals(ldapDomain, StringComparison.OrdinalIgnoreCase))
+                {
+                    _logger.LogWarning("User creation failed: Domain mismatch. Provided: {ProvidedDomain}, Expected: {ExpectedDomain}. CreatedBy: {CreatedBy}", 
+                        providedDomain, ldapDomain, _currentUserService.UserId);
+                    return APIOperationResponse<UserDto>.Fail(ResponseType.BadRequest, 
+                        $"Invalid domain. Please use the correct domain: {ldapDomain}");
+                }
+
+                // Use the username as-is since domain is correct
+                username = username.Trim();
+                dto.LdapUserName = username;
+            }
+            else if (username.Contains("@"))
+            {
+                // Format: username@domain
+                var parts = username.Split('@', 2);
+                var usernameWithoutDomain = parts[0].Trim();
+                var providedDomain = parts[1].Trim();
+
+                if (!providedDomain.Equals(ldapDomain, StringComparison.OrdinalIgnoreCase))
+                {
+                    _logger.LogWarning("User creation failed: Domain mismatch. Provided: {ProvidedDomain}, Expected: {ExpectedDomain}. CreatedBy: {CreatedBy}", 
+                        providedDomain, ldapDomain, _currentUserService.UserId);
+                    return APIOperationResponse<UserDto>.Fail(ResponseType.BadRequest, 
+                        $"Invalid domain. Please use the correct domain: {ldapDomain}");
+                }
+
+                // Use the username as-is since domain is correct
+                username = username.Trim();
+                dto.LdapUserName = username;
+            }
+            else
+            {
+                // No domain provided, append the domain from DB
+                if (!string.IsNullOrWhiteSpace(ldapDomain))
+                {
+                    username = $"{username.Trim()}@{ldapDomain}";
+                    dto.LdapUserName = username;
+                    _logger.LogInformation("LDAP username auto-completed with domain. Username: {Username}, Domain: {Domain}", 
+                        username, ldapDomain);
+                }
+            }
+
             // For LDAP users, if password is null, generate a random password (won't be used for authentication)
             password = dto.Password ?? Guid.NewGuid().ToString() + "!@#$%^&*";
             _logger.LogInformation("Non-super admin creating LDAP user. Using LdapUserName: {LdapUserName}", username);
@@ -407,6 +555,42 @@ public class UserService : IUserService
         id, username, _currentUserService.UserId);
     return APIOperationResponse<bool>.Success(true, "User deleted successfully");
 }
+
+    public async Task<APIOperationResponse<bool>> RestoreAsync(string id)
+    {
+        _logger.LogInformation("Restoring deleted user. TargetUserId: {TargetUserId}, RestoredBy: {RestoredBy}", 
+            id, _currentUserService.UserId);
+        
+        var user = await _userManager.Users
+            .FirstOrDefaultAsync(u => u.Id == id && u.IsDeleted);
+        
+        if (user == null)
+        {
+            _logger.LogWarning("User restore failed: User not found or not deleted. TargetUserId: {TargetUserId}, RestoredBy: {RestoredBy}", 
+                id, _currentUserService.UserId);
+            return APIOperationResponse<bool>.Fail(ResponseType.NotFound, "Deleted user not found");
+        }
+        
+        var username = user.UserName;
+
+        // Restore: Clear deletion flags
+        user.IsDeleted = false;
+        user.DeletionDate = null;
+        user.DeletedBy = null;
+
+        var result = await _userManager.UpdateAsync(user);
+        if (!result.Succeeded)
+        {
+            var errors = string.Join(",", result.Errors.Select(e => e.Description));
+            _logger.LogWarning("User restore failed: {Errors}. TargetUserId: {TargetUserId}, Username: {Username}, RestoredBy: {RestoredBy}", 
+                errors, id, username, _currentUserService.UserId);
+            return APIOperationResponse<bool>.Fail(ResponseType.InternalServerError, errors);
+        }
+
+        _logger.LogInformation("User restored successfully. TargetUserId: {TargetUserId}, Username: {Username}, RestoredBy: {RestoredBy}", 
+            id, username, _currentUserService.UserId);
+        return APIOperationResponse<bool>.Success(true, "User restored successfully");
+    }
 
     //public async Task<APIOperationResponse<List<UserRoleDto>>> GetUserRolesAsync(string userId)
     //{
@@ -798,4 +982,34 @@ public class UserService : IUserService
             NameEn = rank.NameEn,
             IsDeleted = rank.IsDeleted
         };
+
+    public async Task<APIOperationResponse<UserSummaryDto>> GetUsersSummaryAsync()
+    {
+        _logger.LogInformation("Getting users summary. RequestedBy: {RequestedBy}", _currentUserService.UserId);
+
+        var query = _userManager.Users.Where(u => !u.IsDeleted);
+
+        // Filter out superadmin users if the requesting user is not a superadmin
+        if (!_currentUserService.IsSuperAdmin)
+        {
+            var superAdminRoleIds = _context.Roles
+                .Where(r => r.IsSuperAdmin)
+                .Select(r => r.Id);
+
+            var userRoles = _context.UserRoles;
+            query = query.Where(u => !userRoles.Any(ur => ur.UserId == u.Id && superAdminRoleIds.Contains(ur.RoleId)));
+        }
+
+        var stats = await query
+            .GroupBy(u => 1)
+            .Select(g => new UserSummaryDto
+            {
+                TotalUsers = g.Count(),
+                ActiveUsers = g.Count(u => u.IsActive),
+                InactiveUsers = g.Count(u => !u.IsActive)
+            })
+            .FirstOrDefaultAsync();
+
+        return APIOperationResponse<UserSummaryDto>.Success(stats ?? new UserSummaryDto());
+    }
 }

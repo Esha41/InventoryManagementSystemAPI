@@ -13,6 +13,9 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity;
 using Ettad.User.Services.Interfaces;
 using System.Linq;
+using Ettad.CrossCutting.Comman.Models;
+using Ettad.CrossCutting.Comman.Providers;
+using Ettad.ResponseHandler.Consts;
 
 namespace Ettad.RequestManagement.Service.Implementation
 {
@@ -33,6 +36,39 @@ namespace Ettad.RequestManagement.Service.Implementation
             _currentUserService = currentUserService;
             _userDelegationService = userDelegationService;
             _mapper = mapper;
+        }
+
+        private IQueryable<BaseRequest> PrepareBaseQuery(IQueryable<BaseRequest> query, FilterData filter)
+        {
+            query = query
+                .Include(r => r.Department)
+                .Include(r => r.Requester)
+                    .ThenInclude(u => u.Rank)
+                .Include(r => r.RequestPurpose)
+                .Include(r => r.RequestItems)
+                    .ThenInclude(ri => ri.Item);
+
+            if (filter != null)
+            {
+                // Global Search logic (when Field and Filters are empty)
+                if (!string.IsNullOrEmpty(filter.Value) && string.IsNullOrEmpty(filter.Field) && (filter.Filters == null || !filter.Filters.Any()))
+                {
+                    var searchTerm = filter.Value.ToLower();
+                    query = query.Where(r => 
+                        (r.RequestNo != null && r.RequestNo.Contains(searchTerm)) || 
+                        (r.Requester != null && (r.Requester.UserName.Contains(searchTerm) || r.Requester.FullNameEN.Contains(searchTerm) || r.Requester.FullNameAR.Contains(searchTerm))) || 
+                        (r.Department != null && (r.Department.NameAr.Contains(searchTerm) || r.Department.NameEn.Contains(searchTerm))));
+                }
+            }
+
+            // Default sorting for stable pagination (applied ONLY if no client sort provided)
+            // Note: PaginatedList.CreateAsyncForTableBinding will apply the client-side sort via ToFilterView
+            if (filter == null || string.IsNullOrEmpty(filter.sortField))
+            {
+                query = query.OrderByDescending(r => r.CreationDate);
+            }
+
+            return query.AsNoTracking();
         }
 
         public async Task<APIOperationResponse<List<BaseRequestDto>>> GetAllRequestsAsync(RequestStatus? status = null, RequestType? requestType = null)
@@ -205,7 +241,7 @@ namespace Ettad.RequestManagement.Service.Implementation
             }
 
             // --- DELEGATION LOGIC START ---
-            var activeDelegatorIds = await _userDelegationService.GetActiveDelegatorsForUserAsync(userId);
+            var activeDelegatorIds = await _userDelegationService.GetActiveDelegatorsForUserAsync(userId, DelegationScope.WorkflowApproval);
 
             var delegatorRoleNames = new List<string>();
             if (activeDelegatorIds.Any())
@@ -270,8 +306,161 @@ namespace Ettad.RequestManagement.Service.Implementation
             {
                 dto.IsMyTurn = myTurnSet.Contains(dto.Id);
             }
-
             return APIOperationResponse<List<BaseRequestDto>>.Success(dtos);
+        }
+
+        public async Task<APIOperationResponse<PaginatedList<BaseRequestDto>>> GetAllPaginatedAsync(PagedListRequest request)
+        {
+            var query = _context.BaseRequests.AsQueryable();
+            query = PrepareBaseQuery(query, request.Filter);
+            
+            var paginatedRequests = await PaginatedList<BaseRequest>.CreateAsyncForTableBinding(query, request);
+            var dtos = _mapper.Map<List<BaseRequestDto>>(paginatedRequests.Items);
+            
+            var result = new PaginatedList<BaseRequestDto>(dtos, paginatedRequests.TotalCount, paginatedRequests.PageIndex, request.PageSize);
+            return APIOperationResponse<PaginatedList<BaseRequestDto>>.Success(result);
+        }
+
+        public async Task<APIOperationResponse<PaginatedList<BaseRequestDto>>> GetUserActionRequestsPaginatedAsync(PagedListRequest request)
+        {
+            var userId = _currentUserService.UserId;
+            var userRoles = _currentUserService.Roles ?? new List<string>();
+            var userDepartmentId = _currentUserService.DepartmentId;
+
+            IQueryable<BaseRequest> query = _context.BaseRequests.AsQueryable();
+
+            // if current user is super admin return all
+            if (!_currentUserService.IsSuperAdmin)
+            {
+                // Check if user has "Order Requester" role - if so, return ONLY their requests
+                if (userRoles.Contains(WorkflowRoleNames.OrderRequester))
+                {
+                    query = query.Where(r => r.RequesterId == userId);
+                }
+                else
+                {
+                    // Roles that are restricted to their own department
+                    var restrictedRoles = new List<string>
+                    {
+                        WorkflowRoleNames.SupplyOfficer,
+                        WorkflowRoleNames.RequestingEntityCommander
+                    };
+
+                    bool isRestrictedRole = userRoles.Any(r => restrictedRoles.Contains(r));
+                    
+                    if (isRestrictedRole && userDepartmentId.HasValue)
+                    {
+                        query = query.Where(r => r.DepartmentId == userDepartmentId.Value);
+                    }
+
+                    // --- DELEGATION LOGIC START ---
+                    var activeDelegatorIds = await _userDelegationService.GetActiveDelegatorsForUserAsync(userId, DelegationScope.WorkflowApproval);
+                    var delegatorRoleNames = new List<string>();
+                    if (activeDelegatorIds.Any())
+                    {
+                        delegatorRoleNames = await _context.Set<IdentityUserRole<string>>()
+                            .Where(ur => activeDelegatorIds.Contains(ur.UserId))
+                            .Join(_context.Roles, ur => ur.RoleId, r => r.Id, (ur, r) => r.Name)
+                            .ToListAsync();
+                    }
+                    // --- DELEGATION LOGIC END ---
+
+                    // Check if current request is specifically for "My Turn" only
+                    bool filterByMyTurn = false;
+                    if (request.Filter != null)
+                    {
+                        // Check if IsMyTurn is filtered
+                        var myTurnFilter = request.Filter.Filters?.FirstOrDefault(f => f.Field == "IsMyTurn") ?? 
+                                         (request.Filter.Field == "IsMyTurn" ? request.Filter : null);
+                        
+                        if (myTurnFilter != null && myTurnFilter.Value?.ToLower() == "true")
+                        {
+                            filterByMyTurn = true;
+                        }
+
+                        // Remove IsMyTurn from filters to prevent Dynamic LINQ from crashing (since it's not a DB property)
+                        if (request.Filter.Filters != null)
+                        {
+                            request.Filter.Filters = request.Filter.Filters.Where(f => f.Field != "IsMyTurn").ToList();
+                        }
+                        if (request.Filter.Field == "IsMyTurn")
+                        {
+                            request.Filter.Field = null;
+                            request.Filter.Operator = null;
+                            request.Filter.Value = null;
+                        }
+                    }
+
+                    if (filterByMyTurn)
+                    {
+                        // Strictly items where it IS currently my turn
+                        query = query.Where(r => _context.WorkflowApprovalSteps.Any(was => 
+                            was.TargetRequestId == r.Id && was.IsCurrent && (
+                                (was.ApproverUserId == userId || activeDelegatorIds.Contains(was.ApproverUserId)) || 
+                                (was.ApproverUserId == null && (
+                                    (userRoles.Contains(was.WorkflowStep.ApplicationRole.Name) || delegatorRoleNames.Contains(was.WorkflowStep.ApplicationRole.Name)) || 
+                                    (was.WorkflowStep.HigherApprovalRole != null && (userRoles.Contains(was.WorkflowStep.HigherApprovalRole.Name) || delegatorRoleNames.Contains(was.WorkflowStep.HigherApprovalRole.Name)))
+                                ))
+                            )
+                        ));
+                    }
+                    else
+                    {
+                        // Standard user action view (items I was involved in or can act on)
+                        query = query.Where(r => _context.WorkflowApprovalSteps.Any(was => 
+                            was.TargetRequestId == r.Id && (
+                                (was.ApproverUserId == userId || activeDelegatorIds.Contains(was.ApproverUserId)) || 
+                                (was.ApproverUserId == null && (
+                                    (userRoles.Contains(was.WorkflowStep.ApplicationRole.Name) || delegatorRoleNames.Contains(was.WorkflowStep.ApplicationRole.Name)) || 
+                                    (was.WorkflowStep.HigherApprovalRole != null && (userRoles.Contains(was.WorkflowStep.HigherApprovalRole.Name) || delegatorRoleNames.Contains(was.WorkflowStep.HigherApprovalRole.Name)))
+                                ))
+                            )
+                        ));
+                    }
+                }
+            }
+
+            // Apply base query behavior (Includes, Search, and Sorting)
+            query = PrepareBaseQuery(query, request.Filter);
+
+            var paginatedRequests = await PaginatedList<BaseRequest>.CreateAsyncForTableBinding(query, request);
+            var dtos = _mapper.Map<List<BaseRequestDto>>(paginatedRequests.Items);
+
+            // Fetch IsMyTurn status
+            if (dtos.Any())
+            {
+                var activeDelegatorIds = await _userDelegationService.GetActiveDelegatorsForUserAsync(userId, DelegationScope.WorkflowApproval);
+                var delegatorRoleNames = new List<string>();
+                if (activeDelegatorIds.Any())
+                {
+                    delegatorRoleNames = await _context.Set<IdentityUserRole<string>>()
+                        .Where(ur => activeDelegatorIds.Contains(ur.UserId))
+                        .Join(_context.Roles, ur => ur.RoleId, r => r.Id, (ur, r) => r.Name)
+                        .ToListAsync();
+                }
+
+                var fetchedRequestIds = dtos.Select(r => (int)r.Id).ToList();
+                var myTurnSet = (await _context.WorkflowApprovalSteps
+                    .Where(was => was.IsCurrent && fetchedRequestIds.Contains(was.TargetRequestId) && (
+                        (was.ApproverUserId == userId || activeDelegatorIds.Contains(was.ApproverUserId)) || 
+                        (was.ApproverUserId == null && (
+                            (userRoles.Contains(was.WorkflowStep.ApplicationRole.Name) || delegatorRoleNames.Contains(was.WorkflowStep.ApplicationRole.Name)) || 
+                            (was.WorkflowStep.HigherApprovalRole != null && (userRoles.Contains(was.WorkflowStep.HigherApprovalRole.Name) || delegatorRoleNames.Contains(was.WorkflowStep.HigherApprovalRole.Name)))
+                        ))
+                    ))
+                    .Select(was => (long)was.TargetRequestId)
+                    .Distinct()
+                    .ToListAsync())
+                    .ToHashSet();
+
+                foreach (var dto in dtos)
+                {
+                    dto.IsMyTurn = myTurnSet.Contains(dto.Id);
+                }
+            }
+
+            var result = new PaginatedList<BaseRequestDto>(dtos, paginatedRequests.TotalCount, paginatedRequests.PageIndex, request.PageSize);
+            return APIOperationResponse<PaginatedList<BaseRequestDto>>.Success(result);
         }
     }
 }

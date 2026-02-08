@@ -35,6 +35,12 @@ namespace Ettad.Data.Enums
         [Category(PlainPermissionsGenerator.Reports)]
         InventorySummaryReportPage,
 
+        [Category(PlainPermissionsGenerator.Reports)]
+        LowStockReportPage,
+
+        [Category(PlainPermissionsGenerator.Reports)]
+        ExpiringLotsReportPage,
+
         [Category(PlainPermissionsGenerator.Workflow)]
         UpdateRequestAndSuggestLots,
 
@@ -55,6 +61,9 @@ namespace Ettad.Data.Enums
 
         [Category(PlainPermissionsGenerator.Workflow)]
         ReviewWeaponSupply,
+
+        [Category(PlainPermissionsGenerator.Workflow)]
+        UpdateRequestItems,
 
         [Category(PlainPermissionsGenerator.Inventory)]
         AllowanceItemViewAllDepartments,

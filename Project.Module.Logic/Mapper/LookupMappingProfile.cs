@@ -11,7 +11,8 @@ namespace Ettad.Module.lookup.Mapper
             // CreateUpdate DTOs to Entities
             CreateMap<CreateUpdateDepartmentDto, Department>();
             CreateMap<CreateUpdateCountryDto, Country>();
-            CreateMap<CreateUpdateDepotDto, Depot>();
+            CreateMap<CreateUpdateDepotDto, Depot>()
+                .ForMember(dest => dest.Location, opt => opt.MapFrom(src => src.Location ?? string.Empty));
             CreateMap<CreateUpdateColorDto, Color>();
             CreateMap<CreateUpdateCaseTypeDto, CaseType>();
             CreateMap<CreateUpdateCompatibilityDto, Compatibility>();

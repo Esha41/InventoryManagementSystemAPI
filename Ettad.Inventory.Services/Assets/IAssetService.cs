@@ -1,6 +1,7 @@
 using Ettad.Inventory.Service.Assets.Dtos;
 using Ettad.Inventory.Services.Common;
 using Ettad.ResponseHandler.Models;
+using Ettad.CrossCutting.Comman.Models;
 using Microsoft.AspNetCore.Http;
 
 namespace Ettad.Inventory.Service.Assets
@@ -17,6 +18,7 @@ namespace Ettad.Inventory.Service.Assets
         Task<APIOperationResponse<ImportResult<CreateAssetDto>>> ImportAsync(IFormFile file, long depotId, string language = "en");
         Task<APIOperationResponse<ImportResult<CreateAssetDto>>> ImportPreviewAsync(IFormFile file, long depotId, string language = "en");
         Task<APIOperationResponse<byte[]>> GenerateImportTemplateAsync(long depotId, string language = "en");
+        Task<APIOperationResponse<PaginatedList<AssetDto>>> GetAssetsPaginatedAsync(long? depotId, PagedListRequest request);
     }
 }
 

@@ -65,6 +65,25 @@ namespace Ettad.EntityFramework.Configurations
                 .HasForeignKey(x => x.TypeId)
                 .IsRequired(false)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            // Performance indexes for pagination, filtering, and sorting
+            // Note: Foreign key relationships don't automatically create indexes
+            // We need explicit indexes for query performance
+            builder.HasIndex(x => x.IsDeleted)
+                .HasFilter("[IsDeleted] = 0");
+
+           
+            builder.HasIndex(x => x.Name);
+
+           
+            builder.HasIndex(x => x.TypeId);
+            builder.HasIndex(x => x.ClassificationId);
+
+            builder.HasIndex(x => new { x.TypeId, x.IsDeleted })
+                .HasFilter("[IsDeleted] = 0");
+
+            builder.HasIndex(x => new { x.ClassificationId, x.IsDeleted })
+                .HasFilter("[IsDeleted] = 0");
         }
     }
 }

@@ -6,7 +6,7 @@ namespace Ettad.Workflows.Service.DTO
     public class ApproveRejectWorkflowApprovalDto
     {
         [Required]
-        public int BaseRequestID { get; set; }
+        public long BaseRequestID { get; set; }
 
         [Required]
         public bool IsApproved { get; set; } // true for approve, false for reject

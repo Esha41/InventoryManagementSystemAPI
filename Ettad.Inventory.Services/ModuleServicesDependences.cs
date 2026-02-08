@@ -27,6 +27,7 @@ using Ettad.Inventory.Service.AssetSupply.Validators;
 using Ettad.Inventory.Service.AssetSupply.Profiles;
 using Ettad.Inventory.Service.AssetHistory;
 using Ettad.Inventory.Service.AssetHistory.Profiles;
+using Ettad.Inventory.Service.AdvancedAnalytics;
 
 namespace Ettad.Inventory.Service
 {
@@ -71,6 +72,8 @@ namespace Ettad.Inventory.Service
             // Low Stock Monitor services
             services.AddScoped<ILowStockMonitorBackgroundService, LowStockMonitorBackgroundService>();
             services.AddScoped<ILowStockMonitorSettingsService, LowStockMonitorSettingsService>();
+            services.AddScoped<ILowStockMonitoringService, LowStockMonitoringService>();
+            services.AddScoped<IExpiringLotMonitoringService, ExpiringLotMonitoringService>();
             services.AddScoped<LowStockEmailTemplateService>();
             services.AddScoped<LowStockMonitorJob>();
             services.AddScoped<IExcelImportService, ExcelImportService>();
@@ -85,6 +88,9 @@ namespace Ettad.Inventory.Service
             // Asset History Services
             services.AddScoped<IAssetHistoryService, AssetHistoryService>();
             services.AddAutoMapper(typeof(AssetHistoryMappingProfile));
+
+            // Advanced Analytics Services
+            services.AddScoped<IAdvancedAnalyticsService, AdvancedAnalyticsService>();
 
             return services;
         }

@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
@@ -20,6 +20,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Ettad.Notification.Service\Ettad.Notification.Service.csproj" />
+    <ProjectReference Include="..\Ettad.Workflow.Service\Ettad.Workflows.Service.csproj" />
     <ProjectReference Include="..\Project.Data\Ettad.Data.csproj" />
     <ProjectReference Include="..\Project.Repository\Ettad.Repository.csproj" />
     <ProjectReference Include="..\Project.ResponseHandler\Ettad.CrossCutting.ResponseHandler.csproj" />

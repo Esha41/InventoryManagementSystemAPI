@@ -2,6 +2,7 @@ using AutoMapper;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Ettad.Application.Common.Interfaces;
+using Ettad.CrossCutting.Comman.Time;
 using Ettad.CrossCutting.Data.Repository;
 using Ettad.Data.Entities;
 using Ettad.Lookups.Services.Contracts;
@@ -19,9 +20,10 @@ namespace Ettad.Lookups.Services.Implementation
             ICrossCuttingRepository<Depot> repository,
             IMapper mapper,
             ICurrentUserService currentUserService,
+            IDateTimeProvider dateTimeProvider,
             ILogger<LookupService<Depot, CreateUpdateDepotDto>> logger,
             ICrossCuttingRepository<Inventory> inventoryRepository)
-            : base(repository, mapper, currentUserService, logger)
+            : base(repository, mapper, currentUserService, dateTimeProvider, logger)
         {
             _inventoryRepository = inventoryRepository;
         }

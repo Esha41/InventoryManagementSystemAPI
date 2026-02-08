@@ -8,11 +8,12 @@ namespace Ettad.Inventory.Service.Explosives.Dtos
 {
     public class ExplosiveDto : BaseItemDto
     {
-        public ExplosiveUnit Unit { get; set; }
+        public long? UnitId { get; set; }
         
         public long? HazardDivisionId { get; set; }
 
         #region Navigation Properties
+        public UnitDto Unit { get; set; }
         public HazardDivisionDto HazardDivision { get; set; }
         #endregion
     }

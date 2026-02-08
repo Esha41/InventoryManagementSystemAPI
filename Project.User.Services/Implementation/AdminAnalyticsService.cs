@@ -164,16 +164,26 @@ namespace Ettad.User.Services.Implementation
                 // We'll count users created today by checking if they exist in the system
                 var newUsersToday = 0; // Placeholder - would need to track user creation separately
 
-                // Get top departments by user count
+                // Get top departments by DAILY ACTIVE USER count (not total user count)
+                // First, get all users who logged in today
+                var activeUserIds = await _context.LoginAttempts
+                    .Where(la => la.IsSuccessful && la.AttemptDate >= today)
+                    .Select(la => la.UserId)
+                    .Distinct()
+                    .ToListAsync();
+
+                // Then group active users by department
                 var topDepartments = await _context.Users
-                    .Where(u => !u.IsDeleted && u.DepartmentId != null)
+                    .Where(u => !u.IsDeleted && 
+                           u.DepartmentId != null && 
+                           activeUserIds.Contains(u.Id))
                     .GroupBy(u => u.DepartmentId)
                     .Select(g => new
                     {
                         DepartmentId = g.Key,
-                        UserCount = g.Count()
+                        ActiveUserCount = g.Count() // Daily active users per department
                     })
-                    .OrderByDescending(x => x.UserCount)
+                    .OrderByDescending(x => x.ActiveUserCount)
                     .Take(5)
                     .ToListAsync();
 
@@ -196,7 +206,7 @@ namespace Ettad.User.Services.Implementation
                     departmentStats.Add(new DepartmentStatDto
                     {
                         Name = departmentName,
-                        UserCount = dept.UserCount
+                        UserCount = dept.ActiveUserCount // Daily active users for this department
                     });
                 }
 

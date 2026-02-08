@@ -10,6 +10,8 @@ namespace Ettad.Inventory.Service.Inventories.Dtos
 
         public DateTime? RecievedDate { get; set; }
 
+        public string? ContractNumber { get; set; }
+
         public string? Notes { get; set; }
 
         public List<CreateInventoryDetailDto> InventoryDetails { get; set; } = new();

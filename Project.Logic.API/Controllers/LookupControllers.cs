@@ -7,6 +7,11 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using System.Threading.Tasks;
 using Ettad.Application.Common.Interfaces;
+using Ettad.EntityFramework.DataBaseContext;
+using Microsoft.EntityFrameworkCore;
+using Ettad.ResponseHandler.Models;
+using Ettad.ResponseHandler.Consts;
+using System.Collections.Generic;
 
 namespace Ettad.Lookups.Domain.API.Controllers
 {
@@ -55,8 +60,52 @@ namespace Ettad.Lookups.Domain.API.Controllers
     )]
     public class UnitController : LookupController<Unit, CreateUpdateUnitDto>
     {
-        public UnitController(ILookupService<Unit, CreateUpdateUnitDto> iLookupService, ILogger<LookupController<Unit, CreateUpdateUnitDto>> logger)
-            : base(iLookupService, logger) { }
+        private readonly ApplicationDbContext _context;
+
+        public UnitController(
+            ILookupService<Unit, CreateUpdateUnitDto> iLookupService, 
+            ILogger<LookupController<Unit, CreateUpdateUnitDto>> logger,
+            ApplicationDbContext context)
+            : base(iLookupService, logger) 
+        {
+            _context = context;
+        }
+
+        /// <summary>
+        /// Get Units filtered by ItemType
+        /// </summary>
+        [HttpGet("byItemType")]
+        public async Task<IActionResult> GetByItemType([FromQuery] ItemType? itemType)
+        {
+            _logger?.LogInformation("HTTP GET request for Units filtered by ItemType {ItemType}", itemType);
+
+            try
+            {
+                var query = _context.Units.Where(u => !u.IsDeleted);
+                
+                if (itemType.HasValue)
+                {
+                    query = query.Where(u => u.ItemType == itemType.Value);
+                }
+
+                var units = await query.ToListAsync();
+                var dtos = units.Select(u => new UnitDto
+                {
+                    Id = u.Id,
+                    NameAr = u.NameAr,
+                    NameEn = u.NameEn,
+                    ItemType = u.ItemType,
+                    IsDeleted = u.IsDeleted
+                }).ToList();
+
+                return ProcessResponse(APIOperationResponse<List<UnitDto>>.Success(dtos));
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, "Error retrieving Units by ItemType {ItemType}", itemType);
+                return ProcessResponse(APIOperationResponse<List<UnitDto>>.Fail(ResponseType.InternalServerError, $"Error retrieving units: {ex.Message}"));
+            }
+        }
     }
 
     #endregion

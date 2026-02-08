@@ -98,7 +98,7 @@ namespace Ettad.Inventory.Service.Monitoring
             }
         }
 
-        public async Task<APIOperationResponse<string>> GetScheduleAsync()
+        public async Task<APIOperationResponse<DateTime?>> GetScheduleAsync()
         {
             try
             {
@@ -106,12 +106,25 @@ namespace Ettad.Inventory.Service.Monitoring
                     s => s.Key == LowStockMonitorConstants.SCHEDULE_SETTINGS_KEY && s.Group == LowStockMonitorConstants.SCHEDULE_SETTINGS_GROUP);
 
                 var cronExpression = setting?.Value ?? LowStockMonitorConstants.DEFAULT_CRON_EXPRESSION;
-                return APIOperationResponse<string>.Success(cronExpression);
+                
+                // Parse cron expression format: "minute hour * * *" to DateTime
+                // Use today's date with the time from cron expression
+                var parts = cronExpression.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                if (parts.Length >= 2 && int.TryParse(parts[0], out int minute) && int.TryParse(parts[1], out int hour))
+                {
+                    var today = _dateTimeProvider.Now.Date;
+                    var scheduleTime = new DateTime(today.Year, today.Month, today.Day, hour, minute, 0);
+                    return APIOperationResponse<DateTime?>.Success(scheduleTime);
+                }
+                
+                // If parsing fails, return null
+                _logger.LogWarning("Failed to parse cron expression: {CronExpression}", cronExpression);
+                return APIOperationResponse<DateTime?>.Success(null);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error retrieving schedule.");
-                return APIOperationResponse<string>.Fail(ResponseType.InternalServerError, ex.Message);
+                return APIOperationResponse<DateTime?>.Fail(ResponseType.InternalServerError, ex.Message);
             }
         }
 
