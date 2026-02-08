@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Ettad.EntityFramework.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20260125083726_AddReportEntityToDb")]
-    partial class AddReportEntityToDb
+    [Migration("20260208113720_AddReportsEntityToDb")]
+    partial class AddReportsEntityToDb
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -149,6 +149,9 @@ namespace Ettad.EntityFramework.Migrations
                     b.Property<string>("ConcurrencyStamp")
                         .IsConcurrencyToken()
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("IsAdmin")
+                        .HasColumnType("bit");
 
                     b.Property<bool?>("IsDefaultRole")
                         .HasColumnType("bit");
@@ -821,7 +824,7 @@ namespace Ettad.EntityFramework.Migrations
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Name")
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("nvarchar(450)");
 
                     b.Property<string>("Notes")
                         .HasMaxLength(5000)
@@ -852,10 +855,21 @@ namespace Ettad.EntityFramework.Migrations
 
                     b.HasIndex("ClassificationId");
 
+                    b.HasIndex("IsDeleted")
+                        .HasFilter("[IsDeleted] = 0");
+
                     b.HasIndex("ItemNo")
                         .IsUnique();
 
+                    b.HasIndex("Name");
+
                     b.HasIndex("TypeId");
+
+                    b.HasIndex("ClassificationId", "IsDeleted")
+                        .HasFilter("[IsDeleted] = 0");
+
+                    b.HasIndex("TypeId", "IsDeleted")
+                        .HasFilter("[IsDeleted] = 0");
 
                     b.ToTable("BaseItems", (string)null);
 
@@ -1318,48 +1332,6 @@ namespace Ettad.EntityFramework.Migrations
                         .HasFilter("[IsDeleted] = 0");
 
                     b.ToTable("Countries", (string)null);
-
-                    b.HasData(
-                        new
-                        {
-                            Id = 1L,
-                            Code = "SA",
-                            IsDeleted = false,
-                            NameAr = "المملكة العربية السعودية",
-                            NameEn = "Saudi Arabia"
-                        },
-                        new
-                        {
-                            Id = 2L,
-                            Code = "US",
-                            IsDeleted = false,
-                            NameAr = "الولايات المتحدة الأمريكية",
-                            NameEn = "United States"
-                        },
-                        new
-                        {
-                            Id = 3L,
-                            Code = "UK",
-                            IsDeleted = false,
-                            NameAr = "المملكة المتحدة",
-                            NameEn = "United Kingdom"
-                        },
-                        new
-                        {
-                            Id = 4L,
-                            Code = "FR",
-                            IsDeleted = false,
-                            NameAr = "فرنسا",
-                            NameEn = "France"
-                        },
-                        new
-                        {
-                            Id = 5L,
-                            Code = "DE",
-                            IsDeleted = false,
-                            NameAr = "ألمانيا",
-                            NameEn = "Germany"
-                        });
                 });
 
             modelBuilder.Entity("Ettad.Data.Entities.Department", b =>
@@ -1937,6 +1909,9 @@ namespace Ettad.EntityFramework.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
 
+                    b.Property<string>("ContractNumber")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<string>("CreatedBy")
                         .HasColumnType("nvarchar(max)");
 
@@ -2466,6 +2441,138 @@ namespace Ettad.EntityFramework.Migrations
                     b.HasIndex("UserId");
 
                     b.ToTable("NotificationReceivers", (string)null);
+                });
+
+            modelBuilder.Entity("Ettad.Data.Entities.OrderItemHistory", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<DateTime>("ActionDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("ActionType")
+                        .HasColumnType("int");
+
+                    b.Property<long?>("ApprovedQuantity")
+                        .HasColumnType("bigint");
+
+                    b.Property<long?>("AssetSupplyDetailId")
+                        .HasColumnType("bigint");
+
+                    b.Property<long?>("AssetSupplyId")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("CreationDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("DeletedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("DeletionDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<long>("DepartmentId")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<long>("ItemId")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime?>("ModificationDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ModifiedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ModifiedByUserId")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("ModifiedByUserName")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.Property<long?>("NewQuantity")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<long>("OrderId")
+                        .HasColumnType("bigint");
+
+                    b.Property<int>("OrderStatus")
+                        .HasColumnType("int");
+
+                    b.Property<long?>("PreviousQuantity")
+                        .HasColumnType("bigint");
+
+                    b.Property<long?>("RequestItemId")
+                        .HasColumnType("bigint");
+
+                    b.Property<long?>("SuppliedQuantity")
+                        .HasColumnType("bigint");
+
+                    b.Property<long?>("SupplyDetailId")
+                        .HasColumnType("bigint");
+
+                    b.Property<long?>("SupplyId")
+                        .HasColumnType("bigint");
+
+                    b.Property<int?>("WorkflowApprovalStepId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("WorkflowStepId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ActionDate");
+
+                    b.HasIndex("ActionType");
+
+                    b.HasIndex("AssetSupplyDetailId");
+
+                    b.HasIndex("AssetSupplyId");
+
+                    b.HasIndex("DepartmentId");
+
+                    b.HasIndex("ItemId");
+
+                    b.HasIndex("ModifiedByUserId");
+
+                    b.HasIndex("OrderId");
+
+                    b.HasIndex("RequestItemId");
+
+                    b.HasIndex("SupplyDetailId");
+
+                    b.HasIndex("SupplyId");
+
+                    b.HasIndex("WorkflowApprovalStepId");
+
+                    b.HasIndex("WorkflowStepId");
+
+                    b.HasIndex("OrderId", "ItemId");
+
+                    b.ToTable("OrderItemHistory", (string)null);
                 });
 
             modelBuilder.Entity("Ettad.Data.Entities.PrimaryPurpos", b =>
@@ -3598,6 +3705,9 @@ namespace Ettad.EntityFramework.Migrations
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
 
+                    b.Property<int?>("ItemType")
+                        .HasColumnType("int");
+
                     b.Property<DateTime?>("ModificationDate")
                         .HasColumnType("datetime2");
 
@@ -3616,11 +3726,11 @@ namespace Ettad.EntityFramework.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("NameAr")
+                    b.HasIndex("NameAr", "ItemType")
                         .IsUnique()
                         .HasFilter("[IsDeleted] = 0");
 
-                    b.HasIndex("NameEn")
+                    b.HasIndex("NameEn", "ItemType")
                         .IsUnique()
                         .HasFilter("[IsDeleted] = 0");
 
@@ -3632,6 +3742,7 @@ namespace Ettad.EntityFramework.Migrations
                             Id = 1L,
                             CreationDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             IsDeleted = false,
+                            ItemType = 1,
                             NameAr = "غرام",
                             NameEn = "Gram"
                         },
@@ -3640,6 +3751,7 @@ namespace Ettad.EntityFramework.Migrations
                             Id = 2L,
                             CreationDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             IsDeleted = false,
+                            ItemType = 1,
                             NameAr = "مليمتر",
                             NameEn = "Millimeter"
                         },
@@ -3648,8 +3760,54 @@ namespace Ettad.EntityFramework.Migrations
                             Id = 3L,
                             CreationDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             IsDeleted = false,
+                            ItemType = 1,
                             NameAr = "قطعة",
                             NameEn = "Piece"
+                        },
+                        new
+                        {
+                            Id = 4L,
+                            CreationDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
+                            ItemType = 2,
+                            NameAr = "غرام",
+                            NameEn = "Gram"
+                        },
+                        new
+                        {
+                            Id = 5L,
+                            CreationDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
+                            ItemType = 2,
+                            NameAr = "مليمتر",
+                            NameEn = "Millimeter"
+                        },
+                        new
+                        {
+                            Id = 6L,
+                            CreationDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
+                            ItemType = 2,
+                            NameAr = "قطعة",
+                            NameEn = "Piece"
+                        },
+                        new
+                        {
+                            Id = 7L,
+                            CreationDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
+                            ItemType = 3,
+                            NameAr = "غرام",
+                            NameEn = "Gram"
+                        },
+                        new
+                        {
+                            Id = 8L,
+                            CreationDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
+                            ItemType = 3,
+                            NameAr = "متر",
+                            NameEn = "Meter"
                         });
                 });
 
@@ -3670,6 +3828,9 @@ namespace Ettad.EntityFramework.Migrations
                     b.Property<string>("DelegateeUserId")
                         .IsRequired()
                         .HasColumnType("nvarchar(450)");
+
+                    b.Property<long>("DelegationScopes")
+                        .HasColumnType("bigint");
 
                     b.Property<int>("DelegationStatus")
                         .HasColumnType("int");
@@ -4275,251 +4436,6 @@ namespace Ettad.EntityFramework.Migrations
                     b.HasIndex("PropellantId");
 
                     b.ToTable("Ammunitions", (string)null);
-
-                    b.HasData(
-                        new
-                        {
-                            Id = 1L,
-                            CreationDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
-                            IsDeleted = false,
-                            ItemNo = "AMM-001",
-                            ItemType = 1,
-                            MinimumQuantity = 200L,
-                            Name = "5.56x45mm NATO",
-                            Nsn = "1305-01-000-0001",
-                            PartNo = "PN-556-001",
-                            Price = 0.65m,
-                            AmmunitionType = 1,
-                            BulletDiameter = 5.56m,
-                            BulletDiameterUnitId = 1L,
-                            CaseTypeId = 1L,
-                            CompatibilityId = 1L,
-                            HazardDivisionId = 1L,
-                            IsLinked = false,
-                            NatureOptionId = 1L,
-                            PrimaryPurposId = 1L,
-                            Primer = "Boxer",
-                            ProjectailMaterialId = 1L,
-                            ProjectileColorId = 1L,
-                            PropellantId = 1L,
-                            TotalWeight = 12.0m
-                        },
-                        new
-                        {
-                            Id = 2L,
-                            CreationDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
-                            IsDeleted = false,
-                            ItemNo = "AMM-002",
-                            ItemType = 1,
-                            MinimumQuantity = 150L,
-                            Name = "7.62x51mm NATO",
-                            Nsn = "1305-01-000-0002",
-                            PartNo = "PN-762-001",
-                            Price = 1.25m,
-                            AmmunitionType = 1,
-                            BulletDiameter = 7.62m,
-                            BulletDiameterUnitId = 2L,
-                            CaseTypeId = 2L,
-                            CompatibilityId = 2L,
-                            HazardDivisionId = 2L,
-                            IsLinked = false,
-                            NatureOptionId = 2L,
-                            PrimaryPurposId = 2L,
-                            Primer = "Berdan",
-                            ProjectailMaterialId = 2L,
-                            ProjectileColorId = 2L,
-                            PropellantId = 2L,
-                            TotalWeight = 24.0m
-                        },
-                        new
-                        {
-                            Id = 3L,
-                            CreationDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
-                            IsDeleted = false,
-                            ItemNo = "AMM-003",
-                            ItemType = 1,
-                            MinimumQuantity = 200L,
-                            Name = "9x19mm Parabellum",
-                            Nsn = "1305-01-000-0003",
-                            PartNo = "PN-9MM-001",
-                            Price = 0.70m,
-                            AmmunitionType = 1,
-                            BulletDiameter = 9.0m,
-                            BulletDiameterUnitId = 3L,
-                            CaseTypeId = 3L,
-                            CompatibilityId = 3L,
-                            HazardDivisionId = 3L,
-                            IsLinked = false,
-                            NatureOptionId = 3L,
-                            PrimaryPurposId = 3L,
-                            Primer = "Boxer",
-                            ProjectailMaterialId = 3L,
-                            ProjectileColorId = 3L,
-                            PropellantId = 3L,
-                            TotalWeight = 7.5m
-                        },
-                        new
-                        {
-                            Id = 4L,
-                            CreationDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
-                            IsDeleted = false,
-                            ItemNo = "AMM-004",
-                            ItemType = 1,
-                            MinimumQuantity = 50L,
-                            Name = ".50 BMG",
-                            Nsn = "1305-01-000-0004",
-                            PartNo = "PN-50BMG-001",
-                            Price = 3.50m,
-                            AmmunitionType = 1,
-                            BulletDiameter = 12.7m,
-                            BulletDiameterUnitId = 1L,
-                            CaseTypeId = 1L,
-                            CompatibilityId = 1L,
-                            HazardDivisionId = 1L,
-                            IsLinked = false,
-                            NatureOptionId = 1L,
-                            PrimaryPurposId = 1L,
-                            Primer = "Berdan",
-                            ProjectailMaterialId = 1L,
-                            ProjectileColorId = 1L,
-                            PropellantId = 1L,
-                            TotalWeight = 115.0m
-                        },
-                        new
-                        {
-                            Id = 5L,
-                            CreationDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
-                            IsDeleted = false,
-                            ItemNo = "AMM-005",
-                            ItemType = 1,
-                            MinimumQuantity = 100L,
-                            Name = ".308 Winchester",
-                            Nsn = "1305-01-000-0005",
-                            PartNo = "PN-308-001",
-                            Price = 1.50m,
-                            AmmunitionType = 1,
-                            BulletDiameter = 7.62m,
-                            BulletDiameterUnitId = 2L,
-                            CaseTypeId = 2L,
-                            CompatibilityId = 2L,
-                            HazardDivisionId = 2L,
-                            IsLinked = false,
-                            NatureOptionId = 2L,
-                            PrimaryPurposId = 2L,
-                            Primer = "Boxer",
-                            ProjectailMaterialId = 2L,
-                            ProjectileColorId = 2L,
-                            PropellantId = 2L,
-                            TotalWeight = 23.0m
-                        },
-                        new
-                        {
-                            Id = 6L,
-                            CreationDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
-                            IsDeleted = false,
-                            ItemNo = "AMM-006",
-                            ItemType = 1,
-                            MinimumQuantity = 150L,
-                            Name = ".45 ACP",
-                            Nsn = "1305-01-000-0006",
-                            PartNo = "PN-45ACP-001",
-                            Price = 0.75m,
-                            AmmunitionType = 1,
-                            BulletDiameter = 11.43m,
-                            BulletDiameterUnitId = 3L,
-                            CaseTypeId = 3L,
-                            CompatibilityId = 3L,
-                            HazardDivisionId = 3L,
-                            IsLinked = false,
-                            NatureOptionId = 3L,
-                            PrimaryPurposId = 3L,
-                            Primer = "Boxer",
-                            ProjectailMaterialId = 3L,
-                            ProjectileColorId = 3L,
-                            PropellantId = 3L,
-                            TotalWeight = 15.0m
-                        },
-                        new
-                        {
-                            Id = 7L,
-                            CreationDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
-                            IsDeleted = false,
-                            ItemNo = "AMM-007",
-                            ItemType = 1,
-                            MinimumQuantity = 50L,
-                            Name = "12.7x108mm",
-                            Nsn = "1305-01-000-0007",
-                            PartNo = "PN-127-001",
-                            Price = 2.50m,
-                            AmmunitionType = 1,
-                            BulletDiameter = 12.7m,
-                            BulletDiameterUnitId = 1L,
-                            CaseTypeId = 1L,
-                            CompatibilityId = 1L,
-                            HazardDivisionId = 1L,
-                            IsLinked = false,
-                            NatureOptionId = 1L,
-                            PrimaryPurposId = 1L,
-                            Primer = "Berdan",
-                            ProjectailMaterialId = 1L,
-                            ProjectileColorId = 1L,
-                            PropellantId = 1L,
-                            TotalWeight = 130.0m
-                        },
-                        new
-                        {
-                            Id = 8L,
-                            CreationDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
-                            IsDeleted = false,
-                            ItemNo = "AMM-008",
-                            ItemType = 1,
-                            MinimumQuantity = 200L,
-                            Name = "5.45x39mm",
-                            Nsn = "1305-01-000-0008",
-                            PartNo = "PN-545-001",
-                            Price = 0.60m,
-                            AmmunitionType = 1,
-                            BulletDiameter = 5.45m,
-                            BulletDiameterUnitId = 2L,
-                            CaseTypeId = 2L,
-                            CompatibilityId = 2L,
-                            HazardDivisionId = 2L,
-                            IsLinked = false,
-                            NatureOptionId = 2L,
-                            PrimaryPurposId = 2L,
-                            Primer = "Berdan",
-                            ProjectailMaterialId = 2L,
-                            ProjectileColorId = 2L,
-                            PropellantId = 2L,
-                            TotalWeight = 10.5m
-                        },
-                        new
-                        {
-                            Id = 9L,
-                            CreationDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
-                            IsDeleted = false,
-                            ItemNo = "AMM-009",
-                            ItemType = 1,
-                            MinimumQuantity = 150L,
-                            Name = ".40 S&W",
-                            Nsn = "1305-01-000-0009",
-                            PartNo = "PN-40SW-001",
-                            Price = 0.80m,
-                            AmmunitionType = 1,
-                            BulletDiameter = 10.16m,
-                            BulletDiameterUnitId = 3L,
-                            CaseTypeId = 3L,
-                            CompatibilityId = 3L,
-                            HazardDivisionId = 3L,
-                            IsLinked = false,
-                            NatureOptionId = 3L,
-                            PrimaryPurposId = 3L,
-                            Primer = "Boxer",
-                            ProjectailMaterialId = 3L,
-                            ProjectileColorId = 3L,
-                            PropellantId = 3L,
-                            TotalWeight = 11.0m
-                        });
                 });
 
             modelBuilder.Entity("Ettad.Data.Entities.Explosive", b =>
@@ -4529,10 +4445,12 @@ namespace Ettad.EntityFramework.Migrations
                     b.Property<long?>("HazardDivisionId")
                         .HasColumnType("bigint");
 
-                    b.Property<int>("Unit")
-                        .HasColumnType("int");
+                    b.Property<long?>("UnitId")
+                        .HasColumnType("bigint");
 
                     b.HasIndex("HazardDivisionId");
+
+                    b.HasIndex("UnitId");
 
                     b.ToTable("Explosives", (string)null);
                 });
@@ -5007,6 +4925,90 @@ namespace Ettad.EntityFramework.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("Ettad.Data.Entities.OrderItemHistory", b =>
+                {
+                    b.HasOne("Ettad.Data.Entities.AssetSupplyDetail", "AssetSupplyDetail")
+                        .WithMany()
+                        .HasForeignKey("AssetSupplyDetailId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Ettad.Data.Entities.AssetSupply", "AssetSupply")
+                        .WithMany()
+                        .HasForeignKey("AssetSupplyId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Ettad.Data.Entities.Department", "Department")
+                        .WithMany()
+                        .HasForeignKey("DepartmentId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Ettad.Data.Entities.BaseItem", "Item")
+                        .WithMany()
+                        .HasForeignKey("ItemId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Ettad.Comman.Idenitity.ApplicationUser", "ModifiedByUser")
+                        .WithMany()
+                        .HasForeignKey("ModifiedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Ettad.Data.Entities.Order", "Order")
+                        .WithMany()
+                        .HasForeignKey("OrderId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Ettad.Data.Entities.RequestItem", "RequestItem")
+                        .WithMany()
+                        .HasForeignKey("RequestItemId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Ettad.Data.Entities.SupplyDetail", "SupplyDetail")
+                        .WithMany()
+                        .HasForeignKey("SupplyDetailId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Ettad.Data.Entities.Supply", "Supply")
+                        .WithMany()
+                        .HasForeignKey("SupplyId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Ettad.Data.Entities.Workflows.WorkflowApprovalStep", "WorkflowApprovalStep")
+                        .WithMany()
+                        .HasForeignKey("WorkflowApprovalStepId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Ettad.Data.Entities.Workflows.WorkflowStep", "WorkflowStep")
+                        .WithMany()
+                        .HasForeignKey("WorkflowStepId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("AssetSupply");
+
+                    b.Navigation("AssetSupplyDetail");
+
+                    b.Navigation("Department");
+
+                    b.Navigation("Item");
+
+                    b.Navigation("ModifiedByUser");
+
+                    b.Navigation("Order");
+
+                    b.Navigation("RequestItem");
+
+                    b.Navigation("Supply");
+
+                    b.Navigation("SupplyDetail");
+
+                    b.Navigation("WorkflowApprovalStep");
+
+                    b.Navigation("WorkflowStep");
+                });
+
             modelBuilder.Entity("Ettad.Data.Entities.Reports.ReportEntity", b =>
                 {
                     b.HasOne("Ettad.Data.Entities.Reports.ReportStatus", "ReportStatus")
@@ -5326,7 +5328,14 @@ namespace Ettad.EntityFramework.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("Ettad.Data.Entities.Unit", "Unit")
+                        .WithMany()
+                        .HasForeignKey("UnitId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.Navigation("HazardDivision");
+
+                    b.Navigation("Unit");
                 });
 
             modelBuilder.Entity("Ettad.Data.Entities.Weapon", b =>

@@ -4433,251 +4433,6 @@ namespace Ettad.EntityFramework.Migrations
                     b.HasIndex("PropellantId");
 
                     b.ToTable("Ammunitions", (string)null);
-
-                    b.HasData(
-                        new
-                        {
-                            Id = 1L,
-                            CreationDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
-                            IsDeleted = false,
-                            ItemNo = "AMM-001",
-                            ItemType = 1,
-                            MinimumQuantity = 200L,
-                            Name = "5.56x45mm NATO",
-                            Nsn = "1305-01-000-0001",
-                            PartNo = "PN-556-001",
-                            Price = 0.65m,
-                            AmmunitionType = 1,
-                            BulletDiameter = 5.56m,
-                            BulletDiameterUnitId = 1L,
-                            CaseTypeId = 1L,
-                            CompatibilityId = 1L,
-                            HazardDivisionId = 1L,
-                            IsLinked = false,
-                            NatureOptionId = 1L,
-                            PrimaryPurposId = 1L,
-                            Primer = "Boxer",
-                            ProjectailMaterialId = 1L,
-                            ProjectileColorId = 1L,
-                            PropellantId = 1L,
-                            TotalWeight = 12.0m
-                        },
-                        new
-                        {
-                            Id = 2L,
-                            CreationDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
-                            IsDeleted = false,
-                            ItemNo = "AMM-002",
-                            ItemType = 1,
-                            MinimumQuantity = 150L,
-                            Name = "7.62x51mm NATO",
-                            Nsn = "1305-01-000-0002",
-                            PartNo = "PN-762-001",
-                            Price = 1.25m,
-                            AmmunitionType = 1,
-                            BulletDiameter = 7.62m,
-                            BulletDiameterUnitId = 2L,
-                            CaseTypeId = 2L,
-                            CompatibilityId = 2L,
-                            HazardDivisionId = 2L,
-                            IsLinked = false,
-                            NatureOptionId = 2L,
-                            PrimaryPurposId = 2L,
-                            Primer = "Berdan",
-                            ProjectailMaterialId = 2L,
-                            ProjectileColorId = 2L,
-                            PropellantId = 2L,
-                            TotalWeight = 24.0m
-                        },
-                        new
-                        {
-                            Id = 3L,
-                            CreationDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
-                            IsDeleted = false,
-                            ItemNo = "AMM-003",
-                            ItemType = 1,
-                            MinimumQuantity = 200L,
-                            Name = "9x19mm Parabellum",
-                            Nsn = "1305-01-000-0003",
-                            PartNo = "PN-9MM-001",
-                            Price = 0.70m,
-                            AmmunitionType = 1,
-                            BulletDiameter = 9.0m,
-                            BulletDiameterUnitId = 3L,
-                            CaseTypeId = 3L,
-                            CompatibilityId = 3L,
-                            HazardDivisionId = 3L,
-                            IsLinked = false,
-                            NatureOptionId = 3L,
-                            PrimaryPurposId = 3L,
-                            Primer = "Boxer",
-                            ProjectailMaterialId = 3L,
-                            ProjectileColorId = 3L,
-                            PropellantId = 3L,
-                            TotalWeight = 7.5m
-                        },
-                        new
-                        {
-                            Id = 4L,
-                            CreationDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
-                            IsDeleted = false,
-                            ItemNo = "AMM-004",
-                            ItemType = 1,
-                            MinimumQuantity = 50L,
-                            Name = ".50 BMG",
-                            Nsn = "1305-01-000-0004",
-                            PartNo = "PN-50BMG-001",
-                            Price = 3.50m,
-                            AmmunitionType = 1,
-                            BulletDiameter = 12.7m,
-                            BulletDiameterUnitId = 1L,
-                            CaseTypeId = 1L,
-                            CompatibilityId = 1L,
-                            HazardDivisionId = 1L,
-                            IsLinked = false,
-                            NatureOptionId = 1L,
-                            PrimaryPurposId = 1L,
-                            Primer = "Berdan",
-                            ProjectailMaterialId = 1L,
-                            ProjectileColorId = 1L,
-                            PropellantId = 1L,
-                            TotalWeight = 115.0m
-                        },
-                        new
-                        {
-                            Id = 5L,
-                            CreationDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
-                            IsDeleted = false,
-                            ItemNo = "AMM-005",
-                            ItemType = 1,
-                            MinimumQuantity = 100L,
-                            Name = ".308 Winchester",
-                            Nsn = "1305-01-000-0005",
-                            PartNo = "PN-308-001",
-                            Price = 1.50m,
-                            AmmunitionType = 1,
-                            BulletDiameter = 7.62m,
-                            BulletDiameterUnitId = 2L,
-                            CaseTypeId = 2L,
-                            CompatibilityId = 2L,
-                            HazardDivisionId = 2L,
-                            IsLinked = false,
-                            NatureOptionId = 2L,
-                            PrimaryPurposId = 2L,
-                            Primer = "Boxer",
-                            ProjectailMaterialId = 2L,
-                            ProjectileColorId = 2L,
-                            PropellantId = 2L,
-                            TotalWeight = 23.0m
-                        },
-                        new
-                        {
-                            Id = 6L,
-                            CreationDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
-                            IsDeleted = false,
-                            ItemNo = "AMM-006",
-                            ItemType = 1,
-                            MinimumQuantity = 150L,
-                            Name = ".45 ACP",
-                            Nsn = "1305-01-000-0006",
-                            PartNo = "PN-45ACP-001",
-                            Price = 0.75m,
-                            AmmunitionType = 1,
-                            BulletDiameter = 11.43m,
-                            BulletDiameterUnitId = 3L,
-                            CaseTypeId = 3L,
-                            CompatibilityId = 3L,
-                            HazardDivisionId = 3L,
-                            IsLinked = false,
-                            NatureOptionId = 3L,
-                            PrimaryPurposId = 3L,
-                            Primer = "Boxer",
-                            ProjectailMaterialId = 3L,
-                            ProjectileColorId = 3L,
-                            PropellantId = 3L,
-                            TotalWeight = 15.0m
-                        },
-                        new
-                        {
-                            Id = 7L,
-                            CreationDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
-                            IsDeleted = false,
-                            ItemNo = "AMM-007",
-                            ItemType = 1,
-                            MinimumQuantity = 50L,
-                            Name = "12.7x108mm",
-                            Nsn = "1305-01-000-0007",
-                            PartNo = "PN-127-001",
-                            Price = 2.50m,
-                            AmmunitionType = 1,
-                            BulletDiameter = 12.7m,
-                            BulletDiameterUnitId = 1L,
-                            CaseTypeId = 1L,
-                            CompatibilityId = 1L,
-                            HazardDivisionId = 1L,
-                            IsLinked = false,
-                            NatureOptionId = 1L,
-                            PrimaryPurposId = 1L,
-                            Primer = "Berdan",
-                            ProjectailMaterialId = 1L,
-                            ProjectileColorId = 1L,
-                            PropellantId = 1L,
-                            TotalWeight = 130.0m
-                        },
-                        new
-                        {
-                            Id = 8L,
-                            CreationDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
-                            IsDeleted = false,
-                            ItemNo = "AMM-008",
-                            ItemType = 1,
-                            MinimumQuantity = 200L,
-                            Name = "5.45x39mm",
-                            Nsn = "1305-01-000-0008",
-                            PartNo = "PN-545-001",
-                            Price = 0.60m,
-                            AmmunitionType = 1,
-                            BulletDiameter = 5.45m,
-                            BulletDiameterUnitId = 2L,
-                            CaseTypeId = 2L,
-                            CompatibilityId = 2L,
-                            HazardDivisionId = 2L,
-                            IsLinked = false,
-                            NatureOptionId = 2L,
-                            PrimaryPurposId = 2L,
-                            Primer = "Berdan",
-                            ProjectailMaterialId = 2L,
-                            ProjectileColorId = 2L,
-                            PropellantId = 2L,
-                            TotalWeight = 10.5m
-                        },
-                        new
-                        {
-                            Id = 9L,
-                            CreationDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
-                            IsDeleted = false,
-                            ItemNo = "AMM-009",
-                            ItemType = 1,
-                            MinimumQuantity = 150L,
-                            Name = ".40 S&W",
-                            Nsn = "1305-01-000-0009",
-                            PartNo = "PN-40SW-001",
-                            Price = 0.80m,
-                            AmmunitionType = 1,
-                            BulletDiameter = 10.16m,
-                            BulletDiameterUnitId = 3L,
-                            CaseTypeId = 3L,
-                            CompatibilityId = 3L,
-                            HazardDivisionId = 3L,
-                            IsLinked = false,
-                            NatureOptionId = 3L,
-                            PrimaryPurposId = 3L,
-                            Primer = "Boxer",
-                            ProjectailMaterialId = 3L,
-                            ProjectileColorId = 3L,
-                            PropellantId = 3L,
-                            TotalWeight = 11.0m
-                        });
                 });
 
             modelBuilder.Entity("Ettad.Data.Entities.Explosive", b =>
@@ -5167,6 +4922,90 @@ namespace Ettad.EntityFramework.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("Ettad.Data.Entities.OrderItemHistory", b =>
+                {
+                    b.HasOne("Ettad.Data.Entities.AssetSupplyDetail", "AssetSupplyDetail")
+                        .WithMany()
+                        .HasForeignKey("AssetSupplyDetailId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Ettad.Data.Entities.AssetSupply", "AssetSupply")
+                        .WithMany()
+                        .HasForeignKey("AssetSupplyId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Ettad.Data.Entities.Department", "Department")
+                        .WithMany()
+                        .HasForeignKey("DepartmentId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Ettad.Data.Entities.BaseItem", "Item")
+                        .WithMany()
+                        .HasForeignKey("ItemId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Ettad.Comman.Idenitity.ApplicationUser", "ModifiedByUser")
+                        .WithMany()
+                        .HasForeignKey("ModifiedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Ettad.Data.Entities.Order", "Order")
+                        .WithMany()
+                        .HasForeignKey("OrderId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Ettad.Data.Entities.RequestItem", "RequestItem")
+                        .WithMany()
+                        .HasForeignKey("RequestItemId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Ettad.Data.Entities.SupplyDetail", "SupplyDetail")
+                        .WithMany()
+                        .HasForeignKey("SupplyDetailId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Ettad.Data.Entities.Supply", "Supply")
+                        .WithMany()
+                        .HasForeignKey("SupplyId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Ettad.Data.Entities.Workflows.WorkflowApprovalStep", "WorkflowApprovalStep")
+                        .WithMany()
+                        .HasForeignKey("WorkflowApprovalStepId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Ettad.Data.Entities.Workflows.WorkflowStep", "WorkflowStep")
+                        .WithMany()
+                        .HasForeignKey("WorkflowStepId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("AssetSupply");
+
+                    b.Navigation("AssetSupplyDetail");
+
+                    b.Navigation("Department");
+
+                    b.Navigation("Item");
+
+                    b.Navigation("ModifiedByUser");
+
+                    b.Navigation("Order");
+
+                    b.Navigation("RequestItem");
+
+                    b.Navigation("Supply");
+
+                    b.Navigation("SupplyDetail");
+
+                    b.Navigation("WorkflowApprovalStep");
+
+                    b.Navigation("WorkflowStep");
+                });
+
             modelBuilder.Entity("Ettad.Data.Entities.Reports.ReportEntity", b =>
                 {
                     b.HasOne("Ettad.Data.Entities.Reports.ReportStatus", "ReportStatus")
@@ -5176,512 +5015,429 @@ namespace Ettad.EntityFramework.Migrations
                         .IsRequired();
 
                     b.Navigation("ReportStatus");
-                    modelBuilder.Entity("Ettad.Data.Entities.OrderItemHistory", b =>
-                        {
-                            b.HasOne("Ettad.Data.Entities.AssetSupplyDetail", "AssetSupplyDetail")
-                                .WithMany()
-                                .HasForeignKey("AssetSupplyDetailId")
-                                .OnDelete(DeleteBehavior.Restrict);
-
-                            b.HasOne("Ettad.Data.Entities.AssetSupply", "AssetSupply")
-                                .WithMany()
-                                .HasForeignKey("AssetSupplyId")
-                                .OnDelete(DeleteBehavior.Restrict);
-
-                            b.HasOne("Ettad.Data.Entities.Department", "Department")
-                                .WithMany()
-                                .HasForeignKey("DepartmentId")
-                                .OnDelete(DeleteBehavior.Restrict)
-                                .IsRequired();
-
-                            b.HasOne("Ettad.Data.Entities.BaseItem", "Item")
-                                .WithMany()
-                                .HasForeignKey("ItemId")
-                                .OnDelete(DeleteBehavior.Restrict)
-                                .IsRequired();
-
-                            b.HasOne("Ettad.Comman.Idenitity.ApplicationUser", "ModifiedByUser")
-                                .WithMany()
-                                .HasForeignKey("ModifiedByUserId")
-                                .OnDelete(DeleteBehavior.Restrict)
-                                .IsRequired();
-
-                            b.HasOne("Ettad.Data.Entities.Order", "Order")
-                                .WithMany()
-                                .HasForeignKey("OrderId")
-                                .OnDelete(DeleteBehavior.Restrict)
-                                .IsRequired();
-
-                            b.HasOne("Ettad.Data.Entities.RequestItem", "RequestItem")
-                                .WithMany()
-                                .HasForeignKey("RequestItemId")
-                                .OnDelete(DeleteBehavior.Restrict);
-
-                            b.HasOne("Ettad.Data.Entities.SupplyDetail", "SupplyDetail")
-                                .WithMany()
-                                .HasForeignKey("SupplyDetailId")
-                                .OnDelete(DeleteBehavior.Restrict);
-
-                            b.HasOne("Ettad.Data.Entities.Supply", "Supply")
-                                .WithMany()
-                                .HasForeignKey("SupplyId")
-                                .OnDelete(DeleteBehavior.Restrict);
-
-                            b.HasOne("Ettad.Data.Entities.Workflows.WorkflowApprovalStep", "WorkflowApprovalStep")
-                                .WithMany()
-                                .HasForeignKey("WorkflowApprovalStepId")
-                                .OnDelete(DeleteBehavior.Restrict);
-
-                            b.HasOne("Ettad.Data.Entities.Workflows.WorkflowStep", "WorkflowStep")
-                                .WithMany()
-                                .HasForeignKey("WorkflowStepId")
-                                .OnDelete(DeleteBehavior.Restrict);
-
-                            b.Navigation("AssetSupply");
-
-                            b.Navigation("AssetSupplyDetail");
-
-                            b.Navigation("Department");
-
-                            b.Navigation("Item");
-
-                            b.Navigation("ModifiedByUser");
-
-                            b.Navigation("Order");
-
-                            b.Navigation("RequestItem");
-
-                            b.Navigation("Supply");
-
-                            b.Navigation("SupplyDetail");
-
-                            b.Navigation("WorkflowApprovalStep");
-
-                            b.Navigation("WorkflowStep");
-                        });
-
-                    modelBuilder.Entity("Ettad.Data.Entities.RequestItem", b =>
-                        {
-                            b.HasOne("Ettad.Data.Entities.BaseItem", "Item")
-                                .WithMany()
-                                .HasForeignKey("ItemId")
-                                .OnDelete(DeleteBehavior.Restrict)
-                                .IsRequired();
-
-                            b.HasOne("Ettad.Data.Entities.BaseRequest", "Request")
-                                .WithMany("RequestItems")
-                                .HasForeignKey("RequestId")
-                                .OnDelete(DeleteBehavior.Restrict)
-                                .IsRequired();
-
-                            b.Navigation("Item");
-
-                            b.Navigation("Request");
-                        });
-
-                    modelBuilder.Entity("Ettad.Data.Entities.Supply", b =>
-                        {
-                            b.HasOne("Ettad.Data.Entities.Order", "Order")
-                                .WithMany()
-                                .HasForeignKey("OrderId")
-                                .OnDelete(DeleteBehavior.Restrict)
-                                .IsRequired();
-
-                            b.HasOne("Ettad.Data.Entities.Rank", "ReceiverRank")
-                                .WithMany()
-                                .HasForeignKey("ReceiverRankId")
-                                .OnDelete(DeleteBehavior.Restrict);
-
-                            b.Navigation("Order");
-
-                            b.Navigation("ReceiverRank");
-                        });
-
-                    modelBuilder.Entity("Ettad.Data.Entities.SupplyDetail", b =>
-                        {
-                            b.HasOne("Ettad.Data.Entities.BaseItem", "Item")
-                                .WithMany()
-                                .HasForeignKey("ItemId")
-                                .OnDelete(DeleteBehavior.Restrict)
-                                .IsRequired();
-
-                            b.HasOne("Ettad.Data.Entities.Supply", "Supply")
-                                .WithMany("SupplyDetails")
-                                .HasForeignKey("SupplyId")
-                                .OnDelete(DeleteBehavior.Restrict)
-                                .IsRequired();
-
-                            b.Navigation("Item");
-
-                            b.Navigation("Supply");
-                        });
-
-                    modelBuilder.Entity("Ettad.Data.Entities.UserDelegation", b =>
-                        {
-                            b.HasOne("Ettad.Comman.Idenitity.ApplicationUser", "DelegateeUser")
-                                .WithMany()
-                                .HasForeignKey("DelegateeUserId")
-                                .OnDelete(DeleteBehavior.Restrict)
-                                .IsRequired();
-
-                            b.HasOne("Ettad.Comman.Idenitity.ApplicationUser", "DelegatorUser")
-                                .WithMany()
-                                .HasForeignKey("DelegatorUserId")
-                                .OnDelete(DeleteBehavior.Restrict)
-                                .IsRequired();
-
-                            b.Navigation("DelegateeUser");
-
-                            b.Navigation("DelegatorUser");
-                        });
-
-                    modelBuilder.Entity("Ettad.Data.Entities.Workflows.WorkflowApprovalStep", b =>
-                        {
-                            b.HasOne("Ettad.Data.Entities.Workflows.WorkflowStep", "WorkflowStep")
-                                .WithMany("ApprovalSteps")
-                                .HasForeignKey("WorkflowStepId")
-                                .OnDelete(DeleteBehavior.Cascade)
-                                .IsRequired();
-
-                            b.Navigation("WorkflowStep");
-                        });
-
-                    modelBuilder.Entity("Ettad.Data.Entities.Workflows.WorkflowStep", b =>
-                        {
-                            b.HasOne("Ettad.CrossCutting.Comman.Idenitity.ApplicationRole", "ApplicationRole")
-                                .WithMany()
-                                .HasForeignKey("ApplicationRoleId")
-                                .OnDelete(DeleteBehavior.Restrict)
-                                .IsRequired();
-
-                            b.HasOne("Ettad.Data.Entities.ApplicationEntity", "HigherApplicationEntity")
-                                .WithMany()
-                                .HasForeignKey("HigherApplicationEntityId")
-                                .OnDelete(DeleteBehavior.Restrict);
-
-                            b.HasOne("Ettad.CrossCutting.Comman.Idenitity.ApplicationRole", "HigherApprovalRole")
-                                .WithMany()
-                                .HasForeignKey("HigherApprovalRoleId")
-                                .OnDelete(DeleteBehavior.Restrict);
-
-                            b.HasOne("Ettad.Data.Entities.Workflows.Workflow", "Workflow")
-                                .WithMany("WorkflowSteps")
-                                .HasForeignKey("WorkflowId")
-                                .OnDelete(DeleteBehavior.Cascade)
-                                .IsRequired();
-
-                            b.Navigation("ApplicationRole");
-
-                            b.Navigation("HigherApplicationEntity");
-
-                            b.Navigation("HigherApprovalRole");
-
-                            b.Navigation("Workflow");
-                        });
-
-                    modelBuilder.Entity("Ettad.Data.Entities.Workflows.WorkflowStepApprovalLog", b =>
-                        {
-                            b.HasOne("Ettad.Data.Entities.Workflows.WorkflowStep", "WorkflowStep")
-                                .WithMany()
-                                .HasForeignKey("WorkflowStepId");
-
-                            b.Navigation("WorkflowStep");
-                        });
-
-                    modelBuilder.Entity("Ettad.Data.Entities.Workflows.WorkflowStepNotifier", b =>
-                        {
-                            b.HasOne("Ettad.CrossCutting.Comman.Idenitity.ApplicationRole", "Role")
-                                .WithMany()
-                                .HasForeignKey("RoleId")
-                                .OnDelete(DeleteBehavior.Cascade);
-
-                            b.HasOne("Ettad.Comman.Idenitity.ApplicationUser", "User")
-                                .WithMany()
-                                .HasForeignKey("UserId")
-                                .OnDelete(DeleteBehavior.Cascade);
-
-                            b.HasOne("Ettad.Data.Entities.Workflows.WorkflowStep", "WorkflowStep")
-                                .WithMany("Notifiers")
-                                .HasForeignKey("WorkflowStepId")
-                                .OnDelete(DeleteBehavior.Cascade)
-                                .IsRequired();
-
-                            b.Navigation("Role");
-
-                            b.Navigation("User");
-
-                            b.Navigation("WorkflowStep");
-                        });
-
-                    modelBuilder.Entity("Ettad.Data.Entities.Workflows.WorkflowStepTransition", b =>
-                        {
-                            b.HasOne("Ettad.Data.Entities.Workflows.WorkflowStep", "SourceWorkflowStep")
-                                .WithMany("Transitions")
-                                .HasForeignKey("SourceWorkflowStepId")
-                                .OnDelete(DeleteBehavior.Restrict)
-                                .IsRequired();
-
-                            b.HasOne("Ettad.Data.Entities.Workflows.WorkflowStep", "TargetWorkflowStep")
-                                .WithMany()
-                                .HasForeignKey("TargetWorkflowStepId")
-                                .OnDelete(DeleteBehavior.Restrict)
-                                .IsRequired();
-
-                            b.Navigation("SourceWorkflowStep");
-
-                            b.Navigation("TargetWorkflowStep");
-                        });
-
-                    modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>
-                        {
-                            b.HasOne("Ettad.CrossCutting.Comman.Idenitity.ApplicationRole", null)
-                                .WithMany()
-                                .HasForeignKey("RoleId")
-                                .OnDelete(DeleteBehavior.Cascade)
-                                .IsRequired();
-                        });
-
-                    modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserClaim<string>", b =>
-                        {
-                            b.HasOne("Ettad.Comman.Idenitity.ApplicationUser", null)
-                                .WithMany()
-                                .HasForeignKey("UserId")
-                                .OnDelete(DeleteBehavior.Cascade)
-                                .IsRequired();
-                        });
-
-                    modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserLogin<string>", b =>
-                        {
-                            b.HasOne("Ettad.Comman.Idenitity.ApplicationUser", null)
-                                .WithMany()
-                                .HasForeignKey("UserId")
-                                .OnDelete(DeleteBehavior.Cascade)
-                                .IsRequired();
-                        });
-
-                    modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserRole<string>", b =>
-                        {
-                            b.HasOne("Ettad.CrossCutting.Comman.Idenitity.ApplicationRole", null)
-                                .WithMany()
-                                .HasForeignKey("RoleId")
-                                .OnDelete(DeleteBehavior.Cascade)
-                                .IsRequired();
-
-                            b.HasOne("Ettad.Comman.Idenitity.ApplicationUser", null)
-                                .WithMany()
-                                .HasForeignKey("UserId")
-                                .OnDelete(DeleteBehavior.Cascade)
-                                .IsRequired();
-                        });
-
-                    modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserToken<string>", b =>
-                        {
-                            b.HasOne("Ettad.Comman.Idenitity.ApplicationUser", null)
-                                .WithMany()
-                                .HasForeignKey("UserId")
-                                .OnDelete(DeleteBehavior.Cascade)
-                                .IsRequired();
-                        });
-
-                    modelBuilder.Entity("Ettad.Data.Entities.Ammunition", b =>
-                        {
-                            b.HasOne("Ettad.Data.Entities.Unit", "BulletDiameterUnit")
-                                .WithMany()
-                                .HasForeignKey("BulletDiameterUnitId")
-                                .OnDelete(DeleteBehavior.Restrict);
-
-                            b.HasOne("Ettad.Data.Entities.CaseType", "CaseType")
-                                .WithMany()
-                                .HasForeignKey("CaseTypeId")
-                                .OnDelete(DeleteBehavior.Restrict);
-
-                            b.HasOne("Ettad.Data.Entities.Compatibility", "Compatibility")
-                                .WithMany()
-                                .HasForeignKey("CompatibilityId")
-                                .OnDelete(DeleteBehavior.Restrict);
-
-                            b.HasOne("Ettad.Data.Entities.HazardDivision", "HazardDivision")
-                                .WithMany()
-                                .HasForeignKey("HazardDivisionId")
-                                .OnDelete(DeleteBehavior.Restrict);
-
-                            b.HasOne("Ettad.Data.Entities.BaseItem", null)
-                                .WithOne()
-                                .HasForeignKey("Ettad.Data.Entities.Ammunition", "Id")
-                                .OnDelete(DeleteBehavior.Cascade)
-                                .IsRequired();
-
-                            b.HasOne("Ettad.Data.Entities.NatureOption", "NatureOption")
-                                .WithMany()
-                                .HasForeignKey("NatureOptionId")
-                                .OnDelete(DeleteBehavior.Restrict);
-
-                            b.HasOne("Ettad.Data.Entities.PrimaryPurpos", "PrimaryPurpos")
-                                .WithMany()
-                                .HasForeignKey("PrimaryPurposId")
-                                .OnDelete(DeleteBehavior.Restrict);
-
-                            b.HasOne("Ettad.Data.Entities.ProjectailMaterial", "ProjectailMaterial")
-                                .WithMany()
-                                .HasForeignKey("ProjectailMaterialId")
-                                .OnDelete(DeleteBehavior.Restrict);
-
-                            b.HasOne("Ettad.Data.Entities.Color", "ProjectileColor")
-                                .WithMany()
-                                .HasForeignKey("ProjectileColorId")
-                                .OnDelete(DeleteBehavior.Restrict);
-
-                            b.HasOne("Ettad.Data.Entities.Propellant", "Propellant")
-                                .WithMany()
-                                .HasForeignKey("PropellantId")
-                                .OnDelete(DeleteBehavior.Restrict);
-
-                            b.Navigation("BulletDiameterUnit");
-
-                            b.Navigation("CaseType");
-
-                            b.Navigation("Compatibility");
-
-                            b.Navigation("HazardDivision");
-
-                            b.Navigation("NatureOption");
-
-                            b.Navigation("PrimaryPurpos");
-
-                            b.Navigation("ProjectailMaterial");
-
-                            b.Navigation("ProjectileColor");
-
-                            b.Navigation("Propellant");
-                        });
-
-                    modelBuilder.Entity("Ettad.Data.Entities.Explosive", b =>
-                        {
-                            b.HasOne("Ettad.Data.Entities.HazardDivision", "HazardDivision")
-                                .WithMany()
-                                .HasForeignKey("HazardDivisionId")
-                                .OnDelete(DeleteBehavior.Restrict);
-
-                            b.HasOne("Ettad.Data.Entities.BaseItem", null)
-                                .WithOne()
-                                .HasForeignKey("Ettad.Data.Entities.Explosive", "Id")
-                                .OnDelete(DeleteBehavior.Cascade)
-                                .IsRequired();
-
-                            b.HasOne("Ettad.Data.Entities.Unit", "Unit")
-                                .WithMany()
-                                .HasForeignKey("UnitId")
-                                .OnDelete(DeleteBehavior.Restrict);
-
-                            b.Navigation("HazardDivision");
-
-                            b.Navigation("Unit");
-                        });
-
-                    modelBuilder.Entity("Ettad.Data.Entities.Weapon", b =>
-                        {
-                            b.HasOne("Ettad.Data.Entities.Unit", "CaliberUnit")
-                                .WithMany()
-                                .HasForeignKey("CaliberUnitId");
-
-                            b.HasOne("Ettad.Data.Entities.Country", "CountryOfManufacture")
-                                .WithMany()
-                                .HasForeignKey("CountryOfManufactureId");
-
-                            b.HasOne("Ettad.Data.Entities.BaseItem", null)
-                                .WithOne()
-                                .HasForeignKey("Ettad.Data.Entities.Weapon", "Id")
-                                .OnDelete(DeleteBehavior.Cascade)
-                                .IsRequired();
-
-                            b.Navigation("CaliberUnit");
-
-                            b.Navigation("CountryOfManufacture");
-                        });
-
-                    modelBuilder.Entity("Ettad.Data.Entities.Discard", b =>
-                        {
-                            b.HasOne("Ettad.Data.Entities.BaseRequest", null)
-                                .WithOne()
-                                .HasForeignKey("Ettad.Data.Entities.Discard", "Id")
-                                .OnDelete(DeleteBehavior.Cascade)
-                                .IsRequired();
-                        });
-
-                    modelBuilder.Entity("Ettad.Data.Entities.Order", b =>
-                        {
-                            b.HasOne("Ettad.Data.Entities.BaseRequest", null)
-                                .WithOne()
-                                .HasForeignKey("Ettad.Data.Entities.Order", "Id")
-                                .OnDelete(DeleteBehavior.Cascade)
-                                .IsRequired();
-                        });
-
-                    modelBuilder.Entity("Ettad.Data.Entities.Return", b =>
-                        {
-                            b.HasOne("Ettad.Data.Entities.BaseRequest", null)
-                                .WithOne()
-                                .HasForeignKey("Ettad.Data.Entities.Return", "Id")
-                                .OnDelete(DeleteBehavior.Cascade)
-                                .IsRequired();
-                        });
-
-                    modelBuilder.Entity("Ettad.Data.Entities.Asset", b =>
-                        {
-                            b.Navigation("Assignments");
-
-                            b.Navigation("History");
-
-                            b.Navigation("SupplyDetails");
-                        });
-
-                    modelBuilder.Entity("Ettad.Data.Entities.AssetSupply", b =>
-                        {
-                            b.Navigation("Assignments");
-
-                            b.Navigation("SupplyDetails");
-                        });
-
-                    modelBuilder.Entity("Ettad.Data.Entities.BaseRequest", b =>
-                        {
-                            b.Navigation("RequestItems");
-                        });
-
-                    modelBuilder.Entity("Ettad.Data.Entities.FileUplodMaster", b =>
-                        {
-                            b.Navigation("Details");
-                        });
-
-                    modelBuilder.Entity("Ettad.Data.Entities.Inventory", b =>
-                        {
-                            b.Navigation("InventoryDetails");
-                        });
-
-                    modelBuilder.Entity("Ettad.Data.Entities.Notification", b =>
-                        {
-                            b.Navigation("Receivers");
-                        });
-
-                    modelBuilder.Entity("Ettad.Data.Entities.Supply", b =>
-                        {
-                            b.Navigation("SupplyDetails");
-                        });
-
-                    modelBuilder.Entity("Ettad.Data.Entities.Workflows.Workflow", b =>
-                        {
-                            b.Navigation("WorkflowSteps");
-                        });
-
-                    modelBuilder.Entity("Ettad.Data.Entities.Workflows.WorkflowStep", b =>
-                        {
-                            b.Navigation("ApprovalSteps");
-
-                            b.Navigation("Notifiers");
-
-                            b.Navigation("Transitions");
-                        });
-#pragma warning restore 612, 618
                 });
+
+            modelBuilder.Entity("Ettad.Data.Entities.RequestItem", b =>
+                {
+                    b.HasOne("Ettad.Data.Entities.BaseItem", "Item")
+                        .WithMany()
+                        .HasForeignKey("ItemId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Ettad.Data.Entities.BaseRequest", "Request")
+                        .WithMany("RequestItems")
+                        .HasForeignKey("RequestId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Item");
+
+                    b.Navigation("Request");
+                });
+
+            modelBuilder.Entity("Ettad.Data.Entities.Supply", b =>
+                {
+                    b.HasOne("Ettad.Data.Entities.Order", "Order")
+                        .WithMany()
+                        .HasForeignKey("OrderId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Ettad.Data.Entities.Rank", "ReceiverRank")
+                        .WithMany()
+                        .HasForeignKey("ReceiverRankId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Order");
+
+                    b.Navigation("ReceiverRank");
+                });
+
+            modelBuilder.Entity("Ettad.Data.Entities.SupplyDetail", b =>
+                {
+                    b.HasOne("Ettad.Data.Entities.BaseItem", "Item")
+                        .WithMany()
+                        .HasForeignKey("ItemId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Ettad.Data.Entities.Supply", "Supply")
+                        .WithMany("SupplyDetails")
+                        .HasForeignKey("SupplyId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Item");
+
+                    b.Navigation("Supply");
+                });
+
+            modelBuilder.Entity("Ettad.Data.Entities.UserDelegation", b =>
+                {
+                    b.HasOne("Ettad.Comman.Idenitity.ApplicationUser", "DelegateeUser")
+                        .WithMany()
+                        .HasForeignKey("DelegateeUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Ettad.Comman.Idenitity.ApplicationUser", "DelegatorUser")
+                        .WithMany()
+                        .HasForeignKey("DelegatorUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("DelegateeUser");
+
+                    b.Navigation("DelegatorUser");
+                });
+
+            modelBuilder.Entity("Ettad.Data.Entities.Workflows.WorkflowApprovalStep", b =>
+                {
+                    b.HasOne("Ettad.Data.Entities.Workflows.WorkflowStep", "WorkflowStep")
+                        .WithMany("ApprovalSteps")
+                        .HasForeignKey("WorkflowStepId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("WorkflowStep");
+                });
+
+            modelBuilder.Entity("Ettad.Data.Entities.Workflows.WorkflowStep", b =>
+                {
+                    b.HasOne("Ettad.CrossCutting.Comman.Idenitity.ApplicationRole", "ApplicationRole")
+                        .WithMany()
+                        .HasForeignKey("ApplicationRoleId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Ettad.Data.Entities.ApplicationEntity", "HigherApplicationEntity")
+                        .WithMany()
+                        .HasForeignKey("HigherApplicationEntityId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Ettad.CrossCutting.Comman.Idenitity.ApplicationRole", "HigherApprovalRole")
+                        .WithMany()
+                        .HasForeignKey("HigherApprovalRoleId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Ettad.Data.Entities.Workflows.Workflow", "Workflow")
+                        .WithMany("WorkflowSteps")
+                        .HasForeignKey("WorkflowId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ApplicationRole");
+
+                    b.Navigation("HigherApplicationEntity");
+
+                    b.Navigation("HigherApprovalRole");
+
+                    b.Navigation("Workflow");
+                });
+
+            modelBuilder.Entity("Ettad.Data.Entities.Workflows.WorkflowStepApprovalLog", b =>
+                {
+                    b.HasOne("Ettad.Data.Entities.Workflows.WorkflowStep", "WorkflowStep")
+                        .WithMany()
+                        .HasForeignKey("WorkflowStepId");
+
+                    b.Navigation("WorkflowStep");
+                });
+
+            modelBuilder.Entity("Ettad.Data.Entities.Workflows.WorkflowStepNotifier", b =>
+                {
+                    b.HasOne("Ettad.CrossCutting.Comman.Idenitity.ApplicationRole", "Role")
+                        .WithMany()
+                        .HasForeignKey("RoleId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                    b.HasOne("Ettad.Comman.Idenitity.ApplicationUser", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                    b.HasOne("Ettad.Data.Entities.Workflows.WorkflowStep", "WorkflowStep")
+                        .WithMany("Notifiers")
+                        .HasForeignKey("WorkflowStepId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Role");
+
+                    b.Navigation("User");
+
+                    b.Navigation("WorkflowStep");
+                });
+
+            modelBuilder.Entity("Ettad.Data.Entities.Workflows.WorkflowStepTransition", b =>
+                {
+                    b.HasOne("Ettad.Data.Entities.Workflows.WorkflowStep", "SourceWorkflowStep")
+                        .WithMany("Transitions")
+                        .HasForeignKey("SourceWorkflowStepId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Ettad.Data.Entities.Workflows.WorkflowStep", "TargetWorkflowStep")
+                        .WithMany()
+                        .HasForeignKey("TargetWorkflowStepId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("SourceWorkflowStep");
+
+                    b.Navigation("TargetWorkflowStep");
+                });
+
+            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>
+                {
+                    b.HasOne("Ettad.CrossCutting.Comman.Idenitity.ApplicationRole", null)
+                        .WithMany()
+                        .HasForeignKey("RoleId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserClaim<string>", b =>
+                {
+                    b.HasOne("Ettad.Comman.Idenitity.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserLogin<string>", b =>
+                {
+                    b.HasOne("Ettad.Comman.Idenitity.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserRole<string>", b =>
+                {
+                    b.HasOne("Ettad.CrossCutting.Comman.Idenitity.ApplicationRole", null)
+                        .WithMany()
+                        .HasForeignKey("RoleId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Ettad.Comman.Idenitity.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserToken<string>", b =>
+                {
+                    b.HasOne("Ettad.Comman.Idenitity.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Ettad.Data.Entities.Ammunition", b =>
+                {
+                    b.HasOne("Ettad.Data.Entities.Unit", "BulletDiameterUnit")
+                        .WithMany()
+                        .HasForeignKey("BulletDiameterUnitId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Ettad.Data.Entities.CaseType", "CaseType")
+                        .WithMany()
+                        .HasForeignKey("CaseTypeId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Ettad.Data.Entities.Compatibility", "Compatibility")
+                        .WithMany()
+                        .HasForeignKey("CompatibilityId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Ettad.Data.Entities.HazardDivision", "HazardDivision")
+                        .WithMany()
+                        .HasForeignKey("HazardDivisionId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Ettad.Data.Entities.BaseItem", null)
+                        .WithOne()
+                        .HasForeignKey("Ettad.Data.Entities.Ammunition", "Id")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Ettad.Data.Entities.NatureOption", "NatureOption")
+                        .WithMany()
+                        .HasForeignKey("NatureOptionId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Ettad.Data.Entities.PrimaryPurpos", "PrimaryPurpos")
+                        .WithMany()
+                        .HasForeignKey("PrimaryPurposId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Ettad.Data.Entities.ProjectailMaterial", "ProjectailMaterial")
+                        .WithMany()
+                        .HasForeignKey("ProjectailMaterialId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Ettad.Data.Entities.Color", "ProjectileColor")
+                        .WithMany()
+                        .HasForeignKey("ProjectileColorId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Ettad.Data.Entities.Propellant", "Propellant")
+                        .WithMany()
+                        .HasForeignKey("PropellantId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("BulletDiameterUnit");
+
+                    b.Navigation("CaseType");
+
+                    b.Navigation("Compatibility");
+
+                    b.Navigation("HazardDivision");
+
+                    b.Navigation("NatureOption");
+
+                    b.Navigation("PrimaryPurpos");
+
+                    b.Navigation("ProjectailMaterial");
+
+                    b.Navigation("ProjectileColor");
+
+                    b.Navigation("Propellant");
+                });
+
+            modelBuilder.Entity("Ettad.Data.Entities.Explosive", b =>
+                {
+                    b.HasOne("Ettad.Data.Entities.HazardDivision", "HazardDivision")
+                        .WithMany()
+                        .HasForeignKey("HazardDivisionId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Ettad.Data.Entities.BaseItem", null)
+                        .WithOne()
+                        .HasForeignKey("Ettad.Data.Entities.Explosive", "Id")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Ettad.Data.Entities.Unit", "Unit")
+                        .WithMany()
+                        .HasForeignKey("UnitId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("HazardDivision");
+
+                    b.Navigation("Unit");
+                });
+
+            modelBuilder.Entity("Ettad.Data.Entities.Weapon", b =>
+                {
+                    b.HasOne("Ettad.Data.Entities.Unit", "CaliberUnit")
+                        .WithMany()
+                        .HasForeignKey("CaliberUnitId");
+
+                    b.HasOne("Ettad.Data.Entities.Country", "CountryOfManufacture")
+                        .WithMany()
+                        .HasForeignKey("CountryOfManufactureId");
+
+                    b.HasOne("Ettad.Data.Entities.BaseItem", null)
+                        .WithOne()
+                        .HasForeignKey("Ettad.Data.Entities.Weapon", "Id")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("CaliberUnit");
+
+                    b.Navigation("CountryOfManufacture");
+                });
+
+            modelBuilder.Entity("Ettad.Data.Entities.Discard", b =>
+                {
+                    b.HasOne("Ettad.Data.Entities.BaseRequest", null)
+                        .WithOne()
+                        .HasForeignKey("Ettad.Data.Entities.Discard", "Id")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Ettad.Data.Entities.Order", b =>
+                {
+                    b.HasOne("Ettad.Data.Entities.BaseRequest", null)
+                        .WithOne()
+                        .HasForeignKey("Ettad.Data.Entities.Order", "Id")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Ettad.Data.Entities.Return", b =>
+                {
+                    b.HasOne("Ettad.Data.Entities.BaseRequest", null)
+                        .WithOne()
+                        .HasForeignKey("Ettad.Data.Entities.Return", "Id")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Ettad.Data.Entities.Asset", b =>
+                {
+                    b.Navigation("Assignments");
+
+                    b.Navigation("History");
+
+                    b.Navigation("SupplyDetails");
+                });
+
+            modelBuilder.Entity("Ettad.Data.Entities.AssetSupply", b =>
+                {
+                    b.Navigation("Assignments");
+
+                    b.Navigation("SupplyDetails");
+                });
+
+            modelBuilder.Entity("Ettad.Data.Entities.BaseRequest", b =>
+                {
+                    b.Navigation("RequestItems");
+                });
+
+            modelBuilder.Entity("Ettad.Data.Entities.FileUplodMaster", b =>
+                {
+                    b.Navigation("Details");
+                });
+
+            modelBuilder.Entity("Ettad.Data.Entities.Inventory", b =>
+                {
+                    b.Navigation("InventoryDetails");
+                });
+
+            modelBuilder.Entity("Ettad.Data.Entities.Notification", b =>
+                {
+                    b.Navigation("Receivers");
+                });
+
+            modelBuilder.Entity("Ettad.Data.Entities.Supply", b =>
+                {
+                    b.Navigation("SupplyDetails");
+                });
+
+            modelBuilder.Entity("Ettad.Data.Entities.Workflows.Workflow", b =>
+                {
+                    b.Navigation("WorkflowSteps");
+                });
+
+            modelBuilder.Entity("Ettad.Data.Entities.Workflows.WorkflowStep", b =>
+                {
+                    b.Navigation("ApprovalSteps");
+
+                    b.Navigation("Notifiers");
+
+                    b.Navigation("Transitions");
+                });
+#pragma warning restore 612, 618
         }
     }
 }
