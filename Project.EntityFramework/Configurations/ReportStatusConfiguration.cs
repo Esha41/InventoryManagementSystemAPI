@@ -1,4 +1,4 @@
-using Ettad.Data.Entities.Reports;
+using Ettad.Data.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 

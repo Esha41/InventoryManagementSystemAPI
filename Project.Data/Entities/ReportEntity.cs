@@ -1,7 +1,7 @@
 using Ettad.CrossCutting.Comman.Base;
 using System;
 
-namespace Ettad.Data.Entities.Reports
+namespace Ettad.Data.Entities
 {
     /// <summary>
     /// Entity for storing DevExpress report definitions in the database
@@ -26,23 +26,23 @@ namespace Ettad.Data.Entities.Reports
         /// <summary>
         /// Report description
         /// </summary>
-        public string? Description { get; set; }
+        public string Description { get; set; }
 
         /// <summary>
         /// Serialized report layout data (XML format from XtraReport.SaveLayoutToXml)
         /// This is the main report definition that can be loaded into DevExpress Report Designer
         /// </summary>
-        public byte[]? LayoutData { get; set; }
+        public byte[] LayoutData { get; set; }
 
         /// <summary>
         /// Report parameters configuration in JSON format
         /// Contains parameter definitions, default values, and validation rules
         /// </summary>
-        public string? ReportParameters { get; set; }
+        public string ReportParameters { get; set; }
 
         /// <summary>
         /// Navigation property for report status
         /// </summary>
-        public virtual ReportStatus? ReportStatus { get; set; }
+        public virtual ReportStatus ReportStatus { get; set; }
     }
 }

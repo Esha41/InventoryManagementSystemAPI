@@ -1,7 +1,7 @@
 using Ettad.CrossCutting.Comman;
 using Ettad.CrossCutting.Comman.Base;
 
-namespace Ettad.Data.Entities.Reports
+namespace Ettad.Data.Entities
 {
     /// <summary>
     /// Lookup table for report statuses

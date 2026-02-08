@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Ettad.EntityFramework.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20260208113720_AddReportsEntityToDb")]
+    [Migration("20260208115233_AddReportsEntityToDb")]
     partial class AddReportsEntityToDb
     {
         /// <inheritdoc />
@@ -2973,7 +2973,7 @@ namespace Ettad.EntityFramework.Migrations
                         });
                 });
 
-            modelBuilder.Entity("Ettad.Data.Entities.Reports.ReportEntity", b =>
+            modelBuilder.Entity("Ettad.Data.Entities.ReportEntity", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -3050,7 +3050,7 @@ namespace Ettad.EntityFramework.Migrations
                     b.ToTable("Reports", (string)null);
                 });
 
-            modelBuilder.Entity("Ettad.Data.Entities.Reports.ReportStatus", b =>
+            modelBuilder.Entity("Ettad.Data.Entities.ReportStatus", b =>
                 {
                     b.Property<long>("Id")
                         .ValueGeneratedOnAdd()
@@ -5009,9 +5009,9 @@ namespace Ettad.EntityFramework.Migrations
                     b.Navigation("WorkflowStep");
                 });
 
-            modelBuilder.Entity("Ettad.Data.Entities.Reports.ReportEntity", b =>
+            modelBuilder.Entity("Ettad.Data.Entities.ReportEntity", b =>
                 {
-                    b.HasOne("Ettad.Data.Entities.Reports.ReportStatus", "ReportStatus")
+                    b.HasOne("Ettad.Data.Entities.ReportStatus", "ReportStatus")
                         .WithMany()
                         .HasForeignKey("ReportStatusId")
                         .OnDelete(DeleteBehavior.Restrict)

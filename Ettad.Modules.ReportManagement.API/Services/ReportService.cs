@@ -1,13 +1,13 @@
 using Ettad.Application.Common.Interfaces;
 using Ettad.CrossCutting.Comman.Time;
 using Ettad.CrossCutting.Data.Repository;
-using Ettad.Data.Entities.Reports;
 using Ettad.Data.Enums;
 using Ettad.EntityFramework.DataBaseContext;
 using Ettad.ResponseHandler.Consts;
 using Ettad.ResponseHandler.Models;
 using Microsoft.EntityFrameworkCore;
 using Ettad.Modules.ReportManagement.API.Services.Dtos;
+using Ettad.Data.Entities;
 
 namespace Ettad.Modules.ReportManagement.API.Services
 {
