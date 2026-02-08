@@ -171,7 +171,7 @@ namespace Ettad.RequestManagement.API.Controllers
         [ProducesResponseType(typeof(APIOperationResponse<bool>), (int)HttpStatusCode.OK)]
         [ProducesResponseType((int)HttpStatusCode.BadRequest)]
         [ProducesResponseType((int)HttpStatusCode.NotFound)]
-        [CheckAuthorize("SetSupplyPickupDate")]
+        [CheckAuthorize("SetSupplyPickupDate", "ConfirmSupplyPickupDate")]
         public async Task<IActionResult> SetPickupDate(long id, [FromBody] SetPickupDateDto dto)
         {
             var result = await _orderService.SetSupplyDateAsync(id, dto.PickupDate);
