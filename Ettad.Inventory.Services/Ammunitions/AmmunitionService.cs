@@ -18,12 +18,11 @@ using OfficeOpenXml.DataValidation;
 using Ettad.EntityFramework.DataBaseContext;
 using Ettad.CrossCutting.Comman.Time;
 using Ettad.CrossCutting.Comman.Models;
-using Ettad.Inventory.Service.ItemDepartmentAssignments;
-using Ettad.Inventory.Service.ItemDepartmentAssignments.Dtos;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using System;
+using Ettad.Inventory.Service.ItemDepartmentAssignments;
 
 namespace Ettad.Inventory.Service.Ammunitions
 {
@@ -39,8 +38,7 @@ namespace Ettad.Inventory.Service.Ammunitions
         private readonly ApplicationDbContext _context;
         private readonly IDateTimeProvider _dateTimeProvider;
         private readonly AssetImportManager<CreateUpdateAmmunitionDto, AmmunitionImportDto> _importManager;
-        private readonly IPermissionService _permissionService;
-        private readonly IItemDepartmentAssignmentService _assignmentService;
+        private readonly IItemDepartmentAssignmentService _itemDepartmentAssignmentService;
 
         // In-memory cache for lookups during import
         private List<Unit> _units;
@@ -57,7 +55,7 @@ namespace Ettad.Inventory.Service.Ammunitions
 
         // Optimization: Dictionary for fast O(1) lookups during import
         private Dictionary<string, Dictionary<string, long>> _cachedLookups = new Dictionary<string, Dictionary<string, long>>();
-        
+
         // Cache for existing records to prevent N+1 queries during validation
         private HashSet<string> _existingItemNos = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         private HashSet<string> _existingNsns = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -75,8 +73,7 @@ namespace Ettad.Inventory.Service.Ammunitions
             IExcelImportService excelImportService, // Kept for DI compatibility if needed elsewhere, but used by manager
             ApplicationDbContext context,
             IDateTimeProvider dateTimeProvider,
-            IPermissionService permissionService,
-            IItemDepartmentAssignmentService assignmentService)
+            IItemDepartmentAssignmentService itemDepartmentAssignmentService)
         {
             _ammunitionRepository = ammunitionRepository;
             _fileDetailsRepository = fileDetailsRepository;
@@ -87,21 +84,27 @@ namespace Ettad.Inventory.Service.Ammunitions
             _fileUploadService = fileUploadService;
             _context = context;
             _dateTimeProvider = dateTimeProvider;
-            _permissionService = permissionService;
-            _assignmentService = assignmentService;
-            
-            _importManager = new AssetImportManager<CreateUpdateAmmunitionDto, AmmunitionImportDto>(excelImportService, 
+            _itemDepartmentAssignmentService = itemDepartmentAssignmentService;
+
+            _importManager = new AssetImportManager<CreateUpdateAmmunitionDto, AmmunitionImportDto>(excelImportService,
                 new LoggerFactory().CreateLogger<AssetImportManager<CreateUpdateAmmunitionDto, AmmunitionImportDto>>());
         }
 
         public async Task<APIOperationResponse<AmmunitionDto>> GetByIdAsync(long id)
         {
-           // existing implementation
-             _logger.LogInformation("Getting ammunition by ID. AmmunitionId: {AmmunitionId}, User: {UserId}", 
-                id, _currentUserService.UserId);
-            
+            // existing implementation
+            _logger.LogInformation("Getting ammunition by ID. AmmunitionId: {AmmunitionId}, User: {UserId}",
+               id, _currentUserService.UserId);
+
             try
             {
+                // Check if user has department and assigned items
+                var assignedItemIds = await GetAssignedItemIdsAsync();
+                if (assignedItemIds != null && !assignedItemIds.Contains(id))
+                {
+                    return APIOperationResponse<AmmunitionDto>.Fail(ResponseType.NotFound, "Ammunition not found");
+                }
+
                 var ammunition = await _ammunitionRepository.FindOneAsync(
                     a => a.Id == id && !a.IsDeleted,
                     false,
@@ -122,15 +125,15 @@ namespace Ettad.Inventory.Service.Ammunitions
                     return APIOperationResponse<AmmunitionDto>.Fail(ResponseType.NotFound, "Ammunition not found");
 
                 var dto = _mapper.Map<AmmunitionDto>(ammunition);
-                
+
                 var imagesResult = await _fileUploadService.GetByEntityAsync(FileEntityType.Ammunition, ammunition.Id);
                 dto.Images = imagesResult.Succeeded && imagesResult.Data != null ? imagesResult.Data : new List<FileUploadDto>();
-                
+
                 return APIOperationResponse<AmmunitionDto>.Success(dto);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error retrieving ammunition by ID. AmmunitionId: {AmmunitionId}, User: {UserId}", 
+                _logger.LogError(ex, "Error retrieving ammunition by ID. AmmunitionId: {AmmunitionId}, User: {UserId}",
                     id, _currentUserService.UserId);
                 return APIOperationResponse<AmmunitionDto>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
             }
@@ -138,126 +141,32 @@ namespace Ettad.Inventory.Service.Ammunitions
 
         public async Task<APIOperationResponse<List<AmmunitionDto>>> GetAllAsync()
         {
+            // existing implementation
             _logger.LogInformation("Getting all ammunitions. User: {UserId}", _currentUserService.UserId);
-            
+
             try
             {
-                // Check if user has ItemDepartmentAssignment.View permission
-                var hasAssignmentPermission = await _permissionService.HasPermissionAsync("Permissions.ItemDepartmentAssignment.View");
-                var userDepartmentId = _currentUserService.DepartmentId;
-
-                List<Ammunition> ammunitions;
-
-                // If user has assignment permission and department ID exists, filter by assignments
-                if (hasAssignmentPermission && userDepartmentId.HasValue)
-                {
-                    _logger.LogInformation("User has assignment permission. Filtering ammunition by department assignments. DepartmentId: {DepartmentId}, User: {UserId}", 
-                        userDepartmentId.Value, _currentUserService.UserId);
-
-                    // First check if there are any assignments in the system at all
-                    var allAssignmentsResult = await _assignmentService.GetAllAsync();
-                    
-                    // If no assignments exist in the system, return all ammunition
-                    if (!allAssignmentsResult.Succeeded || allAssignmentsResult.Data == null || allAssignmentsResult.Data.Count == 0)
-                    {
-                        _logger.LogInformation("No assignments exist in the system. Returning all ammunition. User: {UserId}", 
-                            _currentUserService.UserId);
-                        ammunitions = (await _ammunitionRepository.FindAsync(
-                            a => !a.IsDeleted,
-                            false,
-                            nameof(Ammunition.BulletDiameterUnit),
-                            nameof(Ammunition.NatureOption),
-                            nameof(Ammunition.PrimaryPurpos),
-                            nameof(Ammunition.ProjectileColor),
-                            nameof(Ammunition.ProjectailMaterial),
-                            nameof(Ammunition.CaseType),
-                            nameof(Ammunition.Propellant),
-                            nameof(Ammunition.Compatibility),
-                            nameof(Ammunition.HazardDivision),
-                            nameof(Ammunition.Classification),
-                            nameof(Ammunition.Type)
-                        )).ToList();
-                    }
-                    else
-                    {
-                        // Get assignments for the department
-                        var assignmentsResult = await _assignmentService.GetByDepartmentIdAsync(userDepartmentId.Value);
-                        
-                        // Filter assignments to only include Ammunition type (ItemType = 1)
-                        var ammunitionAssignments = assignmentsResult.Succeeded && assignmentsResult.Data != null
-                            ? assignmentsResult.Data.Where(a => a.ItemType == ItemType.Ammunition).ToList()
-                            : new List<ItemDepartmentAssignmentDto>();
-
-                        // If no ammunition assignments found for this department, return all ammunition
-                        if (ammunitionAssignments.Count == 0)
-                        {
-                            _logger.LogInformation("No ammunition assignments found for department. Returning all ammunition. DepartmentId: {DepartmentId}, User: {UserId}", 
-                                userDepartmentId.Value, _currentUserService.UserId);
-                            ammunitions = (await _ammunitionRepository.FindAsync(
-                                a => !a.IsDeleted,
-                                false,
-                                nameof(Ammunition.BulletDiameterUnit),
-                                nameof(Ammunition.NatureOption),
-                                nameof(Ammunition.PrimaryPurpos),
-                                nameof(Ammunition.ProjectileColor),
-                                nameof(Ammunition.ProjectailMaterial),
-                                nameof(Ammunition.CaseType),
-                                nameof(Ammunition.Propellant),
-                                nameof(Ammunition.Compatibility),
-                                nameof(Ammunition.HazardDivision),
-                                nameof(Ammunition.Classification),
-                                nameof(Ammunition.Type)
-                            )).ToList();
-                        }
-                        else
-                        {
-                            // Get assigned item IDs
-                            var assignedItemIds = ammunitionAssignments.Select(a => a.ItemId).ToHashSet();
-
-                            // Load ammunition filtered by assigned item IDs
-                            ammunitions = (await _ammunitionRepository.FindAsync(
-                                a => !a.IsDeleted && assignedItemIds.Contains(a.Id),
-                                false,
-                                nameof(Ammunition.BulletDiameterUnit),
-                                nameof(Ammunition.NatureOption),
-                                nameof(Ammunition.PrimaryPurpos),
-                                nameof(Ammunition.ProjectileColor),
-                                nameof(Ammunition.ProjectailMaterial),
-                                nameof(Ammunition.CaseType),
-                                nameof(Ammunition.Propellant),
-                                nameof(Ammunition.Compatibility),
-                                nameof(Ammunition.HazardDivision),
-                                nameof(Ammunition.Classification),
-                                nameof(Ammunition.Type)
-                            )).ToList();
-
-                            _logger.LogInformation("Filtered ammunition by department assignments. Found {Count} items. DepartmentId: {DepartmentId}, User: {UserId}", 
-                                ammunitions.Count, userDepartmentId.Value, _currentUserService.UserId);
-                        }
-                    }
-                }
-                else
-                {
-                    // No assignment permission or no department ID - return all ammunition (current behavior)
-                    ammunitions = (await _ammunitionRepository.FindAsync(
-                        a => !a.IsDeleted,
-                        false,
-                        nameof(Ammunition.BulletDiameterUnit),
-                        nameof(Ammunition.NatureOption),
-                        nameof(Ammunition.PrimaryPurpos),
-                        nameof(Ammunition.ProjectileColor),
-                        nameof(Ammunition.ProjectailMaterial),
-                        nameof(Ammunition.CaseType),
-                        nameof(Ammunition.Propellant),
-                        nameof(Ammunition.Compatibility),
-                        nameof(Ammunition.HazardDivision),
-                        nameof(Ammunition.Classification),
-                        nameof(Ammunition.Type)
-                    )).ToList();
-                }
+                // Check if user has department and assigned items
+                var assignedItemIds = await GetAssignedItemIdsAsync();
+                
+                var ammunitions = await _ammunitionRepository.FindAsync(
+                    a => !a.IsDeleted && (assignedItemIds == null || assignedItemIds.Contains(a.Id)),
+                    false,
+                    nameof(Ammunition.BulletDiameterUnit),
+                    nameof(Ammunition.NatureOption),
+                    nameof(Ammunition.PrimaryPurpos),
+                    nameof(Ammunition.ProjectileColor),
+                    nameof(Ammunition.ProjectailMaterial),
+                    nameof(Ammunition.CaseType),
+                    nameof(Ammunition.Propellant),
+                    nameof(Ammunition.Compatibility),
+                    nameof(Ammunition.HazardDivision),
+                    nameof(Ammunition.Classification),
+                    nameof(Ammunition.Type)
+                );
 
                 var dtos = _mapper.Map<List<AmmunitionDto>>(ammunitions);
-                
+
                 var entityIds = dtos.Select(d => d.Id).ToList();
                 var imagesResult = await _fileUploadService.GetByEntitiesAsync(FileEntityType.Ammunition, entityIds);
                 if (imagesResult.Succeeded && imagesResult.Data != null)
@@ -267,7 +176,7 @@ namespace Ettad.Inventory.Service.Ammunitions
                         dto.Images = imagesResult.Data.ContainsKey(dto.Id) ? imagesResult.Data[dto.Id] : new List<FileUploadDto>();
                     }
                 }
-                
+
                 return APIOperationResponse<List<AmmunitionDto>>.Success(dtos);
             }
             catch (Exception ex)
@@ -280,13 +189,16 @@ namespace Ettad.Inventory.Service.Ammunitions
         public async Task<APIOperationResponse<PaginatedList<AmmunitionDto>>> GetAllPaginatedAsync(PagedListRequest request)
         {
             // existing implementation
-             _logger.LogInformation("Getting ammunitions paginated. Page: {Page}, PageSize: {PageSize}, User: {UserId}", 
-                request.Page, request.PageSize, _currentUserService.UserId);
+            _logger.LogInformation("Getting ammunitions paginated. Page: {Page}, PageSize: {PageSize}, User: {UserId}",
+               request.Page, request.PageSize, _currentUserService.UserId);
 
             try
             {
+                // Check if user has department and assigned items
+                var assignedItemIds = await GetAssignedItemIdsAsync();
+                
                 var query = _ammunitionRepository.Find(
-                    a => !a.IsDeleted,
+                    a => !a.IsDeleted && (assignedItemIds == null || assignedItemIds.Contains(a.Id)),
                     false,
                     nameof(Ammunition.BulletDiameterUnit),
                     nameof(Ammunition.NatureOption),
@@ -302,7 +214,7 @@ namespace Ettad.Inventory.Service.Ammunitions
                 );
 
                 var paginatedEntities = await PaginatedList<Ammunition>.CreateAsyncForTableBinding(query, request);
-                
+
                 var dtos = new List<AmmunitionDto>();
                 if (paginatedEntities.Items.Any())
                 {
@@ -310,7 +222,7 @@ namespace Ettad.Inventory.Service.Ammunitions
 
                     var entityIds = dtos.Select(d => d.Id).ToList();
                     var imagesResult = await _fileUploadService.GetByEntitiesAsync(FileEntityType.Ammunition, entityIds);
-                    
+
                     if (imagesResult.Succeeded && imagesResult.Data != null)
                     {
                         foreach (var dto in dtos)
@@ -341,8 +253,8 @@ namespace Ettad.Inventory.Service.Ammunitions
 
         public async Task<APIOperationResponse<List<AmmunitionDto>>> GetByTypeAsync(AmmunitionType ammunitionType)
         {
-             // existing implementation
-              _logger.LogInformation("Getting ammunitions by type. AmmunitionType: {AmmunitionType}, User: {UserId}", ammunitionType, _currentUserService.UserId);
+            // existing implementation
+            _logger.LogInformation("Getting ammunitions by type. AmmunitionType: {AmmunitionType}, User: {UserId}", ammunitionType, _currentUserService.UserId);
 
             try
             {
@@ -363,7 +275,7 @@ namespace Ettad.Inventory.Service.Ammunitions
                 );
 
                 var dtos = _mapper.Map<List<AmmunitionDto>>(ammunitions);
-                
+
                 var entityIds = dtos.Select(d => d.Id).ToList();
                 var imagesResult = await _fileUploadService.GetByEntitiesAsync(FileEntityType.Ammunition, entityIds);
                 if (imagesResult.Succeeded && imagesResult.Data != null)
@@ -373,7 +285,7 @@ namespace Ettad.Inventory.Service.Ammunitions
                         dto.Images = imagesResult.Data.ContainsKey(dto.Id) ? imagesResult.Data[dto.Id] : new List<FileUploadDto>();
                     }
                 }
-                
+
                 return APIOperationResponse<List<AmmunitionDto>>.Success(dtos);
             }
             catch (Exception ex)
@@ -386,9 +298,9 @@ namespace Ettad.Inventory.Service.Ammunitions
         public async Task<APIOperationResponse<long>> CreateAsync(CreateUpdateAmmunitionDto inputDto, List<IFormFile>? files = null)
         {
             // existing implementation
-             _logger.LogInformation("Creating new ammunition. Name: {Name}, ItemNo: {ItemNo}, User: {UserId}", 
-                inputDto?.Name, inputDto?.ItemNo, _currentUserService.UserId);
-            
+            _logger.LogInformation("Creating new ammunition. Name: {Name}, ItemNo: {ItemNo}, User: {UserId}",
+               inputDto?.Name, inputDto?.ItemNo, _currentUserService.UserId);
+
             try
             {
                 var validationResult = await _validator.ValidateAsync(inputDto);
@@ -406,7 +318,7 @@ namespace Ettad.Inventory.Service.Ammunitions
                     if (existingWithSameNsn != null)
                         return APIOperationResponse<long>.Fail(ResponseType.BadRequest, "NSN already exists");
                 }
-                
+
                 if (files != null && files.Any())
                 {
                     var saveFilesResult = await _fileUploadService.SaveFilesAsync(files, FileEntityType.Ammunition);
@@ -416,7 +328,7 @@ namespace Ettad.Inventory.Service.Ammunitions
                             $"File upload failed: {saveFilesResult.Message}");
                     }
                 }
-                
+
                 var ammunition = _mapper.Map<Ammunition>(inputDto);
                 ammunition.AmmunitionType = AmmunitionType.Small;
                 ammunition.ItemType = ItemType.Ammunition;
@@ -425,12 +337,12 @@ namespace Ettad.Inventory.Service.Ammunitions
                 ammunition.Nsn = string.IsNullOrWhiteSpace(inputDto.Nsn) ? null : inputDto.Nsn.Trim();
 
                 var createdAmmunition = await _ammunitionRepository.AddAsync(ammunition);
- 
+
                 if (files != null && files.Any())
                 {
                     await _fileUploadService.UploadFilesForEntityAsync(
-                        files, 
-                        FileEntityType.Ammunition, 
+                        files,
+                        FileEntityType.Ammunition,
                         createdAmmunition.Id);
                 }
 
@@ -447,7 +359,7 @@ namespace Ettad.Inventory.Service.Ammunitions
         public async Task<APIOperationResponse<bool>> UpdateAsync(long id, CreateUpdateAmmunitionDto inputDto)
         {
             // existing implementation
-             try
+            try
             {
                 var validationResult = await _validator.ValidateAsync(inputDto);
                 if (!validationResult.IsValid)
@@ -476,7 +388,7 @@ namespace Ettad.Inventory.Service.Ammunitions
                 existingAmmunition.Nsn = string.IsNullOrWhiteSpace(inputDto.Nsn) ? null : inputDto.Nsn.Trim();
 
                 await _ammunitionRepository.UpdateAsync(existingAmmunition);
-                
+
                 return APIOperationResponse<bool>.Success(true, "Ammunition updated successfully");
             }
             catch (Exception ex)
@@ -488,7 +400,7 @@ namespace Ettad.Inventory.Service.Ammunitions
         public async Task<APIOperationResponse<bool>> DeleteAsync(long id)
         {
             // existing implementation
-             try
+            try
             {
                 var ammunition = await _ammunitionRepository.FindOneAsync(a => a.Id == id && !a.IsDeleted);
                 if (ammunition == null)
@@ -520,36 +432,36 @@ namespace Ettad.Inventory.Service.Ammunitions
 
         public async Task<APIOperationResponse<ImportResult<AmmunitionImportDto>>> ImportPreviewAsync(IFormFile file, string language = "en")
         {
-             return await _importManager.ImportPreviewAsync(
-                file,
-                language,
-                items => LoadLookupsAsync(items),
-                MapImportDtoToEntityAsync,
-                ValidateDtoAsync,
-                GetColumnMappings(language));
+            return await _importManager.ImportPreviewAsync(
+               file,
+               language,
+               items => LoadLookupsAsync(items),
+               MapImportDtoToEntityAsync,
+               ValidateDtoAsync,
+               GetColumnMappings(language));
         }
 
         public async Task<APIOperationResponse<byte[]>> GenerateImportTemplateAsync(string language = "en")
         {
-            await LoadLookupsAsync(); 
+            await LoadLookupsAsync();
 
-             var headers = language == "ar" 
-                    ? new[]
-                    {
+            var headers = language == "ar"
+                   ? new[]
+                   {
                         "الاسم*", "رقم الصنف*", "رقم الجزء", "رقم ARM", "NSN", "السعر", "الكمية الدنيا",
                         "قطر الرصاصة", "وحدة قطر الرصاصة", "الوزن الكلي", "مرتبط", "الكبسولة",
                         "نوع الغلاف", "المادة الدافعة", "التوافق", "قسم الخطر", "خيار الطبيعة",
                         "الغرض الأساسي", "لون المقذوف", "مادة المقذوف",
                         "رقم الأمم المتحدة", "التوزيع", "الرقم المرجعي", "التصنيف", "النوع", "ملاحظات"
-                    }
-                    : new[]
-                    {
+                   }
+                   : new[]
+                   {
                         "Name*", "Item No*", "Part No", "Arm Number", "NSN", "Price", "Minimum Quantity",
                         "Bullet Diameter", "Bullet Diameter Unit", "Total Weight", "Is Linked", "Primer",
                         "Case Type", "Propellant", "Compatibility", "Hazard Division", "Nature Option",
                         "Primary Purpose", "Projectile Color", "Projectile Material",
                         "UN Number", "Distribution", "Reference No", "Classification", "Type", "Notes"
-                    };
+                   };
 
             var firstAsset = await _context.Ammunitions
                 .Include(a => a.BulletDiameterUnit)
@@ -569,7 +481,7 @@ namespace Ettad.Inventory.Service.Ammunitions
                 language,
                 "Ammunition Import",
                 headers,
-                (sheet) => 
+                (sheet) =>
                 {
                     if (firstAsset != null)
                     {
@@ -623,18 +535,18 @@ namespace Ettad.Inventory.Service.Ammunitions
                 },
                 (sheet) =>
                 {
-                    AddDataValidation(sheet, 9, "Units"); 
+                    AddDataValidation(sheet, 9, "Units");
                     AddYesNoValidation(sheet, 11);
-                    AddDataValidation(sheet, 13, "CaseTypes"); 
-                    AddDataValidation(sheet, 14, "Propellants"); 
-                    AddDataValidation(sheet, 15, "Compatibilities"); 
-                    AddDataValidation(sheet, 16, "HazardDivisions"); 
-                    AddDataValidation(sheet, 17, "NatureOptions"); 
-                    AddDataValidation(sheet, 18, "PrimaryPurposes"); 
-                    AddDataValidation(sheet, 19, "ProjectileColors"); 
-                    AddDataValidation(sheet, 20, "ProjectileMaterials"); 
-                    AddDataValidation(sheet, 24, "Classifications"); 
-                    AddDataValidation(sheet, 25, "ItemTypes"); 
+                    AddDataValidation(sheet, 13, "CaseTypes");
+                    AddDataValidation(sheet, 14, "Propellants");
+                    AddDataValidation(sheet, 15, "Compatibilities");
+                    AddDataValidation(sheet, 16, "HazardDivisions");
+                    AddDataValidation(sheet, 17, "NatureOptions");
+                    AddDataValidation(sheet, 18, "PrimaryPurposes");
+                    AddDataValidation(sheet, 19, "ProjectileColors");
+                    AddDataValidation(sheet, 20, "ProjectileMaterials");
+                    AddDataValidation(sheet, 24, "Classifications");
+                    AddDataValidation(sheet, 25, "ItemTypes");
                 }
             );
         }
@@ -693,7 +605,7 @@ namespace Ettad.Inventory.Service.Ammunitions
 
         private async Task<CreateUpdateAmmunitionDto> MapImportDtoToEntityAsync(AmmunitionImportDto importDto, string language)
         {
-             var dto = new CreateUpdateAmmunitionDto
+            var dto = new CreateUpdateAmmunitionDto
             {
                 Name = importDto.Name,
                 ItemNo = importDto.ItemNo,
@@ -736,7 +648,7 @@ namespace Ettad.Inventory.Service.Ammunitions
             {
                 var en = getNameEn(item);
                 if (!string.IsNullOrWhiteSpace(en) && !dict.ContainsKey(en)) dict[en] = getId(item);
-                
+
                 var ar = getNameAr(item);
                 if (!string.IsNullOrWhiteSpace(ar) && !dict.ContainsKey(ar)) dict[ar] = getId(item);
             }
@@ -762,27 +674,27 @@ namespace Ettad.Inventory.Service.Ammunitions
             // Check duplicates using optimized HashSets
             if (!string.IsNullOrWhiteSpace(dto.ItemNo))
             {
-                 if (_existingItemNos.Contains(dto.ItemNo)) 
+                if (_existingItemNos.Contains(dto.ItemNo))
                     errors.Add($"Item No '{dto.ItemNo}' already exists in the database");
-                 else if (_newlyAddedItemNos.Contains(dto.ItemNo))
+                else if (_newlyAddedItemNos.Contains(dto.ItemNo))
                     errors.Add($"Item No '{dto.ItemNo}' is duplicated in the current file");
-                 else
+                else
                     _newlyAddedItemNos.Add(dto.ItemNo);
             }
-            
+
             if (!string.IsNullOrWhiteSpace(dto.Nsn))
             {
-                 if (_existingNsns.Contains(dto.Nsn)) 
+                if (_existingNsns.Contains(dto.Nsn))
                     errors.Add($"NSN '{dto.Nsn}' already exists in the database");
-                 else if (_newlyAddedNsns.Contains(dto.Nsn))
+                else if (_newlyAddedNsns.Contains(dto.Nsn))
                     errors.Add($"NSN '{dto.Nsn}' is duplicated in the current file");
-                 else
+                else
                     _newlyAddedNsns.Add(dto.Nsn);
             }
 
             return errors;
         }
-        
+
         private Dictionary<string, string> GetColumnMappings(string language)
         {
             // Same mapping dictionary as before
@@ -846,13 +758,13 @@ namespace Ettad.Inventory.Service.Ammunitions
 
         private void CreateLookupSheet<T>(ExcelPackage package, string sheetName, List<T> items)
         {
-             // Helper for templates
-             var names = items.Select(x => {
-                  var nameEn = (string)x.GetType().GetProperty("NameEn")?.GetValue(x);
-                  var nameAr = (string)x.GetType().GetProperty("NameAr")?.GetValue(x);
-                  return nameEn ?? nameAr ?? "";
-             }).Where(x => !string.IsNullOrEmpty(x)).ToList();
-             
+            // Helper for templates
+            var names = items.Select(x => {
+                var nameEn = (string)x.GetType().GetProperty("NameEn")?.GetValue(x);
+                var nameAr = (string)x.GetType().GetProperty("NameAr")?.GetValue(x);
+                return nameEn ?? nameAr ?? "";
+            }).Where(x => !string.IsNullOrEmpty(x)).ToList();
+
             var lookupSheet = package.Workbook.Worksheets.Add(sheetName);
             lookupSheet.Hidden = eWorkSheetHidden.Hidden;
 
@@ -861,8 +773,8 @@ namespace Ettad.Inventory.Service.Ammunitions
                 lookupSheet.Cells[i + 1, 1].Value = names[i];
             }
         }
-        
-         private void AddDataValidation(ExcelWorksheet worksheet, int column, string lookupSheetName)
+
+        private void AddDataValidation(ExcelWorksheet worksheet, int column, string lookupSheetName)
         {
             var columnLetter = GetColumnLetter(column);
             var validationRange = $"{columnLetter}2:{columnLetter}10000";
@@ -873,7 +785,7 @@ namespace Ettad.Inventory.Service.Ammunitions
             validation.ShowErrorMessage = true;
             validation.Error = $"Please select a value from the {lookupSheetName} list";
         }
-        
+
         private void AddYesNoValidation(ExcelWorksheet worksheet, int column)
         {
             var columnLetter = GetColumnLetter(column);
@@ -882,10 +794,10 @@ namespace Ettad.Inventory.Service.Ammunitions
             validation.Formula.Values.Add("Yes");
             validation.Formula.Values.Add("No");
             validation.ShowErrorMessage = true;
-             validation.Error = "Please select 'Yes' or 'No'";
+            validation.Error = "Please select 'Yes' or 'No'";
         }
-        
-         private string GetColumnLetter(int columnNumber)
+
+        private string GetColumnLetter(int columnNumber)
         {
             string columnLetter = "";
             while (columnNumber > 0)
@@ -895,6 +807,32 @@ namespace Ettad.Inventory.Service.Ammunitions
                 columnNumber /= 26;
             }
             return columnLetter;
+        }
+
+        /// <summary>
+        /// Gets the list of assigned item IDs for the current user's department.
+        /// Returns null if user has no department or no assigned items (meaning no filtering should be applied).
+        /// Returns a HashSet with assigned item IDs if user has a department and has assigned items (meaning filter to only those items).
+        /// </summary>
+        private async Task<HashSet<long>?> GetAssignedItemIdsAsync()
+        {
+            // If user has no department, return null to indicate no filtering
+            if (!_currentUserService.DepartmentId.HasValue)
+            {
+                return null;
+            }
+
+            // Get assigned items for the user's department
+            var assignmentsResult = await _itemDepartmentAssignmentService.GetByDepartmentIdAsync(_currentUserService.DepartmentId.Value);
+            
+            // If no assignments found or error occurred, return null (no filtering - keep code as is)
+            if (!assignmentsResult.Succeeded || assignmentsResult.Data == null || !assignmentsResult.Data.Any())
+            {
+                return null;
+            }
+
+            // Return the set of assigned item IDs (filter to only these items)
+            return new HashSet<long>(assignmentsResult.Data.Select(a => a.ItemId));
         }
     }
 }
