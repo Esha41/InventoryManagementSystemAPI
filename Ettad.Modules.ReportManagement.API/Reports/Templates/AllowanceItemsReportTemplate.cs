@@ -1208,6 +1208,10 @@ namespace Ettad.Modules.ReportManagement.API.Reports.Templates
             DevExpress.DataAccess.Sql.ColumnExpression columnExpression1530 = new DevExpress.DataAccess.Sql.ColumnExpression();
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(AllowanceItemsReportTemplate));
             DevExpress.XtraReports.UI.XRSummary xrSummary3 = new DevExpress.XtraReports.UI.XRSummary();
+            DevExpress.XtraReports.UI.XRSummary xrSummaryTotalQty = new DevExpress.XtraReports.UI.XRSummary();
+            DevExpress.XtraReports.UI.XRSummary xrSummaryUsedQty = new DevExpress.XtraReports.UI.XRSummary();
+            DevExpress.XtraReports.UI.XRSummary xrSummaryReservedQty = new DevExpress.XtraReports.UI.XRSummary();
+            DevExpress.XtraReports.UI.XRSummary xrSummaryRemainingQty = new DevExpress.XtraReports.UI.XRSummary();
             DevExpress.XtraReports.Parameters.StaticListLookUpSettings staticListLookUpSettings5 = new DevExpress.XtraReports.Parameters.StaticListLookUpSettings();
             DevExpress.XtraReports.Parameters.DynamicListLookUpSettings dynamicListLookUpSettings3 = new DevExpress.XtraReports.Parameters.DynamicListLookUpSettings();
             DevExpress.XtraReports.Parameters.StaticListLookUpSettings staticListLookUpSettings6 = new DevExpress.XtraReports.Parameters.StaticListLookUpSettings();
@@ -3546,6 +3550,23 @@ namespace Ettad.Modules.ReportManagement.API.Reports.Templates
             xrSummary3.Func = DevExpress.XtraReports.UI.SummaryFunc.RecordNumber;
             xrSummary3.Running = DevExpress.XtraReports.UI.SummaryRunning.Report;
             this.xrTableCellSrNoDetail.Summary = xrSummary3;
+            
+            // Configure summaries for total quantities
+            xrSummaryTotalQty.Func = DevExpress.XtraReports.UI.SummaryFunc.Sum;
+            xrSummaryTotalQty.Running = DevExpress.XtraReports.UI.SummaryRunning.Report;
+            xrSummaryTotalQty.FormatString = "{0:N2}";
+            
+            xrSummaryUsedQty.Func = DevExpress.XtraReports.UI.SummaryFunc.Sum;
+            xrSummaryUsedQty.Running = DevExpress.XtraReports.UI.SummaryRunning.Report;
+            xrSummaryUsedQty.FormatString = "{0:N2}";
+            
+            xrSummaryReservedQty.Func = DevExpress.XtraReports.UI.SummaryFunc.Sum;
+            xrSummaryReservedQty.Running = DevExpress.XtraReports.UI.SummaryRunning.Report;
+            xrSummaryReservedQty.FormatString = "{0:N2}";
+            
+            xrSummaryRemainingQty.Func = DevExpress.XtraReports.UI.SummaryFunc.Sum;
+            xrSummaryRemainingQty.Running = DevExpress.XtraReports.UI.SummaryRunning.Report;
+            xrSummaryRemainingQty.FormatString = "{0:N2}";
             this.xrTableCellSrNoDetail.Text = "0";
             this.xrTableCellSrNoDetail.TextAlignment = DevExpress.XtraPrinting.TextAlignment.MiddleCenter;
             this.xrTableCellSrNoDetail.Weight = 0.39939408673907911D;
@@ -4017,8 +4038,9 @@ namespace Ettad.Modules.ReportManagement.API.Reports.Templates
             | DevExpress.XtraPrinting.BorderSide.Right) 
             | DevExpress.XtraPrinting.BorderSide.Bottom)));
             this.xrTableCellSummaryTotalQty.BorderWidth = 1F;
-            this.xrTableCellSummaryTotalQty.ExpressionBindings.AddRange(new DevExpress.XtraReports.UI.ExpressionBinding[] {
-            new DevExpress.XtraReports.UI.ExpressionBinding("BeforePrint", "Text", "Sum([TotalQuantity])")});
+            this.xrTableCellSummaryTotalQty.Summary = xrSummaryTotalQty;
+            this.xrTableCellSummaryTotalQty.DataBindings.AddRange(new DevExpress.XtraReports.UI.XRBinding[] {
+            new DevExpress.XtraReports.UI.XRBinding("Text", null, "TotalQuantity")});
             this.xrTableCellSummaryTotalQty.ForeColor = System.Drawing.Color.White;
             this.xrTableCellSummaryTotalQty.Multiline = true;
             this.xrTableCellSummaryTotalQty.Name = "xrTableCellSummaryTotalQty";
@@ -4035,8 +4057,9 @@ namespace Ettad.Modules.ReportManagement.API.Reports.Templates
             | DevExpress.XtraPrinting.BorderSide.Right) 
             | DevExpress.XtraPrinting.BorderSide.Bottom)));
             this.xrTableCellSummaryUsedQty.BorderWidth = 1F;
-            this.xrTableCellSummaryUsedQty.ExpressionBindings.AddRange(new DevExpress.XtraReports.UI.ExpressionBinding[] {
-            new DevExpress.XtraReports.UI.ExpressionBinding("BeforePrint", "Text", "Sum([UsedQuantity])")});
+            this.xrTableCellSummaryUsedQty.Summary = xrSummaryUsedQty;
+            this.xrTableCellSummaryUsedQty.DataBindings.AddRange(new DevExpress.XtraReports.UI.XRBinding[] {
+            new DevExpress.XtraReports.UI.XRBinding("Text", null, "UsedQuantity")});
             this.xrTableCellSummaryUsedQty.ForeColor = System.Drawing.Color.White;
             this.xrTableCellSummaryUsedQty.Multiline = true;
             this.xrTableCellSummaryUsedQty.Name = "xrTableCellSummaryUsedQty";
@@ -4053,8 +4076,9 @@ namespace Ettad.Modules.ReportManagement.API.Reports.Templates
             | DevExpress.XtraPrinting.BorderSide.Right) 
             | DevExpress.XtraPrinting.BorderSide.Bottom)));
             this.xrTableCellSummaryReservedQty.BorderWidth = 1F;
-            this.xrTableCellSummaryReservedQty.ExpressionBindings.AddRange(new DevExpress.XtraReports.UI.ExpressionBinding[] {
-            new DevExpress.XtraReports.UI.ExpressionBinding("BeforePrint", "Text", "Sum([ReservedQuantity])")});
+            this.xrTableCellSummaryReservedQty.Summary = xrSummaryReservedQty;
+            this.xrTableCellSummaryReservedQty.DataBindings.AddRange(new DevExpress.XtraReports.UI.XRBinding[] {
+            new DevExpress.XtraReports.UI.XRBinding("Text", null, "ReservedQuantity")});
             this.xrTableCellSummaryReservedQty.ForeColor = System.Drawing.Color.White;
             this.xrTableCellSummaryReservedQty.Multiline = true;
             this.xrTableCellSummaryReservedQty.Name = "xrTableCellSummaryReservedQty";
@@ -4071,8 +4095,9 @@ namespace Ettad.Modules.ReportManagement.API.Reports.Templates
             | DevExpress.XtraPrinting.BorderSide.Right) 
             | DevExpress.XtraPrinting.BorderSide.Bottom)));
             this.xrTableCellSummaryRemainingQty.BorderWidth = 1F;
-            this.xrTableCellSummaryRemainingQty.ExpressionBindings.AddRange(new DevExpress.XtraReports.UI.ExpressionBinding[] {
-            new DevExpress.XtraReports.UI.ExpressionBinding("BeforePrint", "Text", "Sum([RemainingQuantity])")});
+            this.xrTableCellSummaryRemainingQty.Summary = xrSummaryRemainingQty;
+            this.xrTableCellSummaryRemainingQty.DataBindings.AddRange(new DevExpress.XtraReports.UI.XRBinding[] {
+            new DevExpress.XtraReports.UI.XRBinding("Text", null, "RemainingQuantity")});
             this.xrTableCellSummaryRemainingQty.ForeColor = System.Drawing.Color.White;
             this.xrTableCellSummaryRemainingQty.Multiline = true;
             this.xrTableCellSummaryRemainingQty.Name = "xrTableCellSummaryRemainingQty";

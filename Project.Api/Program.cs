@@ -131,6 +131,7 @@ try
     DevExpress.Utils.DeserializationSettings.RegisterTrustedClass(typeof(AllowanceItemReportDto));
     DevExpress.Utils.DeserializationSettings.RegisterTrustedClass(typeof(AllowanceItemsDataSource));
     DevExpress.Utils.DeserializationSettings.RegisterTrustedClass(typeof(IAllowanceItemService));
+    DevExpress.Utils.DeserializationSettings.RegisterTrustedClass(typeof(IAllowanceItemQueryService));
     // Register IServiceProvider and IServiceScope as trusted types to allow ObjectDataSource deserialization
     DevExpress.Utils.DeserializationSettings.RegisterTrustedClass(typeof(System.IServiceProvider));
     DevExpress.Utils.DeserializationSettings.RegisterTrustedClass(typeof(Microsoft.Extensions.DependencyInjection.IServiceScope));

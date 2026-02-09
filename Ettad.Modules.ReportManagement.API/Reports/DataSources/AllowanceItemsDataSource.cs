@@ -11,21 +11,19 @@ namespace Ettad.Modules.ReportManagement.API.Reports.DataSources
         {
             using var scope = ReportServiceScope.Create();
 
-            var allowanceService = scope.ServiceProvider.GetRequiredService<IAllowanceItemService>();
+            // Use query service that doesn't require HttpContext or permissions
+            var allowanceQueryService = scope.ServiceProvider.GetRequiredService<IAllowanceItemQueryService>();
 
             var departmentRepository = scope.ServiceProvider.GetRequiredService<ICrossCuttingRepository<Department>>();
 
-            var allowanceResult = allowanceService.GetAllAsync().GetAwaiter().GetResult();
-
-            if (!allowanceResult.Succeeded)
-                return new();
+            var allowanceItems = allowanceQueryService.GetAllAsync().GetAwaiter().GetResult();
 
             // Get all departments to map DepartmentId to DepartmentName
             var departments = departmentRepository.GetAllAsync().GetAwaiter().GetResult()
                                                  .Where(d => !d.IsDeleted)
                                                  .ToDictionary(d => d.Id, d => d.NameEn ?? d.NameAr ?? string.Empty);
 
-            return allowanceResult.Data.Select(a => new AllowanceItemReportDto
+            return allowanceItems.Select(a => new AllowanceItemReportDto
             {
                 ItemName = a.ItemName,
                 TotalQuantity = a.Quantity,
