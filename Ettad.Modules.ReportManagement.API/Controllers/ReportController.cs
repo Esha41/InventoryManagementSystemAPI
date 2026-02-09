@@ -28,7 +28,7 @@ namespace Ettad.Modules.ReportManagement.API.Controllers
         /// </summary>
         [HttpGet]
         [ProducesResponseType((int)HttpStatusCode.OK)]
-        [CheckAuthorize("Permissions.Report.View", "Permissions.Report.Page")]
+        [CheckAuthorize("ReportDesigner")]
         public async Task<IActionResult> GetAll()
         {
             var result = await _reportService.GetAllAsync();
@@ -51,7 +51,7 @@ namespace Ettad.Modules.ReportManagement.API.Controllers
         /// </summary>
         [HttpGet("{id}")]
         [ProducesResponseType((int)HttpStatusCode.OK)]
-        [CheckAuthorize("Permissions.Report.View", "Permissions.Report.Page")]
+        [CheckAuthorize("ReportDesigner")]
         public async Task<IActionResult> GetById(Guid id)
         {
             var result = await _reportService.GetByIdAsync(id);
@@ -63,7 +63,7 @@ namespace Ettad.Modules.ReportManagement.API.Controllers
         /// </summary>
         [HttpGet("url/{url}")]
         [ProducesResponseType((int)HttpStatusCode.OK)]
-        [CheckAuthorize("Permissions.Report.View", "Permissions.Report.Page")]
+        [CheckAuthorize("ReportDesigner")]
         public async Task<IActionResult> GetByUrl(string url)
         {
             var result = await _reportService.GetByUrlAsync(url);
@@ -75,7 +75,7 @@ namespace Ettad.Modules.ReportManagement.API.Controllers
         /// </summary>
         [HttpPost]
         [ProducesResponseType((int)HttpStatusCode.Created)]
-        [CheckAuthorize("Permissions.Report.Create")]
+        [CheckAuthorize("ReportDesigner")]
         public async Task<IActionResult> Create([FromBody] CreateReportDto dto)
         {
             var result = await _reportService.CreateAsync(dto);
@@ -87,7 +87,7 @@ namespace Ettad.Modules.ReportManagement.API.Controllers
         /// </summary>
         [HttpPut("{id}")]
         [ProducesResponseType((int)HttpStatusCode.OK)]
-        [CheckAuthorize("Permissions.Report.Edit")]
+        [CheckAuthorize("ReportDesigner")]
         public async Task<IActionResult> Update(Guid id, [FromBody] UpdateReportDto dto)
         {
             var result = await _reportService.UpdateAsync(id, dto);
@@ -99,7 +99,7 @@ namespace Ettad.Modules.ReportManagement.API.Controllers
         /// </summary>
         [HttpPatch("{id}/public")]
         [ProducesResponseType((int)HttpStatusCode.OK)]
-        [CheckAuthorize("Permissions.Report.Edit")]
+        [CheckAuthorize("ReportDesigner")]
         public async Task<IActionResult> SetReportPublic(Guid id, bool isPublic)
         {
             var result = await _reportService.SetReportPublicAsync(id, isPublic);
@@ -111,7 +111,7 @@ namespace Ettad.Modules.ReportManagement.API.Controllers
         /// </summary>
         [HttpDelete("{id}")]
         [ProducesResponseType((int)HttpStatusCode.NoContent)]
-        [CheckAuthorize("Permissions.Report.Delete")]
+        [CheckAuthorize("ReportDesigner")]
         public async Task<IActionResult> Delete(Guid id)
         {
             var result = await _reportService.DeleteAsync(id);
@@ -123,7 +123,7 @@ namespace Ettad.Modules.ReportManagement.API.Controllers
         /// </summary>
         [HttpGet("statuses")]
         [ProducesResponseType((int)HttpStatusCode.OK)]
-        [CheckAuthorize("Permissions.Report.View", "Permissions.Report.Page")]
+        [CheckAuthorize("ReportDesigner")]
         public async Task<IActionResult> GetReportStatuses()
         {
             var result = await _reportService.GetReportStatusesAsync();
@@ -135,7 +135,7 @@ namespace Ettad.Modules.ReportManagement.API.Controllers
         /// </summary>
         [HttpGet("templates")]
         [ProducesResponseType((int)HttpStatusCode.OK)]
-        [CheckAuthorize("Permissions.Report.View", "Permissions.Report.Create", "Permissions.Report.Page")]
+        [CheckAuthorize("ReportDesigner")]
         public async Task<IActionResult> GetTemplates()
         {
             var result = await _reportService.GetTemplatesAsync();

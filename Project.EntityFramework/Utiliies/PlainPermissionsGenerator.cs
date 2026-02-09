@@ -13,6 +13,7 @@ namespace Ettad.EntityFramework.Utiliies
         public const string Inventory = "Inventory";
         public const string UserManagement = "User Management";
         public const string Reports = "Reports";
+        public const string BITool = "BITool";
 
         public static string GetCategory(this PlainPermissions source)
         {

@@ -67,6 +67,12 @@ namespace Ettad.Data.Enums
 
         [Category(PlainPermissionsGenerator.Inventory)]
         AllowanceItemViewAllDepartments,
+
+        [Category(PlainPermissionsGenerator.BITool)]
+        ReportDesigner,
+
+        [Category(PlainPermissionsGenerator.BITool)]
+        ReportDashboard,
     }
 
 }

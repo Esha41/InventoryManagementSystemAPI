@@ -1211,8 +1211,8 @@ namespace Ettad.Modules.ReportManagement.API.Reports.Templates
             DevExpress.XtraReports.Parameters.StaticListLookUpSettings staticListLookUpSettings5 = new DevExpress.XtraReports.Parameters.StaticListLookUpSettings();
             DevExpress.XtraReports.Parameters.DynamicListLookUpSettings dynamicListLookUpSettings3 = new DevExpress.XtraReports.Parameters.DynamicListLookUpSettings();
             DevExpress.XtraReports.Parameters.StaticListLookUpSettings staticListLookUpSettings6 = new DevExpress.XtraReports.Parameters.StaticListLookUpSettings();
-            DevExpress.DataAccess.ObjectBinding.ObjectConstructorInfo objectConstructorInfo1 = new DevExpress.DataAccess.ObjectBinding.ObjectConstructorInfo();
-            DevExpress.DataAccess.ObjectBinding.ObjectConstructorInfo objectConstructorInfo3 = new DevExpress.DataAccess.ObjectBinding.ObjectConstructorInfo();
+            DevExpress.DataAccess.ObjectBinding.ObjectConstructorInfo objectConstructorInfo5 = new DevExpress.DataAccess.ObjectBinding.ObjectConstructorInfo();
+            DevExpress.DataAccess.ObjectBinding.ObjectConstructorInfo objectConstructorInfo6 = new DevExpress.DataAccess.ObjectBinding.ObjectConstructorInfo();
             this.EttadDataSource = new DevExpress.DataAccess.Sql.SqlDataSource(this.components);
             this.topMarginBand1 = new DevExpress.XtraReports.UI.TopMarginBand();
             this.detailBand1 = new DevExpress.XtraReports.UI.DetailBand();
@@ -3936,7 +3936,7 @@ namespace Ettad.Modules.ReportManagement.API.Reports.Templates
             this.ReportFooter.Controls.AddRange(new DevExpress.XtraReports.UI.XRControl[] {
             this.xrTableSummary,
             this.xrLabelReportFooter});
-            this.ReportFooter.HeightF = 48F;
+            this.ReportFooter.HeightF = 98.69445F;
             this.ReportFooter.Name = "ReportFooter";
             // 
             // xrTableSummary
@@ -4087,10 +4087,10 @@ namespace Ettad.Modules.ReportManagement.API.Reports.Templates
             this.xrLabelReportFooter.ExpressionBindings.AddRange(new DevExpress.XtraReports.UI.ExpressionBinding[] {
             new DevExpress.XtraReports.UI.ExpressionBinding("BeforePrint", "Text", "Iif(?Language == \'ar\', \'نهاية التقرير\', \'End of Report\')")});
             this.xrLabelReportFooter.Font = new DevExpress.Drawing.DXFont("Segoe UI", 9F, DevExpress.Drawing.DXFontStyle.Italic);
-            this.xrLabelReportFooter.LocationFloat = new DevExpress.Utils.PointFloat(0F, 30F);
+            this.xrLabelReportFooter.LocationFloat = new DevExpress.Utils.PointFloat(0F, 30.00001F);
             this.xrLabelReportFooter.Name = "xrLabelReportFooter";
             this.xrLabelReportFooter.Padding = new DevExpress.XtraPrinting.PaddingInfo(2F, 2F, 0F, 0F, 100F);
-            this.xrLabelReportFooter.SizeF = new System.Drawing.SizeF(791F, 18F);
+            this.xrLabelReportFooter.SizeF = new System.Drawing.SizeF(791F, 68.69444F);
             this.xrLabelReportFooter.Text = "End of Report";
             this.xrLabelReportFooter.TextAlignment = DevExpress.XtraPrinting.TextAlignment.MiddleCenter;
             // 
@@ -4132,14 +4132,14 @@ namespace Ettad.Modules.ReportManagement.API.Reports.Templates
             // 
             // AllowanceItemDS
             // 
-            this.AllowanceItemDS.Constructor = objectConstructorInfo3;
+            this.AllowanceItemDS.Constructor = objectConstructorInfo5;
             this.AllowanceItemDS.DataMember = "Get";
             this.AllowanceItemDS.DataSource = typeof(global::Ettad.Modules.ReportManagement.API.Reports.DataSources.AllowanceItemsDataSource);
             this.AllowanceItemDS.Name = "AllowanceItemDS";
             // 
             // DesignTimeDS
             // 
-            this.DesignTimeDS.Constructor = objectConstructorInfo1;
+            this.DesignTimeDS.Constructor = objectConstructorInfo6;
             this.DesignTimeDS.DataMember = "GetDesignTimeData";
             this.DesignTimeDS.DataSource = typeof(global::Ettad.Modules.ReportManagement.API.Reports.DataSources.AllowanceItemsDataSource);
             this.DesignTimeDS.Name = "DesignTimeDS";

@@ -307,17 +307,17 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
 
         public static List<string> ReadReport = new()
         {
-            "Permissions.Report.Page",
-            "Permissions.Report.View",
+            "Permissions.BITool.Page",
+            "Permissions.BITool.View",
         };
 
         public static List<string> WriteReport = new()
         {
-            "Permissions.Report.Page",
-            "Permissions.Report.View",
-            "Permissions.Report.Create",
-            "Permissions.Report.Edit",
-            "Permissions.Report.Delete",
+            "Permissions.BITool.Page",
+            "Permissions.BITool.View",
+            "Permissions.BITool.Create",
+            "Permissions.BITool.Edit",
+            "Permissions.BITool.Delete",
         };
        
         public static List<string> RequestReciever =

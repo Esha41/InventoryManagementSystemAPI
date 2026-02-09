@@ -15,6 +15,7 @@ public class CrudPermissionsGenerator
 
     public const string General = "General";
     public const string Reports = "Reports";
+    public const string BITool = "BITool";
     public const string Requests = "Requests";
     public const string Approvals = "Approvals";
     public const string UserManagement = "UserManagement";

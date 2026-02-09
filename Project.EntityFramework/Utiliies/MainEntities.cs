@@ -568,13 +568,4 @@ public static class MainEntities
         CrudOperation.Delete,
     };
 
-    [Category(CrudPermissionsGenerator.Reports)]
-    public static readonly CrudOperation[] Report = new[]
-    {
-        CrudOperation.Page,
-        CrudOperation.View,
-        CrudOperation.Create,
-        CrudOperation.Edit,
-        CrudOperation.Delete,
-    };
 }
