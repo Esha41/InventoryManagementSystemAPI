@@ -18,6 +18,8 @@ using OfficeOpenXml.DataValidation;
 using Ettad.EntityFramework.DataBaseContext;
 using Ettad.CrossCutting.Comman.Time;
 using Ettad.CrossCutting.Comman.Models;
+using Ettad.Inventory.Service.ItemDepartmentAssignments;
+using Ettad.Inventory.Service.ItemDepartmentAssignments.Dtos;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -37,6 +39,8 @@ namespace Ettad.Inventory.Service.Ammunitions
         private readonly ApplicationDbContext _context;
         private readonly IDateTimeProvider _dateTimeProvider;
         private readonly AssetImportManager<CreateUpdateAmmunitionDto, AmmunitionImportDto> _importManager;
+        private readonly IPermissionService _permissionService;
+        private readonly IItemDepartmentAssignmentService _assignmentService;
 
         // In-memory cache for lookups during import
         private List<Unit> _units;
@@ -70,7 +74,9 @@ namespace Ettad.Inventory.Service.Ammunitions
             IFileUploadService fileUploadService,
             IExcelImportService excelImportService, // Kept for DI compatibility if needed elsewhere, but used by manager
             ApplicationDbContext context,
-            IDateTimeProvider dateTimeProvider)
+            IDateTimeProvider dateTimeProvider,
+            IPermissionService permissionService,
+            IItemDepartmentAssignmentService assignmentService)
         {
             _ammunitionRepository = ammunitionRepository;
             _fileDetailsRepository = fileDetailsRepository;
@@ -81,6 +87,8 @@ namespace Ettad.Inventory.Service.Ammunitions
             _fileUploadService = fileUploadService;
             _context = context;
             _dateTimeProvider = dateTimeProvider;
+            _permissionService = permissionService;
+            _assignmentService = assignmentService;
             
             _importManager = new AssetImportManager<CreateUpdateAmmunitionDto, AmmunitionImportDto>(excelImportService, 
                 new LoggerFactory().CreateLogger<AssetImportManager<CreateUpdateAmmunitionDto, AmmunitionImportDto>>());
@@ -130,26 +138,123 @@ namespace Ettad.Inventory.Service.Ammunitions
 
         public async Task<APIOperationResponse<List<AmmunitionDto>>> GetAllAsync()
         {
-            // existing implementation
-             _logger.LogInformation("Getting all ammunitions. User: {UserId}", _currentUserService.UserId);
+            _logger.LogInformation("Getting all ammunitions. User: {UserId}", _currentUserService.UserId);
             
             try
             {
-                var ammunitions = await _ammunitionRepository.FindAsync(
-                    a => !a.IsDeleted,
-                    false,
-                    nameof(Ammunition.BulletDiameterUnit),
-                    nameof(Ammunition.NatureOption),
-                    nameof(Ammunition.PrimaryPurpos),
-                    nameof(Ammunition.ProjectileColor),
-                    nameof(Ammunition.ProjectailMaterial),
-                    nameof(Ammunition.CaseType),
-                    nameof(Ammunition.Propellant),
-                    nameof(Ammunition.Compatibility),
-                    nameof(Ammunition.HazardDivision),
-                    nameof(Ammunition.Classification),
-                    nameof(Ammunition.Type)
-                );
+                // Check if user has ItemDepartmentAssignment.View permission
+                var hasAssignmentPermission = await _permissionService.HasPermissionAsync("Permissions.ItemDepartmentAssignment.View");
+                var userDepartmentId = _currentUserService.DepartmentId;
+
+                List<Ammunition> ammunitions;
+
+                // If user has assignment permission and department ID exists, filter by assignments
+                if (hasAssignmentPermission && userDepartmentId.HasValue)
+                {
+                    _logger.LogInformation("User has assignment permission. Filtering ammunition by department assignments. DepartmentId: {DepartmentId}, User: {UserId}", 
+                        userDepartmentId.Value, _currentUserService.UserId);
+
+                    // First check if there are any assignments in the system at all
+                    var allAssignmentsResult = await _assignmentService.GetAllAsync();
+                    
+                    // If no assignments exist in the system, return all ammunition
+                    if (!allAssignmentsResult.Succeeded || allAssignmentsResult.Data == null || allAssignmentsResult.Data.Count == 0)
+                    {
+                        _logger.LogInformation("No assignments exist in the system. Returning all ammunition. User: {UserId}", 
+                            _currentUserService.UserId);
+                        ammunitions = (await _ammunitionRepository.FindAsync(
+                            a => !a.IsDeleted,
+                            false,
+                            nameof(Ammunition.BulletDiameterUnit),
+                            nameof(Ammunition.NatureOption),
+                            nameof(Ammunition.PrimaryPurpos),
+                            nameof(Ammunition.ProjectileColor),
+                            nameof(Ammunition.ProjectailMaterial),
+                            nameof(Ammunition.CaseType),
+                            nameof(Ammunition.Propellant),
+                            nameof(Ammunition.Compatibility),
+                            nameof(Ammunition.HazardDivision),
+                            nameof(Ammunition.Classification),
+                            nameof(Ammunition.Type)
+                        )).ToList();
+                    }
+                    else
+                    {
+                        // Get assignments for the department
+                        var assignmentsResult = await _assignmentService.GetByDepartmentIdAsync(userDepartmentId.Value);
+                        
+                        // Filter assignments to only include Ammunition type (ItemType = 1)
+                        var ammunitionAssignments = assignmentsResult.Succeeded && assignmentsResult.Data != null
+                            ? assignmentsResult.Data.Where(a => a.ItemType == ItemType.Ammunition).ToList()
+                            : new List<ItemDepartmentAssignmentDto>();
+
+                        // If no ammunition assignments found for this department, return all ammunition
+                        if (ammunitionAssignments.Count == 0)
+                        {
+                            _logger.LogInformation("No ammunition assignments found for department. Returning all ammunition. DepartmentId: {DepartmentId}, User: {UserId}", 
+                                userDepartmentId.Value, _currentUserService.UserId);
+                            ammunitions = (await _ammunitionRepository.FindAsync(
+                                a => !a.IsDeleted,
+                                false,
+                                nameof(Ammunition.BulletDiameterUnit),
+                                nameof(Ammunition.NatureOption),
+                                nameof(Ammunition.PrimaryPurpos),
+                                nameof(Ammunition.ProjectileColor),
+                                nameof(Ammunition.ProjectailMaterial),
+                                nameof(Ammunition.CaseType),
+                                nameof(Ammunition.Propellant),
+                                nameof(Ammunition.Compatibility),
+                                nameof(Ammunition.HazardDivision),
+                                nameof(Ammunition.Classification),
+                                nameof(Ammunition.Type)
+                            )).ToList();
+                        }
+                        else
+                        {
+                            // Get assigned item IDs
+                            var assignedItemIds = ammunitionAssignments.Select(a => a.ItemId).ToHashSet();
+
+                            // Load ammunition filtered by assigned item IDs
+                            ammunitions = (await _ammunitionRepository.FindAsync(
+                                a => !a.IsDeleted && assignedItemIds.Contains(a.Id),
+                                false,
+                                nameof(Ammunition.BulletDiameterUnit),
+                                nameof(Ammunition.NatureOption),
+                                nameof(Ammunition.PrimaryPurpos),
+                                nameof(Ammunition.ProjectileColor),
+                                nameof(Ammunition.ProjectailMaterial),
+                                nameof(Ammunition.CaseType),
+                                nameof(Ammunition.Propellant),
+                                nameof(Ammunition.Compatibility),
+                                nameof(Ammunition.HazardDivision),
+                                nameof(Ammunition.Classification),
+                                nameof(Ammunition.Type)
+                            )).ToList();
+
+                            _logger.LogInformation("Filtered ammunition by department assignments. Found {Count} items. DepartmentId: {DepartmentId}, User: {UserId}", 
+                                ammunitions.Count, userDepartmentId.Value, _currentUserService.UserId);
+                        }
+                    }
+                }
+                else
+                {
+                    // No assignment permission or no department ID - return all ammunition (current behavior)
+                    ammunitions = (await _ammunitionRepository.FindAsync(
+                        a => !a.IsDeleted,
+                        false,
+                        nameof(Ammunition.BulletDiameterUnit),
+                        nameof(Ammunition.NatureOption),
+                        nameof(Ammunition.PrimaryPurpos),
+                        nameof(Ammunition.ProjectileColor),
+                        nameof(Ammunition.ProjectailMaterial),
+                        nameof(Ammunition.CaseType),
+                        nameof(Ammunition.Propellant),
+                        nameof(Ammunition.Compatibility),
+                        nameof(Ammunition.HazardDivision),
+                        nameof(Ammunition.Classification),
+                        nameof(Ammunition.Type)
+                    )).ToList();
+                }
 
                 var dtos = _mapper.Map<List<AmmunitionDto>>(ammunitions);
                 

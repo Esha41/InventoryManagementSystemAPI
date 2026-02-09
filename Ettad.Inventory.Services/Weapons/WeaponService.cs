@@ -20,6 +20,8 @@ using OfficeOpenXml.DataValidation;
 using Ettad.EntityFramework.DataBaseContext;
 using Ettad.CrossCutting.Comman.Time;
 using Ettad.CrossCutting.Comman.Models;
+using Ettad.Inventory.Service.ItemDepartmentAssignments;
+using Ettad.Inventory.Service.ItemDepartmentAssignments.Dtos;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using System;
@@ -37,6 +39,8 @@ namespace Ettad.Inventory.Service.Weapons
         private readonly ApplicationDbContext _context;
         private readonly IDateTimeProvider _dateTimeProvider;
         private readonly AssetImportManager<CreateUpdateWeaponDto, WeaponImportDto> _importManager;
+        private readonly IPermissionService _permissionService;
+        private readonly IItemDepartmentAssignmentService _assignmentService;
 
         // In-memory lookups
         private List<Unit> _units;
@@ -62,7 +66,9 @@ namespace Ettad.Inventory.Service.Weapons
             IFileUploadService fileUploadService,
             IExcelImportService excelImportService,
             ApplicationDbContext context,
-            IDateTimeProvider dateTimeProvider)
+            IDateTimeProvider dateTimeProvider,
+            IPermissionService permissionService,
+            IItemDepartmentAssignmentService assignmentService)
         {
             _weaponRepository = weaponRepository;
             _mapper = mapper;
@@ -72,6 +78,8 @@ namespace Ettad.Inventory.Service.Weapons
             _fileUploadService = fileUploadService;
             _context = context;
             _dateTimeProvider = dateTimeProvider;
+            _permissionService = permissionService;
+            _assignmentService = assignmentService;
             
              _importManager = new AssetImportManager<CreateUpdateWeaponDto, WeaponImportDto>(excelImportService, 
                 new LoggerFactory().CreateLogger<AssetImportManager<CreateUpdateWeaponDto, WeaponImportDto>>());
@@ -166,18 +174,95 @@ namespace Ettad.Inventory.Service.Weapons
 
         public async Task<APIOperationResponse<List<WeaponDto>>> GetAllAsync()
         {
-             _logger.LogInformation("Getting all weapons. User: {UserId}", _currentUserService.UserId);
+            _logger.LogInformation("Getting all weapons. User: {UserId}", _currentUserService.UserId);
             
             try
             {
-                var weapons = await _weaponRepository.FindAsync(
-                    w => !w.IsDeleted,
-                    false,
-                    nameof(Weapon.CaliberUnit),
-                    nameof(Weapon.CountryOfManufacture),
-                    nameof(Weapon.Classification),
-                    nameof(Weapon.Type)
-                );
+                // Check if user has ItemDepartmentAssignment.View permission
+                var hasAssignmentPermission = await _permissionService.HasPermissionAsync("Permissions.ItemDepartmentAssignment.View");
+                var userDepartmentId = _currentUserService.DepartmentId;
+
+                List<Weapon> weapons;
+
+                // If user has assignment permission and department ID exists, filter by assignments
+                if (hasAssignmentPermission && userDepartmentId.HasValue)
+                {
+                    _logger.LogInformation("User has assignment permission. Filtering weapons by department assignments. DepartmentId: {DepartmentId}, User: {UserId}", 
+                        userDepartmentId.Value, _currentUserService.UserId);
+
+                    // First check if there are any assignments in the system at all
+                    var allAssignmentsResult = await _assignmentService.GetAllAsync();
+                    
+                    // If no assignments exist in the system, return all weapons
+                    if (!allAssignmentsResult.Succeeded || allAssignmentsResult.Data == null || allAssignmentsResult.Data.Count == 0)
+                    {
+                        _logger.LogInformation("No assignments exist in the system. Returning all weapons. User: {UserId}", 
+                            _currentUserService.UserId);
+                        weapons = (await _weaponRepository.FindAsync(
+                            w => !w.IsDeleted,
+                            false,
+                            nameof(Weapon.CaliberUnit),
+                            nameof(Weapon.CountryOfManufacture),
+                            nameof(Weapon.Classification),
+                            nameof(Weapon.Type)
+                        )).ToList();
+                    }
+                    else
+                    {
+                        // Get assignments for the department
+                        var assignmentsResult = await _assignmentService.GetByDepartmentIdAsync(userDepartmentId.Value);
+                        
+                        // Filter assignments to only include Weapon type (ItemType = 2)
+                        var weaponAssignments = assignmentsResult.Succeeded && assignmentsResult.Data != null
+                            ? assignmentsResult.Data.Where(a => a.ItemType == ItemType.Weapon).ToList()
+                            : new List<ItemDepartmentAssignmentDto>();
+
+                        // If no weapon assignments found for this department, return all weapons
+                        if (weaponAssignments.Count == 0)
+                        {
+                            _logger.LogInformation("No weapon assignments found for department. Returning all weapons. DepartmentId: {DepartmentId}, User: {UserId}", 
+                                userDepartmentId.Value, _currentUserService.UserId);
+                            weapons = (await _weaponRepository.FindAsync(
+                                w => !w.IsDeleted,
+                                false,
+                                nameof(Weapon.CaliberUnit),
+                                nameof(Weapon.CountryOfManufacture),
+                                nameof(Weapon.Classification),
+                                nameof(Weapon.Type)
+                            )).ToList();
+                        }
+                        else
+                        {
+                            // Get assigned item IDs
+                            var assignedItemIds = weaponAssignments.Select(a => a.ItemId).ToHashSet();
+
+                            // Load weapons filtered by assigned item IDs
+                            weapons = (await _weaponRepository.FindAsync(
+                                w => !w.IsDeleted && assignedItemIds.Contains(w.Id),
+                                false,
+                                nameof(Weapon.CaliberUnit),
+                                nameof(Weapon.CountryOfManufacture),
+                                nameof(Weapon.Classification),
+                                nameof(Weapon.Type)
+                            )).ToList();
+
+                            _logger.LogInformation("Filtered weapons by department assignments. Found {Count} items. DepartmentId: {DepartmentId}, User: {UserId}", 
+                                weapons.Count, userDepartmentId.Value, _currentUserService.UserId);
+                        }
+                    }
+                }
+                else
+                {
+                    // No assignment permission or no department ID - return all weapons (current behavior)
+                    weapons = (await _weaponRepository.FindAsync(
+                        w => !w.IsDeleted,
+                        false,
+                        nameof(Weapon.CaliberUnit),
+                        nameof(Weapon.CountryOfManufacture),
+                        nameof(Weapon.Classification),
+                        nameof(Weapon.Type)
+                    )).ToList();
+                }
 
                 var dtos = _mapper.Map<List<WeaponDto>>(weapons);
                 

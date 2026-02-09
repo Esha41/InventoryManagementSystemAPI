@@ -20,6 +20,8 @@ using OfficeOpenXml.DataValidation;
 using Ettad.EntityFramework.DataBaseContext;
 using Ettad.CrossCutting.Comman.Time;
 using Ettad.CrossCutting.Comman.Models;
+using Ettad.Inventory.Service.ItemDepartmentAssignments;
+using Ettad.Inventory.Service.ItemDepartmentAssignments.Dtos;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using System;
@@ -37,6 +39,8 @@ namespace Ettad.Inventory.Service.Explosives
         private readonly ApplicationDbContext _context;
         private readonly IDateTimeProvider _dateTimeProvider;
         private readonly AssetImportManager<CreateUpdateExplosiveDto, ExplosiveImportDto> _importManager;
+        private readonly IPermissionService _permissionService;
+        private readonly IItemDepartmentAssignmentService _assignmentService;
 
         // In-memory lookups
         private List<HazardDivision> _hazardDivisions;
@@ -62,7 +66,9 @@ namespace Ettad.Inventory.Service.Explosives
             IFileUploadService fileUploadService,
             IExcelImportService excelImportService,
             ApplicationDbContext context,
-            IDateTimeProvider dateTimeProvider)
+            IDateTimeProvider dateTimeProvider,
+            IPermissionService permissionService,
+            IItemDepartmentAssignmentService assignmentService)
         {
             _explosiveRepository = explosiveRepository;
             _mapper = mapper;
@@ -72,6 +78,8 @@ namespace Ettad.Inventory.Service.Explosives
             _fileUploadService = fileUploadService;
             _context = context;
             _dateTimeProvider = dateTimeProvider;
+            _permissionService = permissionService;
+            _assignmentService = assignmentService;
             
              _importManager = new AssetImportManager<CreateUpdateExplosiveDto, ExplosiveImportDto>(excelImportService, 
                 new LoggerFactory().CreateLogger<AssetImportManager<CreateUpdateExplosiveDto, ExplosiveImportDto>>());
@@ -109,17 +117,95 @@ namespace Ettad.Inventory.Service.Explosives
 
         public async Task<APIOperationResponse<List<ExplosiveDto>>> GetAllAsync()
         {
-            // existing implementation
-             try
+            _logger.LogInformation("Getting all explosives. User: {UserId}", _currentUserService.UserId);
+            
+            try
             {
-                var explosives = await _explosiveRepository.FindAsync(
-                    e => !e.IsDeleted,
-                    false,
-                    nameof(Explosive.HazardDivision),
-                    nameof(Explosive.Classification),
-                    nameof(Explosive.Type),
-                    nameof(Explosive.Unit)
-                );
+                // Check if user has ItemDepartmentAssignment.View permission
+                var hasAssignmentPermission = await _permissionService.HasPermissionAsync("Permissions.ItemDepartmentAssignment.View");
+                var userDepartmentId = _currentUserService.DepartmentId;
+
+                List<Explosive> explosives;
+
+                // If user has assignment permission and department ID exists, filter by assignments
+                if (hasAssignmentPermission && userDepartmentId.HasValue)
+                {
+                    _logger.LogInformation("User has assignment permission. Filtering explosives by department assignments. DepartmentId: {DepartmentId}, User: {UserId}", 
+                        userDepartmentId.Value, _currentUserService.UserId);
+
+                    // First check if there are any assignments in the system at all
+                    var allAssignmentsResult = await _assignmentService.GetAllAsync();
+                    
+                    // If no assignments exist in the system, return all explosives
+                    if (!allAssignmentsResult.Succeeded || allAssignmentsResult.Data == null || allAssignmentsResult.Data.Count == 0)
+                    {
+                        _logger.LogInformation("No assignments exist in the system. Returning all explosives. User: {UserId}", 
+                            _currentUserService.UserId);
+                        explosives = (await _explosiveRepository.FindAsync(
+                            e => !e.IsDeleted,
+                            false,
+                            nameof(Explosive.HazardDivision),
+                            nameof(Explosive.Classification),
+                            nameof(Explosive.Type),
+                            nameof(Explosive.Unit)
+                        )).ToList();
+                    }
+                    else
+                    {
+                        // Get assignments for the department
+                        var assignmentsResult = await _assignmentService.GetByDepartmentIdAsync(userDepartmentId.Value);
+                        
+                        // Filter assignments to only include Explosive type (ItemType = 3)
+                        var explosiveAssignments = assignmentsResult.Succeeded && assignmentsResult.Data != null
+                            ? assignmentsResult.Data.Where(a => a.ItemType == ItemType.Explosive).ToList()
+                            : new List<ItemDepartmentAssignmentDto>();
+
+                        // If no explosive assignments found for this department, return all explosives
+                        if (explosiveAssignments.Count == 0)
+                        {
+                            _logger.LogInformation("No explosive assignments found for department. Returning all explosives. DepartmentId: {DepartmentId}, User: {UserId}", 
+                                userDepartmentId.Value, _currentUserService.UserId);
+                            explosives = (await _explosiveRepository.FindAsync(
+                                e => !e.IsDeleted,
+                                false,
+                                nameof(Explosive.HazardDivision),
+                                nameof(Explosive.Classification),
+                                nameof(Explosive.Type),
+                                nameof(Explosive.Unit)
+                            )).ToList();
+                        }
+                        else
+                        {
+                            // Get assigned item IDs
+                            var assignedItemIds = explosiveAssignments.Select(a => a.ItemId).ToHashSet();
+
+                            // Load explosives filtered by assigned item IDs
+                            explosives = (await _explosiveRepository.FindAsync(
+                                e => !e.IsDeleted && assignedItemIds.Contains(e.Id),
+                                false,
+                                nameof(Explosive.HazardDivision),
+                                nameof(Explosive.Classification),
+                                nameof(Explosive.Type),
+                                nameof(Explosive.Unit)
+                            )).ToList();
+
+                            _logger.LogInformation("Filtered explosives by department assignments. Found {Count} items. DepartmentId: {DepartmentId}, User: {UserId}", 
+                                explosives.Count, userDepartmentId.Value, _currentUserService.UserId);
+                        }
+                    }
+                }
+                else
+                {
+                    // No assignment permission or no department ID - return all explosives (current behavior)
+                    explosives = (await _explosiveRepository.FindAsync(
+                        e => !e.IsDeleted,
+                        false,
+                        nameof(Explosive.HazardDivision),
+                        nameof(Explosive.Classification),
+                        nameof(Explosive.Type),
+                        nameof(Explosive.Unit)
+                    )).ToList();
+                }
 
                 var dtos = _mapper.Map<List<ExplosiveDto>>(explosives);
                 
@@ -137,6 +223,7 @@ namespace Ettad.Inventory.Service.Explosives
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Error retrieving all explosives. User: {UserId}", _currentUserService.UserId);
                 return APIOperationResponse<List<ExplosiveDto>>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
             }
         }
