@@ -204,13 +204,6 @@ public static class MainEntities
         CrudOperation.Delete,
     };
 
-    [Category(CrudPermissionsGenerator.UserManagement)]
-    public static readonly CrudOperation[] AzureSetup = new[]
-    {
-        CrudOperation.Page,
-        CrudOperation.View,
-        CrudOperation.Edit
-    };
 
     [Category(CrudPermissionsGenerator.UserManagement)]
     public static readonly CrudOperation[] UserDelegations = new[]
@@ -389,36 +382,6 @@ public static class MainEntities
     };
 
     [Category(CrudPermissionsGenerator.Requests)]
-    public static readonly CrudOperation[] ViewRequest = new[]
-    {
-        CrudOperation.Page,
-        CrudOperation.View,
-        CrudOperation.Create,
-        CrudOperation.Edit,
-        CrudOperation.Delete
-    };
-
-    [Category(CrudPermissionsGenerator.Requests)]
-    public static readonly CrudOperation[] EditRequestsComments = new[]
-    {
-        CrudOperation.Page,
-        CrudOperation.View,
-        CrudOperation.Create,
-        CrudOperation.Edit,
-        CrudOperation.Delete
-    };
-
-    [Category(CrudPermissionsGenerator.Requests)]
-    public static readonly CrudOperation[] ModifyRequestDetails = new[]
-    {
-        CrudOperation.Page,
-        CrudOperation.View,
-        CrudOperation.Create,
-        CrudOperation.Edit,
-        CrudOperation.Delete
-    };
-
-    [Category(CrudPermissionsGenerator.Requests)]
     public static readonly CrudOperation[] Supply = new[]
     {
         CrudOperation.Page,
@@ -461,36 +424,7 @@ public static class MainEntities
         CrudOperation.Delete
     };
 
-    [Category(CrudPermissionsGenerator.Inventory)]
-    public static readonly CrudOperation[] AddNewAssetPage = new[]
-    {
-        CrudOperation.Page,
-        CrudOperation.View,
-        CrudOperation.Create,
-        CrudOperation.Edit,
-        CrudOperation.Delete
-    };
-
-    [Category(CrudPermissionsGenerator.Inventory)]
-    public static readonly CrudOperation[] AssetSelection = new[]
-    {
-        CrudOperation.Page,
-        CrudOperation.View,
-        CrudOperation.Create,
-        CrudOperation.Edit,
-        CrudOperation.Delete
-    };
-
-    [Category(CrudPermissionsGenerator.Inventory)]
-    public static readonly CrudOperation[] AssetDeliveryDetails = new[]
-    {
-        CrudOperation.Page,
-        CrudOperation.View,
-        CrudOperation.Create,
-        CrudOperation.Edit,
-        CrudOperation.Delete
-    };
-
+    
     [Category(CrudPermissionsGenerator.RequestManagement)]
     public static readonly CrudOperation[] Request = new[]
     {

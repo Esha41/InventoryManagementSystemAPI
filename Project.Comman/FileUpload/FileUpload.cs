@@ -5,6 +5,7 @@ using Ettad.ResponseHandler.Models;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using Ettad.CrossCutting.Comman.Time;
 
 namespace Ettad.CrossCutting.Comman.FileUpload
@@ -25,12 +26,14 @@ namespace Ettad.CrossCutting.Comman.FileUpload
         private readonly IWebHostEnvironment _environment;
         private readonly IConfiguration _configuration;
         private readonly IDateTimeProvider _dateTimeProvider;
+        private readonly ILogger<FileStorageService> _logger;
 
-        public FileStorageService(IWebHostEnvironment environment, IConfiguration configuration, IDateTimeProvider dateTimeProvider)
+        public FileStorageService(IWebHostEnvironment environment, IConfiguration configuration, IDateTimeProvider dateTimeProvider, ILogger<FileStorageService> logger)
         {
             _environment = environment;
             _configuration = configuration;
             _dateTimeProvider = dateTimeProvider;
+            _logger = logger;
         }
 
         public async Task<APIOperationResponse<string>> SaveFileAsync(
@@ -89,7 +92,12 @@ namespace Ettad.CrossCutting.Comman.FileUpload
             }
             catch (System.Exception ex)
             {
-                return APIOperationResponse<string>.BadRequest($"File upload failed: {ex.Message}");
+                // Log the full exception details for debugging
+                _logger.LogError(ex, "File upload failed. FileName: {FileName}, FileEntityType: {FileEntityType}, FileSize: {FileSize} bytes", 
+                    file?.FileName, fileEntityType, file?.Length);
+                
+                // Return generic error message to user
+                return APIOperationResponse<string>.BadRequest("File upload failed. Please contact administrator.");
             }
         }
     }
