@@ -1,5 +1,4 @@
 using Ettad.ResponseHandler.Models;
-using Microsoft.AspNetCore.Http;
 using Ettad.Modules.ReportManagement.API.Services.Dtos;
 
 namespace Ettad.Modules.ReportManagement.API.Services
