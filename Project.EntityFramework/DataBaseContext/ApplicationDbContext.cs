@@ -82,6 +82,7 @@ namespace Ettad.EntityFramework.DataBaseContext
         public DbSet<UserDelegation> UserDelegations { get; set; }
         public DbSet<ReportEntity> Reports { get; set; }
         public DbSet<ReportStatus> ReportStatuses { get; set; }
+        public DbSet<ReportRole> ReportRoles { get; set; }
        
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

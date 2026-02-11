@@ -18,5 +18,6 @@ namespace Ettad.Modules.ReportManagement.API.Services.Dtos
         public bool IsDeleted { get; set; }
         public DateTime? DeletionDate { get; set; }
         public string? DeletedBy { get; set; }
+        public List<ReportRoleDto>? Roles { get; set; }
     }
 }

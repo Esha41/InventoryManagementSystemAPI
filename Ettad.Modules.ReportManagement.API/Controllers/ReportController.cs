@@ -95,14 +95,14 @@ namespace Ettad.Modules.ReportManagement.API.Controllers
         }
 
         /// <summary>
-        /// Set report public (Published) or private (Draft). Body: { "isPublic": true|false }.
+        /// Set report public (Published) or private (Draft). Body: { "isPublic": true|false, "roleIds": ["role1", "role2"] }.
         /// </summary>
         [HttpPatch("{id}/public")]
         [ProducesResponseType((int)HttpStatusCode.OK)]
         [CheckAuthorize("ReportDesigner")]
-        public async Task<IActionResult> SetReportPublic(Guid id, bool isPublic)
+        public async Task<IActionResult> SetReportPublic(Guid id, [FromBody] SetReportPublicDto dto)
         {
-            var result = await _reportService.SetReportPublicAsync(id, isPublic);
+            var result = await _reportService.SetReportPublicAsync(id, dto);
             return ProcessResponse(result);
         }
 
@@ -139,6 +139,18 @@ namespace Ettad.Modules.ReportManagement.API.Controllers
         public async Task<IActionResult> GetTemplates()
         {
             var result = await _reportService.GetTemplatesAsync();
+            return ProcessResponse(result);
+        }
+
+        /// <summary>
+        /// Get role IDs associated with a report
+        /// </summary>
+        [HttpGet("{id}/roles")]
+        [ProducesResponseType((int)HttpStatusCode.OK)]
+        [CheckAuthorize("ReportDesigner")]
+        public async Task<IActionResult> GetReportRoles(Guid id)
+        {
+            var result = await _reportService.GetReportRoleIdsAsync(id);
             return ProcessResponse(result);
         }
 
