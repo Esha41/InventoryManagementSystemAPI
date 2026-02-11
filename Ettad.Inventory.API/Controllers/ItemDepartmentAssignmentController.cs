@@ -39,6 +39,15 @@ namespace Ettad.Inventory.API.Controllers
             return ProcessResponse(result);
         }
 
+        [HttpGet("summary")]
+        [ProducesResponseType((int)HttpStatusCode.OK)]
+        [CheckAuthorize("Permissions.ItemDepartmentAssignment.View")]
+        public async Task<IActionResult> GetDepartmentSummaries()
+        {
+            var result = await _assignmentService.GetDepartmentSummariesAsync();
+            return ProcessResponse(result);
+        }
+
         [HttpGet("department/{departmentId}")]
         [ProducesResponseType((int)HttpStatusCode.OK)]
         [CheckAuthorize("Permissions.ItemDepartmentAssignment.View")]

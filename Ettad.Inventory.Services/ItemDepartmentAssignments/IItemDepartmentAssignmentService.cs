@@ -13,5 +13,6 @@ namespace Ettad.Inventory.Service.ItemDepartmentAssignments
         Task<APIOperationResponse<bool>> UpdateAsync(long id, CreateUpdateItemDepartmentAssignmentDto inputDto);
         Task<APIOperationResponse<bool>> DeleteAsync(long id);
         Task<APIOperationResponse<bool>> BulkAssignAsync(List<CreateUpdateItemDepartmentAssignmentDto> assignments);
+        Task<APIOperationResponse<List<DepartmentAssignmentSummaryDto>>> GetDepartmentSummariesAsync();
     }
 }

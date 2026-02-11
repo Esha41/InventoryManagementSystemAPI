@@ -312,6 +312,64 @@ namespace Ettad.Inventory.Service.ItemDepartmentAssignments
             }
         }
 
+        public async Task<APIOperationResponse<List<DepartmentAssignmentSummaryDto>>> GetDepartmentSummariesAsync()
+        {
+            try
+            {
+                var assignments = await _assignmentRepository.FindAsync(
+                    x => !x.IsDeleted,
+                    false,
+                    nameof(ItemDepartmentAssignment.Item),
+                    nameof(ItemDepartmentAssignment.Department));
+
+                var grouped = assignments
+                    .GroupBy(a => a.DepartmentId)
+                    .Select(g =>
+                    {
+                        var first = g.First();
+                        var dept = first.Department;
+                        if (dept == null)
+                            return null;
+
+                        int ammo = 0, weapons = 0, explosives = 0;
+                        foreach (var a in g)
+                        {
+                            var item = a.Item;
+                            if (item == null) continue;
+                            switch (item.ItemType)
+                            {
+                                case ItemType.Ammunition: ammo++; break;
+                                case ItemType.Weapon: weapons++; break;
+                                case ItemType.Explosive: explosives++; break;
+                                default: break;
+                            }
+                        }
+
+                        return new DepartmentAssignmentSummaryDto
+                        {
+                            DepartmentId = first.DepartmentId,
+                            DepartmentCode = dept.Code,
+                            DepartmentNameAr = dept.NameAr,
+                            DepartmentNameEn = dept.NameEn,
+                            AmmunitionCount = ammo,
+                            ExplosivesCount = explosives,
+                            WeaponsCount = weapons
+                        };
+                    })
+                    .Where(x => x != null)
+                    .Cast<DepartmentAssignmentSummaryDto>()
+                    .OrderBy(x => x.DepartmentNameEn ?? x.DepartmentNameAr ?? "")
+                    .ToList();
+
+                return APIOperationResponse<List<DepartmentAssignmentSummaryDto>>.Success(grouped);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving department assignment summaries");
+                return APIOperationResponse<List<DepartmentAssignmentSummaryDto>>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
+            }
+        }
+
         private async Task<ItemDepartmentAssignmentDto> MapToDtoAsync(ItemDepartmentAssignment assignment)
         {
             var dto = new ItemDepartmentAssignmentDto
