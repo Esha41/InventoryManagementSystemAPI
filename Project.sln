@@ -71,6 +71,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ettad.LdapSettings.Services
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ettad.Modules.FileUpload.API", "Ettad.Modules.FileUpload.API\Ettad.Modules.FileUpload.API.csproj", "{3A813F21-5E0A-4712-92F9-8CF5BB54B8D8}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ettad.Announcement.Service", "Ettad.Announcement.Service\Ettad.Announcement.Service.csproj", "{D7687EEE-ED1E-49E9-895C-1FD57C408351}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ettad.Announcement.API", "Ettad.Announcement.API\Ettad.Announcement.API.csproj", "{EC486B4D-B564-45A5-A23F-F09F5FC88693}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -345,6 +349,30 @@ Global
 		{3A813F21-5E0A-4712-92F9-8CF5BB54B8D8}.Release|x64.Build.0 = Release|Any CPU
 		{3A813F21-5E0A-4712-92F9-8CF5BB54B8D8}.Release|x86.ActiveCfg = Release|Any CPU
 		{3A813F21-5E0A-4712-92F9-8CF5BB54B8D8}.Release|x86.Build.0 = Release|Any CPU
+		{D7687EEE-ED1E-49E9-895C-1FD57C408351}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D7687EEE-ED1E-49E9-895C-1FD57C408351}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D7687EEE-ED1E-49E9-895C-1FD57C408351}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{D7687EEE-ED1E-49E9-895C-1FD57C408351}.Debug|x64.Build.0 = Debug|Any CPU
+		{D7687EEE-ED1E-49E9-895C-1FD57C408351}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{D7687EEE-ED1E-49E9-895C-1FD57C408351}.Debug|x86.Build.0 = Debug|Any CPU
+		{D7687EEE-ED1E-49E9-895C-1FD57C408351}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D7687EEE-ED1E-49E9-895C-1FD57C408351}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D7687EEE-ED1E-49E9-895C-1FD57C408351}.Release|x64.ActiveCfg = Release|Any CPU
+		{D7687EEE-ED1E-49E9-895C-1FD57C408351}.Release|x64.Build.0 = Release|Any CPU
+		{D7687EEE-ED1E-49E9-895C-1FD57C408351}.Release|x86.ActiveCfg = Release|Any CPU
+		{D7687EEE-ED1E-49E9-895C-1FD57C408351}.Release|x86.Build.0 = Release|Any CPU
+		{EC486B4D-B564-45A5-A23F-F09F5FC88693}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{EC486B4D-B564-45A5-A23F-F09F5FC88693}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{EC486B4D-B564-45A5-A23F-F09F5FC88693}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{EC486B4D-B564-45A5-A23F-F09F5FC88693}.Debug|x64.Build.0 = Debug|Any CPU
+		{EC486B4D-B564-45A5-A23F-F09F5FC88693}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{EC486B4D-B564-45A5-A23F-F09F5FC88693}.Debug|x86.Build.0 = Debug|Any CPU
+		{EC486B4D-B564-45A5-A23F-F09F5FC88693}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{EC486B4D-B564-45A5-A23F-F09F5FC88693}.Release|Any CPU.Build.0 = Release|Any CPU
+		{EC486B4D-B564-45A5-A23F-F09F5FC88693}.Release|x64.ActiveCfg = Release|Any CPU
+		{EC486B4D-B564-45A5-A23F-F09F5FC88693}.Release|x64.Build.0 = Release|Any CPU
+		{EC486B4D-B564-45A5-A23F-F09F5FC88693}.Release|x86.ActiveCfg = Release|Any CPU
+		{EC486B4D-B564-45A5-A23F-F09F5FC88693}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
