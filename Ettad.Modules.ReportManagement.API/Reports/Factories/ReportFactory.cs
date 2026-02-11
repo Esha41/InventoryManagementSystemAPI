@@ -8,7 +8,7 @@ namespace Ettad.Modules.ReportManagement.API.Reports.Factories
     {
         public XtraReport Create(string reportName)
         {
-            return reportName switch
+            return reportName switch 
             {
                 "AllowanceItemsReportTemplate" => new AllowanceItemsReportTemplate(),
                 _ => new BaseReportTemplate()
