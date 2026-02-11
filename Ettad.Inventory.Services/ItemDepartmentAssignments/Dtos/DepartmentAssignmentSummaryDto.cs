@@ -6,7 +6,7 @@ namespace Ettad.Inventory.Service.ItemDepartmentAssignments.Dtos
     public class DepartmentAssignmentSummaryDto
     {
         public long DepartmentId { get; set; }
-        public string? DepartmentCode { get; set; }
+        public string? DepartmentCode { get; set; } 
         public string? DepartmentNameAr { get; set; }
         public string? DepartmentNameEn { get; set; }
         public int AmmunitionCount { get; set; }
