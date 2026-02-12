@@ -2,9 +2,10 @@ using DevExpress.XtraReports.UI;
 using DevExpress.XtraReports.Web.ClientControls;
 using DevExpress.XtraReports.Web.Extensions;
 using Ettad.Data.Enums;
-using Ettad.Modules.ReportManagement.API.Services.Dtos;
 using Ettad.Modules.ReportManagement.API.Reports.Factories;
 using Ettad.Modules.ReportManagement.API.Services;
+using Ettad.Modules.ReportManagement.API.Services.Dtos;
+using Microsoft.AspNetCore.WebUtilities;
 
 namespace Ettad.Modules.ReportManagement.API.Reports
 {
@@ -37,22 +38,65 @@ namespace Ettad.Modules.ReportManagement.API.Reports
         public override byte[] GetData(string url)
         {
             try
-            { // 1?? Try DB first
-              var result = _reportService.GetByUrlAsync(url).GetAwaiter().GetResult(); 
-                if (result.Succeeded && result.Data?.LayoutData != null) return result.Data.LayoutData; 
-                
-                // 2?? No layout in DB ? create via factory
-                var report = _reportFactory.Create(url); 
-                using var ms = new MemoryStream(); 
-                report.SaveLayoutToXml(ms); 
-                return ms.ToArray(); 
-            } 
-            catch (FaultException ex) 
-            { 
-                // Log error
-                System.Diagnostics.Debug.WriteLine($"Error getting report data: {ex.Message}"); return Array.Empty<byte>(); } 
-        }
+            {
+                // Extract departmentId(s) from url
+                List<long> departmentIds = new List<long>();
 
+                var parts = url.Split('?');
+                var baseUrl = parts[0];
+                if (parts.Length > 1)
+                {
+                    var queryParams = QueryHelpers.ParseQuery(parts[1]);
+
+                    if (queryParams.TryGetValue("departmentId", out var value))
+                    {
+                        var values = value.ToString().Split(',', StringSplitOptions.RemoveEmptyEntries);
+                        foreach (var deptValue in values)
+                        {
+                            if (int.TryParse(deptValue.Trim(), out var parsedId))
+                            {
+                                departmentIds.Add(parsedId);
+                            }
+                        }
+                    }
+                }
+
+                XtraReport report;
+
+                //  Try DB first
+                var result = _reportService.GetByUrlAsync(baseUrl).GetAwaiter().GetResult();
+
+                if (result.Succeeded && result.Data?.LayoutData != null)
+                {
+                    using var layoutStream = new MemoryStream(result.Data.LayoutData);
+                    report = new XtraReport();
+                    report.LoadLayoutFromXml(layoutStream);
+                }
+                else
+                {
+                    report = _reportFactory.Create(baseUrl);
+                }
+
+                // Set Department Parameter - support multiple departments
+                if (departmentIds.Count > 0 && report.Parameters["Department"] != null)
+                {
+                    var param = report.Parameters["Department"];
+                    param.SelectAllValues = false;
+                    param.Value = departmentIds.ToArray();
+                    param.Visible = true;     
+                    param.Enabled = false;   
+                }
+
+                using var ms = new MemoryStream();
+                report.SaveLayoutToXml(ms);
+                return ms.ToArray();
+            }
+            catch (FaultException ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error getting report data: {ex.Message}");
+                return Array.Empty<byte>();
+            }
+        }
         public override Dictionary<string, string> GetUrls()
         {
             try
