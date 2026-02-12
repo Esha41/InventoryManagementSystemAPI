@@ -12,7 +12,7 @@ using Ettad.Inventory.Service;
 using Ettad.Inventory.Service.Monitoring;
 using Ettad.LdapSettings.Services;
 using Ettad.Lookups.Services.Contracts;
-using Ettad.Lookups.Services.Implementation;
+using Ettad.Lookups.Services.Implementation; 
 using Ettad.Notification.Service;
 using Ettad.Repository;
 using Ettad.RequestManagement.Service;
