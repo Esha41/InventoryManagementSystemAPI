@@ -981,15 +981,31 @@ namespace Ettad.User.Services.Implementation
 
         /// <summary>
         /// Checks if an account is locked due to too many failed login attempts
+        /// Only counts failed attempts that occurred AFTER the most recent successful login
+        /// This ensures that after successful login, the failed attempts count resets
         /// </summary>
         private async Task<bool> IsAccountLockedAsync(string username, CancellationToken cancellationToken)
         {
             var lockoutThreshold = _dateTimeProvider.Now.AddMinutes(-LOCKOUT_DURATION_MINUTES);
             
+            // Find the most recent successful login for this username
+            var mostRecentSuccessfulLogin = await _context.LoginAttempts
+                .Where(la => la.Username == username && la.IsSuccessful)
+                .OrderByDescending(la => la.AttemptDate)
+                .FirstOrDefaultAsync(cancellationToken);
+
+            // Only count failed attempts that occurred:
+            // 1. After the most recent successful login (if one exists), OR
+            // 2. Within the lockout window (if no successful login exists)
+            DateTime? countFromDate = mostRecentSuccessfulLogin?.AttemptDate;
+            var effectiveThreshold = countFromDate.HasValue && countFromDate.Value > lockoutThreshold
+                ? countFromDate.Value
+                : lockoutThreshold;
+
             var failedAttempts = await _context.LoginAttempts
                 .Where(la => la.Username == username 
                     && !la.IsSuccessful 
-                    && la.AttemptDate >= lockoutThreshold)
+                    && la.AttemptDate >= effectiveThreshold)
                 .CountAsync(cancellationToken);
 
             return failedAttempts >= MAX_FAILED_ATTEMPTS;
@@ -997,16 +1013,39 @@ namespace Ettad.User.Services.Implementation
 
         /// <summary>
         /// Checks if CAPTCHA is required (3+ failed attempts but account not locked yet)
+        /// Only counts failed attempts that occurred AFTER the most recent successful login
+        /// This ensures that after successful login, the failed attempts count resets
         /// </summary>
         private async Task<bool> IsCaptchaRequiredAsync(string username, CancellationToken cancellationToken)
         {
             var lockoutThreshold = _dateTimeProvider.Now.AddMinutes(-LOCKOUT_DURATION_MINUTES);
             
+            // Find the most recent successful login for this username
+            var mostRecentSuccessfulLogin = await _context.LoginAttempts
+                .Where(la => la.Username == username && la.IsSuccessful)
+                .OrderByDescending(la => la.AttemptDate)
+                .FirstOrDefaultAsync(cancellationToken);
+
+            // Only count failed attempts that occurred:
+            // 1. After the most recent successful login (if one exists), OR
+            // 2. Within the lockout window (if no successful login exists)
+            DateTime? countFromDate = mostRecentSuccessfulLogin?.AttemptDate;
+            var effectiveThreshold = countFromDate.HasValue && countFromDate.Value > lockoutThreshold
+                ? countFromDate.Value
+                : lockoutThreshold;
+
+            // Get failed attempts after the most recent successful login (or within lockout window)
             var failedAttempts = await _context.LoginAttempts
                 .Where(la => la.Username == username 
                     && !la.IsSuccessful 
-                    && la.AttemptDate >= lockoutThreshold)
+                    && la.AttemptDate >= effectiveThreshold)
                 .CountAsync(cancellationToken);
+
+            // If no failed attempts, no CAPTCHA required
+            if (failedAttempts == 0)
+            {
+                return false;
+            }
 
             // CAPTCHA required if 3+ failed attempts but less than 5 (which would lock the account)
             return failedAttempts >= CAPTCHA_REQUIRED_AFTER_ATTEMPTS && failedAttempts < MAX_FAILED_ATTEMPTS;
