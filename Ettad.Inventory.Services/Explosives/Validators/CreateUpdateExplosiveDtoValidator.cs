@@ -22,6 +22,14 @@ namespace Ettad.Inventory.Service.Explosives.Validators
             RuleFor(x => x.HazardDivisionId)
                 .GreaterThan(0).When(x => x.HazardDivisionId.HasValue)
                 .WithMessage("Hazard division must be valid");
+
+            RuleFor(x => x.ArmNumber)
+                .MaximumLength(200).When(x => !string.IsNullOrEmpty(x.ArmNumber))
+                .WithMessage("Arm number cannot exceed 200 characters");
+
+            RuleFor(x => x.CompatibilityId)
+                .GreaterThan(0).When(x => x.CompatibilityId.HasValue)
+                .WithMessage("Compatibility must be valid when provided");
         }
     }
 }

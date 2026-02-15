@@ -22,9 +22,11 @@ namespace Ettad.Inventory.Service.Explosives.Dtos
         public string? Type { get; set; }
 
         // Explosive Properties
+        public string? ArmNumber { get; set; }
         public string? NEQUnit { get; set; } // Will be parsed as Enum if mapped correctly in service, or handled manually
         
         // Explosive Lookup Names
+        public string? Compatibility { get; set; }
         public string? HazardDivision { get; set; }
     }
 }

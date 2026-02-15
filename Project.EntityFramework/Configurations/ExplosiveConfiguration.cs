@@ -10,6 +10,16 @@ namespace Ettad.EntityFramework.Configurations
         {
             builder.ToTable("Explosives");
 
+            builder.Property(x => x.ArmNumber)
+                .IsRequired(false)
+                .HasMaxLength(200);
+
+            builder.HasOne(x => x.Compatibility)
+                .WithMany()
+                .IsRequired(false)
+                .HasForeignKey(x => x.CompatibilityId)
+                .OnDelete(DeleteBehavior.Restrict);
+
             builder.HasOne(x => x.HazardDivision)
                 .WithMany()
                 .HasForeignKey(x => x.HazardDivisionId)
@@ -27,7 +37,8 @@ namespace Ettad.EntityFramework.Configurations
             // HazardDivisionId is in Explosives table
             // We can only create composite indexes within the same table
             
-            // Single-column index on Explosive-specific property (in Explosives table)
+            // Single-column indexes on Explosive-specific properties (in Explosives table)
+            builder.HasIndex(x => x.CompatibilityId);
             builder.HasIndex(x => x.HazardDivisionId);
         }
     }
