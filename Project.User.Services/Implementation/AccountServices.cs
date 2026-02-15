@@ -672,6 +672,50 @@ namespace Ettad.User.Services.Implementation
             return _jwtServices.RefreshAsync(userRefreshToken);
         }
 
+        public async Task<APIOperationResponse<AuthenticatedResponse>> RefreshTokenFromCookieAsync(CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                var refreshToken = _httpContextAccessor.HttpContext?.Request.Cookies["refreshToken"];
+                if (string.IsNullOrWhiteSpace(refreshToken))
+                {
+                    return APIOperationResponse<AuthenticatedResponse>.Fail(
+                        ResponseType.Unauthorized,
+                        CommonErrorCodes.UN_AUTHORIZED,
+                        "server.invalidRefreshRequest");
+                }
+
+                var user = await _userRepository.Users
+                    .FirstOrDefaultAsync(u => u.RefreshToken == refreshToken && !u.IsDeleted, cancellationToken);
+                if (user == null)
+                {
+                    return APIOperationResponse<AuthenticatedResponse>.Fail(
+                        ResponseType.Unauthorized,
+                        CommonErrorCodes.UN_AUTHORIZED,
+                        "server.invalidRefreshToken");
+                }
+
+                var authResponse = await _jwtServices.RefreshAsync(new UserRefreshToken(user.Id, refreshToken));
+                return APIOperationResponse<AuthenticatedResponse>.Success(authResponse);
+            }
+            catch (ApiException ex)
+            {
+                _logger.LogWarning(ex, "Refresh token validation failed: {Message}", ex.Message);
+                return APIOperationResponse<AuthenticatedResponse>.Fail(
+                    ResponseType.Unauthorized,
+                    CommonErrorCodes.UN_AUTHORIZED,
+                    ex.Message);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Unexpected error during token refresh");
+                return APIOperationResponse<AuthenticatedResponse>.Fail(
+                    ResponseType.InternalServerError,
+                    CommonErrorCodes.SERVER_ERROR,
+                    "server.unableToRefreshToken");
+            }
+        }
+
         private async Task<AuthenticatedResponse> CreateAndReturnAuthResponseAsync(ApplicationUser user, CancellationToken cancellationToken)
         {
             var refreshToken = _jwtServices.GenerateRefreshToken();

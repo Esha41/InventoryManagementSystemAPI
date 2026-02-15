@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity.Data;
 using Microsoft.AspNetCore.Mvc;
 using Ettad.ResponseHandler.Models;
@@ -9,6 +9,8 @@ using Ettad.User.Services.DTO;
 using Ettad.User.Services.Implementation;
 using Ettad.User.Services.Interfaces;
 using System.Net;
+using Microsoft.Extensions.Options;
+using Microsoft.AspNetCore.Http;
 
 namespace Ettad.User.Api.Controllers
 {
@@ -21,14 +23,16 @@ namespace Ettad.User.Api.Controllers
         private readonly IAccountServices _authenticationService;
         private readonly IHelpureService _helpureService;
         private readonly ICaptchaService _captchaService;
+        private readonly JwtOptions _jwtOptions;
         #endregion
 
         #region ctor
-        public AccountController(IAccountServices authenticationService, IHelpureService helpureService, ICaptchaService captchaService)
+        public AccountController(IAccountServices authenticationService, IHelpureService helpureService, ICaptchaService captchaService, IOptions<JwtOptions> jwtOptions)
         {
             _authenticationService = authenticationService;
             _helpureService = helpureService;
             _captchaService = captchaService;
+            _jwtOptions = jwtOptions?.Value ?? new JwtOptions();
         }
         #endregion
 
@@ -40,11 +44,42 @@ namespace Ettad.User.Api.Controllers
         [AllowAnonymous]
         public async Task<IActionResult> Login(LoginInformation request)
         {
-
             var result = await _authenticationService.Login(request);
 
-            return ProcessResponse(result);
+            if (result.Succeeded && result.Data != null && !string.IsNullOrEmpty(result.Data.RefreshToken))
+            {
+                SetRefreshTokenCookie(Response, result.Data.RefreshToken);
+                result.Data.RefreshToken = string.Empty;
+            }
 
+            return ProcessResponse(result);
+        }
+
+        [HttpPost("refresh")]
+        [AllowAnonymous]
+        [ProducesResponseType((int)HttpStatusCode.OK)]
+        public async Task<IActionResult> RefreshToken()
+        {
+            var result = await _authenticationService.RefreshTokenFromCookieAsync();
+            if (!result.Succeeded || result.Data == null)
+                return ProcessResponse(result);
+
+            SetRefreshTokenCookie(Response, result.Data.RefreshToken);
+            result.Data.RefreshToken = string.Empty;
+            return ProcessResponse(result);
+        }
+
+        private void SetRefreshTokenCookie(HttpResponse response, string refreshToken)
+        {
+            var cookieOptions = new CookieOptions
+            {
+                HttpOnly = true,
+                Secure = true,
+                SameSite = SameSiteMode.None,
+                Path = "/",
+                MaxAge = TimeSpan.FromMinutes(_jwtOptions.RefreshTokenExpireInMinutes)
+            };
+            response.Cookies.Append("refreshToken", refreshToken, cookieOptions);
         }
 
         [Authorize]

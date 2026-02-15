@@ -18,7 +18,7 @@ namespace Ettad.User.Services.Interfaces
         Task<APIOperationResponse<string>> ForgotPasswordAsync(ForgotPasswordDto request);
         Task<APIOperationResponse<string>> ResetPasswordAsync(ResetPasswordDto request);
         Task<APIOperationResponse<string>> LogoutAsync(CancellationToken cancellationToken = default);
-
+        Task<APIOperationResponse<AuthenticatedResponse>> RefreshTokenFromCookieAsync(CancellationToken cancellationToken = default);
 
     }
 }
