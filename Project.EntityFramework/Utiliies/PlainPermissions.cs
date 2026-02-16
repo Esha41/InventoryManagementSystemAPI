@@ -68,6 +68,12 @@ namespace Ettad.Data.Enums
         [Category(PlainPermissionsGenerator.Workflow)]
         UpdateRequestItems,
 
+        [Category(PlainPermissionsGenerator.Workflow)]
+        OrderIncreaseQuantity,
+
+        [Category(PlainPermissionsGenerator.Workflow)]
+        OrderDecreaseQuantity,
+
         [Category(PlainPermissionsGenerator.Inventory)]
         AllowanceItemViewAllDepartments,
     }
