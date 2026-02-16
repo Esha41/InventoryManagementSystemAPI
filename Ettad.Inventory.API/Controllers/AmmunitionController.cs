@@ -10,7 +10,7 @@ using Microsoft.Extensions.Logging;
 using OfficeOpenXml;
 using System.Net;
 using Ettad.CrossCutting.Comman.Time;
-using Ettad.CrossCutting.Comman.Models;
+using Ettad.CrossCutting.Comman.Models; 
 
 namespace Ettad.Inventory.API.Controllers 
 {
