@@ -214,6 +214,8 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
             "Permissions.Order.Create",
             "Permissions.Order.Edit",
             "Permissions.Order.Delete",
+            "Permissions.Order.IncreaseQuantity",
+            "Permissions.Order.DecreaseQuantity",
         };
         public static List<string> WriteDiscard = new()
         {
@@ -247,6 +249,8 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
             "Permissions.Order.Create",
             "Permissions.Order.Edit",
             "Permissions.Order.Delete",
+            "Permissions.Order.IncreaseQuantity",
+            "Permissions.Order.DecreaseQuantity",
         };
 
         public static List<string> ReadRequestReciever = new()

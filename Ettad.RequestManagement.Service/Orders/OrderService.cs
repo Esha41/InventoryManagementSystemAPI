@@ -690,6 +690,13 @@ namespace Ettad.RequestManagement.Service.Orders
             }
         }
 
+        public async Task<long?> GetOrderItemCurrentQuantityAsync(long orderId, long itemId)
+        {
+            var requestItem = await _requestItemRepository.FindOneAsync(
+                ri => ri.Id == itemId && ri.RequestId == orderId && !ri.IsDeleted);
+            return requestItem?.Quantity;
+        }
+
         public async Task<APIOperationResponse<bool>> UpdateOrderItemQuantityAsync(long orderId, long itemId, long newQuantity)
         {
             _logger.LogInformation("Updating order item quantity. OrderId: {OrderId}, ItemId: {ItemId}, NewQuantity: {NewQuantity}, User: {UserId}", 

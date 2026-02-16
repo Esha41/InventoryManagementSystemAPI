@@ -19,6 +19,7 @@ using Ettad.LdapSettings.Services;
 using Ettad.Lookups.Services.Contracts;
 using Ettad.Lookups.Services.Implementation; 
 using Ettad.Notification.Service;
+using Ettad.Announcement.Service;
 using Ettad.Repository;
 using Ettad.RequestManagement.Service;
 using Ettad.Services;
@@ -112,6 +113,7 @@ try
         .AddApplicationPart(typeof(Ettad.Modules.ReportManagement.API.Controllers.CustomQueryBuilderController).Assembly) 
         .AddApplicationPart(typeof(Ettad.Modules.ReportManagement.API.Controllers.CustomReportDesignerController).Assembly) 
         .AddApplicationPart(typeof(Ettad.Modules.ReportManagement.API.Controllers.CustomWebDocumentViewerController).Assembly) 
+        .AddApplicationPart(typeof(Ettad.Announcement.API.Controllers.AnnouncementController).Assembly)
         .AddJsonOptions(options =>
         {
             options.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
@@ -183,6 +185,7 @@ try
     builder.Services.AddRequestServices();
     builder.Services.AddNotificationServices();
     builder.Services.AddLdapSettingsServices();
+    builder.Services.AddAnnouncementServices();
     #endregion
 
     // Register soft delete interceptor (ICurrentUserService is already registered above)

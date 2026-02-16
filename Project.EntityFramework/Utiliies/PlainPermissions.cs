@@ -57,6 +57,9 @@ namespace Ettad.Data.Enums
         ConfirmSupplyPickupDate,
 
         [Category(PlainPermissionsGenerator.Workflow)]
+        ViewSupplyDate,
+
+        [Category(PlainPermissionsGenerator.Workflow)]
         CannotRejectRequest,
 
         [Category(PlainPermissionsGenerator.Workflow)]
@@ -64,6 +67,12 @@ namespace Ettad.Data.Enums
 
         [Category(PlainPermissionsGenerator.Workflow)]
         UpdateRequestItems,
+
+        [Category(PlainPermissionsGenerator.Workflow)]
+        OrderIncreaseQuantity,
+
+        [Category(PlainPermissionsGenerator.Workflow)]
+        OrderDecreaseQuantity,
 
         [Category(PlainPermissionsGenerator.Inventory)]
         AllowanceItemViewAllDepartments,

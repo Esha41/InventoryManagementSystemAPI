@@ -4,6 +4,7 @@ using Ettad.EntityFramework.DataBaseContext;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Ettad.EntityFramework.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260215103232_armNumberAndComp")]
+    partial class armNumberAndComp
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -3063,205 +3066,6 @@ namespace Ettad.EntityFramework.Migrations
                         });
                 });
 
-            modelBuilder.Entity("Ettad.Data.Entities.ReportEntity", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<string>("CreatedBy")
-                        .HasMaxLength(450)
-                        .HasColumnType("nvarchar(450)");
-
-                    b.Property<DateTime>("CreationDate")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("datetime2")
-                        .HasDefaultValueSql("GETDATE()");
-
-                    b.Property<string>("DeletedBy")
-                        .HasMaxLength(450)
-                        .HasColumnType("nvarchar(450)");
-
-                    b.Property<DateTime?>("DeletionDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("Description")
-                        .HasMaxLength(1000)
-                        .HasColumnType("nvarchar(1000)");
-
-                    b.Property<bool>("IsDeleted")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bit")
-                        .HasDefaultValue(false);
-
-                    b.Property<byte[]>("LayoutData")
-                        .HasColumnType("varbinary(max)");
-
-                    b.Property<DateTime?>("ModificationDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("ModifiedBy")
-                        .HasMaxLength(450)
-                        .HasColumnType("nvarchar(450)");
-
-                    b.Property<string>("ReportName")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
-
-                    b.Property<string>("ReportParameters")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<long>("ReportStatusId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint")
-                        .HasDefaultValue(1L);
-
-                    b.Property<string>("Url")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("CreatedBy")
-                        .HasFilter("[IsDeleted] = 0");
-
-                    b.HasIndex("ReportName")
-                        .HasFilter("[IsDeleted] = 0");
-
-                    b.HasIndex("ReportStatusId")
-                        .HasFilter("[IsDeleted] = 0");
-
-                    b.HasIndex("Url")
-                        .IsUnique()
-                        .HasFilter("[IsDeleted] = 0");
-
-                    b.ToTable("Reports", (string)null);
-                });
-
-            modelBuilder.Entity("Ettad.Data.Entities.ReportRole", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<string>("CreatedBy")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<DateTime>("CreationDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("DeletedBy")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<DateTime?>("DeletionDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("bit");
-
-                    b.Property<DateTime?>("ModificationDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("ModifiedBy")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<Guid>("ReportId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<string>("RoleId")
-                        .HasColumnType("nvarchar(450)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ReportId")
-                        .HasFilter("[IsDeleted] = 0");
-
-                    b.HasIndex("RoleId")
-                        .HasFilter("[IsDeleted] = 0");
-
-                    b.HasIndex("ReportId", "RoleId")
-                        .IsUnique()
-                        .HasFilter("[IsDeleted] = 0");
-
-                    b.ToTable("ReportRoles", (string)null);
-                });
-
-            modelBuilder.Entity("Ettad.Data.Entities.ReportStatus", b =>
-                {
-                    b.Property<long>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
-
-                    b.Property<string>("CreatedBy")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<DateTime>("CreationDate")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("datetime2")
-                        .HasDefaultValueSql("GETDATE()");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("bit");
-
-                    b.Property<DateTime?>("ModificationDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("ModifiedBy")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("NameAr")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
-                    b.Property<string>("NameEn")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("NameAr")
-                        .IsUnique()
-                        .HasFilter("[IsDeleted] = 0");
-
-                    b.HasIndex("NameEn")
-                        .IsUnique()
-                        .HasFilter("[IsDeleted] = 0");
-
-                    b.ToTable("ReportStatuses", (string)null);
-
-                    b.HasData(
-                        new
-                        {
-                            Id = 1L,
-                            CreationDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
-                            IsDeleted = false,
-                            NameAr = "مسودة",
-                            NameEn = "Draft"
-                        },
-                        new
-                        {
-                            Id = 2L,
-                            CreationDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
-                            IsDeleted = false,
-                            NameAr = "منشور",
-                            NameEn = "Published"
-                        },
-                        new
-                        {
-                            Id = 3L,
-                            CreationDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
-                            IsDeleted = false,
-                            NameAr = "غير نشط",
-                            NameEn = "Inactive"
-                        });
-                });
-
             modelBuilder.Entity("Ettad.Data.Entities.RequestItem", b =>
                 {
                     b.Property<long>("Id")
@@ -3515,174 +3319,6 @@ namespace Ettad.EntityFramework.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("RoleApplicationEntities");
-                });
-
-            modelBuilder.Entity("Ettad.Data.Entities.ScheduledReport", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<string>("CreatedBy")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<DateTime>("CreationDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<int?>("DayOfMonth")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("DayOfWeek")
-                        .HasColumnType("int");
-
-                    b.Property<string>("DeletedBy")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<DateTime?>("DeletionDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("EmailBody")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("EmailSubject")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Frequency")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("bit");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("bit");
-
-                    b.Property<DateTime?>("LastRunDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<DateTime?>("ModificationDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("ModifiedBy")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<DateTime?>("NextRunDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("OutputFormat")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<Guid>("ReportId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<string>("ScheduleName")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("TimeOfDay")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ReportId");
-
-                    b.ToTable("ScheduledReports");
-                });
-
-            modelBuilder.Entity("Ettad.Data.Entities.ScheduledReportExecution", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<string>("CreatedBy")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<DateTime>("CreationDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("DeletedBy")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<DateTime?>("DeletionDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("ErrorMessage")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<DateTime>("ExecutionDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<long?>("FileSizeBytes")
-                        .HasColumnType("bigint");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("bit");
-
-                    b.Property<DateTime?>("ModificationDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("ModifiedBy")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<int>("RecipientCount")
-                        .HasColumnType("int");
-
-                    b.Property<Guid>("ScheduledReportId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<string>("Status")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ScheduledReportId");
-
-                    b.ToTable("ScheduledReportExecutions");
-                });
-
-            modelBuilder.Entity("Ettad.Data.Entities.ScheduledReportRecipient", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<string>("CreatedBy")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<DateTime>("CreationDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("DeletedBy")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<DateTime?>("DeletionDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("EmailAddress")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("bit");
-
-                    b.Property<DateTime?>("ModificationDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("ModifiedBy")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("RecipientType")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<Guid>("ScheduledReportId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<string>("UserId")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ScheduledReportId");
-
-                    b.ToTable("ScheduledReportRecipients");
                 });
 
             modelBuilder.Entity("Ettad.Data.Entities.Settings.EmailConfiguration", b =>
@@ -5343,35 +4979,6 @@ namespace Ettad.EntityFramework.Migrations
                     b.Navigation("WorkflowStep");
                 });
 
-            modelBuilder.Entity("Ettad.Data.Entities.ReportEntity", b =>
-                {
-                    b.HasOne("Ettad.Data.Entities.ReportStatus", "ReportStatus")
-                        .WithMany()
-                        .HasForeignKey("ReportStatusId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("ReportStatus");
-                });
-
-            modelBuilder.Entity("Ettad.Data.Entities.ReportRole", b =>
-                {
-                    b.HasOne("Ettad.Data.Entities.ReportEntity", "Report")
-                        .WithMany()
-                        .HasForeignKey("ReportId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("Ettad.CrossCutting.Comman.Idenitity.ApplicationRole", "Role")
-                        .WithMany()
-                        .HasForeignKey("RoleId")
-                        .OnDelete(DeleteBehavior.Cascade);
-
-                    b.Navigation("Report");
-
-                    b.Navigation("Role");
-                });
-
             modelBuilder.Entity("Ettad.Data.Entities.RequestItem", b =>
                 {
                     b.HasOne("Ettad.Data.Entities.BaseItem", "Item")
@@ -5389,39 +4996,6 @@ namespace Ettad.EntityFramework.Migrations
                     b.Navigation("Item");
 
                     b.Navigation("Request");
-                });
-
-            modelBuilder.Entity("Ettad.Data.Entities.ScheduledReport", b =>
-                {
-                    b.HasOne("Ettad.Data.Entities.ReportEntity", "Report")
-                        .WithMany()
-                        .HasForeignKey("ReportId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Report");
-                });
-
-            modelBuilder.Entity("Ettad.Data.Entities.ScheduledReportExecution", b =>
-                {
-                    b.HasOne("Ettad.Data.Entities.ScheduledReport", "ScheduledReport")
-                        .WithMany("Executions")
-                        .HasForeignKey("ScheduledReportId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("ScheduledReport");
-                });
-
-            modelBuilder.Entity("Ettad.Data.Entities.ScheduledReportRecipient", b =>
-                {
-                    b.HasOne("Ettad.Data.Entities.ScheduledReport", "ScheduledReport")
-                        .WithMany("Recipients")
-                        .HasForeignKey("ScheduledReportId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("ScheduledReport");
                 });
 
             modelBuilder.Entity("Ettad.Data.Entities.Supply", b =>
@@ -5817,13 +5391,6 @@ namespace Ettad.EntityFramework.Migrations
             modelBuilder.Entity("Ettad.Data.Entities.Notification", b =>
                 {
                     b.Navigation("Receivers");
-                });
-
-            modelBuilder.Entity("Ettad.Data.Entities.ScheduledReport", b =>
-                {
-                    b.Navigation("Executions");
-
-                    b.Navigation("Recipients");
                 });
 
             modelBuilder.Entity("Ettad.Data.Entities.Supply", b =>

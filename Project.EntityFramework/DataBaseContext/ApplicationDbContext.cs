@@ -86,6 +86,8 @@ namespace Ettad.EntityFramework.DataBaseContext
         public DbSet<ScheduledReport> ScheduledReports { get; set; }
         public DbSet<ScheduledReportRecipient> ScheduledReportRecipients { get; set; }
         public DbSet<ScheduledReportExecution> ScheduledReportExecutions { get; set; }
+        public DbSet<Announcement> Announcements { get; set; }
+        public DbSet<AnnouncementDismissal> AnnouncementDismissals { get; set; }
        
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
