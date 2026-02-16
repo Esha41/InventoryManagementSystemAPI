@@ -226,7 +226,7 @@ namespace Ettad.RequestManagement.Service.Implementation
                 return APIOperationResponse<List<BaseRequestDto>>.Success(requestDtos);
             }
 
-            // Roles that are restricted to their own department
+            // Roles that are restricted to their own department - they see ALL requests from their department
             var restrictedRoles = new List<string>
             {
                 WorkflowRoleNames.SupplyOfficer,
@@ -238,39 +238,40 @@ namespace Ettad.RequestManagement.Service.Implementation
             if (isRestrictedRole && userDepartmentId.HasValue)
             {
                 query = query.Where(r => r.DepartmentId == userDepartmentId.Value);
+                // Supply Officer and RequestingEntityCommander see all department requests - no workflow filter
             }
-
-            // --- DELEGATION LOGIC START ---
-            var activeDelegatorIds = await _userDelegationService.GetActiveDelegatorsForUserAsync(userId, DelegationScope.WorkflowApproval);
-
-            var delegatorRoleNames = new List<string>();
-            if (activeDelegatorIds.Any())
+            else
             {
-                delegatorRoleNames = await _context.Set<IdentityUserRole<string>>()
-                    .Where(ur => activeDelegatorIds.Contains(ur.UserId))
-                    // Manual Join to get Role Names
-                    .Join(_context.Roles, 
-                          ur => ur.RoleId, 
-                          r => r.Id, 
-                          (ur, r) => r.Name)
-                    .ToListAsync();
-            }
-            // --- DELEGATION LOGIC END ---
+                // --- DELEGATION LOGIC ---
+                var activeDelegatorIds = await _userDelegationService.GetActiveDelegatorsForUserAsync(userId, DelegationScope.WorkflowApproval);
+                var delegatorRoleNames = new List<string>();
+                if (activeDelegatorIds.Any())
+                {
+                    delegatorRoleNames = await _context.Set<IdentityUserRole<string>>()
+                        .Where(ur => activeDelegatorIds.Contains(ur.UserId))
+                        .Join(_context.Roles, ur => ur.RoleId, r => r.Id, (ur, r) => r.Name)
+                        .ToListAsync();
+                }
 
-            // Filter requests where the user can take action or took an action
-            // Optimization: Use Any() to filter directly in SQL instead of fetching all IDs first
-            query = query.Where(r => _context.WorkflowApprovalSteps.Any(was => 
-                was.TargetRequestId == r.Id && (
-                    // 1. Direct Assignment (User OR Delegators)
-                    (was.ApproverUserId == userId || activeDelegatorIds.Contains(was.ApproverUserId)) || 
-                    
-                    // 2. Role Assignment (User Role OR Delegator Role)
-                    (was.ApproverUserId == null && (
+                query = query.Where(r => _context.WorkflowApprovalSteps.Any(was => 
+                    was.TargetRequestId == r.Id && (
+                        (was.ApproverUserId == userId || activeDelegatorIds.Contains(was.ApproverUserId)) || 
                         (userRoles.Contains(was.WorkflowStep.ApplicationRole.Name) || delegatorRoleNames.Contains(was.WorkflowStep.ApplicationRole.Name)) || 
                         (was.WorkflowStep.HigherApprovalRole != null && (userRoles.Contains(was.WorkflowStep.HigherApprovalRole.Name) || delegatorRoleNames.Contains(was.WorkflowStep.HigherApprovalRole.Name)))
-                    ))
-                )
-            ));
+                    )
+                ));
+            }
+
+            // Delegation data for IsMyTurn (fetch once, used below)
+            var delegatorIdsForMyTurn = await _userDelegationService.GetActiveDelegatorsForUserAsync(userId, DelegationScope.WorkflowApproval);
+            var delegatorRolesForMyTurn = new List<string>();
+            if (delegatorIdsForMyTurn.Any())
+            {
+                delegatorRolesForMyTurn = await _context.Set<IdentityUserRole<string>>()
+                    .Where(ur => delegatorIdsForMyTurn.Contains(ur.UserId))
+                    .Join(_context.Roles, ur => ur.RoleId, r => r.Id, (ur, r) => r.Name)
+                    .ToListAsync();
+            }
 
             var requests = await query
                 .Include(r => r.Department)
@@ -286,13 +287,10 @@ namespace Ettad.RequestManagement.Service.Implementation
 
             var myTurnSet = (await _context.WorkflowApprovalSteps
                 .Where(was => was.IsCurrent && fetchedRequestIds.Contains(was.TargetRequestId) && (
-                    // 1. Direct Assignment (User OR Delegators)
-                    (was.ApproverUserId == userId || activeDelegatorIds.Contains(was.ApproverUserId)) || 
-                    
-                    // 2. Role Assignment (User Role OR Delegator Role)
+                    (was.ApproverUserId == userId || delegatorIdsForMyTurn.Contains(was.ApproverUserId)) || 
                     (was.ApproverUserId == null && (
-                        (userRoles.Contains(was.WorkflowStep.ApplicationRole.Name) || delegatorRoleNames.Contains(was.WorkflowStep.ApplicationRole.Name)) || 
-                        (was.WorkflowStep.HigherApprovalRole != null && (userRoles.Contains(was.WorkflowStep.HigherApprovalRole.Name) || delegatorRoleNames.Contains(was.WorkflowStep.HigherApprovalRole.Name)))
+                        (userRoles.Contains(was.WorkflowStep.ApplicationRole.Name) || delegatorRolesForMyTurn.Contains(was.WorkflowStep.ApplicationRole.Name)) || 
+                        (was.WorkflowStep.HigherApprovalRole != null && (userRoles.Contains(was.WorkflowStep.HigherApprovalRole.Name) || delegatorRolesForMyTurn.Contains(was.WorkflowStep.HigherApprovalRole.Name)))
                     ))
                 ))
                 .Select(was => (long)was.TargetRequestId)
@@ -339,7 +337,7 @@ namespace Ettad.RequestManagement.Service.Implementation
                 }
                 else
                 {
-                    // Roles that are restricted to their own department
+                    // Roles that are restricted to their own department - they see ALL requests from their department
                     var restrictedRoles = new List<string>
                     {
                         WorkflowRoleNames.SupplyOfficer,
@@ -351,71 +349,68 @@ namespace Ettad.RequestManagement.Service.Implementation
                     if (isRestrictedRole && userDepartmentId.HasValue)
                     {
                         query = query.Where(r => r.DepartmentId == userDepartmentId.Value);
-                    }
-
-                    // --- DELEGATION LOGIC START ---
-                    var activeDelegatorIds = await _userDelegationService.GetActiveDelegatorsForUserAsync(userId, DelegationScope.WorkflowApproval);
-                    var delegatorRoleNames = new List<string>();
-                    if (activeDelegatorIds.Any())
-                    {
-                        delegatorRoleNames = await _context.Set<IdentityUserRole<string>>()
-                            .Where(ur => activeDelegatorIds.Contains(ur.UserId))
-                            .Join(_context.Roles, ur => ur.RoleId, r => r.Id, (ur, r) => r.Name)
-                            .ToListAsync();
-                    }
-                    // --- DELEGATION LOGIC END ---
-
-                    // Check if current request is specifically for "My Turn" only
-                    bool filterByMyTurn = false;
-                    if (request.Filter != null)
-                    {
-                        // Check if IsMyTurn is filtered
-                        var myTurnFilter = request.Filter.Filters?.FirstOrDefault(f => f.Field == "IsMyTurn") ?? 
-                                         (request.Filter.Field == "IsMyTurn" ? request.Filter : null);
-                        
-                        if (myTurnFilter != null && myTurnFilter.Value?.ToLower() == "true")
-                        {
-                            filterByMyTurn = true;
-                        }
-
-                        // Remove IsMyTurn from filters to prevent Dynamic LINQ from crashing (since it's not a DB property)
-                        if (request.Filter.Filters != null)
-                        {
-                            request.Filter.Filters = request.Filter.Filters.Where(f => f.Field != "IsMyTurn").ToList();
-                        }
-                        if (request.Filter.Field == "IsMyTurn")
-                        {
-                            request.Filter.Field = null;
-                            request.Filter.Operator = null;
-                            request.Filter.Value = null;
-                        }
-                    }
-
-                    if (filterByMyTurn)
-                    {
-                        // Strictly items where it IS currently my turn
-                        query = query.Where(r => _context.WorkflowApprovalSteps.Any(was => 
-                            was.TargetRequestId == r.Id && was.IsCurrent && (
-                                (was.ApproverUserId == userId || activeDelegatorIds.Contains(was.ApproverUserId)) || 
-                                (was.ApproverUserId == null && (
-                                    (userRoles.Contains(was.WorkflowStep.ApplicationRole.Name) || delegatorRoleNames.Contains(was.WorkflowStep.ApplicationRole.Name)) || 
-                                    (was.WorkflowStep.HigherApprovalRole != null && (userRoles.Contains(was.WorkflowStep.HigherApprovalRole.Name) || delegatorRoleNames.Contains(was.WorkflowStep.HigherApprovalRole.Name)))
-                                ))
-                            )
-                        ));
+                        // Supply Officer and RequestingEntityCommander see all department requests - no workflow filter
                     }
                     else
                     {
-                        // Standard user action view (items I was involved in or can act on)
-                        query = query.Where(r => _context.WorkflowApprovalSteps.Any(was => 
-                            was.TargetRequestId == r.Id && (
-                                (was.ApproverUserId == userId || activeDelegatorIds.Contains(was.ApproverUserId)) || 
-                                (was.ApproverUserId == null && (
+                        // --- DELEGATION LOGIC START ---
+                        var activeDelegatorIds = await _userDelegationService.GetActiveDelegatorsForUserAsync(userId, DelegationScope.WorkflowApproval);
+                        var delegatorRoleNames = new List<string>();
+                        if (activeDelegatorIds.Any())
+                        {
+                            delegatorRoleNames = await _context.Set<IdentityUserRole<string>>()
+                                .Where(ur => activeDelegatorIds.Contains(ur.UserId))
+                                .Join(_context.Roles, ur => ur.RoleId, r => r.Id, (ur, r) => r.Name)
+                                .ToListAsync();
+                        }
+                        // --- DELEGATION LOGIC END ---
+
+                        // Check if current request is specifically for "My Turn" only
+                        bool filterByMyTurn = false;
+                        if (request.Filter != null)
+                        {
+                            var myTurnFilter = request.Filter.Filters?.FirstOrDefault(f => f.Field == "IsMyTurn") ?? 
+                                             (request.Filter.Field == "IsMyTurn" ? request.Filter : null);
+                            
+                            if (myTurnFilter != null && myTurnFilter.Value?.ToLower() == "true")
+                            {
+                                filterByMyTurn = true;
+                            }
+
+                            if (request.Filter.Filters != null)
+                            {
+                                request.Filter.Filters = request.Filter.Filters.Where(f => f.Field != "IsMyTurn").ToList();
+                            }
+                            if (request.Filter.Field == "IsMyTurn")
+                            {
+                                request.Filter.Field = null;
+                                request.Filter.Operator = null;
+                                request.Filter.Value = null;
+                            }
+                        }
+
+                        if (filterByMyTurn)
+                        {
+                            query = query.Where(r => _context.WorkflowApprovalSteps.Any(was => 
+                                was.TargetRequestId == r.Id && was.IsCurrent && (
+                                    (was.ApproverUserId == userId || activeDelegatorIds.Contains(was.ApproverUserId)) || 
+                                    (was.ApproverUserId == null && (
+                                        (userRoles.Contains(was.WorkflowStep.ApplicationRole.Name) || delegatorRoleNames.Contains(was.WorkflowStep.ApplicationRole.Name)) || 
+                                        (was.WorkflowStep.HigherApprovalRole != null && (userRoles.Contains(was.WorkflowStep.HigherApprovalRole.Name) || delegatorRoleNames.Contains(was.WorkflowStep.HigherApprovalRole.Name)))
+                                    ))
+                                )
+                            ));
+                        }
+                        else
+                        {
+                            query = query.Where(r => _context.WorkflowApprovalSteps.Any(was => 
+                                was.TargetRequestId == r.Id && (
+                                    (was.ApproverUserId == userId || activeDelegatorIds.Contains(was.ApproverUserId)) || 
                                     (userRoles.Contains(was.WorkflowStep.ApplicationRole.Name) || delegatorRoleNames.Contains(was.WorkflowStep.ApplicationRole.Name)) || 
                                     (was.WorkflowStep.HigherApprovalRole != null && (userRoles.Contains(was.WorkflowStep.HigherApprovalRole.Name) || delegatorRoleNames.Contains(was.WorkflowStep.HigherApprovalRole.Name)))
-                                ))
-                            )
-                        ));
+                                )
+                            ));
+                        }
                     }
                 }
             }
