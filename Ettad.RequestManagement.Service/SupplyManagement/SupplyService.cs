@@ -1564,85 +1564,98 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
 			}
 		}
 
-		public async Task<APIOperationResponse<bool>> SetSupplyPickupDateAsync(long orderId, SetSupplyPickupDateDto inputDto)
+	public async Task<APIOperationResponse<bool>> SetSupplyPickupDateAsync(long orderId, SetSupplyPickupDateDto inputDto)
+	{
+		try
 		{
-			try
+			// Validate input
+			var validationResult = await _setPickupDateValidator.ValidateAsync(inputDto);
+			if (!validationResult.IsValid)
 			{
-				// Validate input
-				var validationResult = await _setPickupDateValidator.ValidateAsync(inputDto);
-				if (!validationResult.IsValid)
+				var errors = string.Join(", ", validationResult.Errors.Select(e => e.ErrorMessage));
+				return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, errors);
+			}
+
+			// Check if supply exists and load Order with Requester
+			var supply = await _supplyRepository.FindOneAsync(
+				s => s.OrderId == orderId && !s.IsDeleted && s.SubmissionStatus == SupplySubmissionStatus.Draft,
+				false,
+				nameof(Supply.Order),
+				$"{nameof(Supply.Order)}.{nameof(Order.Requester)}"
+			);
+			if (supply == null)
+			{
+				return APIOperationResponse<bool>.Fail(ResponseType.NotFound, "Draft supply not found for this order");
+			}
+
+			// Store OrderId and RequesterId before detaching Order navigation property
+			var orderIdForUpdate = supply.OrderId;
+			var requesterId = supply.Order?.RequesterId;
+			var requestNo = supply.Order?.RequestNo;
+
+			// Detach Order navigation property to avoid tracking conflicts when updating supply
+			if (supply.Order != null)
+			{
+				_context.Entry(supply.Order).State = EntityState.Detached;
+				supply.Order = null; // Clear navigation property
+			}
+
+			// Update only the SupplyDate field
+			supply.SupplyDate = inputDto.SupplyDate;
+			supply.ModificationDate = _dateTimeProvider.Now;
+			supply.ModifiedBy = _currentUserService.UserId;
+
+			await _supplyRepository.UpdateAsync(supply);
+
+			// Update the order's SupplyDate (PickupDate) using direct context access to avoid tracking conflicts
+			var orderToUpdate = new Order { Id = orderIdForUpdate };
+			_context.Attach(orderToUpdate);
+			orderToUpdate.SupplyDate = inputDto.SupplyDate;
+			orderToUpdate.ModificationDate = _dateTimeProvider.Now;
+			orderToUpdate.ModifiedBy = _currentUserService.UserId;
+			_context.Entry(orderToUpdate).Property(x => x.SupplyDate).IsModified = true;
+			_context.Entry(orderToUpdate).Property(x => x.ModificationDate).IsModified = true;
+			_context.Entry(orderToUpdate).Property(x => x.ModifiedBy).IsModified = true;
+			await _context.SaveChangesAsync();
+
+			// Notify the order requester
+			if (requesterId != null)
+			{
+				try
 				{
-					var errors = string.Join(", ", validationResult.Errors.Select(e => e.ErrorMessage));
-					return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, errors);
-				}
+					// Get current user details for contact information
+					var currentUser = await _userManager.FindByIdAsync(_currentUserService.UserId ?? string.Empty);
+					var currentUserName = currentUser?.FullNameEN ?? currentUser?.UserName ?? "the administrator";
+					var currentUserEmail = currentUser?.Email;
+					var currentUserPhone = currentUser?.PhoneNumber;
 
-				// Check if supply exists and load Order with Requester
-				var supply = await _supplyRepository.FindOneAsync(
-					s => s.OrderId == orderId && !s.IsDeleted && s.SubmissionStatus == SupplySubmissionStatus.Draft,
-					false,
-					nameof(Supply.Order),
-					$"{nameof(Supply.Order)}.{nameof(Order.Requester)}"
-				);
-				if (supply == null)
+					// Build contact information string
+					var contactParts = new List<string>();
+					if (!string.IsNullOrEmpty(currentUserEmail))
+						contactParts.Add($"email: {currentUserEmail}");
+					if (!string.IsNullOrEmpty(currentUserPhone))
+						contactParts.Add($"phone: {currentUserPhone}");
+
+					var contactInfo = contactParts.Any()
+						? $"If this date is not suitable, please contact {currentUserName} ({string.Join(" or ", contactParts)}) to arrange an alternative."
+						: $"If this date is not suitable, please contact {currentUserName} to arrange an alternative.";
+
+					await _notificationHelperService.SendNotificationAsync(
+						title: "Supply Pickup Date Set",
+						message: $"The supply pickup date for Order #{requestNo} has been set to {inputDto.SupplyDate:yyyy-MM-dd}. {contactInfo}",
+						entityType: "Supply",
+						entityId: supply.Id,
+						userIds: new List<string> { requesterId },
+						senderId: _currentUserService.UserId
+					);
+				}
+				catch (Exception ex)
 				{
-					return APIOperationResponse<bool>.Fail(ResponseType.NotFound, "Draft supply not found for this order");
+					// Log error but don't fail the operation - notifications are non-critical
+					_logger.LogError(ex, "Error sending notification to requester. SupplyId: {SupplyId}, RequesterId: {RequesterId}",
+						supply.Id, requesterId);
 				}
-
-				// Update only the SupplyDate field
-				supply.SupplyDate = inputDto.SupplyDate;
-				supply.ModificationDate = _dateTimeProvider.Now;
-				supply.ModifiedBy = _currentUserService.UserId;
-
-				await _supplyRepository.UpdateAsync(supply);
-
-				// Update the order's SupplyDate (PickupDate) as well
-				var order = await _orderRepository.FindOneAsync(o => o.Id == orderId && !o.IsDeleted);
-				if (order != null)
-				{
-					order.SupplyDate = inputDto.SupplyDate;
-					order.ModificationDate = _dateTimeProvider.Now;
-					order.ModifiedBy = _currentUserService.UserId;
-					await _orderRepository.UpdateAsync(order);
-				}
-
-				// Notify the order requester
-				if (supply.Order?.RequesterId != null)
-				{
-					try
-					{
-						// Get current user details for contact information
-						var currentUser = await _userManager.FindByIdAsync(_currentUserService.UserId ?? string.Empty);
-						var currentUserName = currentUser?.FullNameEN ?? currentUser?.UserName ?? "the administrator";
-						var currentUserEmail = currentUser?.Email;
-						var currentUserPhone = currentUser?.PhoneNumber;
-
-						// Build contact information string
-						var contactParts = new List<string>();
-						if (!string.IsNullOrEmpty(currentUserEmail))
-							contactParts.Add($"email: {currentUserEmail}");
-						if (!string.IsNullOrEmpty(currentUserPhone))
-							contactParts.Add($"phone: {currentUserPhone}");
-
-						var contactInfo = contactParts.Any()
-							? $"If this date is not suitable, please contact {currentUserName} ({string.Join(" or ", contactParts)}) to arrange an alternative."
-							: $"If this date is not suitable, please contact {currentUserName} to arrange an alternative.";
-
-						await _notificationHelperService.SendNotificationAsync(
-							title: "Supply Pickup Date Set",
-							message: $"The supply pickup date for Order #{supply.Order.RequestNo} has been set to {inputDto.SupplyDate:yyyy-MM-dd}. {contactInfo}",
-							entityType: "Supply",
-							entityId: supply.Id,
-							userIds: new List<string> { supply.Order.RequesterId },
-							senderId: _currentUserService.UserId
-						);
-					}
-					catch (Exception ex)
-					{
-						// Log error but don't fail the operation - notifications are non-critical
-						_logger.LogError(ex, "Error sending notification to requester. SupplyId: {SupplyId}, RequesterId: {RequesterId}",
-							supply.Id, supply.Order.RequesterId);
-					}
-				}
+			}
 
 				return APIOperationResponse<bool>.Success(true, "Supply pickup date set successfully");
 			}
@@ -1654,85 +1667,98 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
 			}
 		}
 
-		public async Task<APIOperationResponse<bool>> ConfirmSupplyPickupDateAsync(long orderId, ConfirmSupplyPickupDateDto inputDto)
+	public async Task<APIOperationResponse<bool>> ConfirmSupplyPickupDateAsync(long orderId, ConfirmSupplyPickupDateDto inputDto)
+	{
+		try
 		{
-			try
+			// Validate input
+			var validationResult = await _confirmPickupDateValidator.ValidateAsync(inputDto);
+			if (!validationResult.IsValid)
 			{
-				// Validate input
-				var validationResult = await _confirmPickupDateValidator.ValidateAsync(inputDto);
-				if (!validationResult.IsValid)
+				var errors = string.Join(", ", validationResult.Errors.Select(e => e.ErrorMessage));
+				return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, errors);
+			}
+
+			// Check if supply exists and load Order with Requester
+			var supply = await _supplyRepository.FindOneAsync(
+				s => s.OrderId == orderId && !s.IsDeleted && s.SubmissionStatus == SupplySubmissionStatus.Draft,
+				false,
+				nameof(Supply.Order),
+				$"{nameof(Supply.Order)}.{nameof(Order.Requester)}"
+			);
+			if (supply == null)
+			{
+				return APIOperationResponse<bool>.Fail(ResponseType.NotFound, "Draft supply not found for this order");
+			}
+
+			// Store OrderId and RequesterId before detaching Order navigation property
+			var orderIdForUpdate = supply.OrderId;
+			var requesterId = supply.Order?.RequesterId;
+			var requestNo = supply.Order?.RequestNo;
+
+			// Detach Order navigation property to avoid tracking conflicts when updating supply
+			if (supply.Order != null)
+			{
+				_context.Entry(supply.Order).State = EntityState.Detached;
+				supply.Order = null; // Clear navigation property
+			}
+
+			// Update only the SupplyDate field
+			supply.SupplyDate = inputDto.SupplyDate;
+			supply.ModificationDate = _dateTimeProvider.Now;
+			supply.ModifiedBy = _currentUserService.UserId;
+
+			await _supplyRepository.UpdateAsync(supply);
+
+			// Update the order's SupplyDate (PickupDate) using direct context access to avoid tracking conflicts
+			var orderToUpdate = new Order { Id = orderIdForUpdate };
+			_context.Attach(orderToUpdate);
+			orderToUpdate.SupplyDate = inputDto.SupplyDate;
+			orderToUpdate.ModificationDate = _dateTimeProvider.Now;
+			orderToUpdate.ModifiedBy = _currentUserService.UserId;
+			_context.Entry(orderToUpdate).Property(x => x.SupplyDate).IsModified = true;
+			_context.Entry(orderToUpdate).Property(x => x.ModificationDate).IsModified = true;
+			_context.Entry(orderToUpdate).Property(x => x.ModifiedBy).IsModified = true;
+			await _context.SaveChangesAsync();
+
+			// Notify the order requester
+			if (requesterId != null)
+			{
+				try
 				{
-					var errors = string.Join(", ", validationResult.Errors.Select(e => e.ErrorMessage));
-					return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, errors);
-				}
+					// Get current user details for contact information
+					var currentUser = await _userManager.FindByIdAsync(_currentUserService.UserId ?? string.Empty);
+					var currentUserName = currentUser?.FullNameEN ?? currentUser?.UserName ?? "the administrator";
+					var currentUserEmail = currentUser?.Email;
+					var currentUserPhone = currentUser?.PhoneNumber;
 
-				// Check if supply exists and load Order with Requester
-				var supply = await _supplyRepository.FindOneAsync(
-					s => s.OrderId == orderId && !s.IsDeleted && s.SubmissionStatus == SupplySubmissionStatus.Draft,
-					false,
-					nameof(Supply.Order),
-					$"{nameof(Supply.Order)}.{nameof(Order.Requester)}"
-				);
-				if (supply == null)
+					// Build contact information string
+					var contactParts = new List<string>();
+					if (!string.IsNullOrEmpty(currentUserEmail))
+						contactParts.Add($"email: {currentUserEmail}");
+					if (!string.IsNullOrEmpty(currentUserPhone))
+						contactParts.Add($"phone: {currentUserPhone}");
+
+					var contactInfo = contactParts.Any()
+						? $"If this date is not suitable, please contact {currentUserName} ({string.Join(" or ", contactParts)}) to arrange an alternative."
+						: $"If this date is not suitable, please contact {currentUserName} to arrange an alternative.";
+
+					await _notificationHelperService.SendNotificationAsync(
+						title: "Supply Pickup Date Confirmed",
+						message: $"The supply pickup date for Order #{requestNo} has been confirmed to {inputDto.SupplyDate:yyyy-MM-dd}. {contactInfo}",
+						entityType: "Supply",
+						entityId: supply.Id,
+						userIds: new List<string> { requesterId },
+						senderId: _currentUserService.UserId
+					);
+				}
+				catch (Exception ex)
 				{
-					return APIOperationResponse<bool>.Fail(ResponseType.NotFound, "Draft supply not found for this order");
+					// Log error but don't fail the operation - notifications are non-critical
+					_logger.LogError(ex, "Error sending notification to requester. SupplyId: {SupplyId}, RequesterId: {RequesterId}",
+						supply.Id, requesterId);
 				}
-
-				// Update only the SupplyDate field
-				supply.SupplyDate = inputDto.SupplyDate;
-				supply.ModificationDate = _dateTimeProvider.Now;
-				supply.ModifiedBy = _currentUserService.UserId;
-
-				await _supplyRepository.UpdateAsync(supply);
-
-				// Update the order's SupplyDate (PickupDate) as well
-				var order = await _orderRepository.FindOneAsync(o => o.Id == orderId && !o.IsDeleted);
-				if (order != null)
-				{
-					order.SupplyDate = inputDto.SupplyDate;
-					order.ModificationDate = _dateTimeProvider.Now;
-					order.ModifiedBy = _currentUserService.UserId;
-					await _orderRepository.UpdateAsync(order);
-				}
-
-				// Notify the order requester
-				if (supply.Order?.RequesterId != null)
-				{
-					try
-					{
-						// Get current user details for contact information
-						var currentUser = await _userManager.FindByIdAsync(_currentUserService.UserId ?? string.Empty);
-						var currentUserName = currentUser?.FullNameEN ?? currentUser?.UserName ?? "the administrator";
-						var currentUserEmail = currentUser?.Email;
-						var currentUserPhone = currentUser?.PhoneNumber;
-
-						// Build contact information string
-						var contactParts = new List<string>();
-						if (!string.IsNullOrEmpty(currentUserEmail))
-							contactParts.Add($"email: {currentUserEmail}");
-						if (!string.IsNullOrEmpty(currentUserPhone))
-							contactParts.Add($"phone: {currentUserPhone}");
-
-						var contactInfo = contactParts.Any()
-							? $"If this date is not suitable, please contact {currentUserName} ({string.Join(" or ", contactParts)}) to arrange an alternative."
-							: $"If this date is not suitable, please contact {currentUserName} to arrange an alternative.";
-
-						await _notificationHelperService.SendNotificationAsync(
-							title: "Supply Pickup Date Confirmed",
-							message: $"The supply pickup date for Order #{supply.Order.RequestNo} has been confirmed to {inputDto.SupplyDate:yyyy-MM-dd}. {contactInfo}",
-							entityType: "Supply",
-							entityId: supply.Id,
-							userIds: new List<string> { supply.Order.RequesterId },
-							senderId: _currentUserService.UserId
-						);
-					}
-					catch (Exception ex)
-					{
-						// Log error but don't fail the operation - notifications are non-critical
-						_logger.LogError(ex, "Error sending notification to requester. SupplyId: {SupplyId}, RequesterId: {RequesterId}",
-							supply.Id, supply.Order.RequesterId);
-					}
-				}
+			}
 
 				return APIOperationResponse<bool>.Success(true, "Supply pickup date confirmed successfully");
 			}
