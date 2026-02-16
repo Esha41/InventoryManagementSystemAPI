@@ -14,6 +14,7 @@ namespace Ettad.RequestManagement.Service.Orders
 
         // Order Item Management
         Task<APIOperationResponse<long>> AddOrderItemAsync(long orderId, CreateUpdateRequestItemDto itemDto);
+        Task<long?> GetOrderItemCurrentQuantityAsync(long orderId, long itemId);
         Task<APIOperationResponse<bool>> UpdateOrderItemQuantityAsync(long orderId, long itemId, long newQuantity);
         Task<APIOperationResponse<bool>> DeleteOrderItemAsync(long orderId, long itemId);
         Task<APIOperationResponse<AllowanceVerificationDto>> VerifyItemAllowanceAsync(long itemId, long requestedQuantity);
