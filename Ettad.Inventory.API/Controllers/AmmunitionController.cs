@@ -12,7 +12,7 @@ using System.Net;
 using Ettad.CrossCutting.Comman.Time;
 using Ettad.CrossCutting.Comman.Models;
 
-namespace Ettad.Inventory.API.Controllers
+namespace Ettad.Inventory.API.Controllers 
 {
     [Route("api/[controller]")]
     [ApiController]
