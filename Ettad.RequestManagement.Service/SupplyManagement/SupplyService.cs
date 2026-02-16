@@ -12,7 +12,6 @@ using Ettad.Inventory.Service.Inventories;
 using Ettad.Inventory.Service.Inventories.Dtos;
 using Ettad.Notification.Service;
 using Ettad.RequestManagement.Service.SupplyManagement.Dtos;
-using Ettad.Application.Common.Interfaces;
 using Ettad.ResponseHandler.Consts;
 using Ettad.ResponseHandler.Models;
 using Microsoft.AspNetCore.Http;
@@ -1596,6 +1595,16 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
 
 				await _supplyRepository.UpdateAsync(supply);
 
+				// Update the order's SupplyDate (PickupDate) as well
+				var order = await _orderRepository.FindOneAsync(o => o.Id == orderId && !o.IsDeleted);
+				if (order != null)
+				{
+					order.SupplyDate = inputDto.SupplyDate;
+					order.ModificationDate = _dateTimeProvider.Now;
+					order.ModifiedBy = _currentUserService.UserId;
+					await _orderRepository.UpdateAsync(order);
+				}
+
 				// Notify the order requester
 				if (supply.Order?.RequesterId != null)
 				{
@@ -1675,6 +1684,16 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
 				supply.ModifiedBy = _currentUserService.UserId;
 
 				await _supplyRepository.UpdateAsync(supply);
+
+				// Update the order's SupplyDate (PickupDate) as well
+				var order = await _orderRepository.FindOneAsync(o => o.Id == orderId && !o.IsDeleted);
+				if (order != null)
+				{
+					order.SupplyDate = inputDto.SupplyDate;
+					order.ModificationDate = _dateTimeProvider.Now;
+					order.ModifiedBy = _currentUserService.UserId;
+					await _orderRepository.UpdateAsync(order);
+				}
 
 				// Notify the order requester
 				if (supply.Order?.RequesterId != null)
