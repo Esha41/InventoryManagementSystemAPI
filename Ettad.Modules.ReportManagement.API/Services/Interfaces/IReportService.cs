@@ -1,7 +1,7 @@
 using Ettad.ResponseHandler.Models;
 using Ettad.Modules.ReportManagement.API.Services.Dtos;
 
-namespace Ettad.Modules.ReportManagement.API.Services
+namespace Ettad.Modules.ReportManagement.API.Services.Interfaces
 {
     public interface IReportService
     {
@@ -18,8 +18,5 @@ namespace Ettad.Modules.ReportManagement.API.Services
         Task<APIOperationResponse<List<ReportTemplateDto>>> GetTemplatesAsync();
         Task<APIOperationResponse<List<string>>> GetReportRoleIdsAsync(Guid reportId);
         //Task<APIOperationResponse<Guid>> ImportAsync(IFormFile file, string? reportName = null, string? url = null, string? description = null);
-       // Task<IReadOnlyList<TableSchemaInfo>> GetTableNamesAsync(CancellationToken cancellationToken = default);
-    }
-
-    public record TableSchemaInfo(string SchemaName, string TableName);
+     }
 }

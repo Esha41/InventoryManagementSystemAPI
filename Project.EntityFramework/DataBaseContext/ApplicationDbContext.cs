@@ -83,6 +83,9 @@ namespace Ettad.EntityFramework.DataBaseContext
         public DbSet<ReportEntity> Reports { get; set; }
         public DbSet<ReportStatus> ReportStatuses { get; set; }
         public DbSet<ReportRole> ReportRoles { get; set; }
+        public DbSet<ScheduledReport> ScheduledReports { get; set; }
+        public DbSet<ScheduledReportRecipient> ScheduledReportRecipients { get; set; }
+        public DbSet<ScheduledReportExecution> ScheduledReportExecutions { get; set; }
        
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

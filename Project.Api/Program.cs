@@ -51,6 +51,8 @@ using System.Text;
 using System.Text.Json;
 using Ettad.Modules.ReportManagement.API.Services;
 using Ettad.Modules.ReportManagement.API.Services.Dtos;
+using Ettad.Modules.ReportManagement.API.Services.Interfaces;
+using Ettad.Modules.ReportManagement.API.Services.Implementation;
 
 // Configure Serilog
 Log.Logger = new LoggerConfiguration()
@@ -156,6 +158,8 @@ try
     
     // Register Report services
     builder.Services.AddScoped<IReportService, ReportService>();
+    builder.Services.AddScoped<IScheduledReportService, ScheduledReportService>();
+    builder.Services.AddScoped<IScheduledReportExecutionService, ScheduledReportExecutionService>();
 
     // Register custom report storage extension
     builder.Services.AddScoped<Ettad.Modules.ReportManagement.API.Reports.Factories.ReportFactory>();
@@ -496,6 +500,22 @@ try
             lowStockCronExpression);
         
         Log.Information("Low Stock Monitor job registered with schedule: {Schedule}", lowStockCronExpression);
+
+        // Register Scheduled Report Execution Job - Runs every minute to check for due scheduled reports
+        try
+        {
+            recurringJobManager.AddOrUpdate<ScheduledReportJob>(
+                "scheduled-report-execution",
+                job => job.ExecuteAsync(),
+                "*/1 * * * *"); // Every minute
+            
+            Log.Information("Scheduled Report Execution job registered to run every minute");
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Failed to register Scheduled Report Execution job. The job will not run until this is resolved.");
+            // Don't throw - allow the app to start even if job registration fails
+        }
     }
     
     Log.Information("Ettad Backend API started successfully");

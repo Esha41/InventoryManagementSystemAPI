@@ -10,8 +10,9 @@ using Ettad.Modules.ReportManagement.API.Services.Dtos;
 using Ettad.Data.Entities;
 using System.Linq;
 using Ettad.CrossCutting.Comman.Idenitity;
+using Ettad.Modules.ReportManagement.API.Services.Interfaces;
 
-namespace Ettad.Modules.ReportManagement.API.Services
+namespace Ettad.Modules.ReportManagement.API.Services.Implementation
 {
     public class ReportService : IReportService
     {

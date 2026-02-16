@@ -1,6 +1,6 @@
 using Ettad.CrossCutting.Common.Security;
-using Ettad.Modules.ReportManagement.API.Services;
 using Ettad.Modules.ReportManagement.API.Services.Dtos;
+using Ettad.Modules.ReportManagement.API.Services.Interfaces;
 using Ettad.ResponseHandler.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
