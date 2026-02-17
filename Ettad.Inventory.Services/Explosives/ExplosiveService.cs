@@ -23,6 +23,7 @@ using Ettad.CrossCutting.Comman.Models;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using System;
+using Ettad.Inventory.Service.ItemDepartmentAssignments;
 
 namespace Ettad.Inventory.Service.Explosives
 {
@@ -37,6 +38,7 @@ namespace Ettad.Inventory.Service.Explosives
         private readonly ApplicationDbContext _context;
         private readonly IDateTimeProvider _dateTimeProvider;
         private readonly AssetImportManager<CreateUpdateExplosiveDto, ExplosiveImportDto> _importManager;
+        private readonly IItemDepartmentAssignmentService _itemDepartmentAssignmentService;
 
         // In-memory lookups
         private List<Compatibility> _compatibilities;
@@ -63,7 +65,8 @@ namespace Ettad.Inventory.Service.Explosives
             IFileUploadService fileUploadService,
             IExcelImportService excelImportService,
             ApplicationDbContext context,
-            IDateTimeProvider dateTimeProvider)
+            IDateTimeProvider dateTimeProvider,
+            IItemDepartmentAssignmentService itemDepartmentAssignmentService)
         {
             _explosiveRepository = explosiveRepository;
             _mapper = mapper;
@@ -73,16 +76,24 @@ namespace Ettad.Inventory.Service.Explosives
             _fileUploadService = fileUploadService;
             _context = context;
             _dateTimeProvider = dateTimeProvider;
-            
-             _importManager = new AssetImportManager<CreateUpdateExplosiveDto, ExplosiveImportDto>(excelImportService, 
-                new LoggerFactory().CreateLogger<AssetImportManager<CreateUpdateExplosiveDto, ExplosiveImportDto>>());
+            _itemDepartmentAssignmentService = itemDepartmentAssignmentService;
+
+            _importManager = new AssetImportManager<CreateUpdateExplosiveDto, ExplosiveImportDto>(excelImportService,
+               new LoggerFactory().CreateLogger<AssetImportManager<CreateUpdateExplosiveDto, ExplosiveImportDto>>());
         }
 
         public async Task<APIOperationResponse<ExplosiveDto>> GetByIdAsync(long id)
         {
-             // existing implementation
-             try
+            // existing implementation
+            try
             {
+                // Check if user has department and assigned items
+                var assignedItemIds = await GetAssignedItemIdsAsync();
+                if (assignedItemIds != null && !assignedItemIds.Contains(id))
+                {
+                    return APIOperationResponse<ExplosiveDto>.Fail(ResponseType.NotFound, "Explosive not found");
+                }
+
                 var explosive = await _explosiveRepository.FindOneAsync(
                     e => e.Id == id && !e.IsDeleted,
                     false,
@@ -97,10 +108,10 @@ namespace Ettad.Inventory.Service.Explosives
                     return APIOperationResponse<ExplosiveDto>.Fail(ResponseType.NotFound, "Explosive not found");
 
                 var dto = _mapper.Map<ExplosiveDto>(explosive);
-                
+
                 var imagesResult = await _fileUploadService.GetByEntityAsync(FileEntityType.Explosive, explosive.Id);
                 dto.Images = imagesResult.Succeeded && imagesResult.Data != null ? imagesResult.Data : new List<FileUploadDto>();
-                
+
                 return APIOperationResponse<ExplosiveDto>.Success(dto);
             }
             catch (Exception ex)
@@ -112,10 +123,13 @@ namespace Ettad.Inventory.Service.Explosives
         public async Task<APIOperationResponse<List<ExplosiveDto>>> GetAllAsync()
         {
             // existing implementation
-             try
+            try
             {
+                // Check if user has department and assigned items
+                var assignedItemIds = await GetAssignedItemIdsAsync();
+                
                 var explosives = await _explosiveRepository.FindAsync(
-                    e => !e.IsDeleted,
+                    e => !e.IsDeleted && (assignedItemIds == null || assignedItemIds.Contains(e.Id)),
                     false,
                     nameof(Explosive.Compatibility),
                     nameof(Explosive.HazardDivision),
@@ -125,7 +139,7 @@ namespace Ettad.Inventory.Service.Explosives
                 );
 
                 var dtos = _mapper.Map<List<ExplosiveDto>>(explosives);
-                
+
                 var entityIds = dtos.Select(d => d.Id).ToList();
                 var imagesResult = await _fileUploadService.GetByEntitiesAsync(FileEntityType.Explosive, entityIds);
                 if (imagesResult.Succeeded && imagesResult.Data != null)
@@ -135,7 +149,7 @@ namespace Ettad.Inventory.Service.Explosives
                         dto.Images = imagesResult.Data.ContainsKey(dto.Id) ? imagesResult.Data[dto.Id] : new List<FileUploadDto>();
                     }
                 }
-                
+
                 return APIOperationResponse<List<ExplosiveDto>>.Success(dtos);
             }
             catch (Exception ex)
@@ -146,11 +160,14 @@ namespace Ettad.Inventory.Service.Explosives
 
         public async Task<APIOperationResponse<PaginatedList<ExplosiveDto>>> GetAllPaginatedAsync(PagedListRequest request)
         {
-             // existing implementation
-             try
+            // existing implementation
+            try
             {
+                // Check if user has department and assigned items
+                var assignedItemIds = await GetAssignedItemIdsAsync();
+                
                 var query = _explosiveRepository.Find(
-                    e => !e.IsDeleted,
+                    e => !e.IsDeleted && (assignedItemIds == null || assignedItemIds.Contains(e.Id)),
                     false,
                     nameof(Explosive.Compatibility),
                     nameof(Explosive.HazardDivision),
@@ -160,7 +177,7 @@ namespace Ettad.Inventory.Service.Explosives
                 );
 
                 var paginatedEntities = await PaginatedList<Explosive>.CreateAsyncForTableBinding(query, request);
-                
+
                 var dtos = new List<ExplosiveDto>();
                 if (paginatedEntities.Items.Any())
                 {
@@ -168,7 +185,7 @@ namespace Ettad.Inventory.Service.Explosives
 
                     var entityIds = dtos.Select(d => d.Id).ToList();
                     var imagesResult = await _fileUploadService.GetByEntitiesAsync(FileEntityType.Explosive, entityIds);
-                    
+
                     if (imagesResult.Succeeded && imagesResult.Data != null)
                     {
                         foreach (var dto in dtos)
@@ -199,7 +216,7 @@ namespace Ettad.Inventory.Service.Explosives
         public async Task<APIOperationResponse<long>> CreateAsync(CreateUpdateExplosiveDto inputDto, List<IFormFile>? files = null)
         {
             // existing implementation
-             try
+            try
             {
                 var validationResult = await _validator.ValidateAsync(inputDto);
                 if (!validationResult.IsValid)
@@ -220,7 +237,7 @@ namespace Ettad.Inventory.Service.Explosives
                 if (files != null && files.Any())
                 {
                     var saveFilesResult = await _fileUploadService.SaveFilesAsync(files, FileEntityType.Explosive);
-                
+
                     if (!saveFilesResult.Succeeded)
                     {
                         return APIOperationResponse<long>.Fail(ResponseType.BadRequest,
@@ -240,8 +257,8 @@ namespace Ettad.Inventory.Service.Explosives
                 if (files != null && files.Any())
                 {
                     await _fileUploadService.UploadFilesForEntityAsync(
-                        files, 
-                        FileEntityType.Explosive, 
+                        files,
+                        FileEntityType.Explosive,
                         createdExplosive.Id);
                 }
 
@@ -258,7 +275,7 @@ namespace Ettad.Inventory.Service.Explosives
         public async Task<APIOperationResponse<bool>> UpdateAsync(long id, CreateUpdateExplosiveDto inputDto)
         {
             // existing implementation
-             try
+            try
             {
                 var validationResult = await _validator.ValidateAsync(inputDto);
                 if (!validationResult.IsValid)
@@ -298,7 +315,7 @@ namespace Ettad.Inventory.Service.Explosives
         public async Task<APIOperationResponse<bool>> DeleteAsync(long id)
         {
             // existing implementation
-             try
+            try
             {
                 var explosive = await _explosiveRepository.FindOneAsync(e => e.Id == id && !e.IsDeleted);
                 if (explosive == null)
@@ -314,8 +331,8 @@ namespace Ettad.Inventory.Service.Explosives
             }
         }
 
-         // Import Implementation
-         public async Task<APIOperationResponse<ImportResult<CreateUpdateExplosiveDto>>> ImportAsync(IFormFile file, string language = "en")
+        // Import Implementation
+        public async Task<APIOperationResponse<ImportResult<CreateUpdateExplosiveDto>>> ImportAsync(IFormFile file, string language = "en")
         {
             return await _importManager.ImportAsync(
                 file,
@@ -329,18 +346,18 @@ namespace Ettad.Inventory.Service.Explosives
 
         public async Task<APIOperationResponse<ImportResult<ExplosiveImportDto>>> ImportPreviewAsync(IFormFile file, string language = "en")
         {
-             return await _importManager.ImportPreviewAsync(
-                file,
-                language,
-                items => LoadLookupsAsync(items),
-                MapImportDtoToEntityAsync,
-                ValidateDtoAsync,
-                GetColumnMappings(language));
+            return await _importManager.ImportPreviewAsync(
+               file,
+               language,
+               items => LoadLookupsAsync(items),
+               MapImportDtoToEntityAsync,
+               ValidateDtoAsync,
+               GetColumnMappings(language));
         }
 
         public async Task<APIOperationResponse<byte[]>> GenerateImportTemplateAsync(string language = "en")
         {
-             await LoadLookupsAsync(); 
+            await LoadLookupsAsync();
 
              var headers = language == "ar"
                     ? new[]
@@ -368,7 +385,7 @@ namespace Ettad.Inventory.Service.Explosives
                 language,
                 "Explosive Import",
                 headers,
-                (sheet) => 
+                (sheet) =>
                 {
                     if (firstAsset != null)
                     {
@@ -415,7 +432,7 @@ namespace Ettad.Inventory.Service.Explosives
             );
         }
 
-         // Helpers
+        // Helpers
 
 
         private async Task LoadLookupsAsync(List<ExplosiveImportDto> importItems = null)
@@ -459,7 +476,7 @@ namespace Ettad.Inventory.Service.Explosives
 
         private async Task<CreateUpdateExplosiveDto> MapImportDtoToEntityAsync(ExplosiveImportDto importDto, string language)
         {
-             var dto = new CreateUpdateExplosiveDto
+            var dto = new CreateUpdateExplosiveDto
             {
                 Name = importDto.Name,
                 ItemNo = importDto.ItemNo,
@@ -492,7 +509,7 @@ namespace Ettad.Inventory.Service.Explosives
             {
                 var en = getNameEn(item);
                 if (!string.IsNullOrWhiteSpace(en) && !dict.ContainsKey(en)) dict[en] = getId(item);
-                
+
                 var ar = getNameAr(item);
                 if (!string.IsNullOrWhiteSpace(ar) && !dict.ContainsKey(ar)) dict[ar] = getId(item);
             }
@@ -505,8 +522,8 @@ namespace Ettad.Inventory.Service.Explosives
             if (_cachedLookups[key].TryGetValue(name, out var id)) return id;
             return null;
         }
-        
-         private async Task<List<string>> ValidateDtoAsync(CreateUpdateExplosiveDto dto)
+
+        private async Task<List<string>> ValidateDtoAsync(CreateUpdateExplosiveDto dto)
         {
             var errors = new List<string>();
             var validationResult = await _validator.ValidateAsync(dto);
@@ -518,28 +535,28 @@ namespace Ettad.Inventory.Service.Explosives
             // Check duplicates using optimized HashSets
             if (!string.IsNullOrWhiteSpace(dto.ItemNo))
             {
-                 if (_existingItemNos.Contains(dto.ItemNo)) 
+                if (_existingItemNos.Contains(dto.ItemNo))
                     errors.Add($"Item No '{dto.ItemNo}' already exists in the database");
-                 else if (_newlyAddedItemNos.Contains(dto.ItemNo))
+                else if (_newlyAddedItemNos.Contains(dto.ItemNo))
                     errors.Add($"Item No '{dto.ItemNo}' is duplicated in the current file");
-                 else
+                else
                     _newlyAddedItemNos.Add(dto.ItemNo);
             }
-            
+
             if (!string.IsNullOrWhiteSpace(dto.Nsn))
             {
-                 if (_existingNsns.Contains(dto.Nsn)) 
+                if (_existingNsns.Contains(dto.Nsn))
                     errors.Add($"NSN '{dto.Nsn}' already exists in the database");
-                 else if (_newlyAddedNsns.Contains(dto.Nsn))
+                else if (_newlyAddedNsns.Contains(dto.Nsn))
                     errors.Add($"NSN '{dto.Nsn}' is duplicated in the current file");
-                 else
+                else
                     _newlyAddedNsns.Add(dto.Nsn);
             }
 
             return errors;
         }
 
-         private Dictionary<string, string> GetColumnMappings(string language)
+        private Dictionary<string, string> GetColumnMappings(string language)
         {
             return new Dictionary<string, string>
             {
@@ -578,15 +595,15 @@ namespace Ettad.Inventory.Service.Explosives
                 { "ملاحظات", nameof(ExplosiveImportDto.Notes) }
             };
         }
-        
-         private void CreateLookupSheet<T>(ExcelPackage package, string sheetName, List<T> items)
+
+        private void CreateLookupSheet<T>(ExcelPackage package, string sheetName, List<T> items)
         {
-             var names = items.Select(x => {
-                  var nameEn = (string)x.GetType().GetProperty("NameEn")?.GetValue(x);
-                  var nameAr = (string)x.GetType().GetProperty("NameAr")?.GetValue(x);
-                  return nameEn ?? nameAr ?? "";
-             }).Where(x => !string.IsNullOrEmpty(x)).ToList();
-             
+            var names = items.Select(x => {
+                var nameEn = (string)x.GetType().GetProperty("NameEn")?.GetValue(x);
+                var nameAr = (string)x.GetType().GetProperty("NameAr")?.GetValue(x);
+                return nameEn ?? nameAr ?? "";
+            }).Where(x => !string.IsNullOrEmpty(x)).ToList();
+
             var lookupSheet = package.Workbook.Worksheets.Add(sheetName);
             lookupSheet.Hidden = eWorkSheetHidden.Hidden;
 
@@ -595,7 +612,7 @@ namespace Ettad.Inventory.Service.Explosives
                 lookupSheet.Cells[i + 1, 1].Value = names[i];
             }
         }
-        
+
         private void CreateStringListLookupSheet(ExcelPackage package, string sheetName, List<string> values)
         {
             var lookupSheet = package.Workbook.Worksheets.Add(sheetName);
@@ -606,8 +623,8 @@ namespace Ettad.Inventory.Service.Explosives
                 lookupSheet.Cells[i + 1, 1].Value = values[i];
             }
         }
-        
-         private void AddDataValidation(ExcelWorksheet worksheet, int column, string lookupSheetName)
+
+        private void AddDataValidation(ExcelWorksheet worksheet, int column, string lookupSheetName)
         {
             var columnLetter = GetColumnLetter(column);
             var validationRange = $"{columnLetter}2:{columnLetter}10000";
@@ -616,10 +633,10 @@ namespace Ettad.Inventory.Service.Explosives
             var lastRow = lookupSheet.Dimension?.End.Row ?? 1;
             validation.Formula.ExcelFormula = $"'{lookupSheetName}'!$A$1:$A${lastRow}";
             validation.ShowErrorMessage = true;
-             validation.Error = $"Please select a value from the {lookupSheetName} list";
+            validation.Error = $"Please select a value from the {lookupSheetName} list";
         }
-        
-         private string GetColumnLetter(int columnNumber)
+
+        private string GetColumnLetter(int columnNumber)
         {
             string columnLetter = "";
             while (columnNumber > 0)
@@ -629,6 +646,32 @@ namespace Ettad.Inventory.Service.Explosives
                 columnNumber /= 26;
             }
             return columnLetter;
+        }
+
+        /// <summary>
+        /// Gets the list of assigned item IDs for the current user's department.
+        /// Returns null if user has no department or no assigned items (meaning no filtering should be applied).
+        /// Returns a HashSet with assigned item IDs if user has a department and has assigned items (meaning filter to only those items).
+        /// </summary>
+        private async Task<HashSet<long>?> GetAssignedItemIdsAsync()
+        {
+            // If user has no department, return null to indicate no filtering
+            if (!_currentUserService.DepartmentId.HasValue)
+            {
+                return null;
+            }
+
+            // Get assigned items for the user's department
+            var assignmentsResult = await _itemDepartmentAssignmentService.GetByDepartmentIdAsync(_currentUserService.DepartmentId.Value);
+            
+            // If no assignments found or error occurred, return null (no filtering - keep code as is)
+            if (!assignmentsResult.Succeeded || assignmentsResult.Data == null || !assignmentsResult.Data.Any())
+            {
+                return null;
+            }
+
+            // Return the set of assigned item IDs (filter to only these items)
+            return new HashSet<long>(assignmentsResult.Data.Select(a => a.ItemId));
         }
     }
 }

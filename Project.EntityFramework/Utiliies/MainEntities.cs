@@ -173,6 +173,15 @@ public static class MainEntities
         CrudOperation.Edit,
         CrudOperation.Delete,
     };
+    [Category(CrudPermissionsGenerator.General)]
+    public static readonly CrudOperation[] ItemDepartmentAssignment = new[]
+  {
+        CrudOperation.Page,
+        CrudOperation.View,
+        CrudOperation.Create,
+        CrudOperation.Edit,
+        CrudOperation.Delete,
+    };
 
     [Category(CrudPermissionsGenerator.General)]
     public static readonly CrudOperation[] LookupTables = new[]

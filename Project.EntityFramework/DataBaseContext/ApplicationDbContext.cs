@@ -31,6 +31,7 @@ namespace Ettad.EntityFramework.DataBaseContext
         public DbSet<Weapon> Weapons { get; set; }
         public DbSet<Explosive> Explosives { get; set; }
         public DbSet<AllowanceItem> AllowanceItems { get; set; }
+        public DbSet<ItemDepartmentAssignment> ItemDepartmentAssignments { get; set; }
         public DbSet<CaseType> CaseTypes { get; set; }
         public DbSet<Color> Colors { get; set; }
         public DbSet<Compatibility> Compatibilities { get; set; }
