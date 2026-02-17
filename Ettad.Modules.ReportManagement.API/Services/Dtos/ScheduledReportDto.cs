@@ -81,4 +81,9 @@ namespace Ettad.Modules.ReportManagement.API.Services.Dtos
         public int RecipientCount { get; set; }
         public long? FileSizeBytes { get; set; }
     }
+
+    public class ToggleActiveDto
+    {
+        public bool IsActive { get; set; }
+    }
 }

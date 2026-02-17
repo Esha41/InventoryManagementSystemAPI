@@ -259,13 +259,18 @@ namespace Ettad.Modules.ReportManagement.API.Services.Implementation
 
                 // Update recipients - remove existing and add new ones
                 var existingRecipients = scheduledReport.Recipients.Where(r => !r.IsDeleted).ToList();
+                _logger.LogInformation("Marking {Count} existing recipients as deleted for scheduled report {Id}", existingRecipients.Count, id);
                 foreach (var existing in existingRecipients)
                 {
                     existing.IsDeleted = true;
                     existing.DeletionDate = _dateTimeProvider.Now;
                     existing.DeletedBy = _currentUserService.UserId;
+                    // Explicitly mark as modified to ensure Entity Framework tracks the soft delete
+                    _context.Entry(existing).State = Microsoft.EntityFrameworkCore.EntityState.Modified;
                 }
 
+                // Add new recipients - need to explicitly add to DbContext for proper tracking
+                _logger.LogInformation("Adding {Count} new recipients for scheduled report {Id}", dto.Recipients.Count, id);
                 foreach (var recipientDto in dto.Recipients)
                 {
                     if (string.IsNullOrWhiteSpace(recipientDto.EmailAddress) && string.IsNullOrWhiteSpace(recipientDto.UserId))
@@ -291,10 +296,15 @@ namespace Ettad.Modules.ReportManagement.API.Services.Implementation
                     }
                     // EmailAddress is not stored when UserId is present - it will be fetched from user record
 
+                    // Add to the collection for navigation property
                     scheduledReport.Recipients.Add(recipient);
+                    // Explicitly add to DbContext to ensure Entity Framework tracks it as a new entity
+                    _context.Set<ScheduledReportRecipient>().Add(recipient);
                 }
 
-                await _scheduledReportRepository.UpdateAsync(scheduledReport);
+                // Mark the parent entity as modified (it's already tracked from FindOneAsync)
+                // This ensures all changes (including deleted recipients and new recipients) are saved
+                _context.Entry(scheduledReport).State = Microsoft.EntityFrameworkCore.EntityState.Modified;
                 await _context.SaveChangesAsync();
 
                 _logger.LogInformation("Updated scheduled report {Id}. User: {UserId}", id, _currentUserService.UserId);
@@ -435,6 +445,16 @@ namespace Ettad.Modules.ReportManagement.API.Services.Implementation
                     return APIOperationResponse<bool>.Fail(
                         ResponseType.NotFound,
                         "Scheduled report not found"
+                    );
+                }
+
+                // Check if the scheduled report is active
+                if (!scheduledReport.IsActive)
+                {
+                    _logger.LogWarning("Cannot execute scheduled report {Id} because it is disabled. User: {UserId}", id, _currentUserService.UserId);
+                    return APIOperationResponse<bool>.Fail(
+                        ResponseType.BadRequest,
+                        "Cannot execute a disabled scheduled report. Please enable it first."
                     );
                 }
 

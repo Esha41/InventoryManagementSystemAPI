@@ -89,9 +89,9 @@ namespace Ettad.Modules.ReportManagement.API.Controllers
         [HttpPatch("{id}/toggle-active")]
         [ProducesResponseType((int)HttpStatusCode.OK)]
         [CheckAuthorize("ReportDesigner")]
-        public async Task<IActionResult> ToggleActive(Guid id, [FromBody] bool isActive)
+        public async Task<IActionResult> ToggleActive(Guid id, [FromBody] ToggleActiveDto dto)
         {
-            var result = await _scheduledReportService.ToggleActiveAsync(id, isActive);
+            var result = await _scheduledReportService.ToggleActiveAsync(id, dto.IsActive);
             return ProcessResponse(result);
         }
 
