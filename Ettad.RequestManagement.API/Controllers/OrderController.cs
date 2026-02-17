@@ -1,3 +1,4 @@
+using Ettad.Application.Common.Interfaces;
 using Ettad.CrossCutting.Common.Security;
 using Ettad.RequestManagement.Service.Orders;
 using Ettad.RequestManagement.Service.Orders.Dto;
@@ -16,10 +17,12 @@ namespace Ettad.RequestManagement.API.Controllers
     public class OrderController : ApiControllerBase
     {
         private readonly IOrderService _orderService;
+        private readonly IPermissionService _permissionService;
 
-        public OrderController(IOrderService orderService)
+        public OrderController(IOrderService orderService, IPermissionService permissionService)
         {
             _orderService = orderService;
+            _permissionService = permissionService;
         }
 
         /// <summary>
@@ -103,7 +106,7 @@ namespace Ettad.RequestManagement.API.Controllers
         [ProducesResponseType(typeof(APIOperationResponse<long>), (int)HttpStatusCode.Created)]
         [ProducesResponseType((int)HttpStatusCode.BadRequest)]
         [ProducesResponseType((int)HttpStatusCode.NotFound)]
-        [CheckAuthorize("Permissions.Order.Edit")]
+        [CheckAuthorize("Permissions.Order.Create", "Permissions.Order.Edit")]
         public async Task<IActionResult> AddOrderItem(long orderId, [FromBody] CreateUpdateRequestItemDto itemDto)
         {
             var result = await _orderService.AddOrderItemAsync(orderId, itemDto);
@@ -124,6 +127,26 @@ namespace Ettad.RequestManagement.API.Controllers
         [CheckAuthorize("Permissions.Order.Edit")]
         public async Task<IActionResult> UpdateOrderItemQuantity(long orderId, long itemId, [FromBody] long newQuantity)
         {
+            var oldQuantity = await _orderService.GetOrderItemCurrentQuantityAsync(orderId, itemId);
+            if (oldQuantity == null)
+                return NotFound(APIOperationResponse<bool>.Fail(ResponseType.NotFound, "Order item not found"));
+
+            // Edit is required (enforced by CheckAuthorize); IncreaseQuantity/DecreaseQuantity control which operation is allowed
+            if (newQuantity > oldQuantity)
+            {
+                var hasIncrease = await _permissionService.HasPermissionAsync("Permissions.Order.IncreaseQuantity")
+                    || await _permissionService.HasPermissionAsync("OrderIncreaseQuantity");
+                if (!hasIncrease)
+                    return StatusCode((int)HttpStatusCode.Forbidden, APIOperationResponse<bool>.Fail(ResponseType.Forbidden, "You do not have permission to increase quantity"));
+            }
+            else if (newQuantity < oldQuantity)
+            {
+                var hasDecrease = await _permissionService.HasPermissionAsync("Permissions.Order.DecreaseQuantity")
+                    || await _permissionService.HasPermissionAsync("OrderDecreaseQuantity");
+                if (!hasDecrease)
+                    return StatusCode((int)HttpStatusCode.Forbidden, APIOperationResponse<bool>.Fail(ResponseType.Forbidden, "You do not have permission to decrease quantity"));
+            }
+
             var result = await _orderService.UpdateOrderItemQuantityAsync(orderId, itemId, newQuantity);
             return ProcessResponse(result);
         }
@@ -138,7 +161,7 @@ namespace Ettad.RequestManagement.API.Controllers
         [ProducesResponseType(typeof(APIOperationResponse<bool>), (int)HttpStatusCode.OK)]
         [ProducesResponseType((int)HttpStatusCode.BadRequest)]
         [ProducesResponseType((int)HttpStatusCode.NotFound)]
-        [CheckAuthorize("Permissions.Order.Edit")]
+        [CheckAuthorize("Permissions.Order.Edit", "Permissions.Order.Delete")]
         public async Task<IActionResult> DeleteOrderItem(long orderId, long itemId)
         {
             var result = await _orderService.DeleteOrderItemAsync(orderId, itemId);

@@ -41,6 +41,7 @@ namespace Ettad.Inventory.Service.Explosives
         private readonly IItemDepartmentAssignmentService _itemDepartmentAssignmentService;
 
         // In-memory lookups
+        private List<Compatibility> _compatibilities;
         private List<HazardDivision> _hazardDivisions;
         private List<Classification> _classifications;
         private List<ItemTypeLookup> _itemTypes;
@@ -96,6 +97,7 @@ namespace Ettad.Inventory.Service.Explosives
                 var explosive = await _explosiveRepository.FindOneAsync(
                     e => e.Id == id && !e.IsDeleted,
                     false,
+                    nameof(Explosive.Compatibility),
                     nameof(Explosive.HazardDivision),
                     nameof(Explosive.Classification),
                     nameof(Explosive.Type),
@@ -129,6 +131,7 @@ namespace Ettad.Inventory.Service.Explosives
                 var explosives = await _explosiveRepository.FindAsync(
                     e => !e.IsDeleted && (assignedItemIds == null || assignedItemIds.Contains(e.Id)),
                     false,
+                    nameof(Explosive.Compatibility),
                     nameof(Explosive.HazardDivision),
                     nameof(Explosive.Classification),
                     nameof(Explosive.Type),
@@ -166,6 +169,7 @@ namespace Ettad.Inventory.Service.Explosives
                 var query = _explosiveRepository.Find(
                     e => !e.IsDeleted && (assignedItemIds == null || assignedItemIds.Contains(e.Id)),
                     false,
+                    nameof(Explosive.Compatibility),
                     nameof(Explosive.HazardDivision),
                     nameof(Explosive.Classification),
                     nameof(Explosive.Type),
@@ -246,6 +250,7 @@ namespace Ettad.Inventory.Service.Explosives
                 explosive.CreationDate = _dateTimeProvider.Now;
                 explosive.CreatedBy = _currentUserService.UserId;
                 explosive.Nsn = string.IsNullOrWhiteSpace(inputDto.Nsn) ? null : inputDto.Nsn.Trim();
+                explosive.ArmNumber = string.IsNullOrWhiteSpace(inputDto.ArmNumber) ? null : inputDto.ArmNumber.Trim();
 
                 var createdExplosive = await _explosiveRepository.AddAsync(explosive);
 
@@ -296,6 +301,7 @@ namespace Ettad.Inventory.Service.Explosives
                 existingExplosive.ModificationDate = _dateTimeProvider.Now;
                 existingExplosive.ModifiedBy = _currentUserService.UserId;
                 existingExplosive.Nsn = string.IsNullOrWhiteSpace(inputDto.Nsn) ? null : inputDto.Nsn.Trim();
+                existingExplosive.ArmNumber = string.IsNullOrWhiteSpace(inputDto.ArmNumber) ? null : inputDto.ArmNumber.Trim();
 
                 await _explosiveRepository.UpdateAsync(existingExplosive);
                 return APIOperationResponse<bool>.Success(true, "Explosive updated successfully");
@@ -353,21 +359,22 @@ namespace Ettad.Inventory.Service.Explosives
         {
             await LoadLookupsAsync();
 
-            var headers = language == "ar"
-                   ? new[]
-                   {
-                        "الاسم*", "رقم الصنف*", "رقم الجزء", "NSN", "السعر", "الكمية الدنيا",
+             var headers = language == "ar"
+                    ? new[]
+                    {
+                        "الاسم*", "رقم الصنف*", "رقم الجزء", "رقم ARM", "NSN", "السعر", "الكمية الدنيا",
                         "رقم الأمم المتحدة", "وحدة",
-                        "التوزيع", "الرقم المرجعي", "قسم الخطر", "التصنيف", "النوع", "ملاحظات"
-                   }
-                   : new[]
-                   {
-                        "Name*", "Item No*", "Part No", "NSN", "Price", "Minimum Quantity",
+                        "التوزيع", "الرقم المرجعي", "التوافق", "قسم الخطر", "التصنيف", "النوع", "ملاحظات"
+                    }
+                    : new[]
+                    {
+                        "Name*", "Item No*", "Part No", "Arm Number", "NSN", "Price", "Minimum Quantity",
                         "UN Number", "Unit",
-                        "Distribution", "Reference No", "Hazard Division", "Classification", "Type", "Notes"
-                   };
+                        "Distribution", "Reference No", "Compatibility", "Hazard Division", "Classification", "Type", "Notes"
+                    };
 
             var firstAsset = await _context.Explosives
+                .Include(e => e.Compatibility)
                 .Include(e => e.HazardDivision)
                 .Include(e => e.Classification)
                 .Include(e => e.Type)
@@ -386,17 +393,19 @@ namespace Ettad.Inventory.Service.Explosives
                         sheet.Cells[2, 1].Value = firstAsset.Name;
                         sheet.Cells[2, 2].Value = firstAsset.ItemNo;
                         sheet.Cells[2, 3].Value = firstAsset.PartNo;
-                        sheet.Cells[2, 4].Value = firstAsset.Nsn;
-                        sheet.Cells[2, 5].Value = firstAsset.Price;
-                        sheet.Cells[2, 6].Value = firstAsset.MinimumQuantity;
-                        sheet.Cells[2, 7].Value = firstAsset.UNNumber;
-                        sheet.Cells[2, 8].Value = isAr ? firstAsset.Unit?.NameAr : firstAsset.Unit?.NameEn; // Unit
-                        sheet.Cells[2, 9].Value = firstAsset.Distribution;
-                        sheet.Cells[2, 10].Value = firstAsset.ReferenceNo;
-                        sheet.Cells[2, 11].Value = isAr ? firstAsset.HazardDivision?.NameAr : firstAsset.HazardDivision?.NameEn;
-                        sheet.Cells[2, 12].Value = isAr ? firstAsset.Classification?.NameAr : firstAsset.Classification?.NameEn;
-                        sheet.Cells[2, 13].Value = isAr ? firstAsset.Type?.NameAr : firstAsset.Type?.NameEn;
-                        sheet.Cells[2, 14].Value = firstAsset.Notes;
+                        sheet.Cells[2, 4].Value = firstAsset.ArmNumber;
+                        sheet.Cells[2, 5].Value = firstAsset.Nsn;
+                        sheet.Cells[2, 6].Value = firstAsset.Price;
+                        sheet.Cells[2, 7].Value = firstAsset.MinimumQuantity;
+                        sheet.Cells[2, 8].Value = firstAsset.UNNumber;
+                        sheet.Cells[2, 9].Value = isAr ? firstAsset.Unit?.NameAr : firstAsset.Unit?.NameEn; // Unit
+                        sheet.Cells[2, 10].Value = firstAsset.Distribution;
+                        sheet.Cells[2, 11].Value = firstAsset.ReferenceNo;
+                        sheet.Cells[2, 12].Value = isAr ? firstAsset.Compatibility?.NameAr : firstAsset.Compatibility?.NameEn;
+                        sheet.Cells[2, 13].Value = isAr ? firstAsset.HazardDivision?.NameAr : firstAsset.HazardDivision?.NameEn;
+                        sheet.Cells[2, 14].Value = isAr ? firstAsset.Classification?.NameAr : firstAsset.Classification?.NameEn;
+                        sheet.Cells[2, 15].Value = isAr ? firstAsset.Type?.NameAr : firstAsset.Type?.NameEn;
+                        sheet.Cells[2, 16].Value = firstAsset.Notes;
                     }
                     else
                     {
@@ -406,6 +415,7 @@ namespace Ettad.Inventory.Service.Explosives
                 },
                 (package) =>
                 {
+                    CreateLookupSheet(package, "Compatibilities", _compatibilities);
                     CreateLookupSheet(package, "HazardDivisions", _hazardDivisions);
                     CreateLookupSheet(package, "Classifications", _classifications);
                     CreateLookupSheet(package, "ItemTypes", _itemTypes);
@@ -413,10 +423,11 @@ namespace Ettad.Inventory.Service.Explosives
                 },
                 (sheet) =>
                 {
-                    AddDataValidation(sheet, 8, "Units"); // Unit dropdown
-                    AddDataValidation(sheet, 11, "HazardDivisions");
-                    AddDataValidation(sheet, 12, "Classifications");
-                    AddDataValidation(sheet, 13, "ItemTypes");
+                    AddDataValidation(sheet, 9, "Units"); // Unit dropdown
+                    AddDataValidation(sheet, 12, "Compatibilities"); // Compatibility dropdown
+                    AddDataValidation(sheet, 13, "HazardDivisions"); 
+                    AddDataValidation(sheet, 14, "Classifications"); 
+                    AddDataValidation(sheet, 15, "ItemTypes"); 
                 }
             );
         }
@@ -426,16 +437,18 @@ namespace Ettad.Inventory.Service.Explosives
 
         private async Task LoadLookupsAsync(List<ExplosiveImportDto> importItems = null)
         {
-            _hazardDivisions = await _context.HazardDivisions.Where(h => !h.IsDeleted).ToListAsync();
-            _classifications = await _context.Classifications.Where(c => !c.IsDeleted).ToListAsync();
-            _itemTypes = await _context.ItemTypes.Where(i => !i.IsDeleted && i.ItemType == ItemType.Explosive).ToListAsync();
-            _units = await _context.Units.Where(u => !u.IsDeleted && u.ItemType == ItemType.Explosive).ToListAsync();
-
-            // Build cache
-            _cachedLookups["HazardDivisions"] = BuildLookup(_hazardDivisions, x => x.NameEn, x => x.NameAr, x => x.Id);
-            _cachedLookups["Classifications"] = BuildLookup(_classifications, x => x.NameEn, x => x.NameAr, x => x.Id);
-            _cachedLookups["ItemTypes"] = BuildLookup(_itemTypes, x => x.NameEn, x => x.NameAr, x => x.Id);
-            _cachedLookups["Units"] = BuildLookup(_units, x => x.NameEn, x => x.NameAr, x => x.Id);
+             _compatibilities = await _context.Compatibilities.Where(c => !c.IsDeleted).ToListAsync();
+             _hazardDivisions = await _context.HazardDivisions.Where(h => !h.IsDeleted).ToListAsync();
+             _classifications = await _context.Classifications.Where(c => !c.IsDeleted).ToListAsync();
+             _itemTypes = await _context.ItemTypes.Where(i => !i.IsDeleted && i.ItemType == ItemType.Explosive).ToListAsync();
+             _units = await _context.Units.Where(u => !u.IsDeleted && u.ItemType == ItemType.Explosive).ToListAsync();
+ 
+             // Build cache
+             _cachedLookups["Compatibilities"] = BuildLookup(_compatibilities, x => x.NameEn, x => x.NameAr, x => x.Id);
+             _cachedLookups["HazardDivisions"] = BuildLookup(_hazardDivisions, x => x.NameEn, x => x.NameAr, x => x.Id);
+             _cachedLookups["Classifications"] = BuildLookup(_classifications, x => x.NameEn, x => x.NameAr, x => x.Id);
+             _cachedLookups["ItemTypes"] = BuildLookup(_itemTypes, x => x.NameEn, x => x.NameAr, x => x.Id);
+             _cachedLookups["Units"] = BuildLookup(_units, x => x.NameEn, x => x.NameAr, x => x.Id);
 
             // Optimization: Bulk fetch ItemNo and NSN duplicates
             _existingItemNos.Clear();
@@ -468,6 +481,7 @@ namespace Ettad.Inventory.Service.Explosives
                 Name = importDto.Name,
                 ItemNo = importDto.ItemNo,
                 PartNo = importDto.PartNo,
+                ArmNumber = string.IsNullOrWhiteSpace(importDto.ArmNumber) ? null : importDto.ArmNumber.Trim(),
                 Price = importDto.Price,
                 MinimumQuantity = importDto.MinimumQuantity,
                 Nsn = importDto.Nsn,
@@ -477,6 +491,7 @@ namespace Ettad.Inventory.Service.Explosives
                 Notes = importDto.Notes
             };
 
+            dto.CompatibilityId = FindLookupIdCached("Compatibilities", importDto.Compatibility);
             dto.HazardDivisionId = FindLookupIdCached("HazardDivisions", importDto.HazardDivision);
             dto.ClassificationId = FindLookupIdCached("Classifications", importDto.Classification);
             dto.TypeId = FindLookupIdCached("ItemTypes", importDto.Type);
@@ -548,13 +563,15 @@ namespace Ettad.Inventory.Service.Explosives
                 { "Name*", nameof(ExplosiveImportDto.Name) },
                 { "Item No*", nameof(ExplosiveImportDto.ItemNo) },
                 { "Part No", nameof(ExplosiveImportDto.PartNo) },
+                { "Arm Number", nameof(ExplosiveImportDto.ArmNumber) },
+                { "NSN", nameof(ExplosiveImportDto.Nsn) },
                 { "Price", nameof(ExplosiveImportDto.Price) },
                 { "Minimum Quantity", nameof(ExplosiveImportDto.MinimumQuantity) },
-                { "NSN", nameof(ExplosiveImportDto.Nsn) },
                 { "UN Number", nameof(ExplosiveImportDto.UNNumber) },
                 { "Unit", nameof(ExplosiveImportDto.NEQUnit) },
                 { "Distribution", nameof(ExplosiveImportDto.Distribution) },
                 { "Reference No", nameof(ExplosiveImportDto.ReferenceNo) },
+                { "Compatibility", nameof(ExplosiveImportDto.Compatibility) },
                 { "Hazard Division", nameof(ExplosiveImportDto.HazardDivision) },
                 { "Classification", nameof(ExplosiveImportDto.Classification) },
                 { "Type", nameof(ExplosiveImportDto.Type) },
@@ -563,6 +580,7 @@ namespace Ettad.Inventory.Service.Explosives
                 { "الاسم*", nameof(ExplosiveImportDto.Name) },
                 { "رقم الصنف*", nameof(ExplosiveImportDto.ItemNo) },
                 { "رقم الجزء", nameof(ExplosiveImportDto.PartNo) },
+                { "رقم ARM", nameof(ExplosiveImportDto.ArmNumber) },
                 { "رقم NSN", nameof(ExplosiveImportDto.Nsn) },
                 { "السعر", nameof(ExplosiveImportDto.Price) },
                 { "الكمية الدنيا", nameof(ExplosiveImportDto.MinimumQuantity) },
@@ -570,6 +588,7 @@ namespace Ettad.Inventory.Service.Explosives
                 { "وحدة", nameof(ExplosiveImportDto.NEQUnit) },
                 { "التوزيع", nameof(ExplosiveImportDto.Distribution) },
                 { "الرقم المرجعي", nameof(ExplosiveImportDto.ReferenceNo) },
+                { "التوافق", nameof(ExplosiveImportDto.Compatibility) },
                 { "قسم الخطر", nameof(ExplosiveImportDto.HazardDivision) },
                 { "التصنيف", nameof(ExplosiveImportDto.Classification) },
                 { "النوع", nameof(ExplosiveImportDto.Type) },
