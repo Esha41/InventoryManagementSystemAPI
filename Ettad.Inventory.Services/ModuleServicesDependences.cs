@@ -28,6 +28,8 @@ using Ettad.Inventory.Service.AssetSupply.Profiles;
 using Ettad.Inventory.Service.AssetHistory;
 using Ettad.Inventory.Service.AssetHistory.Profiles;
 using Ettad.Inventory.Service.AdvancedAnalytics;
+using Ettad.Inventory.Service.ItemDepartmentAssignments;
+using Ettad.Inventory.Service.ItemDepartmentAssignments.Profiles;
 
 namespace Ettad.Inventory.Service
 {
@@ -57,6 +59,8 @@ namespace Ettad.Inventory.Service
 
             services.AddScoped<IAllowanceItemService, AllowanceItemService>();
             services.AddScoped<IAllowanceItemQueryService, AllowanceItemQueryService>();
+            services.AddScoped<IItemDepartmentAssignmentService, ItemDepartmentAssignmentService>();
+            services.AddAutoMapper(typeof(ItemDepartmentAssignmentMappingProfile));
             services.AddScoped<IInventoryService, InventoryService>();
             
             // Asset Services

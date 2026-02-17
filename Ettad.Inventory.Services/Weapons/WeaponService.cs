@@ -23,6 +23,7 @@ using Ettad.CrossCutting.Comman.Models;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using System;
+using Ettad.Inventory.Service.ItemDepartmentAssignments;
 
 namespace Ettad.Inventory.Service.Weapons
 {
@@ -37,6 +38,7 @@ namespace Ettad.Inventory.Service.Weapons
         private readonly ApplicationDbContext _context;
         private readonly IDateTimeProvider _dateTimeProvider;
         private readonly AssetImportManager<CreateUpdateWeaponDto, WeaponImportDto> _importManager;
+        private readonly IItemDepartmentAssignmentService _itemDepartmentAssignmentService;
 
         // In-memory lookups
         private List<Unit> _units;
@@ -62,7 +64,8 @@ namespace Ettad.Inventory.Service.Weapons
             IFileUploadService fileUploadService,
             IExcelImportService excelImportService,
             ApplicationDbContext context,
-            IDateTimeProvider dateTimeProvider)
+            IDateTimeProvider dateTimeProvider,
+            IItemDepartmentAssignmentService itemDepartmentAssignmentService)
         {
             _weaponRepository = weaponRepository;
             _mapper = mapper;
@@ -72,18 +75,26 @@ namespace Ettad.Inventory.Service.Weapons
             _fileUploadService = fileUploadService;
             _context = context;
             _dateTimeProvider = dateTimeProvider;
-            
-             _importManager = new AssetImportManager<CreateUpdateWeaponDto, WeaponImportDto>(excelImportService, 
-                new LoggerFactory().CreateLogger<AssetImportManager<CreateUpdateWeaponDto, WeaponImportDto>>());
+            _itemDepartmentAssignmentService = itemDepartmentAssignmentService;
+
+            _importManager = new AssetImportManager<CreateUpdateWeaponDto, WeaponImportDto>(excelImportService,
+               new LoggerFactory().CreateLogger<AssetImportManager<CreateUpdateWeaponDto, WeaponImportDto>>());
         }
 
         public async Task<APIOperationResponse<WeaponDto>> GetByIdAsync(long id)
         {
-           _logger.LogInformation("Getting weapon by ID. WeaponId: {WeaponId}, User: {UserId}", 
-                id, _currentUserService.UserId);
-            
+            _logger.LogInformation("Getting weapon by ID. WeaponId: {WeaponId}, User: {UserId}",
+                 id, _currentUserService.UserId);
+
             try
             {
+                // Check if user has department and assigned items
+                var assignedItemIds = await GetAssignedItemIdsAsync();
+                if (assignedItemIds != null && !assignedItemIds.Contains(id))
+                {
+                    return APIOperationResponse<WeaponDto>.Fail(ResponseType.NotFound, "Weapon not found");
+                }
+
                 var weapon = await _weaponRepository.FindOneAsync(
                     w => w.Id == id && !w.IsDeleted,
                     false,
@@ -99,15 +110,15 @@ namespace Ettad.Inventory.Service.Weapons
                 }
 
                 var dto = _mapper.Map<WeaponDto>(weapon);
-                
+
                 var imagesResult = await _fileUploadService.GetByEntityAsync(FileEntityType.Weapon, weapon.Id);
                 dto.Images = imagesResult.Succeeded && imagesResult.Data != null ? imagesResult.Data : new List<FileUploadDto>();
-                
+
                 return APIOperationResponse<WeaponDto>.Success(dto);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error retrieving weapon by ID. WeaponId: {WeaponId}, User: {UserId}", 
+                _logger.LogError(ex, "Error retrieving weapon by ID. WeaponId: {WeaponId}, User: {UserId}",
                     id, _currentUserService.UserId);
                 return APIOperationResponse<WeaponDto>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
             }
@@ -115,13 +126,16 @@ namespace Ettad.Inventory.Service.Weapons
 
         public async Task<APIOperationResponse<PaginatedList<WeaponDto>>> GetAllPaginatedAsync(PagedListRequest request)
         {
-            _logger.LogInformation("Getting weapons paginated. Page: {Page}, PageSize: {PageSize}, User: {UserId}", 
+            _logger.LogInformation("Getting weapons paginated. Page: {Page}, PageSize: {PageSize}, User: {UserId}",
                 request.Page, request.PageSize, _currentUserService.UserId);
 
             try
             {
+                // Check if user has department and assigned items
+                var assignedItemIds = await GetAssignedItemIdsAsync();
+                
                 var query = _weaponRepository.Find(
-                    w => !w.IsDeleted,
+                    w => !w.IsDeleted && (assignedItemIds == null || assignedItemIds.Contains(w.Id)),
                     false,
                     nameof(Weapon.CaliberUnit),
                     nameof(Weapon.CountryOfManufacture),
@@ -130,7 +144,7 @@ namespace Ettad.Inventory.Service.Weapons
                 );
 
                 var paginatedEntities = await PaginatedList<Weapon>.CreateAsyncForTableBinding(query, request);
-                
+
                 var dtos = new List<WeaponDto>();
                 if (paginatedEntities.Items.Any())
                 {
@@ -138,7 +152,7 @@ namespace Ettad.Inventory.Service.Weapons
 
                     var entityIds = dtos.Select(d => d.Id).ToList();
                     var imagesResult = await _fileUploadService.GetByEntitiesAsync(FileEntityType.Weapon, entityIds);
-                    
+
                     if (imagesResult.Succeeded && imagesResult.Data != null)
                     {
                         foreach (var dto in dtos)
@@ -166,12 +180,15 @@ namespace Ettad.Inventory.Service.Weapons
 
         public async Task<APIOperationResponse<List<WeaponDto>>> GetAllAsync()
         {
-             _logger.LogInformation("Getting all weapons. User: {UserId}", _currentUserService.UserId);
-            
+            _logger.LogInformation("Getting all weapons. User: {UserId}", _currentUserService.UserId);
+
             try
             {
+                // Check if user has department and assigned items
+                var assignedItemIds = await GetAssignedItemIdsAsync();
+                
                 var weapons = await _weaponRepository.FindAsync(
-                    w => !w.IsDeleted,
+                    w => !w.IsDeleted && (assignedItemIds == null || assignedItemIds.Contains(w.Id)),
                     false,
                     nameof(Weapon.CaliberUnit),
                     nameof(Weapon.CountryOfManufacture),
@@ -180,7 +197,7 @@ namespace Ettad.Inventory.Service.Weapons
                 );
 
                 var dtos = _mapper.Map<List<WeaponDto>>(weapons);
-                
+
                 var entityIds = dtos.Select(d => d.Id).ToList();
                 var imagesResult = await _fileUploadService.GetByEntitiesAsync(FileEntityType.Weapon, entityIds);
                 if (imagesResult.Succeeded && imagesResult.Data != null)
@@ -190,7 +207,7 @@ namespace Ettad.Inventory.Service.Weapons
                         dto.Images = imagesResult.Data.ContainsKey(dto.Id) ? imagesResult.Data[dto.Id] : new List<FileUploadDto>();
                     }
                 }
-                
+
                 return APIOperationResponse<List<WeaponDto>>.Success(dtos);
             }
             catch (Exception ex)
@@ -202,9 +219,9 @@ namespace Ettad.Inventory.Service.Weapons
 
         public async Task<APIOperationResponse<long>> CreateAsync(CreateUpdateWeaponDto inputDto, List<IFormFile>? files = null)
         {
-            _logger.LogInformation("Creating new weapon. Name: {Name}, ItemNo: {ItemNo}, User: {UserId}", 
+            _logger.LogInformation("Creating new weapon. Name: {Name}, ItemNo: {ItemNo}, User: {UserId}",
                 inputDto?.Name, inputDto?.ItemNo, _currentUserService.UserId);
-            
+
             try
             {
                 var validationResult = await _validator.ValidateAsync(inputDto);
@@ -226,7 +243,7 @@ namespace Ettad.Inventory.Service.Weapons
                 if (files != null && files.Any())
                 {
                     var saveFilesResult = await _fileUploadService.SaveFilesAsync(files, FileEntityType.Weapon);
-                
+
                     if (!saveFilesResult.Succeeded)
                     {
                         return APIOperationResponse<long>.Fail(ResponseType.BadRequest,
@@ -244,17 +261,17 @@ namespace Ettad.Inventory.Service.Weapons
 
                 if (files != null && files.Any())
                 {
-                     await _fileUploadService.UploadFilesForEntityAsync(
-                        files, 
-                        FileEntityType.Weapon, 
-                        createdWeapon.Id);
+                    await _fileUploadService.UploadFilesForEntityAsync(
+                       files,
+                       FileEntityType.Weapon,
+                       createdWeapon.Id);
                 }
 
                 return APIOperationResponse<long>.Success(createdWeapon.Id, "Weapon created successfully");
             }
             catch (Exception ex)
             {
-                 var msg = ex.Message;
+                var msg = ex.Message;
                 if (ex.InnerException != null) msg += $" (Inner: {ex.InnerException.Message})";
                 return APIOperationResponse<long>.Fail(ResponseType.InternalServerError, $"An error occurred: {msg}");
             }
@@ -262,7 +279,7 @@ namespace Ettad.Inventory.Service.Weapons
 
         public async Task<APIOperationResponse<bool>> UpdateAsync(long id, CreateUpdateWeaponDto inputDto)
         {
-             try
+            try
             {
                 var validationResult = await _validator.ValidateAsync(inputDto);
                 if (!validationResult.IsValid)
@@ -290,7 +307,7 @@ namespace Ettad.Inventory.Service.Weapons
                 existingWeapon.Nsn = string.IsNullOrWhiteSpace(inputDto.Nsn) ? null : inputDto.Nsn.Trim();
 
                 await _weaponRepository.UpdateAsync(existingWeapon);
-                
+
                 return APIOperationResponse<bool>.Success(true, "Weapon updated successfully");
             }
             catch (Exception ex)
@@ -301,7 +318,7 @@ namespace Ettad.Inventory.Service.Weapons
 
         public async Task<APIOperationResponse<bool>> DeleteAsync(long id)
         {
-             try
+            try
             {
                 var weapon = await _weaponRepository.FindOneAsync(w => w.Id == id && !w.IsDeleted);
                 if (weapon == null)
@@ -316,9 +333,9 @@ namespace Ettad.Inventory.Service.Weapons
                 return APIOperationResponse<bool>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
             }
         }
-        
+
         // Import Implementation
-         public async Task<APIOperationResponse<ImportResult<CreateUpdateWeaponDto>>> ImportAsync(IFormFile file, string language = "en")
+        public async Task<APIOperationResponse<ImportResult<CreateUpdateWeaponDto>>> ImportAsync(IFormFile file, string language = "en")
         {
             return await _importManager.ImportAsync(
                 file,
@@ -332,32 +349,32 @@ namespace Ettad.Inventory.Service.Weapons
 
         public async Task<APIOperationResponse<ImportResult<WeaponImportDto>>> ImportPreviewAsync(IFormFile file, string language = "en")
         {
-             return await _importManager.ImportPreviewAsync(
-                file,
-                language,
-                items => LoadLookupsAsync(items),
-                MapImportDtoToEntityAsync,
-                ValidateDtoAsync,
-                GetColumnMappings(language));
+            return await _importManager.ImportPreviewAsync(
+               file,
+               language,
+               items => LoadLookupsAsync(items),
+               MapImportDtoToEntityAsync,
+               ValidateDtoAsync,
+               GetColumnMappings(language));
         }
 
         public async Task<APIOperationResponse<byte[]>> GenerateImportTemplateAsync(string language = "en")
         {
-             await LoadLookupsAsync(); 
+            await LoadLookupsAsync();
 
-             var headers = language == "ar" 
-                    ? new[]
-                    {
+            var headers = language == "ar"
+                   ? new[]
+                   {
                         "الاسم*", "رقم الصنف*", "رقم الجزء", "رقم NSN", "السعر", "الكمية الدنيا",
                         "العيار", "وحدة العيار", "سنة التصنيع", "بلد التصنيع", "النموذج",
                         "رقم الأمم المتحدة", "التوزيع", "الرقم المرجعي", "التصنيف", "النوع", "ملاحظات"
-                    }
-                    : new[]
-                    {
+                   }
+                   : new[]
+                   {
                         "Name*", "Item No*", "Part No", "NSN", "Price", "Minimum Quantity",
                         "Caliber", "Caliber Unit", "Year Of Manufacture", "Country Of Manufacture", "Model",
                         "UN Number", "Distribution", "Reference No", "Classification", "Type", "Notes"
-                    };
+                   };
 
             var firstAsset = await _context.Weapons
                 .Include(w => w.CaliberUnit)
@@ -370,7 +387,7 @@ namespace Ettad.Inventory.Service.Weapons
                 language,
                 "Weapon Import",
                 headers,
-                (sheet) => 
+                (sheet) =>
                 {
                     if (firstAsset != null)
                     {
@@ -408,10 +425,10 @@ namespace Ettad.Inventory.Service.Weapons
                 },
                 (sheet) =>
                 {
-                    AddDataValidation(sheet, 8, "Units"); 
+                    AddDataValidation(sheet, 8, "Units");
                     AddDataValidation(sheet, 10, "Countries");
-                    AddDataValidation(sheet, 15, "Classifications"); 
-                    AddDataValidation(sheet, 16, "ItemTypes"); 
+                    AddDataValidation(sheet, 15, "Classifications");
+                    AddDataValidation(sheet, 16, "ItemTypes");
                 }
             );
         }
@@ -419,16 +436,16 @@ namespace Ettad.Inventory.Service.Weapons
         // Helpers
         private async Task LoadLookupsAsync(List<WeaponImportDto> importItems = null)
         {
-             _units = await _context.Units.Where(u => !u.IsDeleted && u.ItemType == ItemType.Weapon).ToListAsync();
-             _countries = await _context.Countries.Where(c => !c.IsDeleted).ToListAsync();
-             _classifications = await _context.Classifications.Where(c => !c.IsDeleted).ToListAsync();
-             _itemTypes = await _context.ItemTypes.Where(i => !i.IsDeleted && i.ItemType == ItemType.Weapon).ToListAsync();
+            _units = await _context.Units.Where(u => !u.IsDeleted && u.ItemType == ItemType.Weapon).ToListAsync();
+            _countries = await _context.Countries.Where(c => !c.IsDeleted).ToListAsync();
+            _classifications = await _context.Classifications.Where(c => !c.IsDeleted).ToListAsync();
+            _itemTypes = await _context.ItemTypes.Where(i => !i.IsDeleted && i.ItemType == ItemType.Weapon).ToListAsync();
 
-             // Build cache
-             _cachedLookups["Units"] = BuildLookup(_units, x => x.NameEn, x => x.NameAr, x => x.Id);
-             _cachedLookups["Countries"] = BuildLookup(_countries, x => x.NameEn, x => x.NameAr, x => x.Id);
-             _cachedLookups["Classifications"] = BuildLookup(_classifications, x => x.NameEn, x => x.NameAr, x => x.Id);
-             _cachedLookups["ItemTypes"] = BuildLookup(_itemTypes, x => x.NameEn, x => x.NameAr, x => x.Id);
+            // Build cache
+            _cachedLookups["Units"] = BuildLookup(_units, x => x.NameEn, x => x.NameAr, x => x.Id);
+            _cachedLookups["Countries"] = BuildLookup(_countries, x => x.NameEn, x => x.NameAr, x => x.Id);
+            _cachedLookups["Classifications"] = BuildLookup(_classifications, x => x.NameEn, x => x.NameAr, x => x.Id);
+            _cachedLookups["ItemTypes"] = BuildLookup(_itemTypes, x => x.NameEn, x => x.NameAr, x => x.Id);
 
             // Optimization: Bulk fetch ItemNo and NSN duplicates
             _existingItemNos.Clear();
@@ -456,7 +473,7 @@ namespace Ettad.Inventory.Service.Weapons
 
         private async Task<CreateUpdateWeaponDto> MapImportDtoToEntityAsync(WeaponImportDto importDto, string language)
         {
-             var dto = new CreateUpdateWeaponDto
+            var dto = new CreateUpdateWeaponDto
             {
                 Name = importDto.Name,
                 ItemNo = importDto.ItemNo,
@@ -490,7 +507,7 @@ namespace Ettad.Inventory.Service.Weapons
             {
                 var en = getNameEn(item);
                 if (!string.IsNullOrWhiteSpace(en) && !dict.ContainsKey(en)) dict[en] = getId(item);
-                
+
                 var ar = getNameAr(item);
                 if (!string.IsNullOrWhiteSpace(ar) && !dict.ContainsKey(ar)) dict[ar] = getId(item);
             }
@@ -503,8 +520,8 @@ namespace Ettad.Inventory.Service.Weapons
             if (_cachedLookups[key].TryGetValue(name, out var id)) return id;
             return null;
         }
-        
-          private async Task<List<string>> ValidateDtoAsync(CreateUpdateWeaponDto dto)
+
+        private async Task<List<string>> ValidateDtoAsync(CreateUpdateWeaponDto dto)
         {
             var errors = new List<string>();
             var validationResult = await _validator.ValidateAsync(dto);
@@ -516,28 +533,28 @@ namespace Ettad.Inventory.Service.Weapons
             // Check duplicates using optimized HashSets
             if (!string.IsNullOrWhiteSpace(dto.ItemNo))
             {
-                 if (_existingItemNos.Contains(dto.ItemNo)) 
+                if (_existingItemNos.Contains(dto.ItemNo))
                     errors.Add($"Item No '{dto.ItemNo}' already exists in the database");
-                 else if (_newlyAddedItemNos.Contains(dto.ItemNo))
+                else if (_newlyAddedItemNos.Contains(dto.ItemNo))
                     errors.Add($"Item No '{dto.ItemNo}' is duplicated in the current file");
-                 else
+                else
                     _newlyAddedItemNos.Add(dto.ItemNo);
             }
-            
+
             if (!string.IsNullOrWhiteSpace(dto.Nsn))
             {
-                 if (_existingNsns.Contains(dto.Nsn)) 
+                if (_existingNsns.Contains(dto.Nsn))
                     errors.Add($"NSN '{dto.Nsn}' already exists in the database");
-                 else if (_newlyAddedNsns.Contains(dto.Nsn))
+                else if (_newlyAddedNsns.Contains(dto.Nsn))
                     errors.Add($"NSN '{dto.Nsn}' is duplicated in the current file");
-                 else
+                else
                     _newlyAddedNsns.Add(dto.Nsn);
             }
 
             return errors;
         }
 
-         private Dictionary<string, string> GetColumnMappings(string language)
+        private Dictionary<string, string> GetColumnMappings(string language)
         {
             return new Dictionary<string, string>
             {
@@ -578,15 +595,15 @@ namespace Ettad.Inventory.Service.Weapons
                 { "ملاحظات", nameof(WeaponImportDto.Notes) }
             };
         }
-        
-         private void CreateLookupSheet<T>(ExcelPackage package, string sheetName, List<T> items)
+
+        private void CreateLookupSheet<T>(ExcelPackage package, string sheetName, List<T> items)
         {
-             var names = items.Select(x => {
-                   var nameEn = (string)x.GetType().GetProperty("NameEn")?.GetValue(x);
-                  var nameAr = (string)x.GetType().GetProperty("NameAr")?.GetValue(x);
-                  return nameEn ?? nameAr ?? "";
-             }).Where(x => !string.IsNullOrEmpty(x)).ToList();
-             
+            var names = items.Select(x => {
+                var nameEn = (string)x.GetType().GetProperty("NameEn")?.GetValue(x);
+                var nameAr = (string)x.GetType().GetProperty("NameAr")?.GetValue(x);
+                return nameEn ?? nameAr ?? "";
+            }).Where(x => !string.IsNullOrEmpty(x)).ToList();
+
             var lookupSheet = package.Workbook.Worksheets.Add(sheetName);
             lookupSheet.Hidden = eWorkSheetHidden.Hidden;
 
@@ -595,10 +612,10 @@ namespace Ettad.Inventory.Service.Weapons
                 lookupSheet.Cells[i + 1, 1].Value = names[i];
             }
         }
-        
-         private void AddDataValidation(ExcelWorksheet worksheet, int column, string lookupSheetName)
+
+        private void AddDataValidation(ExcelWorksheet worksheet, int column, string lookupSheetName)
         {
-             var columnLetter = GetColumnLetter(column);
+            var columnLetter = GetColumnLetter(column);
             var validationRange = $"{columnLetter}2:{columnLetter}10000";
             var validation = worksheet.DataValidations.AddListValidation(validationRange);
             var lookupSheet = worksheet.Workbook.Worksheets[lookupSheetName];
@@ -607,8 +624,8 @@ namespace Ettad.Inventory.Service.Weapons
             validation.ShowErrorMessage = true;
             validation.Error = $"Please select a value from the {lookupSheetName} list";
         }
-        
-         private string GetColumnLetter(int columnNumber)
+
+        private string GetColumnLetter(int columnNumber)
         {
             string columnLetter = "";
             while (columnNumber > 0)
@@ -618,6 +635,32 @@ namespace Ettad.Inventory.Service.Weapons
                 columnNumber /= 26;
             }
             return columnLetter;
+        }
+
+        /// <summary>
+        /// Gets the list of assigned item IDs for the current user's department.
+        /// Returns null if user has no department or no assigned items (meaning no filtering should be applied).
+        /// Returns a HashSet with assigned item IDs if user has a department and has assigned items (meaning filter to only those items).
+        /// </summary>
+        private async Task<HashSet<long>?> GetAssignedItemIdsAsync()
+        {
+            // If user has no department, return null to indicate no filtering
+            if (!_currentUserService.DepartmentId.HasValue)
+            {
+                return null;
+            }
+
+            // Get assigned items for the user's department
+            var assignmentsResult = await _itemDepartmentAssignmentService.GetByDepartmentIdAsync(_currentUserService.DepartmentId.Value);
+            
+            // If no assignments found or error occurred, return null (no filtering - keep code as is)
+            if (!assignmentsResult.Succeeded || assignmentsResult.Data == null || !assignmentsResult.Data.Any())
+            {
+                return null;
+            }
+
+            // Return the set of assigned item IDs (filter to only these items)
+            return new HashSet<long>(assignmentsResult.Data.Select(a => a.ItemId));
         }
     }
 }
