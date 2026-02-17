@@ -13,6 +13,7 @@ using Ettad.Inventory.Services.Common;
 using Ettad.ResponseHandler.Consts;
 using Ettad.ResponseHandler.Models;
 using Ettad.Application.Common.Interfaces;
+using Ettad.Lookups.Services.Contracts;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Ettad.EntityFramework.DataBaseContext;
@@ -34,6 +35,16 @@ namespace Ettad.Inventory.Service.Assets
 
             try
             {
+                if (depotId.HasValue && depotId.Value > 0)
+                {
+                    var userId = _currentUserService.UserId;
+                    if (!string.IsNullOrEmpty(userId) && !await _depotAccessService.HasDepotAccessAsync(userId, depotId.Value))
+                    {
+                        _logger.LogWarning("User {UserId} attempted to access assets for unauthorized depot {DepotId}", userId, depotId);
+                        return APIOperationResponse<PaginatedList<AssetDto>>.Fail(ResponseType.Forbidden, "You do not have access to this depot.");
+                    }
+                }
+
                 var query = _assetRepository.Find(
                     a => !a.IsDeleted && (!depotId.HasValue || a.DepotId == depotId.Value),
                     false,
@@ -94,6 +105,7 @@ namespace Ettad.Inventory.Service.Assets
         private readonly IExcelImportService _excelImportService;
         private readonly ApplicationDbContext _context;
         private readonly IDateTimeProvider _dateTimeProvider;
+        private readonly IDepotAccessService _depotAccessService;
 
         public AssetService(
             ICrossCuttingRepository<Asset> assetRepository,
@@ -105,7 +117,8 @@ namespace Ettad.Inventory.Service.Assets
             IFileUploadService fileUploadService,
             IExcelImportService excelImportService,
             ApplicationDbContext context,
-            IDateTimeProvider dateTimeProvider)
+            IDateTimeProvider dateTimeProvider,
+            IDepotAccessService depotAccessService)
         {
             _assetRepository = assetRepository;
             _mapper = mapper;
@@ -117,6 +130,7 @@ namespace Ettad.Inventory.Service.Assets
             _excelImportService = excelImportService;
             _context = context;
             _dateTimeProvider = dateTimeProvider;
+            _depotAccessService = depotAccessService;
         }
 
         public async Task<APIOperationResponse<AssetDto>> GetByIdAsync(long id)
@@ -137,6 +151,13 @@ namespace Ettad.Inventory.Service.Assets
 
                 if (asset == null)
                     return APIOperationResponse<AssetDto>.Fail(ResponseType.NotFound, "Asset not found");
+
+                var userId = _currentUserService.UserId;
+                if (!string.IsNullOrEmpty(userId) && !await _depotAccessService.HasDepotAccessAsync(userId, asset.DepotId))
+                {
+                    _logger.LogWarning("User {UserId} attempted to access asset {AssetId} in unauthorized depot {DepotId}", userId, id, asset.DepotId);
+                    return APIOperationResponse<AssetDto>.Fail(ResponseType.Forbidden, "You do not have access to this depot.");
+                }
 
                 var dto = _mapper.Map<AssetDto>(asset);
                 
@@ -185,6 +206,13 @@ namespace Ettad.Inventory.Service.Assets
                     return APIOperationResponse<AssetDto>.Fail(ResponseType.NotFound, "Asset not found");
                 }
 
+                var userId = _currentUserService.UserId;
+                if (!string.IsNullOrEmpty(userId) && !await _depotAccessService.HasDepotAccessAsync(userId, asset.DepotId))
+                {
+                    _logger.LogWarning("User {UserId} attempted to access asset by SerialNumber in unauthorized depot {DepotId}", userId, asset.DepotId);
+                    return APIOperationResponse<AssetDto>.Fail(ResponseType.Forbidden, "You do not have access to this depot.");
+                }
+
                 var dto = _mapper.Map<AssetDto>(asset);
                 
                 // Get images for this asset
@@ -210,6 +238,16 @@ namespace Ettad.Inventory.Service.Assets
             
             try
             {
+                if (depotId.HasValue && depotId.Value > 0)
+                {
+                    var userId = _currentUserService.UserId;
+                    if (!string.IsNullOrEmpty(userId) && !await _depotAccessService.HasDepotAccessAsync(userId, depotId.Value))
+                    {
+                        _logger.LogWarning("User {UserId} attempted to access assets for unauthorized depot {DepotId}", userId, depotId);
+                        return APIOperationResponse<List<AssetDto>>.Fail(ResponseType.Forbidden, "You do not have access to this depot.");
+                    }
+                }
+
                 // Build filter predicate
                 Expression<Func<Asset, bool>> filter = a => !a.IsDeleted;
                 if (depotId.HasValue && depotId.Value > 0)
@@ -282,6 +320,13 @@ namespace Ettad.Inventory.Service.Assets
             
             try
             {
+                var userId = _currentUserService.UserId;
+                if (!string.IsNullOrEmpty(userId) && !await _depotAccessService.HasDepotAccessAsync(userId, inputDto.DepotId))
+                {
+                    _logger.LogWarning("User {UserId} attempted to create asset in unauthorized depot {DepotId}", userId, inputDto.DepotId);
+                    return APIOperationResponse<long>.Fail(ResponseType.Forbidden, "You do not have access to this depot.");
+                }
+
                 // Validate input
                 var validationResult = await _createValidator.ValidateAsync(inputDto);
                 if (!validationResult.IsValid)
@@ -539,6 +584,13 @@ namespace Ettad.Inventory.Service.Assets
         {
             _logger.LogInformation("Starting asset import. DepotId: {DepotId}, Language: {Language}, User: {UserId}", 
                 depotId, language, _currentUserService.UserId);
+
+            var userId = _currentUserService.UserId;
+            if (!string.IsNullOrEmpty(userId) && !await _depotAccessService.HasDepotAccessAsync(userId, depotId))
+            {
+                _logger.LogWarning("User {UserId} attempted to import assets to unauthorized depot {DepotId}", userId, depotId);
+                return APIOperationResponse<ImportResult<CreateAssetDto>>.Fail(ResponseType.Forbidden, "You do not have access to this depot.");
+            }
  
             try
             {
@@ -776,6 +828,13 @@ namespace Ettad.Inventory.Service.Assets
         {
             _logger.LogInformation("Starting asset import preview. DepotId: {DepotId}, Language: {Language}, User: {UserId}", 
                 depotId, language, _currentUserService.UserId);
+
+            var userId = _currentUserService.UserId;
+            if (!string.IsNullOrEmpty(userId) && !await _depotAccessService.HasDepotAccessAsync(userId, depotId))
+            {
+                _logger.LogWarning("User {UserId} attempted to preview asset import for unauthorized depot {DepotId}", userId, depotId);
+                return APIOperationResponse<ImportResult<CreateAssetDto>>.Fail(ResponseType.Forbidden, "You do not have access to this depot.");
+            }
  
             try
             {
@@ -979,6 +1038,13 @@ namespace Ettad.Inventory.Service.Assets
             {
                 _logger.LogInformation("Generating asset import template. DepotId: {DepotId}, Language: {Language}", 
                     depotId, language);
+
+                var userId = _currentUserService.UserId;
+                if (!string.IsNullOrEmpty(userId) && !await _depotAccessService.HasDepotAccessAsync(userId, depotId))
+                {
+                    _logger.LogWarning("User {UserId} attempted to generate import template for unauthorized depot {DepotId}", userId, depotId);
+                    return APIOperationResponse<byte[]>.Fail(ResponseType.Forbidden, "You do not have access to this depot.");
+                }
 
                 // Load all items (ammunition, weapons, explosives)
                 var ammunitions = await _context.Ammunitions

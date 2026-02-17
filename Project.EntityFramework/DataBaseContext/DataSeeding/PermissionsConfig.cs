@@ -107,6 +107,14 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
             "Permissions.Depots.View",
         };
 
+        /// <summary>
+        /// Depot view only (no Page) - for roles that should see depots filtered by UserDepot assignments (e.g. Depot Officer).
+        /// </summary>
+        public static List<string> ReadDepoViewOnly = new()
+        {
+            "Permissions.Depots.View",
+        };
+
         public static List<string> WriteDepo = new()
         {
             "Permissions.Depots.Create",
@@ -696,7 +704,7 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 .Concat(Notifications)
                 .Concat(ReadSupply)
                 .Concat(WareHouse)
-                .Concat(ReadDepo)
+                .Concat(ReadDepoViewOnly)  // Depot Officer: View only, filtered by UserDepot (no Depots.Page)
                 .Concat(Rank)
                 .Concat(new List<string>
                     {
@@ -704,7 +712,8 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                         PlainPermissions.InventoryDashboard.ToString(),
                         PlainPermissions.CannotRejectRequest.ToString(),
                         PlainPermissions.ReviewWeaponSupply.ToString(),
-                        "Permissions.Depots.View",
+                        "Permissions.Asset.View",
+                        "Permissions.Asset.Page",
                         "Permissions.SystemUsers.View",
                     }
                 )

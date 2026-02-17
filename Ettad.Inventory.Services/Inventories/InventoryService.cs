@@ -10,6 +10,7 @@ using Ettad.ResponseHandler.Consts;
 using Ettad.ResponseHandler.Models;
 using Ettad.Application.Common.Interfaces;
 using Ettad.EntityFramework.DataBaseContext;
+using Ettad.Lookups.Services.Contracts;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using System;
@@ -37,6 +38,7 @@ namespace Ettad.Inventory.Service.Inventories
         private readonly ICurrentUserService _currentUserService;
         private readonly ILogger<InventoryService> _logger;
         private readonly IDateTimeProvider _dateTimeProvider;
+        private readonly IDepotAccessService _depotAccessService;
 
         public InventoryService(
             ApplicationDbContext context,
@@ -53,7 +55,8 @@ namespace Ettad.Inventory.Service.Inventories
             IExcelImportService excelImportService,
             ICurrentUserService currentUserService,
             ILogger<InventoryService> logger,
-            IDateTimeProvider dateTimeProvider)
+            IDateTimeProvider dateTimeProvider,
+            IDepotAccessService depotAccessService)
         {
             _context = context;
             _inventoryRepository = inventoryRepository;
@@ -70,6 +73,7 @@ namespace Ettad.Inventory.Service.Inventories
             _currentUserService = currentUserService;
             _logger = logger;
             _dateTimeProvider = dateTimeProvider;
+            _depotAccessService = depotAccessService;
         }
 
         public async Task<APIOperationResponse<InventoryDto>> GetByIdAsync(long id)
@@ -94,6 +98,13 @@ namespace Ettad.Inventory.Service.Inventories
                     _logger.LogWarning("Inventory not found. InventoryId: {InventoryId}, User: {UserId}", 
                         id, _currentUserService.UserId);
                     return APIOperationResponse<InventoryDto>.Fail(ResponseType.NotFound, "Inventory not found");
+                }
+
+                var userId = _currentUserService.UserId;
+                if (!string.IsNullOrEmpty(userId) && !await _depotAccessService.HasDepotAccessAsync(userId, inventory.DepoId))
+                {
+                    _logger.LogWarning("User {UserId} attempted to access inventory {InventoryId} in unauthorized depot {DepotId}", userId, id, inventory.DepoId);
+                    return APIOperationResponse<InventoryDto>.Fail(ResponseType.Forbidden, "You do not have access to this depot.");
                 }
 
                 _logger.LogInformation("Inventory retrieved successfully. InventoryId: {InventoryId}, DetailCount: {DetailCount}", 
@@ -848,6 +859,13 @@ namespace Ettad.Inventory.Service.Inventories
 
             try
             {
+                var userId = _currentUserService.UserId;
+                if (!string.IsNullOrEmpty(userId) && !await _depotAccessService.HasDepotAccessAsync(userId, depotId))
+                {
+                    _logger.LogWarning("User {UserId} attempted to access inventory for unauthorized depot {DepotId}", userId, depotId);
+                    return APIOperationResponse<PaginatedList<InventoryDetailDto>>.Fail(ResponseType.Forbidden, "You do not have access to this depot.");
+                }
+
                 var query = _inventoryDetailRepository.Find(
                     x => x.Inventory.DepoId == depotId && !x.Inventory.IsDeleted,
                     false,
@@ -1192,6 +1210,13 @@ namespace Ettad.Inventory.Service.Inventories
         {
             _logger.LogInformation("Starting inventory import. DepotId: {DepotId}, Language: {Language}, User: {UserId}", 
                 depotId, language, _currentUserService.UserId);
+
+            var userId = _currentUserService.UserId;
+            if (!string.IsNullOrEmpty(userId) && !await _depotAccessService.HasDepotAccessAsync(userId, depotId))
+            {
+                _logger.LogWarning("User {UserId} attempted to import inventory to unauthorized depot {DepotId}", userId, depotId);
+                return APIOperationResponse<ImportResult<InventoryImportRowDto>>.Fail(ResponseType.Forbidden, "You do not have access to this depot.");
+            }
  
             try
             {
@@ -1517,6 +1542,13 @@ namespace Ettad.Inventory.Service.Inventories
         {
             _logger.LogInformation("Starting inventory import preview. DepotId: {DepotId}, Language: {Language}, User: {UserId}", 
                 depotId, language, _currentUserService.UserId);
+
+            var userId = _currentUserService.UserId;
+            if (!string.IsNullOrEmpty(userId) && !await _depotAccessService.HasDepotAccessAsync(userId, depotId))
+            {
+                _logger.LogWarning("User {UserId} attempted to preview inventory import for unauthorized depot {DepotId}", userId, depotId);
+                return APIOperationResponse<ImportResult<InventoryImportRowDto>>.Fail(ResponseType.Forbidden, "You do not have access to this depot.");
+            }
  
             try
             {
