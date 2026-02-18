@@ -69,6 +69,14 @@ namespace Ettad.Modules.ReportManagement.API.Reports
                             superAdminFromUrl = parsedSuperAdmin;
                         }
                     }
+
+
+                    //if user is not super admin but has NULL departmentID, don't display any data
+                    if ((superAdminFromUrl == null || superAdminFromUrl == false) && departmentIds.Count == 0)
+                    {
+                        departmentIds.Add(-1);
+                    }
+
                 }
 
                 XtraReport report;
@@ -85,12 +93,6 @@ namespace Ettad.Modules.ReportManagement.API.Reports
                 else
                 {
                     report = _reportFactory.Create(baseUrl);
-                }
-
-                //if user is not super admin but has NULL departmentID, don't display any data
-                if ((superAdminFromUrl == null || superAdminFromUrl == false) && departmentIds.Count == 0)
-                {
-                    departmentIds.Add(-1);
                 }
 
                 // Set Department Parameter - support multiple departments
