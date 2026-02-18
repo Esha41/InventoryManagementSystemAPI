@@ -38,6 +38,7 @@ namespace Ettad.EntityFramework.DataBaseContext
         public DbSet<Country> Countries { get; set; }
         public DbSet<Department> Departments { get; set; }
         public DbSet<Depot> Depots { get; set; }
+        public DbSet<UserDepot> UserDepots { get; set; }
         public DbSet<HazardDivision> HazardDivisions { get; set; }
         public DbSet<Inventory> Inventories { get; set; }
         public DbSet<InventoryDetail> InventoryDetails { get; set; }

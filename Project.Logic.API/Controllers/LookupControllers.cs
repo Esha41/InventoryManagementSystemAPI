@@ -191,15 +191,44 @@ namespace Ettad.Lookups.Domain.API.Controllers
     {
         private readonly IDepotService _depotService;
         private readonly ICurrentUserService _currentUserService;
+        private readonly IUserDepotService _userDepotService;
 
         public DepotController(
             IDepotService depotService, 
             ICurrentUserService currentUserService,
+            IUserDepotService userDepotService,
             ILogger<LookupController<Depot, CreateUpdateDepotDto>> logger)
             : base(depotService, logger)
         {
             _depotService = depotService;
             _currentUserService = currentUserService;
+            _userDepotService = userDepotService;
+        }
+
+        /// <summary>
+        /// Get users assigned to a depot.
+        /// </summary>
+        [HttpGet("{depotId}/users")]
+        public async Task<IActionResult> GetDepotUsers(int depotId)
+        {
+            _logger?.LogInformation("HTTP GET request for users assigned to depot {DepotId}", depotId);
+            var result = await _userDepotService.GetUsersByDepotIdAsync(depotId);
+            return ProcessResponse(result);
+        }
+
+        /// <summary>
+        /// Set user assignments for a depot. Replaces existing assignments.
+        /// </summary>
+        [HttpPut("{depotId}/users")]
+        public async Task<IActionResult> SetDepotUsers(int depotId, [FromBody] SetDepotUsersRequest request)
+        {
+            _logger?.LogInformation("HTTP PUT request to set users for depot {DepotId}", depotId);
+            if (request == null)
+            {
+                return BadRequest("Request body is required.");
+            }
+            var result = await _userDepotService.SetDepotUserAssignmentsAsync(depotId, request.UserIds ?? new List<string>());
+            return ProcessResponse(result);
         }
 
         /// <summary>

@@ -111,6 +111,8 @@ try
 
     // Register custom Depot service with inventory validation
     builder.Services.AddScoped<IDepotService, DepotService>();
+    builder.Services.AddScoped<Ettad.Lookups.Services.Contracts.IDepotAccessService, Ettad.Lookups.Services.Implementation.DepotAccessService>();
+    builder.Services.AddScoped<Ettad.Lookups.Services.Contracts.IUserDepotService, Ettad.Lookups.Services.Implementation.UserDepotService>();
 
     builder.Services.AddScoped<IEmailSender, EmailSender>();
     builder.Services.AddScoped<IWorkflowApprovalService, WorkflowApprovalService>();
