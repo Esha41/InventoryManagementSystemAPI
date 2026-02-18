@@ -41,6 +41,7 @@ namespace Ettad.Modules.ReportManagement.API.Reports
             {
                 // Extract departmentId(s) from url
                 List<long> departmentIds = new List<long>();
+                bool? superAdminFromUrl = null;
 
                 var parts = url.Split('?');
                 var baseUrl = parts[0];
@@ -59,6 +60,15 @@ namespace Ettad.Modules.ReportManagement.API.Reports
                             }
                         }
                     }
+
+                    // Extract superadmin parameter from URL
+                    if (queryParams.TryGetValue("superadmin", out var superAdminValue))
+                    {
+                        if (bool.TryParse(superAdminValue.ToString(), out var parsedSuperAdmin))
+                        {
+                            superAdminFromUrl = parsedSuperAdmin;
+                        }
+                    }
                 }
 
                 XtraReport report;
@@ -75,6 +85,12 @@ namespace Ettad.Modules.ReportManagement.API.Reports
                 else
                 {
                     report = _reportFactory.Create(baseUrl);
+                }
+
+                //if user is not super admin but has NULL departmentID, don't display any data
+                if ((superAdminFromUrl == null || superAdminFromUrl == false) && departmentIds.Count == 0)
+                {
+                    departmentIds.Add(-1);
                 }
 
                 // Set Department Parameter - support multiple departments
@@ -97,6 +113,7 @@ namespace Ettad.Modules.ReportManagement.API.Reports
                 return Array.Empty<byte>();
             }
         }
+        
         public override Dictionary<string, string> GetUrls()
         {
             try
