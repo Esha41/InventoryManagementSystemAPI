@@ -17,7 +17,7 @@ namespace Ettad.Lookups.Services.Implementation
             where T : class, ILookup
             where TDto : class
         {
-            private readonly ICrossCuttingRepository<T> _repository;
+            protected readonly ICrossCuttingRepository<T> _repository;
             protected readonly IMapper _mapper;
             protected readonly ICurrentUserService _currentUserService;
             protected readonly IDateTimeProvider _dateTimeProvider;
@@ -160,7 +160,7 @@ namespace Ettad.Lookups.Services.Implementation
                 }
             }
 
-            public async Task<APIOperationResponse<List<T>>> GetLookupItems(bool includeDeleted = false)
+            public virtual async Task<APIOperationResponse<List<T>>> GetLookupItems(bool includeDeleted = false)
             {
                 try
                 {

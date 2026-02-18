@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk.Web">
+<Project Sdk="Microsoft.NET.Sdk.Web">
 
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
@@ -52,6 +52,7 @@
     <ProjectReference Include="..\Project.Comman\Ettad.CrossCutting.Comman.csproj" />
     <ProjectReference Include="..\Project.EntityFramework\Ettad.EntityFramework.csproj" />
     <ProjectReference Include="..\Project.Logic.API\Ettad.lookup.API.csproj" />
+    <ProjectReference Include="..\Project.Module.Logic\Ettad.Module.lookup.csproj" />
     <ProjectReference Include="..\Project.Module.User\Ettad.User.API.csproj" />
     <ProjectReference Include="..\Project.Repository\Ettad.Repository.csproj" />
     <ProjectReference Include="..\Project.User.Services\Ettad.User.Services.csproj" />
