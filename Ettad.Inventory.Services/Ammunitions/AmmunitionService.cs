@@ -400,13 +400,19 @@ namespace Ettad.Inventory.Service.Ammunitions
 
         public async Task<APIOperationResponse<bool>> DeleteAsync(long id)
         {
-            // existing implementation
             try
             {
                 var ammunition = await _ammunitionRepository.FindOneAsync(a => a.Id == id && !a.IsDeleted);
                 if (ammunition == null)
                 {
                     return APIOperationResponse<bool>.Fail(ResponseType.NotFound, "Ammunition not found");
+                }
+
+                var hasRefs = await ItemHasReferencesAsync(id);
+                if (hasRefs)
+                {
+                    return APIOperationResponse<bool>.Fail(ResponseType.BadRequest,
+                        "Cannot delete this ammunition because it is referenced by other records (e.g. inventory, department assignments, supply requests, or allowances). Please remove those references first.");
                 }
 
                 await _ammunitionRepository.DeleteAsync(ammunition);
@@ -502,6 +508,42 @@ namespace Ettad.Inventory.Service.Ammunitions
                 }
                 return APIOperationResponse<bool>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
             }
+        }
+
+        /// <summary>
+        /// Checks if the item (BaseItem/Ammunition) is referenced by inventory, department assignments, supply requests, allowances, or asset supplies.
+        /// </summary>
+        private async Task<bool> ItemHasReferencesAsync(long itemId)
+        {
+            var hasDeptAssignment = await _context.ItemDepartmentAssignments
+                .AnyAsync(x => x.ItemId == itemId && !x.IsDeleted);
+            if (hasDeptAssignment) return true;
+
+            var hasInventory = await _context.InventoryDetails
+                .AnyAsync(x => x.ItemId == itemId);
+            if (hasInventory) return true;
+
+            var hasRequestItem = await _context.RequestItems
+                .AnyAsync(x => x.ItemId == itemId && !x.IsDeleted);
+            if (hasRequestItem) return true;
+
+            var hasSupplyDetail = await _context.SupplyDetails
+                .AnyAsync(x => x.ItemId == itemId && !x.IsDeleted);
+            if (hasSupplyDetail) return true;
+
+            var hasAllowance = await _context.AllowanceItems
+                .AnyAsync(x => x.ItemId == itemId && !x.IsDeleted);
+            if (hasAllowance) return true;
+
+            var hasAssetSupply = await _context.AssetSupplyDetails
+                .AnyAsync(x => x.ItemId == itemId && !x.IsDeleted);
+            if (hasAssetSupply) return true;
+
+            var hasAsset = await _context.Assets
+                .AnyAsync(x => x.ItemId == itemId && !x.IsDeleted);
+            if (hasAsset) return true;
+
+            return false;
         }
 
         private static bool IsForeignKeyViolation(Exception ex)
