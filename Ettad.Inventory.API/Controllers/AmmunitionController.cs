@@ -40,9 +40,9 @@ namespace Ettad.Inventory.API.Controllers
         [HttpGet("{id}")]
         [ProducesResponseType((int)HttpStatusCode.OK)]
         [CheckAuthorize("Permissions.Ammunition.View", "Permissions.Ammunition.Page")]
-        public async Task<IActionResult> GetById(long id)
+        public async Task<IActionResult> GetById(long id, [FromQuery] bool includeDeleted = false)
         {
-            var result = await _ammunitionService.GetByIdAsync(id);
+            var result = await _ammunitionService.GetByIdAsync(id, includeDeleted);
             return ProcessResponse(result);
         }
 
@@ -156,6 +156,30 @@ namespace Ettad.Inventory.API.Controllers
         public async Task<IActionResult> Delete(long id)
         {
             var result = await _ammunitionService.DeleteAsync(id);
+            return ProcessResponse(result);
+        }
+
+        /// <summary>
+        /// Restore soft-deleted ammunition
+        /// </summary>
+        [HttpPost("{id}/restore")]
+        [ProducesResponseType((int)HttpStatusCode.OK)]
+        [CheckAuthorize("Permissions.Ammunition.Edit")]
+        public async Task<IActionResult> Restore(long id)
+        {
+            var result = await _ammunitionService.RestoreAsync(id);
+            return ProcessResponse(result);
+        }
+
+        /// <summary>
+        /// Permanently delete soft-deleted ammunition (irreversible)
+        /// </summary>
+        [HttpDelete("{id}/permanent")]
+        [ProducesResponseType((int)HttpStatusCode.NoContent)]
+        [CheckAuthorize("Permissions.Ammunition.Delete")]
+        public async Task<IActionResult> PermanentDelete(long id)
+        {
+            var result = await _ammunitionService.PermanentDeleteAsync(id);
             return ProcessResponse(result);
         }
     }

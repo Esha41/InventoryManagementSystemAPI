@@ -11,10 +11,12 @@ namespace Ettad.Inventory.Service.Explosives
     {
         Task<APIOperationResponse<List<ExplosiveDto>>> GetAllAsync();
         Task<APIOperationResponse<PaginatedList<ExplosiveDto>>> GetAllPaginatedAsync(PagedListRequest request);
-        Task<APIOperationResponse<ExplosiveDto>> GetByIdAsync(long id);
+        Task<APIOperationResponse<ExplosiveDto>> GetByIdAsync(long id, bool includeDeleted = false);
         Task<APIOperationResponse<long>> CreateAsync(CreateUpdateExplosiveDto inputDto, List<IFormFile>? files = null);
         Task<APIOperationResponse<bool>> UpdateAsync(long id, CreateUpdateExplosiveDto inputDto);
         Task<APIOperationResponse<bool>> DeleteAsync(long id);
+        Task<APIOperationResponse<bool>> RestoreAsync(long id);
+        Task<APIOperationResponse<bool>> PermanentDeleteAsync(long id);
         Task<APIOperationResponse<ImportResult<CreateUpdateExplosiveDto>>> ImportAsync(IFormFile file, string language = "en");
         Task<APIOperationResponse<ImportResult<ExplosiveImportDto>>> ImportPreviewAsync(IFormFile file, string language = "en");
         Task<APIOperationResponse<byte[]>> GenerateImportTemplateAsync(string language = "en");
