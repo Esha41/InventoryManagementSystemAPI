@@ -238,6 +238,16 @@ public class UserService : IUserService
                     _currentUserService.UserId);
                 return APIOperationResponse<UserDto>.Fail(ResponseType.BadRequest, "LdapUserName or UserName is required");
             }
+            
+            // Validate username for leading or trailing spaces (before domain processing)
+            var originalUsername = username;
+            if (originalUsername != originalUsername.Trim())
+            {
+                _logger.LogWarning("User creation failed: Username contains leading or trailing spaces. Username: '{Username}', CreatedBy: {CreatedBy}", 
+                    originalUsername, _currentUserService.UserId);
+                return APIOperationResponse<UserDto>.Fail(ResponseType.BadRequest, 
+                    $"Username '{originalUsername}' cannot contain leading or trailing spaces. Only letters or digits are allowed.");
+            }
 
             // Validate LDAP domain
             var ldapSettingsResponse = await _ldapSettingsService.GetLdapSettings();
@@ -315,6 +325,16 @@ public class UserService : IUserService
                     _currentUserService.UserId);
                 return APIOperationResponse<UserDto>.Fail(ResponseType.BadRequest, "UserName is required");
             }
+            
+            // Validate username for leading or trailing spaces
+            if (dto.UserName != dto.UserName.Trim())
+            {
+                _logger.LogWarning("User creation failed: Username contains leading or trailing spaces. Username: '{Username}', CreatedBy: {CreatedBy}", 
+                    dto.UserName, _currentUserService.UserId);
+                return APIOperationResponse<UserDto>.Fail(ResponseType.BadRequest, 
+                    $"Username '{dto.UserName}' cannot contain leading or trailing spaces. Only letters or digits are allowed.");
+            }
+            
             username = dto.UserName;
             password = dto.Password;
             if (string.IsNullOrWhiteSpace(password))
@@ -345,7 +365,23 @@ public class UserService : IUserService
         var result = await _userManager.CreateAsync(user, password);
         if (!result.Succeeded)
         {
-            var errors = string.Join(",", result.Errors.Select(e => e.Description));
+            // Transform username validation errors to provide clearer messages
+            var transformedErrors = result.Errors.Select(e =>
+            {
+                // Check if this is a username validation error and the username has leading/trailing spaces
+                if (e.Description.Contains("is invalid") && e.Description.Contains("can only contain letters or digits"))
+                {
+                    // Check if the original username (before any processing) had leading/trailing spaces
+                    var originalUsername = dto.UserName ?? dto.LdapUserName ?? username;
+                    if (originalUsername != originalUsername.Trim())
+                    {
+                        return $"Username '{originalUsername}' cannot contain leading or trailing spaces. Only letters or digits are allowed.";
+                    }
+                }
+                return e.Description;
+            });
+            
+            var errors = string.Join(",", transformedErrors);
             _logger.LogWarning("User creation failed: {Errors}. Username: {Username}, CreatedBy: {CreatedBy}", 
                 errors, username, _currentUserService.UserId);
             return APIOperationResponse<UserDto>.Fail(ResponseType.BadRequest, errors);
@@ -426,6 +462,15 @@ public class UserService : IUserService
 
         var oldUsername = user.UserName;
         
+        // Validate username for leading or trailing spaces if it's being changed
+        if (!string.IsNullOrWhiteSpace(dto.UserName) && dto.UserName != dto.UserName.Trim())
+        {
+            _logger.LogWarning("User update failed: Username contains leading or trailing spaces. Username: '{Username}', UpdatedBy: {UpdatedBy}", 
+                dto.UserName, _currentUserService.UserId);
+            return APIOperationResponse<UserDto>.Fail(ResponseType.BadRequest, 
+                $"Username '{dto.UserName}' cannot contain leading or trailing spaces. Only letters or digits are allowed.");
+        }
+        
         // 2️⃣ Update basic fields
         user.UserName = dto.UserName;
         user.Email =  dto.Email;
@@ -489,7 +534,22 @@ public class UserService : IUserService
         var updateResult = await _userManager.UpdateAsync(user);
         if (!updateResult.Succeeded)
         {
-            var errors = string.Join(",", updateResult.Errors.Select(e => e.Description));
+            // Transform username validation errors to provide clearer messages
+            var transformedErrors = updateResult.Errors.Select(e =>
+            {
+                // Check if this is a username validation error and the username has leading/trailing spaces
+                if (e.Description.Contains("is invalid") && e.Description.Contains("can only contain letters or digits"))
+                {
+                    // Check if the username has leading/trailing spaces
+                    if (dto.UserName != null && dto.UserName != dto.UserName.Trim())
+                    {
+                        return $"Username '{dto.UserName}' cannot contain leading or trailing spaces. Only letters or digits are allowed.";
+                    }
+                }
+                return e.Description;
+            });
+            
+            var errors = string.Join(",", transformedErrors);
             _logger.LogWarning("User update failed: {Errors}. UserId: {UserId}, UpdatedBy: {UpdatedBy}", 
                 errors, dto.Id, _currentUserService.UserId);
             return APIOperationResponse<UserDto>.Fail(ResponseType.InternalServerError, errors);

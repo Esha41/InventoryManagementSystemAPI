@@ -90,7 +90,7 @@ namespace Ettad.Inventory.Service.Ammunitions
                 new LoggerFactory().CreateLogger<AssetImportManager<CreateUpdateAmmunitionDto, AmmunitionImportDto>>());
         }
 
-        public async Task<APIOperationResponse<AmmunitionDto>> GetByIdAsync(long id)
+        public async Task<APIOperationResponse<AmmunitionDto>> GetByIdAsync(long id, bool includeDeleted = false)
         {
             // existing implementation
             _logger.LogInformation("Getting ammunition by ID. AmmunitionId: {AmmunitionId}, User: {UserId}",
@@ -106,7 +106,7 @@ namespace Ettad.Inventory.Service.Ammunitions
                 }
 
                 var ammunition = await _ammunitionRepository.FindOneAsync(
-                    a => a.Id == id && !a.IsDeleted,
+                    a => a.Id == id && (includeDeleted || !a.IsDeleted),
                     false,
                     nameof(Ammunition.BulletDiameterUnit),
                     nameof(Ammunition.NatureOption),
@@ -196,9 +196,10 @@ namespace Ettad.Inventory.Service.Ammunitions
             {
                 // Check if user has department and assigned items
                 var assignedItemIds = await GetAssignedItemIdsAsync();
+                var showDeletedOnly = request.DeletedOnly == true;
                 
                 var query = _ammunitionRepository.Find(
-                    a => !a.IsDeleted && (assignedItemIds == null || assignedItemIds.Contains(a.Id)),
+                    a => (showDeletedOnly ? a.IsDeleted : !a.IsDeleted) && (assignedItemIds == null || assignedItemIds.Contains(a.Id)),
                     false,
                     nameof(Ammunition.BulletDiameterUnit),
                     nameof(Ammunition.NatureOption),
@@ -399,13 +400,19 @@ namespace Ettad.Inventory.Service.Ammunitions
 
         public async Task<APIOperationResponse<bool>> DeleteAsync(long id)
         {
-            // existing implementation
             try
             {
                 var ammunition = await _ammunitionRepository.FindOneAsync(a => a.Id == id && !a.IsDeleted);
                 if (ammunition == null)
                 {
                     return APIOperationResponse<bool>.Fail(ResponseType.NotFound, "Ammunition not found");
+                }
+
+                var hasRefs = await ItemHasReferencesAsync(id);
+                if (hasRefs)
+                {
+                    return APIOperationResponse<bool>.Fail(ResponseType.BadRequest,
+                        "Cannot delete this ammunition because it is referenced by other records (e.g. inventory, department assignments, supply requests, or allowances). Please remove those references first.");
                 }
 
                 await _ammunitionRepository.DeleteAsync(ammunition);
@@ -416,6 +423,141 @@ namespace Ettad.Inventory.Service.Ammunitions
             {
                 return APIOperationResponse<bool>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
             }
+        }
+
+        public async Task<APIOperationResponse<bool>> RestoreAsync(long id)
+        {
+            try
+            {
+                var ammunition = await _ammunitionRepository.FindOneAsync(a => a.Id == id, includeSoftDeleted: true);
+                if (ammunition == null)
+                {
+                    return APIOperationResponse<bool>.Fail(ResponseType.NotFound, "Ammunition not found");
+                }
+
+                if (!ammunition.IsDeleted)
+                {
+                    return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, "Ammunition is not deleted");
+                }
+
+                ammunition.IsDeleted = false;
+                ammunition.DeletionDate = null;
+                ammunition.DeletedBy = null;
+
+                await _ammunitionRepository.UpdateAsync(ammunition);
+
+                return APIOperationResponse<bool>.Success(true, "Ammunition restored successfully");
+            }
+            catch (Exception ex)
+            {
+                return APIOperationResponse<bool>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
+            }
+        }
+
+        public async Task<APIOperationResponse<bool>> PermanentDeleteAsync(long id)
+        {
+            try
+            {
+                var ammunition = await _ammunitionRepository.FindOneAsync(a => a.Id == id, includeSoftDeleted: true);
+                if (ammunition == null)
+                {
+                    return APIOperationResponse<bool>.Fail(ResponseType.NotFound, "Ammunition not found");
+                }
+
+                if (!ammunition.IsDeleted)
+                {
+                    return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, "Only soft-deleted ammunition can be permanently deleted");
+                }
+
+                await using var transaction = await _context.Database.BeginTransactionAsync();
+                try
+                {
+                    var ammoDeleted = await _context.Database.ExecuteSqlRawAsync(
+                        "DELETE FROM Ammunitions WHERE Id = {0}", id);
+
+                    if (ammoDeleted == 0)
+                    {
+                        await transaction.RollbackAsync();
+                        return APIOperationResponse<bool>.Fail(ResponseType.NotFound, "Ammunition not found");
+                    }
+
+                    var baseDeleted = await _context.Database.ExecuteSqlRawAsync(
+                        "DELETE FROM BaseItems WHERE Id = {0}", id);
+
+                    if (baseDeleted == 0)
+                    {
+                        await transaction.RollbackAsync();
+                        return APIOperationResponse<bool>.Fail(ResponseType.InternalServerError, "Failed to remove base item record");
+                    }
+
+                    await transaction.CommitAsync();
+                    return APIOperationResponse<bool>.Success(true, "Ammunition permanently deleted");
+                }
+                catch (Exception ex)
+                {
+                    await transaction.RollbackAsync();
+                    throw;
+                }
+            }
+            catch (Exception ex)
+            {
+                if (IsForeignKeyViolation(ex))
+                {
+                    return APIOperationResponse<bool>.Fail(ResponseType.BadRequest,
+                        "Cannot permanently delete this ammunition because it is referenced by other records. Please remove those references first.");
+                }
+                return APIOperationResponse<bool>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Checks if the item (BaseItem/Ammunition) is referenced by inventory, department assignments, supply requests, allowances, or asset supplies.
+        /// </summary>
+        private async Task<bool> ItemHasReferencesAsync(long itemId)
+        {
+            var hasDeptAssignment = await _context.ItemDepartmentAssignments
+                .AnyAsync(x => x.ItemId == itemId && !x.IsDeleted);
+            if (hasDeptAssignment) return true;
+
+            var hasInventory = await _context.InventoryDetails
+                .AnyAsync(x => x.ItemId == itemId);
+            if (hasInventory) return true;
+
+            var hasRequestItem = await _context.RequestItems
+                .AnyAsync(x => x.ItemId == itemId && !x.IsDeleted);
+            if (hasRequestItem) return true;
+
+            var hasSupplyDetail = await _context.SupplyDetails
+                .AnyAsync(x => x.ItemId == itemId && !x.IsDeleted);
+            if (hasSupplyDetail) return true;
+
+            var hasAllowance = await _context.AllowanceItems
+                .AnyAsync(x => x.ItemId == itemId && !x.IsDeleted);
+            if (hasAllowance) return true;
+
+            var hasAssetSupply = await _context.AssetSupplyDetails
+                .AnyAsync(x => x.ItemId == itemId && !x.IsDeleted);
+            if (hasAssetSupply) return true;
+
+            var hasAsset = await _context.Assets
+                .AnyAsync(x => x.ItemId == itemId && !x.IsDeleted);
+            if (hasAsset) return true;
+
+            return false;
+        }
+
+        private static bool IsForeignKeyViolation(Exception ex)
+        {
+            while (ex != null)
+            {
+                var msg = ex.Message ?? string.Empty;
+                if (msg.Contains("FOREIGN KEY", StringComparison.OrdinalIgnoreCase) ||
+                    msg.Contains("REFERENCE constraint", StringComparison.OrdinalIgnoreCase) ||
+                    msg.Contains("referenced by", StringComparison.OrdinalIgnoreCase))
+                    return true;
+                ex = ex.InnerException;
+            }
+            return false;
         }
 
         public async Task<APIOperationResponse<ImportResult<CreateUpdateAmmunitionDto>>> ImportAsync(IFormFile file, string language = "en")

@@ -82,7 +82,7 @@ namespace Ettad.Inventory.Service.Explosives
                new LoggerFactory().CreateLogger<AssetImportManager<CreateUpdateExplosiveDto, ExplosiveImportDto>>());
         }
 
-        public async Task<APIOperationResponse<ExplosiveDto>> GetByIdAsync(long id)
+        public async Task<APIOperationResponse<ExplosiveDto>> GetByIdAsync(long id, bool includeDeleted = false)
         {
             // existing implementation
             try
@@ -95,8 +95,8 @@ namespace Ettad.Inventory.Service.Explosives
                 }
 
                 var explosive = await _explosiveRepository.FindOneAsync(
-                    e => e.Id == id && !e.IsDeleted,
-                    false,
+                    e => e.Id == id && (includeDeleted || !e.IsDeleted),
+                    includeDeleted,
                     nameof(Explosive.Compatibility),
                     nameof(Explosive.HazardDivision),
                     nameof(Explosive.Classification),
@@ -165,10 +165,11 @@ namespace Ettad.Inventory.Service.Explosives
             {
                 // Check if user has department and assigned items
                 var assignedItemIds = await GetAssignedItemIdsAsync();
+                var showDeletedOnly = request.DeletedOnly == true;
                 
                 var query = _explosiveRepository.Find(
-                    e => !e.IsDeleted && (assignedItemIds == null || assignedItemIds.Contains(e.Id)),
-                    false,
+                    e => (showDeletedOnly ? e.IsDeleted : !e.IsDeleted) && (assignedItemIds == null || assignedItemIds.Contains(e.Id)),
+                    showDeletedOnly,
                     nameof(Explosive.Compatibility),
                     nameof(Explosive.HazardDivision),
                     nameof(Explosive.Classification),
@@ -314,12 +315,18 @@ namespace Ettad.Inventory.Service.Explosives
 
         public async Task<APIOperationResponse<bool>> DeleteAsync(long id)
         {
-            // existing implementation
             try
             {
                 var explosive = await _explosiveRepository.FindOneAsync(e => e.Id == id && !e.IsDeleted);
                 if (explosive == null)
                     return APIOperationResponse<bool>.Fail(ResponseType.NotFound, "Explosive not found");
+
+                var hasRefs = await ItemHasReferencesAsync(id);
+                if (hasRefs)
+                {
+                    return APIOperationResponse<bool>.Fail(ResponseType.BadRequest,
+                        "Cannot delete this explosive because it is referenced by other records (e.g. inventory, department assignments, supply requests, or allowances). Please remove those references first.");
+                }
 
                 await _explosiveRepository.DeleteAsync(explosive);
 
@@ -329,6 +336,141 @@ namespace Ettad.Inventory.Service.Explosives
             {
                 return APIOperationResponse<bool>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
             }
+        }
+
+        public async Task<APIOperationResponse<bool>> RestoreAsync(long id)
+        {
+            try
+            {
+                var explosive = await _explosiveRepository.FindOneAsync(e => e.Id == id, includeSoftDeleted: true);
+                if (explosive == null)
+                {
+                    return APIOperationResponse<bool>.Fail(ResponseType.NotFound, "Explosive not found");
+                }
+
+                if (!explosive.IsDeleted)
+                {
+                    return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, "Explosive is not deleted");
+                }
+
+                explosive.IsDeleted = false;
+                explosive.DeletionDate = null;
+                explosive.DeletedBy = null;
+
+                await _explosiveRepository.UpdateAsync(explosive);
+
+                return APIOperationResponse<bool>.Success(true, "Explosive restored successfully");
+            }
+            catch (Exception ex)
+            {
+                return APIOperationResponse<bool>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
+            }
+        }
+
+        public async Task<APIOperationResponse<bool>> PermanentDeleteAsync(long id)
+        {
+            try
+            {
+                var explosive = await _explosiveRepository.FindOneAsync(e => e.Id == id, includeSoftDeleted: true);
+                if (explosive == null)
+                {
+                    return APIOperationResponse<bool>.Fail(ResponseType.NotFound, "Explosive not found");
+                }
+
+                if (!explosive.IsDeleted)
+                {
+                    return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, "Only soft-deleted explosives can be permanently deleted");
+                }
+
+                await using var transaction = await _context.Database.BeginTransactionAsync();
+                try
+                {
+                    var explosiveDeleted = await _context.Database.ExecuteSqlRawAsync(
+                        "DELETE FROM Explosives WHERE Id = {0}", id);
+
+                    if (explosiveDeleted == 0)
+                    {
+                        await transaction.RollbackAsync();
+                        return APIOperationResponse<bool>.Fail(ResponseType.NotFound, "Explosive not found");
+                    }
+
+                    var baseDeleted = await _context.Database.ExecuteSqlRawAsync(
+                        "DELETE FROM BaseItems WHERE Id = {0}", id);
+
+                    if (baseDeleted == 0)
+                    {
+                        await transaction.RollbackAsync();
+                        return APIOperationResponse<bool>.Fail(ResponseType.InternalServerError, "Failed to remove base item record");
+                    }
+
+                    await transaction.CommitAsync();
+                    return APIOperationResponse<bool>.Success(true, "Explosive permanently deleted");
+                }
+                catch (Exception ex)
+                {
+                    await transaction.RollbackAsync();
+                    throw;
+                }
+            }
+            catch (Exception ex)
+            {
+                if (IsForeignKeyViolation(ex))
+                {
+                    return APIOperationResponse<bool>.Fail(ResponseType.BadRequest,
+                        "Cannot permanently delete this explosive because it is referenced by other records. Please remove those references first.");
+                }
+                return APIOperationResponse<bool>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Checks if the item (BaseItem/Explosive) is referenced by inventory, department assignments, supply requests, allowances, or asset supplies.
+        /// </summary>
+        private async Task<bool> ItemHasReferencesAsync(long itemId)
+        {
+            var hasDeptAssignment = await _context.ItemDepartmentAssignments
+                .AnyAsync(x => x.ItemId == itemId && !x.IsDeleted);
+            if (hasDeptAssignment) return true;
+
+            var hasInventory = await _context.InventoryDetails
+                .AnyAsync(x => x.ItemId == itemId);
+            if (hasInventory) return true;
+
+            var hasRequestItem = await _context.RequestItems
+                .AnyAsync(x => x.ItemId == itemId && !x.IsDeleted);
+            if (hasRequestItem) return true;
+
+            var hasSupplyDetail = await _context.SupplyDetails
+                .AnyAsync(x => x.ItemId == itemId && !x.IsDeleted);
+            if (hasSupplyDetail) return true;
+
+            var hasAllowance = await _context.AllowanceItems
+                .AnyAsync(x => x.ItemId == itemId && !x.IsDeleted);
+            if (hasAllowance) return true;
+
+            var hasAssetSupply = await _context.AssetSupplyDetails
+                .AnyAsync(x => x.ItemId == itemId && !x.IsDeleted);
+            if (hasAssetSupply) return true;
+
+            var hasAsset = await _context.Assets
+                .AnyAsync(x => x.ItemId == itemId && !x.IsDeleted);
+            if (hasAsset) return true;
+
+            return false;
+        }
+
+        private static bool IsForeignKeyViolation(Exception ex)
+        {
+            while (ex != null)
+            {
+                var msg = ex.Message ?? string.Empty;
+                if (msg.Contains("FOREIGN KEY", StringComparison.OrdinalIgnoreCase) ||
+                    msg.Contains("REFERENCE constraint", StringComparison.OrdinalIgnoreCase) ||
+                    msg.Contains("referenced by", StringComparison.OrdinalIgnoreCase))
+                    return true;
+                ex = ex.InnerException;
+            }
+            return false;
         }
 
         // Import Implementation

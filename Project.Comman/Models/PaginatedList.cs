@@ -31,6 +31,10 @@ namespace Ettad.CrossCutting.Comman.Models
         public int Page { get; set; }
         public int PageSize { get; set; }
         public FilterData Filter { get; set; }
+        /// <summary>
+        /// When true, returns only soft-deleted items (IsDeleted = true). Used for ammunition "deleted ammunition" view.
+        /// </summary>
+        public bool? DeletedOnly { get; set; }
     }
 
 
