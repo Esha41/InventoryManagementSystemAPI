@@ -90,7 +90,7 @@ namespace Ettad.Inventory.Service.Ammunitions
                 new LoggerFactory().CreateLogger<AssetImportManager<CreateUpdateAmmunitionDto, AmmunitionImportDto>>());
         }
 
-        public async Task<APIOperationResponse<AmmunitionDto>> GetByIdAsync(long id)
+        public async Task<APIOperationResponse<AmmunitionDto>> GetByIdAsync(long id, bool includeDeleted = false)
         {
             // existing implementation
             _logger.LogInformation("Getting ammunition by ID. AmmunitionId: {AmmunitionId}, User: {UserId}",
@@ -106,7 +106,7 @@ namespace Ettad.Inventory.Service.Ammunitions
                 }
 
                 var ammunition = await _ammunitionRepository.FindOneAsync(
-                    a => a.Id == id && !a.IsDeleted,
+                    a => a.Id == id && (includeDeleted || !a.IsDeleted),
                     false,
                     nameof(Ammunition.BulletDiameterUnit),
                     nameof(Ammunition.NatureOption),
@@ -196,9 +196,10 @@ namespace Ettad.Inventory.Service.Ammunitions
             {
                 // Check if user has department and assigned items
                 var assignedItemIds = await GetAssignedItemIdsAsync();
+                var showDeletedOnly = request.DeletedOnly == true;
                 
                 var query = _ammunitionRepository.Find(
-                    a => !a.IsDeleted && (assignedItemIds == null || assignedItemIds.Contains(a.Id)),
+                    a => (showDeletedOnly ? a.IsDeleted : !a.IsDeleted) && (assignedItemIds == null || assignedItemIds.Contains(a.Id)),
                     false,
                     nameof(Ammunition.BulletDiameterUnit),
                     nameof(Ammunition.NatureOption),
@@ -416,6 +417,105 @@ namespace Ettad.Inventory.Service.Ammunitions
             {
                 return APIOperationResponse<bool>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
             }
+        }
+
+        public async Task<APIOperationResponse<bool>> RestoreAsync(long id)
+        {
+            try
+            {
+                var ammunition = await _ammunitionRepository.FindOneAsync(a => a.Id == id, includeSoftDeleted: true);
+                if (ammunition == null)
+                {
+                    return APIOperationResponse<bool>.Fail(ResponseType.NotFound, "Ammunition not found");
+                }
+
+                if (!ammunition.IsDeleted)
+                {
+                    return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, "Ammunition is not deleted");
+                }
+
+                ammunition.IsDeleted = false;
+                ammunition.DeletionDate = null;
+                ammunition.DeletedBy = null;
+
+                await _ammunitionRepository.UpdateAsync(ammunition);
+
+                return APIOperationResponse<bool>.Success(true, "Ammunition restored successfully");
+            }
+            catch (Exception ex)
+            {
+                return APIOperationResponse<bool>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
+            }
+        }
+
+        public async Task<APIOperationResponse<bool>> PermanentDeleteAsync(long id)
+        {
+            try
+            {
+                var ammunition = await _ammunitionRepository.FindOneAsync(a => a.Id == id, includeSoftDeleted: true);
+                if (ammunition == null)
+                {
+                    return APIOperationResponse<bool>.Fail(ResponseType.NotFound, "Ammunition not found");
+                }
+
+                if (!ammunition.IsDeleted)
+                {
+                    return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, "Only soft-deleted ammunition can be permanently deleted");
+                }
+
+                await using var transaction = await _context.Database.BeginTransactionAsync();
+                try
+                {
+                    var ammoDeleted = await _context.Database.ExecuteSqlRawAsync(
+                        "DELETE FROM Ammunitions WHERE Id = {0}", id);
+
+                    if (ammoDeleted == 0)
+                    {
+                        await transaction.RollbackAsync();
+                        return APIOperationResponse<bool>.Fail(ResponseType.NotFound, "Ammunition not found");
+                    }
+
+                    var baseDeleted = await _context.Database.ExecuteSqlRawAsync(
+                        "DELETE FROM BaseItems WHERE Id = {0}", id);
+
+                    if (baseDeleted == 0)
+                    {
+                        await transaction.RollbackAsync();
+                        return APIOperationResponse<bool>.Fail(ResponseType.InternalServerError, "Failed to remove base item record");
+                    }
+
+                    await transaction.CommitAsync();
+                    return APIOperationResponse<bool>.Success(true, "Ammunition permanently deleted");
+                }
+                catch (Exception ex)
+                {
+                    await transaction.RollbackAsync();
+                    throw;
+                }
+            }
+            catch (Exception ex)
+            {
+                if (IsForeignKeyViolation(ex))
+                {
+                    return APIOperationResponse<bool>.Fail(ResponseType.BadRequest,
+                        "Cannot permanently delete this ammunition because it is referenced by other records. Please remove those references first.");
+                }
+                return APIOperationResponse<bool>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
+            }
+        }
+
+        private static bool IsForeignKeyViolation(Exception ex)
+        {
+            while (ex != null)
+            {
+                var msg = ex.Message ?? string.Empty;
+                if (msg.Contains("FOREIGN KEY", StringComparison.OrdinalIgnoreCase) ||
+                    msg.Contains("REFERENCE constraint", StringComparison.OrdinalIgnoreCase) ||
+                    msg.Contains("referenced by", StringComparison.OrdinalIgnoreCase))
+                    return true;
+                ex = ex.InnerException;
+            }
+            return false;
         }
 
         public async Task<APIOperationResponse<ImportResult<CreateUpdateAmmunitionDto>>> ImportAsync(IFormFile file, string language = "en")

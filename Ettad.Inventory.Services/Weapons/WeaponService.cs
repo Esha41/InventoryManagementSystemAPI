@@ -81,7 +81,7 @@ namespace Ettad.Inventory.Service.Weapons
                new LoggerFactory().CreateLogger<AssetImportManager<CreateUpdateWeaponDto, WeaponImportDto>>());
         }
 
-        public async Task<APIOperationResponse<WeaponDto>> GetByIdAsync(long id)
+        public async Task<APIOperationResponse<WeaponDto>> GetByIdAsync(long id, bool includeDeleted = false)
         {
             _logger.LogInformation("Getting weapon by ID. WeaponId: {WeaponId}, User: {UserId}",
                  id, _currentUserService.UserId);
@@ -96,8 +96,8 @@ namespace Ettad.Inventory.Service.Weapons
                 }
 
                 var weapon = await _weaponRepository.FindOneAsync(
-                    w => w.Id == id && !w.IsDeleted,
-                    false,
+                    w => w.Id == id && (includeDeleted || !w.IsDeleted),
+                    includeDeleted,
                     nameof(Weapon.CaliberUnit),
                     nameof(Weapon.CountryOfManufacture),
                     nameof(Weapon.Classification),
@@ -133,10 +133,11 @@ namespace Ettad.Inventory.Service.Weapons
             {
                 // Check if user has department and assigned items
                 var assignedItemIds = await GetAssignedItemIdsAsync();
+                var showDeletedOnly = request.DeletedOnly == true;
                 
                 var query = _weaponRepository.Find(
-                    w => !w.IsDeleted && (assignedItemIds == null || assignedItemIds.Contains(w.Id)),
-                    false,
+                    w => (showDeletedOnly ? w.IsDeleted : !w.IsDeleted) && (assignedItemIds == null || assignedItemIds.Contains(w.Id)),
+                    showDeletedOnly,
                     nameof(Weapon.CaliberUnit),
                     nameof(Weapon.CountryOfManufacture),
                     nameof(Weapon.Classification),
@@ -332,6 +333,108 @@ namespace Ettad.Inventory.Service.Weapons
             {
                 return APIOperationResponse<bool>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
             }
+        }
+
+        public async Task<APIOperationResponse<bool>> RestoreAsync(long id)
+        {
+            try
+            {
+                var weapon = await _weaponRepository.FindOneAsync(w => w.Id == id, includeSoftDeleted: true);
+                if (weapon == null)
+                {
+                    return APIOperationResponse<bool>.Fail(ResponseType.NotFound, "Weapon not found");
+                }
+
+                if (!weapon.IsDeleted)
+                {
+                    return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, "Weapon is not deleted");
+                }
+
+                weapon.IsDeleted = false;
+                weapon.DeletionDate = null;
+                weapon.DeletedBy = null;
+
+                await _weaponRepository.UpdateAsync(weapon);
+
+                return APIOperationResponse<bool>.Success(true, "Weapon restored successfully");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error restoring weapon. WeaponId: {WeaponId}", id);
+                return APIOperationResponse<bool>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
+            }
+        }
+
+        public async Task<APIOperationResponse<bool>> PermanentDeleteAsync(long id)
+        {
+            try
+            {
+                var weapon = await _weaponRepository.FindOneAsync(w => w.Id == id, includeSoftDeleted: true);
+                if (weapon == null)
+                {
+                    return APIOperationResponse<bool>.Fail(ResponseType.NotFound, "Weapon not found");
+                }
+
+                if (!weapon.IsDeleted)
+                {
+                    return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, "Only soft-deleted weapons can be permanently deleted");
+                }
+
+                await using var transaction = await _context.Database.BeginTransactionAsync();
+                try
+                {
+                    var weaponDeleted = await _context.Database.ExecuteSqlRawAsync(
+                        "DELETE FROM Weapons WHERE Id = {0}", id);
+
+                    if (weaponDeleted == 0)
+                    {
+                        await transaction.RollbackAsync();
+                        return APIOperationResponse<bool>.Fail(ResponseType.NotFound, "Weapon not found");
+                    }
+
+                    var baseDeleted = await _context.Database.ExecuteSqlRawAsync(
+                        "DELETE FROM BaseItems WHERE Id = {0}", id);
+
+                    if (baseDeleted == 0)
+                    {
+                        await transaction.RollbackAsync();
+                        return APIOperationResponse<bool>.Fail(ResponseType.InternalServerError, "Failed to remove base item record");
+                    }
+
+                    await transaction.CommitAsync();
+                    return APIOperationResponse<bool>.Success(true, "Weapon permanently deleted");
+                }
+                catch (Exception ex)
+                {
+                    await transaction.RollbackAsync();
+                    throw;
+                }
+            }
+            catch (Exception ex)
+            {
+                if (IsForeignKeyViolation(ex))
+                {
+                    _logger.LogWarning(ex, "Foreign key constraint prevented permanent delete of weapon. WeaponId: {WeaponId}", id);
+                    return APIOperationResponse<bool>.Fail(ResponseType.BadRequest,
+                        "Cannot permanently delete this weapon because it is referenced by other records. Please remove those references first.");
+                }
+                _logger.LogError(ex, "Error permanently deleting weapon. WeaponId: {WeaponId}", id);
+                return APIOperationResponse<bool>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
+            }
+        }
+
+        private static bool IsForeignKeyViolation(Exception ex)
+        {
+            while (ex != null)
+            {
+                var msg = ex.Message ?? string.Empty;
+                if (msg.Contains("FOREIGN KEY", StringComparison.OrdinalIgnoreCase) ||
+                    msg.Contains("REFERENCE constraint", StringComparison.OrdinalIgnoreCase) ||
+                    msg.Contains("referenced by", StringComparison.OrdinalIgnoreCase))
+                    return true;
+                ex = ex.InnerException;
+            }
+            return false;
         }
 
         // Import Implementation

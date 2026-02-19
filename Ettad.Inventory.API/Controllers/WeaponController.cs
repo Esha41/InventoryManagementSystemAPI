@@ -46,9 +46,27 @@ namespace Ettad.Inventory.API.Controllers
         [HttpGet("{id}")]
         [ProducesResponseType((int)HttpStatusCode.OK)]
         [CheckAuthorize("Permissions.Weapon.View")]
-        public async Task<IActionResult> GetById(long id)
+        public async Task<IActionResult> GetById(long id, [FromQuery] bool includeDeleted = false)
         {
-            var result = await _weaponService.GetByIdAsync(id);
+            var result = await _weaponService.GetByIdAsync(id, includeDeleted);
+            return ProcessResponse(result);
+        }
+
+        [HttpPost("{id}/restore")]
+        [ProducesResponseType((int)HttpStatusCode.OK)]
+        [CheckAuthorize("Permissions.Weapon.Edit")]
+        public async Task<IActionResult> Restore(long id)
+        {
+            var result = await _weaponService.RestoreAsync(id);
+            return ProcessResponse(result);
+        }
+
+        [HttpDelete("{id}/permanent")]
+        [ProducesResponseType((int)HttpStatusCode.NoContent)]
+        [CheckAuthorize("Permissions.Weapon.Delete")]
+        public async Task<IActionResult> PermanentDelete(long id)
+        {
+            var result = await _weaponService.PermanentDeleteAsync(id);
             return ProcessResponse(result);
         }
 

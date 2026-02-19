@@ -56,9 +56,9 @@ namespace Ettad.Inventory.API.Controllers
         [HttpGet("{id}")]
         [ProducesResponseType((int)HttpStatusCode.OK)]
         [CheckAuthorize("Permissions.Explosive.View")]
-        public async Task<IActionResult> GetById(long id)
+        public async Task<IActionResult> GetById(long id, [FromQuery] bool includeDeleted = false)
         {
-            var result = await _explosiveService.GetByIdAsync(id);
+            var result = await _explosiveService.GetByIdAsync(id, includeDeleted);
             return ProcessResponse(result);
         }
 
@@ -145,6 +145,24 @@ namespace Ettad.Inventory.API.Controllers
         public async Task<IActionResult> Delete(long id)
         {
             var result = await _explosiveService.DeleteAsync(id);
+            return ProcessResponse(result);
+        }
+
+        [HttpPost("{id}/restore")]
+        [ProducesResponseType((int)HttpStatusCode.OK)]
+        [CheckAuthorize("Permissions.Explosive.Edit")]
+        public async Task<IActionResult> Restore(long id)
+        {
+            var result = await _explosiveService.RestoreAsync(id);
+            return ProcessResponse(result);
+        }
+
+        [HttpDelete("{id}/permanent")]
+        [ProducesResponseType((int)HttpStatusCode.NoContent)]
+        [CheckAuthorize("Permissions.Explosive.Delete")]
+        public async Task<IActionResult> PermanentDelete(long id)
+        {
+            var result = await _explosiveService.PermanentDeleteAsync(id);
             return ProcessResponse(result);
         }
     }
