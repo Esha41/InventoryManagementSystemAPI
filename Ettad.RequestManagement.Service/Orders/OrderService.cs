@@ -27,6 +27,7 @@ namespace Ettad.RequestManagement.Service.Orders
 {
     public class OrderService : IOrderService
     {
+        private const long TrainingOrderRequestPurposeId = 4;
         private readonly ICrossCuttingRepository<Order> _orderRepository;
         private readonly ICrossCuttingRepository<RequestItem> _requestItemRepository;
         private readonly ICrossCuttingRepository<RequestPurpose> _requestPurposeRepository;
@@ -261,6 +262,15 @@ namespace Ettad.RequestManagement.Service.Orders
                     // Rule 3: All items must be of the same type if ordering weapons (enforced by Rule 1)
                 }
 
+                // Rule 4: Training Order is not valid for weapon orders
+                if (isWeaponOrder && inputDto.RequestPurposeId == TrainingOrderRequestPurposeId)
+                {
+                    _logger.LogWarning("Invalid order: Training Order is not allowed for weapon orders. RequestPurposeId: {RequestPurposeId}, User: {UserId}",
+                        inputDto.RequestPurposeId, currentUserId);
+                    return APIOperationResponse<long>.Fail(ResponseType.BadRequest,
+                        "Training Order is not valid for weapon orders. Please select a different use purpose.");
+                }
+
                 // Step 1: Save files first (before creating order) to create FileUplodMaster records
                 List<long> savedFileMasterIds = null;
                 if (files != null && files.Count > 0)
@@ -393,14 +403,11 @@ namespace Ettad.RequestManagement.Service.Orders
                 // Priority and rules:
                 // 1) If the order was created from an allowance (reserved items), always use
                 //    `WorkflowType.OrderFromAllowance` (or `OrderFromAllowance_Weapon` for weapons) because allowance-based orders follow a different approval path.
-                // 2) Otherwise, if the request purpose represents a "Training Order" (currently coded as Id == 4),
+                // 2) Otherwise, if the request purpose represents a "Training Order" (TrainingOrderRequestPurposeId),
                 //    use `WorkflowType.NormalOrderForTrainingPurpose` (or `NormalOrderForTrainingPurpose_Weapon` for weapons) - training orders have a specific workflow.
                 // 3) For all other non-allowance orders, use the default `WorkflowType.NormalOrder` (or `NormalOrder_Weapon` for weapons).
                 //
-                // Note:
-                // - The numeric literal `4` is a magic number that represents the seeded RequestPurpose for "Training Order".
-                //   Replace this with a named constant (e.g. `RequestPurposeIds.TrainingOrder`) and keep the seed/migration in sync
-                //   to avoid brittle code and accidental mismatches.
+                // Note: Training Order is not valid for weapon orders (rejected earlier in validation). This branch is only reached for non-weapon orders.
                 // - The allowance check takes precedence: if an order is both "from allowance" and a training purpose,
                 //   it will use the allowance workflow.
                 // - Weapon orders use weapon-specific workflows: if all items are weapons, use weapon workflow variants.
@@ -412,7 +419,7 @@ namespace Ettad.RequestManagement.Service.Orders
                         ? WorkflowType.OrderFromAllowance_Weapon 
                         : WorkflowType.OrderFromAllowance;
                 }
-                else if (createdOrder.RequestPurposeId == 4)
+                else if (createdOrder.RequestPurposeId == TrainingOrderRequestPurposeId)
                 {
                     workflowType = isWeaponOrder 
                         ? WorkflowType.NormalOrderForTrainingPurpose_Weapon 
