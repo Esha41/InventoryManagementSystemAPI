@@ -283,13 +283,25 @@ namespace Ettad.User.Services.Implementation
             }
 
             // Check if user already has an active session (prevent concurrent logins)
-            if (!string.IsNullOrEmpty(user.RefreshToken) && 
-                user.RefreshTokenExpiryDate.HasValue && 
-                user.RefreshTokenExpiryDate.Value > _dateTimeProvider.Now)
+            // Query database directly to get fresh refresh token state (avoid stale entity data)
+            var hasActiveSession = await _context.Users
+                .Where(u => u.Id == user.Id && !u.IsDeleted)
+                .AnyAsync(u => !string.IsNullOrEmpty(u.RefreshToken) && 
+                               u.RefreshTokenExpiryDate.HasValue && 
+                               u.RefreshTokenExpiryDate.Value > _dateTimeProvider.Now, 
+                          cancellationToken);
+            
+            if (hasActiveSession)
             {
+                // Get the expiry date for logging
+                var activeSessionUser = await _context.Users
+                    .Where(u => u.Id == user.Id && !u.IsDeleted)
+                    .Select(u => new { u.RefreshTokenExpiryDate })
+                    .FirstOrDefaultAsync(cancellationToken);
+                
                 _logger.LogWarning(
                     "[ADMIN LOGIN] BLOCKED - Active session exists | Username: {Username} | UserId: {UserId} | IP: {ClientIP} | ExistingSessionExpires: {ExpiresAt}",
-                    loginInformation.Username, user.Id, clientIp, user.RefreshTokenExpiryDate.Value);
+                    loginInformation.Username, user.Id, clientIp, activeSessionUser?.RefreshTokenExpiryDate);
                 
                 await RecordLoginAttemptAsync(loginInformation.Username, user.Id, false, 
                     "Login blocked: User already has an active session on another device", LoginType.Admin, cancellationToken);
@@ -647,13 +659,25 @@ namespace Ettad.User.Services.Implementation
                 }
 
                 // Step 10: Check if user already has an active session (prevent concurrent logins)
-                if (!string.IsNullOrEmpty(user.RefreshToken) && 
-                    user.RefreshTokenExpiryDate.HasValue && 
-                    user.RefreshTokenExpiryDate.Value > _dateTimeProvider.Now)
+                // Query database directly to get fresh refresh token state (avoid stale entity data)
+                var hasActiveSession = await _context.Users
+                    .Where(u => u.Id == user.Id && !u.IsDeleted)
+                    .AnyAsync(u => !string.IsNullOrEmpty(u.RefreshToken) && 
+                                   u.RefreshTokenExpiryDate.HasValue && 
+                                   u.RefreshTokenExpiryDate.Value > _dateTimeProvider.Now, 
+                              cancellationToken);
+                
+                if (hasActiveSession)
                 {
+                    // Get the expiry date for logging
+                    var activeSessionUser = await _context.Users
+                        .Where(u => u.Id == user.Id && !u.IsDeleted)
+                        .Select(u => new { u.RefreshTokenExpiryDate })
+                        .FirstOrDefaultAsync(cancellationToken);
+                    
                     _logger.LogWarning(
                         "[LDAP LOGIN] BLOCKED - Active session exists | Username: {Username} | UserId: {UserId} | IP: {ClientIP} | ExistingSessionExpires: {ExpiresAt}",
-                        resolvedUsername, user.Id, clientIp, user.RefreshTokenExpiryDate.Value);
+                        resolvedUsername, user.Id, clientIp, activeSessionUser?.RefreshTokenExpiryDate);
                     
                     await RecordLoginAttemptAsync(resolvedUsername, user.Id, false, 
                         "Login blocked: User already has an active session on another device", LoginType.LDAP, cancellationToken);
