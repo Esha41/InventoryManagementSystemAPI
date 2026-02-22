@@ -7,10 +7,7 @@ using Ettad.ResponseHandler.Models;
 using Microsoft.EntityFrameworkCore;
 using Ettad.Modules.ReportManagement.API.Services.Dtos;
 using Ettad.Data.Entities;
-using Ettad.CrossCutting.Comman.Idenitity;
 using Ettad.User.Services.Interfaces;
-using System.Linq;
-using Ettad.Data.Enums;
 using Ettad.Modules.ReportManagement.API.Services.Interfaces;
 
 namespace Ettad.Modules.ReportManagement.API.Services.Implementation
@@ -486,7 +483,7 @@ namespace Ettad.Modules.ReportManagement.API.Services.Implementation
             {
                 string? userName = null;
                 string? emailAddress = null;
-                
+
                 // If UserId is present, get the current email and username from the user
                 if (!string.IsNullOrWhiteSpace(recipient.UserId))
                 {

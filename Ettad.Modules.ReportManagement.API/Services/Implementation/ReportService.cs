@@ -8,8 +8,6 @@ using Ettad.ResponseHandler.Models;
 using Microsoft.EntityFrameworkCore;
 using Ettad.Modules.ReportManagement.API.Services.Dtos;
 using Ettad.Data.Entities;
-using System.Linq;
-using Ettad.CrossCutting.Comman.Idenitity;
 using Ettad.Modules.ReportManagement.API.Services.Interfaces;
 
 namespace Ettad.Modules.ReportManagement.API.Services.Implementation
@@ -95,7 +93,7 @@ namespace Ettad.Modules.ReportManagement.API.Services.Implementation
                     DeletionDate = r.DeletionDate,
                     DeletedBy = r.DeletedBy,
                     Roles = rolesByReportId.ContainsKey(r.Id) ? rolesByReportId[r.Id] : null
-                }).OrderBy(x=>x.CreationDate).ToList();
+                }).OrderBy(x => x.CreationDate).ToList();
 
                 _logger.LogInformation("Retrieved {Count} reports. User: {UserId}", dtos.Count, _currentUserService.UserId);
                 return APIOperationResponse<List<ReportDto>>.Success(dtos);
@@ -115,7 +113,7 @@ namespace Ettad.Modules.ReportManagement.API.Services.Implementation
             {
                 var isSuperAdmin = _currentUserService.IsSuperAdmin;
                 var userRoleNames = _currentUserService.Roles ?? new List<string>();
-                
+
                 // Convert role names to role IDs
                 var userRoleIds = new List<string>();
                 if (userRoleNames.Any())
@@ -124,10 +122,10 @@ namespace Ettad.Modules.ReportManagement.API.Services.Implementation
                         .Where(r => userRoleNames.Contains(r.Name) || userRoleNames.Contains(r.NameAr) || userRoleNames.Contains(r.NameAr))
                         .Select(r => r.Id)
                         .ToListAsync();
-                    
-                    _logger.LogInformation("User has {RoleCount} roles. Role names: {RoleNames}, Role IDs: {RoleIds}", 
-                        userRoleIds.Count, 
-                        string.Join(", ", userRoleNames), 
+
+                    _logger.LogInformation("User has {RoleCount} roles. Role names: {RoleNames}, Role IDs: {RoleIds}",
+                        userRoleIds.Count,
+                        string.Join(", ", userRoleNames),
                         string.Join(", ", userRoleIds));
                 }
 
@@ -184,7 +182,6 @@ namespace Ettad.Modules.ReportManagement.API.Services.Implementation
                     $"An error occurred: {ex.Message}");
             }
         }
-
 
         public async Task<APIOperationResponse<ReportDto>> GetByIdAsync(Guid id)
         {
@@ -270,7 +267,7 @@ namespace Ettad.Modules.ReportManagement.API.Services.Implementation
                     DeletedBy = report.DeletedBy
                 };
 
-                _logger.LogInformation("Report retrieved successfully by URL. ReportId: {ReportId}, Url: {Url}, User: {UserId}", 
+                _logger.LogInformation("Report retrieved successfully by URL. ReportId: {ReportId}, Url: {Url}, User: {UserId}",
                     report.Id, url, _currentUserService.UserId);
                 return APIOperationResponse<ReportDto>.Success(dto);
             }
@@ -287,17 +284,6 @@ namespace Ettad.Modules.ReportManagement.API.Services.Implementation
 
             try
             {
-                // Check if report name already exists
-
-                //var reportEntity = await _reportRepository.FindOneAsync(
-                //                      x => x.ReportName == dto.ReportName && x.ReportStatusId != (int)ReportStatuses.Inactive,
-                //                      false,
-                //                      nameof(ReportEntity.ReportStatus));
-                //if (reportEntity!=null)
-                //{
-                //    return APIOperationResponse<Guid>.BadRequest("Report with this name already exists, give another.");
-                //}
-
                 var reportId = Guid.NewGuid();
                 var report = new ReportEntity
                 {
@@ -314,7 +300,7 @@ namespace Ettad.Modules.ReportManagement.API.Services.Implementation
 
                 await _reportRepository.AddAsync(report);
 
-                _logger.LogInformation("Report created successfully. ReportId: {ReportId}, ReportName: {ReportName}, User: {UserId}", 
+                _logger.LogInformation("Report created successfully. ReportId: {ReportId}, ReportName: {ReportName}, User: {UserId}",
                     report.Id, dto.ReportName, _currentUserService.UserId);
 
                 return APIOperationResponse<string>.Success(report.Url);
@@ -376,7 +362,7 @@ namespace Ettad.Modules.ReportManagement.API.Services.Implementation
 
         public async Task<APIOperationResponse<ReportDto>> SetReportPublicAsync(Guid id, SetReportPublicDto dto)
         {
-            _logger.LogInformation("Setting report public/private. ReportId: {ReportId}, IsPublic: {IsPublic}, RoleIds: {RoleIds}, User: {UserId}", 
+            _logger.LogInformation("Setting report public/private. ReportId: {ReportId}, IsPublic: {IsPublic}, RoleIds: {RoleIds}, User: {UserId}",
                 id, dto.IsPublic, string.Join(",", dto.RoleIds ?? new List<string>()), _currentUserService.UserId);
 
             try
@@ -407,7 +393,7 @@ namespace Ettad.Modules.ReportManagement.API.Services.Implementation
 
                     // Get the set of role IDs that should remain (from the DTO)
                     var targetRoleIds = dto.RoleIds != null ? dto.RoleIds.Distinct().ToHashSet() : new HashSet<string>();
-                    
+
                     // Verify that all provided role IDs exist in the database
                     if (targetRoleIds.Any())
                     {
@@ -436,13 +422,13 @@ namespace Ettad.Modules.ReportManagement.API.Services.Implementation
                     if (rolesToDeleteIds.Any())
                     {
                         _logger.LogInformation("Hard deleting {Count} role associations for report {ReportId}", rolesToDeleteIds.Count, id);
-                        
+
                         // Use ExecuteDelete for direct database deletion (bypasses query filters and is more efficient)
                         var deletedCount = await _context.ReportRoles
                             .IgnoreQueryFilters()
                             .Where(rr => rr.ReportId == id && rolesToDeleteIds.Contains(rr.RoleId) && !rr.IsDeleted)
                             .ExecuteDeleteAsync();
-                        
+
                         _logger.LogInformation("Successfully hard deleted {DeletedCount} role associations for report {ReportId}", deletedCount, id);
                     }
 
@@ -496,7 +482,7 @@ namespace Ettad.Modules.ReportManagement.API.Services.Implementation
                     RoleNameEn = rr.Role?.Name,
                     RoleNameAr = rr.Role?.NameAr
                 }).ToList();
-                
+
                 // If no roles, set to null (means accessible to all users)
                 if (!roles.Any())
                 {
@@ -544,7 +530,7 @@ namespace Ettad.Modules.ReportManagement.API.Services.Implementation
                                   x => x.Id == id && x.ReportStatusId != (int)ReportStatuses.Inactive,
                                   false,
                                   nameof(ReportEntity.ReportStatus));
-              
+
                 if (report == null)
                 {
                     _logger.LogWarning("Report not found for deletion. ReportId: {ReportId}, User: {UserId}", id, _currentUserService.UserId);
@@ -620,8 +606,7 @@ namespace Ettad.Modules.ReportManagement.API.Services.Implementation
                     }
                 };
 
-                // You can add filtering logic here based on user permissions/department if needed
-                // For example:
+                // add filtering logic here based on user permissions/department if needed
                 // if (!canViewAll && userDepartmentId.HasValue)
                 // {
                 //     // Filter templates based on department
@@ -634,6 +619,44 @@ namespace Ettad.Modules.ReportManagement.API.Services.Implementation
             {
                 _logger.LogError(ex, "Error retrieving report templates. User: {UserId}", _currentUserService.UserId);
                 return APIOperationResponse<List<ReportTemplateDto>>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
+            }
+        }
+
+        public async Task<bool> IsReportExists(string name)
+        {
+            var reportExist = false;
+
+            var report = await _reportRepository.FindOneAsync(
+                                  x => x.ReportName == name && x.ReportStatusId != (int)ReportStatuses.Inactive,
+                                  false,
+                                  nameof(ReportEntity.ReportStatus));
+
+            if (report == null)
+                return reportExist;
+            reportExist = true;
+
+            return reportExist;
+
+        }
+
+        public async Task<APIOperationResponse<List<string>>> GetReportRoleIdsAsync(Guid reportId)
+        {
+            _logger.LogInformation("Getting role IDs for report. ReportId: {ReportId}, User: {UserId}", reportId, _currentUserService.UserId);
+
+            try
+            {
+                var roleIds = await _context.ReportRoles
+                    .Where(rr => rr.ReportId == reportId && !rr.IsDeleted)
+                    .Select(rr => rr.RoleId)
+                    .ToListAsync();
+
+                _logger.LogInformation("Retrieved {Count} role IDs for report. ReportId: {ReportId}, User: {UserId}", roleIds.Count, reportId, _currentUserService.UserId);
+                return APIOperationResponse<List<string>>.Success(roleIds);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving role IDs for report. ReportId: {ReportId}, User: {UserId}", reportId, _currentUserService.UserId);
+                return APIOperationResponse<List<string>>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
             }
         }
 
@@ -701,13 +724,13 @@ namespace Ettad.Modules.ReportManagement.API.Services.Implementation
         //        var baseUrl = !string.IsNullOrWhiteSpace(url) 
         //            ? url.Trim() 
         //            : GenerateUrlFromName(finalReportName);
-                
+
         //        // Validate URL format
         //        if (!IsValidUrl(baseUrl))
         //        {
         //            return APIOperationResponse<Guid>.BadRequest("Invalid URL format. URL can only contain letters, numbers, underscores, and hyphens.");
         //        }
-                
+
         //        var finalUrl = baseUrl;
         //        var counter = 1;
 
@@ -796,43 +819,5 @@ namespace Ettad.Modules.ReportManagement.API.Services.Implementation
 
         //    return true;
         //}
-
-        public async Task<bool> IsReportExists(string name)
-        {
-            var reportExist = false;
-
-            var report = await _reportRepository.FindOneAsync(
-                                  x => x.ReportName == name && x.ReportStatusId != (int)ReportStatuses.Inactive,
-                                  false,
-                                  nameof(ReportEntity.ReportStatus));
-
-            if (report == null)
-                return reportExist;
-            reportExist = true;
-
-            return reportExist;
-
-        }
-
-        public async Task<APIOperationResponse<List<string>>> GetReportRoleIdsAsync(Guid reportId)
-        {
-            _logger.LogInformation("Getting role IDs for report. ReportId: {ReportId}, User: {UserId}", reportId, _currentUserService.UserId);
-
-            try
-            {
-                var roleIds = await _context.ReportRoles
-                    .Where(rr => rr.ReportId == reportId && !rr.IsDeleted)
-                    .Select(rr => rr.RoleId)
-                    .ToListAsync();
-
-                _logger.LogInformation("Retrieved {Count} role IDs for report. ReportId: {ReportId}, User: {UserId}", roleIds.Count, reportId, _currentUserService.UserId);
-                return APIOperationResponse<List<string>>.Success(roleIds);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error retrieving role IDs for report. ReportId: {ReportId}, User: {UserId}", reportId, _currentUserService.UserId);
-                return APIOperationResponse<List<string>>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
-            }
-        }
     }
 }

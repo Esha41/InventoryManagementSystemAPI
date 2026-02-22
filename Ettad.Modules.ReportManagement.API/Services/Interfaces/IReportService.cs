@@ -17,6 +17,7 @@ namespace Ettad.Modules.ReportManagement.API.Services.Interfaces
         Task<APIOperationResponse<List<ReportStatusDto>>> GetReportStatusesAsync();
         Task<APIOperationResponse<List<ReportTemplateDto>>> GetTemplatesAsync();
         Task<APIOperationResponse<List<string>>> GetReportRoleIdsAsync(Guid reportId);
+
         //Task<APIOperationResponse<Guid>> ImportAsync(IFormFile file, string? reportName = null, string? url = null, string? description = null);
      }
 }

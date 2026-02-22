@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 
 namespace Ettad.Modules.ReportManagement.API.Services.Dtos
 {

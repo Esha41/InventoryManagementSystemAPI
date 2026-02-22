@@ -1,6 +1,5 @@
 ﻿using DevExpress.DataAccess.ObjectBinding;
 using Ettad.Modules.ReportManagement.API.Reports.DataSources;
-using Ettad.Modules.ReportManagement.API.Reports;
 using System.ComponentModel;
 
 namespace Ettad.Modules.ReportManagement.API.Reports.Templates

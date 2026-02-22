@@ -30,6 +30,7 @@ namespace Ettad.Modules.ReportManagement.API.Reports
                    !url.Contains("..") &&
                    url.Length < 500; // Reasonable length limit
         }
+
         public override bool CanSetData(string url)
         {
             return true;
@@ -101,8 +102,8 @@ namespace Ettad.Modules.ReportManagement.API.Reports
                     var param = report.Parameters["Department"];
                     param.SelectAllValues = false;
                     param.Value = departmentIds.ToArray();
-                    param.Visible = true;     
-                    param.Enabled = false;   
+                    param.Visible = true;
+                    param.Enabled = false;
                 }
 
                 using var ms = new MemoryStream();
@@ -115,7 +116,7 @@ namespace Ettad.Modules.ReportManagement.API.Reports
                 return Array.Empty<byte>();
             }
         }
-        
+
         public override Dictionary<string, string> GetUrls()
         {
             try
@@ -182,6 +183,7 @@ namespace Ettad.Modules.ReportManagement.API.Reports
                 }
             }
         }
+
         private bool ReportExists(string name)
         {
             return _reportService.IsReportExists(name).GetAwaiter().GetResult();
