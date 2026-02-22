@@ -282,6 +282,24 @@ namespace Ettad.User.Services.Implementation
                     "server.invalidLogin");
             }
 
+            // Check if user already has an active session (prevent concurrent logins)
+            if (!string.IsNullOrEmpty(user.RefreshToken) && 
+                user.RefreshTokenExpiryDate.HasValue && 
+                user.RefreshTokenExpiryDate.Value > _dateTimeProvider.Now)
+            {
+                _logger.LogWarning(
+                    "[ADMIN LOGIN] BLOCKED - Active session exists | Username: {Username} | UserId: {UserId} | IP: {ClientIP} | ExistingSessionExpires: {ExpiresAt}",
+                    loginInformation.Username, user.Id, clientIp, user.RefreshTokenExpiryDate.Value);
+                
+                await RecordLoginAttemptAsync(loginInformation.Username, user.Id, false, 
+                    "Login blocked: User already has an active session on another device", LoginType.Admin, cancellationToken);
+                
+                return APIOperationResponse<AuthenticatedResponse>.Fail(
+                    ResponseType.Forbidden,
+                    CommonErrorCodes.SESSION_CONFLICT,
+                    "You are already logged in on another device. Please log out from that device first or wait for your session to expire.");
+            }
+
             // Record successful login
             await RecordLoginAttemptAsync(loginInformation.Username, user.Id, true, null, LoginType.Admin, cancellationToken);
 
@@ -628,7 +646,25 @@ namespace Ettad.User.Services.Implementation
                     }
                 }
 
-                // Step 10: Generate authentication response
+                // Step 10: Check if user already has an active session (prevent concurrent logins)
+                if (!string.IsNullOrEmpty(user.RefreshToken) && 
+                    user.RefreshTokenExpiryDate.HasValue && 
+                    user.RefreshTokenExpiryDate.Value > _dateTimeProvider.Now)
+                {
+                    _logger.LogWarning(
+                        "[LDAP LOGIN] BLOCKED - Active session exists | Username: {Username} | UserId: {UserId} | IP: {ClientIP} | ExistingSessionExpires: {ExpiresAt}",
+                        resolvedUsername, user.Id, clientIp, user.RefreshTokenExpiryDate.Value);
+                    
+                    await RecordLoginAttemptAsync(resolvedUsername, user.Id, false, 
+                        "Login blocked: User already has an active session on another device", LoginType.LDAP, cancellationToken);
+                    
+                    return APIOperationResponse<AuthenticatedResponse>.Fail(
+                        ResponseType.Forbidden,
+                        CommonErrorCodes.SESSION_CONFLICT,
+                        "You are already logged in on another device. Please log out from that device first or wait for your session to expire.");
+                }
+
+                // Step 11: Generate authentication response
                 _logger.LogDebug("[LDAP LOGIN] Generating auth response | UserId: {UserId}", user.Id);
                 var response = await CreateAndReturnAuthResponseAsync(user, cancellationToken);
 
