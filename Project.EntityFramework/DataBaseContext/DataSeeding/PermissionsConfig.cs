@@ -301,6 +301,7 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
             "Permissions.WarehousePage.Create",
             "Permissions.WarehousePage.Edit",
             "Permissions.WarehousePage.Delete",
+            PlainPermissions.WarehouseMapView.ToString(),
         };
 
         public static List<string> ReadDelegation = new()

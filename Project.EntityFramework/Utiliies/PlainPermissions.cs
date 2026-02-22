@@ -82,6 +82,8 @@ namespace Ettad.Data.Enums
 
         [Category(PlainPermissionsGenerator.BITool)]
         ReportDashboard,
+        [Category(PlainPermissionsGenerator.Inventory)]
+        WarehouseMapView,
     }
 
 }
