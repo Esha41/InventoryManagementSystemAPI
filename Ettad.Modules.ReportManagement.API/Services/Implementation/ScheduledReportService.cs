@@ -1,3 +1,4 @@
+using AutoMapper;
 using Ettad.Application.Common.Interfaces;
 using Ettad.CrossCutting.Comman.Time;
 using Ettad.CrossCutting.Data.Repository;
@@ -22,6 +23,7 @@ namespace Ettad.Modules.ReportManagement.API.Services.Implementation
         private readonly IDateTimeProvider _dateTimeProvider;
         private readonly IScheduledReportExecutionService _executionService;
         private readonly IUserService _userService;
+        private readonly IMapper _mapper;
 
         public ScheduledReportService(
             ICrossCuttingRepository<ScheduledReport> scheduledReportRepository,
@@ -31,7 +33,8 @@ namespace Ettad.Modules.ReportManagement.API.Services.Implementation
             ILogger<ScheduledReportService> logger,
             IDateTimeProvider dateTimeProvider,
             IScheduledReportExecutionService executionService,
-            IUserService userService)
+            IUserService userService,
+            IMapper mapper)
         {
             _context = context;
             _scheduledReportRepository = scheduledReportRepository;
@@ -41,6 +44,7 @@ namespace Ettad.Modules.ReportManagement.API.Services.Implementation
             _dateTimeProvider = dateTimeProvider;
             _executionService = executionService;
             _userService = userService;
+            _mapper = mapper;
         }
 
         public async Task<APIOperationResponse<List<ScheduledReportDto>>> GetAllAsync()
@@ -130,22 +134,11 @@ namespace Ettad.Modules.ReportManagement.API.Services.Implementation
                     );
                 }
 
-                var scheduledReport = new ScheduledReport
-                {
-                    Id = Guid.NewGuid(),
-                    ScheduleName = dto.ScheduleName,
-                    ReportId = dto.ReportId,
-                    OutputFormat = dto.OutputFormat,
-                    Frequency = dto.Frequency,
-                    TimeOfDay = dto.TimeOfDay,
-                    DayOfWeek = dto.DayOfWeek,
-                    DayOfMonth = dto.DayOfMonth,
-                    EmailSubject = dto.EmailSubject,
-                    EmailBody = dto.EmailBody,
-                    IsActive = true,
-                    CreationDate = _dateTimeProvider.Now,
-                    CreatedBy = _currentUserService.UserId ?? string.Empty
-                };
+                var scheduledReport = _mapper.Map<ScheduledReport>(dto);
+                scheduledReport.Id = Guid.NewGuid();
+                scheduledReport.IsActive = true;
+                scheduledReport.CreationDate = _dateTimeProvider.Now;
+                scheduledReport.CreatedBy = _currentUserService.UserId ?? string.Empty;
 
                 // Calculate next run date
                 scheduledReport.NextRunDate = CalculateNextRunDate(
@@ -163,15 +156,11 @@ namespace Ettad.Modules.ReportManagement.API.Services.Implementation
                         continue; // Skip invalid recipients
                     }
 
-                    var recipient = new ScheduledReportRecipient
-                    {
-                        Id = Guid.NewGuid(),
-                        ScheduledReportId = scheduledReport.Id,
-                        UserId = recipientDto.UserId,
-                        RecipientType = recipientDto.RecipientType,
-                        CreationDate = _dateTimeProvider.Now,
-                        CreatedBy = _currentUserService.UserId ?? string.Empty
-                    };
+                    var recipient = _mapper.Map<ScheduledReportRecipient>(recipientDto);
+                    recipient.Id = Guid.NewGuid();
+                    recipient.ScheduledReportId = scheduledReport.Id;
+                    recipient.CreationDate = _dateTimeProvider.Now;
+                    recipient.CreatedBy = _currentUserService.UserId ?? string.Empty;
 
                     // If UserId is provided, don't store EmailAddress (we'll fetch it dynamically)
                     // If UserId is null, store EmailAddress for manual email entries
@@ -233,16 +222,7 @@ namespace Ettad.Modules.ReportManagement.API.Services.Implementation
                     );
                 }
 
-                scheduledReport.ScheduleName = dto.ScheduleName;
-                scheduledReport.ReportId = dto.ReportId;
-                scheduledReport.OutputFormat = dto.OutputFormat;
-                scheduledReport.Frequency = dto.Frequency;
-                scheduledReport.TimeOfDay = dto.TimeOfDay;
-                scheduledReport.DayOfWeek = dto.DayOfWeek;
-                scheduledReport.DayOfMonth = dto.DayOfMonth;
-                scheduledReport.IsActive = dto.IsActive;
-                scheduledReport.EmailSubject = dto.EmailSubject;
-                scheduledReport.EmailBody = dto.EmailBody;
+                _mapper.Map(dto, scheduledReport);
                 scheduledReport.ModificationDate = _dateTimeProvider.Now;
                 scheduledReport.ModifiedBy = _currentUserService.UserId;
 
@@ -275,15 +255,11 @@ namespace Ettad.Modules.ReportManagement.API.Services.Implementation
                         continue;
                     }
 
-                    var recipient = new ScheduledReportRecipient
-                    {
-                        Id = Guid.NewGuid(),
-                        ScheduledReportId = scheduledReport.Id,
-                        UserId = recipientDto.UserId,
-                        RecipientType = recipientDto.RecipientType,
-                        CreationDate = _dateTimeProvider.Now,
-                        CreatedBy = _currentUserService.UserId ?? string.Empty
-                    };
+                    var recipient = _mapper.Map<ScheduledReportRecipient>(recipientDto);
+                    recipient.Id = Guid.NewGuid();
+                    recipient.ScheduledReportId = scheduledReport.Id;
+                    recipient.CreationDate = _dateTimeProvider.Now;
+                    recipient.CreatedBy = _currentUserService.UserId ?? string.Empty;
 
                     // If UserId is provided, don't store EmailAddress (we'll fetch it dynamically)
                     // If UserId is null, store EmailAddress for manual email entries
@@ -401,16 +377,7 @@ namespace Ettad.Modules.ReportManagement.API.Services.Implementation
                     .Take(50) // Limit to last 50 executions
                     .ToListAsync();
 
-                var dtos = executions.Select(e => new ScheduledReportExecutionDto
-                {
-                    Id = e.Id,
-                    ScheduledReportId = e.ScheduledReportId,
-                    ExecutionDate = e.ExecutionDate,
-                    Status = e.Status,
-                    ErrorMessage = e.ErrorMessage,
-                    RecipientCount = e.RecipientCount,
-                    FileSizeBytes = e.FileSizeBytes
-                }).ToList();
+                var dtos = _mapper.Map<List<ScheduledReportExecutionDto>>(executions);
 
                 return APIOperationResponse<List<ScheduledReportExecutionDto>>.Success(dtos);
             }
@@ -507,38 +474,15 @@ namespace Ettad.Modules.ReportManagement.API.Services.Implementation
                     emailAddress = recipient.EmailAddress;
                 }
 
-                recipientDtos.Add(new ScheduledReportRecipientDto
-                {
-                    Id = recipient.Id,
-                    ScheduledReportId = recipient.ScheduledReportId,
-                    UserId = recipient.UserId,
-                    UserName = userName,
-                    EmailAddress = emailAddress,
-                    RecipientType = recipient.RecipientType
-                });
+                var recipientDto = _mapper.Map<ScheduledReportRecipientDto>(recipient);
+                recipientDto.UserName = userName;
+                recipientDto.EmailAddress = emailAddress; // Override with fetched email if UserId is present
+                recipientDtos.Add(recipientDto);
             }
 
-            return new ScheduledReportDto
-            {
-                Id = sr.Id,
-                ScheduleName = sr.ScheduleName,
-                ReportId = sr.ReportId,
-                ReportName = report?.ReportName ?? string.Empty,
-                ReportUrl = report?.Url ?? string.Empty,
-                OutputFormat = sr.OutputFormat,
-                Frequency = sr.Frequency,
-                TimeOfDay = sr.TimeOfDay,
-                DayOfWeek = sr.DayOfWeek,
-                DayOfMonth = sr.DayOfMonth,
-                NextRunDate = sr.NextRunDate,
-                LastRunDate = sr.LastRunDate,
-                IsActive = sr.IsActive,
-                EmailSubject = sr.EmailSubject,
-                EmailBody = sr.EmailBody,
-                Recipients = recipientDtos,
-                CreationDate = sr.CreationDate,
-                CreatedBy = sr.CreatedBy
-            };
+            var dto = _mapper.Map<ScheduledReportDto>(sr);
+            dto.Recipients = recipientDtos;
+            return dto;
         }
 
         private DateTime? CalculateNextRunDate(string frequency, string timeOfDay, int? dayOfWeek, int? dayOfMonth)

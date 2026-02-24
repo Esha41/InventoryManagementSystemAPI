@@ -1,3 +1,4 @@
+using AutoMapper;
 using Ettad.Application.Common.Interfaces;
 using Ettad.CrossCutting.Comman.Time;
 using Ettad.CrossCutting.Data.Repository;
@@ -20,13 +21,15 @@ namespace Ettad.Modules.ReportManagement.API.Services.Implementation
         private readonly ICurrentUserService _currentUserService;
         private readonly ILogger<ReportService> _logger;
         private readonly IDateTimeProvider _dateTimeProvider;
+        private readonly IMapper _mapper;
 
         public ReportService(
             ICrossCuttingRepository<ReportEntity> reportRepository,
             ICrossCuttingRepository<ReportStatus> reportStatusRepository,
             ICurrentUserService currentUserService, ApplicationDbContext context,
             ILogger<ReportService> logger,
-            IDateTimeProvider dateTimeProvider)
+            IDateTimeProvider dateTimeProvider,
+            IMapper mapper)
         {
             _context = context;
             _reportRepository = reportRepository;
@@ -34,6 +37,7 @@ namespace Ettad.Modules.ReportManagement.API.Services.Implementation
             _currentUserService = currentUserService;
             _logger = logger;
             _dateTimeProvider = dateTimeProvider;
+            _mapper = mapper;
         }
 
         public async Task<APIOperationResponse<List<ReportDto>>> GetAllAsync()
@@ -75,24 +79,11 @@ namespace Ettad.Modules.ReportManagement.API.Services.Implementation
                         }).ToList()
                     );
 
-                var dtos = reports.Select(r => new ReportDto
+                var dtos = reports.Select(r =>
                 {
-                    Id = r.Id,
-                    ReportName = r.ReportName,
-                    ReportStatusId = r.ReportStatusId,
-                    ReportStatusNameEn = r.ReportStatus?.NameEn ?? string.Empty,
-                    ReportStatusNameAr = r.ReportStatus?.NameAr ?? string.Empty,
-                    Url = r.Url,
-                    Description = r.Description,
-                    LayoutData = r.LayoutData,
-                    ReportParameters = r.ReportParameters,
-                    CreationDate = r.CreationDate,
-                    CreatedBy = r.CreatedBy,
-                    ModificationDate = r.ModificationDate,
-                    ModifiedBy = r.ModifiedBy,
-                    DeletionDate = r.DeletionDate,
-                    DeletedBy = r.DeletedBy,
-                    Roles = rolesByReportId.ContainsKey(r.Id) ? rolesByReportId[r.Id] : null
+                    var dto = _mapper.Map<ReportDto>(r);
+                    dto.Roles = rolesByReportId.ContainsKey(r.Id) ? rolesByReportId[r.Id] : null;
+                    return dto;
                 }).OrderBy(x => x.CreationDate).ToList();
 
                 _logger.LogInformation("Retrieved {Count} reports. User: {UserId}", dtos.Count, _currentUserService.UserId);
@@ -148,27 +139,10 @@ namespace Ettad.Modules.ReportManagement.API.Services.Implementation
                     );
                 }
 
-                var dtos = await query
-                    .Select(r => new ReportDto
-                    {
-                        Id = r.Id,
-                        ReportName = r.ReportName,
-                        ReportStatusId = r.ReportStatusId,
-                        ReportStatusNameEn = r.ReportStatus!.NameEn,
-                        ReportStatusNameAr = r.ReportStatus!.NameAr,
-                        Url = r.Url,
-                        Description = r.Description,
-                        LayoutData = r.LayoutData,
-                        ReportParameters = r.ReportParameters,
-                        CreationDate = r.CreationDate,
-                        CreatedBy = r.CreatedBy,
-                        ModificationDate = r.ModificationDate,
-                        ModifiedBy = r.ModifiedBy,
-                        DeletionDate = r.DeletionDate,
-                        DeletedBy = r.DeletedBy
-                    })
+                var reportsList = await query.ToListAsync();
+                var dtos = _mapper.Map<List<ReportDto>>(reportsList)
                     .OrderBy(x => x.CreationDate)
-                    .ToListAsync();
+                    .ToList();
 
                 _logger.LogInformation("Retrieved {Count} public reports. User: {UserId}", dtos.Count, _currentUserService.UserId);
 
@@ -200,24 +174,7 @@ namespace Ettad.Modules.ReportManagement.API.Services.Implementation
                     return APIOperationResponse<ReportDto>.Fail(ResponseType.NotFound, "Report not found");
                 }
 
-                var dto = new ReportDto
-                {
-                    Id = report.Id,
-                    ReportName = report.ReportName,
-                    ReportStatusId = report.ReportStatusId,
-                    ReportStatusNameEn = report.ReportStatus?.NameEn ?? string.Empty,
-                    ReportStatusNameAr = report.ReportStatus?.NameAr ?? string.Empty,
-                    Url = report.Url,
-                    Description = report.Description,
-                    LayoutData = report.LayoutData,
-                    ReportParameters = report.ReportParameters,
-                    CreationDate = report.CreationDate,
-                    CreatedBy = report.CreatedBy,
-                    ModificationDate = report.ModificationDate,
-                    ModifiedBy = report.ModifiedBy,
-                    DeletionDate = report.DeletionDate,
-                    DeletedBy = report.DeletedBy
-                };
+                var dto = _mapper.Map<ReportDto>(report);
 
                 _logger.LogInformation("Report retrieved successfully. ReportId: {ReportId}, User: {UserId}", id, _currentUserService.UserId);
                 return APIOperationResponse<ReportDto>.Success(dto);
@@ -248,24 +205,7 @@ namespace Ettad.Modules.ReportManagement.API.Services.Implementation
                     return APIOperationResponse<ReportDto>.Fail(ResponseType.NotFound, "Report not found");
                 }
 
-                var dto = new ReportDto
-                {
-                    Id = report.Id,
-                    ReportName = report.ReportName,
-                    ReportStatusId = report.ReportStatusId,
-                    ReportStatusNameEn = report.ReportStatus?.NameEn ?? string.Empty,
-                    ReportStatusNameAr = report.ReportStatus?.NameAr ?? string.Empty,
-                    Url = report.Url,
-                    Description = report.Description,
-                    LayoutData = report.LayoutData,
-                    ReportParameters = report.ReportParameters,
-                    CreationDate = report.CreationDate,
-                    CreatedBy = report.CreatedBy,
-                    ModificationDate = report.ModificationDate,
-                    ModifiedBy = report.ModifiedBy,
-                    DeletionDate = report.DeletionDate,
-                    DeletedBy = report.DeletedBy
-                };
+                var dto = _mapper.Map<ReportDto>(report);
 
                 _logger.LogInformation("Report retrieved successfully by URL. ReportId: {ReportId}, Url: {Url}, User: {UserId}",
                     report.Id, url, _currentUserService.UserId);
@@ -285,18 +225,11 @@ namespace Ettad.Modules.ReportManagement.API.Services.Implementation
             try
             {
                 var reportId = Guid.NewGuid();
-                var report = new ReportEntity
-                {
-                    Id = reportId,
-                    ReportName = dto.ReportName,
-                    ReportStatusId = dto.ReportStatusId,
-                    Url = reportId + "/" + dto.Url,
-                    Description = dto.Description,
-                    LayoutData = dto.LayoutData,
-                    ReportParameters = dto.ReportParameters,
-                    CreationDate = _dateTimeProvider.Now,
-                    CreatedBy = _currentUserService.UserId ?? string.Empty
-                };
+                var report = _mapper.Map<ReportEntity>(dto);
+                report.Id = reportId;
+                report.Url = reportId + "/" + dto.Url;
+                report.CreationDate = _dateTimeProvider.Now;
+                report.CreatedBy = _currentUserService.UserId ?? string.Empty;
 
                 await _reportRepository.AddAsync(report);
 
@@ -339,12 +272,7 @@ namespace Ettad.Modules.ReportManagement.API.Services.Implementation
                     }
                 }
 
-                report.ReportName = dto.ReportName;
-                report.ReportStatusId = dto.ReportStatusId;
-                report.Url = dto.Url;
-                report.Description = dto.Description;
-                report.LayoutData = dto.LayoutData;
-                report.ReportParameters = dto.ReportParameters;
+                _mapper.Map(dto, report);
                 report.ModificationDate = _dateTimeProvider.Now;
                 report.ModifiedBy = _currentUserService.UserId;
 
@@ -489,26 +417,8 @@ namespace Ettad.Modules.ReportManagement.API.Services.Implementation
                     roles = null;
                 }
 
-                var resultDto = new ReportDto
-                {
-                    Id = updated.Id,
-                    ReportName = updated.ReportName,
-                    ReportStatusId = updated.ReportStatusId,
-                    ReportStatusNameEn = updated.ReportStatus?.NameEn ?? string.Empty,
-                    ReportStatusNameAr = updated.ReportStatus?.NameAr ?? string.Empty,
-                    Url = updated.Url,
-                    Description = updated.Description,
-                    LayoutData = updated.LayoutData,
-                    ReportParameters = updated.ReportParameters,
-                    CreationDate = updated.CreationDate,
-                    CreatedBy = updated.CreatedBy,
-                    ModificationDate = updated.ModificationDate,
-                    ModifiedBy = updated.ModifiedBy,
-                    IsDeleted = updated.IsDeleted,
-                    DeletionDate = updated.DeletionDate,
-                    DeletedBy = updated.DeletedBy,
-                    Roles = roles
-                };
+                var resultDto = _mapper.Map<ReportDto>(updated);
+                resultDto.Roles = roles;
 
                 _logger.LogInformation("Report set to {Status}. ReportId: {ReportId}, User: {UserId}", dto.IsPublic ? "Published" : "Draft", id, _currentUserService.UserId);
                 return APIOperationResponse<ReportDto>.Success(resultDto);
@@ -563,12 +473,7 @@ namespace Ettad.Modules.ReportManagement.API.Services.Implementation
             {
                 var statuses = await _reportStatusRepository.GetAllAsync();
 
-                var dtos = statuses.Select(s => new ReportStatusDto
-                {
-                    Id = s.Id,
-                    NameEn = s.NameEn,
-                    NameAr = s.NameAr
-                }).ToList();
+                var dtos = _mapper.Map<List<ReportStatusDto>>(statuses);
 
                 _logger.LogInformation("Retrieved {Count} report statuses. User: {UserId}", dtos.Count, _currentUserService.UserId);
                 return APIOperationResponse<List<ReportStatusDto>>.Success(dtos);

@@ -284,6 +284,7 @@ try
     builder.Services.AddScoped<SoftDeleteInterceptor>();
 
     builder.Services.AddAutoMapper(typeof(Ettad.Module.lookup.Mapper.LookupMappingProfile));
+    builder.Services.AddAutoMapper(typeof(Ettad.Modules.ReportManagement.API.Mapper.ReportManagementMappingProfile));
 
     // Register Employee services directly
     builder.Services.AddScoped<IUserService, UserService>();
