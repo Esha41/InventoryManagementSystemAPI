@@ -92,6 +92,10 @@ namespace Ettad.User.Services.Implementation
             var handler = new JwtSecurityTokenHandler();
             var tokenString = handler.WriteToken(jwt);
 
+            // Store CurrentTokenId for single-session validation (invalidate previous sessions on new login)
+            user.CurrentTokenId = tokenId;
+            await _userManager.UpdateAsync(user);
+
             return new AuthenticatedResponse
             {
                 AccessToken = tokenString,

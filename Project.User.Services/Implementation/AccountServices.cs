@@ -282,6 +282,18 @@ namespace Ettad.User.Services.Implementation
                     "server.invalidLogin");
             }
 
+            // Check if user already has an active session (single-session: block unless ForceLogin)
+            if (!loginInformation.ForceLogin && !string.IsNullOrEmpty(user.RefreshToken) && user.RefreshTokenExpiryDate.HasValue && user.RefreshTokenExpiryDate.Value > _dateTimeProvider.Now)
+            {
+                _logger.LogInformation(
+                    "[ADMIN LOGIN] BLOCKED - Already logged in elsewhere | Username: {Username} | UserId: {UserId} | IP: {ClientIP}",
+                    loginInformation.Username, user.Id, clientIp);
+                return APIOperationResponse<AuthenticatedResponse>.Fail(
+                    ResponseType.Conflict,
+                    CommonErrorCodes.ALREADY_LOGGED_IN,
+                    "You are already logged in on another device.");
+            }
+
             // Record successful login
             await RecordLoginAttemptAsync(loginInformation.Username, user.Id, true, null, LoginType.Admin, cancellationToken);
 
@@ -628,6 +640,18 @@ namespace Ettad.User.Services.Implementation
                     }
                 }
 
+                // Check if user already has an active session (single-session: block unless ForceLogin)
+                if (!loginInformation.ForceLogin && !string.IsNullOrEmpty(user.RefreshToken) && user.RefreshTokenExpiryDate.HasValue && user.RefreshTokenExpiryDate.Value > _dateTimeProvider.Now)
+                {
+                    _logger.LogInformation(
+                        "[LDAP LOGIN] BLOCKED - Already logged in elsewhere | Username: {Username} | UserId: {UserId} | IP: {ClientIP}",
+                        resolvedUsername, user.Id, clientIp);
+                    return APIOperationResponse<AuthenticatedResponse>.Fail(
+                        ResponseType.Conflict,
+                        CommonErrorCodes.ALREADY_LOGGED_IN,
+                        "You are already logged in on another device.");
+                }
+
                 // Step 10: Generate authentication response
                 _logger.LogDebug("[LDAP LOGIN] Generating auth response | UserId: {UserId}", user.Id);
                 var response = await CreateAndReturnAuthResponseAsync(user, cancellationToken);
@@ -969,6 +993,7 @@ namespace Ettad.User.Services.Implementation
                 var hadRefreshToken = !string.IsNullOrEmpty(user.RefreshToken);
                 user.RefreshToken = null;
                 user.RefreshTokenExpiryDate = null;
+                user.CurrentTokenId = null;
                
                 await _userRepository.UpdateAsync(user);
 

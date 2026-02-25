@@ -31,6 +31,7 @@ namespace Ettad.ResponseHandler.Consts
         public static readonly CommonErrorCodes CAPTCHA_INVALID = new CommonErrorCodes("CAPTCHA_INVALID", CommonErrorCode.CAPTCHA_INVALID);
         public static readonly CommonErrorCodes INVALID_DOMAIN = new CommonErrorCodes("INVALID_DOMAIN", CommonErrorCode.INVALID_DOMAIN);
         public static readonly CommonErrorCodes INVALID_USERNAME_FORMAT = new CommonErrorCodes("INVALID_USERNAME_FORMAT", CommonErrorCode.INVALID_USERNAME_FORMAT);
+        public static readonly CommonErrorCodes ALREADY_LOGGED_IN = new CommonErrorCodes("ALREADY_LOGGED_IN", CommonErrorCode.ALREADY_LOGGED_IN);
 
         private CommonErrorCodes(string value, CommonErrorCode code)
         {
@@ -68,7 +69,8 @@ namespace Ettad.ResponseHandler.Consts
         CAPTCHA_REQUIRED = 0018,
         CAPTCHA_INVALID = 0019,
         INVALID_DOMAIN = 0020,
-        INVALID_USERNAME_FORMAT = 0021
+        INVALID_USERNAME_FORMAT = 0021,
+        ALREADY_LOGGED_IN = 0022
 
     }
 }
