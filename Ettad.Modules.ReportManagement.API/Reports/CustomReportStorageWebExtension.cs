@@ -71,13 +71,11 @@ namespace Ettad.Modules.ReportManagement.API.Reports
                         }
                     }
 
-
                     //if user is not super admin but has NULL departmentID, don't display any data
                     if ((superAdminFromUrl == null || superAdminFromUrl == false) && departmentIds.Count == 0)
                     {
                         departmentIds.Add(-1);
                     }
-
                 }
 
                 XtraReport report;
