@@ -432,14 +432,13 @@ namespace Ettad.Modules.ReportManagement.API.Services.Implementation
 
         public async Task<APIOperationResponse<bool>> DeleteAsync(Guid id)
         {
-            _logger.LogInformation("Deleting report. ReportId: {ReportId}, User: {UserId}", id, _currentUserService.UserId);
+            _logger.LogInformation("Permanently deleting report. ReportId: {ReportId}, User: {UserId}", id, _currentUserService.UserId);
 
             try
             {
-                var report = await _reportRepository.FindOneAsync(
-                                  x => x.Id == id && x.ReportStatusId != (int)ReportStatuses.Inactive,
-                                  false,
-                                  nameof(ReportEntity.ReportStatus));
+                var report = await _context.Reports
+                    .IgnoreQueryFilters()
+                    .FirstOrDefaultAsync(x => x.Id == id);
 
                 if (report == null)
                 {
@@ -447,20 +446,56 @@ namespace Ettad.Modules.ReportManagement.API.Services.Implementation
                     return APIOperationResponse<bool>.Fail(ResponseType.NotFound, "Report not found");
                 }
 
-                // Soft delete via status
-                report.ReportStatusId = (int)ReportStatuses.Inactive;
-                report.IsDeleted = true;
-                report.DeletionDate = _dateTimeProvider.Now;
-                report.DeletedBy = _currentUserService.UserId;
+                // Get all scheduled report IDs for this report
+                var scheduledReportIds = await _context.ScheduledReports
+                    .IgnoreQueryFilters()
+                    .Where(sr => sr.ReportId == id)
+                    .Select(sr => sr.Id)
+                    .ToListAsync();
 
-                await _reportRepository.UpdateAsync(report);
+                if (scheduledReportIds.Any())
+                {
+                    // Permanently delete scheduled report execution history
+                    var deletedExecutions = await _context.ScheduledReportExecutions
+                        .IgnoreQueryFilters()
+                        .Where(e => scheduledReportIds.Contains(e.ScheduledReportId))
+                        .ExecuteDeleteAsync();
+                    _logger.LogInformation("Permanently deleted {Count} scheduled report executions for report {ReportId}", deletedExecutions, id);
 
-                _logger.LogInformation("Report deleted successfully. ReportId: {ReportId}, User: {UserId}", id, _currentUserService.UserId);
+                    // Permanently delete scheduled report recipients
+                    var deletedRecipients = await _context.ScheduledReportRecipients
+                        .IgnoreQueryFilters()
+                        .Where(r => scheduledReportIds.Contains(r.ScheduledReportId))
+                        .ExecuteDeleteAsync();
+                    _logger.LogInformation("Permanently deleted {Count} scheduled report recipients for report {ReportId}", deletedRecipients, id);
+
+                    // Permanently delete scheduled reports
+                    var deletedSchedules = await _context.ScheduledReports
+                        .IgnoreQueryFilters()
+                        .Where(sr => sr.ReportId == id)
+                        .ExecuteDeleteAsync();
+                    _logger.LogInformation("Permanently deleted {Count} scheduled reports for report {ReportId}", deletedSchedules, id);
+                }
+
+                // Permanently delete report role associations
+                var deletedRoles = await _context.ReportRoles
+                    .IgnoreQueryFilters()
+                    .Where(rr => rr.ReportId == id)
+                    .ExecuteDeleteAsync();
+                _logger.LogInformation("Permanently deleted {Count} report role associations for report {ReportId}", deletedRoles, id);
+
+                // Permanently delete the report itself
+                await _context.Reports
+                    .IgnoreQueryFilters()
+                    .Where(r => r.Id == id)
+                    .ExecuteDeleteAsync();
+
+                _logger.LogInformation("Report permanently deleted successfully. ReportId: {ReportId}, User: {UserId}", id, _currentUserService.UserId);
                 return APIOperationResponse<bool>.Success(true);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error deleting report. ReportId: {ReportId}, User: {UserId}", id, _currentUserService.UserId);
+                _logger.LogError(ex, "Error permanently deleting report. ReportId: {ReportId}, User: {UserId}", id, _currentUserService.UserId);
                 return APIOperationResponse<bool>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
             }
         }

@@ -107,7 +107,7 @@ namespace Ettad.Modules.ReportManagement.API.Controllers
         }
 
         /// <summary>
-        /// Delete a report (soft delete)
+        /// Delete a report (permanent delete) along with its scheduled reports data
         /// </summary>
         [HttpDelete("{id}")]
         [ProducesResponseType((int)HttpStatusCode.NoContent)]

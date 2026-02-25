@@ -295,15 +295,15 @@ namespace Ettad.Modules.ReportManagement.API.Services.Implementation
 
         public async Task<APIOperationResponse<bool>> DeleteAsync(Guid id)
         {
-            _logger.LogInformation("Deleting scheduled report {Id}. User: {UserId}", id, _currentUserService.UserId);
+            _logger.LogInformation("Permanently deleting scheduled report {Id}. User: {UserId}", id, _currentUserService.UserId);
 
             try
             {
-                var scheduledReport = await _scheduledReportRepository.FindOneAsync(
-                    sr => sr.Id == id && !sr.IsDeleted,
-                    false
-                );
-                if (scheduledReport == null)
+                var exists = await _context.ScheduledReports
+                    .IgnoreQueryFilters()
+                    .AnyAsync(sr => sr.Id == id);
+
+                if (!exists)
                 {
                     return APIOperationResponse<bool>.Fail(
                         ResponseType.NotFound,
@@ -311,15 +311,32 @@ namespace Ettad.Modules.ReportManagement.API.Services.Implementation
                     );
                 }
 
-                await _scheduledReportRepository.DeleteAsync(scheduledReport);
-                await _context.SaveChangesAsync();
+                // Permanently delete execution history
+                var deletedExecutions = await _context.ScheduledReportExecutions
+                    .IgnoreQueryFilters()
+                    .Where(e => e.ScheduledReportId == id)
+                    .ExecuteDeleteAsync();
+                _logger.LogInformation("Permanently deleted {Count} executions for scheduled report {Id}", deletedExecutions, id);
 
-                _logger.LogInformation("Deleted scheduled report {Id}. User: {UserId}", id, _currentUserService.UserId);
+                // Permanently delete recipients
+                var deletedRecipients = await _context.ScheduledReportRecipients
+                    .IgnoreQueryFilters()
+                    .Where(r => r.ScheduledReportId == id)
+                    .ExecuteDeleteAsync();
+                _logger.LogInformation("Permanently deleted {Count} recipients for scheduled report {Id}", deletedRecipients, id);
+
+                // Permanently delete the scheduled report itself
+                await _context.ScheduledReports
+                    .IgnoreQueryFilters()
+                    .Where(sr => sr.Id == id)
+                    .ExecuteDeleteAsync();
+
+                _logger.LogInformation("Permanently deleted scheduled report {Id}. User: {UserId}", id, _currentUserService.UserId);
                 return APIOperationResponse<bool>.Success(true);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error deleting scheduled report {Id}. User: {UserId}", id, _currentUserService.UserId);
+                _logger.LogError(ex, "Error permanently deleting scheduled report {Id}. User: {UserId}", id, _currentUserService.UserId);
                 return APIOperationResponse<bool>.Fail(
                     ResponseType.InternalServerError,
                     $"An error occurred: {ex.Message}"
