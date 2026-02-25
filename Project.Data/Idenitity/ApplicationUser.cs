@@ -11,6 +11,7 @@ namespace Ettad.Comman.Idenitity
         public bool IsSuperAdmin { get; set; }
         public string? RefreshToken { get; set; }
         public DateTime? RefreshTokenExpiryDate { get; set; }
+        public string? CurrentTokenId { get; set; }
         public string ExtraEmployeesView { get; set; } = string.Empty;
 
         public long? DepartmentId { get; set; }

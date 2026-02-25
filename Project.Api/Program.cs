@@ -212,6 +212,25 @@ try
                                    // Token is blacklisted - reject the request
                                    context.Fail("This token has been revoked.");
                                    Log.Warning("Blacklisted token rejected. TokenId: {TokenId}", jtiClaim.Value);
+                                   return;
+                               }
+
+                               // Single-session: validate CurrentTokenId (reject if session invalidated by new login)
+                               // "sub" may be mapped to ClaimTypes.NameIdentifier by default, so check both
+                               var userIdClaim = context.Principal?.Claims
+                                   .FirstOrDefault(c => c.Type == System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.Sub
+                                       || c.Type == System.Security.Claims.ClaimTypes.NameIdentifier);
+                               var userId = userIdClaim?.Value;
+                               if (!string.IsNullOrWhiteSpace(userId))
+                               {
+                                   var userManager = context.HttpContext.RequestServices
+                                       .GetRequiredService<Microsoft.AspNetCore.Identity.UserManager<Ettad.Comman.Idenitity.ApplicationUser>>();
+                                   var user = await userManager.FindByIdAsync(userId);
+                                   if (user == null || user.CurrentTokenId != jtiClaim.Value)
+                                   {
+                                       context.Fail("Session invalidated by new login.");
+                                       Log.Warning("Token rejected - session invalidated. UserId: {UserId}, TokenId: {TokenId}", userId, jtiClaim.Value);
+                                   }
                                }
                            }
                        }
