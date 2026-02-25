@@ -272,6 +272,7 @@ namespace Ettad.RequestManagement.Service.Orders
                 }
 
                 // Step 1: Save files first (before creating order) to create FileUplodMaster records
+                // When files are selected: if file upload fails or throws an exception, do not create the order.
                 List<long> savedFileMasterIds = null;
                 if (files != null && files.Count > 0)
                 {
@@ -282,20 +283,18 @@ namespace Ettad.RequestManagement.Service.Orders
                         {
                             _logger.LogWarning("Failed to save files before creating order. Error: {Error}, User: {UserId}",
                                 saveFilesResult.Message ?? "Unknown error", currentUserId);
-                            // Continue without files - files are optional
+                            return APIOperationResponse<long>.Fail(ResponseType.BadRequest,
+                                saveFilesResult.Message ?? "File upload failed. Order was not created.");
                         }
-                        else
-                        {
-                            savedFileMasterIds = saveFilesResult.Data;
-                            _logger.LogInformation("Files saved successfully before order creation. FileCount: {FileCount}, MasterIds: {MasterIds}, User: {UserId}",
-                                files.Count, string.Join(", ", savedFileMasterIds), currentUserId);
-                        }
+                        savedFileMasterIds = saveFilesResult.Data;
+                        _logger.LogInformation("Files saved successfully before order creation. FileCount: {FileCount}, MasterIds: {MasterIds}, User: {UserId}",
+                            files.Count, string.Join(", ", savedFileMasterIds), currentUserId);
                     }
                     catch (Exception ex)
                     {
-                        // Log error but don't fail order creation - files are optional
-                        _logger.LogError(ex, "Exception occurred while saving files before order creation. User: {UserId}",
-                            currentUserId);
+                        _logger.LogError(ex, "Exception during file upload before order creation. User: {UserId}", currentUserId);
+                        return APIOperationResponse<long>.Fail(ResponseType.BadRequest,
+                            $"File upload failed: {ex.Message}. Order was not created.");
                     }
                 }
 
@@ -372,6 +371,7 @@ namespace Ettad.RequestManagement.Service.Orders
                 }
 
                 // Step 4: Link files to the order (create FileUplodDetails records) if files were saved
+                // When files were selected: if linking fails, delete the order and do not succeed.
                 if (savedFileMasterIds != null && savedFileMasterIds.Count > 0)
                 {
                     try
@@ -393,9 +393,11 @@ namespace Ettad.RequestManagement.Service.Orders
                     }
                     catch (Exception ex)
                     {
-                        // Log error but don't fail order creation - files are optional
-                        _logger.LogError(ex, "Exception occurred while linking files to order. OrderId: {OrderId}, User: {UserId}",
+                        _logger.LogError(ex, "Exception occurred while linking files to order. OrderId: {OrderId}, User: {UserId}. Rolling back order creation.",
                             createdOrder.Id, currentUserId);
+                        await _orderRepository.DeleteAsync(createdOrder);
+                        return APIOperationResponse<long>.Fail(ResponseType.BadRequest,
+                            $"File upload failed: {ex.Message}. Order was not created.");
                     }
                 }
 

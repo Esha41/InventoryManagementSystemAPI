@@ -174,6 +174,7 @@ namespace Ettad.RequestManagement.Service.Returns
                 }
 
                 // Step 1: Save files first (before creating return) to create FileUplodMaster records
+                // When files are selected: if file upload fails or throws an exception, do not create the return.
                 List<long> savedFileMasterIds = null;
                 if (files != null && files.Count > 0)
                 {
@@ -184,20 +185,18 @@ namespace Ettad.RequestManagement.Service.Returns
                         {
                             _logger.LogWarning("Failed to save files before creating return. Error: {Error}, User: {UserId}",
                                 saveFilesResult.Message ?? "Unknown error", currentUserId);
-                            // Continue without files - files are optional
+                            return APIOperationResponse<long>.Fail(ResponseType.BadRequest,
+                                saveFilesResult.Message ?? "File upload failed. Return was not created.");
                         }
-                        else
-                        {
-                            savedFileMasterIds = saveFilesResult.Data;
-                            _logger.LogInformation("Files saved successfully before return creation. FileCount: {FileCount}, MasterIds: {MasterIds}, User: {UserId}",
-                                files.Count, string.Join(", ", savedFileMasterIds), currentUserId);
-                        }
+                        savedFileMasterIds = saveFilesResult.Data;
+                        _logger.LogInformation("Files saved successfully before return creation. FileCount: {FileCount}, MasterIds: {MasterIds}, User: {UserId}",
+                            files.Count, string.Join(", ", savedFileMasterIds), currentUserId);
                     }
                     catch (Exception ex)
                     {
-                        // Log error but don't fail return creation - files are optional
-                        _logger.LogError(ex, "Exception occurred while saving files before return creation. User: {UserId}",
-                            currentUserId);
+                        _logger.LogError(ex, "Exception during file upload before return creation. User: {UserId}", currentUserId);
+                        return APIOperationResponse<long>.Fail(ResponseType.BadRequest,
+                            $"File upload failed: {ex.Message}. Return was not created.");
                     }
                 }
 
@@ -232,6 +231,7 @@ namespace Ettad.RequestManagement.Service.Returns
                 var createdReturn = await _returnRepository.AddAsync(returnEntity);
 
                 // Step 4: Link files to the return (create FileUplodDetails records) if files were saved
+                // When files were selected: if linking fails, delete the return and do not succeed.
                 if (savedFileMasterIds != null && savedFileMasterIds.Count > 0)
                 {
                     try
@@ -253,9 +253,11 @@ namespace Ettad.RequestManagement.Service.Returns
                     }
                     catch (Exception ex)
                     {
-                        // Log error but don't fail return creation - files are optional
-                        _logger.LogError(ex, "Exception occurred while linking files to return. ReturnId: {ReturnId}, User: {UserId}",
+                        _logger.LogError(ex, "Exception occurred while linking files to return. ReturnId: {ReturnId}, User: {UserId}. Rolling back return creation.",
                             createdReturn.Id, currentUserId);
+                        await _returnRepository.DeleteAsync(createdReturn);
+                        return APIOperationResponse<long>.Fail(ResponseType.BadRequest,
+                            $"File upload failed: {ex.Message}. Return was not created.");
                     }
                 }
 
