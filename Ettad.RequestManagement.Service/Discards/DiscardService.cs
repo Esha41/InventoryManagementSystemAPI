@@ -175,6 +175,7 @@ namespace Ettad.RequestManagement.Service.Discards
                 }
 
                 // Step 1: Save files first (before creating discard) to create FileUplodMaster records
+                // When files are selected: if file upload fails or throws an exception, do not create the discard.
                 List<long> savedFileMasterIds = null;
                 if (files != null && files.Count > 0)
                 {
@@ -186,20 +187,18 @@ namespace Ettad.RequestManagement.Service.Discards
                         {
                             _logger.LogWarning("Failed to save files before creating discard. Error: {Error}, User: {UserId}",
                                 saveFilesResult.Message ?? "Unknown error", currentUserId);
-                            // Continue without files - files are optional
+                            return APIOperationResponse<long>.Fail(ResponseType.BadRequest,
+                                saveFilesResult.Message ?? "File upload failed. Discard was not created.");
                         }
-                        else
-                        {
-                            savedFileMasterIds = saveFilesResult.Data;
-                            _logger.LogInformation("Files saved successfully before discard creation. FileCount: {FileCount}, MasterIds: {MasterIds}, User: {UserId}",
-                                files.Count, string.Join(", ", savedFileMasterIds), currentUserId);
-                        }
+                        savedFileMasterIds = saveFilesResult.Data;
+                        _logger.LogInformation("Files saved successfully before discard creation. FileCount: {FileCount}, MasterIds: {MasterIds}, User: {UserId}",
+                            files.Count, string.Join(", ", savedFileMasterIds), currentUserId);
                     }
                     catch (Exception ex)
                     {
-                        // Log error but don't fail discard creation - files are optional
-                        _logger.LogError(ex, "Exception occurred while saving files before discard creation. User: {UserId}",
-                            currentUserId);
+                        _logger.LogError(ex, "Exception during file upload before discard creation. User: {UserId}", currentUserId);
+                        return APIOperationResponse<long>.Fail(ResponseType.BadRequest,
+                            $"File upload failed: {ex.Message}. Discard was not created.");
                     }
                 }
 
@@ -234,6 +233,7 @@ namespace Ettad.RequestManagement.Service.Discards
                 var createdDiscard = await _discardRepository.AddAsync(discard);
 
                 // Step 4: Link files to the discard (create FileUplodDetails records) if files were saved
+                // When files were selected: if linking fails, delete the discard and do not succeed.
                 if (savedFileMasterIds != null && savedFileMasterIds.Count > 0)
                 {
                     try
@@ -255,9 +255,11 @@ namespace Ettad.RequestManagement.Service.Discards
                     }
                     catch (Exception ex)
                     {
-                        // Log error but don't fail discard creation - files are optional
-                        _logger.LogError(ex, "Exception occurred while linking files to discard. DiscardId: {DiscardId}, User: {UserId}",
+                        _logger.LogError(ex, "Exception occurred while linking files to discard. DiscardId: {DiscardId}, User: {UserId}. Rolling back discard creation.",
                             createdDiscard.Id, currentUserId);
+                        await _discardRepository.DeleteAsync(createdDiscard);
+                        return APIOperationResponse<long>.Fail(ResponseType.BadRequest,
+                            $"File upload failed: {ex.Message}. Discard was not created.");
                     }
                 }
 
