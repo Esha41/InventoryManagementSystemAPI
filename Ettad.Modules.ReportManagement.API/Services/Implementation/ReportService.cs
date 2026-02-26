@@ -1,11 +1,12 @@
 using AutoMapper;
 using Ettad.Application.Common.Interfaces;
+using Ettad.CrossCutting.Comman.Idenitity;
 using Ettad.CrossCutting.Comman.Time;
 using Ettad.CrossCutting.Data.Repository;
 using Ettad.Data.Enums;
-using Ettad.EntityFramework.DataBaseContext;
 using Ettad.ResponseHandler.Consts;
 using Ettad.ResponseHandler.Models;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Ettad.Modules.ReportManagement.API.Services.Dtos;
 using Ettad.Data.Entities;
@@ -15,9 +16,13 @@ namespace Ettad.Modules.ReportManagement.API.Services.Implementation
 {
     public class ReportService : IReportService
     {
-        private readonly ApplicationDbContext _context;
         private readonly ICrossCuttingRepository<ReportEntity> _reportRepository;
         private readonly ICrossCuttingRepository<ReportStatus> _reportStatusRepository;
+        private readonly ICrossCuttingRepository<ReportRole> _reportRoleRepository;
+        private readonly ICrossCuttingRepository<ScheduledReport> _scheduledReportRepository;
+        private readonly ICrossCuttingRepository<ScheduledReportRecipient> _scheduledReportRecipientRepository;
+        private readonly ICrossCuttingRepository<ScheduledReportExecution> _scheduledReportExecutionRepository;
+        private readonly RoleManager<ApplicationRole> _roleManager;
         private readonly ICurrentUserService _currentUserService;
         private readonly ILogger<ReportService> _logger;
         private readonly IDateTimeProvider _dateTimeProvider;
@@ -26,14 +31,23 @@ namespace Ettad.Modules.ReportManagement.API.Services.Implementation
         public ReportService(
             ICrossCuttingRepository<ReportEntity> reportRepository,
             ICrossCuttingRepository<ReportStatus> reportStatusRepository,
-            ICurrentUserService currentUserService, ApplicationDbContext context,
+            ICrossCuttingRepository<ReportRole> reportRoleRepository,
+            ICrossCuttingRepository<ScheduledReport> scheduledReportRepository,
+            ICrossCuttingRepository<ScheduledReportRecipient> scheduledReportRecipientRepository,
+            ICrossCuttingRepository<ScheduledReportExecution> scheduledReportExecutionRepository,
+            RoleManager<ApplicationRole> roleManager,
+            ICurrentUserService currentUserService,
             ILogger<ReportService> logger,
             IDateTimeProvider dateTimeProvider,
             IMapper mapper)
         {
-            _context = context;
             _reportRepository = reportRepository;
             _reportStatusRepository = reportStatusRepository;
+            _reportRoleRepository = reportRoleRepository;
+            _scheduledReportRepository = scheduledReportRepository;
+            _scheduledReportRecipientRepository = scheduledReportRecipientRepository;
+            _scheduledReportExecutionRepository = scheduledReportExecutionRepository;
+            _roleManager = roleManager;
             _currentUserService = currentUserService;
             _logger = logger;
             _dateTimeProvider = dateTimeProvider;
@@ -60,10 +74,11 @@ namespace Ettad.Modules.ReportManagement.API.Services.Implementation
                 var reportIds = reports.Select(r => r.Id).ToList();
 
                 // Get all role associations for these reports
-                var reportRoles = await _context.ReportRoles
-                    .Where(rr => reportIds.Contains(rr.ReportId) && !rr.IsDeleted)
-                    .Include(rr => rr.Role)
-                    .ToListAsync();
+                var reportRoles = (await _reportRoleRepository.FindAsync(
+                    rr => reportIds.Contains(rr.ReportId) && !rr.IsDeleted,
+                    false,
+                    nameof(ReportRole.Role)
+                )).ToList();
 
                 // Group roles by report ID
                 var rolesByReportId = reportRoles
@@ -109,8 +124,8 @@ namespace Ettad.Modules.ReportManagement.API.Services.Implementation
                 var userRoleIds = new List<string>();
                 if (userRoleNames.Any())
                 {
-                    userRoleIds = await _context.Roles
-                        .Where(r => userRoleNames.Contains(r.Name) || userRoleNames.Contains(r.NameAr) || userRoleNames.Contains(r.NameAr))
+                    userRoleIds = await _roleManager.Roles
+                        .Where(r => userRoleNames.Contains(r.Name) || userRoleNames.Contains(r.NameAr))
                         .Select(r => r.Id)
                         .ToListAsync();
 
@@ -120,26 +135,34 @@ namespace Ettad.Modules.ReportManagement.API.Services.Implementation
                         string.Join(", ", userRoleIds));
                 }
 
-                IQueryable<ReportEntity> query = _context.Reports
-                    .Include(r => r.ReportStatus)
-                    .Where(r => r.ReportStatusId == (int)ReportStatuses.Published && !r.IsDeleted);
+                // Get all published reports
+                var reportsList = (await _reportRepository.FindAsync(
+                    r => r.ReportStatusId == (int)ReportStatuses.Published && !r.IsDeleted,
+                    false,
+                    nameof(ReportEntity.ReportStatus)
+                )).ToList();
 
                 if (!isSuperAdmin)
                 {
-                    query = query.Where(r =>
-                        // No role restrictions
-                        !_context.ReportRoles.Any(rr => rr.ReportId == r.Id && !rr.IsDeleted)
+                    // Get role associations for these reports
+                    var reportIds = reportsList.Select(r => r.Id).ToList();
+                    var allReportRoles = (await _reportRoleRepository.FindAsync(
+                        rr => reportIds.Contains(rr.ReportId) && !rr.IsDeleted,
+                        false
+                    )).ToList();
 
-                        // OR user has matching role
-                        || _context.ReportRoles.Any(rr =>
-                            rr.ReportId == r.Id &&
-                            !rr.IsDeleted &&
-                            userRoleIds.Contains(rr.RoleId)
-                        )
-                    );
+                    var rolesByReportId = allReportRoles
+                        .GroupBy(rr => rr.ReportId)
+                        .ToDictionary(g => g.Key, g => g.Select(rr => rr.RoleId).ToList());
+
+                    reportsList = reportsList.Where(r =>
+                        // No role restrictions (report has no roles assigned)
+                        !rolesByReportId.ContainsKey(r.Id)
+                        // OR user has a matching role
+                        || rolesByReportId[r.Id].Any(roleId => userRoleIds.Contains(roleId))
+                    ).ToList();
                 }
 
-                var reportsList = await query.ToListAsync();
                 var dtos = _mapper.Map<List<ReportDto>>(reportsList)
                     .OrderBy(x => x.CreationDate)
                     .ToList();
@@ -295,9 +318,9 @@ namespace Ettad.Modules.ReportManagement.API.Services.Implementation
 
             try
             {
-                var report = await _context.Reports
-                    .Include(r => r.ReportStatus)
-                    .FirstOrDefaultAsync(r => r.Id == id && r.ReportStatusId != (int)ReportStatuses.Inactive);
+                var report = await _reportRepository.FindOneAsync(
+                    r => r.Id == id && r.ReportStatusId != (int)ReportStatuses.Inactive,
+                    false);
 
                 if (report == null)
                 {
@@ -305,19 +328,22 @@ namespace Ettad.Modules.ReportManagement.API.Services.Implementation
                     return APIOperationResponse<ReportDto>.Fail(ResponseType.NotFound, "Report not found");
                 }
 
+                // Update report status
                 report.ReportStatusId = dto.IsPublic ? (int)ReportStatuses.Published : (int)ReportStatuses.Draft;
                 report.ModificationDate = _dateTimeProvider.Now;
                 report.ModifiedBy = _currentUserService.UserId;
+
+                // Save report update first before handling roles
+                await _reportRepository.UpdateAsync(report);
 
                 // Handle role associations
                 if (dto.IsPublic)
                 {
                     // Get existing role associations for this report
-                    // Use IgnoreQueryFilters to bypass soft delete filter for deletion operations
-                    var existingReportRoles = await _context.ReportRoles
-                        .IgnoreQueryFilters()
-                        .Where(rr => rr.ReportId == id && !rr.IsDeleted)
-                        .ToListAsync();
+                    var existingReportRoles = (await _reportRoleRepository.FindAsync(
+                        rr => rr.ReportId == id && !rr.IsDeleted,
+                        true
+                    )).ToList();
 
                     // Get the set of role IDs that should remain (from the DTO)
                     var targetRoleIds = dto.RoleIds != null ? dto.RoleIds.Distinct().ToHashSet() : new HashSet<string>();
@@ -325,7 +351,7 @@ namespace Ettad.Modules.ReportManagement.API.Services.Implementation
                     // Verify that all provided role IDs exist in the database
                     if (targetRoleIds.Any())
                     {
-                        var validRoleIds = await _context.Roles
+                        var validRoleIds = await _roleManager.Roles
                             .Where(r => targetRoleIds.Contains(r.Id))
                             .Select(r => r.Id)
                             .ToListAsync();
@@ -351,17 +377,14 @@ namespace Ettad.Modules.ReportManagement.API.Services.Implementation
                     {
                         _logger.LogInformation("Hard deleting {Count} role associations for report {ReportId}", rolesToDeleteIds.Count, id);
 
-                        // Use ExecuteDelete for direct database deletion (bypasses query filters and is more efficient)
-                        var deletedCount = await _context.ReportRoles
-                            .IgnoreQueryFilters()
-                            .Where(rr => rr.ReportId == id && rolesToDeleteIds.Contains(rr.RoleId) && !rr.IsDeleted)
+                        var deletedCount = await _reportRoleRepository
+                            .Find(rr => rr.ReportId == id && rolesToDeleteIds.Contains(rr.RoleId) && !rr.IsDeleted, includeSoftDeleted: true)
                             .ExecuteDeleteAsync();
 
                         _logger.LogInformation("Successfully hard deleted {DeletedCount} role associations for report {ReportId}", deletedCount, id);
                     }
 
                     // Add new role associations that don't already exist
-                    // Get role IDs that will remain after deletion
                     var existingRoleIds = existingReportRoles
                         .Where(rr => targetRoleIds.Contains(rr.RoleId))
                         .Select(rr => rr.RoleId)
@@ -371,7 +394,6 @@ namespace Ettad.Modules.ReportManagement.API.Services.Implementation
                     {
                         if (!existingRoleIds.Contains(roleId))
                         {
-                            // This is a new role, create it
                             var reportRole = new ReportRole
                             {
                                 Id = Guid.NewGuid(),
@@ -380,28 +402,24 @@ namespace Ettad.Modules.ReportManagement.API.Services.Implementation
                                 CreationDate = _dateTimeProvider.Now,
                                 CreatedBy = _currentUserService.UserId ?? string.Empty
                             };
-                            await _context.ReportRoles.AddAsync(reportRole);
+                            await _reportRoleRepository.AddAsync(reportRole);
                         }
                     }
                 }
                 // When making private, preserve role associations (don't delete them)
                 // This allows roles to be preserved when toggling between public and private
-                // The GetPublicReportsAsync method already filters by status, so draft reports
-                // won't be accessible even if they have role associations
 
-                await _reportRepository.UpdateAsync(report);
-                await _context.SaveChangesAsync();
-
-                var updated = await _context.Reports
-                    .Include(r => r.ReportStatus)
-                    .FirstAsync(r => r.Id == id);
+                var updated = await _reportRepository.FindOneAsync(
+                    r => r.Id == id,
+                    false,
+                    nameof(ReportEntity.ReportStatus));
 
                 // Get role associations for this report (preserve them even when making private)
-                // This allows roles to be preserved when toggling between public and private
-                var reportRoles = await _context.ReportRoles
-                    .Where(rr => rr.ReportId == id && !rr.IsDeleted)
-                    .Include(rr => rr.Role)
-                    .ToListAsync();
+                var reportRoles = (await _reportRoleRepository.FindAsync(
+                    rr => rr.ReportId == id && !rr.IsDeleted,
+                    false,
+                    nameof(ReportRole.Role)
+                )).ToList();
 
                 var roles = reportRoles.Select(rr => new ReportRoleDto
                 {
@@ -436,9 +454,7 @@ namespace Ettad.Modules.ReportManagement.API.Services.Implementation
 
             try
             {
-                var report = await _context.Reports
-                    .IgnoreQueryFilters()
-                    .FirstOrDefaultAsync(x => x.Id == id);
+                var report = await _reportRepository.FindOneAsync(x => x.Id == id, includeSoftDeleted: true);
 
                 if (report == null)
                 {
@@ -447,47 +463,41 @@ namespace Ettad.Modules.ReportManagement.API.Services.Implementation
                 }
 
                 // Get all scheduled report IDs for this report
-                var scheduledReportIds = await _context.ScheduledReports
-                    .IgnoreQueryFilters()
-                    .Where(sr => sr.ReportId == id)
+                var scheduledReportIds = _scheduledReportRepository
+                    .Find(sr => sr.ReportId == id, includeSoftDeleted: true)
                     .Select(sr => sr.Id)
-                    .ToListAsync();
+                    .ToList();
 
                 if (scheduledReportIds.Any())
                 {
                     // Permanently delete scheduled report execution history
-                    var deletedExecutions = await _context.ScheduledReportExecutions
-                        .IgnoreQueryFilters()
-                        .Where(e => scheduledReportIds.Contains(e.ScheduledReportId))
+                    var deletedExecutions = await _scheduledReportExecutionRepository
+                        .Find(e => scheduledReportIds.Contains(e.ScheduledReportId), includeSoftDeleted: true)
                         .ExecuteDeleteAsync();
                     _logger.LogInformation("Permanently deleted {Count} scheduled report executions for report {ReportId}", deletedExecutions, id);
 
                     // Permanently delete scheduled report recipients
-                    var deletedRecipients = await _context.ScheduledReportRecipients
-                        .IgnoreQueryFilters()
-                        .Where(r => scheduledReportIds.Contains(r.ScheduledReportId))
+                    var deletedRecipients = await _scheduledReportRecipientRepository
+                        .Find(r => scheduledReportIds.Contains(r.ScheduledReportId), includeSoftDeleted: true)
                         .ExecuteDeleteAsync();
                     _logger.LogInformation("Permanently deleted {Count} scheduled report recipients for report {ReportId}", deletedRecipients, id);
 
                     // Permanently delete scheduled reports
-                    var deletedSchedules = await _context.ScheduledReports
-                        .IgnoreQueryFilters()
-                        .Where(sr => sr.ReportId == id)
+                    var deletedSchedules = await _scheduledReportRepository
+                        .Find(sr => sr.ReportId == id, includeSoftDeleted: true)
                         .ExecuteDeleteAsync();
                     _logger.LogInformation("Permanently deleted {Count} scheduled reports for report {ReportId}", deletedSchedules, id);
                 }
 
                 // Permanently delete report role associations
-                var deletedRoles = await _context.ReportRoles
-                    .IgnoreQueryFilters()
-                    .Where(rr => rr.ReportId == id)
+                var deletedRoles = await _reportRoleRepository
+                    .Find(rr => rr.ReportId == id, includeSoftDeleted: true)
                     .ExecuteDeleteAsync();
                 _logger.LogInformation("Permanently deleted {Count} report role associations for report {ReportId}", deletedRoles, id);
 
                 // Permanently delete the report itself
-                await _context.Reports
-                    .IgnoreQueryFilters()
-                    .Where(r => r.Id == id)
+                await _reportRepository
+                    .Find(r => r.Id == id, includeSoftDeleted: true)
                     .ExecuteDeleteAsync();
 
                 _logger.LogInformation("Report permanently deleted successfully. ReportId: {ReportId}, User: {UserId}", id, _currentUserService.UserId);
@@ -585,10 +595,10 @@ namespace Ettad.Modules.ReportManagement.API.Services.Implementation
 
             try
             {
-                var roleIds = await _context.ReportRoles
-                    .Where(rr => rr.ReportId == reportId && !rr.IsDeleted)
+                var roleIds = _reportRoleRepository
+                    .Find(rr => rr.ReportId == reportId && !rr.IsDeleted)
                     .Select(rr => rr.RoleId)
-                    .ToListAsync();
+                    .ToList();
 
                 _logger.LogInformation("Retrieved {Count} role IDs for report. ReportId: {ReportId}, User: {UserId}", roleIds.Count, reportId, _currentUserService.UserId);
                 return APIOperationResponse<List<string>>.Success(roleIds);

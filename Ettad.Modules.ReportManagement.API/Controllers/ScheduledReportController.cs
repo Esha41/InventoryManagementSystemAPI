@@ -28,7 +28,7 @@ namespace Ettad.Modules.ReportManagement.API.Controllers
         /// </summary>
         [HttpGet]
         [ProducesResponseType((int)HttpStatusCode.OK)]
-        [CheckAuthorize("ReportDesigner")]
+        [CheckAuthorize("ScheduledReports")]
         public async Task<IActionResult> GetAll()
         {
             var result = await _scheduledReportService.GetAllAsync();
@@ -40,7 +40,7 @@ namespace Ettad.Modules.ReportManagement.API.Controllers
         /// </summary>
         [HttpGet("{id}")]
         [ProducesResponseType((int)HttpStatusCode.OK)]
-        [CheckAuthorize("ReportDesigner")]
+        [CheckAuthorize("ScheduledReports")]
         public async Task<IActionResult> GetById(Guid id)
         {
             var result = await _scheduledReportService.GetByIdAsync(id);
@@ -52,7 +52,7 @@ namespace Ettad.Modules.ReportManagement.API.Controllers
         /// </summary>
         [HttpPost]
         [ProducesResponseType((int)HttpStatusCode.Created)]
-        [CheckAuthorize("ReportDesigner")]
+        [CheckAuthorize("ScheduledReports")]
         public async Task<IActionResult> Create([FromBody] CreateScheduledReportDto dto)
         {
             var result = await _scheduledReportService.CreateAsync(dto);
@@ -64,7 +64,7 @@ namespace Ettad.Modules.ReportManagement.API.Controllers
         /// </summary>
         [HttpPut("{id}")]
         [ProducesResponseType((int)HttpStatusCode.OK)]
-        [CheckAuthorize("ReportDesigner")]
+        [CheckAuthorize("ScheduledReports")]
         public async Task<IActionResult> Update(Guid id, [FromBody] UpdateScheduledReportDto dto)
         {
             var result = await _scheduledReportService.UpdateAsync(id, dto);
@@ -76,7 +76,7 @@ namespace Ettad.Modules.ReportManagement.API.Controllers
         /// </summary>
         [HttpDelete("{id}")]
         [ProducesResponseType((int)HttpStatusCode.NoContent)]
-        [CheckAuthorize("ReportDesigner")]
+        [CheckAuthorize("ScheduledReports")]
         public async Task<IActionResult> Delete(Guid id)
         {
             var result = await _scheduledReportService.DeleteAsync(id);
@@ -88,7 +88,7 @@ namespace Ettad.Modules.ReportManagement.API.Controllers
         /// </summary>
         [HttpPatch("{id}/toggle-active")]
         [ProducesResponseType((int)HttpStatusCode.OK)]
-        [CheckAuthorize("ReportDesigner")]
+        [CheckAuthorize("ScheduledReports")]
         public async Task<IActionResult> ToggleActive(Guid id, [FromBody] ToggleActiveDto dto)
         {
             var result = await _scheduledReportService.ToggleActiveAsync(id, dto.IsActive);
@@ -100,7 +100,7 @@ namespace Ettad.Modules.ReportManagement.API.Controllers
         /// </summary>
         [HttpGet("{id}/executions")]
         [ProducesResponseType((int)HttpStatusCode.OK)]
-        [CheckAuthorize("ReportDesigner")]
+        [CheckAuthorize("ScheduledReports")]
         public async Task<IActionResult> GetExecutionHistory(Guid id)
         {
             var result = await _scheduledReportService.GetExecutionHistoryAsync(id);
@@ -112,7 +112,7 @@ namespace Ettad.Modules.ReportManagement.API.Controllers
         /// </summary>
         [HttpPost("{id}/execute-now")]
         [ProducesResponseType((int)HttpStatusCode.OK)]
-        [CheckAuthorize("ReportDesigner")]
+        [CheckAuthorize("ScheduledReports")]
         public async Task<IActionResult> ExecuteNow(Guid id)
         {
             var result = await _scheduledReportService.ExecuteNowAsync(id);

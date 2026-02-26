@@ -1,6 +1,5 @@
 using Ettad.CrossCutting.Comman.Time;
 using Ettad.CrossCutting.Data.Repository;
-using Ettad.EntityFramework.DataBaseContext;
 using Ettad.Data.Entities;
 using DevExpress.XtraReports.UI;
 using Ettad.Modules.ReportManagement.API.Reports.Factories;
@@ -12,8 +11,8 @@ namespace Ettad.Modules.ReportManagement.API.Services.Implementation
 {
     public class ScheduledReportExecutionService : IScheduledReportExecutionService
     {
-        private readonly ApplicationDbContext _context;
         private readonly ICrossCuttingRepository<ScheduledReport> _scheduledReportRepository;
+        private readonly ICrossCuttingRepository<ScheduledReportExecution> _executionRepository;
         private readonly IDateTimeProvider _dateTimeProvider;
         private readonly ILogger<ScheduledReportExecutionService> _logger;
         private readonly IReportService _reportService;
@@ -22,9 +21,8 @@ namespace Ettad.Modules.ReportManagement.API.Services.Implementation
         private readonly IUserService _userService;
 
         public ScheduledReportExecutionService(
-            ApplicationDbContext context,
             ICrossCuttingRepository<ScheduledReport> scheduledReportRepository,
-            ICrossCuttingRepository<ReportEntity> reportRepository,
+            ICrossCuttingRepository<ScheduledReportExecution> executionRepository,
             IDateTimeProvider dateTimeProvider,
             ILogger<ScheduledReportExecutionService> logger,
             IReportService reportService,
@@ -32,8 +30,8 @@ namespace Ettad.Modules.ReportManagement.API.Services.Implementation
             IEmailSender emailSender,
             IUserService userService)
         {
-            _context = context;
             _scheduledReportRepository = scheduledReportRepository;
+            _executionRepository = executionRepository;
             _dateTimeProvider = dateTimeProvider;
             _logger = logger;
             _reportService = reportService;
@@ -207,7 +205,6 @@ namespace Ettad.Modules.ReportManagement.API.Services.Implementation
                 scheduledReport.ModificationDate = _dateTimeProvider.Now;
 
                 await _scheduledReportRepository.UpdateAsync(scheduledReport);
-                await _context.SaveChangesAsync();
 
                 await SaveExecutionAsync(execution);
 
@@ -353,8 +350,7 @@ namespace Ettad.Modules.ReportManagement.API.Services.Implementation
         {
             try
             {
-                await _context.Set<ScheduledReportExecution>().AddAsync(execution);
-                await _context.SaveChangesAsync();
+                await _executionRepository.AddAsync(execution);
             }
             catch (Exception ex)
             {

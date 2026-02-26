@@ -56,9 +56,7 @@ namespace Ettad.Modules.ReportManagement.API.Reports
                         foreach (var deptValue in values)
                         {
                             if (int.TryParse(deptValue.Trim(), out var parsedId))
-                            {
                                 departmentIds.Add(parsedId);
-                            }
                         }
                     }
 
@@ -66,16 +64,12 @@ namespace Ettad.Modules.ReportManagement.API.Reports
                     if (queryParams.TryGetValue("superadmin", out var superAdminValue))
                     {
                         if (bool.TryParse(superAdminValue.ToString(), out var parsedSuperAdmin))
-                        {
                             superAdminFromUrl = parsedSuperAdmin;
-                        }
                     }
 
                     //if user is not super admin but has NULL departmentID, don't display any data
                     if ((superAdminFromUrl == null || superAdminFromUrl == false) && departmentIds.Count == 0)
-                    {
                         departmentIds.Add(-1);
-                    }
                 }
 
                 XtraReport report;
@@ -176,9 +170,7 @@ namespace Ettad.Modules.ReportManagement.API.Reports
                 var updateResult = _reportService.UpdateAsync(existingReportResult.Data.Id, updateDto).GetAwaiter().GetResult();
 
                 if (!updateResult.Succeeded)
-                {
                     throw new FaultException($"Failed to update report: {updateResult.Message}");
-                }
             }
         }
 
@@ -217,9 +209,7 @@ namespace Ettad.Modules.ReportManagement.API.Reports
             var createResult = _reportService.CreateAsync(createDto).GetAwaiter().GetResult();
 
             if (!createResult.Succeeded)
-            {
                 throw new FaultException(createResult.Message);
-            }
 
             return createResult.Data ?? url;
         }

@@ -2,7 +2,6 @@ using AutoMapper;
 using Ettad.Application.Common.Interfaces;
 using Ettad.CrossCutting.Comman.Time;
 using Ettad.CrossCutting.Data.Repository;
-using Ettad.EntityFramework.DataBaseContext;
 using Ettad.ResponseHandler.Consts;
 using Ettad.ResponseHandler.Models;
 using Microsoft.EntityFrameworkCore;
@@ -15,9 +14,10 @@ namespace Ettad.Modules.ReportManagement.API.Services.Implementation
 {
     public class ScheduledReportService : IScheduledReportService
     {
-        private readonly ApplicationDbContext _context;
         private readonly ICrossCuttingRepository<ScheduledReport> _scheduledReportRepository;
         private readonly ICrossCuttingRepository<ReportEntity> _reportRepository;
+        private readonly ICrossCuttingRepository<ScheduledReportRecipient> _recipientRepository;
+        private readonly ICrossCuttingRepository<ScheduledReportExecution> _executionRepository;
         private readonly ICurrentUserService _currentUserService;
         private readonly ILogger<ScheduledReportService> _logger;
         private readonly IDateTimeProvider _dateTimeProvider;
@@ -28,17 +28,19 @@ namespace Ettad.Modules.ReportManagement.API.Services.Implementation
         public ScheduledReportService(
             ICrossCuttingRepository<ScheduledReport> scheduledReportRepository,
             ICrossCuttingRepository<ReportEntity> reportRepository,
+            ICrossCuttingRepository<ScheduledReportRecipient> recipientRepository,
+            ICrossCuttingRepository<ScheduledReportExecution> executionRepository,
             ICurrentUserService currentUserService,
-            ApplicationDbContext context,
             ILogger<ScheduledReportService> logger,
             IDateTimeProvider dateTimeProvider,
             IScheduledReportExecutionService executionService,
             IUserService userService,
             IMapper mapper)
         {
-            _context = context;
             _scheduledReportRepository = scheduledReportRepository;
             _reportRepository = reportRepository;
+            _recipientRepository = recipientRepository;
+            _executionRepository = executionRepository;
             _currentUserService = currentUserService;
             _logger = logger;
             _dateTimeProvider = dateTimeProvider;
@@ -174,7 +176,6 @@ namespace Ettad.Modules.ReportManagement.API.Services.Implementation
                 }
 
                 await _scheduledReportRepository.AddAsync(scheduledReport);
-                await _context.SaveChangesAsync();
 
                 _logger.LogInformation("Created scheduled report {Id}. User: {UserId}", scheduledReport.Id, _currentUserService.UserId);
                 return APIOperationResponse<Guid>.Success(scheduledReport.Id);
@@ -234,19 +235,17 @@ namespace Ettad.Modules.ReportManagement.API.Services.Implementation
                     dto.DayOfMonth
                 );
 
-                // Update recipients - remove existing and add new ones
-                var existingRecipients = scheduledReport.Recipients.Where(r => !r.IsDeleted).ToList();
-                _logger.LogInformation("Marking {Count} existing recipients as deleted for scheduled report {Id}", existingRecipients.Count, id);
-                foreach (var existing in existingRecipients)
+                // Update recipients - hard delete existing and add new ones
+                var existingRecipientIds = scheduledReport.Recipients.Where(r => !r.IsDeleted).Select(r => r.Id).ToList();
+                if (existingRecipientIds.Any())
                 {
-                    existing.IsDeleted = true;
-                    existing.DeletionDate = _dateTimeProvider.Now;
-                    existing.DeletedBy = _currentUserService.UserId;
-                    // Explicitly mark as modified to ensure Entity Framework tracks the soft delete
-                    _context.Entry(existing).State = Microsoft.EntityFrameworkCore.EntityState.Modified;
+                    _logger.LogInformation("Hard deleting {Count} existing recipients for scheduled report {Id}", existingRecipientIds.Count, id);
+                    await _recipientRepository
+                        .Find(r => existingRecipientIds.Contains(r.Id), includeSoftDeleted: true)
+                        .ExecuteDeleteAsync();
                 }
 
-                // Add new recipients - need to explicitly add to DbContext for proper tracking
+                // Add new recipients
                 _logger.LogInformation("Adding {Count} new recipients for scheduled report {Id}", dto.Recipients.Count, id);
                 foreach (var recipientDto in dto.Recipients)
                 {
@@ -262,23 +261,15 @@ namespace Ettad.Modules.ReportManagement.API.Services.Implementation
                     recipient.CreatedBy = _currentUserService.UserId ?? string.Empty;
 
                     // If UserId is provided, don't store EmailAddress (we'll fetch it dynamically)
-                    // If UserId is null, store EmailAddress for manual email entries
                     if (string.IsNullOrWhiteSpace(recipientDto.UserId))
                     {
                         recipient.EmailAddress = recipientDto.EmailAddress;
                     }
-                    // EmailAddress is not stored when UserId is present - it will be fetched from user record
 
-                    // Add to the collection for navigation property
-                    scheduledReport.Recipients.Add(recipient);
-                    // Explicitly add to DbContext to ensure Entity Framework tracks it as a new entity
-                    _context.Set<ScheduledReportRecipient>().Add(recipient);
+                    await _recipientRepository.AddAsync(recipient);
                 }
 
-                // Mark the parent entity as modified (it's already tracked from FindOneAsync)
-                // This ensures all changes (including deleted recipients and new recipients) are saved
-                _context.Entry(scheduledReport).State = Microsoft.EntityFrameworkCore.EntityState.Modified;
-                await _context.SaveChangesAsync();
+                await _scheduledReportRepository.UpdateAsync(scheduledReport);
 
                 _logger.LogInformation("Updated scheduled report {Id}. User: {UserId}", id, _currentUserService.UserId);
                 return APIOperationResponse<bool>.Success(true);
@@ -299,11 +290,10 @@ namespace Ettad.Modules.ReportManagement.API.Services.Implementation
 
             try
             {
-                var exists = await _context.ScheduledReports
-                    .IgnoreQueryFilters()
-                    .AnyAsync(sr => sr.Id == id);
+                var scheduledReport = await _scheduledReportRepository.FindOneAsync(
+                    sr => sr.Id == id, includeSoftDeleted: true);
 
-                if (!exists)
+                if (scheduledReport == null)
                 {
                     return APIOperationResponse<bool>.Fail(
                         ResponseType.NotFound,
@@ -312,23 +302,20 @@ namespace Ettad.Modules.ReportManagement.API.Services.Implementation
                 }
 
                 // Permanently delete execution history
-                var deletedExecutions = await _context.ScheduledReportExecutions
-                    .IgnoreQueryFilters()
-                    .Where(e => e.ScheduledReportId == id)
+                var deletedExecutions = await _executionRepository
+                    .Find(e => e.ScheduledReportId == id, includeSoftDeleted: true)
                     .ExecuteDeleteAsync();
                 _logger.LogInformation("Permanently deleted {Count} executions for scheduled report {Id}", deletedExecutions, id);
 
                 // Permanently delete recipients
-                var deletedRecipients = await _context.ScheduledReportRecipients
-                    .IgnoreQueryFilters()
-                    .Where(r => r.ScheduledReportId == id)
+                var deletedRecipients = await _recipientRepository
+                    .Find(r => r.ScheduledReportId == id, includeSoftDeleted: true)
                     .ExecuteDeleteAsync();
                 _logger.LogInformation("Permanently deleted {Count} recipients for scheduled report {Id}", deletedRecipients, id);
 
                 // Permanently delete the scheduled report itself
-                await _context.ScheduledReports
-                    .IgnoreQueryFilters()
-                    .Where(sr => sr.Id == id)
+                await _scheduledReportRepository
+                    .Find(sr => sr.Id == id, includeSoftDeleted: true)
                     .ExecuteDeleteAsync();
 
                 _logger.LogInformation("Permanently deleted scheduled report {Id}. User: {UserId}", id, _currentUserService.UserId);
@@ -367,7 +354,6 @@ namespace Ettad.Modules.ReportManagement.API.Services.Implementation
                 scheduledReport.ModifiedBy = _currentUserService.UserId;
 
                 await _scheduledReportRepository.UpdateAsync(scheduledReport);
-                await _context.SaveChangesAsync();
 
                 _logger.LogInformation("Toggled scheduled report {Id} active status to {IsActive}. User: {UserId}", id, isActive, _currentUserService.UserId);
                 return APIOperationResponse<bool>.Success(true);
@@ -388,8 +374,8 @@ namespace Ettad.Modules.ReportManagement.API.Services.Implementation
 
             try
             {
-                var executions = await _context.Set<ScheduledReportExecution>()
-                    .Where(e => e.ScheduledReportId == scheduledReportId && !e.IsDeleted)
+                var executions = await _executionRepository
+                    .Find(e => e.ScheduledReportId == scheduledReportId && !e.IsDeleted)
                     .OrderByDescending(e => e.ExecutionDate)
                     .Take(50) // Limit to last 50 executions
                     .ToListAsync();
