@@ -27,7 +27,6 @@ using Ettad.Inventory.Service.AssetSupply.Validators;
 using Ettad.Inventory.Service.AssetSupply.Profiles;
 using Ettad.Inventory.Service.AssetHistory;
 using Ettad.Inventory.Service.AssetHistory.Profiles;
-using Ettad.Inventory.Service.AdvancedAnalytics;
 using Ettad.Inventory.Service.ItemDepartmentAssignments;
 using Ettad.Inventory.Service.ItemDepartmentAssignments.Profiles;
 
@@ -92,9 +91,6 @@ namespace Ettad.Inventory.Service
             // Asset History Services
             services.AddScoped<IAssetHistoryService, AssetHistoryService>();
             services.AddAutoMapper(typeof(AssetHistoryMappingProfile));
-
-            // Advanced Analytics Services
-            services.AddScoped<IAdvancedAnalyticsService, AdvancedAnalyticsService>();
 
             return services;
         }
