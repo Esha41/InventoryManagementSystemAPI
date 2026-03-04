@@ -466,5 +466,47 @@ namespace Ettad.Inventory.Service.Batches
                 return APIOperationResponse<bool>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
             }
         }
+
+        public async Task<APIOperationResponse<bool>> RemoveAssetFromBatchAsync(long batchId, long assetId)
+        {
+            _logger.LogInformation("Removing asset from batch. BatchId: {BatchId}, AssetId: {AssetId}, User: {UserId}",
+                batchId, assetId, _currentUserService.UserId);
+
+            try
+            {
+                var batch = await _batchRepository.FindOneAsync(p => p.Id == batchId && !p.IsDeleted);
+                if (batch == null)
+                    return APIOperationResponse<bool>.Fail(ResponseType.NotFound, "Batch not found");
+
+                var userId = _currentUserService.UserId;
+                if (!string.IsNullOrEmpty(userId) && !await _depotAccessService.HasDepotAccessAsync(userId, batch.DepotId))
+                    return APIOperationResponse<bool>.Fail(ResponseType.Forbidden, "You do not have access to this depot.");
+
+                var asset = await _assetRepository.FindOneAsync(a => a.Id == assetId && !a.IsDeleted && a.BatchId == batchId);
+                if (asset == null)
+                    return APIOperationResponse<bool>.Fail(ResponseType.NotFound, "Asset not found in this batch");
+
+                if (asset.IsAssigned)
+                    return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, "Cannot remove assigned asset. Unassign it first.");
+
+                var inSupply = await _context.AssetSupplyDetails
+                    .AnyAsync(sd => !sd.IsDeleted && sd.AssetId == assetId);
+                if (inSupply)
+                    return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, "Cannot remove asset that is in a supply order.");
+
+                await _assetRepository.DeleteAsync(asset);
+
+                _logger.LogInformation("Asset removed from batch successfully. BatchId: {BatchId}, AssetId: {AssetId}, User: {UserId}",
+                    batchId, assetId, _currentUserService.UserId);
+
+                return APIOperationResponse<bool>.Success(true, "Asset removed successfully");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error removing asset from batch. BatchId: {BatchId}, AssetId: {AssetId}, User: {UserId}",
+                    batchId, assetId, _currentUserService.UserId);
+                return APIOperationResponse<bool>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
+            }
+        }
     }
 }

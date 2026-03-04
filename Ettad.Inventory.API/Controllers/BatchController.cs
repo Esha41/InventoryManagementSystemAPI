@@ -74,5 +74,14 @@ namespace Ettad.Inventory.API.Controllers
             var result = await _batchService.DeleteAsync(id);
             return ProcessResponse(result);
         }
+
+        [HttpDelete("{batchId}/assets/{assetId}")]
+        [ProducesResponseType((int)HttpStatusCode.OK)]
+        [CheckAuthorize("Permissions.Asset.Edit")]
+        public async Task<IActionResult> RemoveAssetFromBatch(long batchId, long assetId)
+        {
+            var result = await _batchService.RemoveAssetFromBatchAsync(batchId, assetId);
+            return ProcessResponse(result);
+        }
     }
 }
