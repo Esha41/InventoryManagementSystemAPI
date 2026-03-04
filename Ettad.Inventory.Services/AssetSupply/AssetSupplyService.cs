@@ -132,9 +132,7 @@ namespace Ettad.Inventory.Service.AssetSupply
                             && !string.IsNullOrEmpty(a.SerialNumber)
                             && !a.IsAssigned
                             && !a.IsDeleted
-                            && a.Status != AssetStatus.Maintenance
-                            && a.Status != AssetStatus.Disposed
-                            && a.Status != AssetStatus.Lost);
+                            && a.Status == AssetStatus.ReadyToIssue);
 
                     // Filter by depot IDs if provided
                     if (depotIds != null && depotIds.Any())

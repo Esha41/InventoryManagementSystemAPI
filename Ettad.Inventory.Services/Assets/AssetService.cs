@@ -363,7 +363,7 @@ namespace Ettad.Inventory.Service.Assets
                 asset.BatchId = batch.Id;
                 asset.CreationDate = _dateTimeProvider.Now;
                 asset.CreatedBy = _currentUserService.UserId;
-                asset.Status = AssetStatus.Active;
+                asset.Status = AssetStatus.ReadyToIssue;
                 asset.SerialNumber = string.IsNullOrWhiteSpace(inputDto.SerialNumber) ? null : inputDto.SerialNumber.Trim();
                 asset.RFID = string.IsNullOrWhiteSpace(inputDto.RFID) ? null : inputDto.RFID.Trim();
 
@@ -489,7 +489,7 @@ namespace Ettad.Inventory.Service.Assets
                     asset.BatchId = batchCache[batchKey];
                     asset.CreationDate = _dateTimeProvider.Now;
                     asset.CreatedBy = _currentUserService.UserId;
-                    asset.Status = AssetStatus.Active;
+                    asset.Status = AssetStatus.ReadyToIssue;
                     asset.SerialNumber = string.IsNullOrWhiteSpace(dto.SerialNumber) ? null : dto.SerialNumber.Trim();
                     asset.RFID = string.IsNullOrWhiteSpace(dto.RFID) ? null : dto.RFID.Trim();
 
@@ -804,7 +804,7 @@ namespace Ettad.Inventory.Service.Assets
                         asset.BatchId = batch.Id;
                         asset.CreationDate = _dateTimeProvider.Now;
                         asset.CreatedBy = _currentUserService.UserId;
-                        asset.Status = AssetStatus.Active;
+                        asset.Status = AssetStatus.ReadyToIssue;
 
                         await _assetRepository.AddAsync(asset);
                         createAssetDtos.Add(createDto);
