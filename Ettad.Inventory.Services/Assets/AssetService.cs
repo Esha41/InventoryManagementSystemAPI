@@ -21,6 +21,7 @@ using OfficeOpenXml;
 using Ettad.CrossCutting.Comman.Time;
 using OfficeOpenXml.DataValidation;
 using Ettad.CrossCutting.Comman.Models;
+using Ettad.Inventory.Service.Batches;
 
 namespace Ettad.Inventory.Service.Assets
 {
@@ -50,6 +51,7 @@ namespace Ettad.Inventory.Service.Assets
                     false,
                     nameof(Asset.Item),
                     nameof(Asset.Depot),
+                    nameof(Asset.Batch),
                     $"{nameof(Asset.CurrentAssignment)}.{nameof(AssetAssignment.Custodian)}",
                     $"{nameof(Asset.CurrentAssignment)}.{nameof(AssetAssignment.Department)}"
                 );
@@ -106,6 +108,7 @@ namespace Ettad.Inventory.Service.Assets
         private readonly ApplicationDbContext _context;
         private readonly IDateTimeProvider _dateTimeProvider;
         private readonly IDepotAccessService _depotAccessService;
+        private readonly IBatchService _batchService;
 
         public AssetService(
             ICrossCuttingRepository<Asset> assetRepository,
@@ -118,7 +121,8 @@ namespace Ettad.Inventory.Service.Assets
             IExcelImportService excelImportService,
             ApplicationDbContext context,
             IDateTimeProvider dateTimeProvider,
-            IDepotAccessService depotAccessService)
+            IDepotAccessService depotAccessService,
+            IBatchService batchService)
         {
             _assetRepository = assetRepository;
             _mapper = mapper;
@@ -131,6 +135,7 @@ namespace Ettad.Inventory.Service.Assets
             _context = context;
             _dateTimeProvider = dateTimeProvider;
             _depotAccessService = depotAccessService;
+            _batchService = batchService;
         }
 
         public async Task<APIOperationResponse<AssetDto>> GetByIdAsync(long id)
@@ -145,6 +150,7 @@ namespace Ettad.Inventory.Service.Assets
                     false,
                     nameof(Asset.Item),
                     nameof(Asset.Depot),
+                    nameof(Asset.Batch),
                     $"{nameof(Asset.CurrentAssignment)}.{nameof(AssetAssignment.Custodian)}",
                     $"{nameof(Asset.CurrentAssignment)}.{nameof(AssetAssignment.Department)}"
                 );
@@ -161,7 +167,6 @@ namespace Ettad.Inventory.Service.Assets
 
                 var dto = _mapper.Map<AssetDto>(asset);
                 
-                // Get images for this asset
                 var imagesResult = await _fileUploadService.GetByEntityAsync(FileEntityType.Asset, asset.Id);
                 dto.Images = imagesResult.Succeeded && imagesResult.Data != null ? imagesResult.Data : new List<FileUploadDto>();
                 
@@ -195,6 +200,7 @@ namespace Ettad.Inventory.Service.Assets
                     false,
                     nameof(Asset.Item),
                     nameof(Asset.Depot),
+                    nameof(Asset.Batch),
                     $"{nameof(Asset.CurrentAssignment)}.{nameof(AssetAssignment.Custodian)}",
                     $"{nameof(Asset.CurrentAssignment)}.{nameof(AssetAssignment.Department)}"
                 );
@@ -260,6 +266,7 @@ namespace Ettad.Inventory.Service.Assets
                     false,
                     nameof(Asset.Item),
                     nameof(Asset.Depot),
+                    nameof(Asset.Batch),
                     $"{nameof(Asset.CurrentAssignment)}.{nameof(AssetAssignment.Custodian)}",
                     $"{nameof(Asset.CurrentAssignment)}.{nameof(AssetAssignment.Department)}"
                 );
@@ -348,11 +355,15 @@ namespace Ettad.Inventory.Service.Assets
                         return APIOperationResponse<long>.Fail(ResponseType.BadRequest, "Serial number already exists");
                 }
 
+                // Resolve BatchNumber into BatchId (get-or-create)
+                var batch = await _batchService.GetOrCreateAsync(inputDto.BatchNumber, inputDto.DepotId);
+
                 // Map DTO to entity
                 var asset = _mapper.Map<Asset>(inputDto);
+                asset.BatchId = batch.Id;
                 asset.CreationDate = _dateTimeProvider.Now;
                 asset.CreatedBy = _currentUserService.UserId;
-                asset.Status = AssetStatus.Active; // Set default status to Active when creating
+                asset.Status = AssetStatus.Active;
                 asset.SerialNumber = string.IsNullOrWhiteSpace(inputDto.SerialNumber) ? null : inputDto.SerialNumber.Trim();
                 asset.RFID = string.IsNullOrWhiteSpace(inputDto.RFID) ? null : inputDto.RFID.Trim();
 
@@ -454,9 +465,11 @@ namespace Ettad.Inventory.Service.Assets
                     }
                 }
 
+                // Pre-resolve all unique BatchNumbers
+                var batchCache = new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase);
+
                 foreach (var dto in inputDtos)
                 {
-                    // validation
                     var validationResult = await _createValidator.ValidateAsync(dto);
                     if (!validationResult.IsValid)
                     {
@@ -465,7 +478,15 @@ namespace Ettad.Inventory.Service.Assets
                         continue;
                     }
 
+                    var batchKey = dto.BatchNumber.Trim();
+                    if (!batchCache.ContainsKey(batchKey))
+                    {
+                        var batch = await _batchService.GetOrCreateAsync(dto.BatchNumber, dto.DepotId);
+                        batchCache[batchKey] = batch.Id;
+                    }
+
                     var asset = _mapper.Map<Asset>(dto);
+                    asset.BatchId = batchCache[batchKey];
                     asset.CreationDate = _dateTimeProvider.Now;
                     asset.CreatedBy = _currentUserService.UserId;
                     asset.Status = AssetStatus.Active;
@@ -732,10 +753,27 @@ namespace Ettad.Inventory.Service.Assets
                             continue;
                         }
 
-                        // Create CreateAssetDto from AssetImportDto
+                        if (string.IsNullOrWhiteSpace(row.BatchNumber))
+                        {
+                            rowErrors.Add("Batch number is required");
+                        }
+
+                        if (rowErrors.Any())
+                        {
+                            importResult.SuccessfulRecords.Remove(row);
+                            importResult.Errors.Add(new ImportError
+                            {
+                                ErrorMessage = string.Join("; ", rowErrors),
+                                ColumnName = "N/A"
+                            });
+                            errorCount++;
+                            continue;
+                        }
+
                         var createDto = new CreateAssetDto
                         {
                             ItemId = itemId.Value,
+                            BatchNumber = row.BatchNumber!.Trim(),
                             DepotId = depotId,
                             SerialNumber = string.IsNullOrWhiteSpace(row.SerialNumber) ? null : row.SerialNumber.Trim(),
                             RFID = string.IsNullOrWhiteSpace(row.RFID) ? null : row.RFID.Trim(),
@@ -747,7 +785,6 @@ namespace Ettad.Inventory.Service.Assets
                             Notes = string.IsNullOrWhiteSpace(row.Notes) ? null : row.Notes.Trim()
                         };
 
-                        // Validate using FluentValidation
                         var validationResult = await _createValidator.ValidateAsync(createDto);
                         if (!validationResult.IsValid)
                         {
@@ -762,8 +799,9 @@ namespace Ettad.Inventory.Service.Assets
                             continue;
                         }
 
-                        // Create asset entity
+                        var batch = await _batchService.GetOrCreateAsync(createDto.BatchNumber, depotId);
                         var asset = _mapper.Map<Asset>(createDto);
+                        asset.BatchId = batch.Id;
                         asset.CreationDate = _dateTimeProvider.Now;
                         asset.CreatedBy = _currentUserService.UserId;
                         asset.Status = AssetStatus.Active;
@@ -957,13 +995,17 @@ namespace Ettad.Inventory.Service.Assets
                         }
                     }
 
-                    // If validation failed, move from successful to errors
+                    if (string.IsNullOrWhiteSpace(row.BatchNumber))
+                    {
+                        rowErrors.Add("Batch number is required");
+                    }
+
                     if (rowErrors.Any())
                     {
                         importResult.SuccessfulRecords.Remove(row);
                         importResult.Errors.Add(new ImportError
                         {
-                            RowNumber = row.RowNumber > 0 ? row.RowNumber : 0, // Should be populated by ExcelImportService
+                            RowNumber = row.RowNumber > 0 ? row.RowNumber : 0,
                             ErrorMessage = string.Join("; ", rowErrors),
                             ColumnName = "N/A",
                             RowData = row
@@ -971,10 +1013,10 @@ namespace Ettad.Inventory.Service.Assets
                         continue;
                     }
 
-                    // Create CreateAssetDto from AssetImportDto
                     var createDto = new CreateAssetDto
                     {
                         ItemId = itemId.Value,
+                        BatchNumber = row.BatchNumber!.Trim(),
                         DepotId = depotId,
                         SerialNumber = string.IsNullOrWhiteSpace(row.SerialNumber) ? null : row.SerialNumber.Trim(),
                         RFID = string.IsNullOrWhiteSpace(row.RFID) ? null : row.RFID.Trim(),
@@ -1081,12 +1123,12 @@ namespace Ettad.Inventory.Service.Assets
                 var headers = language == "ar"
                     ? new[]
                     {
-                        "اسم الصنف", "رقم الصنف", "رقم التسلسل", "RFID", "علامة الأصل",
+                        "اسم الصنف", "رقم الصنف", "رقم الدفعة", "رقم التسلسل", "RFID", "علامة الأصل",
                         "تاريخ الشراء", "تاريخ انتهاء الضمان", "الحالة", "سعر الشراء", "ملاحظات"
                     }
                     : new[]
                     {
-                        "Item Name", "Item No", "Serial Number", "RFID", "Asset Tag",
+                        "Item Name", "Item No", "Batch Number", "Serial Number", "RFID", "Asset Tag",
                         "Purchase Date", "Warranty Expiry Date", "Condition", "Purchase Price", "Notes"
                     };
 
@@ -1103,14 +1145,15 @@ namespace Ettad.Inventory.Service.Assets
                 // Sample data row
                 templateSheet.Cells[2, 1].Value = itemNames.FirstOrDefault() ?? "";
                 templateSheet.Cells[2, 2].Value = "";
-                templateSheet.Cells[2, 3].Value = "";
+                templateSheet.Cells[2, 3].Value = ""; // Batch Number
                 templateSheet.Cells[2, 4].Value = "";
                 templateSheet.Cells[2, 5].Value = "";
-                templateSheet.Cells[2, 6].Value = _dateTimeProvider.Now.ToString("yyyy-MM-dd");
-                templateSheet.Cells[2, 7].Value = _dateTimeProvider.Now.AddYears(1).ToString("yyyy-MM-dd");
-                templateSheet.Cells[2, 8].Value = "";
-                templateSheet.Cells[2, 9].Value = 0;
-                templateSheet.Cells[2, 10].Value = "";
+                templateSheet.Cells[2, 6].Value = "";
+                templateSheet.Cells[2, 7].Value = _dateTimeProvider.Now.ToString("yyyy-MM-dd");
+                templateSheet.Cells[2, 8].Value = _dateTimeProvider.Now.AddYears(1).ToString("yyyy-MM-dd");
+                templateSheet.Cells[2, 9].Value = "";
+                templateSheet.Cells[2, 10].Value = 0;
+                templateSheet.Cells[2, 11].Value = "";
 
                 // Create hidden lookup sheet for items
                 var lookupSheet = package.Workbook.Worksheets.Add("Items");
@@ -1136,14 +1179,15 @@ namespace Ettad.Inventory.Service.Assets
                 // Set column widths
                 templateSheet.Column(1).Width = 30; // Item Name
                 templateSheet.Column(2).Width = 15; // Item No
-                templateSheet.Column(3).Width = 20; // Serial Number
-                templateSheet.Column(4).Width = 20; // RFID
-                templateSheet.Column(5).Width = 15; // Asset Tag
-                templateSheet.Column(6).Width = 15; // Purchase Date
-                templateSheet.Column(7).Width = 20; // Warranty Expiry Date
-                templateSheet.Column(8).Width = 15; // Condition
-                templateSheet.Column(9).Width = 15; // Purchase Price
-                templateSheet.Column(10).Width = 30; // Notes
+                templateSheet.Column(3).Width = 20; // Batch Number
+                templateSheet.Column(4).Width = 20; // Serial Number
+                templateSheet.Column(5).Width = 20; // RFID
+                templateSheet.Column(6).Width = 15; // Asset Tag
+                templateSheet.Column(7).Width = 15; // Purchase Date
+                templateSheet.Column(8).Width = 20; // Warranty Expiry Date
+                templateSheet.Column(9).Width = 15; // Condition
+                templateSheet.Column(10).Width = 15; // Purchase Price
+                templateSheet.Column(11).Width = 30; // Notes
 
                 // Freeze header row
                 templateSheet.View.FreezePanes(2, 1);
@@ -1170,6 +1214,7 @@ namespace Ettad.Inventory.Service.Assets
                 { "Item Name", nameof(AssetImportDto.ItemName) },
                 { "Item No", nameof(AssetImportDto.ItemNo) },
                 { "Item ID", nameof(AssetImportDto.ItemId) },
+                { "Batch Number", nameof(AssetImportDto.BatchNumber) },
                 { "Serial Number", nameof(AssetImportDto.SerialNumber) },
                 { "RFID", nameof(AssetImportDto.RFID) },
                 { "Asset Tag", nameof(AssetImportDto.AssetTag) },
@@ -1183,6 +1228,7 @@ namespace Ettad.Inventory.Service.Assets
                 { "اسم الصنف", nameof(AssetImportDto.ItemName) },
                 { "رقم الصنف", nameof(AssetImportDto.ItemNo) },
                 { "رقم التعريف", nameof(AssetImportDto.ItemId) },
+                { "رقم الدفعة", nameof(AssetImportDto.BatchNumber) },
                 { "رقم التسلسل", nameof(AssetImportDto.SerialNumber) },
                 { "RFID*", nameof(AssetImportDto.RFID) }, // Sometimes templates have RFID in English even in Arabic template
                 { "علامة الأصل", nameof(AssetImportDto.AssetTag) },
