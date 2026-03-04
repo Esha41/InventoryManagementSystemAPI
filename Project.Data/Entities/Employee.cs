@@ -18,9 +18,12 @@ namespace Ettad.Data.Entities
 
         public string? Notes { get; set; }
 
+        public long? RankId { get; set; }
+
         #region Navigation Properties
 
         public Department Department { get; set; }
+        public Rank Rank { get; set; }
 
         #endregion
     }

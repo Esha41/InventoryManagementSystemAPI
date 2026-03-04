@@ -41,6 +41,12 @@ namespace Ettad.EntityFramework.Configurations
                 .IsRequired(false)
                 .HasForeignKey(x => x.DepartmentId)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            builder.HasOne(x => x.Rank)
+                .WithMany()
+                .IsRequired(false)
+                .HasForeignKey(x => x.RankId)
+                .OnDelete(DeleteBehavior.Restrict);
         }
     }
 }

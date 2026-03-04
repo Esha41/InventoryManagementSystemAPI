@@ -86,6 +86,14 @@ namespace Ettad.EntityFramework.Configurations
                 .IsRequired(false)
                 .HasForeignKey(x => x.CurrentAssignmentId)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            builder.HasOne(x => x.Batch)
+                .WithMany(x => x.Assets)
+                .IsRequired()
+                .HasForeignKey(x => x.BatchId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.HasIndex(x => x.BatchId);
         }
     }
 }

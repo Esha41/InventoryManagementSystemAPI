@@ -18,6 +18,10 @@ namespace Ettad.Inventory.Service.Assets.Dtos
 
         public long DepotId { get; set; }
 
+        public long BatchId { get; set; }
+
+        public string BatchNumber { get; set; } = string.Empty;
+
         public long? DepartmentId { get; set; }
 
         public string? CustodianId { get; set; }
