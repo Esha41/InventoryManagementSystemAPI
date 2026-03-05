@@ -16,8 +16,22 @@ namespace Ettad.Inventory.Service.Assets.Validators
                 .WithMessage("English name cannot exceed 500 characters");
 
             RuleFor(x => x.MilitaryId)
-                .MaximumLength(100).When(x => !string.IsNullOrWhiteSpace(x.MilitaryId))
+                .NotEmpty()
+                .WithMessage("Military ID is required")
+                .MaximumLength(100)
                 .WithMessage("Military ID cannot exceed 100 characters");
+
+            RuleFor(x => x.DepartmentId)
+                .NotNull()
+                .WithMessage("Department is required")
+                .GreaterThan(0)
+                .WithMessage("Department ID must be valid");
+
+            RuleFor(x => x.RankId)
+                .NotNull()
+                .WithMessage("Rank is required")
+                .GreaterThan(0)
+                .WithMessage("Rank ID must be valid");
 
             RuleFor(x => x.Phone)
                 .MaximumLength(50).When(x => !string.IsNullOrWhiteSpace(x.Phone))
@@ -32,10 +46,6 @@ namespace Ettad.Inventory.Service.Assets.Validators
             RuleFor(x => x.Notes)
                 .MaximumLength(5000).When(x => !string.IsNullOrWhiteSpace(x.Notes))
                 .WithMessage("Notes cannot exceed 5000 characters");
-
-            RuleFor(x => x.DepartmentId)
-                .GreaterThan(0).When(x => x.DepartmentId.HasValue)
-                .WithMessage("Department ID must be valid if provided");
         }
     }
 }

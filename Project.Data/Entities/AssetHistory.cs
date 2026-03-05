@@ -51,14 +51,14 @@ namespace Ettad.Data.Entities
         public long? NewDepartmentId { get; set; }
 
         /// <summary>
-        /// Previous custodian (for transfers)
+        /// Previous custodian (employee) (for transfers)
         /// </summary>
-        public string? PreviousCustodianId { get; set; }
+        public long? PreviousCustodianId { get; set; }
 
         /// <summary>
-        /// New custodian (for assignments/transfers)
+        /// New custodian (employee) (for assignments/transfers)
         /// </summary>
-        public string? NewCustodianId { get; set; }
+        public long? NewCustodianId { get; set; }
 
         /// <summary>
         /// Previous location (for location changes)
@@ -113,8 +113,8 @@ namespace Ettad.Data.Entities
         public AssetAssignment AssetAssignment { get; set; }
         public Department PreviousDepartment { get; set; }
         public Department NewDepartment { get; set; }
-        public ApplicationUser PreviousCustodian { get; set; }
-        public ApplicationUser NewCustodian { get; set; }
+        public Employee PreviousCustodian { get; set; }
+        public Employee NewCustodian { get; set; }
 
         #endregion
     }

@@ -34,8 +34,6 @@ namespace Ettad.Inventory.Service.Assets.Profiles
                 .ForMember(dest => dest.Item, opt => opt.MapFrom(src => src.Item != null ? src.Item : null))
                 .ForMember(dest => dest.Depot, opt => opt.MapFrom(src => src.Depot != null ? src.Depot : null))
                 .ForMember(dest => dest.Department, opt => opt.MapFrom(src => src.CurrentAssignment != null && src.CurrentAssignment.Department != null ? src.CurrentAssignment.Department : null))
-                .ForMember(dest => dest.Custodian, opt => opt.MapFrom(src => src.CurrentAssignment != null && src.CurrentAssignment.Custodian != null ? src.CurrentAssignment.Custodian : null))
-                .ForMember(dest => dest.CustodianId, opt => opt.MapFrom(src => src.CurrentAssignment != null ? src.CurrentAssignment.CustodianId : null))
                 .ForMember(dest => dest.DepartmentId, opt => opt.MapFrom(src => src.CurrentAssignment != null ? src.CurrentAssignment.DepartmentId : null))
                 .ForMember(dest => dest.Location, opt => opt.MapFrom(src => src.CurrentAssignment != null ? src.CurrentAssignment.Location : null))
                 .ForMember(dest => dest.BatchNumber, opt => opt.MapFrom(src => src.Batch != null ? src.Batch.BatchNumber : string.Empty))
