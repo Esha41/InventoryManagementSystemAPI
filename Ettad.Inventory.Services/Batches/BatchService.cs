@@ -110,7 +110,7 @@ namespace Ettad.Inventory.Service.Batches
                     false,
                     nameof(Asset.Item),
                     nameof(Asset.Depot),
-                    $"{nameof(Asset.CurrentAssignment)}.{nameof(AssetAssignment.Custodian)}",
+                    //$"{nameof(Asset.CurrentAssignment)}.{nameof(AssetAssignment.Custodian)}",
                     $"{nameof(Asset.CurrentAssignment)}.{nameof(AssetAssignment.Department)}");
 
                 dto.Assets = _mapper.Map<List<AssetDto>>(assets.ToList());
