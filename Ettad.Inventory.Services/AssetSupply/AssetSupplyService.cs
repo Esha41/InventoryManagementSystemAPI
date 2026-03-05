@@ -104,7 +104,9 @@ namespace Ettad.Inventory.Service.AssetSupply
                         && requestedItemIds.Contains(a.ItemId)
                         && !string.IsNullOrEmpty(a.SerialNumber)
                         && !a.IsAssigned
-                        && a.Status == AssetStatus.ReadyToIssue)
+                        && a.Status != AssetStatus.Maintenance
+                        && a.Status != AssetStatus.Disposed
+                        && a.Status != AssetStatus.Lost)
                     .Select(a => a.BatchId)
                     .Distinct()
                     .ToListAsync();
@@ -122,7 +124,9 @@ namespace Ettad.Inventory.Service.AssetSupply
                         && requestedItemIds.Contains(a.ItemId)
                         && !string.IsNullOrEmpty(a.SerialNumber)
                         && !a.IsAssigned
-                        && a.Status == AssetStatus.ReadyToIssue)
+                        && a.Status != AssetStatus.Maintenance
+                        && a.Status != AssetStatus.Disposed
+                        && a.Status != AssetStatus.Lost)
                     .GroupBy(a => new { a.BatchId, a.ItemId })
                     .Select(g => new { g.Key.BatchId, g.Key.ItemId, Count = g.Count() })
                     .ToListAsync();
