@@ -47,6 +47,18 @@ namespace Ettad.EntityFramework.Configurations
                 .IsRequired(false)
                 .HasForeignKey(x => x.RankId)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            builder.Property(x => x.UserId)
+                .IsRequired(false)
+                .HasMaxLength(450);
+
+            builder.HasOne(x => x.User)
+                .WithMany()
+                .HasForeignKey(x => x.UserId)
+                .IsRequired(false)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.HasIndex(x => x.UserId);
         }
     }
 }

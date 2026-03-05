@@ -341,6 +341,13 @@ namespace Ettad.Inventory.Service.AssetSupply
                 // Store order data before detaching to avoid tracking conflicts
                 var orderId = order.Id;
                 var orderDepartmentId = order.DepartmentId;
+                var requesterUserId = order.RequesterId;
+                var requesterFullNameEn = order.Requester?.FullNameEN;
+                var requesterFullNameAr = order.Requester?.FullNameAR;
+                var requesterMilitaryId = order.Requester?.MilitoryId;
+                var requesterDepartmentId = order.Requester?.DepartmentId;
+                var requesterRankId = order.Requester?.RankId;
+                var requesterEmail = order.Requester?.Email;
 
                 // Detach Order entity to avoid tracking conflicts when workflow approval loads it
                 _context.Entry(order).State = EntityState.Detached;
@@ -377,10 +384,43 @@ namespace Ettad.Inventory.Service.AssetSupply
                         $"Failed to approve workflow step: {ex.Message}");
                 }
 
+
+                long? requesterEmployeeId = null;
                 // Now start our transaction for creating the asset supply
                 using var transaction = await _context.Database.BeginTransactionAsync();
                 try
                 {
+                    // Ensure an Employee record exists for the requester (used as default custodian)
+                    if (!string.IsNullOrEmpty(requesterUserId))
+                    {
+                        var existingEmployee = await _context.Employees
+                            .FirstOrDefaultAsync(e => e.UserId == requesterUserId && !e.IsDeleted);
+
+                        if (existingEmployee == null)
+                        {
+                            var employee = new Employee
+                            {
+                                NameEn = requesterFullNameEn,
+                                NameAr = requesterFullNameAr,
+                                MilitaryId = requesterMilitaryId,
+                                DepartmentId = requesterDepartmentId ?? orderDepartmentId,
+                                RankId = requesterRankId,
+                                Email = requesterEmail,
+                                UserId = requesterUserId,
+                                CreationDate = _dateTimeProvider.Now,
+                                CreatedBy = _currentUserService.UserId,
+                                IsDeleted = false
+                            };
+
+                            _context.Employees.Add(employee);
+                            await _context.SaveChangesAsync();
+                            requesterEmployeeId = employee.Id;
+                        }
+                        else
+                        {
+                            requesterEmployeeId = existingEmployee.Id;
+                        }
+                    }
 
                 // Validate all assets
                 var assetIds = dto.SupplyDetails.Select(d => d.AssetId).ToList();
@@ -417,7 +457,8 @@ namespace Ettad.Inventory.Service.AssetSupply
                 supply.SubmissionStatus = SupplySubmissionStatus.Submitted;
                 supply.SupplyDate = order.SupplyDate ?? _dateTimeProvider.Now; // Use order supply date or now
                 supply.DepartmentId = order.DepartmentId; // Always use requested department
-                supply.CustodianId = dto.CustodianId ?? order.RequesterId; // Use provided user ID or default to order requester
+                // Supply-level custodian uses requester AspNet user ID (string). Detail-level uses Employee IDs.
+                supply.CustodianId = requesterUserId;
                 
                 // Calculate fulfillment status
                 // Group requested quantities
@@ -451,13 +492,15 @@ namespace Ettad.Inventory.Service.AssetSupply
                 supply.SupplyDetails = dto.SupplyDetails.Select(d =>
                 {
                     var asset = assets.First(a => a.Id == d.AssetId);
+
                     return new AssetSupplyDetail
                     {
                         AssetId = d.AssetId,
                         ItemId = asset.ItemId,
                         SequenceNo = sequenceNo++,
                         ConditionOnSupply = d.ConditionOnSupply ?? asset.Condition,
-                        CustodianId = d.CustodianId ?? order.RequesterId, // Use detail-level custodian if provided, otherwise use order requester
+                        // Employee FK for detail-level or requester
+                        CustodianId = d.CustodianId ?? requesterEmployeeId,
                         Notes = d.Notes,
                         IsDelivered = true, // Auto-delivered since there is no draft
                         DeliveredDate = _dateTimeProvider.Now,
@@ -480,7 +523,8 @@ namespace Ettad.Inventory.Service.AssetSupply
                         OrderId = supply.OrderId,
                         AssetSupplyId = supply.Id,
                         DepartmentId = supply.DepartmentId,
-                        CustodianId = detail.CustodianId, // Use detail-level custodian (which defaults to order requester if not provided)
+                        // Employee FK: use detail-level employee if present, otherwise requester employee
+                        CustodianId = detail.CustodianId ?? 0,
                         Location = supply.Location,
                         AssignDate = supply.SupplyDate ?? _dateTimeProvider.Now,
                         ExpectedReturnDate = supply.ExpectedReturnDate,

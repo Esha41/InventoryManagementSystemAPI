@@ -15,6 +15,10 @@ namespace Ettad.Inventory.Service.Assets.Dtos
         public string? Email { get; set; }
 
         public string? Notes { get; set; }
+
+        public long? RankId { get; set; }
+
+        public string? UserId { get; set; }
     }
 }
 

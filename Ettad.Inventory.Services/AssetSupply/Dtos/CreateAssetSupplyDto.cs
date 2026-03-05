@@ -11,7 +11,8 @@ namespace Ettad.Inventory.Service.AssetSupply.Dtos
         public long OrderId { get; set; }
 
         /// <summary>
-        /// Optional custodian ID (User ID) to assign assets to. If not provided, assets will be assigned to the order's department.
+        /// Optional custodian user ID (AspNet user) at supply header level.
+        /// Detail-level and assignments use Employee IDs.
         /// </summary>
         public string? CustodianId { get; set; }
 
@@ -67,9 +68,9 @@ namespace Ettad.Inventory.Service.AssetSupply.Dtos
         public string? ConditionOnSupply { get; set; }
 
         /// <summary>
-        /// Optional custodian ID (User ID) for this specific asset. If not provided, uses supply-level custodian or department.
+        /// Optional custodian ID (Employee ID) for this specific asset. If not provided, uses supply-level/requester employee.
         /// </summary>
-        public string? CustodianId { get; set; }
+        public long? CustodianId { get; set; }
 
         /// <summary>
         /// Optional notes for this specific asset
