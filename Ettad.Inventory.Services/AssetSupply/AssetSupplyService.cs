@@ -73,10 +73,110 @@ namespace Ettad.Inventory.Service.AssetSupply
             _workflowApprovalService = workflowApprovalService;
         }
 
-        public async Task<APIOperationResponse<OrderAssetsToSupplyDto>> GetAssetsToSupplyAsync(long orderId, List<long>? depotIds = null)
+        public async Task<APIOperationResponse<List<BatchForOrderDepotDto>>> GetBatchesForOrderDepotsAsync(long orderId, List<long> depotIds)
         {
-            _logger.LogInformation("Getting assets to supply for order. OrderId: {OrderId}, DepotIds: {DepotIds}, User: {UserId}",
-                orderId, depotIds != null ? string.Join(", ", depotIds) : "All", _currentUserService.UserId);
+            _logger.LogInformation("Getting batches for order depots. OrderId: {OrderId}, DepotIds: {DepotIds}, User: {UserId}",
+                orderId, string.Join(", ", depotIds), _currentUserService.UserId);
+
+            try
+            {
+                var order = await _context.Orders
+                    .Include(o => o.RequestItems)
+                        .ThenInclude(ri => ri.Item)
+                    .FirstOrDefaultAsync(o => o.Id == orderId && !o.IsDeleted);
+
+                if (order == null)
+                    return APIOperationResponse<List<BatchForOrderDepotDto>>.Fail(ResponseType.NotFound, "Order not found");
+
+                var requestedItemIds = order.RequestItems?
+                    .Where(ri => !ri.IsDeleted)
+                    .Select(ri => ri.ItemId)
+                    .Distinct()
+                    .ToList() ?? new List<long>();
+
+                if (!requestedItemIds.Any())
+                    return APIOperationResponse<List<BatchForOrderDepotDto>>.Fail(ResponseType.BadRequest, "Order has no request items");
+
+                // Batches in selected depots that have available assets matching requested items
+                var batchIdsWithMatchingAssets = await _context.Assets
+                    .Where(a => !a.IsDeleted
+                        && depotIds.Contains(a.DepotId)
+                        && requestedItemIds.Contains(a.ItemId)
+                        && !string.IsNullOrEmpty(a.SerialNumber)
+                        && !a.IsAssigned
+                        && a.Status != AssetStatus.Maintenance
+                        && a.Status != AssetStatus.Disposed
+                        && a.Status != AssetStatus.Lost)
+                    .Select(a => a.BatchId)
+                    .Distinct()
+                    .ToListAsync();
+
+                if (!batchIdsWithMatchingAssets.Any())
+                    return APIOperationResponse<List<BatchForOrderDepotDto>>.Success(new List<BatchForOrderDepotDto>());
+
+                var batches = await _context.Batches
+                    .Include(b => b.Depot)
+                    .Where(b => !b.IsDeleted && batchIdsWithMatchingAssets.Contains(b.Id) && depotIds.Contains(b.DepotId))
+                    .ToListAsync();
+
+                var assetCounts = await _context.Assets
+                    .Where(a => !a.IsDeleted && batchIdsWithMatchingAssets.Contains(a.BatchId)
+                        && requestedItemIds.Contains(a.ItemId)
+                        && !string.IsNullOrEmpty(a.SerialNumber)
+                        && !a.IsAssigned
+                        && a.Status != AssetStatus.Maintenance
+                        && a.Status != AssetStatus.Disposed
+                        && a.Status != AssetStatus.Lost)
+                    .GroupBy(a => new { a.BatchId, a.ItemId })
+                    .Select(g => new { g.Key.BatchId, g.Key.ItemId, Count = g.Count() })
+                    .ToListAsync();
+
+                var totalCountDict = assetCounts
+                    .GroupBy(c => c.BatchId)
+                    .ToDictionary(g => g.Key, g => g.Sum(c => c.Count));
+
+                var itemLookup = order.RequestItems?
+                    .Where(ri => !ri.IsDeleted && ri.Item != null)
+                    .GroupBy(ri => ri.ItemId)
+                    .ToDictionary(g => g.Key, g => (Name: g.First().Item?.Name ?? "?", ItemNo: g.First().Item?.ItemNo))
+                    ?? new Dictionary<long, (string Name, string? ItemNo)>();
+
+                var dtos = batches.Select(b =>
+                {
+                    var batchItems = assetCounts
+                        .Where(c => c.BatchId == b.Id)
+                        .Select(c => new BatchItemDto
+                        {
+                            ItemId = c.ItemId,
+                            ItemName = itemLookup.TryGetValue(c.ItemId, out var info) ? info.Name : "?",
+                            ItemNo = itemLookup.TryGetValue(c.ItemId, out var i) ? i.ItemNo : null,
+                            Quantity = c.Count
+                        }).OrderBy(x => x.ItemName).ToList();
+
+                    return new BatchForOrderDepotDto
+                    {
+                        Id = b.Id,
+                        BatchNumber = b.BatchNumber,
+                        Quantity = totalCountDict.TryGetValue(b.Id, out var cnt) ? cnt : 0,
+                        DepotId = b.DepotId,
+                        DepotName = b.Depot?.NameEn ?? b.Depot?.NameAr,
+                        Items = batchItems
+                    };
+                }).OrderBy(x => x.BatchNumber).ToList();
+
+                return APIOperationResponse<List<BatchForOrderDepotDto>>.Success(dtos);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting batches for order depots. OrderId: {OrderId}, User: {UserId}", orderId, _currentUserService.UserId);
+                return APIOperationResponse<List<BatchForOrderDepotDto>>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
+            }
+        }
+
+        public async Task<APIOperationResponse<OrderAssetsToSupplyDto>> GetAssetsToSupplyAsync(long orderId, List<long>? depotIds = null, List<long>? batchIds = null)
+        {
+            _logger.LogInformation("Getting assets to supply for order. OrderId: {OrderId}, DepotIds: {DepotIds}, BatchIds: {BatchIds}, User: {UserId}",
+                orderId, depotIds != null ? string.Join(", ", depotIds) : "All", batchIds != null ? string.Join(", ", batchIds) : "All", _currentUserService.UserId);
 
             try
             {
@@ -138,6 +238,12 @@ namespace Ettad.Inventory.Service.AssetSupply
                     if (depotIds != null && depotIds.Any())
                     {
                         assetsQuery = assetsQuery.Where(a => depotIds.Contains(a.DepotId));
+                    }
+
+                    // Filter by batch IDs if provided (weapon supply: show only assets from selected batches)
+                    if (batchIds != null && batchIds.Any())
+                    {
+                        assetsQuery = assetsQuery.Where(a => batchIds.Contains(a.BatchId));
                     }
 
                     var availableAssets = await assetsQuery
@@ -830,6 +936,79 @@ namespace Ettad.Inventory.Service.AssetSupply
                 _logger.LogError(ex, "Error returning multiple assets. User: {UserId}",
                     _currentUserService.UserId);
                 return APIOperationResponse<bool>.Fail(
+                    ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
+            }
+        }
+
+        public async Task<APIOperationResponse<bool>> SaveWeaponSupplySelectionAsync(SaveWeaponSupplySelectionDto dto)
+        {
+            _logger.LogInformation("Saving weapon supply selection. OrderId: {OrderId}, Selections: {Count}, User: {UserId}",
+                dto.OrderId, dto.Selections?.Count ?? 0, _currentUserService.UserId);
+
+            try
+            {
+                if (dto?.Selections == null || !dto.Selections.Any())
+                    return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, "At least one depot-batch selection is required");
+
+                var orderExists = await _context.Orders.AnyAsync(o => o.Id == dto.OrderId && !o.IsDeleted);
+                if (!orderExists)
+                    return APIOperationResponse<bool>.Fail(ResponseType.NotFound, "Order not found");
+
+                // Remove existing selections for this order
+                var existing = await _context.WeaponSupplySelections
+                    .Where(s => s.OrderId == dto.OrderId && !s.IsDeleted)
+                    .ToListAsync();
+                foreach (var s in existing)
+                {
+                    s.IsDeleted = true;
+                    s.DeletionDate = _dateTimeProvider.Now;
+                    s.DeletedBy = _currentUserService.UserId;
+                }
+                await _context.SaveChangesAsync();
+
+                // Add new selections
+                var now = _dateTimeProvider.Now;
+                var userId = _currentUserService.UserId;
+                foreach (var sel in dto.Selections.Distinct())
+                {
+                    var entity = new WeaponSupplySelection
+                    {
+                        OrderId = dto.OrderId,
+                        DepotId = sel.DepotId,
+                        BatchId = sel.BatchId,
+                        CreationDate = now,
+                        CreatedBy = userId
+                    };
+                    _context.WeaponSupplySelections.Add(entity);
+                }
+                await _context.SaveChangesAsync();
+
+                return APIOperationResponse<bool>.Success(true, "Selection saved successfully");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error saving weapon supply selection. OrderId: {OrderId}, User: {UserId}",
+                    dto?.OrderId, _currentUserService.UserId);
+                return APIOperationResponse<bool>.Fail(
+                    ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
+            }
+        }
+
+        public async Task<APIOperationResponse<List<DepotBatchSelectionDto>>> GetWeaponSupplySelectionAsync(long orderId)
+        {
+            try
+            {
+                var selections = await _context.WeaponSupplySelections
+                    .Where(s => s.OrderId == orderId && !s.IsDeleted)
+                    .Select(s => new DepotBatchSelectionDto { DepotId = s.DepotId, BatchId = s.BatchId })
+                    .ToListAsync();
+                return APIOperationResponse<List<DepotBatchSelectionDto>>.Success(selections);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting weapon supply selection. OrderId: {OrderId}, User: {UserId}",
+                    orderId, _currentUserService.UserId);
+                return APIOperationResponse<List<DepotBatchSelectionDto>>.Fail(
                     ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
             }
         }
