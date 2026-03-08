@@ -460,40 +460,30 @@ namespace Ettad.Inventory.Service.AssetSupply
                 var requesterDepartmentId = order.Requester?.DepartmentId;
                 var requesterRankId = order.Requester?.RankId;
                 var requesterEmail = order.Requester?.Email;
+                var orderSupplyDate = order.SupplyDate;
+                var orderUsagePurpose = order.UsagePurpose;
+                var orderRequestItems = order.RequestItems?
+                    .Where(ri => !ri.IsDeleted).ToList() ?? new List<RequestItem>();
 
                 // Detach Order entity to avoid tracking conflicts when workflow approval loads it
                 _context.Entry(order).State = EntityState.Detached;
 
-                // Approve workflow step for the order BEFORE starting our transaction
-                // This must be done outside our transaction because ProcessActionAsync starts its own transaction
-                try
+                // Pre-validate that the workflow step can be approved (actual approval deferred until after supply creation)
+                var currentWorkflowStep = await _workflowApprovalService.GetCurrentApprovalStepByRequestIdAsync(orderId);
+                if (currentWorkflowStep == null)
                 {
-                    if (orderId > 0)
-                    {
-                        var approveDto = new ApproveRejectWorkflowApprovalDto
-                        {
-                            BaseRequestID = orderId,
-                            Action = RequestStatus.Approved,
-                            IsApproved = true,
-                            Comments = dto.Notes,
-                            SendToHigherApproval = false
-                        };
-
-                        var approveResult = await _workflowApprovalService.ProcessActionAsync(approveDto);
-                        if (!approveResult.Succeeded)
-                        {
-                            _logger.LogWarning("Failed to approve workflow step for order. OrderId: {OrderId}, Error: {Error}", 
-                                orderId, approveResult.Message);
-                            return APIOperationResponse<long>.Fail(ResponseType.BadRequest, 
-                                $"Failed to approve workflow step: {approveResult.Message}");
-                        }
-                    }
+                    return APIOperationResponse<long>.Fail(ResponseType.BadRequest,
+                        "No active workflow step found for this order. The order may have already been processed.");
                 }
-                catch (Exception ex)
+                if (currentWorkflowStep.Status == RequestStatus.Approved || currentWorkflowStep.Status == RequestStatus.Rejected)
                 {
-                    _logger.LogError(ex, "Error approving workflow step for order. OrderId: {OrderId}", orderId);
-                    return APIOperationResponse<long>.Fail(ResponseType.InternalServerError, 
-                        $"Failed to approve workflow step: {ex.Message}");
+                    return APIOperationResponse<long>.Fail(ResponseType.BadRequest,
+                        "The current workflow step has already been processed.");
+                }
+                if (!currentWorkflowStep.IsCurrent)
+                {
+                    return APIOperationResponse<long>.Fail(ResponseType.BadRequest,
+                        "The workflow step is no longer active.");
                 }
 
 
@@ -534,207 +524,236 @@ namespace Ettad.Inventory.Service.AssetSupply
                         }
                     }
 
-                // Validate all assets
-                var assetIds = dto.SupplyDetails.Select(d => d.AssetId).ToList();
-                var assets = await _context.Assets
-                    .Where(a => assetIds.Contains(a.Id) && !a.IsDeleted)
-                    .ToListAsync();
-
-                // Check all assets exist
-                var missingAssets = assetIds.Except(assets.Select(a => a.Id)).ToList();
-                if (missingAssets.Any())
-                {
-                    return APIOperationResponse<long>.Fail(ResponseType.BadRequest,
-                        $"Assets not found: {string.Join(", ", missingAssets)}");
-                }
-
-                // Check all assets have serial numbers
-                var assetsWithoutSerial = assets.Where(a => string.IsNullOrEmpty(a.SerialNumber)).ToList();
-                if (assetsWithoutSerial.Any())
-                {
-                    return APIOperationResponse<long>.Fail(ResponseType.BadRequest,
-                        $"Assets without serial numbers cannot be supplied: {string.Join(", ", assetsWithoutSerial.Select(a => a.Id))}");
-                }
-
-                // Check no assets are already assigned
-                var assignedAssets = assets.Where(a => a.IsAssigned).ToList();
-                if (assignedAssets.Any())
-                {
-                    return APIOperationResponse<long>.Fail(ResponseType.BadRequest,
-                        $"Assets already assigned cannot be supplied: {string.Join(", ", assignedAssets.Select(a => $"{a.Id} ({a.SerialNumber})"))}");
-                }
-
-                // Create supply entity
-                var supply = _mapper.Map<Ettad.Data.Entities.AssetSupply>(dto);
-                supply.SubmissionStatus = SupplySubmissionStatus.Submitted;
-                supply.SupplyDate = order.SupplyDate ?? _dateTimeProvider.Now; // Use order supply date or now
-                supply.DepartmentId = order.DepartmentId; // Always use requested department
-                // Supply-level custodian uses requester AspNet user ID (string). Detail-level uses Employee IDs.
-                supply.CustodianId = requesterUserId;
-                
-                // Calculate fulfillment status
-                // Group requested quantities
-                var requestedItems = order.RequestItems
-                    .Where(ri => !ri.IsDeleted)
-                    .GroupBy(ri => ri.ItemId)
-                    .ToDictionary(g => g.Key, g => g.Sum(ri => ri.Quantity));
-
-                // Group supplied quantities
-                var suppliedItems = assets
-                    .GroupBy(a => a.ItemId)
-                    .ToDictionary(g => g.Key, g => (long)g.Count());
-
-                bool fullyFulfilled = true;
-                foreach (var req in requestedItems)
-                {
-                    long suppliedQty = suppliedItems.ContainsKey(req.Key) ? suppliedItems[req.Key] : 0;
-                    if (suppliedQty < req.Value)
+                    // Validate all assets
+                    var assetIds = dto.SupplyDetails.Select(d => d.AssetId).ToList();
+                    var duplicateAssetIds = assetIds.GroupBy(id => id).Where(g => g.Count() > 1).Select(g => g.Key).ToList();
+                    if (duplicateAssetIds.Any())
                     {
-                        fullyFulfilled = false;
-                        break;
+                        return APIOperationResponse<long>.Fail(ResponseType.BadRequest,
+                            $"Duplicate asset IDs found: {string.Join(", ", duplicateAssetIds)}");
                     }
-                }
-                supply.FulfillmentStatus = fullyFulfilled ? SupplyFulfillmentStatus.Fully : SupplyFulfillmentStatus.Partial;
 
-                supply.CreationDate = _dateTimeProvider.Now;
-                supply.CreatedBy = _currentUserService.UserId;
+                    var assets = await _context.Assets
+                        .Where(a => assetIds.Contains(a.Id) && !a.IsDeleted)
+                        .ToListAsync();
 
-                // Create supply details
-                var sequenceNo = 1;
-                supply.SupplyDetails = dto.SupplyDetails.Select(d =>
-                {
-                    var asset = assets.First(a => a.Id == d.AssetId);
-
-                    return new AssetSupplyDetail
+                    // Check all assets exist
+                    var missingAssets = assetIds.Except(assets.Select(a => a.Id)).ToList();
+                    if (missingAssets.Any())
                     {
-                        AssetId = d.AssetId,
-                        ItemId = asset.ItemId,
-                        SequenceNo = sequenceNo++,
-                        ConditionOnSupply = d.ConditionOnSupply ?? asset.Condition,
-                        // Employee FK for detail-level or requester
-                        CustodianId = d.CustodianId ?? requesterEmployeeId,
-                        Notes = d.Notes,
-                        IsDelivered = true, // Auto-delivered since there is no draft
-                        DeliveredDate = _dateTimeProvider.Now,
-                        CreationDate = _dateTimeProvider.Now,
-                        CreatedBy = _currentUserService.UserId
-                    };
-                }).ToList();
+                        return APIOperationResponse<long>.Fail(ResponseType.BadRequest,
+                            $"Assets not found: {string.Join(", ", missingAssets)}");
+                    }
 
-                var createdSupply = await _assetSupplyRepository.AddAsync(supply);
-
-                // Create assignments immediately
-                foreach (var detail in supply.SupplyDetails)
-                {
-                    var asset = assets.First(a => a.Id == detail.AssetId);
-
-                    // Create assignment
-                    var assignment = new AssetAssignment
+                    // Check all assets have serial numbers
+                    var assetsWithoutSerial = assets.Where(a => string.IsNullOrEmpty(a.SerialNumber)).ToList();
+                    if (assetsWithoutSerial.Any())
                     {
-                        AssetId = asset.Id,
-                        OrderId = supply.OrderId,
-                        AssetSupplyId = supply.Id,
-                        DepartmentId = supply.DepartmentId,
-                        // Employee FK: use detail-level employee if present, otherwise requester employee
-                        CustodianId = detail.CustodianId ?? 0,
-                        Location = supply.Location,
-                        AssignDate = supply.SupplyDate ?? _dateTimeProvider.Now,
-                        ExpectedReturnDate = supply.ExpectedReturnDate,
-                        Status = AssetAssignmentStatus.Active,
-                        Purpose = order.UsagePurpose,
-                        ConditionOnAssign = detail.ConditionOnSupply,
-                        ReceiverName = supply.ReceiverName,
-                        ReceiverMilitaryId = supply.ReceiverMilitaryId,
-                        ReceiverRankId = supply.ReceiverRankId,
-                        CreationDate = _dateTimeProvider.Now,
-                        CreatedBy = _currentUserService.UserId
-                    };
+                        return APIOperationResponse<long>.Fail(ResponseType.BadRequest,
+                            $"Assets without serial numbers cannot be supplied: {string.Join(", ", assetsWithoutSerial.Select(a => a.Id))}");
+                    }
 
-                    _context.AssetAssignments.Add(assignment);
-                    await _context.SaveChangesAsync();
-
-                    // Update asset
-                    asset.IsAssigned = true;
-                    asset.CurrentAssignmentId = assignment.Id;
-                    asset.ModificationDate = _dateTimeProvider.Now;
-                    asset.ModifiedBy = _currentUserService.UserId;
-
-                    // Record history
-                    await _historyService.RecordHistoryAsync(asset.Id, AssetHistoryActionType.Assigned, new AssetHistoryContext
+                    // Check no assets are already assigned
+                    var assignedAssets = assets.Where(a => a.IsAssigned).ToList();
+                    if (assignedAssets.Any())
                     {
-                        Description = $"Asset assigned via supply #{supply.Id}",
-                        NewDepartmentId = assignment.DepartmentId,
-                        NewCustodianId = assignment.CustodianId,
-                        NewLocation = assignment.Location,
-                        OrderId = supply.OrderId,
-                        AssetSupplyId = supply.Id,
-                        AssetAssignmentId = assignment.Id,
-                        Notes = supply.Notes
-                    });
-                }
+                        return APIOperationResponse<long>.Fail(ResponseType.BadRequest,
+                            $"Assets already assigned cannot be supplied: {string.Join(", ", assignedAssets.Select(a => $"{a.Id} ({a.SerialNumber})"))}");
+                    }
 
-                // Record order item history for asset supply
-                try
-                {
-                    var departmentId = _currentUserService.DepartmentId ?? orderDepartmentId;
-                    var userName = _currentUserService.UserName ?? "System";
+                    // Check all assets have ReadyToIssue status
+                    var notReadyAssets = assets.Where(a => a.Status != AssetStatus.ReadyToIssue).ToList();
+                    if (notReadyAssets.Any())
+                    {
+                        return APIOperationResponse<long>.Fail(ResponseType.BadRequest,
+                            $"Only assets with 'Ready to Issue' status can be supplied. Invalid assets: {string.Join(", ", notReadyAssets.Select(a => $"{a.Id} ({a.Status})"))}");
+                    }
 
-                    // Group supply details by ItemId to get quantities
-                    var supplyDetailsByItem = createdSupply.SupplyDetails
-                        .GroupBy(d => d.ItemId)
+                    // Create supply entity
+                    var supply = _mapper.Map<Ettad.Data.Entities.AssetSupply>(dto);
+                    supply.SubmissionStatus = SupplySubmissionStatus.Submitted;
+                    supply.SupplyDate = orderSupplyDate ?? _dateTimeProvider.Now;
+                    supply.DepartmentId = orderDepartmentId;
+                    supply.CustodianId = requesterUserId;
+
+                    // Calculate fulfillment status
+                    var requestedItems = orderRequestItems
+                        .GroupBy(ri => ri.ItemId)
+                        .ToDictionary(g => g.Key, g => g.Sum(ri => ri.Quantity));
+
+                    var suppliedItems = assets
+                        .GroupBy(a => a.ItemId)
                         .ToDictionary(g => g.Key, g => (long)g.Count());
 
-                    var suppliedItemIds = supplyDetailsByItem.Keys.ToList();
-                    var orderItems = order.RequestItems?.Where(ri => !ri.IsDeleted).ToList() ?? new List<RequestItem>();
-
-                    // Record history for supplied items
-                    foreach (var itemGroup in supplyDetailsByItem)
+                    bool fullyFulfilled = true;
+                    foreach (var req in requestedItems)
                     {
-                        var historyContext = new OrderItemHistoryContext
+                        long suppliedQty = suppliedItems.ContainsKey(req.Key) ? suppliedItems[req.Key] : 0;
+                        if (suppliedQty < req.Value)
                         {
-                            OrderId = orderId,
-                            ItemId = itemGroup.Key,
-                            ActionType = OrderItemActionType.AssetSupplied,
-                            OrderStatus = RequestStatus.Approved,
-                            SuppliedQuantity = itemGroup.Value,
-                            DepartmentId = departmentId,
-                            ModifiedByUserId = _currentUserService.UserId,
-                            ModifiedByUserName = userName,
-                            AssetSupplyId = createdSupply.Id,
-                            Description = $"Asset supplied - quantity: {itemGroup.Value}"
+                            fullyFulfilled = false;
+                            break;
+                        }
+                    }
+                    supply.FulfillmentStatus = fullyFulfilled ? SupplyFulfillmentStatus.Fully : SupplyFulfillmentStatus.Partial;
+
+                    supply.CreationDate = _dateTimeProvider.Now;
+                    supply.CreatedBy = _currentUserService.UserId;
+
+                    // Create supply details
+                    var sequenceNo = 1;
+                    supply.SupplyDetails = dto.SupplyDetails.Select(d =>
+                    {
+                        var asset = assets.First(a => a.Id == d.AssetId);
+
+                        return new AssetSupplyDetail
+                        {
+                            AssetId = d.AssetId,
+                            ItemId = asset.ItemId,
+                            SequenceNo = sequenceNo++,
+                            ConditionOnSupply = d.ConditionOnSupply ?? asset.Condition,
+                            CustodianId = d.CustodianId ?? requesterEmployeeId,
+                            Notes = d.Notes,
+                            IsDelivered = true,
+                            DeliveredDate = _dateTimeProvider.Now,
+                            CreationDate = _dateTimeProvider.Now,
+                            CreatedBy = _currentUserService.UserId
+                        };
+                    }).ToList();
+
+                    var createdSupply = await _assetSupplyRepository.AddAsync(supply);
+
+                    // Create assignments immediately
+                    foreach (var detail in supply.SupplyDetails)
+                    {
+                        var asset = assets.First(a => a.Id == detail.AssetId);
+
+                        var assignment = new AssetAssignment
+                        {
+                            AssetId = asset.Id,
+                            OrderId = supply.OrderId,
+                            AssetSupplyId = supply.Id,
+                            DepartmentId = supply.DepartmentId,
+                            CustodianId = detail.CustodianId ?? 0,
+                            Location = supply.Location,
+                            AssignDate = supply.SupplyDate ?? _dateTimeProvider.Now,
+                            ExpectedReturnDate = supply.ExpectedReturnDate,
+                            Status = AssetAssignmentStatus.Active,
+                            Purpose = orderUsagePurpose,
+                            ConditionOnAssign = detail.ConditionOnSupply,
+                            ReceiverName = supply.ReceiverName,
+                            ReceiverMilitaryId = supply.ReceiverMilitaryId,
+                            ReceiverRankId = supply.ReceiverRankId,
+                            CreationDate = _dateTimeProvider.Now,
+                            CreatedBy = _currentUserService.UserId
                         };
 
-                        await _orderItemTrackingService.RecordHistoryAsync(historyContext);
-                    }
+                        _context.AssetAssignments.Add(assignment);
+                        await _context.SaveChangesAsync();
 
-                    // Record history for unsupplied items (items in order but not in supply)
-                    foreach (var orderItem in orderItems.Where(ri => !suppliedItemIds.Contains(ri.ItemId)))
-                    {
-                        var historyContext = new OrderItemHistoryContext
+                        asset.IsAssigned = true;
+                        asset.CurrentAssignmentId = assignment.Id;
+                        asset.ModificationDate = _dateTimeProvider.Now;
+                        asset.ModifiedBy = _currentUserService.UserId;
+
+                        await _historyService.RecordHistoryAsync(asset.Id, AssetHistoryActionType.Assigned, new AssetHistoryContext
                         {
-                            OrderId = orderId,
-                            RequestItemId = orderItem.Id,
-                            ItemId = orderItem.ItemId,
-                            ActionType = OrderItemActionType.AssetSupplied,
-                            OrderStatus = RequestStatus.Approved,
-                            SuppliedQuantity = 0,
-                            DepartmentId = departmentId,
-                            ModifiedByUserId = _currentUserService.UserId,
-                            ModifiedByUserName = userName,
-                            AssetSupplyId = createdSupply.Id,
-                            Description = $"Asset not yet supplied",
-                            Notes = "This item is not yet supplied"
-                        };
-
-                        await _orderItemTrackingService.RecordHistoryAsync(historyContext);
+                            Description = $"Asset assigned via supply #{supply.Id}",
+                            NewDepartmentId = assignment.DepartmentId,
+                            NewCustodianId = assignment.CustodianId,
+                            NewLocation = assignment.Location,
+                            OrderId = supply.OrderId,
+                            AssetSupplyId = supply.Id,
+                            AssetAssignmentId = assignment.Id,
+                            Notes = supply.Notes
+                        });
                     }
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex, "Failed to record history for asset supply creation. SupplyId: {SupplyId}", createdSupply.Id);
-                }
+
+                    // Persist final asset updates (IsAssigned, CurrentAssignmentId from last iteration)
+                    await _context.SaveChangesAsync();
+
+                    // Record order item history for asset supply
+                    try
+                    {
+                        var departmentId = _currentUserService.DepartmentId ?? orderDepartmentId;
+                        var userName = _currentUserService.UserName ?? "System";
+
+                        var supplyDetailsByItem = createdSupply.SupplyDetails
+                            .GroupBy(d => d.ItemId)
+                            .ToDictionary(g => g.Key, g => (long)g.Count());
+
+                        var suppliedItemIds = supplyDetailsByItem.Keys.ToList();
+
+                        foreach (var itemGroup in supplyDetailsByItem)
+                        {
+                            var historyContext = new OrderItemHistoryContext
+                            {
+                                OrderId = orderId,
+                                ItemId = itemGroup.Key,
+                                ActionType = OrderItemActionType.AssetSupplied,
+                                OrderStatus = RequestStatus.Approved,
+                                SuppliedQuantity = itemGroup.Value,
+                                DepartmentId = departmentId,
+                                ModifiedByUserId = _currentUserService.UserId,
+                                ModifiedByUserName = userName,
+                                AssetSupplyId = createdSupply.Id,
+                                Description = $"Asset supplied - quantity: {itemGroup.Value}"
+                            };
+
+                            await _orderItemTrackingService.RecordHistoryAsync(historyContext);
+                        }
+
+                        foreach (var orderItem in orderRequestItems.Where(ri => !suppliedItemIds.Contains(ri.ItemId)))
+                        {
+                            var historyContext = new OrderItemHistoryContext
+                            {
+                                OrderId = orderId,
+                                RequestItemId = orderItem.Id,
+                                ItemId = orderItem.ItemId,
+                                ActionType = OrderItemActionType.AssetSupplied,
+                                OrderStatus = RequestStatus.Approved,
+                                SuppliedQuantity = 0,
+                                DepartmentId = departmentId,
+                                ModifiedByUserId = _currentUserService.UserId,
+                                ModifiedByUserName = userName,
+                                AssetSupplyId = createdSupply.Id,
+                                Description = $"Asset not yet supplied",
+                                Notes = "This item is not yet supplied"
+                            };
+
+                            await _orderItemTrackingService.RecordHistoryAsync(historyContext);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to record history for asset supply creation. SupplyId: {SupplyId}", createdSupply.Id);
+                    }
 
                     await transaction.CommitAsync();
+
+                    // Approve workflow step AFTER supply is safely committed
+                    try
+                    {
+                        var approveDto = new ApproveRejectWorkflowApprovalDto
+                        {
+                            BaseRequestID = orderId,
+                            Action = RequestStatus.Approved,
+                            IsApproved = true,
+                            Comments = dto.Notes,
+                            SendToHigherApproval = false
+                        };
+                        var approveResult = await _workflowApprovalService.ProcessActionAsync(approveDto);
+                        if (!approveResult.Succeeded)
+                        {
+                            _logger.LogError("Workflow approval failed after supply creation. SupplyId: {SupplyId}, OrderId: {OrderId}, Error: {Error}",
+                                createdSupply.Id, orderId, approveResult.Message);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Exception during workflow approval after supply creation. SupplyId: {SupplyId}, OrderId: {OrderId}",
+                            createdSupply.Id, orderId);
+                    }
 
                     _logger.LogInformation("Asset supply created and submitted. SupplyId: {SupplyId}, OrderId: {OrderId}, User: {UserId}",
                         createdSupply.Id, dto.OrderId, _currentUserService.UserId);
