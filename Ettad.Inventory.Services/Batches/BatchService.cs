@@ -82,10 +82,10 @@ namespace Ettad.Inventory.Service.Batches
             return created;
         }
 
-        public async Task<APIOperationResponse<BatchDto>> GetByIdAsync(long id)
+        public async Task<APIOperationResponse<BatchDto>> GetByIdAsync(long id, bool? serialNumberOnly = null, int? quantity = null, bool? filterByIsAssigned = null)
         {
-            _logger.LogInformation("Getting batch by ID. BatchId: {BatchId}, User: {UserId}",
-                id, _currentUserService.UserId);
+            _logger.LogInformation("Getting batch by ID. BatchId: {BatchId}, SerialNumberOnly: {SerialNumberOnly}, Quantity: {Quantity}, FilterByIsAssigned: {FilterByIsAssigned}, User: {UserId}",
+                id, serialNumberOnly, quantity, filterByIsAssigned, _currentUserService.UserId);
 
             try
             {
@@ -105,15 +105,26 @@ namespace Ettad.Inventory.Service.Batches
 
                 var dto = _mapper.Map<BatchDto>(batch);
 
-                var assets = await _assetRepository.FindAsync(
-                    a => !a.IsDeleted && a.BatchId == id,
-                    false,
-                    nameof(Asset.Item),
-                    nameof(Asset.Depot),
-                    //$"{nameof(Asset.CurrentAssignment)}.{nameof(AssetAssignment.Custodian)}",
-                    $"{nameof(Asset.CurrentAssignment)}.{nameof(AssetAssignment.Department)}");
+                var assetQuery = _context.Assets
+                    .AsNoTracking()
+                    .Where(a => !a.IsDeleted && a.BatchId == id)
+                    .Include(nameof(Asset.Item))
+                    .Include(nameof(Asset.Depot))
+                    .Include($"{nameof(Asset.CurrentAssignment)}.{nameof(AssetAssignment.Department)}")
+                    .AsSplitQuery();
 
-                dto.Assets = _mapper.Map<List<AssetDto>>(assets.ToList());
+                if (serialNumberOnly == true)
+                    assetQuery = assetQuery.Where(a => !string.IsNullOrEmpty(a.SerialNumber));
+
+                if (filterByIsAssigned.HasValue)
+                    assetQuery = assetQuery.Where(a => a.IsAssigned == filterByIsAssigned.Value);
+
+                if (quantity.HasValue && quantity.Value > 0)
+                    assetQuery = assetQuery.Take(quantity.Value);
+
+                var assets = await assetQuery.ToListAsync();
+
+                dto.Assets = _mapper.Map<List<AssetDto>>(assets);
                 dto.AssetCount = dto.Assets.Count;
 
                 var entityIds = dto.Assets.Select(a => a.Id).ToList();
@@ -138,6 +149,25 @@ namespace Ettad.Inventory.Service.Batches
                     id, _currentUserService.UserId);
                 return APIOperationResponse<BatchDto>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
             }
+        }
+
+        public async Task<APIOperationResponse<BatchDto>> GetByBatchNumberAsync(string batchNumber, bool? serialNumberOnly = null, int? quantity = null, bool? filterByIsAssigned = null)
+        {
+            if (string.IsNullOrWhiteSpace(batchNumber))
+                return APIOperationResponse<BatchDto>.Fail(ResponseType.BadRequest, "Batch number is required.");
+
+            var trimmedBatchNumber = batchNumber.Trim();
+
+            _logger.LogInformation("Getting batch by BatchNumber. BatchNumber: {BatchNumber}, User: {UserId}",
+                trimmedBatchNumber, _currentUserService.UserId);
+
+            var batch = await _batchRepository.FindOneAsync(
+                p => p.BatchNumber == trimmedBatchNumber && !p.IsDeleted);
+
+            if (batch == null)
+                return APIOperationResponse<BatchDto>.Fail(ResponseType.NotFound, "Batch not found");
+
+            return await GetByIdAsync(batch.Id, serialNumberOnly, quantity, filterByIsAssigned);
         }
 
         public async Task<APIOperationResponse<List<BatchDto>>> GetAllAsync(long? depotId = null)

@@ -571,6 +571,57 @@ namespace Ettad.Inventory.Service.Assets
             }
         }
 
+        public async Task<APIOperationResponse<bool>> UpdateSerialNumberAsync(long assetId, string? serialNumber)
+        {
+            _logger.LogInformation("Updating serial number for asset. AssetId: {AssetId}, User: {UserId}",
+                assetId, _currentUserService.UserId);
+
+            try
+            {
+                var existingAsset = await _assetRepository.FindOneAsync(a => a.Id == assetId && !a.IsDeleted);
+                if (existingAsset == null)
+                    return APIOperationResponse<bool>.Fail(ResponseType.NotFound, "Asset not found");
+
+                var userId = _currentUserService.UserId;
+                if (!string.IsNullOrEmpty(userId) && !await _depotAccessService.HasDepotAccessAsync(userId, existingAsset.DepotId))
+                {
+                    _logger.LogWarning("User {UserId} attempted to update serial number for asset in unauthorized depot {DepotId}", userId, existingAsset.DepotId);
+                    return APIOperationResponse<bool>.Fail(ResponseType.Forbidden, "You do not have access to this depot.");
+                }
+
+                serialNumber = string.IsNullOrWhiteSpace(serialNumber) ? null : serialNumber.Trim();
+
+                if (!string.IsNullOrEmpty(serialNumber))
+                {
+                    if (serialNumber.Length > 500)
+                        return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, "Serial number must not exceed 500 characters.");
+
+                    var duplicate = await _assetRepository.FindOneAsync(
+                        a => !a.IsDeleted && a.Id != assetId && a.SerialNumber == serialNumber);
+
+                    if (duplicate != null)
+                        return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, "Serial number already exists.");
+                }
+
+                existingAsset.SerialNumber = serialNumber;
+                existingAsset.ModificationDate = _dateTimeProvider.Now;
+                existingAsset.ModifiedBy = _currentUserService.UserId;
+
+                await _assetRepository.UpdateAsync(existingAsset);
+
+                _logger.LogInformation("Serial number updated successfully. AssetId: {AssetId}, SerialNumber: {SerialNumber}, User: {UserId}",
+                    assetId, serialNumber ?? "(cleared)", _currentUserService.UserId);
+
+                return APIOperationResponse<bool>.Success(true, "Serial number updated successfully");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating serial number. AssetId: {AssetId}, User: {UserId}",
+                    assetId, _currentUserService.UserId);
+                return APIOperationResponse<bool>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
+            }
+        }
+
         public async Task<APIOperationResponse<bool>> DeleteAsync(long id)
         {
             _logger.LogInformation("Deleting asset. AssetId: {AssetId}, User: {UserId}", 

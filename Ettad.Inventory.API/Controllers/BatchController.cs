@@ -30,12 +30,21 @@ namespace Ettad.Inventory.API.Controllers
             return ProcessResponse(result);
         }
 
+        [HttpGet("by-number/{batchNumber}")]
+        [ProducesResponseType((int)HttpStatusCode.OK)]
+        [CheckAuthorize("Permissions.Asset.View", "Permissions.Asset.Page")]
+        public async Task<IActionResult> GetByBatchNumber(string batchNumber, [FromQuery] bool? serialNumberOnly = null, [FromQuery] int? quantity = null, [FromQuery] bool? filterByIsAssigned = null)
+        {
+            var result = await _batchService.GetByBatchNumberAsync(batchNumber, serialNumberOnly, quantity, filterByIsAssigned);
+            return ProcessResponse(result);
+        }
+
         [HttpGet("{id}")]
         [ProducesResponseType((int)HttpStatusCode.OK)]
         [CheckAuthorize("Permissions.Asset.View", "Permissions.Asset.Page")]
-        public async Task<IActionResult> GetById(long id)
+        public async Task<IActionResult> GetById(long id, [FromQuery] bool? serialNumberOnly = null, [FromQuery] int? quantity = null, [FromQuery] bool? filterByIsAssigned = null)
         {
-            var result = await _batchService.GetByIdAsync(id);
+            var result = await _batchService.GetByIdAsync(id, serialNumberOnly, quantity, filterByIsAssigned);
             return ProcessResponse(result);
         }
 
