@@ -157,6 +157,17 @@ namespace Ettad.Inventory.Service.AssetSupply
                         Quantity = totalCountDict.TryGetValue(b.Id, out var cnt) ? cnt : 0,
                         DepotId = b.DepotId,
                         DepotName = b.Depot?.NameEn ?? b.Depot?.NameAr,
+                        Depot = b.Depot != null ? new Ettad.Module.lookup.Dtos.DepotDto
+                        {
+                            Id = b.Depot.Id,
+                            NameAr = b.Depot.NameAr ?? string.Empty,
+                            NameEn = b.Depot.NameEn ?? string.Empty,
+                            Code = b.Depot.Code ?? string.Empty,
+                            Location = b.Depot.Location ?? string.Empty,
+                            Latitude = b.Depot.Latitude,
+                            Longitude = b.Depot.Longitude,
+                            IsDeleted = b.Depot.IsDeleted
+                        } : null,
                         Items = batchItems
                     };
                 }).OrderBy(x => x.BatchNumber).ToList();
@@ -989,7 +1000,7 @@ namespace Ettad.Inventory.Service.AssetSupply
             try
             {
                 if (dto?.Selections == null || !dto.Selections.Any())
-                    return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, "At least one depot-batch selection is required");
+                    return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, "At least one depot selection is required");
 
                 var orderExists = await _context.Orders.AnyAsync(o => o.Id == dto.OrderId && !o.IsDeleted);
                 if (!orderExists)
@@ -1010,7 +1021,7 @@ namespace Ettad.Inventory.Service.AssetSupply
                 // Add new selections
                 var now = _dateTimeProvider.Now;
                 var userId = _currentUserService.UserId;
-                foreach (var sel in dto.Selections.Distinct())
+                foreach (var sel in dto.Selections.DistinctBy(s => (s.DepotId, s.BatchId)))
                 {
                     var entity = new WeaponSupplySelection
                     {
