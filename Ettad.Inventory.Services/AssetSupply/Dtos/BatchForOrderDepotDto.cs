@@ -1,3 +1,5 @@
+using Ettad.Module.lookup.Dtos;
+
 namespace Ettad.Inventory.Service.AssetSupply.Dtos
 {
     /// <summary>
@@ -22,6 +24,10 @@ namespace Ettad.Inventory.Service.AssetSupply.Dtos
         public int Quantity { get; set; }
         public long DepotId { get; set; }
         public string? DepotName { get; set; }
+        /// <summary>
+        /// Full depot DTO for localization (nameEn, nameAr, code, etc.)
+        /// </summary>
+        public DepotDto? Depot { get; set; }
         /// <summary>
         /// Which requested items this batch contains (with available asset count per item).
         /// </summary>

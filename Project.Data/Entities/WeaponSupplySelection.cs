@@ -19,9 +19,9 @@ namespace Ettad.Data.Entities
         public long DepotId { get; set; }
 
         /// <summary>
-        /// Selected batch within the depot
+        /// Selected batch within the depot (null when depot is selected without a specific batch)
         /// </summary>
-        public long BatchId { get; set; }
+        public long? BatchId { get; set; }
 
         #region Navigation Properties
 

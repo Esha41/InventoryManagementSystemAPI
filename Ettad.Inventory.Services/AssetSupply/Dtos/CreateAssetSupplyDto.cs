@@ -14,7 +14,7 @@ namespace Ettad.Inventory.Service.AssetSupply.Dtos
         /// Optional custodian user ID (AspNet user) at supply header level.
         /// Detail-level and assignments use Employee IDs.
         /// </summary>
-        public string? CustodianId { get; set; }
+        // public string? CustodianId { get; set; }
 
         /// <summary>
         /// Name of the person receiving the supply (Required)

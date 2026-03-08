@@ -95,6 +95,18 @@ namespace Ettad.Inventory.API.Controllers
             return ProcessResponse(result);
         }
 
+        /// <summary>
+        /// Update serial number for an existing asset
+        /// </summary>
+        [HttpPut("{assetId}/serial-number")]
+        [ProducesResponseType((int)HttpStatusCode.OK)]
+        [CheckAuthorize("Permissions.Asset.Edit")]
+        public async Task<IActionResult> UpdateSerialNumber(long assetId, [FromBody] string? serialNumber)
+        {
+            var result = await _assetService.UpdateSerialNumberAsync(assetId, serialNumber);
+            return ProcessResponse(result);
+        }
+
         [HttpDelete("{id}")]
         [ProducesResponseType((int)HttpStatusCode.NoContent)]
         [CheckAuthorize("Permissions.Asset.Delete")]

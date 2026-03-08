@@ -12,7 +12,6 @@ namespace Ettad.EntityFramework.Configurations
             builder.HasKey(x => x.Id);
 
             builder.HasIndex(x => x.OrderId);
-            builder.HasIndex(x => new { x.OrderId, x.DepotId, x.BatchId });
 
             builder.HasOne(x => x.Order)
                 .WithMany()
@@ -28,7 +27,7 @@ namespace Ettad.EntityFramework.Configurations
 
             builder.HasOne(x => x.Batch)
                 .WithMany()
-                .IsRequired()
+                .IsRequired(false)
                 .HasForeignKey(x => x.BatchId)
                 .OnDelete(DeleteBehavior.Restrict);
         }

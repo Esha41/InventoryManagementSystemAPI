@@ -12,6 +12,6 @@ namespace Ettad.Inventory.Service.AssetSupply.Dtos
     public class DepotBatchSelectionDto
     {
         public long DepotId { get; set; }
-        public long BatchId { get; set; }
+        public long? BatchId { get; set; }
     }
 }

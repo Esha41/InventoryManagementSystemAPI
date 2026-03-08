@@ -8,7 +8,8 @@ namespace Ettad.Inventory.Service.Batches
     public interface IBatchService
     {
         Task<Batch> GetOrCreateAsync(string batchNumber, long depotId);
-        Task<APIOperationResponse<BatchDto>> GetByIdAsync(long id);
+        Task<APIOperationResponse<BatchDto>> GetByIdAsync(long id, bool? serialNumberOnly = null, int? quantity = null, bool? filterByIsAssigned = null);
+        Task<APIOperationResponse<BatchDto>> GetByBatchNumberAsync(string batchNumber, bool? serialNumberOnly = null, int? quantity = null, bool? filterByIsAssigned = null);
         Task<APIOperationResponse<List<BatchDto>>> GetAllAsync(long? depotId = null);
         Task<APIOperationResponse<List<BatchSummaryDto>>> GetSummaryAsync(long depotId);
         Task<APIOperationResponse<PaginatedList<BatchDto>>> SearchAsync(long? depotId, PagedListRequest request);
