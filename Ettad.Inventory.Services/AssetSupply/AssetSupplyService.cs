@@ -102,7 +102,7 @@ namespace Ettad.Inventory.Service.AssetSupply
                     .Where(a => !a.IsDeleted
                         && depotIds.Contains(a.DepotId)
                         && requestedItemIds.Contains(a.ItemId)
-                        && !string.IsNullOrEmpty(a.SerialNumber)
+                        //&& !string.IsNullOrEmpty(a.SerialNumber)
                         && !a.IsAssigned
                         && a.Status == AssetStatus.ReadyToIssue)
                        
@@ -121,7 +121,7 @@ namespace Ettad.Inventory.Service.AssetSupply
                 var assetCounts = await _context.Assets
                     .Where(a => !a.IsDeleted && batchIdsWithMatchingAssets.Contains(a.BatchId)
                         && requestedItemIds.Contains(a.ItemId)
-                        && !string.IsNullOrEmpty(a.SerialNumber)
+                        //&& !string.IsNullOrEmpty(a.SerialNumber)
                         && !a.IsAssigned
                         && a.Status == AssetStatus.ReadyToIssue)
                     .GroupBy(a => new { a.BatchId, a.ItemId })
