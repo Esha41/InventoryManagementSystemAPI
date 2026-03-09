@@ -1027,26 +1027,23 @@ namespace Ettad.Inventory.Service.AssetSupply
 
                 // Remove existing selections for this order
                 var existing = await _context.WeaponSupplySelections
-                    .Where(s => s.OrderId == dto.OrderId && !s.IsDeleted)
+                    .Where(s => s.OrderId == dto.OrderId)
                     .ToListAsync();
-                foreach (var s in existing)
-                {
-                    s.IsDeleted = true;
-                    s.DeletionDate = _dateTimeProvider.Now;
-                    s.DeletedBy = _currentUserService.UserId;
-                }
+                _context.WeaponSupplySelections.RemoveRange(existing);
                 await _context.SaveChangesAsync();
 
                 // Add new selections
                 var now = _dateTimeProvider.Now;
                 var userId = _currentUserService.UserId;
-                foreach (var sel in dto.Selections.DistinctBy(s => (s.DepotId, s.BatchId)))
+                foreach (var sel in dto.Selections.DistinctBy(s => (s.DepotId, s.BatchId, s.ItemId)))
                 {
                     var entity = new WeaponSupplySelection
                     {
                         OrderId = dto.OrderId,
                         DepotId = sel.DepotId,
                         BatchId = sel.BatchId,
+                        ItemId = sel.ItemId,
+                        Quantity = sel.Quantity,
                         CreationDate = now,
                         CreatedBy = userId
                     };
@@ -1070,8 +1067,8 @@ namespace Ettad.Inventory.Service.AssetSupply
             try
             {
                 var selections = await _context.WeaponSupplySelections
-                    .Where(s => s.OrderId == orderId && !s.IsDeleted)
-                    .Select(s => new DepotBatchSelectionDto { DepotId = s.DepotId, BatchId = s.BatchId })
+                    .Where(s => s.OrderId == orderId)
+                    .Select(s => new DepotBatchSelectionDto { DepotId = s.DepotId, BatchId = s.BatchId, ItemId = s.ItemId, Quantity = s.Quantity })
                     .ToListAsync();
                 return APIOperationResponse<List<DepotBatchSelectionDto>>.Success(selections);
             }
