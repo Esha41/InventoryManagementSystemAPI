@@ -101,8 +101,9 @@ namespace Ettad.Inventory.API.Controllers
         [HttpPut("{assetId}/serial-number")]
         [ProducesResponseType((int)HttpStatusCode.OK)]
         [CheckAuthorize("Permissions.Asset.Edit")]
-        public async Task<IActionResult> UpdateSerialNumber(long assetId, [FromBody] string? serialNumber)
+        public async Task<IActionResult> UpdateSerialNumber(long assetId, [FromBody] UpdateSerialNumberDto? dto)
         {
+            var serialNumber = dto?.SerialNumber;
             var result = await _assetService.UpdateSerialNumberAsync(assetId, serialNumber);
             return ProcessResponse(result);
         }
