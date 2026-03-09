@@ -112,6 +112,7 @@ namespace Ettad.Workflows.API.Controllers
                 // Wrap into API Response
                 var response = new APIOperationResponse<WorkflowApprovalStepDto>
                 {
+                    Succeeded = true,
                     StatusCode = (int)ResponseType.Success,
                     Data = result,
                     Message = successMessage

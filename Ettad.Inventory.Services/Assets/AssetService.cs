@@ -913,7 +913,7 @@ namespace Ettad.Inventory.Service.Assets
             }
         }
 
-        public async Task<APIOperationResponse<ImportResult<CreateAssetDto>>> ImportPreviewAsync(IFormFile file, long depotId, string language = "en")
+        public async Task<APIOperationResponse<ImportResult<AssetImportDto>>> ImportPreviewAsync(IFormFile file, long depotId, string language = "en")
         {
             _logger.LogInformation("Starting asset import preview. DepotId: {DepotId}, Language: {Language}, User: {UserId}", 
                 depotId, language, _currentUserService.UserId);
@@ -922,12 +922,11 @@ namespace Ettad.Inventory.Service.Assets
             if (!string.IsNullOrEmpty(userId) && !await _depotAccessService.HasDepotAccessAsync(userId, depotId))
             {
                 _logger.LogWarning("User {UserId} attempted to preview asset import for unauthorized depot {DepotId}", userId, depotId);
-                return APIOperationResponse<ImportResult<CreateAssetDto>>.Fail(ResponseType.Forbidden, "You do not have access to this depot.");
+                return APIOperationResponse<ImportResult<AssetImportDto>>.Fail(ResponseType.Forbidden, "You do not have access to this depot.");
             }
  
             try
             {
-                // Parse Excel file
                 var mappings = GetColumnMappings(language);
                 var importResult = await _excelImportService.ImportFromExcelAsync<AssetImportDto>(file, mappings);
 
@@ -935,15 +934,11 @@ namespace Ettad.Inventory.Service.Assets
                 {
                     _logger.LogWarning("No valid rows found in Excel file for preview. DepotId: {DepotId}, User: {UserId}", 
                         depotId, _currentUserService.UserId);
-                    return APIOperationResponse<ImportResult<CreateAssetDto>>.Success(
-                        new ImportResult<CreateAssetDto> { Errors = importResult.Errors }, 
-                        "Preview processed with no valid records");
+                    return APIOperationResponse<ImportResult<AssetImportDto>>.Success(importResult, "Preview processed with no valid records");
                 }
 
-                // Load all items for ItemNo/ItemName lookup
                 var allItems = await LoadAllItemsAsync();
 
-                // Load existing assets for duplicate checking
                 var existingAssets = await _assetRepository.FindAsync(
                     a => a.DepotId == depotId && !a.IsDeleted);
 
@@ -961,15 +956,10 @@ namespace Ettad.Inventory.Service.Assets
                         existingAssetTags.Add(asset.AssetTag);
                 }
 
-                var createAssetDtos = new List<CreateAssetDto>();
-
-                // Validate records WITHOUT saving to database
-                // Use ToList() to avoid modification during iteration
                 foreach (var row in importResult.SuccessfulRecords.ToList())
                 {
                     var rowErrors = new List<string>();
 
-                    // Resolve ItemId from ItemName or ItemNo
                     long? itemId = row.ItemId;
                     if (!itemId.HasValue)
                     {
@@ -979,12 +969,12 @@ namespace Ettad.Inventory.Service.Assets
                             if (foundItem != null)
                             {
                                 itemId = foundItem.Id;
+                                row.ItemId = itemId;
                             }
                         }
                         
                         if (!itemId.HasValue && !string.IsNullOrEmpty(row.ItemName))
                         {
-                            // Try to parse "ItemName (ItemNo)" format
                             var itemNameValue = row.ItemName.Trim();
                             if (itemNameValue.Contains("(") && itemNameValue.Contains(")"))
                             {
@@ -997,11 +987,11 @@ namespace Ettad.Inventory.Service.Assets
                                     if (foundItem != null)
                                     {
                                         itemId = foundItem.Id;
+                                        row.ItemId = itemId;
                                     }
                                 }
                             }
                             
-                            // If still not found, try matching by name
                             if (!itemId.HasValue)
                             {
                                 var foundItem = allItems.FirstOrDefault(i => 
@@ -1009,6 +999,7 @@ namespace Ettad.Inventory.Service.Assets
                                 if (foundItem != null)
                                 {
                                     itemId = foundItem.Id;
+                                    row.ItemId = itemId;
                                 }
                             }
                         }
@@ -1019,7 +1010,6 @@ namespace Ettad.Inventory.Service.Assets
                         rowErrors.Add($"Item not found: ItemName={row.ItemName}, ItemNo={row.ItemNo}, ItemId={row.ItemId}");
                     }
 
-                    // Check for duplicate SerialNumber
                     if (!string.IsNullOrWhiteSpace(row.SerialNumber))
                     {
                         if (existingSerialNumbers.Contains(row.SerialNumber))
@@ -1028,7 +1018,6 @@ namespace Ettad.Inventory.Service.Assets
                         }
                     }
 
-                    // Check for duplicate RFID
                     if (!string.IsNullOrWhiteSpace(row.RFID))
                     {
                         if (existingRFIDs.Contains(row.RFID))
@@ -1037,7 +1026,6 @@ namespace Ettad.Inventory.Service.Assets
                         }
                     }
 
-                    // Check for duplicate AssetTag
                     if (!string.IsNullOrWhiteSpace(row.AssetTag))
                     {
                         if (existingAssetTags.Contains(row.AssetTag))
@@ -1066,7 +1054,7 @@ namespace Ettad.Inventory.Service.Assets
 
                     var createDto = new CreateAssetDto
                     {
-                        ItemId = itemId.Value,
+                        ItemId = itemId!.Value,
                         BatchNumber = row.BatchNumber!.Trim(),
                         DepotId = depotId,
                         SerialNumber = string.IsNullOrWhiteSpace(row.SerialNumber) ? null : row.SerialNumber.Trim(),
@@ -1079,7 +1067,6 @@ namespace Ettad.Inventory.Service.Assets
                         Notes = string.IsNullOrWhiteSpace(row.Notes) ? null : row.Notes.Trim()
                     };
 
-                    // Validate using FluentValidation
                     var validationResult = await _createValidator.ValidateAsync(createDto);
                     if (!validationResult.IsValid)
                     {
@@ -1087,41 +1074,34 @@ namespace Ettad.Inventory.Service.Assets
                         importResult.SuccessfulRecords.Remove(row);
                         importResult.Errors.Add(new ImportError
                         {
+                            RowNumber = row.RowNumber > 0 ? row.RowNumber : 0,
                             ErrorMessage = $"Validation failed: {errors}",
-                            ColumnName = "N/A"
+                            ColumnName = "N/A",
+                            RowData = row
                         });
                         continue;
                     }
 
-                    createAssetDtos.Add(createDto);
-
-                    // Add to existing sets to prevent duplicates within preview
-                    if (!string.IsNullOrWhiteSpace(createDto.SerialNumber))
-                        existingSerialNumbers.Add(createDto.SerialNumber);
-                    if (!string.IsNullOrWhiteSpace(createDto.RFID))
-                        existingRFIDs.Add(createDto.RFID);
-                    if (!string.IsNullOrWhiteSpace(createDto.AssetTag))
-                        existingAssetTags.Add(createDto.AssetTag);
+                    if (!string.IsNullOrWhiteSpace(row.SerialNumber))
+                        existingSerialNumbers.Add(row.SerialNumber);
+                    if (!string.IsNullOrWhiteSpace(row.RFID))
+                        existingRFIDs.Add(row.RFID);
+                    if (!string.IsNullOrWhiteSpace(row.AssetTag))
+                        existingAssetTags.Add(row.AssetTag);
                 }
 
-                // Create result with CreateAssetDto
-                var result = new ImportResult<CreateAssetDto>
-                {
-                    SuccessfulRecords = createAssetDtos,
-                    Errors = importResult.Errors,
-                    TotalProcessed = createAssetDtos.Count + importResult.Errors.Count
-                };
+                importResult.TotalProcessed = importResult.SuccessfulRecords.Count + importResult.Errors.Count;
 
                 _logger.LogInformation("Asset import preview completed. Valid: {ValidCount}, Errors: {ErrorCount}, DepotId: {DepotId}, User: {UserId}",
-                    createAssetDtos.Count, importResult.Errors.Count, depotId, _currentUserService.UserId);
+                    importResult.SuccessfulRecords.Count, importResult.Errors.Count, depotId, _currentUserService.UserId);
 
-                return APIOperationResponse<ImportResult<CreateAssetDto>>.Success(result, "Preview processed");
+                return APIOperationResponse<ImportResult<AssetImportDto>>.Success(importResult, "Preview processed");
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error previewing asset import. DepotId: {DepotId}, User: {UserId}",
                     depotId, _currentUserService.UserId);
-                return APIOperationResponse<ImportResult<CreateAssetDto>>.Fail(ResponseType.InternalServerError, ex.Message);
+                return APIOperationResponse<ImportResult<AssetImportDto>>.Fail(ResponseType.InternalServerError, ex.Message);
             }
         }
 
@@ -1139,26 +1119,12 @@ namespace Ettad.Inventory.Service.Assets
                     return APIOperationResponse<byte[]>.Fail(ResponseType.Forbidden, "You do not have access to this depot.");
                 }
 
-                // Load all items (ammunition, weapons, explosives)
-                var ammunitions = await _context.Ammunitions
-                    .Where(a => !a.IsDeleted)
-                    .ToListAsync();
-                
+                // Asset import is for weapons only – match the UI add-weapon flow
                 var weapons = await _context.Weapons
                     .Where(w => !w.IsDeleted)
                     .ToListAsync();
-                
-                var explosives = await _context.Explosives
-                    .Where(e => !e.IsDeleted)
-                    .ToListAsync();
 
-                // Combine all items and format as "ItemName (ItemNo)"
-                var allItems = new List<BaseItem>();
-                allItems.AddRange(ammunitions.Cast<BaseItem>());
-                allItems.AddRange(weapons.Cast<BaseItem>());
-                allItems.AddRange(explosives.Cast<BaseItem>());
-
-                var itemNames = allItems
+                var itemNames = weapons.Cast<BaseItem>()
                     .Where(i => !string.IsNullOrWhiteSpace(i.Name) && !string.IsNullOrWhiteSpace(i.ItemNo))
                     .Select(i => $"{i.Name} ({i.ItemNo})")
                     .OrderBy(n => n)
@@ -1296,28 +1262,17 @@ namespace Ettad.Inventory.Service.Assets
             return mappings;
         }
 
+        /// <summary>
+        /// Load weapon items only – asset import/export targets weapons exclusively.
+        /// This keeps import aligned with the UI add-weapon flow which only lists weapons.
+        /// </summary>
         private async Task<List<BaseItem>> LoadAllItemsAsync()
         {
-            var items = new List<BaseItem>();
-            
-            // Load all ammunition, weapons, and explosives
-            var ammunitions = await _context.Ammunitions
-                .Where(a => !a.IsDeleted)
-                .ToListAsync();
-            
             var weapons = await _context.Weapons
                 .Where(w => !w.IsDeleted)
                 .ToListAsync();
-            
-            var explosives = await _context.Explosives
-                .Where(e => !e.IsDeleted)
-                .ToListAsync();
 
-            items.AddRange(ammunitions.Cast<BaseItem>());
-            items.AddRange(weapons.Cast<BaseItem>());
-            items.AddRange(explosives.Cast<BaseItem>());
-
-            return items;
+            return weapons.Cast<BaseItem>().ToList();
         }
 
         /// <summary>
