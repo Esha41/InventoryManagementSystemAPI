@@ -29,7 +29,7 @@ namespace Ettad.EntityFramework.Configurations
             builder.HasMany(x => x.Assets)
                 .WithOne(x => x.Batch)
                 .HasForeignKey(x => x.BatchId)
-                .OnDelete(DeleteBehavior.Restrict);
+                .OnDelete(DeleteBehavior.ClientCascade);
         }
     }
 }

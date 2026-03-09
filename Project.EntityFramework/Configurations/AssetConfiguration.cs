@@ -91,7 +91,7 @@ namespace Ettad.EntityFramework.Configurations
                 .WithMany(x => x.Assets)
                 .IsRequired()
                 .HasForeignKey(x => x.BatchId)
-                .OnDelete(DeleteBehavior.Restrict);
+                .OnDelete(DeleteBehavior.ClientCascade);
 
             builder.HasIndex(x => x.BatchId);
         }
