@@ -13,6 +13,8 @@ using Ettad.Inventory.Service.AssetHistory.Dtos;
 using Ettad.ResponseHandler.Consts;
 using Ettad.ResponseHandler.Models;
 using Ettad.CrossCutting.Comman.Time;
+using Ettad.CrossCutting.Comman.FileUpload;
+using Ettad.Comman.Enums;
 using Ettad.Workflows.Service.Interface;
 using Ettad.Workflows.Service.DTO;
 
@@ -36,6 +38,7 @@ namespace Ettad.Inventory.Service.AssetSupply
         private readonly IDateTimeProvider _dateTimeProvider;
         private readonly IOrderItemTrackingService _orderItemTrackingService;
         private readonly IWorkflowApprovalService _workflowApprovalService;
+        private readonly IFileUploadService _fileUploadService;
 
         public AssetSupplyService(
             ApplicationDbContext context,
@@ -53,7 +56,8 @@ namespace Ettad.Inventory.Service.AssetSupply
             ILogger<AssetSupplyService> logger,
             IDateTimeProvider dateTimeProvider,
             IOrderItemTrackingService orderItemTrackingService,
-            IWorkflowApprovalService workflowApprovalService)
+            IWorkflowApprovalService workflowApprovalService,
+            IFileUploadService fileUploadService)
         {
             _context = context;
             _assetSupplyRepository = assetSupplyRepository;
@@ -71,6 +75,7 @@ namespace Ettad.Inventory.Service.AssetSupply
             _dateTimeProvider = dateTimeProvider;
             _orderItemTrackingService = orderItemTrackingService;
             _workflowApprovalService = workflowApprovalService;
+            _fileUploadService = fileUploadService;
         }
 
         public async Task<APIOperationResponse<List<BatchForOrderDepotDto>>> GetBatchesForOrderDepotsAsync(long orderId, List<long> depotIds)
@@ -105,7 +110,7 @@ namespace Ettad.Inventory.Service.AssetSupply
                         //&& !string.IsNullOrEmpty(a.SerialNumber)
                         && !a.IsAssigned
                         && a.Status == AssetStatus.ReadyToIssue)
-                       
+
                     .Select(a => a.BatchId)
                     .Distinct()
                     .ToListAsync();
@@ -219,7 +224,7 @@ namespace Ettad.Inventory.Service.AssetSupply
                         .Distinct()
                         .ToList();
                     return APIOperationResponse<OrderAssetsToSupplyDto>.Fail(
-                        ResponseType.BadRequest, 
+                        ResponseType.BadRequest,
                         $"Asset supply only handles Weapon items. The order contains non-Weapon items: {string.Join(", ", itemNames)}");
                 }
 
@@ -320,6 +325,20 @@ namespace Ettad.Inventory.Service.AssetSupply
                 }
 
                 var dto = _mapper.Map<AssetSupplyDto>(supply);
+
+                // Load files associated with this asset supply
+                var filesResult = await _fileUploadService.GetByEntityAsync(FileEntityType.AssetSupply, supply.Id);
+                if (filesResult.Succeeded && filesResult.Data != null)
+                {
+                    dto.Files = filesResult.Data;
+                }
+                else
+                {
+                    dto.Files = new List<FileUploadDto>();
+                    _logger.LogWarning("Failed to load files for asset supply. SupplyId: {SupplyId}, Error: {Error}",
+                        supply.Id, filesResult.Message);
+                }
+
                 return APIOperationResponse<AssetSupplyDto>.Success(dto);
             }
             catch (Exception ex)
@@ -352,6 +371,14 @@ namespace Ettad.Inventory.Service.AssetSupply
                 }
 
                 var dto = _mapper.Map<AssetSupplyDto>(supply);
+
+                // Load files associated with this asset supply
+                var filesResult = await _fileUploadService.GetByEntityAsync(FileEntityType.AssetSupply, supply.Id);
+                if (filesResult.Succeeded && filesResult.Data != null)
+                    dto.Files = filesResult.Data;
+                else
+                    dto.Files = new List<FileUploadDto>();
+
                 return APIOperationResponse<AssetSupplyDto>.Success(dto);
             }
             catch (Exception ex)
@@ -435,7 +462,7 @@ namespace Ettad.Inventory.Service.AssetSupply
                             .Distinct()
                             .ToList();
                         return APIOperationResponse<long>.Fail(
-                            ResponseType.BadRequest, 
+                            ResponseType.BadRequest,
                             $"Asset supply only handles Weapon items. The order contains non-Weapon items: {string.Join(", ", itemNames)}");
                     }
                 }
@@ -797,14 +824,14 @@ namespace Ettad.Inventory.Service.AssetSupply
 
                 // Since we auto-complete/submit, cancelling means reversing the supply
                 // We need to return assets and cancel assignments
-                
+
                 // For now, let's just mark it cancelled if it's not already
                 // Ideally this should trigger a return process or we block cancellation if already distributed
                 // But simplified requirement implies we might want to just mark it cancelled?
                 // The prompt says "I will not have a draft supply for now only submitted", so all supplies are active.
                 // Cancelling an active supply implies returning items.
                 // I'll stick to basic status update for now, assuming physical return is handled via ReturnAssetAsync
-                
+
                 // Actually, if we cancel the supply record itself, we should probably ensure assets are returned.
                 // But let's leave that to the explicit Return logic to avoid accidental mass returns.
                 // We'll just update status here.
@@ -812,7 +839,7 @@ namespace Ettad.Inventory.Service.AssetSupply
                 // However, user might expect this to "void" the transaction.
                 // Given the instruction "create one method that supply the weapon", this creates active assignments.
                 // So cancelling the supply essentially means voiding it.
-                
+
                 // Let's implement safe cancellation: only if no assets have been returned yet? 
                 // Or just mark as Cancelled and let manual returns happen?
                 // I'll mark as Cancelled.
@@ -822,11 +849,11 @@ namespace Ettad.Inventory.Service.AssetSupply
                 // So we can't really cancel it via status. 
                 // We can maybe soft-delete it? Or use FulfillmentStatus?
                 // SupplyFulfillmentStatus has Partial and Fully.
-                
+
                 // Since I cannot change the enum, I cannot set status to Cancelled.
                 // I will return an error saying cancellation is not supported for submitted supplies in this scheme,
                 // or just soft-delete it. Soft delete seems safer to "remove" it.
-                
+
                 // Actually, let's soft delete it.
                 await _assetSupplyRepository.DeleteAsync(supply);
 
@@ -877,8 +904,8 @@ namespace Ettad.Inventory.Service.AssetSupply
                 if (dto.AssignmentId.HasValue)
                 {
                     assignment = await _context.AssetAssignments
-                        .FirstOrDefaultAsync(a => a.Id == dto.AssignmentId.Value 
-                            && a.AssetId == dto.AssetId 
+                        .FirstOrDefaultAsync(a => a.Id == dto.AssignmentId.Value
+                            && a.AssetId == dto.AssetId
                             && !a.IsDeleted);
                 }
                 else
