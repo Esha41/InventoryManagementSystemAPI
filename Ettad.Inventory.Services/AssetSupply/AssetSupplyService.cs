@@ -569,6 +569,19 @@ namespace Ettad.Inventory.Service.AssetSupply
                             $"Only assets with 'Ready to Issue' status can be supplied. Invalid assets: {string.Join(", ", notReadyAssets.Select(a => $"{a.Id} ({a.Status})"))}");
                     }
 
+                    // Validate supplied quantity per item <= requested
+                    var suppliedByItem = assets.GroupBy(a => a.ItemId)
+                        .ToDictionary(g => g.Key, g => (long)g.Count());
+                    var requestedByItemForSupply = orderRequestItems
+                        .GroupBy(ri => ri.ItemId)
+                        .ToDictionary(g => g.Key, g => g.Sum(ri => ri.Quantity));
+                    var (supplyValid, supplyError) = ValidateQuantitiesDoNotExceedRequested(
+                        requestedByItemForSupply,
+                        suppliedByItem,
+                        itemId => orderRequestItems.FirstOrDefault(ri => ri.ItemId == itemId)?.Item?.Name ?? $"Item {itemId}");
+                    if (!supplyValid)
+                        return APIOperationResponse<long>.Fail(ResponseType.BadRequest, supplyError!);
+
                     // Create supply entity
                     var supply = _mapper.Map<Ettad.Data.Entities.AssetSupply>(dto);
                     supply.SubmissionStatus = SupplySubmissionStatus.Submitted;
@@ -1021,9 +1034,23 @@ namespace Ettad.Inventory.Service.AssetSupply
                 if (dto?.Selections == null || !dto.Selections.Any())
                     return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, "At least one depot selection is required");
 
-                var orderExists = await _context.Orders.AnyAsync(o => o.Id == dto.OrderId && !o.IsDeleted);
-                if (!orderExists)
+                var order = await _context.Orders
+                    .Include(o => o.RequestItems)
+                    .FirstOrDefaultAsync(o => o.Id == dto.OrderId && !o.IsDeleted);
+                if (order == null)
                     return APIOperationResponse<bool>.Fail(ResponseType.NotFound, "Order not found");
+
+                // Validate total quantity per item <= requested
+                var requestedByItem = order.RequestItems?
+                    .Where(ri => !ri.IsDeleted)
+                    .GroupBy(ri => ri.ItemId)
+                    .ToDictionary(g => g.Key, g => g.Sum(ri => ri.Quantity)) ?? new Dictionary<long, long>();
+                var selectedByItem = dto.Selections
+                    .GroupBy(s => s.ItemId)
+                    .ToDictionary(g => g.Key, g => (long)g.Sum(s => s.Quantity));
+                var (selectionValid, selectionError) = ValidateQuantitiesDoNotExceedRequested(requestedByItem, selectedByItem);
+                if (!selectionValid)
+                    return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, selectionError!);
 
                 // Remove existing selections for this order
                 var existing = await _context.WeaponSupplySelections
@@ -1079,6 +1106,30 @@ namespace Ettad.Inventory.Service.AssetSupply
                 return APIOperationResponse<List<DepotBatchSelectionDto>>.Fail(
                     ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
             }
+        }
+
+        /// <summary>
+        /// Validates that supplied quantities per item do not exceed requested quantities.
+        /// </summary>
+        /// <param name="requestedByItem">Requested quantity per item (itemId -> quantity)</param>
+        /// <param name="suppliedByItem">Supplied/selected quantity per item (itemId -> quantity)</param>
+        /// <param name="getItemDisplayName">Optional function to get item display name for error messages</param>
+        /// <returns>(true, null) if valid; (false, errorMessage) if any item exceeds requested</returns>
+        private static (bool IsValid, string? ErrorMessage) ValidateQuantitiesDoNotExceedRequested(
+            Dictionary<long, long> requestedByItem,
+            Dictionary<long, long> suppliedByItem,
+            Func<long, string>? getItemDisplayName = null)
+        {
+            foreach (var kvp in suppliedByItem)
+            {
+                var requested = requestedByItem.TryGetValue(kvp.Key, out var req) ? req : 0;
+                if (kvp.Value > requested)
+                {
+                    var itemName = getItemDisplayName?.Invoke(kvp.Key) ?? $"Item {kvp.Key}";
+                    return (false, $"Quantity for {itemName} ({kvp.Value}) exceeds requested quantity ({requested}).");
+                }
+            }
+            return (true, null);
         }
     }
 }
