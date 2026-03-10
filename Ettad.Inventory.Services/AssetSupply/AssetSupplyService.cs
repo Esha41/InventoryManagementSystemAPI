@@ -15,6 +15,10 @@ using Ettad.ResponseHandler.Models;
 using Ettad.CrossCutting.Comman.Time;
 using Ettad.Workflows.Service.Interface;
 using Ettad.Workflows.Service.DTO;
+using Ettad.CrossCutting.Comman.FileUpload;
+using Ettad.Comman.Enums;
+using Ettad.Inventory.Service.Batches.Dtos;
+using Ettad.Inventory.Service.Assets.Dtos;
 
 namespace Ettad.Inventory.Service.AssetSupply
 {
@@ -36,6 +40,7 @@ namespace Ettad.Inventory.Service.AssetSupply
         private readonly IDateTimeProvider _dateTimeProvider;
         private readonly IOrderItemTrackingService _orderItemTrackingService;
         private readonly IWorkflowApprovalService _workflowApprovalService;
+        private readonly IFileUploadService _fileUploadService;
 
         public AssetSupplyService(
             ApplicationDbContext context,
@@ -53,7 +58,8 @@ namespace Ettad.Inventory.Service.AssetSupply
             ILogger<AssetSupplyService> logger,
             IDateTimeProvider dateTimeProvider,
             IOrderItemTrackingService orderItemTrackingService,
-            IWorkflowApprovalService workflowApprovalService)
+            IWorkflowApprovalService workflowApprovalService,
+            IFileUploadService fileUploadService)
         {
             _context = context;
             _assetSupplyRepository = assetSupplyRepository;
@@ -71,6 +77,7 @@ namespace Ettad.Inventory.Service.AssetSupply
             _dateTimeProvider = dateTimeProvider;
             _orderItemTrackingService = orderItemTrackingService;
             _workflowApprovalService = workflowApprovalService;
+            _fileUploadService = fileUploadService;
         }
 
         public async Task<APIOperationResponse<List<BatchForOrderDepotDto>>> GetBatchesForOrderDepotsAsync(long orderId, List<long> depotIds)
@@ -1104,6 +1111,109 @@ namespace Ettad.Inventory.Service.AssetSupply
                 _logger.LogError(ex, "Error getting weapon supply selection. OrderId: {OrderId}, User: {UserId}",
                     orderId, _currentUserService.UserId);
                 return APIOperationResponse<List<DepotBatchSelectionDto>>.Fail(
+                    ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
+            }
+        }
+
+        public async Task<APIOperationResponse<List<BatchDto>>> GetSelectedBatchesWithAssetsAsync(long orderId)
+        {
+            _logger.LogInformation("Getting selected batches with assets. OrderId: {OrderId}, User: {UserId}",
+                orderId, _currentUserService.UserId);
+
+            try
+            {
+                var selections = await _context.WeaponSupplySelections
+                    .Where(s => s.OrderId == orderId)
+                    .ToListAsync();
+
+                if (!selections.Any())
+                    return APIOperationResponse<List<BatchDto>>.Success(new List<BatchDto>());
+
+                var batchIds = selections.Select(s => s.BatchId).Distinct().ToList();
+
+                var batches = await _context.Batches
+                    .AsNoTracking()
+                    .Include(b => b.Depot)
+                    .Where(b => !b.IsDeleted && batchIds.Contains(b.Id))
+                    .ToListAsync();
+
+                var selectionsByBatch = selections.GroupBy(s => s.BatchId);
+
+                var result = new List<BatchDto>();
+
+                foreach (var group in selectionsByBatch)
+                {
+                    var batch = batches.FirstOrDefault(b => b.Id == group.Key);
+                    if (batch == null)
+                        continue;
+
+                    var batchDto = _mapper.Map<BatchDto>(batch);
+                    var allAssets = new List<Asset>();
+
+                    foreach (var sel in group)
+                    {
+                        var withSerial = await _context.Assets
+                            .AsNoTracking()
+                            .Where(a => a.BatchId == sel.BatchId && a.ItemId == sel.ItemId
+                                && !a.IsDeleted && !a.IsAssigned && a.Status == AssetStatus.ReadyToIssue
+                                && !string.IsNullOrEmpty(a.SerialNumber))
+                            .Include(nameof(Asset.Item))
+                            .Include(nameof(Asset.Depot))
+                            .Include($"{nameof(Asset.CurrentAssignment)}.{nameof(AssetAssignment.Department)}")
+                            .OrderBy(a => a.PurchaseDate ?? DateTime.MaxValue).ThenBy(a => a.Id)
+                            .Take(sel.Quantity)
+                            .AsSplitQuery()
+                            .ToListAsync();
+
+                        allAssets.AddRange(withSerial);
+
+                        var remaining = sel.Quantity - withSerial.Count;
+                        if (remaining > 0)
+                        {
+                            var withoutSerial = await _context.Assets
+                                .AsNoTracking()
+                                .Where(a => a.BatchId == sel.BatchId && a.ItemId == sel.ItemId
+                                    && !a.IsDeleted && !a.IsAssigned && a.Status == AssetStatus.ReadyToIssue
+                                    && string.IsNullOrEmpty(a.SerialNumber))
+                                .Include(nameof(Asset.Item))
+                                .Include(nameof(Asset.Depot))
+                                .Include($"{nameof(Asset.CurrentAssignment)}.{nameof(AssetAssignment.Department)}")
+                                .OrderBy(a => a.PurchaseDate ?? DateTime.MaxValue).ThenBy(a => a.Id)
+                                .Take(remaining)
+                                .AsSplitQuery()
+                                .ToListAsync();
+
+                            allAssets.AddRange(withoutSerial);
+                        }
+                    }
+
+                    batchDto.Assets = _mapper.Map<List<AssetDto>>(allAssets);
+                    batchDto.AssetCount = batchDto.Assets.Count;
+
+                    var entityIds = batchDto.Assets.Select(a => a.Id).ToList();
+                    if (entityIds.Any())
+                    {
+                        var imagesResult = await _fileUploadService.GetByEntitiesAsync(FileEntityType.Asset, entityIds);
+                        if (imagesResult.Succeeded && imagesResult.Data != null)
+                        {
+                            foreach (var assetDto in batchDto.Assets)
+                            {
+                                if (imagesResult.Data.ContainsKey(assetDto.Id))
+                                    assetDto.Images = imagesResult.Data[assetDto.Id];
+                            }
+                        }
+                    }
+
+                    result.Add(batchDto);
+                }
+
+                return APIOperationResponse<List<BatchDto>>.Success(result);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting selected batches with assets. OrderId: {OrderId}, User: {UserId}",
+                    orderId, _currentUserService.UserId);
+                return APIOperationResponse<List<BatchDto>>.Fail(
                     ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
             }
         }

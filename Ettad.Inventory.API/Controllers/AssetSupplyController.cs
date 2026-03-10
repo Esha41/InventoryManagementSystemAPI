@@ -1,6 +1,7 @@
 using Ettad.CrossCutting.Common.Security;
 using Ettad.Inventory.Service.AssetSupply;
 using Ettad.Inventory.Service.AssetSupply.Dtos;
+using Ettad.Inventory.Service.Batches.Dtos;
 using Ettad.ResponseHandler.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -145,6 +146,19 @@ namespace Ettad.Inventory.API.Controllers
         public async Task<IActionResult> ReturnMultipleAssets([FromBody] ReturnMultipleAssetsDto dto)
         {
             var result = await _assetSupplyService.ReturnMultipleAssetsAsync(dto);
+            return ProcessResponse(result);
+        }
+
+        /// <summary>
+        /// Get selected batches with their assets for weapon supply.
+        /// Assets with serial numbers are returned first; remaining quantity is filled with non-serial assets.
+        /// </summary>
+        [HttpGet("order/{orderId}/selected-batches")]
+        [ProducesResponseType(typeof(APIOperationResponse<List<BatchDto>>), (int)HttpStatusCode.OK)]
+        [CheckAuthorize("Permissions.AssetSupply.View", "Permissions.AssetSupply.Page")]
+        public async Task<IActionResult> GetSelectedBatchesWithAssets(long orderId)
+        {
+            var result = await _assetSupplyService.GetSelectedBatchesWithAssetsAsync(orderId);
             return ProcessResponse(result);
         }
 
