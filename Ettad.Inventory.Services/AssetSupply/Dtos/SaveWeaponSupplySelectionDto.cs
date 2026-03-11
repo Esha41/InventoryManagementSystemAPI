@@ -1,7 +1,7 @@
 namespace Ettad.Inventory.Service.AssetSupply.Dtos
 {
     /// <summary>
-    /// DTO for saving depot and batch selections for weapon supply.
+    /// DTO for saving per-item batch selections for weapon supply.
     /// </summary>
     public class SaveWeaponSupplySelectionDto
     {
@@ -12,6 +12,8 @@ namespace Ettad.Inventory.Service.AssetSupply.Dtos
     public class DepotBatchSelectionDto
     {
         public long DepotId { get; set; }
-        public long? BatchId { get; set; }
+        public long BatchId { get; set; }
+        public long ItemId { get; set; }
+        public int Quantity { get; set; }
     }
 }

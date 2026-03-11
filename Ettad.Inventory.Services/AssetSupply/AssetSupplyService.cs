@@ -17,6 +17,10 @@ using Ettad.CrossCutting.Comman.FileUpload;
 using Ettad.Comman.Enums;
 using Ettad.Workflows.Service.Interface;
 using Ettad.Workflows.Service.DTO;
+using Ettad.CrossCutting.Comman.FileUpload;
+using Ettad.Comman.Enums;
+using Ettad.Inventory.Service.Batches.Dtos;
+using Ettad.Inventory.Service.Assets.Dtos;
 
 namespace Ettad.Inventory.Service.AssetSupply
 {
@@ -596,6 +600,19 @@ namespace Ettad.Inventory.Service.AssetSupply
                             $"Only assets with 'Ready to Issue' status can be supplied. Invalid assets: {string.Join(", ", notReadyAssets.Select(a => $"{a.Id} ({a.Status})"))}");
                     }
 
+                    // Validate supplied quantity per item <= requested
+                    var suppliedByItem = assets.GroupBy(a => a.ItemId)
+                        .ToDictionary(g => g.Key, g => (long)g.Count());
+                    var requestedByItemForSupply = orderRequestItems
+                        .GroupBy(ri => ri.ItemId)
+                        .ToDictionary(g => g.Key, g => g.Sum(ri => ri.Quantity));
+                    var (supplyValid, supplyError) = ValidateQuantitiesDoNotExceedRequested(
+                        requestedByItemForSupply,
+                        suppliedByItem,
+                        itemId => orderRequestItems.FirstOrDefault(ri => ri.ItemId == itemId)?.Item?.Name ?? $"Item {itemId}");
+                    if (!supplyValid)
+                        return APIOperationResponse<long>.Fail(ResponseType.BadRequest, supplyError!);
+
                     // Create supply entity
                     var supply = _mapper.Map<Ettad.Data.Entities.AssetSupply>(dto);
                     supply.SubmissionStatus = SupplySubmissionStatus.Submitted;
@@ -1048,32 +1065,43 @@ namespace Ettad.Inventory.Service.AssetSupply
                 if (dto?.Selections == null || !dto.Selections.Any())
                     return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, "At least one depot selection is required");
 
-                var orderExists = await _context.Orders.AnyAsync(o => o.Id == dto.OrderId && !o.IsDeleted);
-                if (!orderExists)
+                var order = await _context.Orders
+                    .Include(o => o.RequestItems)
+                    .FirstOrDefaultAsync(o => o.Id == dto.OrderId && !o.IsDeleted);
+                if (order == null)
                     return APIOperationResponse<bool>.Fail(ResponseType.NotFound, "Order not found");
+
+                // Validate total quantity per item <= requested
+                var requestedByItem = order.RequestItems?
+                    .Where(ri => !ri.IsDeleted)
+                    .GroupBy(ri => ri.ItemId)
+                    .ToDictionary(g => g.Key, g => g.Sum(ri => ri.Quantity)) ?? new Dictionary<long, long>();
+                var selectedByItem = dto.Selections
+                    .GroupBy(s => s.ItemId)
+                    .ToDictionary(g => g.Key, g => (long)g.Sum(s => s.Quantity));
+                var (selectionValid, selectionError) = ValidateQuantitiesDoNotExceedRequested(requestedByItem, selectedByItem);
+                if (!selectionValid)
+                    return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, selectionError!);
 
                 // Remove existing selections for this order
                 var existing = await _context.WeaponSupplySelections
-                    .Where(s => s.OrderId == dto.OrderId && !s.IsDeleted)
+                    .Where(s => s.OrderId == dto.OrderId)
                     .ToListAsync();
-                foreach (var s in existing)
-                {
-                    s.IsDeleted = true;
-                    s.DeletionDate = _dateTimeProvider.Now;
-                    s.DeletedBy = _currentUserService.UserId;
-                }
+                _context.WeaponSupplySelections.RemoveRange(existing);
                 await _context.SaveChangesAsync();
 
                 // Add new selections
                 var now = _dateTimeProvider.Now;
                 var userId = _currentUserService.UserId;
-                foreach (var sel in dto.Selections.DistinctBy(s => (s.DepotId, s.BatchId)))
+                foreach (var sel in dto.Selections.DistinctBy(s => (s.DepotId, s.BatchId, s.ItemId)))
                 {
                     var entity = new WeaponSupplySelection
                     {
                         OrderId = dto.OrderId,
                         DepotId = sel.DepotId,
                         BatchId = sel.BatchId,
+                        ItemId = sel.ItemId,
+                        Quantity = sel.Quantity,
                         CreationDate = now,
                         CreatedBy = userId
                     };
@@ -1097,8 +1125,8 @@ namespace Ettad.Inventory.Service.AssetSupply
             try
             {
                 var selections = await _context.WeaponSupplySelections
-                    .Where(s => s.OrderId == orderId && !s.IsDeleted)
-                    .Select(s => new DepotBatchSelectionDto { DepotId = s.DepotId, BatchId = s.BatchId })
+                    .Where(s => s.OrderId == orderId)
+                    .Select(s => new DepotBatchSelectionDto { DepotId = s.DepotId, BatchId = s.BatchId, ItemId = s.ItemId, Quantity = s.Quantity })
                     .ToListAsync();
                 return APIOperationResponse<List<DepotBatchSelectionDto>>.Success(selections);
             }
@@ -1109,6 +1137,133 @@ namespace Ettad.Inventory.Service.AssetSupply
                 return APIOperationResponse<List<DepotBatchSelectionDto>>.Fail(
                     ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
             }
+        }
+
+        public async Task<APIOperationResponse<List<BatchDto>>> GetSelectedBatchesWithAssetsAsync(long orderId)
+        {
+            _logger.LogInformation("Getting selected batches with assets. OrderId: {OrderId}, User: {UserId}",
+                orderId, _currentUserService.UserId);
+
+            try
+            {
+                var selections = await _context.WeaponSupplySelections
+                    .Where(s => s.OrderId == orderId)
+                    .ToListAsync();
+
+                if (!selections.Any())
+                    return APIOperationResponse<List<BatchDto>>.Success(new List<BatchDto>());
+
+                var batchIds = selections.Select(s => s.BatchId).Distinct().ToList();
+
+                var batches = await _context.Batches
+                    .AsNoTracking()
+                    .Include(b => b.Depot)
+                    .Where(b => !b.IsDeleted && batchIds.Contains(b.Id))
+                    .ToListAsync();
+
+                var selectionsByBatch = selections.GroupBy(s => s.BatchId);
+
+                var result = new List<BatchDto>();
+
+                foreach (var group in selectionsByBatch)
+                {
+                    var batch = batches.FirstOrDefault(b => b.Id == group.Key);
+                    if (batch == null)
+                        continue;
+
+                    var batchDto = _mapper.Map<BatchDto>(batch);
+                    var allAssets = new List<Asset>();
+
+                    foreach (var sel in group)
+                    {
+                        var withSerial = await _context.Assets
+                            .AsNoTracking()
+                            .Where(a => a.BatchId == sel.BatchId && a.ItemId == sel.ItemId
+                                && !a.IsDeleted && !a.IsAssigned && a.Status == AssetStatus.ReadyToIssue
+                                && !string.IsNullOrEmpty(a.SerialNumber))
+                            .Include(nameof(Asset.Item))
+                            .Include(nameof(Asset.Depot))
+                            .Include($"{nameof(Asset.CurrentAssignment)}.{nameof(AssetAssignment.Department)}")
+                            .OrderBy(a => a.PurchaseDate ?? DateTime.MaxValue).ThenBy(a => a.Id)
+                            .Take(sel.Quantity)
+                            .AsSplitQuery()
+                            .ToListAsync();
+
+                        allAssets.AddRange(withSerial);
+
+                        var remaining = sel.Quantity - withSerial.Count;
+                        if (remaining > 0)
+                        {
+                            var withoutSerial = await _context.Assets
+                                .AsNoTracking()
+                                .Where(a => a.BatchId == sel.BatchId && a.ItemId == sel.ItemId
+                                    && !a.IsDeleted && !a.IsAssigned && a.Status == AssetStatus.ReadyToIssue
+                                    && string.IsNullOrEmpty(a.SerialNumber))
+                                .Include(nameof(Asset.Item))
+                                .Include(nameof(Asset.Depot))
+                                .Include($"{nameof(Asset.CurrentAssignment)}.{nameof(AssetAssignment.Department)}")
+                                .OrderBy(a => a.PurchaseDate ?? DateTime.MaxValue).ThenBy(a => a.Id)
+                                .Take(remaining)
+                                .AsSplitQuery()
+                                .ToListAsync();
+
+                            allAssets.AddRange(withoutSerial);
+                        }
+                    }
+
+                    batchDto.Assets = _mapper.Map<List<AssetDto>>(allAssets);
+                    batchDto.AssetCount = batchDto.Assets.Count;
+
+                    var entityIds = batchDto.Assets.Select(a => a.Id).ToList();
+                    if (entityIds.Any())
+                    {
+                        var imagesResult = await _fileUploadService.GetByEntitiesAsync(FileEntityType.Asset, entityIds);
+                        if (imagesResult.Succeeded && imagesResult.Data != null)
+                        {
+                            foreach (var assetDto in batchDto.Assets)
+                            {
+                                if (imagesResult.Data.ContainsKey(assetDto.Id))
+                                    assetDto.Images = imagesResult.Data[assetDto.Id];
+                            }
+                        }
+                    }
+
+                    result.Add(batchDto);
+                }
+
+                return APIOperationResponse<List<BatchDto>>.Success(result);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting selected batches with assets. OrderId: {OrderId}, User: {UserId}",
+                    orderId, _currentUserService.UserId);
+                return APIOperationResponse<List<BatchDto>>.Fail(
+                    ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Validates that supplied quantities per item do not exceed requested quantities.
+        /// </summary>
+        /// <param name="requestedByItem">Requested quantity per item (itemId -> quantity)</param>
+        /// <param name="suppliedByItem">Supplied/selected quantity per item (itemId -> quantity)</param>
+        /// <param name="getItemDisplayName">Optional function to get item display name for error messages</param>
+        /// <returns>(true, null) if valid; (false, errorMessage) if any item exceeds requested</returns>
+        private static (bool IsValid, string? ErrorMessage) ValidateQuantitiesDoNotExceedRequested(
+            Dictionary<long, long> requestedByItem,
+            Dictionary<long, long> suppliedByItem,
+            Func<long, string>? getItemDisplayName = null)
+        {
+            foreach (var kvp in suppliedByItem)
+            {
+                var requested = requestedByItem.TryGetValue(kvp.Key, out var req) ? req : 0;
+                if (kvp.Value > requested)
+                {
+                    var itemName = getItemDisplayName?.Invoke(kvp.Key) ?? $"Item {kvp.Key}";
+                    return (false, $"Quantity for {itemName} ({kvp.Value}) exceeds requested quantity ({requested}).");
+                }
+            }
+            return (true, null);
         }
     }
 }

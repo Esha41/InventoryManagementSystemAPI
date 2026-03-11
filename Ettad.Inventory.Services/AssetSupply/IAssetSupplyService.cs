@@ -1,4 +1,5 @@
 using Ettad.Inventory.Service.AssetSupply.Dtos;
+using Ettad.Inventory.Service.Batches.Dtos;
 using Ettad.ResponseHandler.Models;
 
 namespace Ettad.Inventory.Service.AssetSupply
@@ -65,5 +66,11 @@ namespace Ettad.Inventory.Service.AssetSupply
         /// Get saved depot and batch selections for weapon supply for an order.
         /// </summary>
         Task<APIOperationResponse<List<DepotBatchSelectionDto>>> GetWeaponSupplySelectionAsync(long orderId);
+
+        /// <summary>
+        /// Get the selected batches with their assets for weapon supply.
+        /// Prioritizes assets with serial numbers; fills remaining quantity with non-serial assets.
+        /// </summary>
+        Task<APIOperationResponse<List<BatchDto>>> GetSelectedBatchesWithAssetsAsync(long orderId);
     }
 }
