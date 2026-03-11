@@ -3,7 +3,9 @@ using Ettad.Announcement.Service.Dtos;
 using Ettad.CrossCutting.Comman.Time;
 using Ettad.CrossCutting.Data.Repository;
 using Ettad.Data.Entities;
+using Ettad.Data.Enums;
 using Ettad.EntityFramework.DataBaseContext;
+using Ettad.Notification.Service;
 using Ettad.ResponseHandler.Consts;
 using Ettad.ResponseHandler.Models;
 using Microsoft.EntityFrameworkCore;
@@ -19,19 +21,22 @@ namespace Ettad.Announcement.Service
         private readonly IDateTimeProvider _dateTimeProvider;
         private readonly IMapper _mapper;
         private readonly ApplicationDbContext _context;
+        private readonly INotificationHelperService _notificationHelper;
 
         public AnnouncementService(
             ICrossCuttingRepository<AnnouncementEntity> announcementRepository,
             ICrossCuttingRepository<AnnouncementDismissal> dismissalRepository,
             IDateTimeProvider dateTimeProvider,
             IMapper mapper,
-            ApplicationDbContext context)
+            ApplicationDbContext context,
+            INotificationHelperService notificationHelper)
         {
             _announcementRepository = announcementRepository;
             _dismissalRepository = dismissalRepository;
             _dateTimeProvider = dateTimeProvider;
             _mapper = mapper;
             _context = context;
+            _notificationHelper = notificationHelper;
         }
 
         public async Task<APIOperationResponse<List<AnnouncementDto>>> GetAllAnnouncementsAsync()
@@ -128,12 +133,7 @@ namespace Ettad.Announcement.Service
                         // Check role targeting: if target roles specified, user must have at least one
                         if (!string.IsNullOrWhiteSpace(a.TargetRoles))
                         {
-                            List<string>? targetRoleIds = null;
-                            try
-                            {
-                                targetRoleIds = JsonSerializer.Deserialize<List<string>>(a.TargetRoles);
-                            }
-                            catch { /* ignore malformed JSON */ }
+                            var targetRoleIds = ParseTargetRoleIds(a.TargetRoles);
 
                             if (targetRoleIds == null || targetRoleIds.Count == 0)
                                 return true; // no valid target roles, show to all
@@ -150,6 +150,7 @@ namespace Ettad.Announcement.Service
                         Id = a.Id,
                         Message = a.Message,
                         Priority = a.Priority,
+                        DeliveryType = a.DeliveryType,
                         IsDismissable = a.IsDismissable
                     })
                     .ToList();
@@ -196,6 +197,7 @@ namespace Ettad.Announcement.Service
                 {
                     Message = dto.Message,
                     Priority = dto.Priority,
+                    DeliveryType = dto.DeliveryType,
                     IsDismissable = dto.IsDismissable,
                     StartDate = dto.StartDate,
                     EndDate = dto.EndDate,
@@ -209,6 +211,11 @@ namespace Ettad.Announcement.Service
 
                 var created = await _announcementRepository.AddAsync(announcement);
                 var resultDto = MapToDto(created);
+
+                if (dto.IsActive && dto.DeliveryType.HasFlag(AnnouncementDeliveryType.Notification))
+                {
+                    await SendAnnouncementNotificationAsync(created, createdBy);
+                }
 
                 return APIOperationResponse<AnnouncementDto>.Success(
                     resultDto,
@@ -262,6 +269,9 @@ namespace Ettad.Announcement.Service
 
                 if (dto.Priority.HasValue)
                     announcement.Priority = dto.Priority.Value;
+
+                if (dto.DeliveryType.HasValue)
+                    announcement.DeliveryType = dto.DeliveryType.Value;
 
                 if (dto.IsDismissable.HasValue)
                     announcement.IsDismissable = dto.IsDismissable.Value;
@@ -398,6 +408,77 @@ namespace Ettad.Announcement.Service
             }
         }
 
+        public async Task ClearDismissalsForUserAsync(string userId, CancellationToken cancellationToken = default)
+        {
+            var dismissals = await _dismissalRepository.FindAsync(d => d.UserId == userId, false);
+            if (dismissals != null && dismissals.Any())
+            {
+                foreach (var d in dismissals)
+                    await _dismissalRepository.DeleteAsync(d);
+            }
+        }
+
+        private async Task SendAnnouncementNotificationAsync(AnnouncementEntity announcement, string senderId)
+        {
+            try
+            {
+                var roleIds = ParseTargetRoleIds(announcement.TargetRoles);
+                var hasTargetRoles = roleIds != null && roleIds.Count > 0;
+
+                await _notificationHelper.SendNotificationAsync(
+                    title: "Announcement",
+                    message: announcement.Message,
+                    entityType: "Announcement",
+                    entityId: announcement.Id,
+                    userIds: null,
+                    roleIds: hasTargetRoles ? roleIds : null,
+                    senderId: senderId,
+                    includeSuperAdmins: !hasTargetRoles
+                );
+            }
+            catch (Exception ex)
+            {
+                // Don't fail the announcement creation if notification dispatch fails
+                System.Diagnostics.Debug.WriteLine($"Failed to send announcement notification: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Parses TargetRoles JSON, handling both string and number elements (frontend may send numbers).
+        /// Returns null if parsing fails or result is empty.
+        /// </summary>
+        private static List<string>? ParseTargetRoleIds(string? json)
+        {
+            if (string.IsNullOrWhiteSpace(json))
+                return null;
+
+            try
+            {
+                using var doc = JsonDocument.Parse(json);
+                var root = doc.RootElement;
+                if (root.ValueKind != JsonValueKind.Array)
+                    return null;
+
+                var list = new List<string>();
+                foreach (var el in root.EnumerateArray())
+                {
+                    var s = el.ValueKind switch
+                    {
+                        JsonValueKind.String => el.GetString(),
+                        JsonValueKind.Number => el.TryGetInt64(out var n) ? n.ToString() : el.GetRawText(),
+                        _ => null
+                    };
+                    if (!string.IsNullOrWhiteSpace(s))
+                        list.Add(s.Trim());
+                }
+                return list.Count > 0 ? list : null;
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
         private AnnouncementDto MapToDto(AnnouncementEntity entity)
         {
             return new AnnouncementDto
@@ -405,6 +486,7 @@ namespace Ettad.Announcement.Service
                 Id = entity.Id,
                 Message = entity.Message,
                 Priority = entity.Priority,
+                DeliveryType = entity.DeliveryType,
                 IsDismissable = entity.IsDismissable,
                 StartDate = entity.StartDate,
                 EndDate = entity.EndDate,

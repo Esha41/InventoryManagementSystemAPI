@@ -19,6 +19,10 @@ namespace Ettad.EntityFramework.Configurations
             builder.Property(a => a.Priority)
                 .IsRequired();
 
+            builder.Property(a => a.DeliveryType)
+                .IsRequired()
+                .HasDefaultValue(Ettad.Data.Enums.AnnouncementDeliveryType.Banner);
+
             builder.Property(a => a.IsDismissable)
                 .IsRequired();
 
