@@ -8,13 +8,15 @@ using Ettad.EntityFramework.DataBaseContext;
 using Ettad.ResponseHandler.Consts;
 using Ettad.ResponseHandler.Models;
 using Ettad.User.Services.DTO;
+using Ettad.User.Services.Events;
 using Ettad.User.Services.Helpers;
 using Ettad.User.Services.Interfaces;
 using Ettad.Data.Entities;
 using Ettad.Data.Enums;
+using MediatR;
 using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Logging;
 using System.Security.Principal;
@@ -39,6 +41,7 @@ namespace Ettad.User.Services.Implementation
         private readonly IHttpContextAccessor _httpContextAccessor;
         private readonly ICaptchaService _captchaService;
         private readonly ITokenBlacklistService _tokenBlacklistService;
+        private readonly IMediator _mediator;
 
         private readonly ApplicationDbContext _context;
         
@@ -55,7 +58,7 @@ namespace Ettad.User.Services.Implementation
             IOptions<JwtOptions> jwtOptions,
             IOptions<AdminUsersOptions> adminUsers, UserManager<ApplicationUser> userRepository,
             SignInManager<ApplicationUser> signInManager, RoleManager<ApplicationRole> roleManager, ICurrentUserService currentUserService, IEmailSender emailSender,
-            ILogger<AccountServices> logger, ApplicationDbContext context, IHttpContextAccessor httpContextAccessor, ICaptchaService captchaService, ITokenBlacklistService tokenBlacklistService)
+            ILogger<AccountServices> logger, ApplicationDbContext context, IHttpContextAccessor httpContextAccessor, ICaptchaService captchaService, ITokenBlacklistService tokenBlacklistService, IMediator mediator)
         {
             _jwtServices = jwtServices ?? throw new ArgumentNullException(nameof(jwtServices));
             _ldapSettingsService = ldapSettingsService ?? throw new ArgumentNullException(nameof(ldapSettingsService));
@@ -74,6 +77,7 @@ namespace Ettad.User.Services.Implementation
             _httpContextAccessor = httpContextAccessor;
             _captchaService = captchaService;
             _tokenBlacklistService = tokenBlacklistService ?? throw new ArgumentNullException(nameof(tokenBlacklistService));
+            _mediator = mediator ?? throw new ArgumentNullException(nameof(mediator));
         }
 
         public async Task<APIOperationResponse<AuthenticatedResponse>> Login(
@@ -996,6 +1000,16 @@ namespace Ettad.User.Services.Implementation
                 user.CurrentTokenId = null;
                
                 await _userRepository.UpdateAsync(user);
+
+                // Publish domain event for session cleanup (e.g. announcement dismissals)
+                try
+                {
+                    await _mediator.Publish(new UserLoggedOutEvent { UserId = userId, UserName = user.UserName ?? userId }, cancellationToken);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to publish UserLoggedOutEvent. UserId: {UserId}", userId);
+                }
 
                 // Clear refresh token cookie
                 if (httpContext != null)
