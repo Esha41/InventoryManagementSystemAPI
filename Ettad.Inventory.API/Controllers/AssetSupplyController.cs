@@ -29,7 +29,7 @@ namespace Ettad.Inventory.API.Controllers
         /// </summary>
         [HttpGet("order/{orderId}/selection")]
         [ProducesResponseType(typeof(APIOperationResponse<List<DepotBatchSelectionDto>>), (int)HttpStatusCode.OK)]
-        [CheckAuthorize("Permissions.AssetSupply.View", "Permissions.AssetSupply.Page")]
+        [CheckAuthorize("Permissions.AssetSupply.View", "Permissions.AssetSupply.Page", "SelectDepots")]
         public async Task<IActionResult> GetWeaponSupplySelection(long orderId)
         {
             var result = await _assetSupplyService.GetWeaponSupplySelectionAsync(orderId);
@@ -41,7 +41,7 @@ namespace Ettad.Inventory.API.Controllers
         /// </summary>
         [HttpGet("order/{orderId}/batches-for-depots")]
         [ProducesResponseType(typeof(APIOperationResponse<List<BatchForOrderDepotDto>>), (int)HttpStatusCode.OK)]
-        [CheckAuthorize("Permissions.AssetSupply.View", "Permissions.AssetSupply.Page")]
+        [CheckAuthorize("Permissions.AssetSupply.View", "Permissions.AssetSupply.Page", "SelectDepots")]
         public async Task<IActionResult> GetBatchesForOrderDepots(long orderId, [FromQuery] List<long> depotIds)
         {
             if (depotIds == null || !depotIds.Any())
@@ -155,7 +155,7 @@ namespace Ettad.Inventory.API.Controllers
         /// </summary>
         [HttpGet("order/{orderId}/selected-batches")]
         [ProducesResponseType(typeof(APIOperationResponse<List<BatchDto>>), (int)HttpStatusCode.OK)]
-        [CheckAuthorize("Permissions.AssetSupply.View", "Permissions.AssetSupply.Page")]
+        [CheckAuthorize("Permissions.AssetSupply.View", "Permissions.AssetSupply.Page", "SelectDepots")]
         public async Task<IActionResult> GetSelectedBatchesWithAssets(long orderId)
         {
             var result = await _assetSupplyService.GetSelectedBatchesWithAssetsAsync(orderId);
@@ -167,7 +167,7 @@ namespace Ettad.Inventory.API.Controllers
         /// </summary>
         [HttpPost("order/{orderId}/save-selection")]
         [ProducesResponseType(typeof(APIOperationResponse<bool>), (int)HttpStatusCode.OK)]
-        [CheckAuthorize("Permissions.AssetSupply.View", "Permissions.AssetSupply.Page")]
+        [CheckAuthorize("SelectDepots")]
         public async Task<IActionResult> SaveWeaponSupplySelection(long orderId, [FromBody] SaveWeaponSupplySelectionDto dto)
         {
             if (dto == null)
