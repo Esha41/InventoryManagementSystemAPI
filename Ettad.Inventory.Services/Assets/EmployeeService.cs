@@ -46,7 +46,8 @@ namespace Ettad.Inventory.Service.Assets
                 var employee = await _employeeRepository.FindOneAsync(
                     e => e.Id == id && !e.IsDeleted,
                     false,
-                    nameof(Employee.Department)
+                    nameof(Employee.Department),
+                    nameof(Employee.Rank)
                 );
 
                 if (employee == null)
@@ -76,7 +77,8 @@ namespace Ettad.Inventory.Service.Assets
                 var employees = await _employeeRepository.FindAsync(
                     e => !e.IsDeleted,
                     false,
-                    nameof(Employee.Department)
+                    nameof(Employee.Department),
+                    nameof(Employee.Rank)
                 );
 
                 var dtos = _mapper.Map<List<EmployeeDto>>(employees);
