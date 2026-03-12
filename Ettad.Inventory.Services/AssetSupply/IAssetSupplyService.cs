@@ -1,6 +1,7 @@
 using Ettad.Inventory.Service.AssetSupply.Dtos;
 using Ettad.Inventory.Service.Batches.Dtos;
 using Ettad.ResponseHandler.Models;
+using Microsoft.AspNetCore.Http;
 
 namespace Ettad.Inventory.Service.AssetSupply
 {
@@ -38,9 +39,9 @@ namespace Ettad.Inventory.Service.AssetSupply
         Task<APIOperationResponse<List<AssetSupplyDto>>> GetAllAsync();
 
         /// <summary>
-        /// Create and submit a new asset supply
+        /// Create and submit a new asset supply, including file attachments.
         /// </summary>
-        Task<APIOperationResponse<long>> CreateAndSubmitAsync(CreateAssetSupplyDto dto);
+        Task<APIOperationResponse<long>> CreateAndSubmitAsync(CreateAssetSupplyDto dto, List<IFormFile> files);
 
         /// <summary>
         /// Cancel an asset supply
