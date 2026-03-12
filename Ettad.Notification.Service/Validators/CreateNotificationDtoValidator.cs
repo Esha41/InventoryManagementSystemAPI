@@ -33,8 +33,9 @@ namespace Ettad.Notification.Service.Validators
                 .Must(x =>
                     (x.UserIds != null && x.UserIds.Any()) ||
                     (x.RoleIds != null && x.RoleIds.Any()) ||
-                    x.IncludeSuperAdmins)
-                .WithMessage("At least one UserId, RoleId, or IncludeSuperAdmins must be specified");
+                    x.IncludeSuperAdmins ||
+                    x.IncludeAllUsers)
+                .WithMessage("At least one UserId, RoleId, IncludeSuperAdmins, or IncludeAllUsers must be specified");
         }
     }
 }

@@ -15,7 +15,8 @@ namespace Ettad.Notification.Service
             List<string>? userIds = null, 
             List<string>? roleIds = null,
             string? senderId = null,
-            bool includeSuperAdmins = false);
+            bool includeSuperAdmins = false,
+            bool includeAllUsers = false);
 
         /// <summary>
         /// Sends email notifications to specified users or roles.
@@ -28,6 +29,7 @@ namespace Ettad.Notification.Service
             List<string>? userIds = null,
             List<string>? roleIds = null,
             bool includeSuperAdmins = false,
+            bool includeAllUsers = false,
             string? htmlContent = null);
 
         /// <summary>
@@ -41,7 +43,8 @@ namespace Ettad.Notification.Service
             List<string>? userIds = null,
             List<string>? roleIds = null,
             string? senderId = null,
-            bool includeSuperAdmins = false);
+            bool includeSuperAdmins = false,
+            bool includeAllUsers = false);
     }
 }
 

@@ -801,6 +801,19 @@ public class UserService : IUserService
         return APIOperationResponse<List<UserDto>>.Success(result);
     }
 
+    /// <summary>
+    /// Returns all active (non-deleted) user IDs. Used for system broadcasts (e.g. announcements to all users).
+    /// </summary>
+    public async Task<APIOperationResponse<List<string>>> GetAllActiveUserIdsAsync()
+    {
+        var userIds = await _userManager.Users
+            .Where(u => !u.IsDeleted)
+            .Select(u => u.Id)
+            .ToListAsync();
+
+        return APIOperationResponse<List<string>>.Success(userIds);
+    }
+
     public async Task<APIOperationResponse<List<UserDto>>> GetSuperAdminsAsync()
     {
         var superAdmins = await _userManager.Users

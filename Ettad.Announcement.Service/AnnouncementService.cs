@@ -425,6 +425,7 @@ namespace Ettad.Announcement.Service
                 var roleIds = ParseTargetRoleIds(announcement.TargetRoles);
                 var hasTargetRoles = roleIds != null && roleIds.Count > 0;
 
+                // When no target roles: broadcast to all users (like banner). When target roles: notify only those roles.
                 await _notificationHelper.SendNotificationAsync(
                     title: "Announcement",
                     message: announcement.Message,
@@ -433,7 +434,8 @@ namespace Ettad.Announcement.Service
                     userIds: null,
                     roleIds: hasTargetRoles ? roleIds : null,
                     senderId: senderId,
-                    includeSuperAdmins: !hasTargetRoles
+                    includeSuperAdmins: false,
+                    includeAllUsers: !hasTargetRoles
                 );
             }
             catch (Exception ex)

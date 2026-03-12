@@ -276,6 +276,22 @@ namespace Ettad.Notification.Service
                 }
             }
 
+            if (dto.IncludeAllUsers)
+            {
+                var allUserIdsResult = await _userService.GetAllActiveUserIdsAsync();
+                if (!allUserIdsResult.Succeeded || allUserIdsResult.Data == null)
+                {
+                    return APIOperationResponse<HashSet<string>>.Fail(
+                        ResolveResponseType(allUserIdsResult?.StatusCode ?? 400),
+                        allUserIdsResult?.Message ?? "Unable to fetch users.");
+                }
+
+                foreach (var userId in allUserIdsResult.Data.Where(id => !string.IsNullOrWhiteSpace(id)))
+                {
+                    recipients.Add(userId);
+                }
+            }
+
             return APIOperationResponse<HashSet<string>>.Success(recipients);
         }
 
