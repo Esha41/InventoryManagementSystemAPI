@@ -4,6 +4,7 @@ using Ettad.Inventory.Service.AssetSupply.Dtos;
 using Ettad.Inventory.Service.Batches.Dtos;
 using Ettad.ResponseHandler.Models;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using System.Net;
 
@@ -102,14 +103,16 @@ namespace Ettad.Inventory.API.Controllers
         }
 
         /// <summary>
-        /// Create and submit a new asset supply (creates assignments immediately)
+        /// Create and submit a new asset supply (creates assignments immediately) with file attachments.
+        /// Uses multipart/form-data similar to SupplyController.Submit.
         /// </summary>
         [HttpPost]
+        [Consumes("multipart/form-data")]
         [ProducesResponseType(typeof(APIOperationResponse<long>), (int)HttpStatusCode.Created)]
         [CheckAuthorize("Permissions.AssetSupply.Create")]
-        public async Task<IActionResult> Create([FromBody] CreateAssetSupplyDto dto)
+        public async Task<IActionResult> Create([FromForm] CreateAssetSupplyDto dto, [FromForm] List<IFormFile> files)
         {
-            var result = await _assetSupplyService.CreateAndSubmitAsync(dto);
+            var result = await _assetSupplyService.CreateAndSubmitAsync(dto, files);
             return ProcessResponse(result);
         }
 
