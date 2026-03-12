@@ -13,6 +13,10 @@ namespace Ettad.Inventory.Service.Assets.Validators
             RuleFor(x => x.DepotId)
                 .GreaterThan(0).WithMessage("Depot ID is required and must be greater than 0");
 
+            RuleFor(x => x.BatchNumber)
+                .NotEmpty().WithMessage("Batch number is required")
+                .MaximumLength(500).WithMessage("Batch number cannot exceed 500 characters");
+
             RuleFor(x => x.SerialNumber)
                 .MaximumLength(500).When(x => !string.IsNullOrWhiteSpace(x.SerialNumber))
                 .WithMessage("Serial number cannot exceed 500 characters");

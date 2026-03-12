@@ -7,6 +7,7 @@ namespace Ettad.Announcement.Service.Dtos
         public long Id { get; set; }
         public string Message { get; set; }
         public RequestPriority Priority { get; set; }
+        public AnnouncementDeliveryType DeliveryType { get; set; }
         public bool IsDismissable { get; set; }
         public DateTime StartDate { get; set; }
         public DateTime? EndDate { get; set; }
@@ -20,6 +21,7 @@ namespace Ettad.Announcement.Service.Dtos
     {
         public string Message { get; set; }
         public RequestPriority Priority { get; set; }
+        public AnnouncementDeliveryType DeliveryType { get; set; } = AnnouncementDeliveryType.Banner;
         public bool IsDismissable { get; set; }
         public DateTime StartDate { get; set; }
         public DateTime? EndDate { get; set; }
@@ -31,6 +33,7 @@ namespace Ettad.Announcement.Service.Dtos
     {
         public string? Message { get; set; }
         public RequestPriority? Priority { get; set; }
+        public AnnouncementDeliveryType? DeliveryType { get; set; }
         public bool? IsDismissable { get; set; }
         public DateTime? StartDate { get; set; }
         public DateTime? EndDate { get; set; }
@@ -43,6 +46,7 @@ namespace Ettad.Announcement.Service.Dtos
         public long Id { get; set; }
         public string Message { get; set; }
         public RequestPriority Priority { get; set; }
+        public AnnouncementDeliveryType DeliveryType { get; set; }
         public bool IsDismissable { get; set; }
     }
 }

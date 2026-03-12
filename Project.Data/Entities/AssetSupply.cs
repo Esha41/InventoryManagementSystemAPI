@@ -36,7 +36,8 @@ namespace Ettad.Data.Entities
         public long? DepartmentId { get; set; }
 
         /// <summary>
-        /// Custodian (User) receiving the assets
+        /// Custodian user ID (AspNet User) owning the supply at header level.
+        /// Detail-level and assignments still use Employee IDs.
         ///</summary>
         public string CustodianId { get; set; }
 

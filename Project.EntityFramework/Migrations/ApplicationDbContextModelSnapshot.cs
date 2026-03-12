@@ -252,6 +252,11 @@ namespace Ettad.EntityFramework.Migrations
                     b.Property<DateTime?>("DeletionDate")
                         .HasColumnType("datetime2");
 
+                    b.Property<int>("DeliveryType")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(1);
+
                     b.Property<DateTime?>("EndDate")
                         .HasColumnType("datetime2");
 
@@ -392,6 +397,9 @@ namespace Ettad.EntityFramework.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
 
+                    b.Property<long>("BatchId")
+                        .HasColumnType("bigint");
+
                     b.Property<string>("Condition")
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
@@ -457,6 +465,8 @@ namespace Ettad.EntityFramework.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("BatchId");
+
                     b.HasIndex("CurrentAssignmentId");
 
                     b.HasIndex("DepotId");
@@ -509,9 +519,8 @@ namespace Ettad.EntityFramework.Migrations
                     b.Property<DateTime>("CreationDate")
                         .HasColumnType("datetime2");
 
-                    b.Property<string>("CustodianId")
-                        .HasMaxLength(450)
-                        .HasColumnType("nvarchar(450)");
+                    b.Property<long>("CustodianId")
+                        .HasColumnType("bigint");
 
                     b.Property<string>("DeletedBy")
                         .HasColumnType("nvarchar(max)");
@@ -634,9 +643,9 @@ namespace Ettad.EntityFramework.Migrations
                     b.Property<string>("ModifiedBy")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("NewCustodianId")
+                    b.Property<long?>("NewCustodianId")
                         .HasMaxLength(450)
-                        .HasColumnType("nvarchar(450)");
+                        .HasColumnType("bigint");
 
                     b.Property<long?>("NewDepartmentId")
                         .HasColumnType("bigint");
@@ -663,9 +672,9 @@ namespace Ettad.EntityFramework.Migrations
                         .HasMaxLength(255)
                         .HasColumnType("nvarchar(255)");
 
-                    b.Property<string>("PreviousCustodianId")
+                    b.Property<long?>("PreviousCustodianId")
                         .HasMaxLength(450)
-                        .HasColumnType("nvarchar(450)");
+                        .HasColumnType("bigint");
 
                     b.Property<long?>("PreviousDepartmentId")
                         .HasColumnType("bigint");
@@ -816,10 +825,8 @@ namespace Ettad.EntityFramework.Migrations
                     b.Property<DateTime>("CreationDate")
                         .HasColumnType("datetime2");
 
-                    b.Property<string>("CustodianId")
-                        .IsRequired()
-                        .HasMaxLength(450)
-                        .HasColumnType("nvarchar(450)");
+                    b.Property<long?>("CustodianId")
+                        .HasColumnType("bigint");
 
                     b.Property<string>("DeletedBy")
                         .HasColumnType("nvarchar(max)");
@@ -1042,6 +1049,54 @@ namespace Ettad.EntityFramework.Migrations
                     b.ToTable("BaseRequests", (string)null);
 
                     b.UseTptMappingStrategy();
+                });
+
+            modelBuilder.Entity("Ettad.Data.Entities.Batch", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("BatchNumber")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("CreationDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("DeletedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("DeletionDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<long>("DepotId")
+                        .HasColumnType("bigint");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime?>("ModificationDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ModifiedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BatchNumber")
+                        .IsUnique()
+                        .HasFilter("[IsDeleted] = 0");
+
+                    b.HasIndex("DepotId");
+
+                    b.ToTable("Batches", (string)null);
                 });
 
             modelBuilder.Entity("Ettad.Data.Entities.BlacklistedToken", b =>
@@ -1838,9 +1893,20 @@ namespace Ettad.EntityFramework.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
 
+                    b.Property<long?>("RankId")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("UserId")
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
                     b.HasKey("Id");
 
                     b.HasIndex("DepartmentId");
+
+                    b.HasIndex("RankId");
+
+                    b.HasIndex("UserId");
 
                     b.ToTable("Employees", (string)null);
                 });
@@ -4255,6 +4321,57 @@ namespace Ettad.EntityFramework.Migrations
                     b.ToTable("UserDepots", (string)null);
                 });
 
+            modelBuilder.Entity("Ettad.Data.Entities.WeaponSupplySelection", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<long>("BatchId")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("CreationDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<long>("DepotId")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("ItemId")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime?>("ModificationDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ModifiedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<long>("OrderId")
+                        .HasColumnType("bigint");
+
+                    b.Property<int>("Quantity")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BatchId");
+
+                    b.HasIndex("DepotId");
+
+                    b.HasIndex("ItemId");
+
+                    b.HasIndex("OrderId");
+
+                    b.HasIndex("OrderId", "DepotId", "BatchId", "ItemId")
+                        .IsUnique();
+
+                    b.ToTable("WeaponSupplySelections", (string)null);
+                });
+
             modelBuilder.Entity("Ettad.Data.Entities.WorkFlowType", b =>
                 {
                     b.Property<long>("Id")
@@ -4981,6 +5098,12 @@ namespace Ettad.EntityFramework.Migrations
 
             modelBuilder.Entity("Ettad.Data.Entities.Asset", b =>
                 {
+                    b.HasOne("Ettad.Data.Entities.Batch", "Batch")
+                        .WithMany("Assets")
+                        .HasForeignKey("BatchId")
+                        .OnDelete(DeleteBehavior.ClientCascade)
+                        .IsRequired();
+
                     b.HasOne("Ettad.Data.Entities.AssetAssignment", "CurrentAssignment")
                         .WithMany()
                         .HasForeignKey("CurrentAssignmentId")
@@ -4997,6 +5120,8 @@ namespace Ettad.EntityFramework.Migrations
                         .HasForeignKey("ItemId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.Navigation("Batch");
 
                     b.Navigation("CurrentAssignment");
 
@@ -5018,7 +5143,7 @@ namespace Ettad.EntityFramework.Migrations
                         .HasForeignKey("AssetSupplyId")
                         .OnDelete(DeleteBehavior.Restrict);
 
-                    b.HasOne("Ettad.Comman.Idenitity.ApplicationUser", "Custodian")
+                    b.HasOne("Ettad.Data.Entities.Employee", "Custodian")
                         .WithMany()
                         .HasForeignKey("CustodianId")
                         .OnDelete(DeleteBehavior.Restrict)
@@ -5070,7 +5195,7 @@ namespace Ettad.EntityFramework.Migrations
                         .HasForeignKey("AssetSupplyId")
                         .OnDelete(DeleteBehavior.Restrict);
 
-                    b.HasOne("Ettad.Comman.Idenitity.ApplicationUser", "NewCustodian")
+                    b.HasOne("Ettad.Data.Entities.Employee", "NewCustodian")
                         .WithMany()
                         .HasForeignKey("NewCustodianId")
                         .OnDelete(DeleteBehavior.Restrict);
@@ -5085,7 +5210,7 @@ namespace Ettad.EntityFramework.Migrations
                         .HasForeignKey("OrderId")
                         .OnDelete(DeleteBehavior.Restrict);
 
-                    b.HasOne("Ettad.Comman.Idenitity.ApplicationUser", "PreviousCustodian")
+                    b.HasOne("Ettad.Data.Entities.Employee", "PreviousCustodian")
                         .WithMany()
                         .HasForeignKey("PreviousCustodianId")
                         .OnDelete(DeleteBehavior.Restrict);
@@ -5159,11 +5284,10 @@ namespace Ettad.EntityFramework.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("Ettad.Comman.Idenitity.ApplicationUser", "Custodian")
+                    b.HasOne("Ettad.Data.Entities.Employee", "Custodian")
                         .WithMany()
                         .HasForeignKey("CustodianId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("Ettad.Data.Entities.BaseItem", "Item")
                         .WithMany()
@@ -5223,6 +5347,17 @@ namespace Ettad.EntityFramework.Migrations
                     b.Navigation("Requester");
                 });
 
+            modelBuilder.Entity("Ettad.Data.Entities.Batch", b =>
+                {
+                    b.HasOne("Ettad.Data.Entities.Depot", "Depot")
+                        .WithMany()
+                        .HasForeignKey("DepotId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Depot");
+                });
+
             modelBuilder.Entity("Ettad.Data.Entities.Employee", b =>
                 {
                     b.HasOne("Ettad.Data.Entities.Department", "Department")
@@ -5230,7 +5365,21 @@ namespace Ettad.EntityFramework.Migrations
                         .HasForeignKey("DepartmentId")
                         .OnDelete(DeleteBehavior.Restrict);
 
+                    b.HasOne("Ettad.Data.Entities.Rank", "Rank")
+                        .WithMany()
+                        .HasForeignKey("RankId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Ettad.Comman.Idenitity.ApplicationUser", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.Navigation("Department");
+
+                    b.Navigation("Rank");
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("Ettad.Data.Entities.FileUplodDetails", b =>
@@ -5592,6 +5741,41 @@ namespace Ettad.EntityFramework.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("Ettad.Data.Entities.WeaponSupplySelection", b =>
+                {
+                    b.HasOne("Ettad.Data.Entities.Batch", "Batch")
+                        .WithMany()
+                        .HasForeignKey("BatchId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Ettad.Data.Entities.Depot", "Depot")
+                        .WithMany()
+                        .HasForeignKey("DepotId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Ettad.Data.Entities.BaseItem", "Item")
+                        .WithMany()
+                        .HasForeignKey("ItemId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Ettad.Data.Entities.Order", "Order")
+                        .WithMany()
+                        .HasForeignKey("OrderId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Batch");
+
+                    b.Navigation("Depot");
+
+                    b.Navigation("Item");
+
+                    b.Navigation("Order");
+                });
+
             modelBuilder.Entity("Ettad.Data.Entities.Workflows.WorkflowApprovalStep", b =>
                 {
                     b.HasOne("Ettad.Data.Entities.Workflows.WorkflowStep", "WorkflowStep")
@@ -5914,6 +6098,11 @@ namespace Ettad.EntityFramework.Migrations
             modelBuilder.Entity("Ettad.Data.Entities.BaseRequest", b =>
                 {
                     b.Navigation("RequestItems");
+                });
+
+            modelBuilder.Entity("Ettad.Data.Entities.Batch", b =>
+                {
+                    b.Navigation("Assets");
                 });
 
             modelBuilder.Entity("Ettad.Data.Entities.FileUplodMaster", b =>

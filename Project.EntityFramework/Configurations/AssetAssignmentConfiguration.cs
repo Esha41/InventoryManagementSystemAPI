@@ -55,8 +55,7 @@ namespace Ettad.EntityFramework.Configurations
                 .HasMaxLength(100);
 
             builder.Property(x => x.CustodianId)
-                .IsRequired(false)
-                .HasMaxLength(450);
+                .IsRequired();
 
             // Indexes for performance
             builder.HasIndex(x => new { x.AssetId, x.Status });

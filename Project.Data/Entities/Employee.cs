@@ -1,3 +1,4 @@
+using Ettad.Comman.Idenitity;
 using Ettad.CrossCutting.Comman.Base;
 
 namespace Ettad.Data.Entities
@@ -18,9 +19,15 @@ namespace Ettad.Data.Entities
 
         public string? Notes { get; set; }
 
+        public long? RankId { get; set; }
+
+        public string? UserId { get; set; }
+
         #region Navigation Properties
 
         public Department Department { get; set; }
+        public Rank Rank { get; set; }
+        public ApplicationUser User { get; set; }
 
         #endregion
     }

@@ -6,6 +6,8 @@ namespace Ettad.Inventory.Service.Assets.Dtos
     {
         public long ItemId { get; set; }
 
+        public string BatchNumber { get; set; } = string.Empty;
+
         public string? SerialNumber { get; set; }
 
         public string? RFID { get; set; }

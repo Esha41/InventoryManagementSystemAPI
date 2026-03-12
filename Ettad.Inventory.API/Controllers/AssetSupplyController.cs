@@ -1,6 +1,7 @@
 using Ettad.CrossCutting.Common.Security;
 using Ettad.Inventory.Service.AssetSupply;
 using Ettad.Inventory.Service.AssetSupply.Dtos;
+using Ettad.Inventory.Service.Batches.Dtos;
 using Ettad.ResponseHandler.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -24,16 +25,43 @@ namespace Ettad.Inventory.API.Controllers
         }
 
         /// <summary>
+        /// Get saved depot and batch selections for weapon supply.
+        /// </summary>
+        [HttpGet("order/{orderId}/selection")]
+        [ProducesResponseType(typeof(APIOperationResponse<List<DepotBatchSelectionDto>>), (int)HttpStatusCode.OK)]
+        [CheckAuthorize("Permissions.AssetSupply.View", "Permissions.AssetSupply.Page", "SelectDepots")]
+        public async Task<IActionResult> GetWeaponSupplySelection(long orderId)
+        {
+            var result = await _assetSupplyService.GetWeaponSupplySelectionAsync(orderId);
+            return ProcessResponse(result);
+        }
+
+        /// <summary>
+        /// Get batches in the given depots that contain assets matching the order's requested items.
+        /// </summary>
+        [HttpGet("order/{orderId}/batches-for-depots")]
+        [ProducesResponseType(typeof(APIOperationResponse<List<BatchForOrderDepotDto>>), (int)HttpStatusCode.OK)]
+        [CheckAuthorize("Permissions.AssetSupply.View", "Permissions.AssetSupply.Page", "SelectDepots")]
+        public async Task<IActionResult> GetBatchesForOrderDepots(long orderId, [FromQuery] List<long> depotIds)
+        {
+            if (depotIds == null || !depotIds.Any())
+                return BadRequest("At least one depot ID is required");
+            var result = await _assetSupplyService.GetBatchesForOrderDepotsAsync(orderId, depotIds);
+            return ProcessResponse(result);
+        }
+
+        /// <summary>
         /// Get available assets to supply for an order (FIFO order, with serial numbers, not assigned)
         /// </summary>
         /// <param name="orderId">The order ID</param>
         /// <param name="depotIds">Optional list of depot IDs to filter assets</param>
+        /// <param name="batchIds">Optional list of batch IDs to filter assets (when provided, only assets from these batches are returned)</param>
         [HttpGet("order/{orderId}/available-assets")]
         [ProducesResponseType(typeof(APIOperationResponse<OrderAssetsToSupplyDto>), (int)HttpStatusCode.OK)]
         [CheckAuthorize("Permissions.AssetSupply.View", "Permissions.AssetSupply.Page")]
-        public async Task<IActionResult> GetAssetsToSupply(long orderId, [FromQuery] List<long>? depotIds = null)
+        public async Task<IActionResult> GetAssetsToSupply(long orderId, [FromQuery] List<long>? depotIds = null, [FromQuery] List<long>? batchIds = null)
         {
-            var result = await _assetSupplyService.GetAssetsToSupplyAsync(orderId, depotIds);
+            var result = await _assetSupplyService.GetAssetsToSupplyAsync(orderId, depotIds, batchIds);
             return ProcessResponse(result);
         }
 
@@ -118,6 +146,34 @@ namespace Ettad.Inventory.API.Controllers
         public async Task<IActionResult> ReturnMultipleAssets([FromBody] ReturnMultipleAssetsDto dto)
         {
             var result = await _assetSupplyService.ReturnMultipleAssetsAsync(dto);
+            return ProcessResponse(result);
+        }
+
+        /// <summary>
+        /// Get selected batches with their assets for weapon supply.
+        /// Assets with serial numbers are returned first; remaining quantity is filled with non-serial assets.
+        /// </summary>
+        [HttpGet("order/{orderId}/selected-batches")]
+        [ProducesResponseType(typeof(APIOperationResponse<List<BatchDto>>), (int)HttpStatusCode.OK)]
+        [CheckAuthorize("Permissions.AssetSupply.View", "Permissions.AssetSupply.Page", "SelectDepots")]
+        public async Task<IActionResult> GetSelectedBatchesWithAssets(long orderId)
+        {
+            var result = await _assetSupplyService.GetSelectedBatchesWithAssetsAsync(orderId);
+            return ProcessResponse(result);
+        }
+
+        /// <summary>
+        /// Save depot and batch selections for weapon supply.
+        /// </summary>
+        [HttpPost("order/{orderId}/save-selection")]
+        [ProducesResponseType(typeof(APIOperationResponse<bool>), (int)HttpStatusCode.OK)]
+        [CheckAuthorize("SelectDepots")]
+        public async Task<IActionResult> SaveWeaponSupplySelection(long orderId, [FromBody] SaveWeaponSupplySelectionDto dto)
+        {
+            if (dto == null)
+                dto = new SaveWeaponSupplySelectionDto { OrderId = orderId };
+            dto.OrderId = orderId;
+            var result = await _assetSupplyService.SaveWeaponSupplySelectionAsync(dto);
             return ProcessResponse(result);
         }
     }

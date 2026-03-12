@@ -483,6 +483,7 @@ try
         {
             Log.Error(ex, "An error occurred during database migration or seeding");
             //  await ApplicationDbInitializer.SeedDefaultDataAsync(scope.ServiceProvider);
+            throw;
         }
     }
 

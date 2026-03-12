@@ -27,9 +27,12 @@ using Ettad.Inventory.Service.AssetSupply.Validators;
 using Ettad.Inventory.Service.AssetSupply.Profiles;
 using Ettad.Inventory.Service.AssetHistory;
 using Ettad.Inventory.Service.AssetHistory.Profiles;
-using Ettad.Inventory.Service.AdvancedAnalytics;
 using Ettad.Inventory.Service.ItemDepartmentAssignments;
 using Ettad.Inventory.Service.ItemDepartmentAssignments.Profiles;
+using Ettad.Inventory.Service.Batches;
+using Ettad.Inventory.Service.Batches.Dtos;
+using Ettad.Inventory.Service.Batches.Validators;
+using Ettad.Inventory.Service.Batches.Profiles;
 
 namespace Ettad.Inventory.Service
 {
@@ -63,6 +66,11 @@ namespace Ettad.Inventory.Service
             services.AddAutoMapper(typeof(ItemDepartmentAssignmentMappingProfile));
             services.AddScoped<IInventoryService, InventoryService>();
             
+            // Batch Services (must be registered before AssetService since AssetService depends on IBatchService)
+            services.AddScoped<IBatchService, BatchService>();
+            services.AddScoped<IValidator<BulkUpdateBatchAssetsDto>, BulkUpdateBatchAssetsDtoValidator>();
+            services.AddAutoMapper(typeof(BatchMappingProfile));
+
             // Asset Services
             services.AddScoped<IAssetService, AssetService>();
             services.AddScoped<IValidator<CreateAssetDto>, CreateAssetDtoValidator>();
@@ -93,9 +101,6 @@ namespace Ettad.Inventory.Service
             // Asset History Services
             services.AddScoped<IAssetHistoryService, AssetHistoryService>();
             services.AddAutoMapper(typeof(AssetHistoryMappingProfile));
-
-            // Advanced Analytics Services
-            services.AddScoped<IAdvancedAnalyticsService, AdvancedAnalyticsService>();
 
             return services;
         }

@@ -14,6 +14,9 @@ namespace Ettad.Announcement.Service.Validators
             RuleFor(x => x.Priority)
                 .IsInEnum().WithMessage("Invalid priority value");
 
+            RuleFor(x => x.DeliveryType)
+                .IsInEnum().WithMessage("Invalid delivery type value");
+
             RuleFor(x => x.StartDate)
                 .NotEmpty().WithMessage("Start date is required");
 
@@ -36,6 +39,10 @@ namespace Ettad.Announcement.Service.Validators
             RuleFor(x => x.Priority)
                 .IsInEnum().WithMessage("Invalid priority value")
                 .When(x => x.Priority.HasValue);
+
+            RuleFor(x => x.DeliveryType)
+                .IsInEnum().WithMessage("Invalid delivery type value")
+                .When(x => x.DeliveryType.HasValue);
         }
     }
 }

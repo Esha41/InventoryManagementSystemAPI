@@ -7,6 +7,7 @@ namespace Ettad.Data.Entities
     {
         public string Message { get; set; }
         public RequestPriority Priority { get; set; }
+        public AnnouncementDeliveryType DeliveryType { get; set; } = AnnouncementDeliveryType.Banner;
         public bool IsDismissable { get; set; }
         public DateTime StartDate { get; set; }
         public DateTime? EndDate { get; set; }

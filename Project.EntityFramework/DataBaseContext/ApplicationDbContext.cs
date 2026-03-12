@@ -43,6 +43,7 @@ namespace Ettad.EntityFramework.DataBaseContext
         public DbSet<Inventory> Inventories { get; set; }
         public DbSet<InventoryDetail> InventoryDetails { get; set; }
         public DbSet<Asset> Assets { get; set; }
+        public DbSet<Batch> Batches { get; set; }
         public DbSet<Employee> Employees { get; set; }
         public DbSet<Manufacturer> Manufacturers { get; set; }
         public DbSet<NatureOption> NatureOptions { get; set; }
@@ -90,6 +91,7 @@ namespace Ettad.EntityFramework.DataBaseContext
         public DbSet<ScheduledReportExecution> ScheduledReportExecutions { get; set; }
         public DbSet<Announcement> Announcements { get; set; }
         public DbSet<AnnouncementDismissal> AnnouncementDismissals { get; set; }
+        public DbSet<WeaponSupplySelection> WeaponSupplySelections { get; set; }
        
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

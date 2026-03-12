@@ -60,7 +60,20 @@ namespace Ettad.Modules.EmailSystem.API.Controllers
         }
 
         /// <summary>
-        /// Get email settings configuration
+        /// Check if email notifications are enabled (any authenticated user).
+        /// Used by notification service to decide whether to send email on new notifications.
+        /// </summary>
+        [HttpGet("IsEnabled")]
+        [ProducesResponseType(typeof(APIOperationResponse<bool>), (int)HttpStatusCode.OK)]
+        public async Task<IActionResult> IsEmailNotificationsEnabled()
+        {
+            var config = await _settingsProvider.getEmailSettings();
+            var enabled = !config.DisableAuthentication;
+            return ProcessResponse(APIOperationResponse<bool>.Success(enabled));
+        }
+
+        /// <summary>
+        /// Get email settings configuration (admin only)
         /// </summary>
         /// <returns>Email settings</returns>
         [HttpGet]

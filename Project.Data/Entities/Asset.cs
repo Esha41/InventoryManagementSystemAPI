@@ -74,10 +74,13 @@ namespace Ettad.Data.Entities
         /// </summary>
         public long? CurrentAssignmentId { get; set; }
 
+        public long BatchId { get; set; }
+
         #region Navigation Properties
 
         public BaseItem Item { get; set; }
         public Depot Depot { get; set; }
+        public Batch Batch { get; set; }
         public AssetAssignment CurrentAssignment { get; set; }
         public ICollection<AssetAssignment> Assignments { get; set; }
         public ICollection<AssetHistory> History { get; set; }

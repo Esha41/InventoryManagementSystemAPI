@@ -18,9 +18,11 @@ namespace Ettad.Inventory.Service.Assets.Dtos
 
         public long DepotId { get; set; }
 
-        public long? DepartmentId { get; set; }
+        public long BatchId { get; set; }
 
-        public string? CustodianId { get; set; }
+        public string BatchNumber { get; set; } = string.Empty;
+
+        public long? DepartmentId { get; set; }
 
         public string? Location { get; set; }
 
@@ -47,8 +49,6 @@ namespace Ettad.Inventory.Service.Assets.Dtos
         public DepotDto Depot { get; set; }
 
         public DepartmentDto Department { get; set; }
-
-        public UserDto Custodian { get; set; }
 
         public List<FileUploadDto> Images { get; set; }
 

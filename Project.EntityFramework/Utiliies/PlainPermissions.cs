@@ -66,6 +66,9 @@ namespace Ettad.Data.Enums
         ReviewWeaponSupply,
 
         [Category(PlainPermissionsGenerator.Workflow)]
+        SelectDepots,
+
+        [Category(PlainPermissionsGenerator.Workflow)]
         UpdateRequestItems,
 
         [Category(PlainPermissionsGenerator.Workflow)]

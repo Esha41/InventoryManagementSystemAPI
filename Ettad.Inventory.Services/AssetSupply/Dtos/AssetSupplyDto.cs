@@ -1,6 +1,7 @@
 using Ettad.Data.Enums;
 using Ettad.Module.lookup.Dtos;
 using Ettad.User.Services.DTO;
+using Ettad.CrossCutting.Comman.FileUpload;
 
 namespace Ettad.Inventory.Service.AssetSupply.Dtos
 {
@@ -31,5 +32,6 @@ namespace Ettad.Inventory.Service.AssetSupply.Dtos
         public string? CreatedBy { get; set; }
 
         public List<AssetSupplyDetailDto> SupplyDetails { get; set; } = new();
+        public List<FileUploadDto> Files { get; set; } = new();
     }
 }

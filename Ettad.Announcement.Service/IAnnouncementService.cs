@@ -12,5 +12,9 @@ namespace Ettad.Announcement.Service
         Task<APIOperationResponse<AnnouncementDto>> UpdateAnnouncementAsync(long id, UpdateAnnouncementDto dto, string updatedBy);
         Task<APIOperationResponse<bool>> DeleteAnnouncementAsync(long id, string deletedBy);
         Task<APIOperationResponse<bool>> DismissAnnouncementAsync(long announcementId, string userId);
+        /// <summary>
+        /// Clears all announcement dismissals for a user (e.g. on logout so banners reappear on next login).
+        /// </summary>
+        Task ClearDismissalsForUserAsync(string userId, CancellationToken cancellationToken = default);
     }
 }

@@ -31,15 +31,13 @@ namespace Ettad.Inventory.Service.Assets.Profiles
                 .ForMember(dest => dest.Rank, opt => opt.MapFrom(src => src.Rank != null ? src.Rank : null));
 
             CreateMap<Asset, AssetDto>()
-                // Map navigation properties with null checks
                 .ForMember(dest => dest.Item, opt => opt.MapFrom(src => src.Item != null ? src.Item : null))
                 .ForMember(dest => dest.Depot, opt => opt.MapFrom(src => src.Depot != null ? src.Depot : null))
                 .ForMember(dest => dest.Department, opt => opt.MapFrom(src => src.CurrentAssignment != null && src.CurrentAssignment.Department != null ? src.CurrentAssignment.Department : null))
-                .ForMember(dest => dest.Custodian, opt => opt.MapFrom(src => src.CurrentAssignment != null && src.CurrentAssignment.Custodian != null ? src.CurrentAssignment.Custodian : null))
-                .ForMember(dest => dest.CustodianId, opt => opt.MapFrom(src => src.CurrentAssignment != null ? src.CurrentAssignment.CustodianId : null))
                 .ForMember(dest => dest.DepartmentId, opt => opt.MapFrom(src => src.CurrentAssignment != null ? src.CurrentAssignment.DepartmentId : null))
                 .ForMember(dest => dest.Location, opt => opt.MapFrom(src => src.CurrentAssignment != null ? src.CurrentAssignment.Location : null))
-                .ForMember(dest => dest.Images, opt => opt.Ignore()); // Images are populated separately
+                .ForMember(dest => dest.BatchNumber, opt => opt.MapFrom(src => src.Batch != null ? src.Batch.BatchNumber : string.Empty))
+                .ForMember(dest => dest.Images, opt => opt.Ignore());
 
             CreateMap<CreateAssetDto, Asset>()
                 .ForMember(dest => dest.Id, opt => opt.Ignore())
@@ -50,6 +48,8 @@ namespace Ettad.Inventory.Service.Assets.Profiles
                 .ForMember(dest => dest.IsDeleted, opt => opt.Ignore())
                 .ForMember(dest => dest.Item, opt => opt.Ignore())
                 .ForMember(dest => dest.Depot, opt => opt.Ignore())
+                .ForMember(dest => dest.Batch, opt => opt.Ignore())
+                .ForMember(dest => dest.BatchId, opt => opt.Ignore())
                 .ForMember(dest => dest.Status, opt => opt.Ignore());
 
             CreateMap<UpdateAssetDto, Asset>()
@@ -61,6 +61,8 @@ namespace Ettad.Inventory.Service.Assets.Profiles
                 .ForMember(dest => dest.IsDeleted, opt => opt.Ignore())
                 .ForMember(dest => dest.Item, opt => opt.Ignore())
                 .ForMember(dest => dest.Depot, opt => opt.Ignore())
+                .ForMember(dest => dest.Batch, opt => opt.Ignore())
+                .ForMember(dest => dest.BatchId, opt => opt.Ignore())
                 .ForMember(dest => dest.DepotId, opt => opt.Ignore());
         }
     }
