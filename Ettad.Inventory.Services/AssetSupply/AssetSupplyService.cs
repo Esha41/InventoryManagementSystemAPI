@@ -21,6 +21,7 @@ using Ettad.CrossCutting.Comman.FileUpload;
 using Ettad.Comman.Enums;
 using Ettad.Inventory.Service.Batches.Dtos;
 using Ettad.Inventory.Service.Assets.Dtos;
+using Microsoft.AspNetCore.Http;
 
 namespace Ettad.Inventory.Service.AssetSupply
 {
@@ -418,7 +419,7 @@ namespace Ettad.Inventory.Service.AssetSupply
             }
         }
 
-        public async Task<APIOperationResponse<long>> CreateAndSubmitAsync(CreateAssetSupplyDto dto)
+        public async Task<APIOperationResponse<long>> CreateAndSubmitAsync(CreateAssetSupplyDto dto, List<IFormFile> files)
         {
             _logger.LogInformation("Creating and submitting asset supply. OrderId: {OrderId}, AssetCount: {AssetCount}, User: {UserId}",
                 dto.OrderId, dto.SupplyDetails?.Count ?? 0, _currentUserService.UserId);
@@ -431,6 +432,13 @@ namespace Ettad.Inventory.Service.AssetSupply
                 {
                     var errors = string.Join(", ", validationResult.Errors.Select(e => e.ErrorMessage));
                     return APIOperationResponse<long>.Fail(ResponseType.BadRequest, errors);
+                }
+
+                // Upload files and link them to the asset supply
+                // Require at least one valid file, mirroring ammunition supply submit behaviour
+                if (files == null || !files.Any(f => f != null && f.Length > 0))
+                {
+                    return APIOperationResponse<long>.Fail(ResponseType.BadRequest, "At least one file attachment is required when creating an asset supply.");
                 }
 
                 // Check order exists
@@ -715,6 +723,19 @@ namespace Ettad.Inventory.Service.AssetSupply
 
                     // Persist final asset updates (IsAssigned, CurrentAssignmentId from last iteration)
                     await _context.SaveChangesAsync();
+
+                    var validFiles = files.Where(f => f != null && f.Length > 0).ToList();
+                    var uploadResult = await _fileUploadService.UploadFilesForEntityAsync(
+                        validFiles,
+                        FileEntityType.AssetSupply,
+                        createdSupply.Id);
+
+                    if (!uploadResult.Succeeded)
+                    {
+                        await transaction.RollbackAsync();
+                        _logger.LogError("Failed to upload files for asset supply. SupplyId: {SupplyId}, Error: {Error}", createdSupply.Id, uploadResult.Message);
+                        return APIOperationResponse<long>.Fail(ResponseType.BadRequest, $"Failed to upload files: {uploadResult.Message}");
+                    }
 
                     // Record order item history for asset supply
                     try

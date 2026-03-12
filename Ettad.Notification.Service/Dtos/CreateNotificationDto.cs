@@ -10,6 +10,8 @@ namespace Ettad.Notification.Service.Dtos
         public List<string>? RoleIds { get; set; }
         public string? SenderId { get; set; }
         public bool IncludeSuperAdmins { get; set; }
+        /// <summary>When true and no UserIds/RoleIds, notify all users (e.g. broadcast announcements).</summary>
+        public bool IncludeAllUsers { get; set; }
     }
 }
 

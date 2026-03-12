@@ -52,7 +52,8 @@ namespace Ettad.Notification.Service
             List<string>? userIds = null, 
             List<string>? roleIds = null,
             string? senderId = null,
-            bool includeSuperAdmins = false)
+            bool includeSuperAdmins = false,
+            bool includeAllUsers = false)
         {
             // Create notification DTO
             var createDto = new CreateNotificationDto
@@ -64,7 +65,8 @@ namespace Ettad.Notification.Service
                 UserIds = userIds,
                 RoleIds = roleIds,
                 SenderId = senderId,
-                IncludeSuperAdmins = includeSuperAdmins
+                IncludeSuperAdmins = includeSuperAdmins,
+                IncludeAllUsers = includeAllUsers
             };
 
             // Save notification to database
@@ -119,6 +121,19 @@ namespace Ettad.Notification.Service
                 }
             }
 
+            if (includeAllUsers)
+            {
+                var allUserIds = await _userManager.Users
+                    .Where(u => !u.IsDeleted)
+                    .Select(u => u.Id)
+                    .ToListAsync();
+
+                foreach (var userId in allUserIds)
+                {
+                    userIdsToNotify.Add(userId);
+                }
+            }
+
             // Send real-time notification via SignalR to all user groups
             var notificationDto = new Dtos.NotificationDto
             {
@@ -158,12 +173,13 @@ namespace Ettad.Notification.Service
             List<string>? userIds = null,
             List<string>? roleIds = null,
             bool includeSuperAdmins = false,
+            bool includeAllUsers = false,
             string? htmlContent = null)
         {
             try
             {
                 // Get all user IDs to send emails to
-                var userIdsToEmail = await GetUserIdsAsync(userIds, roleIds, includeSuperAdmins);
+                var userIdsToEmail = await GetUserIdsAsync(userIds, roleIds, includeSuperAdmins, includeAllUsers);
 
                 if (!userIdsToEmail.Any())
                 {
@@ -201,19 +217,21 @@ namespace Ettad.Notification.Service
             List<string>? userIds = null,
             List<string>? roleIds = null,
             string? senderId = null,
-            bool includeSuperAdmins = false)
+            bool includeSuperAdmins = false,
+            bool includeAllUsers = false)
         {
             // Send notification first
-            await SendNotificationAsync(title, message, entityType, entityId, userIds, roleIds, senderId, includeSuperAdmins);
+            await SendNotificationAsync(title, message, entityType, entityId, userIds, roleIds, senderId, includeSuperAdmins, includeAllUsers);
             
             // Then send email
-            await SendEmailAsync(title, message, entityType, entityId, userIds, roleIds, includeSuperAdmins);
+            await SendEmailAsync(title, message, entityType, entityId, userIds, roleIds, includeSuperAdmins, includeAllUsers);
         }
 
         private async Task<HashSet<string>> GetUserIdsAsync(
             List<string>? userIds,
             List<string>? roleIds,
-            bool includeSuperAdmins)
+            bool includeSuperAdmins,
+            bool includeAllUsers = false)
         {
             var userIdsToNotify = new HashSet<string>();
             
@@ -251,6 +269,19 @@ namespace Ettad.Notification.Service
                 foreach (var superAdminId in superAdminIds)
                 {
                     userIdsToNotify.Add(superAdminId);
+                }
+            }
+
+            if (includeAllUsers)
+            {
+                var allUserIds = await _userManager.Users
+                    .Where(u => !u.IsDeleted)
+                    .Select(u => u.Id)
+                    .ToListAsync();
+
+                foreach (var userId in allUserIds)
+                {
+                    userIdsToNotify.Add(userId);
                 }
             }
 
