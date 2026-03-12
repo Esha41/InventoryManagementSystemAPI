@@ -30,6 +30,8 @@ namespace Ettad.Inventory.Service.Assets.Dtos
 
         public DepartmentDto Department { get; set; }
 
+        public RankDto Rank { get; set; }
+
         #endregion
     }
 }
