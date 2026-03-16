@@ -867,14 +867,17 @@ namespace Ettad.Inventory.Service.Inventories
                 }
 
                 var query = _inventoryDetailRepository.Find(
-                    x => x.Inventory.DepoId == depotId && !x.Inventory.IsDeleted,
-                    false,
-                    nameof(InventoryDetailEntity.Item),
-                    nameof(InventoryDetailEntity.Supplier),
-                    nameof(InventoryDetailEntity.Manufacturer),
-                    nameof(InventoryDetailEntity.Country),
-                    nameof(InventoryDetailEntity.Inventory)
-                );
+                        x => x.Inventory.DepoId == depotId && !x.Inventory.IsDeleted,
+                        false,
+                        nameof(InventoryDetailEntity.Item),
+                        nameof(InventoryDetailEntity.Supplier),
+                        nameof(InventoryDetailEntity.Manufacturer),
+                        nameof(InventoryDetailEntity.Country),
+                        nameof(InventoryDetailEntity.Inventory)
+                    )
+                    // Newest inventory entries first so recently added ammunition/explosives/weapon lots appear at the top
+                    .OrderByDescending(x => x.Inventory.CreationDate)
+                    .ThenByDescending(x => x.Id);
 
                 // Create paginated list of entities first to apply filtering and paging on database
                 var paginatedEntities = await PaginatedList<InventoryDetailEntity>.CreateAsyncForTableBinding(query, request);
