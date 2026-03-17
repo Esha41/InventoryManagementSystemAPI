@@ -105,6 +105,7 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
         {
             "Permissions.Depots.Page",
             "Permissions.Depots.View",
+            "Permissions.Depots.ViewAll",
         };
 
         /// <summary>

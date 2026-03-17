@@ -51,12 +51,11 @@ namespace Ettad.Lookups.Services.Implementation
                     return APIOperationResponse<List<Depot>>.Success(allDepots);
                 }
 
-                // Users with depot management permission (Depots.Page only) see all depots (for depot management page).
-                // Depots.View allows viewing depot info but list is filtered by UserDepot assignments.
-                var hasDepotManagement = await _permissionService.HasPermissionAsync("Permissions.Depots.Page");
-                if (hasDepotManagement)
+                // Depots.ViewAll = see all depots. Page = access, View = read, ViewAll = see all (no UserDepot filter).
+                var hasViewAll = await _permissionService.HasPermissionAsync("Permissions.Depots.ViewAll");
+                if (hasViewAll)
                 {
-                    _logger.LogInformation("User has depot management permission - returning all {Count} depots", allDepots.Count);
+                    _logger.LogInformation("User has depot ViewAll permission - returning all {Count} depots", allDepots.Count);
                     return APIOperationResponse<List<Depot>>.Success(allDepots);
                 }
 
