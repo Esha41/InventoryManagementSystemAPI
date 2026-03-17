@@ -31,7 +31,7 @@ namespace Ettad.User.Services
             service.AddScoped<ITokenBlacklistService, TokenBlacklistService>();
             service.AddScoped<IAdminAnalyticsService, AdminAnalyticsService>();
             service.AddScoped<IUserDelegationService, UserDelegationService>();
-            
+            service.AddScoped<IMaintenanceService, MaintenanceService>();
 
             service.AddScoped<ICurrentUserService, CurrentUserService>();
 

@@ -43,10 +43,9 @@ namespace Ettad.Lookups.Services.Implementation
                 return true;
             }
 
-            // Users with depot management permission (Depots.Page only) have access to all depots.
-            // Depots.View allows viewing depot info but access is still filtered by UserDepot assignments.
-            var hasDepotManagement = await _permissionService.HasPermissionAsync("Permissions.Depots.Page");
-            if (hasDepotManagement)
+            // Depots.ViewAll = access to all depots. Page = access, View = read, ViewAll = see all (no UserDepot filter).
+            var hasViewAll = await _permissionService.HasPermissionAsync("Permissions.Depots.ViewAll");
+            if (hasViewAll)
             {
                 return true;
             }

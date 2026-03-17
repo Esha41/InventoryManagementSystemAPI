@@ -692,7 +692,8 @@ public class UserService : IUserService
             RoleId = role.Id,
             RoleName = role.Name,
             IsSelected = userRoleNames.Contains(role.Name),
-            DeparmentId=user.DepartmentId
+            IsSuperAdmin = role.IsSuperAdmin,
+            DeparmentId = user.DepartmentId
         }).ToList();
 
         return APIOperationResponse<List<UserRoleDto>>.Success(userRolesList);
