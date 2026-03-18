@@ -652,6 +652,112 @@ public class UserService : IUserService
         return APIOperationResponse<bool>.Success(true, "User restored successfully");
     }
 
+    public async Task<APIOperationResponse<bool>> PermanentDeleteAsync(string id)
+    {
+        _logger.LogInformation("Attempting permanent delete of user. TargetUserId: {TargetUserId}, DeletedBy: {DeletedBy}", 
+            id, _currentUserService.UserId);
+
+        var user = await _userManager.Users.FirstOrDefaultAsync(u => u.Id == id);
+        if (user == null)
+        {
+            return APIOperationResponse<bool>.Fail(ResponseType.NotFound, "User not found");
+        }
+
+        if (!user.IsDeleted)
+        {
+            return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, "Only soft-deleted users can be permanently deleted. Delete the user first.");
+        }
+
+        // Check if target user is a superadmin
+        var userRoles = await _userManager.GetRolesAsync(user);
+        var allRoles = await _roleManager.Roles.ToListAsync();
+        var hasSuperAdminRole = userRoles.Any(roleName => 
+            allRoles.Any(r => r.Name == roleName && r.IsSuperAdmin));
+        if (hasSuperAdminRole)
+        {
+            return APIOperationResponse<bool>.Fail(ResponseType.Forbidden, "Superadmin users cannot be permanently deleted");
+        }
+
+        // Check if user has any transaction history (orders, requests, supplies, workflow actions, etc.)
+        var hasBaseRequests = await _context.BaseRequests
+            .AnyAsync(r => r.RequesterId == id);
+        if (hasBaseRequests)
+        {
+            return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, 
+                "Cannot permanently delete: Only users with no transactions can be permanently deleted.");
+        }
+
+        var hasApprovalLogs = await _context.WorkflowStepApprovalLog
+            .AnyAsync(l => l.ChangedBy == id);
+        if (hasApprovalLogs)
+        {
+            return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, 
+                "Cannot permanently delete: Only users with no transactions can be permanently deleted.");
+        }
+
+        var hasOrderItemHistory = await _context.OrderItemHistory
+            .AnyAsync(h => h.ModifiedByUserId == id);
+        if (hasOrderItemHistory)
+        {
+            return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, 
+                "Cannot permanently delete: Only users with no transactions can be permanently deleted.");
+        }
+
+        var hasSentNotifications = await _context.Notifications
+            .AnyAsync(n => n.SenderId == id);
+        if (hasSentNotifications)
+        {
+            return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, 
+                "Cannot permanently delete: Only users with no transactions can be permanently deleted.");
+        }
+
+        try
+        {
+            await using var transaction = await _context.Database.BeginTransactionAsync();
+            try
+            {
+                // Remove dependent records that have FK to user (no business history)
+                await _context.UserDepots.Where(ud => ud.UserId == id).ExecuteDeleteAsync();
+                await _context.NotificationReceivers.Where(nr => nr.UserId == id).ExecuteDeleteAsync();
+                await _context.AnnouncementDismissals.Where(ad => ad.UserId == id).ExecuteDeleteAsync();
+                await _context.LoginAttempts.Where(la => la.UserId == id).ExecuteDeleteAsync();
+                await _context.UserDelegations.Where(ud => ud.DelegatorUserId == id || ud.DelegateeUserId == id).ExecuteDeleteAsync();
+                await _context.WorkflowStepNotifiers.Where(wsn => wsn.UserId == id).ExecuteDeleteAsync();
+                await _context.BlacklistedTokens.Where(bt => bt.UserId == id).ExecuteDeleteAsync();
+
+                var result = await _userManager.DeleteAsync(user);
+                if (!result.Succeeded)
+                {
+                    await transaction.RollbackAsync();
+                    var errors = string.Join(",", result.Errors.Select(e => e.Description));
+                    return APIOperationResponse<bool>.Fail(ResponseType.InternalServerError, errors);
+                }
+
+                await transaction.CommitAsync();
+                _logger.LogInformation("User permanently deleted. TargetUserId: {TargetUserId}, Username: {Username}, DeletedBy: {DeletedBy}", 
+                    id, user.UserName, _currentUserService.UserId);
+                return APIOperationResponse<bool>.Success(true, "User permanently deleted");
+            }
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync();
+                throw;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error permanently deleting user. TargetUserId: {TargetUserId}", id);
+            var innerMsg = ex.InnerException?.Message ?? ex.Message;
+            if (innerMsg.Contains("REFERENCE constraint") || innerMsg.Contains("FK_") || innerMsg.Contains("foreign key"))
+            {
+                return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, 
+                    "Cannot permanently delete: Only users with no transactions can be permanently deleted.");
+            }
+            return APIOperationResponse<bool>.Fail(ResponseType.InternalServerError, 
+                "An unexpected error occurred while permanently deleting the user. Please try again or contact support.");
+        }
+    }
+
     //public async Task<APIOperationResponse<List<UserRoleDto>>> GetUserRolesAsync(string userId)
     //{
     //    var user = await _userManager.FindByIdAsync(userId);
