@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Ettad.CrossCutting.Common.Security;
 using Ettad.ResponseHandler.Models;
@@ -86,6 +86,14 @@ namespace Ettad.User.API.Controllers
         public async Task<IActionResult> Restore(string id)
         {
             var response = await _userService.RestoreAsync(id);
+            return ProcessResponse(response);
+        }
+
+        [CheckAuthorize("Permissions.SystemUsers.Delete")]
+        [HttpDelete("{id}/permanent")]
+        public async Task<IActionResult> PermanentDelete(string id)
+        {
+            var response = await _userService.PermanentDeleteAsync(id);
             return ProcessResponse(response);
         }
 
