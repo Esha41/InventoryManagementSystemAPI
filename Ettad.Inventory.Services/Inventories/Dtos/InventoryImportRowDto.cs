@@ -10,7 +10,7 @@ namespace Ettad.Inventory.Service.Inventories.Dtos
         public string? ItemName { get; set; } // "ItemName (ItemNo)" format from dropdown
         public string ItemNo { get; set; } = string.Empty;
         public long? ItemId { get; set; }
-        public int Lot { get; set; }
+        public string Lot { get; set; } = string.Empty;
         
         // Changed from IDs to names for user-friendly Excel import
         public string? Supplier { get; set; }

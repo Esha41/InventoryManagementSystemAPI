@@ -366,9 +366,10 @@ namespace Ettad.User.Services.Implementation
                 return APIOperationResponse<bool>.Fail(ResponseType.NotFound, "Delegation not found.");
             }
 
-            if (delegation.DelegatorUserId != currentUserId && 
-                !_currentUserService.IsSuperAdmin && 
-                !_currentUserService.IsUserHasClaim("Permissions.UserDelegations.Delete"))
+            if (delegation.DelegatorUserId != currentUserId &&
+                !_currentUserService.IsSuperAdmin &&
+                !_currentUserService.IsUserHasClaim("Permissions.UserDelegations.Delete") &&
+                !_currentUserService.IsUserHasClaim("DelegationManagement"))
             {
                 return APIOperationResponse<bool>.Fail(ResponseType.Forbidden, "You can only revoke your own delegations.");
             }

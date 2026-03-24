@@ -31,6 +31,10 @@ namespace Ettad.Data.Enums
       
         [Category(PlainPermissionsGenerator.SystemFeatures)]
         StockNotificationSettingsPage,
+
+        /// <summary>Admin dashboard: view all delegations, history, and delegation system settings.</summary>
+        [Category(PlainPermissionsGenerator.SystemFeatures)]
+        DelegationManagement,
       
         [Category(PlainPermissionsGenerator.Reports)]
         InventorySummaryReportPage,

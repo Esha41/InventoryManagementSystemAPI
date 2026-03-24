@@ -9,7 +9,7 @@ namespace Ettad.Inventory.Service.Inventories.Dtos
 
         public long ItemId { get; set; }
 
-        public int Lot { get; set; }
+        public string Lot { get; set; } = string.Empty;
 
         public long InventoryId { get; set; }
 

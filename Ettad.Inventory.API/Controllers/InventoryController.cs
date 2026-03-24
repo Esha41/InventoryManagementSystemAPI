@@ -209,7 +209,7 @@ namespace Ettad.Inventory.API.Controllers
         [ProducesResponseType((int)HttpStatusCode.OK)]
         [ProducesResponseType((int)HttpStatusCode.NotFound)]
         [CheckAuthorize("Permissions.Inventory.View", "Permissions.Inventory.Page")]
-        public async Task<IActionResult> GetLotByNumber(int lotNumber)
+        public async Task<IActionResult> GetLotByNumber(string lotNumber)
         {
             var result = await _inventoryService.GetLotByNumberAsync(lotNumber);
             return ProcessResponse(result);
@@ -453,7 +453,7 @@ namespace Ettad.Inventory.API.Controllers
 
                 // Sample data row
                 templateSheet.Cells[2, 1].Value = allItems.FirstOrDefault().DisplayName ?? ""; // Item Name (dropdown)
-                templateSheet.Cells[2, 2].Value = 1; // Lot
+                templateSheet.Cells[2, 2].Value = "LOT-001"; // Lot (numeric or alphanumeric)
                 templateSheet.Cells[2, 3].Value = ""; // Supplier (will have dropdown)
                 templateSheet.Cells[2, 4].Value = ""; // Manufacturer (will have dropdown)
                 templateSheet.Cells[2, 5].Value = ""; // Country (will have dropdown)
@@ -496,7 +496,7 @@ namespace Ettad.Inventory.API.Controllers
 
                 // Set column widths
                 templateSheet.Column(1).Width = 30; // Item Name
-                templateSheet.Column(2).Width = 10; // Lot
+                templateSheet.Column(2).Width = 18; // Lot
                 templateSheet.Column(3).Width = 20; // Supplier
                 templateSheet.Column(4).Width = 20; // Manufacturer
                 templateSheet.Column(5).Width = 20; // Country

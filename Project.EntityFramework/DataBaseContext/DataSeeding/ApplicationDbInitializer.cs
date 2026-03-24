@@ -1356,7 +1356,7 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                         inventory.InventoryDetails.Add(new InventoryDetail
                         {
                             ItemId = ammo.Id,
-                            Lot = ++lotSequence,
+                            Lot = (++lotSequence).ToString(System.Globalization.CultureInfo.InvariantCulture),
                             ItemQuantity = random.Next(5000, 25000), // Realistic military stockpile
                             SupplierId = supplier?.Id,
                             ManufacturerId = manufacturer?.Id,
@@ -1384,7 +1384,7 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                         inventory.InventoryDetails.Add(new InventoryDetail
                         {
                             ItemId = weapon.Id,
-                            Lot = ++lotSequence,
+                            Lot = (++lotSequence).ToString(System.Globalization.CultureInfo.InvariantCulture),
                             ItemQuantity = random.Next(100, 500), // Realistic military stockpile
                             SupplierId = supplier?.Id,
                             ManufacturerId = manufacturer?.Id,
@@ -1412,7 +1412,7 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                         inventory.InventoryDetails.Add(new InventoryDetail
                         {
                             ItemId = explosive.Id,
-                            Lot = ++lotSequence,
+                            Lot = (++lotSequence).ToString(System.Globalization.CultureInfo.InvariantCulture),
                             ItemQuantity = random.Next(1000, 5000), // Realistic military stockpile
                             SupplierId = supplier?.Id,
                             ManufacturerId = manufacturer?.Id,
