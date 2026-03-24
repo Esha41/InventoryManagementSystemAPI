@@ -254,11 +254,10 @@ public class UserService : IUserService
         // Determine username and password based on user role and LDAP status
         string username;
         string password;
-        bool isSuperAdmin = _currentUserService.IsSuperAdmin;
 
-        if (!isSuperAdmin && dto.IsLdapUser)
+        if (dto.IsLdapUser)
         {
-            // Non-super admin creating LDAP user: use LdapUserName and allow nullable password
+            // LDAP user (any creator): use LdapUserName / UserName and allow missing password (random hash stored; auth via directory)
             username = dto.LdapUserName ?? dto.UserName ?? string.Empty;
             if (string.IsNullOrWhiteSpace(username))
             {
@@ -342,11 +341,11 @@ public class UserService : IUserService
 
             // For LDAP users, if password is null, generate a random password (won't be used for authentication)
             password = dto.Password ?? Guid.NewGuid().ToString() + "!@#$%^&*";
-            _logger.LogInformation("Non-super admin creating LDAP user. Using LdapUserName: {LdapUserName}", username);
+            _logger.LogInformation("Creating LDAP user. Using LdapUserName: {LdapUserName}, CreatedBy: {CreatedBy}", username, _currentUserService.UserId);
         }
         else
         {
-            // Super admin or non-LDAP user: use standard UserName and require password
+            // Local (non-LDAP) user: standard UserName and require password
             if (string.IsNullOrWhiteSpace(dto.UserName))
             {
                 _logger.LogWarning("User creation failed: UserName is required. CreatedBy: {CreatedBy}", 
