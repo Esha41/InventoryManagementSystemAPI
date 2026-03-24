@@ -42,7 +42,8 @@ namespace Ettad.RequestManagement.Service.SupplyManagement.Profiles
                 .ForMember(dest => dest.Id, opt => opt.Ignore())
                 .ForMember(dest => dest.SupplyId, opt => opt.Ignore())
                 .ForMember(dest => dest.Supply, opt => opt.Ignore())
-                .ForMember(dest => dest.Item, opt => opt.Ignore());
+                .ForMember(dest => dest.Item, opt => opt.Ignore())
+                .ForMember(dest => dest.Lot, opt => opt.MapFrom(src => (src.Lot ?? string.Empty).Trim()));
 
             // Update DTO to Entity
             CreateMap<UpdateSupplyDto, Supply>()
@@ -65,7 +66,8 @@ namespace Ettad.RequestManagement.Service.SupplyManagement.Profiles
                 .ForMember(dest => dest.Id, opt => opt.Ignore())
                 .ForMember(dest => dest.SupplyId, opt => opt.Ignore())
                 .ForMember(dest => dest.Supply, opt => opt.Ignore())
-                .ForMember(dest => dest.Item, opt => opt.Ignore());
+                .ForMember(dest => dest.Item, opt => opt.Ignore())
+                .ForMember(dest => dest.Lot, opt => opt.MapFrom(src => (src.Lot ?? string.Empty).Trim()));
         }
     }
 }

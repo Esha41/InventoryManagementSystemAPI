@@ -190,6 +190,7 @@ namespace Ettad.Inventory.Service.Inventories
                     .Select(d =>
                     {
                         var detail = _mapper.Map<InventoryDetailEntity>(d);
+                        detail.Lot = (d.Lot ?? string.Empty).Trim();
                         return detail;
                     })
                     .ToList();
@@ -266,6 +267,7 @@ namespace Ettad.Inventory.Service.Inventories
                         {
                             // Update the existing detail
                             _mapper.Map(detailDto, existingDetail);
+                            existingDetail.Lot = (detailDto.Lot ?? string.Empty).Trim();
                             // Update in repository - use the already-mapped entity
                             await _inventoryDetailRepository.UpdateAsync(existingDetail);
                         }
@@ -274,6 +276,7 @@ namespace Ettad.Inventory.Service.Inventories
                     {
                         // Add new detail
                         var newDetail = _mapper.Map<InventoryDetailEntity>(detailDto);
+                        newDetail.Lot = (detailDto.Lot ?? string.Empty).Trim();
                         newDetail.InventoryId = id;
                         existingInventory.InventoryDetails.Add(newDetail);
                     }
@@ -783,15 +786,21 @@ namespace Ettad.Inventory.Service.Inventories
             }
         }
 
-        public async Task<APIOperationResponse<LotDetailDto>> GetLotByNumberAsync(int lotNumber)
+        public async Task<APIOperationResponse<LotDetailDto>> GetLotByNumberAsync(string lotNumber)
         {
+            var lotKey = lotNumber?.Trim() ?? string.Empty;
             _logger.LogInformation("Getting lot details by lot number. Lot: {Lot}, User: {UserId}",
-                lotNumber, _currentUserService.UserId);
+                lotKey, _currentUserService.UserId);
 
             try
             {
+                if (string.IsNullOrWhiteSpace(lotKey))
+                {
+                    return APIOperationResponse<LotDetailDto>.Fail(ResponseType.BadRequest, "Lot is required");
+                }
+
                 var inventoryDetail = await _inventoryDetailRepository.FindOneAsync(
-                    id => id.Lot == lotNumber,
+                    id => id.Lot == lotKey,
                     false,
                     nameof(InventoryDetailEntity.Inventory),
                     $"{nameof(InventoryDetailEntity.Inventory)}.{nameof(InventoryEntity.Depo)}",
@@ -804,13 +813,13 @@ namespace Ettad.Inventory.Service.Inventories
                 if (inventoryDetail == null || inventoryDetail.Inventory == null || inventoryDetail.Inventory.IsDeleted)
                 {
                     _logger.LogWarning("Lot not found or inventory deleted. Lot: {Lot}, User: {UserId}",
-                        lotNumber, _currentUserService.UserId);
+                        lotKey, _currentUserService.UserId);
                     return APIOperationResponse<LotDetailDto>.Fail(ResponseType.NotFound, "Lot not found");
                 }
 
                 // Get all supply details for this lot to calculate usage
                 var supplyDetails = await _supplyDetailsRepository.FindAsync(
-                    sd => sd.Lot == lotNumber && !sd.IsDeleted
+                    sd => sd.Lot == lotKey && !sd.IsDeleted
                 );
 
                 // Get all supplies to check submission status
@@ -847,7 +856,7 @@ namespace Ettad.Inventory.Service.Inventories
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error getting lot details by number. Lot: {Lot}, User: {UserId}",
-                    lotNumber, _currentUserService.UserId);
+                    lotKey, _currentUserService.UserId);
                 return APIOperationResponse<LotDetailDto>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
             }
         }

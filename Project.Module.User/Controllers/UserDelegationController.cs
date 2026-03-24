@@ -46,7 +46,7 @@ namespace Ettad.User.API.Controllers
         }
 
         [HttpPut("{id}/revoke")]
-        [CheckAuthorize("Permissions.UserDelegations.Delete")]
+        [CheckAuthorize("Permissions.UserDelegations.Delete", "DelegationManagement")]
         public async Task<IActionResult> Revoke(int id)
         {
             var response = await _userDelegationService.RevokeDelegationAsync(id);
@@ -77,9 +77,9 @@ namespace Ettad.User.API.Controllers
             return ProcessResponse(response);
         }
 
-        // Admin endpoints
+        // Admin endpoints (require DelegationManagement — not only View/Page used for profile delegations)
         [HttpGet("admin/all")]
-        [CheckAuthorize("Permissions.UserDelegations.View", "Permissions.UserDelegations.Page")]
+        [CheckAuthorize("DelegationManagement")]
         public async Task<IActionResult> GetAllDelegations()
         {
             var response = await _userDelegationService.GetAllDelegationsAsync();
@@ -87,7 +87,7 @@ namespace Ettad.User.API.Controllers
         }
 
         [HttpGet("admin/history")]
-        [CheckAuthorize("Permissions.UserDelegations.View", "Permissions.UserDelegations.Page")]
+        [CheckAuthorize("DelegationManagement")]
         public async Task<IActionResult> GetDelegationHistory()
         {
             var response = await _userDelegationService.GetDelegationHistoryAsync();
@@ -95,7 +95,7 @@ namespace Ettad.User.API.Controllers
         }
 
         [HttpGet("settings/cross-department")]
-        [CheckAuthorize("Permissions.UserDelegations.View", "Permissions.UserDelegations.Page")]
+        [CheckAuthorize("DelegationManagement")]
         public async Task<IActionResult> GetCrossDepartmentDelegationSetting()
         {
             var response = await _userDelegationService.GetAllowCrossDepartmentDelegationAsync();
@@ -103,7 +103,7 @@ namespace Ettad.User.API.Controllers
         }
 
         [HttpPut("settings/cross-department")]
-        [CheckAuthorize("Permissions.UserDelegations.View", "Permissions.UserDelegations.Page")] // Ideally should be a stricter permission
+        [CheckAuthorize("DelegationManagement")]
         public async Task<IActionResult> UpdateCrossDepartmentDelegationSetting([FromBody] bool allow)
         {
             var response = await _userDelegationService.UpdateAllowCrossDepartmentDelegationAsync(allow);
@@ -111,7 +111,7 @@ namespace Ettad.User.API.Controllers
         }
 
         [HttpGet("settings/delegator-action")]
-        [CheckAuthorize("Permissions.UserDelegations.View", "Permissions.UserDelegations.Page")]
+        [CheckAuthorize("DelegationManagement")]
         public async Task<IActionResult> GetDelegatorActionSetting()
         {
             var response = await _userDelegationService.GetAllowDelegatorActionAsync();
@@ -119,7 +119,7 @@ namespace Ettad.User.API.Controllers
         }
 
         [HttpPut("settings/delegator-action")]
-        [CheckAuthorize("Permissions.UserDelegations.View", "Permissions.UserDelegations.Page")] // Ideally verify stricter permisison if available
+        [CheckAuthorize("DelegationManagement")]
         public async Task<IActionResult> UpdateDelegatorActionSetting([FromBody] bool allow)
         {
             var response = await _userDelegationService.UpdateAllowDelegatorActionAsync(allow);

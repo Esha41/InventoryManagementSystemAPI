@@ -1,4 +1,4 @@
-﻿using Ettad.Data.Entities;
+using Ettad.Data.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -12,7 +12,8 @@ namespace Ettad.EntityFramework.Configurations
             builder.HasKey(x => x.Id);
 
             builder.Property(x => x.Lot)
-                .IsRequired();
+                .IsRequired()
+                .HasMaxLength(64);
 
             builder.Property(x => x.ItemQuantity)
                 .IsRequired();
