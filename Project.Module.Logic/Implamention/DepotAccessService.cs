@@ -43,11 +43,20 @@ namespace Ettad.Lookups.Services.Implementation
                 return true;
             }
 
-            // Depots.ViewAll = access to all depots. Page = access, View = read, ViewAll = see all (no UserDepot filter).
+            // Depots.ViewAll: read any depot (no UserDepot filter).
             var hasViewAll = await _permissionService.HasPermissionAsync("Permissions.Depots.ViewAll");
             if (hasViewAll)
             {
                 return true;
+            }
+
+            // Scoped read: Depots.View (read depots) or Inventory.View (read inventory in assigned depots). Depots.Page alone does not grant access.
+            var canReadScoped = await _permissionService.HasPermissionAsync("Permissions.Depots.View")
+                || await _permissionService.HasPermissionAsync("Permissions.Inventory.View");
+            if (!canReadScoped)
+            {
+                _logger.LogDebug("User {UserId} lacks Depots.View/Inventory.View — denying access to depot {DepotId}", userId, depotId);
+                return false;
             }
 
             var hasAccess = await _userDepotRepository

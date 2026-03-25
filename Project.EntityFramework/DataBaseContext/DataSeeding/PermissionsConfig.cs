@@ -101,6 +101,7 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
             "Permissions.ItemTypes.Delete",
         };
 
+        /// <summary>Depots: Page = open depot admin module; View = read depot data (UserDepot-scoped); ViewAll = read all depots (no UserDepot filter).</summary>
         public static List<string> ReadDepo = new()
         {
             "Permissions.Depots.Page",
@@ -109,7 +110,7 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
         };
 
         /// <summary>
-        /// Depot view only (no Page) - for roles that should see depots filtered by UserDepot assignments (e.g. Depot Officer).
+        /// Depots.View only (no Page) — read depots filtered by UserDepot (e.g. depot officer). Use with Inventory.View for warehouse flows.
         /// </summary>
         public static List<string> ReadDepoViewOnly = new()
         {

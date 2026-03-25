@@ -6,8 +6,9 @@ namespace Ettad.Lookups.Services.Contracts
     public interface IDepotAccessService
     {
         /// <summary>
-        /// Checks if the user has access to the specified depot.
-        /// SuperAdmin users always have access. Other users must have an entry in UserDepots.
+        /// Checks if the user has access to the specified depot for read/data operations.
+        /// SuperAdmin: always. Depots.ViewAll: any depot.
+        /// Otherwise Depots.View or Inventory.View with a UserDepot row for that depot. Depots.Page alone does not grant access.
         /// </summary>
         /// <param name="userId">The user ID to check</param>
         /// <param name="depotId">The depot ID to check</param>

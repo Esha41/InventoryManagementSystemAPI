@@ -51,12 +51,21 @@ namespace Ettad.Lookups.Services.Implementation
                     return APIOperationResponse<List<Depot>>.Success(allDepots);
                 }
 
-                // Depots.ViewAll = see all depots. Page = access, View = read, ViewAll = see all (no UserDepot filter).
+                // Depots.ViewAll: read all depots (no UserDepot filter).
                 var hasViewAll = await _permissionService.HasPermissionAsync("Permissions.Depots.ViewAll");
                 if (hasViewAll)
                 {
                     _logger.LogInformation("User has depot ViewAll permission - returning all {Count} depots", allDepots.Count);
                     return APIOperationResponse<List<Depot>>.Success(allDepots);
+                }
+
+                // Scoped read: Depots.View (read depot list) or Inventory.View (warehouse flows). Depots.Page alone does not return rows.
+                var canReadScoped = await _permissionService.HasPermissionAsync("Permissions.Depots.View")
+                    || await _permissionService.HasPermissionAsync("Permissions.Inventory.View");
+                if (!canReadScoped)
+                {
+                    _logger.LogInformation("User lacks Depots.View or Inventory.View — returning empty depot list");
+                    return APIOperationResponse<List<Depot>>.Success(new List<Depot>());
                 }
 
                 // Filter by UserDepot assignments
