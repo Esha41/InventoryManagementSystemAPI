@@ -40,7 +40,7 @@ namespace Ettad.Inventory.Service.ItemDepartmentAssignments
             try
             {
                 var assignment = await _assignmentRepository.FindOneAsync(
-                    x => x.Id == id && !x.IsDeleted,
+                    x => x.Id == id,
                     false,
                     nameof(ItemDepartmentAssignment.Item),
                     nameof(ItemDepartmentAssignment.Department));
@@ -63,7 +63,7 @@ namespace Ettad.Inventory.Service.ItemDepartmentAssignments
             try
             {
                 var assignments = await _assignmentRepository.FindAsync(
-                    x => !x.IsDeleted,
+                    x => true,
                     false,
                     nameof(ItemDepartmentAssignment.Item),
                     nameof(ItemDepartmentAssignment.Department));
@@ -88,7 +88,7 @@ namespace Ettad.Inventory.Service.ItemDepartmentAssignments
             try
             {
                 var assignments = await _assignmentRepository.FindAsync(
-                    x => !x.IsDeleted && x.DepartmentId == departmentId,
+                    x => x.DepartmentId == departmentId,
                     false,
                     nameof(ItemDepartmentAssignment.Item),
                     nameof(ItemDepartmentAssignment.Department));
@@ -113,7 +113,7 @@ namespace Ettad.Inventory.Service.ItemDepartmentAssignments
             try
             {
                 var assignments = await _assignmentRepository.FindAsync(
-                    x => !x.IsDeleted && x.ItemId == itemId,
+                    x => x.ItemId == itemId,
                     false,
                     nameof(ItemDepartmentAssignment.Item),
                     nameof(ItemDepartmentAssignment.Department));
@@ -140,8 +140,7 @@ namespace Ettad.Inventory.Service.ItemDepartmentAssignments
                 // Check if assignment already exists
                 var existing = await _assignmentRepository.FindOneAsync(
                     x => x.ItemId == inputDto.ItemId && 
-                         x.DepartmentId == inputDto.DepartmentId && 
-                         !x.IsDeleted);
+                         x.DepartmentId == inputDto.DepartmentId);
 
                 if (existing != null)
                     return APIOperationResponse<long>.Fail(ResponseType.BadRequest, "This item is already assigned to this department");
@@ -183,7 +182,7 @@ namespace Ettad.Inventory.Service.ItemDepartmentAssignments
         {
             try
             {
-                var assignment = await _assignmentRepository.FindOneAsync(x => x.Id == id && !x.IsDeleted);
+                var assignment = await _assignmentRepository.FindOneAsync(x => x.Id == id);
                 if (assignment == null)
                     return APIOperationResponse<bool>.Fail(ResponseType.NotFound, "Assignment not found");
 
@@ -191,8 +190,7 @@ namespace Ettad.Inventory.Service.ItemDepartmentAssignments
                 var existing = await _assignmentRepository.FindOneAsync(
                     x => x.ItemId == inputDto.ItemId && 
                          x.DepartmentId == inputDto.DepartmentId && 
-                         x.Id != id && 
-                         !x.IsDeleted);
+                         x.Id != id);
 
                 if (existing != null)
                     return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, "This item is already assigned to this department");
@@ -230,15 +228,11 @@ namespace Ettad.Inventory.Service.ItemDepartmentAssignments
         {
             try
             {
-                var assignment = await _assignmentRepository.FindOneAsync(x => x.Id == id && !x.IsDeleted);
+                var assignment = await _assignmentRepository.FindOneAsync(x => x.Id == id);
                 if (assignment == null)
                     return APIOperationResponse<bool>.Fail(ResponseType.NotFound, "Assignment not found");
 
-                assignment.IsDeleted = true;
-                assignment.ModifiedBy = _currentUserService.UserId;
-                assignment.ModificationDate = DateTime.UtcNow;
-
-                await _assignmentRepository.UpdateAsync(assignment);
+                await _assignmentRepository.DeleteAsync(assignment);
 
                 _logger.LogInformation("Deleted item-department assignment. Id: {Id}, User: {UserId}", id, _currentUserService.UserId);
 
@@ -263,8 +257,7 @@ namespace Ettad.Inventory.Service.ItemDepartmentAssignments
                     // Check if assignment already exists
                     var existing = await _assignmentRepository.FindOneAsync(
                         x => x.ItemId == dto.ItemId && 
-                             x.DepartmentId == dto.DepartmentId && 
-                             !x.IsDeleted);
+                             x.DepartmentId == dto.DepartmentId);
 
                     if (existing != null)
                     {
@@ -317,7 +310,7 @@ namespace Ettad.Inventory.Service.ItemDepartmentAssignments
             try
             {
                 var assignments = await _assignmentRepository.FindAsync(
-                    x => !x.IsDeleted,
+                    x => true,
                     false,
                     nameof(ItemDepartmentAssignment.Item),
                     nameof(ItemDepartmentAssignment.Department));

@@ -17,8 +17,7 @@ namespace Ettad.EntityFramework.Configurations
 
             // Unique constraint: ItemId + DepartmentId combination must be unique
             builder.HasIndex(x => new { x.ItemId, x.DepartmentId })
-                .IsUnique()
-                .HasFilter("[IsDeleted] = 0");
+                .IsUnique();
 
             // Indexes for performance
             builder.HasIndex(x => x.ItemId);
