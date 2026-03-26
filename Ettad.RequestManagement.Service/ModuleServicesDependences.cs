@@ -34,6 +34,7 @@ namespace Ettad.RequestManagement.Service
             services.AddScoped<IReturnService, ReturnService>();
             services.AddScoped<IOrderService, OrderService>();
             services.AddScoped<ISupplyService, SupplyService>();
+            services.AddScoped<IWorkflowSupplySummaryService, WorkflowSupplySummaryService>();
             services.AddScoped<IRequestService, RequestService>();
             services.AddScoped<IOrderItemTrackingService, OrderItemTrackingService>();
 

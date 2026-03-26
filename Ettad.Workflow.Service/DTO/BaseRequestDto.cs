@@ -53,6 +53,9 @@ namespace Ettad.Workflows.Service.DTO
         public string? UsageTimeTo { get; set; }
         public int? NumberOfOfficer { get; set; }
         public int? NumberOfOtherRank { get; set; }
+
+        /// <summary>Pickup/supply date for orders (from Order.SupplyDate).</summary>
+        public DateTime? SupplyDate { get; set; }
       
     }
 

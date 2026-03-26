@@ -421,6 +421,7 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 .Concat(new List<string> 
                     { 
                         PlainPermissions.UpdateRequestAndSuggestLots.ToString(),
+                        PlainPermissions.ViewWorkflowSupplySummary.ToString(),
                         PlainPermissions.InventoryDashboard.ToString(),
                     }
                 )
@@ -595,6 +596,7 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 .Concat(new List<string>
                     {
                         PlainPermissions.UpdateRequestAndSupply.ToString(),
+                        PlainPermissions.ViewWorkflowSupplySummary.ToString(),
                         PlainPermissions.InventoryDashboard.ToString(),
                         PlainPermissions.CannotRejectRequest.ToString(),
                     }
@@ -619,6 +621,7 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 .Concat(new List<string>
                     {
                         PlainPermissions.UpdateRequestAndSupply.ToString(),
+                        PlainPermissions.ViewWorkflowSupplySummary.ToString(),
                         PlainPermissions.InventoryDashboard.ToString(),
                         PlainPermissions.CannotRejectRequest.ToString(),
                     }
@@ -641,7 +644,8 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 .Concat(ReadDepo)
                 .Concat(new List<string>
                     {
-                        PlainPermissions.UpdateRequestAndSupply.ToString(),                       
+                        PlainPermissions.UpdateRequestAndSupply.ToString(),
+                        PlainPermissions.ViewWorkflowSupplySummary.ToString(),
                     }
                 )
                 .ToList();
@@ -665,6 +669,7 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 .Concat(new List<string>
                     {
                         PlainPermissions.SetSupplyPickupDate.ToString(),
+                        PlainPermissions.ViewWorkflowSupplySummary.ToString(),
                         PlainPermissions.InventoryDashboard.ToString(),
                         PlainPermissions.CannotRejectRequest.ToString(),
                     }
@@ -688,6 +693,7 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 .Concat(new List<string>
                     {
                         PlainPermissions.ConfirmSupplyPickupDate.ToString(),
+                        PlainPermissions.ViewWorkflowSupplySummary.ToString(),
                         PlainPermissions.InventoryDashboard.ToString(),
                         PlainPermissions.CannotRejectRequest.ToString(),
                     }
@@ -712,6 +718,7 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 .Concat(new List<string>
                     {
                         PlainPermissions.SubmitSupply.ToString(),
+                        PlainPermissions.ViewWorkflowSupplySummary.ToString(),
                         PlainPermissions.InventoryDashboard.ToString(),
                         PlainPermissions.CannotRejectRequest.ToString(),
                         PlainPermissions.ReviewWeaponSupply.ToString(),

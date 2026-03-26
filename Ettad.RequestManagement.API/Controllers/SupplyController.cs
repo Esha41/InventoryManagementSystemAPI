@@ -17,10 +17,26 @@ namespace Ettad.RequestManagement.API.Controllers
     public class SupplyController : ApiControllerBase
     {
         private readonly ISupplyService _supplyService;
+        private readonly IWorkflowSupplySummaryService _workflowSupplySummaryService;
 
-        public SupplyController(ISupplyService supplyService)
+        public SupplyController(ISupplyService supplyService, IWorkflowSupplySummaryService workflowSupplySummaryService)
         {
             _supplyService = supplyService;
+            _workflowSupplySummaryService = workflowSupplySummaryService;
+        }
+
+        /// <summary>
+        /// Read-only workflow supply summary (completed orders only). Requires ViewWorkflowSupplySummary; SuperAdmin bypasses via CheckAuthorize.
+        /// </summary>
+        [HttpGet("{orderId:long}/workflow-summary")]
+        [ProducesResponseType(typeof(APIOperationResponse<WorkflowSupplySummaryDto>), (int)HttpStatusCode.OK)]
+        [ProducesResponseType((int)HttpStatusCode.Forbidden)]
+        [ProducesResponseType((int)HttpStatusCode.NotFound)]
+        [CheckAuthorize("ViewWorkflowSupplySummary")]
+        public async Task<IActionResult> GetWorkflowSupplySummary(long orderId)
+        {
+            var result = await _workflowSupplySummaryService.GetSummaryForOrderAsync(orderId);
+            return ProcessResponse(result);
         }
 
         /// <summary>

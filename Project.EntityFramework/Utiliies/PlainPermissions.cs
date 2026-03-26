@@ -64,6 +64,9 @@ namespace Ettad.Data.Enums
         ViewSupplyDate,
 
         [Category(PlainPermissionsGenerator.Workflow)]
+        ViewWorkflowSupplySummary,
+
+        [Category(PlainPermissionsGenerator.Workflow)]
         CannotRejectRequest,
 
         [Category(PlainPermissionsGenerator.Workflow)]
