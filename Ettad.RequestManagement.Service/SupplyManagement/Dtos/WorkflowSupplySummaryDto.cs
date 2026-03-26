@@ -23,6 +23,8 @@ namespace Ettad.RequestManagement.Service.SupplyManagement.Dtos
         public string ItemName { get; set; } = string.Empty;
         public string? ItemNo { get; set; }
         public long RequestedQuantity { get; set; }
+        /// <summary>Quantity approved on the order (may be lower than originally requested).</summary>
+        public long ApprovedQuantity { get; set; }
         public long SuppliedQuantity { get; set; }
         public string Lot { get; set; } = string.Empty;
         public long? DepotId { get; set; }

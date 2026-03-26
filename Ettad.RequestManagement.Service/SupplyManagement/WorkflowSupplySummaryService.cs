@@ -101,22 +101,22 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
                 select new { a.Id, DepotId = a.DepotId, DepotName = d.NameEn, DepotCode = d.Code }
             ).ToDictionaryAsync(x => x.Id);
 
-            var requestedByItem = order.RequestItems?
-                .Where(ri => !ri.IsDeleted)
-                .GroupBy(ri => ri.ItemId)
-                .ToDictionary(g => g.Key, g => g.Sum(ri => ri.Quantity)) ?? new Dictionary<long, long>();
+            var qtyByItem = await BuildRequestedApprovedByItemAsync(order.Id, order.RequestItems?.Where(ri => !ri.IsDeleted).ToList() ?? new List<RequestItem>());
 
             foreach (var line in details)
             {
                 depotByAsset.TryGetValue(line.AssetId, out var dep);
-                requestedByItem.TryGetValue(line.ItemId, out var reqQty);
+                qtyByItem.TryGetValue(line.ItemId, out var qty);
+                var requestedOrig = qty.RequestedOriginal;
+                var approved = qty.Approved;
 
                 dto.Lines.Add(new WorkflowSupplySummaryLineDto
                 {
                     ItemId = line.ItemId,
                     ItemName = line.ItemName ?? string.Empty,
                     ItemNo = null,
-                    RequestedQuantity = reqQty,
+                    RequestedQuantity = requestedOrig,
+                    ApprovedQuantity = approved,
                     SuppliedQuantity = 1,
                     Lot = line.AssetSerialNumber ?? line.AssetTag ?? "-",
                     DepotId = dep?.DepotId,
@@ -160,10 +160,7 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
             if (details.Count == 0)
                 return dto;
 
-            var requestedByItem = order.RequestItems?
-                .Where(ri => !ri.IsDeleted)
-                .GroupBy(ri => ri.ItemId)
-                .ToDictionary(g => g.Key, g => g.Sum(ri => ri.Quantity)) ?? new Dictionary<long, long>();
+            var qtyByItem = await BuildRequestedApprovedByItemAsync(orderId, order.RequestItems?.Where(ri => !ri.IsDeleted).ToList() ?? new List<RequestItem>());
 
             var depotLookup = await BuildDepotLookupForLinesAsync(details);
 
@@ -172,14 +169,15 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
                 var lotKey = (d.Lot ?? string.Empty).Trim();
                 var mapKey = $"{d.ItemId}|{lotKey}";
                 depotLookup.TryGetValue(mapKey, out var dep);
-                requestedByItem.TryGetValue(d.ItemId, out var reqQty);
+                qtyByItem.TryGetValue(d.ItemId, out var qty);
 
                 dto.Lines.Add(new WorkflowSupplySummaryLineDto
                 {
                     ItemId = d.ItemId,
                     ItemName = d.Item?.Name ?? string.Empty,
                     ItemNo = d.Item?.ItemNo,
-                    RequestedQuantity = reqQty,
+                    RequestedQuantity = qty.RequestedOriginal,
+                    ApprovedQuantity = qty.Approved,
                     SuppliedQuantity = d.Quantity,
                     Lot = d.Lot ?? string.Empty,
                     DepotId = dep?.DepotId,
@@ -190,6 +188,47 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
             }
 
             return dto;
+        }
+
+        /// <summary>
+        /// Per item: original requested (from history when quantity was reduced) and approved quantity (current request lines).
+        /// </summary>
+        private async Task<Dictionary<long, (long RequestedOriginal, long Approved)>> BuildRequestedApprovedByItemAsync(
+            long orderId,
+            List<RequestItem> requestItems)
+        {
+            var result = new Dictionary<long, (long, long)>();
+            if (requestItems.Count == 0)
+                return result;
+
+            var histories = await _context.OrderItemHistory
+                .AsNoTracking()
+                .Where(h => h.OrderId == orderId && !h.IsDeleted && h.RequestItemId != null)
+                .ToListAsync();
+
+            long MaxSnapshotForRequestItem(RequestItem ri)
+            {
+                long m = ri.Quantity;
+                foreach (var h in histories.Where(x => x.RequestItemId == ri.Id))
+                {
+                    if (h.PreviousQuantity.HasValue)
+                        m = Math.Max(m, h.PreviousQuantity.Value);
+                    if (h.NewQuantity.HasValue)
+                        m = Math.Max(m, h.NewQuantity.Value);
+                    if (h.ApprovedQuantity.HasValue)
+                        m = Math.Max(m, h.ApprovedQuantity.Value);
+                }
+                return m;
+            }
+
+            foreach (var g in requestItems.GroupBy(ri => ri.ItemId))
+            {
+                var approved = g.Sum(ri => ri.Quantity);
+                var requested = g.Sum(ri => MaxSnapshotForRequestItem(ri));
+                result[g.Key] = (requested, approved);
+            }
+
+            return result;
         }
 
         private async Task<Dictionary<string, DepotRow>> BuildDepotLookupForLinesAsync(List<SupplyDetail> details)
