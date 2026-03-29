@@ -290,12 +290,12 @@ namespace Ettad.User.Services.Implementation
             if (!loginInformation.ForceLogin && !string.IsNullOrEmpty(user.RefreshToken) && user.RefreshTokenExpiryDate.HasValue && user.RefreshTokenExpiryDate.Value > _dateTimeProvider.Now)
             {
                 _logger.LogInformation(
-                    "[ADMIN LOGIN] BLOCKED - Already logged in elsewhere | Username: {Username} | UserId: {UserId} | IP: {ClientIP}",
+                    "[ADMIN LOGIN] BLOCKED - Active session exists | Username: {Username} | UserId: {UserId} | IP: {ClientIP}",
                     loginInformation.Username, user.Id, clientIp);
                 return APIOperationResponse<AuthenticatedResponse>.Fail(
                     ResponseType.Conflict,
                     CommonErrorCodes.ALREADY_LOGGED_IN,
-                    "You are already logged in on another device.");
+                    "An active session was found. This may be from a previous session or another device.");
             }
 
             // Record successful login
@@ -638,12 +638,12 @@ namespace Ettad.User.Services.Implementation
                 if (!loginInformation.ForceLogin && !string.IsNullOrEmpty(user.RefreshToken) && user.RefreshTokenExpiryDate.HasValue && user.RefreshTokenExpiryDate.Value > _dateTimeProvider.Now)
                 {
                     _logger.LogInformation(
-                        "[LDAP LOGIN] BLOCKED - Already logged in elsewhere | Username: {Username} | UserId: {UserId} | IP: {ClientIP}",
+                        "[LDAP LOGIN] BLOCKED - Active session exists | Username: {Username} | UserId: {UserId} | IP: {ClientIP}",
                         resolvedUsername, user.Id, clientIp);
                     return APIOperationResponse<AuthenticatedResponse>.Fail(
                         ResponseType.Conflict,
                         CommonErrorCodes.ALREADY_LOGGED_IN,
-                        "You are already logged in on another device.");
+                        "An active session was found. This may be from a previous session or another device.");
                 }
 
                 // Step 10: Generate authentication response

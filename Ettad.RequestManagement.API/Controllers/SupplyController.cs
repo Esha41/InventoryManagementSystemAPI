@@ -26,7 +26,7 @@ namespace Ettad.RequestManagement.API.Controllers
         }
 
         /// <summary>
-        /// Read-only workflow supply summary (completed orders only). Requires ViewWorkflowSupplySummary; SuperAdmin bypasses via CheckAuthorize.
+        /// Read-only workflow supply summary for order requests. Reflects current supply/pickup data while the order is in progress (provisional) and when approved (final). Rejected/cancelled orders are not returned. Requires ViewWorkflowSupplySummary; SuperAdmin bypasses via CheckAuthorize.
         /// </summary>
         [HttpGet("{orderId:long}/workflow-summary")]
         [ProducesResponseType(typeof(APIOperationResponse<WorkflowSupplySummaryDto>), (int)HttpStatusCode.OK)]
