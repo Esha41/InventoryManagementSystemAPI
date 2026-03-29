@@ -1,3 +1,4 @@
+using Ettad.Comman.Idenitity;
 using Ettad.Data.Entities;
 using Ettad.Data.Enums;
 using InventoryRecord = Ettad.Data.Entities.Inventory;
@@ -44,8 +45,8 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
                 if (order.RequestType != RequestType.Order)
                     return APIOperationResponse<WorkflowSupplySummaryDto>.Fail(ResponseType.BadRequest, "Not an order request");
 
-                if (order.Status != RequestStatus.Approved)
-                    return APIOperationResponse<WorkflowSupplySummaryDto>.Fail(ResponseType.Forbidden, "Order is not completed");
+                if (order.Status is RequestStatus.Rejected or RequestStatus.Cancelled)
+                    return APIOperationResponse<WorkflowSupplySummaryDto>.Fail(ResponseType.Forbidden, "Order is not eligible for supply summary");
 
                 var weaponOnly = IsWeaponOnlyOrder(order);
 
@@ -54,6 +55,11 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
                     var assetResult = await _assetSupplyService.GetByOrderIdAsync(orderId);
                     if (assetResult.Succeeded && assetResult.Data != null)
                         return APIOperationResponse<WorkflowSupplySummaryDto>.Success(await BuildFromAssetSupplyAsync(order, assetResult.Data));
+
+                    // No asset supply yet — check if depot/batch selections exist
+                    var selectionDto = await BuildFromWeaponSelectionsAsync(order);
+                    if (selectionDto != null)
+                        return APIOperationResponse<WorkflowSupplySummaryDto>.Success(selectionDto);
                 }
 
                 return APIOperationResponse<WorkflowSupplySummaryDto>.Success(await BuildFromAmmunitionSupplyAsync(orderId, order, weaponOnly));
@@ -73,6 +79,46 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
             return items.All(ri => ri.Item != null && ri.Item.ItemType == ItemType.Weapon);
         }
 
+        private async Task<WorkflowSupplySummaryDto?> BuildFromWeaponSelectionsAsync(Order order)
+        {
+            var selections = await _context.Set<WeaponSupplySelection>()
+                .AsNoTracking()
+                .Include(ws => ws.Item)
+                .Include(ws => ws.Depot)
+                .Include(ws => ws.Batch)
+                .Where(ws => ws.OrderId == order.Id)
+                .ToListAsync();
+
+            if (selections.Count == 0)
+                return null;
+
+            var dto = new WorkflowSupplySummaryDto
+            {
+                OrderId = order.Id,
+                OrderSupplyDate = order.SupplyDate,
+                IsWeaponOrder = true,
+                IsOrderCompleted = order.Status == RequestStatus.Approved,
+                Phase = "Selection"
+            };
+
+            foreach (var s in selections)
+            {
+                dto.SelectionLines.Add(new WeaponSelectionLineDto
+                {
+                    ItemId = s.ItemId,
+                    ItemName = s.Item?.Name ?? string.Empty,
+                    DepotId = s.DepotId,
+                    DepotName = s.Depot?.NameEn,
+                    DepotCode = s.Depot?.Code,
+                    BatchId = s.BatchId,
+                    BatchNumber = s.Batch?.BatchNumber ?? string.Empty,
+                    SelectedQuantity = s.Quantity
+                });
+            }
+
+            return dto;
+        }
+
         private async Task<WorkflowSupplySummaryDto> BuildFromAssetSupplyAsync(Order order, AssetSupplyDto data)
         {
             var dto = new WorkflowSupplySummaryDto
@@ -86,42 +132,87 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
                 ReceiverMilitaryId = data.ReceiverMilitaryId,
                 ReceiverRankName = data.ReceiverRank?.NameEn ?? data.ReceiverRank?.NameAr,
                 Notes = data.Notes,
-                IsWeaponOrder = true
+                IsWeaponOrder = true,
+                IsOrderCompleted = order.Status == RequestStatus.Approved,
+                Phase = "Supplied"
             };
+
+            // Keep depot/batch selections visible alongside the supplied assets
+            var selections = await _context.Set<WeaponSupplySelection>()
+                .AsNoTracking()
+                .Include(ws => ws.Item)
+                .Include(ws => ws.Depot)
+                .Include(ws => ws.Batch)
+                .Where(ws => ws.OrderId == order.Id)
+                .ToListAsync();
+
+            foreach (var s in selections)
+            {
+                dto.SelectionLines.Add(new WeaponSelectionLineDto
+                {
+                    ItemId = s.ItemId,
+                    ItemName = s.Item?.Name ?? string.Empty,
+                    DepotId = s.DepotId,
+                    DepotName = s.Depot?.NameEn,
+                    DepotCode = s.Depot?.Code,
+                    BatchId = s.BatchId,
+                    BatchNumber = s.Batch?.BatchNumber ?? string.Empty,
+                    SelectedQuantity = s.Quantity
+                });
+            }
 
             var details = data.SupplyDetails ?? new List<AssetSupplyDetailDto>();
             if (details.Count == 0)
                 return dto;
 
             var assetIds = details.Select(d => d.AssetId).Distinct().ToList();
-            var depotByAsset = await (
+            var assetInfo = await (
                 from a in _context.Set<Asset>().AsNoTracking()
                 join d in _context.Set<Depot>().AsNoTracking() on a.DepotId equals d.Id
+                join b in _context.Set<Batch>().AsNoTracking() on a.BatchId equals b.Id into batches
+                from b in batches.DefaultIfEmpty()
                 where assetIds.Contains(a.Id) && !a.IsDeleted && !d.IsDeleted
-                select new { a.Id, DepotId = a.DepotId, DepotName = d.NameEn, DepotCode = d.Code }
+                select new { a.Id, a.SerialNumber, DepotId = a.DepotId, DepotName = d.NameEn, DepotCode = d.Code, BatchNumber = b != null ? b.BatchNumber : null }
             ).ToDictionaryAsync(x => x.Id);
 
-            var qtyByItem = await BuildRequestedApprovedByItemAsync(order.Id, order.RequestItems?.Where(ri => !ri.IsDeleted).ToList() ?? new List<RequestItem>());
+            // Load custodian (Employee) names for each detail line
+            var custodianIds = details
+                .Where(dl => dl.CustodianId != null)
+                .Select(dl => long.TryParse(dl.CustodianId, out var cid) ? cid : 0)
+                .Where(id => id > 0)
+                .Distinct()
+                .ToList();
+
+            var employeeNames = custodianIds.Count > 0
+                ? await _context.Set<Employee>()
+                    .AsNoTracking()
+                    .Where(e => custodianIds.Contains(e.Id) && !e.IsDeleted)
+                    .ToDictionaryAsync(e => e.Id, e => (e.NameEn ?? e.NameAr ?? string.Empty))
+                : new Dictionary<long, string>();
+
+            // Fallback: if no per-line custodian resolves, use the order requester name
+            var requesterFallbackName = await ResolveRequesterNameAsync(order);
 
             foreach (var line in details)
             {
-                depotByAsset.TryGetValue(line.AssetId, out var dep);
-                qtyByItem.TryGetValue(line.ItemId, out var qty);
-                var requestedOrig = qty.RequestedOriginal;
-                var approved = qty.Approved;
+                assetInfo.TryGetValue(line.AssetId, out var asset);
 
-                dto.Lines.Add(new WorkflowSupplySummaryLineDto
+                string? assigneeName = null;
+                if (line.CustodianId != null && long.TryParse(line.CustodianId, out var empId) && employeeNames.TryGetValue(empId, out var name))
+                    assigneeName = name;
+                assigneeName ??= requesterFallbackName;
+
+                dto.WeaponLines.Add(new WeaponSuppliedLineDto
                 {
                     ItemId = line.ItemId,
                     ItemName = line.ItemName ?? string.Empty,
-                    ItemNo = null,
-                    RequestedQuantity = requestedOrig,
-                    ApprovedQuantity = approved,
-                    SuppliedQuantity = 1,
-                    Lot = line.AssetSerialNumber ?? line.AssetTag ?? "-",
-                    DepotId = dep?.DepotId,
-                    DepotName = dep?.DepotName,
-                    DepotCode = dep?.DepotCode,
+                    AssetId = line.AssetId,
+                    SerialNumber = asset?.SerialNumber ?? line.AssetSerialNumber,
+                    DepotId = asset?.DepotId,
+                    DepotName = asset?.DepotName,
+                    DepotCode = asset?.DepotCode,
+                    BatchNumber = asset?.BatchNumber,
+                    AssigneeName = assigneeName,
                     Notes = line.Notes
                 });
             }
@@ -135,7 +226,8 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
             {
                 OrderId = order.Id,
                 OrderSupplyDate = order.SupplyDate,
-                IsWeaponOrder = isWeaponOrderFlag
+                IsWeaponOrder = isWeaponOrderFlag,
+                IsOrderCompleted = order.Status == RequestStatus.Approved
             };
 
             var supply = await _context.Set<Supply>()
@@ -262,6 +354,18 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
             }
 
             return result;
+        }
+
+        private async Task<string?> ResolveRequesterNameAsync(Order order)
+        {
+            if (string.IsNullOrEmpty(order.RequesterId))
+                return null;
+            var user = await _context.Set<ApplicationUser>()
+                .AsNoTracking()
+                .Where(u => u.Id == order.RequesterId)
+                .Select(u => new { u.FullNameEN, u.FullNameAR, u.UserName })
+                .FirstOrDefaultAsync();
+            return user?.FullNameEN ?? user?.FullNameAR ?? user?.UserName;
         }
 
         private sealed record DepotRow(long DepotId, string? DepotName, string? DepotCode);
