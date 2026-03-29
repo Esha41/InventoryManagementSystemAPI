@@ -1153,6 +1153,7 @@ public class UserService : IUserService
             RankId = user.RankId,
             MilitoryId = user.MilitoryId,
             LdapUserName = user.LdapUserName ?? string.Empty,
+            IsOnboardingCompleted = user.IsOnboardingCompleted,
         };
 
         if (user.Department != null)
