@@ -1,24 +1,26 @@
 using Ettad.Application.Common.Interfaces;
 using Ettad.Comman.Idenitity;
 using Ettad.CrossCutting.Comman.Idenitity;
+using Ettad.CrossCutting.Comman.Models;
+using Ettad.CrossCutting.Comman.Time;
+using Ettad.CrossCutting.Data.Repository;
 using Ettad.Data.Entities;
+using Ettad.Data.Entities.Workflows;
 using Ettad.EntityFramework.DataBaseContext;
+using Ettad.LdapSettings.Services.Interfaces;
 using Ettad.Module.lookup.Dtos;
 using Ettad.ResponseHandler.Consts;
 using Ettad.ResponseHandler.Models;
 using Ettad.Services.DataTransferObject.AuthenticationDto;
 using Ettad.User.Services.DTO;
 using Ettad.User.Services.Interfaces;
+using MediatR;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq;
-using Ettad.CrossCutting.Comman.Time;
-using Ettad.CrossCutting.Comman.Models;
-using Ettad.LdapSettings.Services.Interfaces;
-
 public class UserService : IUserService
 {
     private readonly UserManager<ApplicationUser> _userManager;
@@ -28,12 +30,27 @@ public class UserService : IUserService
     private readonly ILogger<UserService> _logger;
     private readonly IDateTimeProvider _dateTimeProvider;
     private readonly ILdapSettingsService _ldapSettingsService;
-    
-    
+    private readonly ICrossCuttingRepository<BaseRequest> _baserequest;
+    private readonly ICrossCuttingRepository<WorkflowStepApprovalLog> _approvalLogRepository;
+    private readonly ICrossCuttingRepository<OrderItemHistory> _orderItemHistoryRepository;
+    private readonly ICrossCuttingRepository<Notification> _notificationRepository;
+    private readonly ICrossCuttingRepository<UserDepot> _userDepotRepository;
+    private readonly ICrossCuttingRepository<NotificationReceiver> _notificationReceiverRepository;
+    private readonly ICrossCuttingRepository<AnnouncementDismissal> _announcementDismissalRepository;
+    private readonly ICrossCuttingRepository<LoginAttempt> _loginAttemptRepository;
+    private readonly ICrossCuttingRepository<UserDelegation> _userDelegationRepository;
+    private readonly ICrossCuttingRepository<WorkflowStepNotifier> _workflowStepNotifierRepository;
+    private readonly ICrossCuttingRepository<BlacklistedToken> _blacklistedTokenRepository;
+
     private readonly ApplicationDbContext _context;
     public UserService(UserManager<ApplicationUser> userManager, RoleManager<ApplicationRole> roleManager
          , ICurrentUserService currentUserService, ILogger<UserService> logger, ApplicationDbContext context,
-         IDateTimeProvider dateTimeProvider, ILdapSettingsService ldapSettingsService)
+         IDateTimeProvider dateTimeProvider, ILdapSettingsService ldapSettingsService, ICrossCuttingRepository<BaseRequest> baserequest,
+         ICrossCuttingRepository<WorkflowStepApprovalLog> approvalLogRepository, ICrossCuttingRepository<OrderItemHistory> orderItemHistoryRepository,
+         ICrossCuttingRepository<Notification> notificationRepository, ICrossCuttingRepository<UserDepot> userDepotRepository,
+         ICrossCuttingRepository<NotificationReceiver> notificationReceiverRepository, ICrossCuttingRepository<AnnouncementDismissal> announcementDismissalRepository,
+         ICrossCuttingRepository<LoginAttempt> loginAttemptRepository, ICrossCuttingRepository<UserDelegation> userDelegationRepository,
+         ICrossCuttingRepository<WorkflowStepNotifier> workflowStepNotifierRepository, ICrossCuttingRepository<BlacklistedToken> blacklistedTokenRepository)
        
     {
         _userManager = userManager;
@@ -44,6 +61,17 @@ public class UserService : IUserService
         _logger = logger;
         _dateTimeProvider = dateTimeProvider;
         _ldapSettingsService = ldapSettingsService;
+        _baserequest = baserequest;
+        _approvalLogRepository = approvalLogRepository;
+        _orderItemHistoryRepository = orderItemHistoryRepository;
+        _notificationRepository = notificationRepository;
+        _userDepotRepository = userDepotRepository;
+        _notificationReceiverRepository = notificationReceiverRepository;
+        _announcementDismissalRepository = announcementDismissalRepository;
+        _loginAttemptRepository = loginAttemptRepository;
+        _userDelegationRepository = userDelegationRepository;
+        _workflowStepNotifierRepository = workflowStepNotifierRepository;
+        _blacklistedTokenRepository = blacklistedTokenRepository;
     }
 
     public async Task<APIOperationResponse<UserDto>> GetByIdAsync(string id)
@@ -226,11 +254,10 @@ public class UserService : IUserService
         // Determine username and password based on user role and LDAP status
         string username;
         string password;
-        bool isSuperAdmin = _currentUserService.IsSuperAdmin;
 
-        if (!isSuperAdmin && dto.IsLdapUser)
+        if (dto.IsLdapUser)
         {
-            // Non-super admin creating LDAP user: use LdapUserName and allow nullable password
+            // LDAP user (any creator): use LdapUserName / UserName and allow missing password (random hash stored; auth via directory)
             username = dto.LdapUserName ?? dto.UserName ?? string.Empty;
             if (string.IsNullOrWhiteSpace(username))
             {
@@ -314,11 +341,11 @@ public class UserService : IUserService
 
             // For LDAP users, if password is null, generate a random password (won't be used for authentication)
             password = dto.Password ?? Guid.NewGuid().ToString() + "!@#$%^&*";
-            _logger.LogInformation("Non-super admin creating LDAP user. Using LdapUserName: {LdapUserName}", username);
+            _logger.LogInformation("Creating LDAP user. Using LdapUserName: {LdapUserName}, CreatedBy: {CreatedBy}", username, _currentUserService.UserId);
         }
         else
         {
-            // Super admin or non-LDAP user: use standard UserName and require password
+            // Local (non-LDAP) user: standard UserName and require password
             if (string.IsNullOrWhiteSpace(dto.UserName))
             {
                 _logger.LogWarning("User creation failed: UserName is required. CreatedBy: {CreatedBy}", 
@@ -652,6 +679,109 @@ public class UserService : IUserService
         return APIOperationResponse<bool>.Success(true, "User restored successfully");
     }
 
+    public async Task<APIOperationResponse<bool>> PermanentDeleteAsync(string id)
+    {
+        _logger.LogInformation("Attempting permanent delete of user. TargetUserId: {TargetUserId}, DeletedBy: {DeletedBy}", 
+            id, _currentUserService.UserId);
+
+        var user = await _userManager.Users.FirstOrDefaultAsync(u => u.Id == id);
+        if (user == null)
+        {
+            return APIOperationResponse<bool>.Fail(ResponseType.NotFound, "User not found");
+        }
+
+        if (!user.IsDeleted)
+        {
+            return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, "Only soft-deleted users can be permanently deleted. Delete the user first.");
+        }
+
+        // Check if target user is a superadmin
+        var userRoles = await _userManager.GetRolesAsync(user);
+        var allRoles = await _roleManager.Roles.ToListAsync();
+        var hasSuperAdminRole = userRoles.Any(roleName => 
+            allRoles.Any(r => r.Name == roleName && r.IsSuperAdmin));
+        if (hasSuperAdminRole)
+        {
+            return APIOperationResponse<bool>.Fail(ResponseType.Forbidden, "Superadmin users cannot be permanently deleted");
+        }
+
+        // Check if user has any transaction history (orders, requests, supplies, workflow actions, etc.)
+        
+        var hasBaseRequests = await _baserequest.Find(r => r.RequesterId == id).AnyAsync();
+        if (hasBaseRequests)
+        {
+            return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, 
+                "Cannot permanently delete: Only users with no transactions can be permanently deleted.");
+        }
+
+        var hasApprovalLogs = await _approvalLogRepository.Find(l => l.ChangedBy == id).AnyAsync();
+        if (hasApprovalLogs)
+        {
+            return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, 
+                "Cannot permanently delete: Only users with no transactions can be permanently deleted.");
+        }
+
+        var hasOrderItemHistory = await _orderItemHistoryRepository.Find(h => h.ModifiedByUserId == id).AnyAsync();
+        if (hasOrderItemHistory)
+        {
+            return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, 
+                "Cannot permanently delete: Only users with no transactions can be permanently deleted.");
+        }
+
+        var hasSentNotifications = await _notificationRepository.Find(n => n.SenderId == id).AnyAsync();
+        if (hasSentNotifications)
+        {
+            return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, 
+                "Cannot permanently delete: Only users with no transactions can be permanently deleted.");
+        }
+
+        try
+        {
+            await using var transaction = await _context.Database.BeginTransactionAsync();
+            try
+            {
+                // Remove dependent records that have FK to user (no business history)
+                await _userDepotRepository.Find(ud => ud.UserId == id, includeSoftDeleted: true).ExecuteDeleteAsync();
+                await _notificationReceiverRepository.Find(nr => nr.UserId == id, includeSoftDeleted: true).ExecuteDeleteAsync();
+                await _announcementDismissalRepository.Find(ad => ad.UserId == id, includeSoftDeleted: true).ExecuteDeleteAsync();
+                await _loginAttemptRepository.Find(la => la.UserId == id, includeSoftDeleted: true).ExecuteDeleteAsync();
+                await _userDelegationRepository.Find(ud => ud.DelegatorUserId == id || ud.DelegateeUserId == id, includeSoftDeleted: true).ExecuteDeleteAsync();
+                await _workflowStepNotifierRepository.Find(wsn => wsn.UserId == id, includeSoftDeleted: true).ExecuteDeleteAsync();
+                await _blacklistedTokenRepository.Find(bt => bt.UserId == id, includeSoftDeleted: true).ExecuteDeleteAsync();
+
+                var result = await _userManager.DeleteAsync(user);
+                if (!result.Succeeded)
+                {
+                    await transaction.RollbackAsync();
+                    var errors = string.Join(",", result.Errors.Select(e => e.Description));
+                    return APIOperationResponse<bool>.Fail(ResponseType.InternalServerError, errors);
+                }
+
+                await transaction.CommitAsync();
+                _logger.LogInformation("User permanently deleted. TargetUserId: {TargetUserId}, Username: {Username}, DeletedBy: {DeletedBy}", 
+                    id, user.UserName, _currentUserService.UserId);
+                return APIOperationResponse<bool>.Success(true, "User permanently deleted");
+            }
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync();
+                throw;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error permanently deleting user. TargetUserId: {TargetUserId}", id);
+            var innerMsg = ex.InnerException?.Message ?? ex.Message;
+            if (innerMsg.Contains("REFERENCE constraint") || innerMsg.Contains("FK_") || innerMsg.Contains("foreign key"))
+            {
+                return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, 
+                    "Cannot permanently delete: Only users with no transactions can be permanently deleted.");
+            }
+            return APIOperationResponse<bool>.Fail(ResponseType.InternalServerError, 
+                "An unexpected error occurred while permanently deleting the user. Please try again or contact support.");
+        }
+    }
+
     //public async Task<APIOperationResponse<List<UserRoleDto>>> GetUserRolesAsync(string userId)
     //{
     //    var user = await _userManager.FindByIdAsync(userId);
@@ -692,7 +822,8 @@ public class UserService : IUserService
             RoleId = role.Id,
             RoleName = role.Name,
             IsSelected = userRoleNames.Contains(role.Name),
-            DeparmentId=user.DepartmentId
+            IsSuperAdmin = role.IsSuperAdmin,
+            DeparmentId = user.DepartmentId
         }).ToList();
 
         return APIOperationResponse<List<UserRoleDto>>.Success(userRolesList);

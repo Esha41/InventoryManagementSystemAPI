@@ -8,7 +8,7 @@ namespace Ettad.Inventory.Service.Monitoring.Dtos
         public long ItemId { get; set; }
         public string ItemName { get; set; } = string.Empty;
         public string? ItemNo { get; set; }
-        public int Lot { get; set; }
+        public string Lot { get; set; } = string.Empty;
         public string? BatchNo { get; set; }
         public DateTime? ExpiryDate { get; set; }
         public int? DaysUntilExpiry { get; set; }

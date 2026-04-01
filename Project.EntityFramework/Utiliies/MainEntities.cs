@@ -6,6 +6,7 @@ public enum CrudOperation
 {
     Page,
     View,
+    ViewAll,
     Create,
     Edit,
     Delete,
@@ -89,6 +90,7 @@ public static class MainEntities
     {
         CrudOperation.Page,
         CrudOperation.View,
+        CrudOperation.ViewAll,
         CrudOperation.Create,
         CrudOperation.Edit,
         CrudOperation.Delete,
@@ -312,6 +314,16 @@ public static class MainEntities
         CrudOperation.Page,
         CrudOperation.View,
         //CrudOperation.Create,
+        CrudOperation.Edit,
+        CrudOperation.Delete
+    };
+
+    [Category(CrudPermissionsGenerator.Dashboard)]
+    public static readonly CrudOperation[] Announcements = new[]
+    {
+        CrudOperation.Page,
+        CrudOperation.View,
+        CrudOperation.Create,
         CrudOperation.Edit,
         CrudOperation.Delete
     };

@@ -628,7 +628,7 @@ namespace Ettad.Inventory.Service.AssetSupply
                     supply.DepartmentId = orderDepartmentId;
                     supply.CustodianId = requesterUserId;
 
-                    // Calculate fulfillment status
+                    // Fulfillment status (partial allowed, same idea as ammunition/explosives)
                     var requestedItems = orderRequestItems
                         .GroupBy(ri => ri.ItemId)
                         .ToDictionary(g => g.Key, g => g.Sum(ri => ri.Quantity));

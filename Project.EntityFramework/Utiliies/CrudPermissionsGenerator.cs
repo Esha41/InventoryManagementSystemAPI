@@ -117,6 +117,8 @@ public class CrudPermissionsGenerator
             list.Add($"Permissions.{entityName}.Page");
         if (operations.Contains(CrudOperation.View))
             list.Add($"Permissions.{entityName}.View");
+        if (operations.Contains(CrudOperation.ViewAll))
+            list.Add($"Permissions.{entityName}.ViewAll");
         if (operations.Contains(CrudOperation.Create))
             list.Add($"Permissions.{entityName}.Create");
         if (operations.Contains(CrudOperation.Edit))

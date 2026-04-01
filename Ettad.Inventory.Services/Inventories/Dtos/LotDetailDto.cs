@@ -10,7 +10,7 @@ namespace Ettad.Inventory.Service.Inventories.Dtos
         public long InventoryDetailId { get; set; }
         public long ItemId { get; set; }
         public string ItemName { get; set; }
-        public int Lot { get; set; }
+        public string Lot { get; set; } = string.Empty;
         public string? BatchNo { get; set; }
         public bool ReadyForIssue { get; set; }
         public long OriginalQuantity { get; set; }

@@ -101,14 +101,16 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
             "Permissions.ItemTypes.Delete",
         };
 
+        /// <summary>Depots: Page = open depot admin module; View = read depot data (UserDepot-scoped); ViewAll = read all depots (no UserDepot filter).</summary>
         public static List<string> ReadDepo = new()
         {
             "Permissions.Depots.Page",
             "Permissions.Depots.View",
+            "Permissions.Depots.ViewAll",
         };
 
         /// <summary>
-        /// Depot view only (no Page) - for roles that should see depots filtered by UserDepot assignments (e.g. Depot Officer).
+        /// Depots.View only (no Page) — read depots filtered by UserDepot (e.g. depot officer). Use with Inventory.View for warehouse flows.
         /// </summary>
         public static List<string> ReadDepoViewOnly = new()
         {
@@ -434,6 +436,7 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 .Concat(new List<string> 
                     { 
                         PlainPermissions.UpdateRequestAndSuggestLots.ToString(),
+                        PlainPermissions.ViewWorkflowSupplySummary.ToString(),
                         PlainPermissions.InventoryDashboard.ToString(),
                     }
                 )
@@ -608,6 +611,7 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 .Concat(new List<string>
                     {
                         PlainPermissions.UpdateRequestAndSupply.ToString(),
+                        PlainPermissions.ViewWorkflowSupplySummary.ToString(),
                         PlainPermissions.InventoryDashboard.ToString(),
                         PlainPermissions.CannotRejectRequest.ToString(),
                     }
@@ -632,6 +636,7 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 .Concat(new List<string>
                     {
                         PlainPermissions.UpdateRequestAndSupply.ToString(),
+                        PlainPermissions.ViewWorkflowSupplySummary.ToString(),
                         PlainPermissions.InventoryDashboard.ToString(),
                         PlainPermissions.CannotRejectRequest.ToString(),
                     }
@@ -654,7 +659,8 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 .Concat(ReadDepo)
                 .Concat(new List<string>
                     {
-                        PlainPermissions.UpdateRequestAndSupply.ToString(),                       
+                        PlainPermissions.UpdateRequestAndSupply.ToString(),
+                        PlainPermissions.ViewWorkflowSupplySummary.ToString(),
                     }
                 )
                 .ToList();
@@ -678,6 +684,7 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 .Concat(new List<string>
                     {
                         PlainPermissions.SetSupplyPickupDate.ToString(),
+                        PlainPermissions.ViewWorkflowSupplySummary.ToString(),
                         PlainPermissions.InventoryDashboard.ToString(),
                         PlainPermissions.CannotRejectRequest.ToString(),
                     }
@@ -701,6 +708,7 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 .Concat(new List<string>
                     {
                         PlainPermissions.ConfirmSupplyPickupDate.ToString(),
+                        PlainPermissions.ViewWorkflowSupplySummary.ToString(),
                         PlainPermissions.InventoryDashboard.ToString(),
                         PlainPermissions.CannotRejectRequest.ToString(),
                     }
@@ -725,6 +733,7 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 .Concat(new List<string>
                     {
                         PlainPermissions.SubmitSupply.ToString(),
+                        PlainPermissions.ViewWorkflowSupplySummary.ToString(),
                         PlainPermissions.InventoryDashboard.ToString(),
                         PlainPermissions.CannotRejectRequest.ToString(),
                         PlainPermissions.ReviewWeaponSupply.ToString(),

@@ -31,7 +31,7 @@ namespace Ettad.RequestManagement.Service.SupplyManagement.Dtos
         public long Id { get; set; }
         public long SupplyId { get; set; }
         public long ItemId { get; set; }
-        public int Lot { get; set; }
+        public string Lot { get; set; } = string.Empty;
         public long Quantity { get; set; }
         public string? Notes { get; set; }
 

@@ -516,7 +516,7 @@ namespace Ettad.Inventory.Service.Ammunitions
         private async Task<bool> ItemHasReferencesAsync(long itemId)
         {
             var hasDeptAssignment = await _context.ItemDepartmentAssignments
-                .AnyAsync(x => x.ItemId == itemId && !x.IsDeleted);
+                .AnyAsync(x => x.ItemId == itemId);
             if (hasDeptAssignment) return true;
 
             var hasInventory = await _context.InventoryDetails

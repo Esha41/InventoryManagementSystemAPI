@@ -246,12 +246,16 @@ namespace Ettad.Inventory.Service.Batches
                     countDict = assetCounts.ToDictionary(c => c.BatchId, c => c.Count);
                 }
 
-                var summaries = batches.Select(b => new BatchSummaryDto
-                {
-                    Id = b.Id,
-                    BatchNumber = b.BatchNumber,
-                    Quantity = countDict.TryGetValue(b.Id, out var count) ? count : 0
-                }).ToList();
+                var summaries = batches
+                    .OrderByDescending(b => b.CreationDate)
+                    .ThenByDescending(b => b.Id)
+                    .Select(b => new BatchSummaryDto
+                    {
+                        Id = b.Id,
+                        BatchNumber = b.BatchNumber,
+                        Quantity = countDict.TryGetValue(b.Id, out var count) ? count : 0
+                    })
+                    .ToList();
 
                 return APIOperationResponse<List<BatchSummaryDto>>.Success(summaries);
             }

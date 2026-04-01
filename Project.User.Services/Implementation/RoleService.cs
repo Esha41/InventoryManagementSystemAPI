@@ -54,6 +54,7 @@ namespace Ettad.User.Services.Implementation
             "Permissions.LdapSettings.View",
             "AdminImportExport",
             "StockNotificationSettingsPage",
+            "DelegationManagement",
             "Permissions.Workflow.Page", 
             "Permissions.Workflow.View", 
             "Permissions.Workflow.Create", 

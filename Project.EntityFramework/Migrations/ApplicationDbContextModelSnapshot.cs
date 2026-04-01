@@ -2147,8 +2147,10 @@ namespace Ettad.EntityFramework.Migrations
                     b.Property<long>("ItemQuantity")
                         .HasColumnType("bigint");
 
-                    b.Property<int>("Lot")
-                        .HasColumnType("int");
+                    b.Property<string>("Lot")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
 
                     b.Property<long?>("ManufacturerId")
                         .HasColumnType("bigint");
@@ -2195,17 +2197,8 @@ namespace Ettad.EntityFramework.Migrations
                         .HasColumnType("datetime2")
                         .HasDefaultValueSql("GETDATE()");
 
-                    b.Property<string>("DeletedBy")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<DateTime?>("DeletionDate")
-                        .HasColumnType("datetime2");
-
                     b.Property<long>("DepartmentId")
                         .HasColumnType("bigint");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("bit");
 
                     b.Property<long>("ItemId")
                         .HasColumnType("bigint");
@@ -2227,8 +2220,7 @@ namespace Ettad.EntityFramework.Migrations
                     b.HasIndex("ItemId");
 
                     b.HasIndex("ItemId", "DepartmentId")
-                        .IsUnique()
-                        .HasFilter("[IsDeleted] = 0");
+                        .IsUnique();
 
                     b.ToTable("ItemDepartmentAssignments", (string)null);
                 });
@@ -4088,8 +4080,10 @@ namespace Ettad.EntityFramework.Migrations
                     b.Property<long>("ItemId")
                         .HasColumnType("bigint");
 
-                    b.Property<int>("Lot")
-                        .HasColumnType("int");
+                    b.Property<string>("Lot")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
 
                     b.Property<DateTime?>("ModificationDate")
                         .HasColumnType("datetime2");

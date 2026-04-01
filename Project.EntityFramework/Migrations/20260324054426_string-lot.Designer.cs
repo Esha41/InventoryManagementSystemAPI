@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Ettad.EntityFramework.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20260309113222_ModifyWeaponSelection")]
-    partial class ModifyWeaponSelection
+    [Migration("20260324054426_string-lot")]
+    partial class stringlot
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -254,6 +254,11 @@ namespace Ettad.EntityFramework.Migrations
 
                     b.Property<DateTime?>("DeletionDate")
                         .HasColumnType("datetime2");
+
+                    b.Property<int>("DeliveryType")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(1);
 
                     b.Property<DateTime?>("EndDate")
                         .HasColumnType("datetime2");
@@ -2145,8 +2150,10 @@ namespace Ettad.EntityFramework.Migrations
                     b.Property<long>("ItemQuantity")
                         .HasColumnType("bigint");
 
-                    b.Property<int>("Lot")
-                        .HasColumnType("int");
+                    b.Property<string>("Lot")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
 
                     b.Property<long?>("ManufacturerId")
                         .HasColumnType("bigint");
@@ -3719,8 +3726,10 @@ namespace Ettad.EntityFramework.Migrations
                     b.Property<long>("ItemId")
                         .HasColumnType("bigint");
 
-                    b.Property<int>("Lot")
-                        .HasColumnType("int");
+                    b.Property<string>("Lot")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
 
                     b.Property<DateTime?>("ModificationDate")
                         .HasColumnType("datetime2");

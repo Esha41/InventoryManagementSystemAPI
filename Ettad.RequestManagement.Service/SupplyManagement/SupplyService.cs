@@ -665,8 +665,9 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
 				}
 
 				// Check if the same item+lot combination already exists in this supply
+				var lotKey = (detailDto.Lot ?? string.Empty).Trim();
 				var duplicateDetail = supply.SupplyDetails?
-					.FirstOrDefault(sd => sd.ItemId == detailDto.ItemId && sd.Lot == detailDto.Lot && !sd.IsDeleted);
+					.FirstOrDefault(sd => sd.ItemId == detailDto.ItemId && sd.Lot == lotKey && !sd.IsDeleted);
 				
 				if (duplicateDetail != null)
 				{
@@ -1391,27 +1392,28 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
 		/// <summary>
 		/// Validates that a lot exists and has sufficient quantity available
 		/// </summary>
-		private async Task<(bool IsValid, List<string> Errors)> ValidateLotAndQuantityAsync(long itemId, int lot, long requestedQuantity, long? excludeSupplyId = null)
+		private async Task<(bool IsValid, List<string> Errors)> ValidateLotAndQuantityAsync(long itemId, string lot, long requestedQuantity, long? excludeSupplyId = null)
 		{
 			var errors = new List<string>();
+			var lotKey = (lot ?? string.Empty).Trim();
 
 			// Get inventory detail for this lot
 			var inventoryDetail = await _inventoryDetailRepository.FindOneAsync(
-				id => id.ItemId == itemId && id.Lot == lot,
+				id => id.ItemId == itemId && id.Lot == lotKey,
 				false,
 				nameof(InventoryDetail.Inventory)
 			);
 
 			if (inventoryDetail == null)
 			{
-				errors.Add($"Lot {lot} does not exist for item {itemId}");
+				errors.Add($"Lot {lotKey} does not exist for item {itemId}");
 				return (false, errors);
 			}
 
 			// Check if inventory is deleted
 			if (inventoryDetail.Inventory?.IsDeleted == true)
 			{
-				errors.Add($"Lot {lot} belongs to a deleted inventory");
+				errors.Add($"Lot {lotKey} belongs to a deleted inventory");
 				return (false, errors);
 			}
 
@@ -1419,7 +1421,7 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
 			// IMPORTANT: Only count non-deleted supply details
 			// If excludeSupplyId is provided, exclude details from that supply
 			var supplyDetails = await _supplyDetailRepository.FindAsync(
-				sd => sd.ItemId == itemId && sd.Lot == lot && !sd.IsDeleted && (!excludeSupplyId.HasValue || sd.SupplyId != excludeSupplyId.Value)
+				sd => sd.ItemId == itemId && sd.Lot == lotKey && !sd.IsDeleted && (!excludeSupplyId.HasValue || sd.SupplyId != excludeSupplyId.Value)
 			);
 
 			var totalUsedQuantity = supplyDetails.Sum(sd => sd.Quantity);
@@ -1427,7 +1429,7 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
 
 			if (availableQuantity < requestedQuantity)
 			{
-				errors.Add($"Lot {lot} for item {itemId} has insufficient quantity. Available: {availableQuantity}, Requested: {requestedQuantity}");
+				errors.Add($"Lot {lotKey} for item {itemId} has insufficient quantity. Available: {availableQuantity}, Requested: {requestedQuantity}");
 				return (false, errors);
 			}
 

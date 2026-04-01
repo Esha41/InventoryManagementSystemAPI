@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Ettad.EntityFramework.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20260308062300_MakeBatchNullable")]
-    partial class MakeBatchNullable
+    [Migration("20260312102202_AddUserDepotsItemAssignmentBatchWeaponAndAnnouncements")]
+    partial class AddUserDepotsItemAssignmentBatchWeaponAndAnnouncements
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -254,6 +254,11 @@ namespace Ettad.EntityFramework.Migrations
 
                     b.Property<DateTime?>("DeletionDate")
                         .HasColumnType("datetime2");
+
+                    b.Property<int>("DeliveryType")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(1);
 
                     b.Property<DateTime?>("EndDate")
                         .HasColumnType("datetime2");
@@ -3960,7 +3965,7 @@ namespace Ettad.EntityFramework.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
 
-                    b.Property<long?>("BatchId")
+                    b.Property<long>("BatchId")
                         .HasColumnType("bigint");
 
                     b.Property<string>("CreatedBy")
@@ -3969,17 +3974,11 @@ namespace Ettad.EntityFramework.Migrations
                     b.Property<DateTime>("CreationDate")
                         .HasColumnType("datetime2");
 
-                    b.Property<string>("DeletedBy")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<DateTime?>("DeletionDate")
-                        .HasColumnType("datetime2");
-
                     b.Property<long>("DepotId")
                         .HasColumnType("bigint");
 
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("bit");
+                    b.Property<long>("ItemId")
+                        .HasColumnType("bigint");
 
                     b.Property<DateTime?>("ModificationDate")
                         .HasColumnType("datetime2");
@@ -3990,13 +3989,21 @@ namespace Ettad.EntityFramework.Migrations
                     b.Property<long>("OrderId")
                         .HasColumnType("bigint");
 
+                    b.Property<int>("Quantity")
+                        .HasColumnType("int");
+
                     b.HasKey("Id");
 
                     b.HasIndex("BatchId");
 
                     b.HasIndex("DepotId");
 
+                    b.HasIndex("ItemId");
+
                     b.HasIndex("OrderId");
+
+                    b.HasIndex("OrderId", "DepotId", "BatchId", "ItemId")
+                        .IsUnique();
 
                     b.ToTable("WeaponSupplySelections", (string)null);
                 });
@@ -4730,7 +4737,7 @@ namespace Ettad.EntityFramework.Migrations
                     b.HasOne("Ettad.Data.Entities.Batch", "Batch")
                         .WithMany("Assets")
                         .HasForeignKey("BatchId")
-                        .OnDelete(DeleteBehavior.Restrict)
+                        .OnDelete(DeleteBehavior.ClientCascade)
                         .IsRequired();
 
                     b.HasOne("Ettad.Data.Entities.AssetAssignment", "CurrentAssignment")
@@ -5313,11 +5320,18 @@ namespace Ettad.EntityFramework.Migrations
                     b.HasOne("Ettad.Data.Entities.Batch", "Batch")
                         .WithMany()
                         .HasForeignKey("BatchId")
-                        .OnDelete(DeleteBehavior.Restrict);
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
 
                     b.HasOne("Ettad.Data.Entities.Depot", "Depot")
                         .WithMany()
                         .HasForeignKey("DepotId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Ettad.Data.Entities.BaseItem", "Item")
+                        .WithMany()
+                        .HasForeignKey("ItemId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
@@ -5330,6 +5344,8 @@ namespace Ettad.EntityFramework.Migrations
                     b.Navigation("Batch");
 
                     b.Navigation("Depot");
+
+                    b.Navigation("Item");
 
                     b.Navigation("Order");
                 });

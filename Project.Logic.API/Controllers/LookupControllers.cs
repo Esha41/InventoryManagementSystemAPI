@@ -183,6 +183,7 @@ namespace Ettad.Lookups.Domain.API.Controllers
     [CheckAuthorize(
         "Permissions.Depots.Page",
         "Permissions.Depots.View",
+        "Permissions.Depots.ViewAll",
         "Permissions.Depots.Create",
         "Permissions.Depots.Edit",
         "Permissions.Depots.Delete"

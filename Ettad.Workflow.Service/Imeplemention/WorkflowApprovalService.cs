@@ -1464,6 +1464,7 @@ namespace Ettad.Workflows.Service.Imeplemention
                 })
                 .ToListAsync();
 
+            await EnrichOrderSupplyDatesAsync(baseRequests);
 
             // Get all approval history for these requests
             var approvalHistoryData = await (from log in _context.WorkflowStepApprovalLog
@@ -2490,7 +2491,33 @@ namespace Ettad.Workflows.Service.Imeplemention
                 .ThenBy(h => h.ChangedAt == DateTime.MinValue ? DateTime.MaxValue : h.ChangedAt)                    
                 .ToList();
 
+            if (baseRequest.RequestType == RequestType.Order)
+            {
+                baseRequest.SupplyDate = await _context.Set<Order>().AsNoTracking()
+                    .Where(o => o.Id == requestId)
+                    .Select(o => o.SupplyDate)
+                    .FirstOrDefaultAsync();
+            }
+
             return baseRequest;
+        }
+
+        private async Task EnrichOrderSupplyDatesAsync(List<BaseRequestDto> baseRequests)
+        {
+            var orderIds = baseRequests.Where(r => r.RequestType == RequestType.Order).Select(r => r.Id).ToList();
+            if (orderIds.Count == 0)
+                return;
+
+            var map = await _context.Set<Order>().AsNoTracking()
+                .Where(o => orderIds.Contains(o.Id))
+                .Select(o => new { o.Id, o.SupplyDate })
+                .ToDictionaryAsync(x => x.Id, x => x.SupplyDate);
+
+            foreach (var br in baseRequests)
+            {
+                if (map.TryGetValue(br.Id, out var sd))
+                    br.SupplyDate = sd;
+            }
         }
 
         /// <summary>

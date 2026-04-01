@@ -6,7 +6,7 @@ namespace Ettad.Data.Entities
     /// Represents an assignment of an item to a department.
     /// This allows departments to have access to specific items.
     /// </summary>
-    public class ItemDepartmentAssignment : FullAuditEntity<long>
+    public class ItemDepartmentAssignment : AuditEntity<long>
     {
         /// <summary>
         /// The item being assigned to the department

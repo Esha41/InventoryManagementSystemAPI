@@ -43,12 +43,20 @@ namespace Ettad.Lookups.Services.Implementation
                 return true;
             }
 
-            // Users with depot management permission (Depots.Page only) have access to all depots.
-            // Depots.View allows viewing depot info but access is still filtered by UserDepot assignments.
-            var hasDepotManagement = await _permissionService.HasPermissionAsync("Permissions.Depots.Page");
-            if (hasDepotManagement)
+            // Depots.ViewAll: read any depot (no UserDepot filter).
+            var hasViewAll = await _permissionService.HasPermissionAsync("Permissions.Depots.ViewAll");
+            if (hasViewAll)
             {
                 return true;
+            }
+
+            // Scoped read: Depots.View (read depots) or Inventory.View (read inventory in assigned depots). Depots.Page alone does not grant access.
+            var canReadScoped = await _permissionService.HasPermissionAsync("Permissions.Depots.View")
+                || await _permissionService.HasPermissionAsync("Permissions.Inventory.View");
+            if (!canReadScoped)
+            {
+                _logger.LogDebug("User {UserId} lacks Depots.View/Inventory.View — denying access to depot {DepotId}", userId, depotId);
+                return false;
             }
 
             var hasAccess = await _userDepotRepository

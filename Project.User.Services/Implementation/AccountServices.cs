@@ -290,12 +290,12 @@ namespace Ettad.User.Services.Implementation
             if (!loginInformation.ForceLogin && !string.IsNullOrEmpty(user.RefreshToken) && user.RefreshTokenExpiryDate.HasValue && user.RefreshTokenExpiryDate.Value > _dateTimeProvider.Now)
             {
                 _logger.LogInformation(
-                    "[ADMIN LOGIN] BLOCKED - Already logged in elsewhere | Username: {Username} | UserId: {UserId} | IP: {ClientIP}",
+                    "[ADMIN LOGIN] BLOCKED - Active session exists | Username: {Username} | UserId: {UserId} | IP: {ClientIP}",
                     loginInformation.Username, user.Id, clientIp);
                 return APIOperationResponse<AuthenticatedResponse>.Fail(
                     ResponseType.Conflict,
                     CommonErrorCodes.ALREADY_LOGGED_IN,
-                    "You are already logged in on another device.");
+                    "An active session was found. This may be from a previous session or another device.");
             }
 
             // Record successful login
@@ -588,28 +588,18 @@ namespace Ettad.User.Services.Implementation
                         .FirstOrDefaultAsync(u => u.LdapUserName == usernameWithoutDomain && !u.IsDeleted, cancellationToken);
                 }
 
-                // Step 9: Create new user if not exists
+                // Step 9: Reject if user does not exist (admin must create LDAP users - no auto-creation for security)
                 if (user == null)
                 {
-                    _logger.LogInformation(
-                        "[LDAP LOGIN] Creating new local user | Username: {Username} | ResolvedUsername: {ResolvedUsername} | LdapUserName: {LdapUserName}",
-                        loginInformation.Username, resolvedUsername, usernameWithoutDomain);
-
-                    user = new ApplicationUser
-                    {
-                        UserName = resolvedUsername,
-                        Email = resolvedUsername,
-                        FullNameAR = resolvedUsername,
-                        FullNameEN = resolvedUsername,
-                        IsLdapUser = true,
-                        LdapUserName = usernameWithoutDomain
-                    };
-
-                    await _userRepository.CreateAsync(user);
-
-                    _logger.LogInformation(
-                        "[LDAP LOGIN] User created successfully | Username: {Username} | UserId: {UserId} | IP: {ClientIP}",
-                        user.UserName, user.Id, clientIp);
+                    _logger.LogWarning(
+                        "[LDAP LOGIN] FAILED - User not found (no auto-creation) | Username: {Username} | ResolvedUsername: {ResolvedUsername} | IP: {ClientIP}",
+                        loginInformation.Username, resolvedUsername, clientIp);
+                    await RecordLoginAttemptAsync(resolvedUsername, null, false, 
+                        "User account not found. Administrator must create the account first.", LoginType.LDAP, cancellationToken);
+                    return APIOperationResponse<AuthenticatedResponse>.Fail(
+                        ResponseType.Forbidden,
+                        CommonErrorCodes.NOT_FOUND,
+                        "User account not found. Please contact your administrator to create your account.");
                 }
                 else
                 {
@@ -648,12 +638,12 @@ namespace Ettad.User.Services.Implementation
                 if (!loginInformation.ForceLogin && !string.IsNullOrEmpty(user.RefreshToken) && user.RefreshTokenExpiryDate.HasValue && user.RefreshTokenExpiryDate.Value > _dateTimeProvider.Now)
                 {
                     _logger.LogInformation(
-                        "[LDAP LOGIN] BLOCKED - Already logged in elsewhere | Username: {Username} | UserId: {UserId} | IP: {ClientIP}",
+                        "[LDAP LOGIN] BLOCKED - Active session exists | Username: {Username} | UserId: {UserId} | IP: {ClientIP}",
                         resolvedUsername, user.Id, clientIp);
                     return APIOperationResponse<AuthenticatedResponse>.Fail(
                         ResponseType.Conflict,
                         CommonErrorCodes.ALREADY_LOGGED_IN,
-                        "You are already logged in on another device.");
+                        "An active session was found. This may be from a previous session or another device.");
                 }
 
                 // Step 10: Generate authentication response
