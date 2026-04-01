@@ -23,15 +23,22 @@ namespace Ettad.User.Api.Controllers
         private readonly IAccountServices _authenticationService;
         private readonly IHelpureService _helpureService;
         private readonly ICaptchaService _captchaService;
+        private readonly IOnboardingService _onboardingService;
         private readonly JwtOptions _jwtOptions;
         #endregion
 
         #region ctor
-        public AccountController(IAccountServices authenticationService, IHelpureService helpureService, ICaptchaService captchaService, IOptions<JwtOptions> jwtOptions)
+        public AccountController(
+            IAccountServices authenticationService,
+            IHelpureService helpureService,
+            ICaptchaService captchaService,
+            IOnboardingService onboardingService,
+            IOptions<JwtOptions> jwtOptions)
         {
             _authenticationService = authenticationService;
             _helpureService = helpureService;
             _captchaService = captchaService;
+            _onboardingService = onboardingService;
             _jwtOptions = jwtOptions?.Value ?? new JwtOptions();
         }
         #endregion
@@ -126,6 +133,24 @@ namespace Ettad.User.Api.Controllers
         public async Task<IActionResult> Logout()
         {
             var result = await _authenticationService.LogoutAsync();
+            return ProcessResponse(result);
+        }
+
+        [HttpGet("onboarding-status")]
+        [Authorize]
+        [ProducesResponseType((int)HttpStatusCode.OK)]
+        public async Task<IActionResult> GetOnboardingStatus()
+        {
+            var result = await _onboardingService.GetStatusAsync();
+            return ProcessResponse(result);
+        }
+
+        [HttpPost("complete-onboarding")]
+        [Authorize]
+        [ProducesResponseType((int)HttpStatusCode.OK)]
+        public async Task<IActionResult> CompleteOnboarding()
+        {
+            var result = await _onboardingService.CompleteAsync();
             return ProcessResponse(result);
         }
 

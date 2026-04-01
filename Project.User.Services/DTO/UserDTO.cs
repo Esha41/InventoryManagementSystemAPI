@@ -23,6 +23,7 @@ namespace Ettad.User.Services.DTO
         public RankDto? Rank { get; set; }
 
         public string LdapUserName { get; set; }
+        public bool IsOnboardingCompleted { get; set; }
     }
     public class UserRoleSummaryDto
     {
