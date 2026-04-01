@@ -115,6 +115,48 @@ namespace Ettad.RequestManagement.API.Controllers
             var result = await _returnService.DeleteAsync(id);
             return ProcessResponse(result);
         }
+
+        /// <summary>
+        /// Set or update the depot for a return
+        /// </summary>
+        [HttpPut("{id}/set-depot")]
+        [ProducesResponseType(typeof(APIOperationResponse<bool>), (int)HttpStatusCode.OK)]
+        [ProducesResponseType((int)HttpStatusCode.BadRequest)]
+        [ProducesResponseType((int)HttpStatusCode.NotFound)]
+        [CheckAuthorize("SetReturnDepot")]
+        public async Task<IActionResult> SetDepot(long id, [FromBody] SetReturnDepotDto dto)
+        {
+            var result = await _returnService.SetDepotAsync(id, dto);
+            return ProcessResponse(result);
+        }
+
+        /// <summary>
+        /// Set or update the delivery date for a return
+        /// </summary>
+        [HttpPut("{id}/set-delivery-date")]
+        [ProducesResponseType(typeof(APIOperationResponse<bool>), (int)HttpStatusCode.OK)]
+        [ProducesResponseType((int)HttpStatusCode.BadRequest)]
+        [ProducesResponseType((int)HttpStatusCode.NotFound)]
+        [CheckAuthorize("SetReturnDeliveryDate")]
+        public async Task<IActionResult> SetDeliveryDate(long id, [FromBody] SetReturnDeliveryDateDto dto)
+        {
+            var result = await _returnService.SetDeliveryDateAsync(id, dto);
+            return ProcessResponse(result);
+        }
+
+        /// <summary>
+        /// Process return items (ammo/explosive inventory update and weapon asset status update), then approve and close the return
+        /// </summary>
+        [HttpPut("{id}/process-items")]
+        [ProducesResponseType(typeof(APIOperationResponse<bool>), (int)HttpStatusCode.OK)]
+        [ProducesResponseType((int)HttpStatusCode.BadRequest)]
+        [ProducesResponseType((int)HttpStatusCode.NotFound)]
+        [CheckAuthorize("ProcessReturnItems")]
+        public async Task<IActionResult> ProcessItems(long id, [FromBody] ProcessReturnItemsDto dto)
+        {
+            var result = await _returnService.ProcessReturnItemsAsync(id, dto);
+            return ProcessResponse(result);
+        }
     }
 }
 

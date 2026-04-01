@@ -36,6 +36,10 @@ namespace Ettad.EntityFramework.Configurations
                 .IsRequired()
                 .HasDefaultValue(false);
 
+            builder.Property(x => x.IsReturned)
+                .IsRequired()
+                .HasDefaultValue(false);
+
             builder.HasOne(x => x.Inventory)
                 .WithMany(x => x.InventoryDetails)
                 .IsRequired()

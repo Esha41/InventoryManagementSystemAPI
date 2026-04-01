@@ -28,6 +28,8 @@ namespace Ettad.Data.Entities
 
         public bool IsLotEmpty { get; set; } = false;
 
+        public bool IsReturned { get; set; } = false;
+
         #region Navigation Properties
 
         public BaseItem Item { get; set; }

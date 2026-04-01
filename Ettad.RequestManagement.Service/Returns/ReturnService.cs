@@ -14,6 +14,7 @@ using Microsoft.AspNetCore.Identity;
 using Ettad.Comman.Idenitity;
 using Microsoft.Extensions.Logging;
 using Ettad.Workflows.Service.Interface;
+using Ettad.Workflows.Service.DTO;
 using Microsoft.AspNetCore.Http;
 using Ettad.CrossCutting.Comman.FileUpload;
 using Ettad.Comman.Enums;
@@ -37,6 +38,12 @@ namespace Ettad.RequestManagement.Service.Returns
         private readonly IFileUploadService _fileUploadService;
         private readonly ICrossCuttingRepository<FileUplodDetails> _fileDetailsRepository;
         private readonly IDateTimeProvider _dateTimeProvider;
+        private readonly ICrossCuttingRepository<Ettad.Data.Entities.Inventory> _inventoryRepository;
+        private readonly ICrossCuttingRepository<InventoryDetail> _inventoryDetailRepository;
+        private readonly ICrossCuttingRepository<Asset> _assetRepository;
+        private readonly ICrossCuttingRepository<Batch> _batchRepository;
+        private readonly ICrossCuttingRepository<Depot> _depotRepository;
+        private readonly ICrossCuttingRepository<BaseItem> _baseItemRepository;
 
         public ReturnService(
             ICrossCuttingRepository<Return> returnRepository,
@@ -52,7 +59,13 @@ namespace Ettad.RequestManagement.Service.Returns
             ILogger<ReturnService> logger,
             IFileUploadService fileUploadService,
             ICrossCuttingRepository<FileUplodDetails> fileDetailsRepository,
-            IDateTimeProvider dateTimeProvider)
+            IDateTimeProvider dateTimeProvider,
+            ICrossCuttingRepository<Ettad.Data.Entities.Inventory> inventoryRepository,
+            ICrossCuttingRepository<InventoryDetail> inventoryDetailRepository,
+            ICrossCuttingRepository<Asset> assetRepository,
+            ICrossCuttingRepository<Batch> batchRepository,
+            ICrossCuttingRepository<Depot> depotRepository,
+            ICrossCuttingRepository<BaseItem> baseItemRepository)
         {
             _returnRepository = returnRepository;
             _requestItemRepository = requestItemRepository;
@@ -68,6 +81,12 @@ namespace Ettad.RequestManagement.Service.Returns
             _fileUploadService = fileUploadService;
             _fileDetailsRepository = fileDetailsRepository;
             _dateTimeProvider = dateTimeProvider;
+            _inventoryRepository = inventoryRepository;
+            _inventoryDetailRepository = inventoryDetailRepository;
+            _assetRepository = assetRepository;
+            _batchRepository = batchRepository;
+            _depotRepository = depotRepository;
+            _baseItemRepository = baseItemRepository;
         }
 
         public async Task<APIOperationResponse<ReturnDto>> GetByIdAsync(long id)
@@ -82,7 +101,8 @@ namespace Ettad.RequestManagement.Service.Returns
                     nameof(BaseRequest.Department),
                     nameof(BaseRequest.Requester),
                     nameof(BaseRequest.RequestPurpose),
-                    $"{nameof(BaseRequest.RequestItems)}.{nameof(RequestItem.Item)}"
+                    $"{nameof(BaseRequest.RequestItems)}.{nameof(RequestItem.Item)}",
+                    nameof(Return.ReturnToDepot)
                 );
 
                 if (returnEntity == null)
@@ -115,7 +135,8 @@ namespace Ettad.RequestManagement.Service.Returns
                     nameof(BaseRequest.Department),
                     nameof(BaseRequest.Requester),
                     nameof(BaseRequest.RequestPurpose),
-                    $"{nameof(BaseRequest.RequestItems)}.{nameof(RequestItem.Item)}"
+                    $"{nameof(BaseRequest.RequestItems)}.{nameof(RequestItem.Item)}",
+                    nameof(Return.ReturnToDepot)
                 );
 
                 var dtos = _mapper.Map<List<ReturnDto>>(returns);
@@ -371,6 +392,294 @@ namespace Ettad.RequestManagement.Service.Returns
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error deleting return. ReturnId: {ReturnId}, User: {UserId}", id, _currentUserService.UserId);
+                return APIOperationResponse<bool>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
+            }
+        }
+
+        public async Task<APIOperationResponse<bool>> SetDepotAsync(long returnId, SetReturnDepotDto dto)
+        {
+            _logger.LogInformation("Setting depot for return. ReturnId: {ReturnId}, DepotId: {DepotId}, User: {UserId}",
+                returnId, dto.DepotId, _currentUserService.UserId);
+
+            try
+            {
+                var returnEntity = await _returnRepository.FindOneAsync(r => r.Id == returnId && !r.IsDeleted);
+                if (returnEntity == null)
+                {
+                    _logger.LogWarning("Return not found. ReturnId: {ReturnId}, User: {UserId}", returnId, _currentUserService.UserId);
+                    return APIOperationResponse<bool>.Fail(ResponseType.NotFound, "Return not found");
+                }
+
+                var depot = await _depotRepository.FindOneAsync(d => d.Id == dto.DepotId && !d.IsDeleted);
+                if (depot == null)
+                {
+                    _logger.LogWarning("Depot not found. DepotId: {DepotId}, User: {UserId}", dto.DepotId, _currentUserService.UserId);
+                    return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, "Depot not found");
+                }
+
+                returnEntity.ReturnToDepotId = dto.DepotId;
+                returnEntity.ModificationDate = _dateTimeProvider.Now;
+                returnEntity.ModifiedBy = _currentUserService.UserId;
+
+                await _returnRepository.UpdateAsync(returnEntity);
+
+                _logger.LogInformation("Depot set successfully for return. ReturnId: {ReturnId}, DepotId: {DepotId}, User: {UserId}",
+                    returnId, dto.DepotId, _currentUserService.UserId);
+
+                return APIOperationResponse<bool>.Success(true, "Depot set successfully");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error setting depot for return. ReturnId: {ReturnId}, User: {UserId}", returnId, _currentUserService.UserId);
+                return APIOperationResponse<bool>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
+            }
+        }
+
+        public async Task<APIOperationResponse<bool>> SetDeliveryDateAsync(long returnId, SetReturnDeliveryDateDto dto)
+        {
+            _logger.LogInformation("Setting delivery date for return. ReturnId: {ReturnId}, DeliveryDate: {DeliveryDate}, User: {UserId}",
+                returnId, dto.DeliveryDate, _currentUserService.UserId);
+
+            try
+            {
+                var returnEntity = await _returnRepository.FindOneAsync(r => r.Id == returnId && !r.IsDeleted);
+                if (returnEntity == null)
+                {
+                    _logger.LogWarning("Return not found. ReturnId: {ReturnId}, User: {UserId}", returnId, _currentUserService.UserId);
+                    return APIOperationResponse<bool>.Fail(ResponseType.NotFound, "Return not found");
+                }
+
+                returnEntity.DeliveryDate = dto.DeliveryDate;
+                returnEntity.ModificationDate = _dateTimeProvider.Now;
+                returnEntity.ModifiedBy = _currentUserService.UserId;
+
+                await _returnRepository.UpdateAsync(returnEntity);
+
+                _logger.LogInformation("Delivery date set successfully for return. ReturnId: {ReturnId}, DeliveryDate: {DeliveryDate}, User: {UserId}",
+                    returnId, dto.DeliveryDate, _currentUserService.UserId);
+
+                return APIOperationResponse<bool>.Success(true, "Delivery date set successfully");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error setting delivery date for return. ReturnId: {ReturnId}, User: {UserId}", returnId, _currentUserService.UserId);
+                return APIOperationResponse<bool>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
+            }
+        }
+
+        public async Task<APIOperationResponse<bool>> ProcessReturnItemsAsync(long returnId, ProcessReturnItemsDto dto)
+        {
+            _logger.LogInformation("Processing return items. ReturnId: {ReturnId}, AmmoExplosiveCount: {AmmoCount}, WeaponCount: {WeaponCount}, User: {UserId}",
+                returnId, dto.AmmoExplosiveItems?.Count ?? 0, dto.WeaponItems?.Count ?? 0, _currentUserService.UserId);
+
+            try
+            {
+                var returnEntity = await _returnRepository.FindOneAsync(
+                    r => r.Id == returnId && !r.IsDeleted,
+                    false,
+                    $"{nameof(BaseRequest.RequestItems)}.{nameof(RequestItem.Item)}"
+                );
+
+                if (returnEntity == null)
+                {
+                    _logger.LogWarning("Return not found. ReturnId: {ReturnId}, User: {UserId}", returnId, _currentUserService.UserId);
+                    return APIOperationResponse<bool>.Fail(ResponseType.NotFound, "Return not found");
+                }
+
+                if (!returnEntity.ReturnToDepotId.HasValue)
+                {
+                    return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, "Depot must be set before processing return items");
+                }
+
+                var depotId = returnEntity.ReturnToDepotId.Value;
+
+                // Process Ammo/Explosive items
+                if (dto.AmmoExplosiveItems != null && dto.AmmoExplosiveItems.Any())
+                {
+                    Ettad.Data.Entities.Inventory returnInventory = null;
+
+                    foreach (var item in dto.AmmoExplosiveItems)
+                    {
+                        var baseItem = await _baseItemRepository.FindOneAsync(i => i.Id == item.ItemId && !i.IsDeleted);
+                        if (baseItem == null)
+                        {
+                            return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, $"Item with ID {item.ItemId} not found");
+                        }
+
+                        if (baseItem.ItemType != ItemType.Ammunition && baseItem.ItemType != ItemType.Explosive)
+                        {
+                            return APIOperationResponse<bool>.Fail(ResponseType.BadRequest,
+                                $"Item {item.ItemId} is not Ammunition or Explosive type");
+                        }
+
+                        var lotKey = (item.Lot ?? string.Empty).Trim();
+
+                        var existingDetail = await _inventoryDetailRepository.FindOneAsync(
+                            id => id.ItemId == item.ItemId
+                                && id.Lot == lotKey
+                                && id.Inventory.DepoId == depotId
+                                && !id.Inventory.IsDeleted,
+                            false,
+                            nameof(InventoryDetail.Inventory)
+                        );
+
+                        if (existingDetail != null)
+                        {
+                            existingDetail.ItemQuantity += item.Quantity;
+                            existingDetail.IsReturned = true;
+                            existingDetail.ReadyForIssue = false;
+                            await _inventoryDetailRepository.UpdateAsync(existingDetail);
+
+                            _logger.LogInformation("Updated existing inventory detail. ItemId: {ItemId}, Lot: {Lot}, NewQuantity: {Quantity}",
+                                item.ItemId, lotKey, existingDetail.ItemQuantity);
+                        }
+                        else
+                        {
+                            if (returnInventory == null)
+                            {
+                                returnInventory = new Ettad.Data.Entities.Inventory
+                                {
+                                    DepoId = depotId,
+                                    Notes = $"Return #{returnEntity.RequestNo}",
+                                    RecievedDate = _dateTimeProvider.Now,
+                                    CreationDate = _dateTimeProvider.Now,
+                                    CreatedBy = _currentUserService.UserId,
+                                    InventoryDetails = new List<InventoryDetail>()
+                                };
+                                returnInventory = await _inventoryRepository.AddAsync(returnInventory);
+                            }
+
+                            var newDetail = new InventoryDetail
+                            {
+                                ItemId = item.ItemId,
+                                Lot = lotKey,
+                                ItemQuantity = item.Quantity,
+                                InventoryId = returnInventory.Id,
+                                IsReturned = true,
+                                ReadyForIssue = false,
+                                IsLotEmpty = string.IsNullOrEmpty(lotKey)
+                            };
+                            await _inventoryDetailRepository.AddAsync(newDetail);
+
+                            _logger.LogInformation("Created new inventory detail. ItemId: {ItemId}, Lot: {Lot}, Quantity: {Quantity}, InventoryId: {InventoryId}",
+                                item.ItemId, lotKey, item.Quantity, returnInventory.Id);
+                        }
+                    }
+                }
+
+                // Process Weapon items
+                if (dto.WeaponItems != null && dto.WeaponItems.Any())
+                {
+                    foreach (var item in dto.WeaponItems)
+                    {
+                        var baseItem = await _baseItemRepository.FindOneAsync(i => i.Id == item.ItemId && !i.IsDeleted);
+                        if (baseItem == null)
+                        {
+                            return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, $"Item with ID {item.ItemId} not found");
+                        }
+
+                        if (baseItem.ItemType != ItemType.Weapon)
+                        {
+                            return APIOperationResponse<bool>.Fail(ResponseType.BadRequest,
+                                $"Item {item.ItemId} is not a Weapon type");
+                        }
+
+                        var batchNumber = (item.BatchNumber ?? string.Empty).Trim();
+
+                        var batch = await _batchRepository.FindOneAsync(
+                            b => b.BatchNumber == batchNumber && b.DepotId == depotId && !b.IsDeleted
+                        );
+
+                        if (batch == null)
+                        {
+                            batch = new Batch
+                            {
+                                BatchNumber = batchNumber,
+                                DepotId = depotId,
+                                CreationDate = _dateTimeProvider.Now,
+                                CreatedBy = _currentUserService.UserId
+                            };
+                            batch = await _batchRepository.AddAsync(batch);
+
+                            _logger.LogInformation("Created new batch. BatchNumber: {BatchNumber}, DepotId: {DepotId}, BatchId: {BatchId}",
+                                batchNumber, depotId, batch.Id);
+                        }
+
+                        var serialNumber = (item.SerialNumber ?? string.Empty).Trim();
+
+                        var asset = await _assetRepository.FindOneAsync(
+                            a => a.SerialNumber == serialNumber && a.ItemId == item.ItemId && !a.IsDeleted
+                        );
+
+                        if (asset != null)
+                        {
+                            asset.Status = AssetStatus.Returned;
+                            asset.BatchId = batch.Id;
+                            asset.DepotId = depotId;
+                            asset.ModificationDate = _dateTimeProvider.Now;
+                            asset.ModifiedBy = _currentUserService.UserId;
+                            await _assetRepository.UpdateAsync(asset);
+
+                            _logger.LogInformation("Updated existing asset. AssetId: {AssetId}, SerialNumber: {SerialNumber}, Status: Returned",
+                                asset.Id, serialNumber);
+                        }
+                        else
+                        {
+                            var newAsset = new Asset
+                            {
+                                ItemId = item.ItemId,
+                                SerialNumber = serialNumber,
+                                DepotId = depotId,
+                                BatchId = batch.Id,
+                                Status = AssetStatus.Returned,
+                                IsAssigned = false,
+                                CreationDate = _dateTimeProvider.Now,
+                                CreatedBy = _currentUserService.UserId
+                            };
+                            await _assetRepository.AddAsync(newAsset);
+
+                            _logger.LogInformation("Created new asset. SerialNumber: {SerialNumber}, ItemId: {ItemId}, DepotId: {DepotId}, Status: Returned",
+                                serialNumber, item.ItemId, depotId);
+                        }
+                    }
+                }
+
+                // Approve workflow and complete the return
+                try
+                {
+                    var approveDto = new ApproveRejectWorkflowApprovalDto
+                    {
+                        BaseRequestID = returnEntity.Id,
+                        Action = RequestStatus.Approved,
+                        IsApproved = true,
+                        Comments = "Return items processed",
+                        SendToHigherApproval = false
+                    };
+
+                    var approveResult = await _workflowApprovalService.ProcessActionAsync(approveDto);
+                    if (!approveResult.Succeeded)
+                    {
+                        _logger.LogWarning("Failed to approve workflow step for return. ReturnId: {ReturnId}, Error: {Error}",
+                            returnId, approveResult.Message);
+                        return APIOperationResponse<bool>.Fail(ResponseType.BadRequest,
+                            $"Failed to approve workflow step: {approveResult.Message}");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error approving workflow step for return. ReturnId: {ReturnId}", returnId);
+                    return APIOperationResponse<bool>.Fail(ResponseType.InternalServerError,
+                        $"Failed to approve workflow step: {ex.Message}");
+                }
+
+                _logger.LogInformation("Return items processed successfully. ReturnId: {ReturnId}, User: {UserId}",
+                    returnId, _currentUserService.UserId);
+
+                return APIOperationResponse<bool>.Success(true, "Return items processed successfully");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error processing return items. ReturnId: {ReturnId}, User: {UserId}", returnId, _currentUserService.UserId);
                 return APIOperationResponse<bool>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
             }
         }
