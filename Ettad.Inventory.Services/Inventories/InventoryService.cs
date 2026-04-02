@@ -516,6 +516,13 @@ namespace Ettad.Inventory.Service.Inventories
                     .Where(id => !id.Inventory.IsDeleted)
                     .ToList();
 
+                // Restrict to the user's assigned depots (null = unrestricted)
+                var userDepotIds = await _depotAccessService.GetUserAccessibleDepotIdsAsync();
+                if (userDepotIds != null)
+                {
+                    lots = lots.Where(l => userDepotIds.Contains(l.Inventory.DepoId)).ToList();
+                }
+
                 _logger.LogInformation("Found {LotCount} lots for item. ItemId: {ItemId}",
                     lots.Count, itemId);
 
@@ -633,7 +640,23 @@ namespace Ettad.Inventory.Service.Inventories
                     .Where(id => !id.Inventory.IsDeleted)
                     .ToList();
 
-                // Filter by depot IDs if provided
+                // Enforce depot access: merge any caller-supplied depotIds with the user's assigned depots
+                var userDepotIds = await _depotAccessService.GetUserAccessibleDepotIdsAsync();
+                if (userDepotIds != null)
+                {
+                    depotIds = (depotIds != null && depotIds.Any())
+                        ? depotIds.Intersect(userDepotIds).ToList()
+                        : userDepotIds;
+
+                    if (!depotIds.Any())
+                    {
+                        _logger.LogInformation("User {UserId} has no accessible depots for item {ItemId}. Returning empty.",
+                            _currentUserService.UserId, itemId);
+                        return APIOperationResponse<List<LotDetailDto>>.Success(new List<LotDetailDto>());
+                    }
+                }
+
+                // Filter by depot IDs if provided (or derived from user access)
                 if (depotIds != null && depotIds.Any())
                 {
                     lots = lots
@@ -814,6 +837,15 @@ namespace Ettad.Inventory.Service.Inventories
                 {
                     _logger.LogWarning("Lot not found or inventory deleted. Lot: {Lot}, User: {UserId}",
                         lotKey, _currentUserService.UserId);
+                    return APIOperationResponse<LotDetailDto>.Fail(ResponseType.NotFound, "Lot not found");
+                }
+
+                // Verify the user has access to the depot that holds this lot
+                var userDepotIds = await _depotAccessService.GetUserAccessibleDepotIdsAsync();
+                if (userDepotIds != null && !userDepotIds.Contains(inventoryDetail.Inventory.DepoId))
+                {
+                    _logger.LogWarning("User {UserId} does not have access to depot {DepotId} for lot {Lot}",
+                        _currentUserService.UserId, inventoryDetail.Inventory.DepoId, lotKey);
                     return APIOperationResponse<LotDetailDto>.Fail(ResponseType.NotFound, "Lot not found");
                 }
 
