@@ -150,25 +150,187 @@ public class UserService : IUserService
 
         if (filter != null)
         {
-            if (!string.IsNullOrEmpty(filter.Value) && string.IsNullOrEmpty(filter.Field) && (filter.Filters == null || !filter.Filters.Any()))
+            //roles filter
+            var roleIds = ExtractRoleIds(filter);
+            if (roleIds.Count > 0)
             {
-                // Global search across multiple fields
-                var searchTerm = filter.Value.ToLower();
-                query = query.Where(u => 
-                    (u.UserName != null && u.UserName.Contains(searchTerm)) || 
-                    (u.Email != null && u.Email.Contains(searchTerm)) || 
-                    (u.FullNameEN != null && u.FullNameEN.Contains(searchTerm)) || 
-                    (u.FullNameAR != null && u.FullNameAR.Contains(searchTerm)) || 
-                    (u.MilitoryId != null && u.MilitoryId.Contains(searchTerm)));
+                query = query.Where(u => _context.UserRoles.Any(ur =>
+                    ur.UserId == u.Id && roleIds.Contains(ur.RoleId)));
             }
-            else
+
+            // global search for username and email
+            var searchTerms = ExtractGlobalSearchTerms(filter);
+            if (searchTerms.Count > 0)
+            {
+                var searchTerm = (searchTerms.LastOrDefault() ?? string.Empty).ToLower();
+                if (!string.IsNullOrWhiteSpace(searchTerm))
+                {
+                    query = query.Where(u =>
+                        (u.UserName != null && u.UserName.Contains(searchTerm)) ||
+                        (u.Email != null && u.Email.Contains(searchTerm)) ||
+                        (u.FullNameEN != null && u.FullNameEN.Contains(searchTerm)) ||
+                        (u.FullNameAR != null && u.FullNameAR.Contains(searchTerm)) ||
+                        (u.MilitoryId != null && u.MilitoryId.Contains(searchTerm)));
+                }
+            }
+
+            var filterForProvider = RemoveGlobalSearchFilters(RemoveRoleFilters(filter));
+
+            if (filterForProvider != null)
             {
                 // Use standard FilterProvider for specific field filters
-                query = Ettad.CrossCutting.Comman.Providers.FilterProvider.ToFilterView(query, filter);
+                query = Ettad.CrossCutting.Comman.Providers.FilterProvider.ToFilterView(query, filterForProvider);
             }
         }
 
         return query;
+    }
+
+    private static bool IsRoleFilter(FilterData filter) =>
+        filter != null &&
+        !string.IsNullOrWhiteSpace(filter.Field) &&
+        (filter.Field.Equals("RoleIds", StringComparison.OrdinalIgnoreCase) ||
+         filter.Field.Equals("RoleId", StringComparison.OrdinalIgnoreCase));
+
+    private static List<string> ExtractRoleIds(FilterData filter)
+    {
+        var roleIds = new List<string>();
+        if (filter == null) return roleIds;
+
+        void Walk(FilterData f)
+        {
+            if (f == null) return;
+
+            if (f.Filters != null && f.Filters.Any())
+            {
+                foreach (var child in f.Filters)
+                {
+                    Walk(child);
+                }
+            }
+
+            if (IsRoleFilter(f) && !string.IsNullOrWhiteSpace(f.Value))
+            {
+                // Frontend may send comma-separated values: "id1,id2"
+                var parts = f.Value
+                    .Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries)
+                    .Select(x => x.Trim())
+                    .Where(x => !string.IsNullOrWhiteSpace(x));
+                roleIds.AddRange(parts);
+            }
+        }
+
+        Walk(filter);
+
+        return roleIds
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
+
+    private static FilterData? RemoveRoleFilters(FilterData filter)
+    {
+        if (filter == null) return null;
+
+        if (IsRoleFilter(filter))
+        {
+            return null;
+        }
+
+        if (filter.Filters != null && filter.Filters.Any())
+        {
+            var remaining = filter.Filters
+                .Select(RemoveRoleFilters)
+                .Where(x => x != null)
+                .ToList();
+
+            // If wrapper ends up with no children, treat as "no filter"
+            if (remaining.Count == 0 && string.IsNullOrEmpty(filter.Field))
+            {
+                return null;
+            }
+
+            return new FilterData
+            {
+                sortField = filter.sortField,
+                sortDirection = filter.sortDirection,
+                Field = filter.Field,
+                Operator = filter.Operator,
+                Value = filter.Value,
+                Logic = filter.Logic,
+                Filters = remaining
+            };
+        }
+
+        // Leaf node that's not a role filter
+        return filter;
+    }
+
+    private static bool IsGlobalSearchLeaf(FilterData filter) =>
+        filter != null &&
+        string.IsNullOrWhiteSpace(filter.Field) &&
+        string.IsNullOrWhiteSpace(filter.Operator) &&
+        !string.IsNullOrWhiteSpace(filter.Value) &&
+        (filter.Filters == null || !filter.Filters.Any());
+
+    private static List<string> ExtractGlobalSearchTerms(FilterData filter)
+    {
+        var terms = new List<string>();
+        if (filter == null) return terms;
+
+        void Walk(FilterData f)
+        {
+            if (f == null) return;
+            if (f.Filters != null && f.Filters.Any())
+            {
+                foreach (var child in f.Filters)
+                {
+                    Walk(child);
+                }
+            }
+            if (IsGlobalSearchLeaf(f))
+            {
+                terms.Add(f.Value);
+            }
+        }
+
+        Walk(filter);
+        return terms.Where(t => !string.IsNullOrWhiteSpace(t)).ToList();
+    }
+
+    private static FilterData? RemoveGlobalSearchFilters(FilterData? filter)
+    {
+        if (filter == null) return null;
+
+        if (IsGlobalSearchLeaf(filter))
+        {
+            return null;
+        }
+
+        if (filter.Filters != null && filter.Filters.Any())
+        {
+            var remaining = filter.Filters
+                .Select(RemoveGlobalSearchFilters)
+                .Where(x => x != null)
+                .ToList();
+
+            if (remaining.Count == 0 && string.IsNullOrEmpty(filter.Field))
+            {
+                return null;
+            }
+
+            return new FilterData
+            {
+                sortField = filter.sortField,
+                sortDirection = filter.sortDirection,
+                Field = filter.Field,
+                Operator = filter.Operator,
+                Value = filter.Value,
+                Logic = string.IsNullOrWhiteSpace(filter.Logic) ? "and" : filter.Logic,
+                Filters = remaining
+            };
+        }
+
+        return filter;
     }
 
     public async Task<APIOperationResponse<PaginatedList<UserDto>>> GetAllAsync(PagedListRequest request)
@@ -176,17 +338,43 @@ public class UserService : IUserService
         _logger.LogInformation("Getting users (Paginated). RequestedBy: {RequestedBy}, IsSuperAdmin: {IsSuperAdmin}, Page: {Page}, PageSize: {PageSize}",
             _currentUserService.UserId, _currentUserService.IsSuperAdmin, request.Page, request.PageSize);
 
-        var query = GetUsersQuery(request.Filter);
+        try
+        {
+            var query = GetUsersQuery(request.Filter);
 
-        // Apply Pagination & Filtering (Using the utility we updated)
-        var paginatedUsers = await PaginatedList<ApplicationUser>.CreateAsyncForTableBinding(query, request);
+            // Important:
+            // PaginatedList.CreateAsyncForTableBinding() applies FilterProvider again using request.Filter.
+            // Since ApplicationUser doesn't have RoleIds/RoleId properties, we must remove RoleIds filters
+            // from the filter we pass into pagination to avoid dynamic-query 500s.
+            // Remove RoleIds filters (not a property on ApplicationUser) and also remove global-search leaves
+            // (leaf nodes with Value but no Field/Operator), otherwise FilterProvider will throw.
+            var safeFilter = RemoveGlobalSearchFilters(RemoveRoleFilters(request.Filter));
+            var safeRequest = new PagedListRequest
+            {
+                Page = request.Page,
+                PageSize = request.PageSize,
+                Filter = safeFilter,
+                DeletedOnly = request.DeletedOnly
+            };
 
-        // Map to DTOs and Batch Load Roles
-        var userDtos = await MapToDtosWithRolesAsync(paginatedUsers.Items);
+            // Apply Pagination & Filtering (Using the utility we updated)
+            var paginatedUsers = await PaginatedList<ApplicationUser>.CreateAsyncForTableBinding(query, safeRequest);
 
-        var result = new PaginatedList<UserDto>(userDtos, paginatedUsers.TotalCount, paginatedUsers.PageIndex, request.PageSize);
-      
-        return APIOperationResponse<PaginatedList<UserDto>>.Success(result);
+            // Map to DTOs and Batch Load Roles
+            var userDtos = await MapToDtosWithRolesAsync(paginatedUsers.Items);
+
+            var result = new PaginatedList<UserDto>(userDtos, paginatedUsers.TotalCount, paginatedUsers.PageIndex, request.PageSize);
+
+            return APIOperationResponse<PaginatedList<UserDto>>.Success(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to get users (paginated). RoleIds/filters might be invalid. FilterField: {FilterField}, FilterValue: {FilterValue}",
+                request?.Filter?.Field, request?.Filter?.Value);
+
+            // Return a meaningful message so the frontend doesn't just show a blank 500.
+            return APIOperationResponse<PaginatedList<UserDto>>.Fail(ResponseType.InternalServerError, ex.Message);
+        }
     }
 
     public async Task<APIOperationResponse<List<UserDto>>> GetAllForExportAsync(FilterData filter)
@@ -199,7 +387,11 @@ public class UserService : IUserService
         // Apply filtering but NO pagination
         if (filter != null)
         {
-            query = Ettad.CrossCutting.Comman.Providers.FilterProvider.ToFilterView(query, filter);
+            var filterForProvider = RemoveRoleFilters(filter);
+            if (filterForProvider != null)
+            {
+                query = Ettad.CrossCutting.Comman.Providers.FilterProvider.ToFilterView(query, filterForProvider);
+            }
         }
 
         var users = await query.ToListAsync();
