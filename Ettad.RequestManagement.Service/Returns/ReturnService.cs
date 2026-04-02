@@ -467,10 +467,10 @@ namespace Ettad.RequestManagement.Service.Returns
             }
         }
 
-        public async Task<APIOperationResponse<bool>> ProcessReturnItemsAsync(long returnId, ProcessReturnItemsDto dto)
+        public async Task<APIOperationResponse<bool>> ProcessReturnItemsAsync(long returnId, ProcessReturnItemsDto dto, List<IFormFile>? files = null)
         {
-            _logger.LogInformation("Processing return items. ReturnId: {ReturnId}, AmmoExplosiveCount: {AmmoCount}, WeaponCount: {WeaponCount}, User: {UserId}",
-                returnId, dto.AmmoExplosiveItems?.Count ?? 0, dto.WeaponItems?.Count ?? 0, _currentUserService.UserId);
+            _logger.LogInformation("Processing return items. ReturnId: {ReturnId}, AmmoExplosiveCount: {AmmoCount}, WeaponCount: {WeaponCount}, FileCount: {FileCount}, User: {UserId}",
+                returnId, dto.AmmoExplosiveItems?.Count ?? 0, dto.WeaponItems?.Count ?? 0, files?.Count ?? 0, _currentUserService.UserId);
 
             try
             {
@@ -492,6 +492,22 @@ namespace Ettad.RequestManagement.Service.Returns
                 }
 
                 var depotId = returnEntity.ReturnToDepotId.Value;
+
+                // Optional attachments: same linkage as return creation (Order entity + request id)
+                if (files != null && files.Count > 0)
+                {
+                    var uploadResult = await _fileUploadService.UploadFilesForEntityAsync(files, FileEntityType.Order, returnId);
+                    if (!uploadResult.Succeeded)
+                    {
+                        _logger.LogWarning("Failed to upload process-return attachments. ReturnId: {ReturnId}, Message: {Message}",
+                            returnId, uploadResult.Message);
+                        return APIOperationResponse<bool>.Fail(ResponseType.BadRequest,
+                            uploadResult.Message ?? "Failed to upload attachments.");
+                    }
+
+                    _logger.LogInformation("Process-return attachments uploaded. ReturnId: {ReturnId}, DetailCount: {Count}",
+                        returnId, uploadResult.Data?.Count ?? 0);
+                }
 
                 // Process Ammo/Explosive items
                 if (dto.AmmoExplosiveItems != null && dto.AmmoExplosiveItems.Any())

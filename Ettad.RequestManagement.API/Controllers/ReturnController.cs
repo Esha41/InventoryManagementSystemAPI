@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using System.Net;
+using System.Text.Json;
 using Ettad.ResponseHandler.Consts;
 
 namespace Ettad.RequestManagement.API.Controllers
@@ -145,16 +146,61 @@ namespace Ettad.RequestManagement.API.Controllers
         }
 
         /// <summary>
-        /// Process return items (ammo/explosive inventory update and weapon asset status update), then approve and close the return
+        /// Process return items (ammo/explosive inventory update and weapon asset status update), then approve and close the return.
+        /// Supports <c>application/json</c> (body = DTO) or <c>multipart/form-data</c> with field <c>payload</c> (JSON) and optional <c>files</c>.
         /// </summary>
         [HttpPut("{id}/process-items")]
         [ProducesResponseType(typeof(APIOperationResponse<bool>), (int)HttpStatusCode.OK)]
         [ProducesResponseType((int)HttpStatusCode.BadRequest)]
         [ProducesResponseType((int)HttpStatusCode.NotFound)]
         [CheckAuthorize("ProcessReturnItems")]
-        public async Task<IActionResult> ProcessItems(long id, [FromBody] ProcessReturnItemsDto dto)
+        [RequestFormLimits(MultipartBodyLengthLimit = 104857600)]
+        public async Task<IActionResult> ProcessItems(long id)
         {
-            var result = await _returnService.ProcessReturnItemsAsync(id, dto);
+            ProcessReturnItemsDto dto;
+            List<IFormFile>? files = null;
+
+            if (Request.HasFormContentType)
+            {
+                var form = await Request.ReadFormAsync();
+                var payload = form["payload"].FirstOrDefault();
+                if (string.IsNullOrWhiteSpace(payload))
+                {
+                    return BadRequest(APIOperationResponse<bool>.Fail(ResponseType.BadRequest, "Missing form field 'payload' with JSON body."));
+                }
+
+                dto = JsonSerializer.Deserialize<ProcessReturnItemsDto>(payload, new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true
+                });
+
+                if (dto == null)
+                {
+                    return BadRequest(APIOperationResponse<bool>.Fail(ResponseType.BadRequest, "Invalid JSON in 'payload'."));
+                }
+
+                var fileList = form.Files.Where(f => f.Length > 0).ToList();
+                if (fileList.Count > 0)
+                {
+                    files = fileList;
+                }
+            }
+            else
+            {
+                using var reader = new StreamReader(Request.Body);
+                var body = await reader.ReadToEndAsync();
+                dto = JsonSerializer.Deserialize<ProcessReturnItemsDto>(body, new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true
+                });
+
+                if (dto == null)
+                {
+                    return BadRequest(APIOperationResponse<bool>.Fail(ResponseType.BadRequest, "Invalid request body."));
+                }
+            }
+
+            var result = await _returnService.ProcessReturnItemsAsync(id, dto, files);
             return ProcessResponse(result);
         }
     }
