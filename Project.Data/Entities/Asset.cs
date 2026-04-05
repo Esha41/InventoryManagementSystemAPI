@@ -60,6 +60,11 @@ namespace Ettad.Data.Entities
         public decimal? PurchasePrice { get; set; }
 
         /// <summary>
+        /// Optional delivery receipt reference
+        /// </summary>
+        public string? DeliveryReceipt { get; set; }
+
+        /// <summary>
         /// General notes about the asset
         /// </summary>
         public string? Notes { get; set; }

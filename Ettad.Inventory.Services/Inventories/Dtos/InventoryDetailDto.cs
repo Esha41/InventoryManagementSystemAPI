@@ -1,5 +1,6 @@
 using Ettad.Inventory.Service.Common.Dtos;
 using Ettad.Module.lookup.Dtos;
+using Ettad.CrossCutting.Comman.FileUpload;
 
 namespace Ettad.Inventory.Service.Inventories.Dtos
 {
@@ -39,6 +40,7 @@ namespace Ettad.Inventory.Service.Inventories.Dtos
 
         // Invoice Information (from parent Inventory)
         public string? InvoiceNumber { get; set; }
+        public string? DeliveryReceipt { get; set; }
         public DateTime? InvoiceDate { get; set; }
         public DateTime? RecievedDate { get; set; }
         public string? ContractNumber { get; set; }
@@ -52,5 +54,7 @@ namespace Ettad.Inventory.Service.Inventories.Dtos
         public CountryDto Country { get; set; }
 
         #endregion
+
+        public List<FileUploadDto>? Files { get; set; }
     }
 }

@@ -78,20 +78,41 @@ namespace Ettad.Inventory.API.Controllers
         }
         
         [HttpPost("Bulk")]
+        [Consumes("multipart/form-data")]
         [ProducesResponseType((int)HttpStatusCode.Created)]
         [CheckAuthorize("Permissions.Asset.Create")]
-        public async Task<IActionResult> BulkCreate([FromBody] List<CreateAssetDto> dtos)
+        public async Task<IActionResult> BulkCreate([FromForm] string dtosJson, [FromForm] List<IFormFile>? files = null)
         {
-            var result = await _assetService.CreateBulkAsync(dtos);
+            if (string.IsNullOrWhiteSpace(dtosJson))
+                return BadRequest("dtosJson is required");
+
+            List<CreateAssetDto>? dtos;
+            try
+            {
+                dtos = System.Text.Json.JsonSerializer.Deserialize<List<CreateAssetDto>>(dtosJson, new System.Text.Json.JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true
+                });
+            }
+            catch (System.Text.Json.JsonException ex)
+            {
+                return BadRequest($"Invalid dtosJson payload: {ex.Message}");
+            }
+
+            if (dtos == null || dtos.Count == 0)
+                return BadRequest("No assets provided in dtosJson");
+
+            var result = await _assetService.CreateBulkAsync(dtos, files);
             return ProcessResponse(result);
         }
 
         [HttpPut("{id}")]
+        [Consumes("multipart/form-data")]
         [ProducesResponseType((int)HttpStatusCode.OK)]
         [CheckAuthorize("Permissions.Asset.Edit")]
-        public async Task<IActionResult> Update(long id, [FromBody] UpdateAssetDto dto)
+        public async Task<IActionResult> Update(long id, [FromForm] UpdateAssetDto dto, [FromForm] List<IFormFile>? files = null)
         {
-            var result = await _assetService.UpdateAsync(id, dto);
+            var result = await _assetService.UpdateAsync(id, dto, files);
             return ProcessResponse(result);
         }
 

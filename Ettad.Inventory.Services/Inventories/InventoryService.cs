@@ -16,6 +16,8 @@ using Microsoft.Extensions.Logging;
 using System;
 using Ettad.CrossCutting.Comman.Models;
 using Ettad.CrossCutting.Comman.Time;
+using Ettad.CrossCutting.Comman.FileUpload;
+using Ettad.Comman.Enums;
 using InventoryEntity = Ettad.Data.Entities.Inventory;
 using InventoryDetailEntity = Ettad.Data.Entities.InventoryDetail;
 
@@ -39,6 +41,7 @@ namespace Ettad.Inventory.Service.Inventories
         private readonly ILogger<InventoryService> _logger;
         private readonly IDateTimeProvider _dateTimeProvider;
         private readonly IDepotAccessService _depotAccessService;
+        private readonly IFileUploadService _fileUploadService;
 
         public InventoryService(
             ApplicationDbContext context,
@@ -56,7 +59,8 @@ namespace Ettad.Inventory.Service.Inventories
             ICurrentUserService currentUserService,
             ILogger<InventoryService> logger,
             IDateTimeProvider dateTimeProvider,
-            IDepotAccessService depotAccessService)
+            IDepotAccessService depotAccessService,
+            IFileUploadService fileUploadService)
         {
             _context = context;
             _inventoryRepository = inventoryRepository;
@@ -74,6 +78,7 @@ namespace Ettad.Inventory.Service.Inventories
             _logger = logger;
             _dateTimeProvider = dateTimeProvider;
             _depotAccessService = depotAccessService;
+            _fileUploadService = fileUploadService;
         }
 
         public async Task<APIOperationResponse<InventoryDto>> GetByIdAsync(long id)
@@ -115,6 +120,44 @@ namespace Ettad.Inventory.Service.Inventories
                 if (dto.InventoryDetails != null && dto.InventoryDetails.Any())
                 {
                     await PopulateInventoryDetailsQuantitiesAsync(dto.InventoryDetails);
+
+                    // Populate files per inventory using file service in a batched way
+                    var ammoInventoryIds = dto.InventoryDetails
+                        .Where(d => d.Item != null && d.Item.ItemType != ItemType.Explosive)
+                        .Select(d => d.InventoryId)
+                        .Distinct()
+                        .ToList();
+                    var explosiveInventoryIds = dto.InventoryDetails
+                        .Where(d => d.Item != null && d.Item.ItemType == ItemType.Explosive)
+                        .Select(d => d.InventoryId)
+                        .Distinct()
+                        .ToList();
+
+                    Dictionary<long, List<FileUploadDto>> ammoFiles = new();
+                    Dictionary<long, List<FileUploadDto>> explosiveFiles = new();
+
+                    if (ammoInventoryIds.Any())
+                    {
+                        var filesResult = await _fileUploadService.GetByEntitiesAsync(FileEntityType.Ammunition, ammoInventoryIds);
+                        ammoFiles = filesResult.Data ?? new Dictionary<long, List<FileUploadDto>>();
+                    }
+                    if (explosiveInventoryIds.Any())
+                    {
+                        var filesResult = await _fileUploadService.GetByEntitiesAsync(FileEntityType.Explosive, explosiveInventoryIds);
+                        explosiveFiles = filesResult.Data ?? new Dictionary<long, List<FileUploadDto>>();
+                    }
+
+                    foreach (var detail in dto.InventoryDetails)
+                    {
+                        if (detail.Item != null && detail.Item.ItemType == ItemType.Explosive)
+                        {
+                            detail.Files = explosiveFiles.TryGetValue(detail.InventoryId, out var list) ? list : new List<FileUploadDto>();
+                        }
+                        else
+                        {
+                            detail.Files = ammoFiles.TryGetValue(detail.InventoryId, out var list) ? list : new List<FileUploadDto>();
+                        }
+                    }
                 }
 
                 return APIOperationResponse<InventoryDto>.Success(dto);
@@ -162,7 +205,7 @@ namespace Ettad.Inventory.Service.Inventories
             }
         }
 
-        public async Task<APIOperationResponse<long>> CreateAsync(CreateInventoryDto inputDto)
+        public async Task<APIOperationResponse<long>> CreateAsync(CreateInventoryDto inputDto, List<IFormFile>? files = null)
         {
             _logger.LogInformation("Creating new inventory. DepoId: {DepoId}, DetailCount: {DetailCount}, User: {UserId}", 
                 inputDto?.DepoId, inputDto?.InventoryDetails?.Count ?? 0, _currentUserService.UserId);
@@ -203,6 +246,31 @@ namespace Ettad.Inventory.Service.Inventories
                 _logger.LogInformation("Inventory created successfully. InventoryId: {InventoryId}, DetailCount: {DetailCount}, User: {UserId}",
                        createdInventory.Id, inventory.InventoryDetails.Count, _currentUserService.UserId);
 
+                // If files were provided, attach them to related item entities (Ammunition/Explosive)
+                if (files != null && files.Any())
+                {
+                    try
+                    {
+                        // Determine unique item IDs and their types
+                        var detailItemIds = inventory.InventoryDetails.Select(d => d.InventoryId).Distinct().ToList();
+                        foreach (var itemId in detailItemIds)
+                        {
+                            // Resolve item type by probing weapons/ammunitions/explosives tables; default to Ammunition if not explosive
+                            var isExplosive = await _context.Explosives.AnyAsync(e => e.Id == itemId && !e.IsDeleted);
+                            var entityType = isExplosive ? FileEntityType.Explosive : FileEntityType.Ammunition;
+                            var uploadResult = await _fileUploadService.UploadFilesForEntityAsync(files, entityType, itemId);
+                            if (!uploadResult.Succeeded)
+                            {
+                                _logger.LogWarning("File upload failed for Inventory create. ItemId: {ItemId}, Error: {Error}", itemId, uploadResult.Message);
+                            }
+                        }
+                    }
+                    catch (Exception exUpload)
+                    {
+                        _logger.LogWarning(exUpload, "Error uploading files for Inventory create. InventoryId: {InventoryId}", createdInventory.Id);
+                    }
+                }
+
                 return APIOperationResponse<long>.Success(createdInventory.Id, "Inventory created successfully");
             }
             catch (Exception ex)
@@ -214,7 +282,7 @@ namespace Ettad.Inventory.Service.Inventories
             }
         }
 
-        public async Task<APIOperationResponse<bool>> UpdateAsync(long id, UpdateInventoryDto inputDto)
+        public async Task<APIOperationResponse<bool>> UpdateAsync(long id, UpdateInventoryDto inputDto, List<IFormFile>? files = null, long? filesItemId = null)
         {
             try
             {
@@ -284,6 +352,29 @@ namespace Ettad.Inventory.Service.Inventories
 
                 // Update the parent inventory entity - use the already-mapped entity
                 await _inventoryRepository.UpdateAsync(existingInventory);
+
+                // Handle file uploads after successful update
+                if (files != null && files.Any() && filesItemId.HasValue)
+                {
+                    try
+                    {
+                        var targetDetail = existingInventory.InventoryDetails.FirstOrDefault(d => d.ItemId == filesItemId.Value);
+                        if (targetDetail != null)
+                        {
+                            var entityType = targetDetail.Item != null && targetDetail.Item.ItemType == ItemType.Explosive
+                                ? FileEntityType.Explosive
+                                : FileEntityType.Ammunition;
+
+                            // Attach files to the specific itemId (Ammunition/Explosive)
+                            await _fileUploadService.UploadFilesForEntityAsync(files, entityType, targetDetail.InventoryId);
+                        }
+                    }
+                    catch (Exception exUpload)
+                    {
+                        _logger.LogWarning(exUpload, "Error uploading files for Inventory update. InventoryId: {InventoryId}", id);
+                    }
+                }
+
                 return APIOperationResponse<bool>.Success(true, "Inventory updated successfully");
             }
             catch (Exception ex)

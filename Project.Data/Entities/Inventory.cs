@@ -10,6 +10,8 @@ namespace Ettad.Data.Entities
 
         public string? InvoiceNumber { get; set; }
 
+        public string? DeliveryReceipt { get; set; }
+
         public DateTime? InvoiceDate { get; set; }
 
         public DateTime? RecievedDate {  get; set; }
