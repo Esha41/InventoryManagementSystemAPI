@@ -54,7 +54,8 @@ namespace Ettad.Inventory.Service.Inventories.Profiles
                 .ForMember(dest => dest.Inventory, opt => opt.Ignore())
                 .ForMember(dest => dest.Supplier, opt => opt.Ignore())
                 .ForMember(dest => dest.Manufacturer, opt => opt.Ignore())
-                .ForMember(dest => dest.Country, opt => opt.Ignore());
+                .ForMember(dest => dest.Country, opt => opt.Ignore())
+                .ForMember(dest => dest.PrimaryPurpos, opt => opt.Ignore());
 
             // Update DTO to Entity
             CreateMap<UpdateInventoryDto, InventoryEntity>()
@@ -76,7 +77,8 @@ namespace Ettad.Inventory.Service.Inventories.Profiles
                 .ForMember(dest => dest.Inventory, opt => opt.Ignore())
                 .ForMember(dest => dest.Supplier, opt => opt.Ignore())
                 .ForMember(dest => dest.Manufacturer, opt => opt.Ignore())
-                .ForMember(dest => dest.Country, opt => opt.Ignore());
+                .ForMember(dest => dest.Country, opt => opt.Ignore())
+                .ForMember(dest => dest.PrimaryPurpos, opt => opt.Ignore());
 
             // DTO to DTO mappings
             CreateMap<LotDetailDto, SupplyLotSuggestionDto>()

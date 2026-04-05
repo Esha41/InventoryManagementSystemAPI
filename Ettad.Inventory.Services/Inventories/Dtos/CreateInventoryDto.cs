@@ -38,5 +38,7 @@ namespace Ettad.Inventory.Service.Inventories.Dtos
         public bool ReadyForIssue { get; set; } = true;
 
         public long OriginalQuantity { get; set; }
+
+        public long? PrimaryPurposId { get; set; }
     }
 }

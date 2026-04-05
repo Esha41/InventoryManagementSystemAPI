@@ -27,12 +27,6 @@ namespace Ettad.EntityFramework.Configurations
                 .HasForeignKey(x => x.NatureOptionId)
                 .OnDelete(DeleteBehavior.Restrict);
 
-            builder.HasOne(x => x.PrimaryPurpos)
-                .WithMany()
-                .IsRequired(false)
-                .HasForeignKey(x => x.PrimaryPurposId)
-                .OnDelete(DeleteBehavior.Restrict);
-
             builder.HasOne(x => x.ProjectileColor)
                 .WithMany()
                 .IsRequired(false)
