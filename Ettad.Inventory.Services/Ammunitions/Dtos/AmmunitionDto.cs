@@ -23,8 +23,6 @@ namespace Ettad.Inventory.Service.Ammunitions.Dtos
 
         public long? NatureOptionId { get; set; }
 
-        public long? PrimaryPurposId { get; set; }
-
         public long? ProjectileColorId { get; set; }
 
         public long? ProjectailMaterialId { get; set; }
@@ -41,7 +39,6 @@ namespace Ettad.Inventory.Service.Ammunitions.Dtos
 
         public UnitDto BulletDiameterUnit { get; set; }
         public NatureOptionDto NatureOption { get; set; }
-        public PrimaryPurposDto PrimaryPurpos { get; set; }
         public ColorDto ProjectileColor { get; set; }
         public ProjectailMaterialDto ProjectailMaterial { get; set; }
         public CaseTypeDto CaseType { get; set; }

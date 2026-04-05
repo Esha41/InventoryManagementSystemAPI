@@ -92,7 +92,8 @@ namespace Ettad.Inventory.Service.Batches
                 var batch = await _batchRepository.FindOneAsync(
                     p => p.Id == id && !p.IsDeleted,
                     false,
-                    nameof(Batch.Depot));
+                    nameof(Batch.Depot),
+                    nameof(Batch.PrimaryPurpos));
 
                 if (batch == null)
                     return APIOperationResponse<BatchDto>.Fail(ResponseType.NotFound, "Batch not found");
@@ -189,7 +190,8 @@ namespace Ettad.Inventory.Service.Batches
                 var batches = await _batchRepository.FindAsync(
                     p => !p.IsDeleted && (!depotId.HasValue || p.DepotId == depotId.Value),
                     false,
-                    nameof(Batch.Depot));
+                    nameof(Batch.Depot),
+                    nameof(Batch.PrimaryPurpos));
 
                 var dtos = _mapper.Map<List<BatchDto>>(batches.ToList());
 
@@ -286,7 +288,8 @@ namespace Ettad.Inventory.Service.Batches
                 var query = _batchRepository.Find(
                     p => !p.IsDeleted && (!depotId.HasValue || p.DepotId == depotId.Value),
                     false,
-                    nameof(Batch.Depot));
+                    nameof(Batch.Depot),
+                    nameof(Batch.PrimaryPurpos));
 
                 var paginatedEntities = await PaginatedList<Batch>.CreateAsyncForTableBinding(query, request);
 

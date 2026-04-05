@@ -101,7 +101,8 @@ namespace Ettad.Inventory.Service.Explosives
                     nameof(Explosive.HazardDivision),
                     nameof(Explosive.Classification),
                     nameof(Explosive.Type),
-                    nameof(Explosive.Unit)
+                    nameof(Explosive.Unit),
+                    "BaseItemPrimaryPurposes.PrimaryPurpos"
                 );
 
                 if (explosive == null)
@@ -135,7 +136,8 @@ namespace Ettad.Inventory.Service.Explosives
                     nameof(Explosive.HazardDivision),
                     nameof(Explosive.Classification),
                     nameof(Explosive.Type),
-                    nameof(Explosive.Unit)
+                    nameof(Explosive.Unit),
+                    "BaseItemPrimaryPurposes.PrimaryPurpos"
                 );
 
                 var dtos = _mapper.Map<List<ExplosiveDto>>(explosives);
@@ -174,7 +176,8 @@ namespace Ettad.Inventory.Service.Explosives
                     nameof(Explosive.HazardDivision),
                     nameof(Explosive.Classification),
                     nameof(Explosive.Type),
-                    nameof(Explosive.Unit)
+                    nameof(Explosive.Unit),
+                    "BaseItemPrimaryPurposes.PrimaryPurpos"
                 );
 
                 var paginatedEntities = await PaginatedList<Explosive>.CreateAsyncForTableBinding(query, request);
@@ -255,6 +258,14 @@ namespace Ettad.Inventory.Service.Explosives
 
                 var createdExplosive = await _explosiveRepository.AddAsync(explosive);
 
+                if (inputDto.PrimaryPurposIds != null && inputDto.PrimaryPurposIds.Any())
+                {
+                    createdExplosive.BaseItemPrimaryPurposes = inputDto.PrimaryPurposIds
+                        .Select(id => new BaseItemPrimaryPurpos { BaseItemId = createdExplosive.Id, PrimaryPurposId = id })
+                        .ToList();
+                    await _context.SaveChangesAsync();
+                }
+
                 if (files != null && files.Any())
                 {
                     await _fileUploadService.UploadFilesForEntityAsync(
@@ -305,6 +316,21 @@ namespace Ettad.Inventory.Service.Explosives
                 existingExplosive.ArmNumber = string.IsNullOrWhiteSpace(inputDto.ArmNumber) ? null : inputDto.ArmNumber.Trim();
 
                 await _explosiveRepository.UpdateAsync(existingExplosive);
+
+                var existingPurposes = await _context.BaseItemPrimaryPurposes
+                    .Where(x => x.BaseItemId == id)
+                    .ToListAsync();
+                _context.BaseItemPrimaryPurposes.RemoveRange(existingPurposes);
+
+                if (inputDto.PrimaryPurposIds != null && inputDto.PrimaryPurposIds.Any())
+                {
+                    var newPurposes = inputDto.PrimaryPurposIds
+                        .Select(pid => new BaseItemPrimaryPurpos { BaseItemId = id, PrimaryPurposId = pid })
+                        .ToList();
+                    await _context.BaseItemPrimaryPurposes.AddRangeAsync(newPurposes);
+                }
+                await _context.SaveChangesAsync();
+
                 return APIOperationResponse<bool>.Success(true, "Explosive updated successfully");
             }
             catch (Exception ex)
@@ -521,6 +547,7 @@ namespace Ettad.Inventory.Service.Explosives
                 .Include(e => e.Classification)
                 .Include(e => e.Type)
                 .Include(e => e.Unit)
+                .Include(e => e.BaseItemPrimaryPurposes).ThenInclude(bp => bp.PrimaryPurpos)
                 .FirstOrDefaultAsync(e => !e.IsDeleted);
 
             return await _importManager.GenerateTemplateAsync(

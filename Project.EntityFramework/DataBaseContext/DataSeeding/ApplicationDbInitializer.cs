@@ -519,7 +519,7 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                     TotalWeight = 0.012m,
                     NatureOptionId = 1,
                     Nsn = "1305-01-527-3103",
-                    PrimaryPurposId = 1,
+
                     ProjectileColorId = 1,
                     ProjectailMaterialId = 1,
                     CaseTypeId = 1,
@@ -545,7 +545,7 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                     TotalWeight = 0.012m,
                     NatureOptionId = 1,
                     Nsn = "1305-01-231-3242",
-                    PrimaryPurposId = 1,
+
                     ProjectileColorId = 2,
                     ProjectailMaterialId = 1,
                     CaseTypeId = 1,
@@ -571,7 +571,7 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                     TotalWeight = 0.011m,
                     NatureOptionId = 2,
                     Nsn = "1305-01-231-3243",
-                    PrimaryPurposId = 3,
+
                     ProjectileColorId = 3,
                     ProjectailMaterialId = 2,
                     CaseTypeId = 1,
@@ -597,7 +597,7 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                     TotalWeight = 0.025m,
                     NatureOptionId = 1,
                     Nsn = "1305-00-903-0430",
-                    PrimaryPurposId = 1,
+
                     ProjectileColorId = 1,
                     ProjectailMaterialId = 1,
                     CaseTypeId = 2,
@@ -623,7 +623,7 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                     TotalWeight = 0.026m,
                     NatureOptionId = 2,
                     Nsn = "1305-00-903-0431",
-                    PrimaryPurposId = 3,
+
                     ProjectileColorId = 3,
                     ProjectailMaterialId = 2,
                     CaseTypeId = 2,
@@ -649,7 +649,7 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                     TotalWeight = 0.028m,
                     NatureOptionId = 1,
                     Nsn = "1305-01-419-1687",
-                    PrimaryPurposId = 2,
+
                     ProjectileColorId = 1,
                     ProjectailMaterialId = 1,
                     CaseTypeId = 2,
@@ -675,7 +675,7 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                     TotalWeight = 0.114m,
                     NatureOptionId = 1,
                     Nsn = "1305-00-179-6329",
-                    PrimaryPurposId = 1,
+
                     ProjectileColorId = 1,
                     ProjectailMaterialId = 1,
                     CaseTypeId = 3,
@@ -701,7 +701,7 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                     TotalWeight = 0.116m,
                     NatureOptionId = 1,
                     Nsn = "1305-00-179-6330",
-                    PrimaryPurposId = 1,
+
                     ProjectileColorId = 1,
                     ProjectailMaterialId = 3,
                     CaseTypeId = 3,
@@ -727,7 +727,7 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                     TotalWeight = 0.021m,
                     NatureOptionId = 1,
                     Nsn = "1305-00-179-6331",
-                    PrimaryPurposId = 1,
+
                     ProjectileColorId = 1,
                     ProjectailMaterialId = 1,
                     CaseTypeId = 1,
@@ -753,7 +753,7 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                     TotalWeight = 0.013m,
                     NatureOptionId = 1,
                     Nsn = "1305-01-534-5544",
-                    PrimaryPurposId = 2,
+
                     ProjectileColorId = 1,
                     ProjectailMaterialId = 1,
                     CaseTypeId = 1,
@@ -779,7 +779,7 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                     TotalWeight = 0.016m,
                     NatureOptionId = 1,
                     Nsn = "1305-01-234-5678",
-                    PrimaryPurposId = 1,
+
                     ProjectileColorId = 1,
                     ProjectailMaterialId = 1,
                     CaseTypeId = 2,
@@ -805,7 +805,7 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                     TotalWeight = 0.034m,
                     NatureOptionId = 1,
                     Nsn = "1305-01-345-6789",
-                    PrimaryPurposId = 1,
+
                     ProjectileColorId = 1,
                     ProjectailMaterialId = 1,
                     CaseTypeId = 3,
@@ -831,7 +831,7 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                     TotalWeight = 0.034m,
                     NatureOptionId = 1,
                     Nsn = "1305-01-456-7890",
-                    PrimaryPurposId = 2,
+
                     ProjectileColorId = 1,
                     ProjectailMaterialId = 1,
                     CaseTypeId = 3,
@@ -857,7 +857,7 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                     TotalWeight = 0.230m,
                     NatureOptionId = 3,
                     Nsn = "1310-01-195-5648",
-                    PrimaryPurposId = 1,
+
                     ProjectileColorId = 2,
                     ProjectailMaterialId = 2,
                     CaseTypeId = 3,
@@ -883,7 +883,7 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                     TotalWeight = 0.006m,
                     NatureOptionId = 1,
                     Nsn = "1305-01-567-8901",
-                    PrimaryPurposId = 1,
+
                     ProjectileColorId = 1,
                     ProjectailMaterialId = 3,
                     CaseTypeId = 1,
