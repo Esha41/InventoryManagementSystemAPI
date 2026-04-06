@@ -493,12 +493,7 @@ namespace Ettad.Inventory.Service.AssetSupply
                 var orderId = order.Id;
                 var orderDepartmentId = order.DepartmentId;
                 var requesterUserId = order.RequesterId;
-                var requesterFullNameEn = order.Requester?.FullNameEN;
-                var requesterFullNameAr = order.Requester?.FullNameAR;
-                var requesterMilitaryId = order.Requester?.MilitoryId;
                 var requesterDepartmentId = order.Requester?.DepartmentId;
-                var requesterRankId = order.Requester?.RankId;
-                var requesterEmail = order.Requester?.Email;
                 var orderSupplyDate = order.SupplyDate;
                 var orderUsagePurpose = order.UsagePurpose;
                 var orderRequestItems = order.RequestItems?
@@ -525,44 +520,14 @@ namespace Ettad.Inventory.Service.AssetSupply
                         "The workflow step is no longer active.");
                 }
 
+                long? defaultDepartmentForAssignmentWithoutCustodian = requesterDepartmentId;
+                if (!defaultDepartmentForAssignmentWithoutCustodian.HasValue && orderDepartmentId > 0)
+                    defaultDepartmentForAssignmentWithoutCustodian = orderDepartmentId;
 
-                long? requesterEmployeeId = null;
                 // Now start our transaction for creating the asset supply
                 using var transaction = await _context.Database.BeginTransactionAsync();
                 try
                 {
-                    // Ensure an Employee record exists for the requester (used as default custodian)
-                    if (!string.IsNullOrEmpty(requesterUserId))
-                    {
-                        var existingEmployee = await _context.Employees
-                            .FirstOrDefaultAsync(e => e.UserId == requesterUserId && !e.IsDeleted);
-
-                        if (existingEmployee == null)
-                        {
-                            var employee = new Employee
-                            {
-                                NameEn = requesterFullNameEn,
-                                NameAr = requesterFullNameAr,
-                                MilitaryId = requesterMilitaryId,
-                                DepartmentId = requesterDepartmentId ?? orderDepartmentId,
-                                RankId = requesterRankId,
-                                Email = requesterEmail,
-                                UserId = requesterUserId,
-                                CreationDate = _dateTimeProvider.Now,
-                                CreatedBy = _currentUserService.UserId,
-                                IsDeleted = false
-                            };
-
-                            _context.Employees.Add(employee);
-                            await _context.SaveChangesAsync();
-                            requesterEmployeeId = employee.Id;
-                        }
-                        else
-                        {
-                            requesterEmployeeId = existingEmployee.Id;
-                        }
-                    }
-
                     // Validate all assets
                     var assetIds = dto.SupplyDetails.Select(d => d.AssetId).ToList();
                     var duplicateAssetIds = assetIds.GroupBy(id => id).Where(g => g.Count() > 1).Select(g => g.Key).ToList();
@@ -664,7 +629,7 @@ namespace Ettad.Inventory.Service.AssetSupply
                             ItemId = asset.ItemId,
                             SequenceNo = sequenceNo++,
                             ConditionOnSupply = d.ConditionOnSupply ?? asset.Condition,
-                            CustodianId = d.CustodianId ?? requesterEmployeeId,
+                            CustodianId = d.CustodianId,
                             Notes = d.Notes,
                             IsDelivered = true,
                             DeliveredDate = _dateTimeProvider.Now,
@@ -675,18 +640,32 @@ namespace Ettad.Inventory.Service.AssetSupply
 
                     var createdSupply = await _assetSupplyRepository.AddAsync(supply);
 
+                    if (supply.SupplyDetails.Any(d => !d.CustodianId.HasValue))
+                    {
+                        if (!defaultDepartmentForAssignmentWithoutCustodian.HasValue || defaultDepartmentForAssignmentWithoutCustodian.Value <= 0)
+                        {
+                            await transaction.RollbackAsync();
+                            return APIOperationResponse<long>.Fail(ResponseType.BadRequest,
+                                "Cannot assign assets from supply: requester has no department and order has no department. Specify a per-asset custodian or fix order/requester department.");
+                        }
+                    }
+
                     // Create assignments immediately
                     foreach (var detail in supply.SupplyDetails)
                     {
                         var asset = assets.First(a => a.Id == detail.AssetId);
+
+                        var assignmentDepartmentId = detail.CustodianId.HasValue
+                            ? supply.DepartmentId
+                            : defaultDepartmentForAssignmentWithoutCustodian;
 
                         var assignment = new AssetAssignment
                         {
                             AssetId = asset.Id,
                             OrderId = supply.OrderId,
                             AssetSupplyId = supply.Id,
-                            DepartmentId = supply.DepartmentId,
-                            CustodianId = detail.CustodianId ?? 0,
+                            DepartmentId = assignmentDepartmentId,
+                            CustodianId = detail.CustodianId,
                             Location = supply.Location,
                             AssignDate = supply.SupplyDate ?? _dateTimeProvider.Now,
                             ExpectedReturnDate = supply.ExpectedReturnDate,
@@ -965,7 +944,7 @@ namespace Ettad.Inventory.Service.AssetSupply
 
                 // Store previous values for history
                 var previousDepartmentId = assignment.DepartmentId;
-                var previousCustodianId = assignment.CustodianId; // AssetHistory now uses User IDs (string?)
+                var previousCustodianId = assignment.CustodianId;
                 var previousLocation = assignment.Location;
 
                 // Update assignment
@@ -994,7 +973,7 @@ namespace Ettad.Inventory.Service.AssetSupply
                 {
                     Description = "Asset returned from assignment",
                     PreviousDepartmentId = previousDepartmentId,
-                    PreviousCustodianId = previousCustodianId, // AssetHistory now uses User IDs (string?)
+                    PreviousCustodianId = previousCustodianId,
                     PreviousLocation = previousLocation,
                     AssetAssignmentId = assignment.Id,
                     OrderId = assignment.OrderId,

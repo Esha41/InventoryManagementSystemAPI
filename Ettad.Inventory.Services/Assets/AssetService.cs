@@ -22,6 +22,8 @@ using Ettad.CrossCutting.Comman.Time;
 using OfficeOpenXml.DataValidation;
 using Ettad.CrossCutting.Comman.Models;
 using Ettad.Inventory.Service.Batches;
+using Ettad.Inventory.Service.AssetHistory;
+using Ettad.Inventory.Service.AssetHistory.Dtos;
 
 namespace Ettad.Inventory.Service.Assets
 {
@@ -110,6 +112,7 @@ namespace Ettad.Inventory.Service.Assets
         private readonly IDepotAccessService _depotAccessService;
         private readonly IBatchService _batchService;
         private readonly IValidator<CreateBulkAssetsFromTemplateDto> _bulkTemplateValidator;
+        private readonly IAssetHistoryService _historyService;
 
         public AssetService(
             ICrossCuttingRepository<Asset> assetRepository,
@@ -124,7 +127,8 @@ namespace Ettad.Inventory.Service.Assets
             ApplicationDbContext context,
             IDateTimeProvider dateTimeProvider,
             IDepotAccessService depotAccessService,
-            IBatchService batchService)
+            IBatchService batchService,
+            IAssetHistoryService historyService)
         {
             _assetRepository = assetRepository;
             _mapper = mapper;
@@ -139,6 +143,77 @@ namespace Ettad.Inventory.Service.Assets
             _dateTimeProvider = dateTimeProvider;
             _depotAccessService = depotAccessService;
             _batchService = batchService;
+            _historyService = historyService;
+        }
+
+        private static bool WantsIntakeAssignment(CreateAssetDto dto) =>
+            dto.AssignToEmployeeId.HasValue || dto.AssignToDepartmentId.HasValue;
+
+        private async Task<(bool Ok, string? Error)> TryApplyIntakeAssignmentAsync(Asset asset, CreateAssetDto dto)
+        {
+            if (!WantsIntakeAssignment(dto))
+                return (true, null);
+
+            long? custodianId = null;
+            long? departmentId = null;
+
+            if (dto.AssignToEmployeeId.HasValue)
+            {
+                var emp = await _context.Employees
+                    .FirstOrDefaultAsync(e => e.Id == dto.AssignToEmployeeId.Value && !e.IsDeleted);
+                if (emp == null)
+                    return (false, $"Employee not found: {dto.AssignToEmployeeId.Value}");
+                custodianId = emp.Id;
+                // Always use the employee's department for assignments to a person (no separate department override).
+                departmentId = emp.DepartmentId;
+                if (!departmentId.HasValue || departmentId.Value <= 0)
+                    return (false, "Assignee employee has no department on record; update the employee or assign to a department only.");
+            }
+            else
+            {
+                departmentId = dto.AssignToDepartmentId;
+            }
+
+            if (!departmentId.HasValue || departmentId.Value <= 0)
+                return (false, "A valid department is required for intake assignment.");
+
+            var deptExists = await _context.Departments.AnyAsync(d => d.Id == departmentId.Value && !d.IsDeleted);
+            if (!deptExists)
+                return (false, $"Department not found: {departmentId.Value}");
+
+            var now = _dateTimeProvider.Now;
+            var assignment = new AssetAssignment
+            {
+                AssetId = asset.Id,
+                DepartmentId = departmentId,
+                CustodianId = custodianId,
+                AssignDate = now,
+                Status = AssetAssignmentStatus.Active,
+                Notes = string.IsNullOrWhiteSpace(dto.AssignmentNotes) ? null : dto.AssignmentNotes.Trim(),
+                ConditionOnAssign = asset.Condition,
+                CreationDate = now,
+                CreatedBy = _currentUserService.UserId
+            };
+
+            _context.AssetAssignments.Add(assignment);
+            await _context.SaveChangesAsync();
+
+            asset.IsAssigned = true;
+            asset.CurrentAssignmentId = assignment.Id;
+            asset.ModificationDate = now;
+            asset.ModifiedBy = _currentUserService.UserId;
+            await _context.SaveChangesAsync();
+
+            await _historyService.RecordHistoryAsync(asset.Id, AssetHistoryActionType.Assigned, new AssetHistoryContext
+            {
+                Description = $"Asset assigned on depot intake (asset id {asset.Id})",
+                NewDepartmentId = departmentId,
+                NewCustodianId = custodianId,
+                AssetAssignmentId = assignment.Id,
+                Notes = dto.AssignmentNotes
+            });
+
+            return (true, null);
         }
 
         public async Task<APIOperationResponse<AssetDto>> GetByIdAsync(long id)
@@ -374,8 +449,26 @@ namespace Ettad.Inventory.Service.Assets
                 asset.SerialNumber = string.IsNullOrWhiteSpace(inputDto.SerialNumber) ? null : inputDto.SerialNumber.Trim();
                 asset.RFID = string.IsNullOrWhiteSpace(inputDto.RFID) ? null : inputDto.RFID.Trim();
 
-                // Add to repository first to get the ID
-                var createdAsset = await _assetRepository.AddAsync(asset);
+                await using var transaction = await _context.Database.BeginTransactionAsync();
+                Asset createdAsset;
+                try
+                {
+                    createdAsset = await _assetRepository.AddAsync(asset);
+                    var (assignOk, assignError) = await TryApplyIntakeAssignmentAsync(createdAsset, inputDto);
+                    if (!assignOk)
+                    {
+                        await transaction.RollbackAsync();
+                        return APIOperationResponse<long>.Fail(ResponseType.BadRequest, assignError ?? "Intake assignment failed");
+                    }
+
+                    await transaction.CommitAsync();
+                }
+                catch
+                {
+                    await transaction.RollbackAsync();
+                    throw;
+                }
+
                 _logger.LogInformation("Asset created successfully. AssetId: {AssetId}, User: {UserId}",
                                 createdAsset.Id, _currentUserService.UserId);
 
@@ -521,6 +614,14 @@ namespace Ettad.Inventory.Service.Assets
                     asset.RFID = string.IsNullOrWhiteSpace(dto.RFID) ? null : dto.RFID.Trim();
 
                     await _assetRepository.AddAsync(asset);
+
+                    var (assignOk, assignError) = await TryApplyIntakeAssignmentAsync(asset, dto);
+                    if (!assignOk)
+                    {
+                        errorMessages.Add($"Item {inputDtos.IndexOf(dto) + 1}: {assignError}");
+                        continue;
+                    }
+
                     createdIds.Add(asset.Id);
                 }
 

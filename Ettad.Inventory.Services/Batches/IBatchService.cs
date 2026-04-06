@@ -15,6 +15,7 @@ namespace Ettad.Inventory.Service.Batches
         Task<APIOperationResponse<List<BatchSummaryDto>>> GetSummaryAsync(long depotId);
         Task<APIOperationResponse<PaginatedList<BatchDto>>> SearchAsync(long? depotId, PagedListRequest request);
         Task<APIOperationResponse<bool>> DeleteAsync(long id);
+        Task<APIOperationResponse<bool>> UpdateBatchAsync(long id, UpdateBatchDto dto);
         Task<APIOperationResponse<bool>> BulkUpdateAssetsAsync(long batchId, BulkUpdateBatchAssetsDto inputDto);
         Task<APIOperationResponse<bool>> RemoveAssetFromBatchAsync(long batchId, long assetId);
     }

@@ -38,6 +38,14 @@ namespace Ettad.Inventory.Service.Batches.Validators
                 item.RuleFor(x => x.Notes)
                     .MaximumLength(5000).When(x => !string.IsNullOrWhiteSpace(x.Notes))
                     .WithMessage("Notes cannot exceed 5000 characters");
+
+                item.RuleFor(x => x.AssignmentNotes)
+                    .MaximumLength(2000).When(x => !string.IsNullOrWhiteSpace(x.AssignmentNotes))
+                    .WithMessage("Assignment notes cannot exceed 2000 characters");
+
+                item.RuleFor(x => x)
+                    .Must(x => !(x.UpdateAssignment && x.AssignToEmployeeId.HasValue && x.AssignToDepartmentId.HasValue))
+                    .WithMessage("Specify either assign to employee or assign to department, not both.");
             });
         }
     }
