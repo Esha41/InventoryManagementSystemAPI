@@ -127,16 +127,16 @@ namespace Ettad.Inventory.Service.Batches
                 dto.Assets = _mapper.Map<List<AssetDto>>(assets);
                 dto.AssetCount = dto.Assets.Count;
 
-                var entityIds = dto.Assets.Select(a => a.Id).ToList();
+                var entityIds = dto.Assets.Select(a => a.BatchId).Distinct().ToList();
                 if (entityIds.Any())
                 {
-                    var imagesResult = await _fileUploadService.GetByEntitiesAsync(FileEntityType.Asset, entityIds);
+                    var imagesResult = await _fileUploadService.GetByEntitiesAsync(FileEntityType.Weapon, entityIds);
                     if (imagesResult.Succeeded && imagesResult.Data != null)
                     {
                         foreach (var assetDto in dto.Assets)
                         {
-                            if (imagesResult.Data.ContainsKey(assetDto.Id))
-                                assetDto.Images = imagesResult.Data[assetDto.Id];
+                            if (imagesResult.Data.ContainsKey(assetDto.BatchId))
+                                assetDto.Images = imagesResult.Data[assetDto.BatchId];
                         }
                     }
                 }
@@ -360,6 +360,38 @@ namespace Ettad.Inventory.Service.Batches
                         if (inSupplyCount > 0) reasons.Add($"{inSupplyCount} in supply orders");
                         return APIOperationResponse<bool>.Fail(ResponseType.BadRequest,
                             $"Cannot delete batch: {assetIdsInBatch.Count} asset(s) are in use ({string.Join(", ", reasons)}). Remove or unassign them first.");
+                    }
+
+                    // Delete any files linked to assets in this batch (FileUplodDetails/FileUplodMaster + disk)
+                    try
+                    {
+                        var filesResp = await _fileUploadService.GetByEntitiesAsync(FileEntityType.Weapon, new List<long> { batch.Id });
+                        if (filesResp.Succeeded && filesResp.Data != null && filesResp.Data.Any())
+                        {
+                            // Flatten master IDs
+                            var fileIds = filesResp.Data.Values
+                                .Where(v => v != null)
+                                .SelectMany(v => v)
+                                .Select(f => f.Id)
+                                .Distinct()
+                                .ToList();
+
+                            foreach (var fileId in fileIds)
+                            {
+                                try
+                                {
+                                    await _fileUploadService.DeleteAsync(fileId);
+                                }
+                                catch (Exception exDel)
+                                {
+                                    _logger.LogWarning(exDel, "Failed deleting file {FileId} for Batch {BatchId}", fileId, id);
+                                }
+                            }
+                        }
+                    }
+                    catch (Exception exFiles)
+                    {
+                        _logger.LogWarning(exFiles, "Error while cleaning up files for Batch delete. BatchId: {BatchId}", id);
                     }
 
                     await using var transaction = await _context.Database.BeginTransactionAsync();

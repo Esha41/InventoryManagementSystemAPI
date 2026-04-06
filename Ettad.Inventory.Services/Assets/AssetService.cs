@@ -377,8 +377,8 @@ namespace Ettad.Inventory.Service.Assets
                 {
                     var uploadFilesResult = await _fileUploadService.UploadFilesForEntityAsync(
                         files, 
-                        FileEntityType.Weapon, 
-                        createdAsset.Id);
+                        FileEntityType.Weapon,
+                        batch.Id);
                     
                     if (!uploadFilesResult.Succeeded)
                     {
@@ -467,7 +467,7 @@ namespace Ettad.Inventory.Service.Assets
 
                 // Pre-resolve all unique BatchNumbers
                 var batchCache = new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase);
-
+                long batchId = 0L;
                 foreach (var dto in inputDtos)
                 {
                     var validationResult = await _createValidator.ValidateAsync(dto);
@@ -482,6 +482,7 @@ namespace Ettad.Inventory.Service.Assets
                     if (!batchCache.ContainsKey(batchKey))
                     {
                         var batch = await _batchService.GetOrCreateAsync(dto.BatchNumber, dto.DepotId);
+                        batchId= batch.Id;
                         batchCache[batchKey] = batch.Id;
                     }
 
@@ -514,7 +515,7 @@ namespace Ettad.Inventory.Service.Assets
                         var uploadFilesResult = await _fileUploadService.UploadFilesForEntityAsync(
                             files,
                             FileEntityType.Weapon,
-                            inputDtos.First().ItemId);
+                            batchId);
 
                         if (!uploadFilesResult.Succeeded)
                         {
@@ -577,8 +578,8 @@ namespace Ettad.Inventory.Service.Assets
                 {
                     var uploadFilesResult = await _fileUploadService.UploadFilesForEntityAsync(
                         files,
-                        FileEntityType.Asset,
-                        existingAsset.Id);
+                        FileEntityType.Weapon,
+                        existingAsset.BatchId);
 
                     if (!uploadFilesResult.Succeeded)
                     {
