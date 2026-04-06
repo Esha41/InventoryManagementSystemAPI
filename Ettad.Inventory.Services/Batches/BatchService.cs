@@ -576,6 +576,7 @@ namespace Ettad.Inventory.Service.Batches
                         asset.WarrantyExpiryDate = item.WarrantyExpiryDate;
                         asset.Condition = string.IsNullOrWhiteSpace(item.Condition) ? null : item.Condition.Trim();
                         asset.PurchasePrice = item.PurchasePrice;
+                        asset.DeliveryReceipt = string.IsNullOrWhiteSpace(item.DeliveryReceipt) ? null : item.DeliveryReceipt.Trim();
                         asset.Notes = string.IsNullOrWhiteSpace(item.Notes) ? null : item.Notes.Trim();
                         asset.ModificationDate = _dateTimeProvider.Now;
                         asset.ModifiedBy = _currentUserService.UserId;

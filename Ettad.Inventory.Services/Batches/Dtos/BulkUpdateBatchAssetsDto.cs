@@ -29,6 +29,8 @@ namespace Ettad.Inventory.Service.Batches.Dtos
 
         public decimal? PurchasePrice { get; set; }
 
+        public string? DeliveryReceipt { get; set; }
+
         public string? Notes { get; set; }
     }
 }
