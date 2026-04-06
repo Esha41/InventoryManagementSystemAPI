@@ -8,6 +8,9 @@ namespace Ettad.Inventory.Service.Assets.Dtos
 
         public string BatchNumber { get; set; } = string.Empty;
 
+        /// <summary>Optional: set on the batch when the batch is first created (must be allowed for <see cref="ItemId"/>).</summary>
+        public long? BatchPrimaryPurposId { get; set; }
+
         public string? SerialNumber { get; set; }
 
         public string? RFID { get; set; }

@@ -355,8 +355,12 @@ namespace Ettad.Inventory.Service.Assets
                         return APIOperationResponse<long>.Fail(ResponseType.BadRequest, "Serial number already exists");
                 }
 
+                var batchPurposeError = await ValidateBatchPrimaryPurposForItemAsync(inputDto.ItemId, inputDto.BatchPrimaryPurposId);
+                if (batchPurposeError != null)
+                    return APIOperationResponse<long>.Fail(ResponseType.BadRequest, batchPurposeError);
+
                 // Resolve BatchNumber into BatchId (get-or-create)
-                var batch = await _batchService.GetOrCreateAsync(inputDto.BatchNumber, inputDto.DepotId);
+                var batch = await _batchService.GetOrCreateAsync(inputDto.BatchNumber, inputDto.DepotId, inputDto.BatchPrimaryPurposId);
 
                 // Map DTO to entity
                 var asset = _mapper.Map<Asset>(inputDto);
@@ -478,12 +482,31 @@ namespace Ettad.Inventory.Service.Assets
                         continue;
                     }
 
-                    var batchKey = dto.BatchNumber.Trim();
-                    if (!batchCache.ContainsKey(batchKey))
+                    var batchPurposeErr = await ValidateBatchPrimaryPurposForItemAsync(dto.ItemId, dto.BatchPrimaryPurposId);
+                    if (batchPurposeErr != null)
                     {
-                        var batch = await _batchService.GetOrCreateAsync(dto.BatchNumber, dto.DepotId);
-                        batchCache[batchKey] = batch.Id;
+                        errorMessages.Add($"Item {inputDtos.IndexOf(dto) + 1}: {batchPurposeErr}");
+                        continue;
                     }
+
+                    var batchKey = dto.BatchNumber.Trim();
+                    if (batchCache.TryGetValue(batchKey, out var existingBatchId))
+                    {
+                        if (dto.BatchPrimaryPurposId.HasValue)
+                        {
+                            var bs = await _context.Batches.AsNoTracking().FirstAsync(b => b.Id == existingBatchId);
+                            if (bs.PrimaryPurposId.HasValue && bs.PrimaryPurposId.Value != dto.BatchPrimaryPurposId.Value)
+                            {
+                                await transaction.RollbackAsync();
+                                return APIOperationResponse<List<long>>.Fail(ResponseType.BadRequest,
+                                    $"Conflicting primary purpose for batch number {dto.BatchNumber.Trim()}.");
+                            }
+                        }
+                    }
+
+                    var batch = await _batchService.GetOrCreateAsync(dto.BatchNumber, dto.DepotId, dto.BatchPrimaryPurposId);
+                    if (!batchCache.ContainsKey(batchKey))
+                        batchCache[batchKey] = batch.Id;
 
                     var asset = _mapper.Map<Asset>(dto);
                     asset.BatchId = batchCache[batchKey];
@@ -850,7 +873,20 @@ namespace Ettad.Inventory.Service.Assets
                             continue;
                         }
 
-                        var batch = await _batchService.GetOrCreateAsync(createDto.BatchNumber, depotId);
+                        var purposeErrImport = await ValidateBatchPrimaryPurposForItemAsync(createDto.ItemId, createDto.BatchPrimaryPurposId);
+                        if (purposeErrImport != null)
+                        {
+                            importResult.SuccessfulRecords.Remove(row);
+                            importResult.Errors.Add(new ImportError
+                            {
+                                ErrorMessage = purposeErrImport,
+                                ColumnName = "N/A"
+                            });
+                            errorCount++;
+                            continue;
+                        }
+
+                        var batch = await _batchService.GetOrCreateAsync(createDto.BatchNumber, depotId, createDto.BatchPrimaryPurposId);
                         var asset = _mapper.Map<Asset>(createDto);
                         asset.BatchId = batch.Id;
                         asset.CreationDate = _dateTimeProvider.Now;
@@ -1273,6 +1309,16 @@ namespace Ettad.Inventory.Service.Assets
                 .ToListAsync();
 
             return weapons.Cast<BaseItem>().ToList();
+        }
+
+        private async Task<string?> ValidateBatchPrimaryPurposForItemAsync(long itemId, long? batchPrimaryPurposId)
+        {
+            if (!batchPrimaryPurposId.HasValue)
+                return null;
+
+            var ok = await _context.BaseItemPrimaryPurposes
+                .AnyAsync(x => x.BaseItemId == itemId && x.PrimaryPurposId == batchPrimaryPurposId.Value);
+            return ok ? null : "Batch primary purpose is not configured for this catalog item.";
         }
 
         /// <summary>
