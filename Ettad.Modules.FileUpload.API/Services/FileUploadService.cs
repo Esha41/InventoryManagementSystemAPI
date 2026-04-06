@@ -241,6 +241,20 @@ namespace Ettad.Modules.FileUpload.API.Services
                 return APIOperationResponse<bool>.NotFound("File not found");
             }
 
+            // Attempt to delete the physical file from disk if it exists
+            try
+            {
+                var filePath = master.FileUrl;
+                if (!string.IsNullOrWhiteSpace(filePath) && System.IO.File.Exists(filePath))
+                {
+                    System.IO.File.Delete(filePath);
+                }
+            }
+            catch
+            {
+                // Swallow errors here; continue deleting DB records to avoid leaving orphans
+            }
+
             await _masterRepository.DeleteAsync(master);
 
             return APIOperationResponse<bool>.Success(true, "File deleted successfully");
