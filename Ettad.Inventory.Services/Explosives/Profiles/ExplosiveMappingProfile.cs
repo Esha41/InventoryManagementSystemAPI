@@ -8,7 +8,11 @@ namespace Ettad.Inventory.Service.Explosives.Profiles
     {
         public ExplosiveMappingProfile()
         {
-            CreateMap<Explosive, ExplosiveDto>();
+            CreateMap<Explosive, ExplosiveDto>()
+                .ForMember(dest => dest.PrimaryPurposes, opt => opt.MapFrom(src =>
+                    src.BaseItemPrimaryPurposes != null
+                        ? src.BaseItemPrimaryPurposes.Select(x => x.PrimaryPurpos).ToList()
+                        : new List<PrimaryPurpos>()));
 
             CreateMap<CreateUpdateExplosiveDto, Explosive>()
                 .ForMember(dest => dest.Id, opt => opt.Ignore())
@@ -22,7 +26,8 @@ namespace Ettad.Inventory.Service.Explosives.Profiles
                 .ForMember(dest => dest.HazardDivision, opt => opt.Ignore())
                 .ForMember(dest => dest.Classification, opt => opt.Ignore())
                 .ForMember(dest => dest.Type, opt => opt.Ignore())
-                .ForMember(dest => dest.Unit, opt => opt.Ignore());
+                .ForMember(dest => dest.Unit, opt => opt.Ignore())
+                .ForMember(dest => dest.BaseItemPrimaryPurposes, opt => opt.Ignore());
         }
     }
 }

@@ -11,9 +11,13 @@ namespace Ettad.Inventory.Service.Batches.Dtos
 
         public long DepotId { get; set; }
 
+        public long? PrimaryPurposId { get; set; }
+
         public int AssetCount { get; set; }
 
         public DepotDto Depot { get; set; }
+
+        public PrimaryPurposDto PrimaryPurpos { get; set; }
 
         public List<AssetDto> Assets { get; set; } = new();
     }

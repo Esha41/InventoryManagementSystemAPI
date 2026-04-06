@@ -63,9 +63,9 @@ namespace Ettad.Inventory.Service.Ammunitions.Validators
                 .GreaterThan(0).When(x => x.NatureOptionId.HasValue)
                 .WithMessage("Nature option ID must be greater than 0 when provided");
 
-            RuleFor(x => x.PrimaryPurposId)
-                .GreaterThan(0).When(x => x.PrimaryPurposId.HasValue)
-                .WithMessage("Primary purpose ID must be greater than 0 when provided");
+            RuleForEach(x => x.PrimaryPurposIds)
+                .GreaterThan(0)
+                .WithMessage("Primary purpose ID must be greater than 0");
 
             RuleFor(x => x.ProjectileColorId)
                 .GreaterThan(0).When(x => x.ProjectileColorId.HasValue)

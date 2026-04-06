@@ -56,7 +56,7 @@ namespace Ettad.Inventory.Service.Batches
             _bulkUpdateValidator = bulkUpdateValidator;
         }
 
-        public async Task<Batch> GetOrCreateAsync(string batchNumber, long depotId)
+        public async Task<Batch> GetOrCreateAsync(string batchNumber, long depotId, long? primaryPurposId = null)
         {
             var trimmedBatchNumber = batchNumber.Trim();
 
@@ -64,22 +64,92 @@ namespace Ettad.Inventory.Service.Batches
                 p => !p.IsDeleted && p.BatchNumber == trimmedBatchNumber);
 
             if (existing != null)
+            {
+                if (primaryPurposId.HasValue && existing.PrimaryPurposId == null)
+                {
+                    var tracked = await _context.Batches
+                        .FirstOrDefaultAsync(b => b.Id == existing.Id && !b.IsDeleted);
+                    if (tracked != null)
+                    {
+                        tracked.PrimaryPurposId = primaryPurposId;
+                        tracked.ModificationDate = _dateTimeProvider.Now;
+                        tracked.ModifiedBy = _currentUserService.UserId;
+                        await _context.SaveChangesAsync();
+                    }
+                }
+
                 return existing;
+            }
 
             var batch = new Batch
             {
                 BatchNumber = trimmedBatchNumber,
                 DepotId = depotId,
+                PrimaryPurposId = primaryPurposId,
                 CreationDate = _dateTimeProvider.Now,
                 CreatedBy = _currentUserService.UserId
             };
 
             var created = await _batchRepository.AddAsync(batch);
 
-            _logger.LogInformation("Batch created implicitly. BatchId: {BatchId}, BatchNumber: {BatchNumber}, DepotId: {DepotId}, User: {UserId}",
-                created.Id, trimmedBatchNumber, depotId, _currentUserService.UserId);
+            _logger.LogInformation("Batch created implicitly. BatchId: {BatchId}, BatchNumber: {BatchNumber}, DepotId: {DepotId}, PrimaryPurposId: {PrimaryPurposId}, User: {UserId}",
+                created.Id, trimmedBatchNumber, depotId, primaryPurposId?.ToString() ?? "null", _currentUserService.UserId);
 
             return created;
+        }
+
+        public async Task<APIOperationResponse<BatchDto>> UpdateAsync(long id, UpdateBatchDto dto)
+        {
+            if (dto == null)
+                return APIOperationResponse<BatchDto>.Fail(ResponseType.BadRequest, "Invalid request");
+
+            _logger.LogInformation("Updating batch. BatchId: {BatchId}, User: {UserId}", id, _currentUserService.UserId);
+
+            try
+            {
+                var batch = await _context.Batches.FirstOrDefaultAsync(b => b.Id == id && !b.IsDeleted);
+                if (batch == null)
+                    return APIOperationResponse<BatchDto>.Fail(ResponseType.NotFound, "Batch not found");
+
+                var userId = _currentUserService.UserId;
+                if (!string.IsNullOrEmpty(userId) && !await _depotAccessService.HasDepotAccessAsync(userId, batch.DepotId))
+                    return APIOperationResponse<BatchDto>.Fail(ResponseType.Forbidden, "You do not have access to this depot.");
+
+                if (dto.PrimaryPurposId.HasValue)
+                {
+                    var purposeOk = await _context.PrimaryPurposes
+                        .AnyAsync(p => p.Id == dto.PrimaryPurposId.Value && !p.IsDeleted);
+                    if (!purposeOk)
+                        return APIOperationResponse<BatchDto>.Fail(ResponseType.BadRequest, "Invalid primary purpose.");
+
+                    var itemIds = await _context.Assets.AsNoTracking()
+                        .Where(a => !a.IsDeleted && a.BatchId == id)
+                        .Select(a => a.ItemId)
+                        .Distinct()
+                        .ToListAsync();
+
+                    foreach (var itemId in itemIds)
+                    {
+                        var allowed = await _context.BaseItemPrimaryPurposes
+                            .AnyAsync(bp => bp.BaseItemId == itemId && bp.PrimaryPurposId == dto.PrimaryPurposId.Value);
+                        if (!allowed)
+                            return APIOperationResponse<BatchDto>.Fail(ResponseType.BadRequest,
+                                "Primary purpose is not allowed for one or more items in this batch.");
+                    }
+                }
+
+                batch.PrimaryPurposId = dto.PrimaryPurposId;
+                batch.ModificationDate = _dateTimeProvider.Now;
+                batch.ModifiedBy = _currentUserService.UserId;
+                await _context.SaveChangesAsync();
+
+                return await GetByIdAsync(id);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating batch. BatchId: {BatchId}, User: {UserId}", id, _currentUserService.UserId);
+                return APIOperationResponse<BatchDto>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
+            }
         }
 
         public async Task<APIOperationResponse<BatchDto>> GetByIdAsync(long id, bool? serialNumberOnly = null, int? quantity = null, bool? filterByIsAssigned = null)
@@ -92,7 +162,8 @@ namespace Ettad.Inventory.Service.Batches
                 var batch = await _batchRepository.FindOneAsync(
                     p => p.Id == id && !p.IsDeleted,
                     false,
-                    nameof(Batch.Depot));
+                    nameof(Batch.Depot),
+                    nameof(Batch.PrimaryPurpos));
 
                 if (batch == null)
                     return APIOperationResponse<BatchDto>.Fail(ResponseType.NotFound, "Batch not found");
@@ -189,7 +260,8 @@ namespace Ettad.Inventory.Service.Batches
                 var batches = await _batchRepository.FindAsync(
                     p => !p.IsDeleted && (!depotId.HasValue || p.DepotId == depotId.Value),
                     false,
-                    nameof(Batch.Depot));
+                    nameof(Batch.Depot),
+                    nameof(Batch.PrimaryPurpos));
 
                 var dtos = _mapper.Map<List<BatchDto>>(batches.ToList());
 
@@ -286,7 +358,8 @@ namespace Ettad.Inventory.Service.Batches
                 var query = _batchRepository.Find(
                     p => !p.IsDeleted && (!depotId.HasValue || p.DepotId == depotId.Value),
                     false,
-                    nameof(Batch.Depot));
+                    nameof(Batch.Depot),
+                    nameof(Batch.PrimaryPurpos));
 
                 var paginatedEntities = await PaginatedList<Batch>.CreateAsyncForTableBinding(query, request);
 

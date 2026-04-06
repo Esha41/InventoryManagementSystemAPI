@@ -20,8 +20,6 @@ namespace Ettad.Data.Entities
 
         public long? NatureOptionId { get; set; }
 
-        public long? PrimaryPurposId { get; set; }
-
         public long? ProjectileColorId { get; set; }
 
         public long? ProjectailMaterialId { get; set; }
@@ -38,7 +36,6 @@ namespace Ettad.Data.Entities
 
         public Unit BulletDiameterUnit { get; set; }
         public NatureOption NatureOption { get; set; }
-        public PrimaryPurpos PrimaryPurpos { get; set; }
         public Color ProjectileColor { get; set; }
         public ProjectailMaterial ProjectailMaterial { get; set; }
         public CaseType CaseType { get; set; }

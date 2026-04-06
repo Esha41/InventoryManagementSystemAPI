@@ -18,8 +18,6 @@ namespace Ettad.Inventory.Service.Ammunitions.Dtos
 
         public long? NatureOptionId { get; set; }
 
-        public long? PrimaryPurposId { get; set; }
-
         public long? ProjectileColorId { get; set; }
 
         public long? ProjectailMaterialId { get; set; }

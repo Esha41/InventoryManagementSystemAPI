@@ -109,12 +109,14 @@ namespace Ettad.Inventory.Service.Assets
         private readonly IDateTimeProvider _dateTimeProvider;
         private readonly IDepotAccessService _depotAccessService;
         private readonly IBatchService _batchService;
+        private readonly IValidator<CreateBulkAssetsFromTemplateDto> _bulkTemplateValidator;
 
         public AssetService(
             ICrossCuttingRepository<Asset> assetRepository,
             IMapper mapper,
             IValidator<CreateAssetDto> createValidator,
             IValidator<UpdateAssetDto> updateValidator,
+            IValidator<CreateBulkAssetsFromTemplateDto> bulkTemplateValidator,
             ICurrentUserService currentUserService,
             ILogger<AssetService> logger,
             IFileUploadService fileUploadService,
@@ -128,6 +130,7 @@ namespace Ettad.Inventory.Service.Assets
             _mapper = mapper;
             _createValidator = createValidator;
             _updateValidator = updateValidator;
+            _bulkTemplateValidator = bulkTemplateValidator;
             _currentUserService = currentUserService;
             _logger = logger;
             _fileUploadService = fileUploadService;
@@ -355,8 +358,12 @@ namespace Ettad.Inventory.Service.Assets
                         return APIOperationResponse<long>.Fail(ResponseType.BadRequest, "Serial number already exists");
                 }
 
+                var batchPurposeError = await ValidateBatchPrimaryPurposForItemAsync(inputDto.ItemId, inputDto.BatchPrimaryPurposId);
+                if (batchPurposeError != null)
+                    return APIOperationResponse<long>.Fail(ResponseType.BadRequest, batchPurposeError);
+
                 // Resolve BatchNumber into BatchId (get-or-create)
-                var batch = await _batchService.GetOrCreateAsync(inputDto.BatchNumber, inputDto.DepotId);
+                var batch = await _batchService.GetOrCreateAsync(inputDto.BatchNumber, inputDto.DepotId, inputDto.BatchPrimaryPurposId);
 
                 // Map DTO to entity
                 var asset = _mapper.Map<Asset>(inputDto);
@@ -478,13 +485,32 @@ namespace Ettad.Inventory.Service.Assets
                         continue;
                     }
 
-                    var batchKey = dto.BatchNumber.Trim();
-                    if (!batchCache.ContainsKey(batchKey))
+                    var batchPurposeErr = await ValidateBatchPrimaryPurposForItemAsync(dto.ItemId, dto.BatchPrimaryPurposId);
+                    if (batchPurposeErr != null)
                     {
-                        var batch = await _batchService.GetOrCreateAsync(dto.BatchNumber, dto.DepotId);
-                        batchId= batch.Id;
-                        batchCache[batchKey] = batch.Id;
+                        errorMessages.Add($"Item {inputDtos.IndexOf(dto) + 1}: {batchPurposeErr}");
+                        continue;
                     }
+
+                    var batchKey = dto.BatchNumber.Trim();
+                    if (batchCache.TryGetValue(batchKey, out var existingBatchId))
+                    {
+                        if (dto.BatchPrimaryPurposId.HasValue)
+                        {
+                            var bs = await _context.Batches.AsNoTracking().FirstAsync(b => b.Id == existingBatchId);
+                            if (bs.PrimaryPurposId.HasValue && bs.PrimaryPurposId.Value != dto.BatchPrimaryPurposId.Value)
+                            {
+                                await transaction.RollbackAsync();
+                                return APIOperationResponse<List<long>>.Fail(ResponseType.BadRequest,
+                                    $"Conflicting primary purpose for batch number {dto.BatchNumber.Trim()}.");
+                            }
+                        }
+                    }
+
+                    var batch = await _batchService.GetOrCreateAsync(dto.BatchNumber, dto.DepotId, dto.BatchPrimaryPurposId);
+                    batchId=batch.Id;
+                    if (!batchCache.ContainsKey(batchKey))
+                        batchCache[batchKey] = batch.Id;
 
                     var asset = _mapper.Map<Asset>(dto);
                     asset.BatchId = batchCache[batchKey];
@@ -530,6 +556,90 @@ namespace Ettad.Inventory.Service.Assets
                 await transaction.RollbackAsync();
                 _logger.LogError(ex, "Error creating bulk assets. User: {UserId}", _currentUserService.UserId);
                 return APIOperationResponse<List<long>>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
+            }
+        }
+
+        public async Task<APIOperationResponse<BulkCreateFromTemplateResultDto>> CreateBulkFromTemplateAsync(CreateBulkAssetsFromTemplateDto dto)
+        {
+            if (dto == null)
+                return APIOperationResponse<BulkCreateFromTemplateResultDto>.Fail(ResponseType.BadRequest, "Request body is required.");
+
+            _logger.LogInformation("Creating bulk assets from template. Quantity: {Quantity}, ItemId: {ItemId}, DepotId: {DepotId}, User: {UserId}",
+                dto.Quantity, dto.ItemId, dto.DepotId, _currentUserService.UserId);
+
+            try
+            {
+                var validationResult = await _bulkTemplateValidator.ValidateAsync(dto);
+                if (!validationResult.IsValid)
+                {
+                    var errors = string.Join(", ", validationResult.Errors.Select(e => e.ErrorMessage));
+                    return APIOperationResponse<BulkCreateFromTemplateResultDto>.Fail(ResponseType.BadRequest, errors);
+                }
+
+                var userId = _currentUserService.UserId;
+                if (!string.IsNullOrEmpty(userId) && !await _depotAccessService.HasDepotAccessAsync(userId, dto.DepotId))
+                {
+                    _logger.LogWarning("User {UserId} attempted bulk template create in unauthorized depot {DepotId}", userId, dto.DepotId);
+                    return APIOperationResponse<BulkCreateFromTemplateResultDto>.Fail(ResponseType.Forbidden, "You do not have access to this depot.");
+                }
+
+                var batch = await _batchService.GetOrCreateAsync(dto.BatchNumber.Trim(), dto.DepotId);
+                var now = _dateTimeProvider.Now;
+                long? firstAssetId = null;
+                const int chunkSize = 1000;
+
+                await using var transaction = await _context.Database.BeginTransactionAsync();
+                try
+                {
+                    var remaining = dto.Quantity;
+                    while (remaining > 0)
+                    {
+                        var take = Math.Min(chunkSize, remaining);
+                        var chunk = new List<Asset>(take);
+
+                        for (var i = 0; i < take; i++)
+                        {
+                            var asset = _mapper.Map<Asset>(dto);
+                            asset.BatchId = batch.Id;
+                            asset.CreationDate = now;
+                            asset.CreatedBy = userId;
+                            asset.Status = AssetStatus.ReadyToIssue;
+                            asset.SerialNumber = null;
+                            asset.RFID = null;
+                            chunk.Add(asset);
+                        }
+
+                        await _context.Assets.AddRangeAsync(chunk);
+                        await _context.SaveChangesAsync();
+
+                        firstAssetId ??= chunk[0].Id;
+                        remaining -= take;
+                    }
+
+                    await transaction.CommitAsync();
+
+                    _logger.LogInformation("Bulk template asset creation completed. Created: {Count}, FirstId: {FirstId}, User: {UserId}",
+                        dto.Quantity, firstAssetId, userId);
+
+                    return APIOperationResponse<BulkCreateFromTemplateResultDto>.Success(
+                        new BulkCreateFromTemplateResultDto
+                        {
+                            CreatedCount = dto.Quantity,
+                            FirstAssetId = firstAssetId
+                        },
+                        $"{dto.Quantity} assets created successfully.");
+                }
+                catch
+                {
+                    await transaction.RollbackAsync();
+                    throw;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error in CreateBulkFromTemplateAsync. User: {UserId}", _currentUserService.UserId);
+                return APIOperationResponse<BulkCreateFromTemplateResultDto>.Fail(
+                    ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
             }
         }
 
@@ -885,7 +995,20 @@ namespace Ettad.Inventory.Service.Assets
                             continue;
                         }
 
-                        var batch = await _batchService.GetOrCreateAsync(createDto.BatchNumber, depotId);
+                        var purposeErrImport = await ValidateBatchPrimaryPurposForItemAsync(createDto.ItemId, createDto.BatchPrimaryPurposId);
+                        if (purposeErrImport != null)
+                        {
+                            importResult.SuccessfulRecords.Remove(row);
+                            importResult.Errors.Add(new ImportError
+                            {
+                                ErrorMessage = purposeErrImport,
+                                ColumnName = "N/A"
+                            });
+                            errorCount++;
+                            continue;
+                        }
+
+                        var batch = await _batchService.GetOrCreateAsync(createDto.BatchNumber, depotId, createDto.BatchPrimaryPurposId);
                         var asset = _mapper.Map<Asset>(createDto);
                         asset.BatchId = batch.Id;
                         asset.CreationDate = _dateTimeProvider.Now;
@@ -1308,6 +1431,16 @@ namespace Ettad.Inventory.Service.Assets
                 .ToListAsync();
 
             return weapons.Cast<BaseItem>().ToList();
+        }
+
+        private async Task<string?> ValidateBatchPrimaryPurposForItemAsync(long itemId, long? batchPrimaryPurposId)
+        {
+            if (!batchPrimaryPurposId.HasValue)
+                return null;
+
+            var ok = await _context.BaseItemPrimaryPurposes
+                .AnyAsync(x => x.BaseItemId == itemId && x.PrimaryPurposId == batchPrimaryPurposId.Value);
+            return ok ? null : "Batch primary purpose is not configured for this catalog item.";
         }
 
         /// <summary>

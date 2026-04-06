@@ -25,6 +25,13 @@ namespace Ettad.Inventory.Service.Inventories
 {
     public class InventoryService : IInventoryService
     {
+        /// <summary>EF include chain so <see cref="InventoryDetail.Item"/>.PrimaryPurposes maps from BaseItemPrimaryPurposes.</summary>
+        private static readonly string ItemWithBaseItemPrimaryPurposesInclude =
+            $"{nameof(InventoryDetailEntity.Item)}.{nameof(BaseItem.BaseItemPrimaryPurposes)}.{nameof(BaseItemPrimaryPurpos.PrimaryPurpos)}";
+
+        private static readonly string InventoryDetailsItemWithPrimaryPurposesInclude =
+            $"{nameof(InventoryEntity.InventoryDetails)}.{nameof(InventoryDetailEntity.Item)}.{nameof(BaseItem.BaseItemPrimaryPurposes)}.{nameof(BaseItemPrimaryPurpos.PrimaryPurpos)}";
+
         private readonly ApplicationDbContext _context;
         private readonly ICrossCuttingRepository<InventoryEntity> _inventoryRepository;
         private readonly ICrossCuttingRepository<InventoryDetailEntity> _inventoryDetailRepository;
@@ -93,9 +100,11 @@ namespace Ettad.Inventory.Service.Inventories
                     false,
                     nameof(InventoryEntity.Depo),
                     $"{nameof(InventoryEntity.InventoryDetails)}.{nameof(InventoryDetailEntity.Item)}",
+                    InventoryDetailsItemWithPrimaryPurposesInclude,
                     $"{nameof(InventoryEntity.InventoryDetails)}.{nameof(InventoryDetailEntity.Supplier)}",
                     $"{nameof(InventoryEntity.InventoryDetails)}.{nameof(InventoryDetailEntity.Manufacturer)}",
-                    $"{nameof(InventoryEntity.InventoryDetails)}.{nameof(InventoryDetailEntity.Country)}"
+                    $"{nameof(InventoryEntity.InventoryDetails)}.{nameof(InventoryDetailEntity.Country)}",
+                    $"{nameof(InventoryEntity.InventoryDetails)}.{nameof(InventoryDetailEntity.PrimaryPurpos)}"
                 );
 
                 if (inventory == null)
@@ -181,9 +190,11 @@ namespace Ettad.Inventory.Service.Inventories
                     false,
                     nameof(InventoryEntity.Depo),
                     $"{nameof(InventoryEntity.InventoryDetails)}.{nameof(InventoryDetailEntity.Item)}",
+                    InventoryDetailsItemWithPrimaryPurposesInclude,
                     $"{nameof(InventoryEntity.InventoryDetails)}.{nameof(InventoryDetailEntity.Supplier)}",
                     $"{nameof(InventoryEntity.InventoryDetails)}.{nameof(InventoryDetailEntity.Manufacturer)}",
-                    $"{nameof(InventoryEntity.InventoryDetails)}.{nameof(InventoryDetailEntity.Country)}"
+                    $"{nameof(InventoryEntity.InventoryDetails)}.{nameof(InventoryDetailEntity.Country)}",
+                    $"{nameof(InventoryEntity.InventoryDetails)}.{nameof(InventoryDetailEntity.PrimaryPurpos)}"
                 );
 
                 var dtos = _mapper.Map<List<InventoryDto>>(inventories);
@@ -630,9 +641,11 @@ namespace Ettad.Inventory.Service.Inventories
                     nameof(InventoryDetailEntity.Inventory),
                     $"{nameof(InventoryDetailEntity.Inventory)}.{nameof(InventoryEntity.Depo)}",
                     nameof(InventoryDetailEntity.Item),
+                    ItemWithBaseItemPrimaryPurposesInclude,
                     nameof(InventoryDetailEntity.Supplier),
                     nameof(InventoryDetailEntity.Manufacturer),
-                    nameof(InventoryDetailEntity.Country)
+                    nameof(InventoryDetailEntity.Country),
+                    nameof(InventoryDetailEntity.PrimaryPurpos)
                 );
 
                 var lots = inventoryDetails
@@ -754,9 +767,11 @@ namespace Ettad.Inventory.Service.Inventories
                     nameof(InventoryDetailEntity.Inventory),
                     $"{nameof(InventoryDetailEntity.Inventory)}.{nameof(InventoryEntity.Depo)}",
                     nameof(InventoryDetailEntity.Item),
+                    ItemWithBaseItemPrimaryPurposesInclude,
                     nameof(InventoryDetailEntity.Supplier),
                     nameof(InventoryDetailEntity.Manufacturer),
-                    nameof(InventoryDetailEntity.Country)
+                    nameof(InventoryDetailEntity.Country),
+                    nameof(InventoryDetailEntity.PrimaryPurpos)
                 );
 
                 var lots = inventoryDetails
@@ -951,9 +966,11 @@ namespace Ettad.Inventory.Service.Inventories
                     nameof(InventoryDetailEntity.Inventory),
                     $"{nameof(InventoryDetailEntity.Inventory)}.{nameof(InventoryEntity.Depo)}",
                     nameof(InventoryDetailEntity.Item),
+                    ItemWithBaseItemPrimaryPurposesInclude,
                     nameof(InventoryDetailEntity.Supplier),
                     nameof(InventoryDetailEntity.Manufacturer),
-                    nameof(InventoryDetailEntity.Country)
+                    nameof(InventoryDetailEntity.Country),
+                    nameof(InventoryDetailEntity.PrimaryPurpos)
                 );
 
                 if (inventoryDetail == null || inventoryDetail.Inventory == null || inventoryDetail.Inventory.IsDeleted)
@@ -1034,10 +1051,12 @@ namespace Ettad.Inventory.Service.Inventories
                         x => x.Inventory.DepoId == depotId && !x.Inventory.IsDeleted,
                         false,
                         nameof(InventoryDetailEntity.Item),
+                        ItemWithBaseItemPrimaryPurposesInclude,
                         nameof(InventoryDetailEntity.Supplier),
                         nameof(InventoryDetailEntity.Manufacturer),
                         nameof(InventoryDetailEntity.Country),
-                        nameof(InventoryDetailEntity.Inventory)
+                        nameof(InventoryDetailEntity.Inventory),
+                        nameof(InventoryDetailEntity.PrimaryPurpos)
                     )
                     // Newest inventory entries first so recently added ammunition/explosives/weapon lots appear at the top
                     .OrderByDescending(x => x.Inventory.CreationDate)
@@ -1078,7 +1097,8 @@ namespace Ettad.Inventory.Service.Inventories
                     id => id.ItemQuantity > 0, // We only care about lots that were created with quantity
                     false,
                     nameof(InventoryDetailEntity.Inventory),
-                    nameof(InventoryDetailEntity.Item)
+                    nameof(InventoryDetailEntity.Item),
+                    ItemWithBaseItemPrimaryPurposesInclude
                 );
 
                 // Filter out deleted inventory parent records
@@ -1190,7 +1210,8 @@ namespace Ettad.Inventory.Service.Inventories
                     id => id.ItemId == itemId && id.ItemQuantity > 0,
                     false,
                     nameof(InventoryDetailEntity.Inventory),
-                    nameof(InventoryDetailEntity.Item)
+                    nameof(InventoryDetailEntity.Item),
+                    ItemWithBaseItemPrimaryPurposesInclude
                 );
 
                 var lots = inventoryDetails

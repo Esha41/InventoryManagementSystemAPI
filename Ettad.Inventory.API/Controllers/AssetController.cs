@@ -106,6 +106,15 @@ namespace Ettad.Inventory.API.Controllers
             return ProcessResponse(result);
         }
 
+        [HttpPost("bulk-template")]
+        [ProducesResponseType((int)HttpStatusCode.Created)]
+        [CheckAuthorize("Permissions.Asset.Create")]
+        public async Task<IActionResult> BulkCreateFromTemplate([FromBody] CreateBulkAssetsFromTemplateDto dto)
+        {
+            var result = await _assetService.CreateBulkFromTemplateAsync(dto);
+            return ProcessResponse(result);
+        }
+
         [HttpPut("{id}")]
         [Consumes("multipart/form-data")]
         [ProducesResponseType((int)HttpStatusCode.OK)]

@@ -101,7 +101,8 @@ namespace Ettad.Inventory.Service.Weapons
                     nameof(Weapon.CaliberUnit),
                     nameof(Weapon.CountryOfManufacture),
                     nameof(Weapon.Classification),
-                    nameof(Weapon.Type)
+                    nameof(Weapon.Type),
+                    "BaseItemPrimaryPurposes.PrimaryPurpos"
                 );
 
                 if (weapon == null)
@@ -141,7 +142,8 @@ namespace Ettad.Inventory.Service.Weapons
                     nameof(Weapon.CaliberUnit),
                     nameof(Weapon.CountryOfManufacture),
                     nameof(Weapon.Classification),
-                    nameof(Weapon.Type)
+                    nameof(Weapon.Type),
+                    "BaseItemPrimaryPurposes.PrimaryPurpos"
                 );
 
                 var paginatedEntities = await PaginatedList<Weapon>.CreateAsyncForTableBinding(query, request);
@@ -194,7 +196,8 @@ namespace Ettad.Inventory.Service.Weapons
                     nameof(Weapon.CaliberUnit),
                     nameof(Weapon.CountryOfManufacture),
                     nameof(Weapon.Classification),
-                    nameof(Weapon.Type)
+                    nameof(Weapon.Type),
+                    "BaseItemPrimaryPurposes.PrimaryPurpos"
                 );
 
                 var dtos = _mapper.Map<List<WeaponDto>>(weapons);
@@ -260,6 +263,14 @@ namespace Ettad.Inventory.Service.Weapons
 
                 var createdWeapon = await _weaponRepository.AddAsync(weapon);
 
+                if (inputDto.PrimaryPurposIds != null && inputDto.PrimaryPurposIds.Any())
+                {
+                    createdWeapon.BaseItemPrimaryPurposes = inputDto.PrimaryPurposIds
+                        .Select(id => new BaseItemPrimaryPurpos { BaseItemId = createdWeapon.Id, PrimaryPurposId = id })
+                        .ToList();
+                    await _context.SaveChangesAsync();
+                }
+
                 if (files != null && files.Any())
                 {
                     await _fileUploadService.UploadFilesForEntityAsync(
@@ -308,6 +319,20 @@ namespace Ettad.Inventory.Service.Weapons
                 existingWeapon.Nsn = string.IsNullOrWhiteSpace(inputDto.Nsn) ? null : inputDto.Nsn.Trim();
 
                 await _weaponRepository.UpdateAsync(existingWeapon);
+
+                var existingPurposes = await _context.BaseItemPrimaryPurposes
+                    .Where(x => x.BaseItemId == id)
+                    .ToListAsync();
+                _context.BaseItemPrimaryPurposes.RemoveRange(existingPurposes);
+
+                if (inputDto.PrimaryPurposIds != null && inputDto.PrimaryPurposIds.Any())
+                {
+                    var newPurposes = inputDto.PrimaryPurposIds
+                        .Select(pid => new BaseItemPrimaryPurpos { BaseItemId = id, PrimaryPurposId = pid })
+                        .ToList();
+                    await _context.BaseItemPrimaryPurposes.AddRangeAsync(newPurposes);
+                }
+                await _context.SaveChangesAsync();
 
                 return APIOperationResponse<bool>.Success(true, "Weapon updated successfully");
             }
@@ -527,6 +552,7 @@ namespace Ettad.Inventory.Service.Weapons
                 .Include(w => w.CountryOfManufacture)
                 .Include(w => w.Classification)
                 .Include(w => w.Type)
+                .Include(w => w.BaseItemPrimaryPurposes).ThenInclude(bp => bp.PrimaryPurpos)
                 .FirstOrDefaultAsync(w => !w.IsDeleted);
 
             return await _importManager.GenerateTemplateAsync(
