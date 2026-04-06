@@ -16,6 +16,8 @@ using Microsoft.Extensions.Logging;
 using System;
 using Ettad.CrossCutting.Comman.Models;
 using Ettad.CrossCutting.Comman.Time;
+using Ettad.CrossCutting.Comman.FileUpload;
+using Ettad.Comman.Enums;
 using InventoryEntity = Ettad.Data.Entities.Inventory;
 using InventoryDetailEntity = Ettad.Data.Entities.InventoryDetail;
 
@@ -46,6 +48,7 @@ namespace Ettad.Inventory.Service.Inventories
         private readonly ILogger<InventoryService> _logger;
         private readonly IDateTimeProvider _dateTimeProvider;
         private readonly IDepotAccessService _depotAccessService;
+        private readonly IFileUploadService _fileUploadService;
 
         public InventoryService(
             ApplicationDbContext context,
@@ -63,7 +66,8 @@ namespace Ettad.Inventory.Service.Inventories
             ICurrentUserService currentUserService,
             ILogger<InventoryService> logger,
             IDateTimeProvider dateTimeProvider,
-            IDepotAccessService depotAccessService)
+            IDepotAccessService depotAccessService,
+            IFileUploadService fileUploadService)
         {
             _context = context;
             _inventoryRepository = inventoryRepository;
@@ -81,13 +85,14 @@ namespace Ettad.Inventory.Service.Inventories
             _logger = logger;
             _dateTimeProvider = dateTimeProvider;
             _depotAccessService = depotAccessService;
+            _fileUploadService = fileUploadService;
         }
 
         public async Task<APIOperationResponse<InventoryDto>> GetByIdAsync(long id)
         {
-            _logger.LogInformation("Getting inventory by ID. InventoryId: {InventoryId}, User: {UserId}", 
+            _logger.LogInformation("Getting inventory by ID. InventoryId: {InventoryId}, User: {UserId}",
                 id, _currentUserService.UserId);
-            
+
             try
             {
                 var inventory = await _inventoryRepository.FindOneAsync(
@@ -104,7 +109,7 @@ namespace Ettad.Inventory.Service.Inventories
 
                 if (inventory == null)
                 {
-                    _logger.LogWarning("Inventory not found. InventoryId: {InventoryId}, User: {UserId}", 
+                    _logger.LogWarning("Inventory not found. InventoryId: {InventoryId}, User: {UserId}",
                         id, _currentUserService.UserId);
                     return APIOperationResponse<InventoryDto>.Fail(ResponseType.NotFound, "Inventory not found");
                 }
@@ -116,21 +121,59 @@ namespace Ettad.Inventory.Service.Inventories
                     return APIOperationResponse<InventoryDto>.Fail(ResponseType.Forbidden, "You do not have access to this depot.");
                 }
 
-                _logger.LogInformation("Inventory retrieved successfully. InventoryId: {InventoryId}, DetailCount: {DetailCount}", 
+                _logger.LogInformation("Inventory retrieved successfully. InventoryId: {InventoryId}, DetailCount: {DetailCount}",
                     id, inventory.InventoryDetails?.Count ?? 0);
-                
+
                 var dto = _mapper.Map<InventoryDto>(inventory);
-                
+
                 if (dto.InventoryDetails != null && dto.InventoryDetails.Any())
                 {
                     await PopulateInventoryDetailsQuantitiesAsync(dto.InventoryDetails);
+
+                    // Populate files per inventory using file service in a batched way
+                    var ammoInventoryIds = dto.InventoryDetails
+                        .Where(d => d.Item != null && d.Item.ItemType != ItemType.Explosive)
+                        .Select(d => d.InventoryId)
+                        .Distinct()
+                        .ToList();
+                    var explosiveInventoryIds = dto.InventoryDetails
+                        .Where(d => d.Item != null && d.Item.ItemType == ItemType.Explosive)
+                        .Select(d => d.InventoryId)
+                        .Distinct()
+                        .ToList();
+
+                    Dictionary<long, List<FileUploadDto>> ammoFiles = new();
+                    Dictionary<long, List<FileUploadDto>> explosiveFiles = new();
+
+                    if (ammoInventoryIds.Any())
+                    {
+                        var filesResult = await _fileUploadService.GetByEntitiesAsync(FileEntityType.Ammunition, ammoInventoryIds);
+                        ammoFiles = filesResult.Data ?? new Dictionary<long, List<FileUploadDto>>();
+                    }
+                    if (explosiveInventoryIds.Any())
+                    {
+                        var filesResult = await _fileUploadService.GetByEntitiesAsync(FileEntityType.Explosive, explosiveInventoryIds);
+                        explosiveFiles = filesResult.Data ?? new Dictionary<long, List<FileUploadDto>>();
+                    }
+
+                    foreach (var detail in dto.InventoryDetails)
+                    {
+                        if (detail.Item != null && detail.Item.ItemType == ItemType.Explosive)
+                        {
+                            detail.Files = explosiveFiles.TryGetValue(detail.InventoryId, out var list) ? list : new List<FileUploadDto>();
+                        }
+                        else
+                        {
+                            detail.Files = ammoFiles.TryGetValue(detail.InventoryId, out var list) ? list : new List<FileUploadDto>();
+                        }
+                    }
                 }
 
                 return APIOperationResponse<InventoryDto>.Success(dto);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting inventory by ID. InventoryId: {InventoryId}, User: {UserId}", 
+                _logger.LogError(ex, "Error getting inventory by ID. InventoryId: {InventoryId}, User: {UserId}",
                     id, _currentUserService.UserId);
                 return APIOperationResponse<InventoryDto>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
             }
@@ -139,7 +182,7 @@ namespace Ettad.Inventory.Service.Inventories
         public async Task<APIOperationResponse<List<InventoryDto>>> GetAllAsync()
         {
             _logger.LogInformation("Getting all inventories. User: {UserId}", _currentUserService.UserId);
-            
+
             try
             {
                 var inventories = await _inventoryRepository.FindAsync(
@@ -155,14 +198,14 @@ namespace Ettad.Inventory.Service.Inventories
                 );
 
                 var dtos = _mapper.Map<List<InventoryDto>>(inventories);
-                
+
                 var allDetails = dtos.SelectMany(d => d.InventoryDetails ?? new List<InventoryDetailDto>()).ToList();
                 if (allDetails.Any())
                 {
                     await PopulateInventoryDetailsQuantitiesAsync(allDetails);
                 }
 
-                _logger.LogInformation("Successfully retrieved {InventoryCount} inventories. User: {UserId}", 
+                _logger.LogInformation("Successfully retrieved {InventoryCount} inventories. User: {UserId}",
                     dtos.Count, _currentUserService.UserId);
                 return APIOperationResponse<List<InventoryDto>>.Success(dtos);
             }
@@ -173,11 +216,11 @@ namespace Ettad.Inventory.Service.Inventories
             }
         }
 
-        public async Task<APIOperationResponse<long>> CreateAsync(CreateInventoryDto inputDto)
+        public async Task<APIOperationResponse<long>> CreateAsync(CreateInventoryDto inputDto, List<IFormFile>? files = null)
         {
-            _logger.LogInformation("Creating new inventory. DepoId: {DepoId}, DetailCount: {DetailCount}, User: {UserId}", 
+            _logger.LogInformation("Creating new inventory. DepoId: {DepoId}, DetailCount: {DetailCount}, User: {UserId}",
                 inputDto?.DepoId, inputDto?.InventoryDetails?.Count ?? 0, _currentUserService.UserId);
-            
+
             try
             {
                 // Validate input
@@ -185,9 +228,9 @@ namespace Ettad.Inventory.Service.Inventories
                 if (!validationResult.IsValid)
                 {
                     var errors = string.Join(", ", validationResult.Errors.Select(e => e.ErrorMessage));
-                    _logger.LogWarning("Inventory validation failed. Errors: {ValidationErrors}, User: {UserId}", 
+                    _logger.LogWarning("Inventory validation failed. Errors: {ValidationErrors}, User: {UserId}",
                         errors, _currentUserService.UserId);
-                   
+
                     return APIOperationResponse<long>.Fail(ResponseType.BadRequest, errors);
                 }
 
@@ -206,7 +249,7 @@ namespace Ettad.Inventory.Service.Inventories
                     })
                     .ToList();
 
-                _logger.LogInformation("Adding {DetailCount} inventory details. User: {UserId}", 
+                _logger.LogInformation("Adding {DetailCount} inventory details. User: {UserId}",
                     inventory.InventoryDetails.Count, _currentUserService.UserId);
 
                 // Add to repository
@@ -214,18 +257,45 @@ namespace Ettad.Inventory.Service.Inventories
                 _logger.LogInformation("Inventory created successfully. InventoryId: {InventoryId}, DetailCount: {DetailCount}, User: {UserId}",
                        createdInventory.Id, inventory.InventoryDetails.Count, _currentUserService.UserId);
 
+                // If files were provided, attach them to related item entities (Ammunition/Explosive)
+                if (files != null && files.Any())
+                {
+                    try
+                    {
+                        // Determine unique item IDs and their types
+                        var detailItemIds = inventory.InventoryDetails.Select(d => d.ItemId).Distinct().ToList();
+                        foreach (var itemId in detailItemIds)
+                        {
+                            // Resolve item type by probing weapons/ammunitions/explosives tables; default to Ammunition if not explosive
+                            var itemType = _context.BaseItems.Where(e => e.Id == itemId && !e.IsDeleted).Select(e => e.ItemType)
+                                                             .FirstOrDefault();
+
+                            var entityType = itemType == ItemType.Explosive? FileEntityType.Explosive : FileEntityType.Ammunition;
+                            var uploadResult = await _fileUploadService.UploadFilesForEntityAsync(files, entityType, createdInventory.Id);
+                            if (!uploadResult.Succeeded)
+                            {
+                                _logger.LogWarning("File upload failed for Inventory create. ItemId: {ItemId}, Error: {Error}", createdInventory.Id, uploadResult.Message);
+                            }
+                        }
+                    }
+                    catch (Exception exUpload)
+                    {
+                        _logger.LogWarning(exUpload, "Error uploading files for Inventory create. InventoryId: {InventoryId}", createdInventory.Id);
+                    }
+                }
+
                 return APIOperationResponse<long>.Success(createdInventory.Id, "Inventory created successfully");
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error creating inventory. DepoId: {DepoId}, User: {UserId}", 
+                _logger.LogError(ex, "Error creating inventory. DepoId: {DepoId}, User: {UserId}",
                     inputDto?.DepoId, _currentUserService.UserId);
-             
+
                 return APIOperationResponse<long>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
             }
         }
 
-        public async Task<APIOperationResponse<bool>> UpdateAsync(long id, UpdateInventoryDto inputDto)
+        public async Task<APIOperationResponse<bool>> UpdateAsync(long id, UpdateInventoryDto inputDto, List<IFormFile>? files = null, long? filesItemId = null)
         {
             try
             {
@@ -295,6 +365,31 @@ namespace Ettad.Inventory.Service.Inventories
 
                 // Update the parent inventory entity - use the already-mapped entity
                 await _inventoryRepository.UpdateAsync(existingInventory);
+
+                // Handle file uploads after successful update
+                if (files != null && files.Any() && filesItemId.HasValue)
+                {
+                    try
+                    {
+                        var targetDetail = existingInventory.InventoryDetails.FirstOrDefault(d => d.ItemId == filesItemId.Value);
+                        if (targetDetail != null)
+                        {
+                            // Resolve item type by probing weapons/ammunitions/explosives tables; default to Ammunition if not explosive
+                            var itemType = _context.BaseItems.Where(e => e.Id == targetDetail.ItemId && !e.IsDeleted).Select(e => e.ItemType)
+                                                             .FirstOrDefault();
+
+                            var entityType = itemType == ItemType.Explosive ? FileEntityType.Explosive : FileEntityType.Ammunition;
+
+                            // Attach files to the specific itemId (Ammunition/Explosive)
+                            await _fileUploadService.UploadFilesForEntityAsync(files, entityType, targetDetail.InventoryId);
+                        }
+                    }
+                    catch (Exception exUpload)
+                    {
+                        _logger.LogWarning(exUpload, "Error uploading files for Inventory update. InventoryId: {InventoryId}", id);
+                    }
+                }
+
                 return APIOperationResponse<bool>.Success(true, "Inventory updated successfully");
             }
             catch (Exception ex)
@@ -305,29 +400,57 @@ namespace Ettad.Inventory.Service.Inventories
 
         public async Task<APIOperationResponse<bool>> DeleteAsync(long id)
         {
-            _logger.LogInformation("Deleting inventory. InventoryId: {InventoryId}, User: {UserId}", 
+            _logger.LogInformation("Deleting inventory. InventoryId: {InventoryId}, User: {UserId}",
                 id, _currentUserService.UserId);
-            
+
             try
             {
                 var inventory = await _inventoryRepository.FindOneAsync(i => i.Id == id && !i.IsDeleted);
                 if (inventory == null)
                 {
-                    _logger.LogWarning("Inventory not found for deletion. InventoryId: {InventoryId}, User: {UserId}", 
+                    _logger.LogWarning("Inventory not found for deletion. InventoryId: {InventoryId}, User: {UserId}",
                         id, _currentUserService.UserId);
                     return APIOperationResponse<bool>.Fail(ResponseType.NotFound, "Inventory not found");
+                }
+
+                // Delete any files linked to this inventory for Ammunition and Explosive entity types
+                try
+                {
+                    var entityTypes = new[] { FileEntityType.Ammunition, FileEntityType.Explosive };
+                    foreach (var entityType in entityTypes)
+                    {
+                        var filesResp = await _fileUploadService.GetByEntityAsync(entityType, id);
+                        if (filesResp.Succeeded && filesResp.Data != null && filesResp.Data.Any())
+                        {
+                            foreach (var file in filesResp.Data)
+                            {
+                                try
+                                {
+                                    await _fileUploadService.DeleteAsync(file.Id);
+                                }
+                                catch (Exception exDel)
+                                {
+                                    _logger.LogWarning(exDel, "Failed deleting file {FileId} for Inventory {InventoryId}", file.Id, id);
+                                }
+                            }
+                        }
+                    }
+                }
+                catch (Exception exFiles)
+                {
+                    _logger.LogWarning(exFiles, "Error while cleaning up files for Inventory delete. InventoryId: {InventoryId}", id);
                 }
 
                 // Soft delete - interceptor will handle IsDeleted, DeletionDate, and DeletedBy automatically
                 await _inventoryRepository.DeleteAsync(inventory);
 
-                _logger.LogInformation("Inventory deleted successfully. InventoryId: {InventoryId}, User: {UserId}", 
+                _logger.LogInformation("Inventory deleted successfully. InventoryId: {InventoryId}, User: {UserId}",
                     id, _currentUserService.UserId);
                 return APIOperationResponse<bool>.Success(true, "Inventory deleted successfully");
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error deleting inventory. InventoryId: {InventoryId}, User: {UserId}", 
+                _logger.LogError(ex, "Error deleting inventory. InventoryId: {InventoryId}, User: {UserId}",
                     id, _currentUserService.UserId);
                 return APIOperationResponse<bool>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
             }
@@ -335,7 +458,7 @@ namespace Ettad.Inventory.Service.Inventories
 
         public async Task<APIOperationResponse<OrderSupplySuggestionDto>> SuggestSupplyForOrderAsync(long orderId, List<long>? depotIds = null)
         {
-            _logger.LogInformation("Generating supply suggestion for order. OrderId: {OrderId}, DepotIds: {DepotIds}, User: {UserId}", 
+            _logger.LogInformation("Generating supply suggestion for order. OrderId: {OrderId}, DepotIds: {DepotIds}, User: {UserId}",
                 orderId, depotIds != null ? string.Join(", ", depotIds) : "All", _currentUserService.UserId);
 
             try
@@ -350,25 +473,25 @@ namespace Ettad.Inventory.Service.Inventories
 
                 if (order == null)
                 {
-                    _logger.LogWarning("Order not found. OrderId: {OrderId}, User: {UserId}", 
+                    _logger.LogWarning("Order not found. OrderId: {OrderId}, User: {UserId}",
                         orderId, _currentUserService.UserId);
                     return APIOperationResponse<OrderSupplySuggestionDto>.Fail(ResponseType.NotFound, "Order not found");
                 }
 
                 if (order.RequestItems == null || !order.RequestItems.Any())
                 {
-                    _logger.LogWarning("Order has no items. OrderId: {OrderId}, User: {UserId}", 
+                    _logger.LogWarning("Order has no items. OrderId: {OrderId}, User: {UserId}",
                         orderId, _currentUserService.UserId);
                     return APIOperationResponse<OrderSupplySuggestionDto>.Fail(ResponseType.BadRequest, "Order has no items to supply");
                 }
 
-				// Get all existing SUBMITTED supplies for this order (excluding deleted and drafts)
-				// Draft supplies should not be counted because user can still modify them
-				var existingSuppliesForOrder = await _supplyRepository.FindAsync(
-					s => s.OrderId == orderId && !s.IsDeleted && s.SubmissionStatus == SupplySubmissionStatus.Submitted,
-					false,
-					nameof(Supply.SupplyDetails)
-				);
+                // Get all existing SUBMITTED supplies for this order (excluding deleted and drafts)
+                // Draft supplies should not be counted because user can still modify them
+                var existingSuppliesForOrder = await _supplyRepository.FindAsync(
+                    s => s.OrderId == orderId && !s.IsDeleted && s.SubmissionStatus == SupplySubmissionStatus.Submitted,
+                    false,
+                    nameof(Supply.SupplyDetails)
+                );
 
                 // Get all supply details for these SUBMITTED supplies only
                 var supplyIds = existingSuppliesForOrder.Select(s => s.Id).ToList();
@@ -382,8 +505,8 @@ namespace Ettad.Inventory.Service.Inventories
                     .GroupBy(sd => sd.ItemId)
                     .ToDictionary(g => g.Key, g => g.Sum(sd => sd.Quantity));
 
-                _logger.LogInformation("Found existing SUBMITTED supplies for order (drafts excluded). OrderId: {OrderId}, SuppliedItemsCount: {Count}", 
-					orderId, suppliedQuantitiesByItem.Count);
+                _logger.LogInformation("Found existing SUBMITTED supplies for order (drafts excluded). OrderId: {OrderId}, SuppliedItemsCount: {Count}",
+                    orderId, suppliedQuantitiesByItem.Count);
 
                 var suggestion = new OrderSupplySuggestionDto
                 {
@@ -396,7 +519,7 @@ namespace Ettad.Inventory.Service.Inventories
                 bool allItemsCanBeFulfilled = true;
                 bool hasItemsNeedingSupply = false;
 
-                _logger.LogInformation("Processing {ItemCount} items for supply suggestion. OrderId: {OrderId}", 
+                _logger.LogInformation("Processing {ItemCount} items for supply suggestion. OrderId: {OrderId}",
                     order.RequestItems.Count, orderId);
 
                 // Process each request item
@@ -481,24 +604,24 @@ namespace Ettad.Inventory.Service.Inventories
                 {
                     suggestion.CanFulfillCompletely = true;
                     suggestion.Message = "Order is already fully supplied. No suggestions needed.";
-                    _logger.LogInformation("Order is fully supplied. OrderId: {OrderId}, User: {UserId}", 
+                    _logger.LogInformation("Order is fully supplied. OrderId: {OrderId}, User: {UserId}",
                         orderId, _currentUserService.UserId);
                     return APIOperationResponse<OrderSupplySuggestionDto>.Success(suggestion);
                 }
 
                 suggestion.CanFulfillCompletely = allItemsCanBeFulfilled;
-                suggestion.Message = allItemsCanBeFulfilled 
-                    ? "All remaining items can be fulfilled from available inventory" 
+                suggestion.Message = allItemsCanBeFulfilled
+                    ? "All remaining items can be fulfilled from available inventory"
                     : "Some items cannot be fully fulfilled due to insufficient inventory";
 
-                _logger.LogInformation("Supply suggestion generated. OrderId: {OrderId}, CanFulfillCompletely: {CanFulfill}, ItemCount: {ItemCount}", 
+                _logger.LogInformation("Supply suggestion generated. OrderId: {OrderId}, CanFulfillCompletely: {CanFulfill}, ItemCount: {ItemCount}",
                     orderId, suggestion.CanFulfillCompletely, suggestion.ItemSuggestions.Count);
 
                 return APIOperationResponse<OrderSupplySuggestionDto>.Success(suggestion);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error generating supply suggestion. OrderId: {OrderId}, User: {UserId}", 
+                _logger.LogError(ex, "Error generating supply suggestion. OrderId: {OrderId}, User: {UserId}",
                     orderId, _currentUserService.UserId);
                 return APIOperationResponse<OrderSupplySuggestionDto>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
             }
@@ -561,13 +684,13 @@ namespace Ettad.Inventory.Service.Inventories
 
                 // Separate supply details by submission status and group by lot
                 var usedQuantityByLot = allSupplyDetails
-                    .Where(sd => supplyStatusMap.ContainsKey(sd.SupplyId) && 
+                    .Where(sd => supplyStatusMap.ContainsKey(sd.SupplyId) &&
                                  supplyStatusMap[sd.SupplyId] == SupplySubmissionStatus.Submitted)
                     .GroupBy(sd => sd.Lot)
                     .ToDictionary(g => g.Key, g => g.Sum(sd => sd.Quantity));
 
                 var reservedQuantityByLot = allSupplyDetails
-                    .Where(sd => supplyStatusMap.ContainsKey(sd.SupplyId) && 
+                    .Where(sd => supplyStatusMap.ContainsKey(sd.SupplyId) &&
                                  supplyStatusMap[sd.SupplyId] == SupplySubmissionStatus.Draft)
                     .GroupBy(sd => sd.Lot)
                     .ToDictionary(g => g.Key, g => g.Sum(sd => sd.Quantity));
@@ -697,7 +820,7 @@ namespace Ettad.Inventory.Service.Inventories
                 // Get all supplies to check submission status
                 // If excludeSupplyId is provided, we need to fetch it separately to check if it's Draft
                 var supplyIds = allSupplyDetails.Select(sd => sd.SupplyId).Distinct().ToList();
-                
+
                 // Check if excluded supply is Draft (only exclude Draft supplies, not Submitted)
                 // Business Rule: You can only replace Draft supplies, so we only exclude Draft supplies
                 bool shouldExcludeDraftSupply = false;
@@ -708,13 +831,13 @@ namespace Ettad.Inventory.Service.Inventories
                     );
                     // Only exclude if the supply is Draft (you can only replace Draft supplies)
                     shouldExcludeDraftSupply = excludedSupply != null && excludedSupply.SubmissionStatus == SupplySubmissionStatus.Draft;
-                    
+
                     if (shouldExcludeDraftSupply)
                     {
                         _logger.LogInformation("Excluding Draft supply from availability calculations. SupplyId: {SupplyId}, ItemId: {ItemId}",
                             excludeSupplyId.Value, itemId);
                     }
-                    
+
                     // Add to supplyIds list if not already present (for status map)
                     if (!supplyIds.Contains(excludeSupplyId.Value))
                     {
@@ -731,14 +854,14 @@ namespace Ettad.Inventory.Service.Inventories
                 // Separate supply details by submission status and group by lot
                 // Used quantities: Always count ALL Submitted supplies (never exclude - they're finalized)
                 var usedQuantityByLot = allSupplyDetails
-                    .Where(sd => supplyStatusMap.ContainsKey(sd.SupplyId) && 
+                    .Where(sd => supplyStatusMap.ContainsKey(sd.SupplyId) &&
                                  supplyStatusMap[sd.SupplyId] == SupplySubmissionStatus.Submitted)
                     .GroupBy(sd => sd.Lot)
                     .ToDictionary(g => g.Key, g => g.Sum(sd => sd.Quantity));
 
                 // Reserved quantities: Only exclude Draft supplies if excludeSupplyId is provided and it's Draft
                 var reservedQuantityByLot = allSupplyDetails
-                    .Where(sd => supplyStatusMap.ContainsKey(sd.SupplyId) && 
+                    .Where(sd => supplyStatusMap.ContainsKey(sd.SupplyId) &&
                                  supplyStatusMap[sd.SupplyId] == SupplySubmissionStatus.Draft &&
                                  (!shouldExcludeDraftSupply || sd.SupplyId != excludeSupplyId.Value))
                     .GroupBy(sd => sd.Lot)
@@ -881,12 +1004,12 @@ namespace Ettad.Inventory.Service.Inventories
 
                 // Calculate used and reserved quantities
                 long usedQuantity = supplyDetails
-                    .Where(sd => supplyStatusMap.ContainsKey(sd.SupplyId) && 
+                    .Where(sd => supplyStatusMap.ContainsKey(sd.SupplyId) &&
                                  supplyStatusMap[sd.SupplyId] == SupplySubmissionStatus.Submitted)
                     .Sum(sd => sd.Quantity);
 
                 long reservedQuantity = supplyDetails
-                    .Where(sd => supplyStatusMap.ContainsKey(sd.SupplyId) && 
+                    .Where(sd => supplyStatusMap.ContainsKey(sd.SupplyId) &&
                                  supplyStatusMap[sd.SupplyId] == SupplySubmissionStatus.Draft)
                     .Sum(sd => sd.Quantity);
 
@@ -1107,7 +1230,7 @@ namespace Ettad.Inventory.Service.Inventories
                 {
                     _logger.LogInformation("No lots found for item. ItemId: {ItemId}, User: {UserId}",
                         itemId, _currentUserService.UserId);
-                    
+
                     // Return empty summary
                     var emptySummary = new ItemInventorySummaryDto
                     {
@@ -1123,7 +1246,7 @@ namespace Ettad.Inventory.Service.Inventories
                         RemainingQuantity = 0,
                         TotalLots = 0
                     };
-                    
+
                     return APIOperationResponse<ItemInventorySummaryDto>.Success(emptySummary);
                 }
 
@@ -1145,12 +1268,12 @@ namespace Ettad.Inventory.Service.Inventories
 
                 // Calculate used and reserved quantities across all lots
                 long usedQuantity = allSupplyDetails
-                    .Where(sd => supplyStatusMap.ContainsKey(sd.SupplyId) && 
+                    .Where(sd => supplyStatusMap.ContainsKey(sd.SupplyId) &&
                                  supplyStatusMap[sd.SupplyId] == SupplySubmissionStatus.Submitted)
                     .Sum(sd => sd.Quantity);
 
                 long reservedQuantity = allSupplyDetails
-                    .Where(sd => supplyStatusMap.ContainsKey(sd.SupplyId) && 
+                    .Where(sd => supplyStatusMap.ContainsKey(sd.SupplyId) &&
                                  supplyStatusMap[sd.SupplyId] == SupplySubmissionStatus.Draft)
                     .Sum(sd => sd.Quantity);
 
@@ -1212,13 +1335,13 @@ namespace Ettad.Inventory.Service.Inventories
 
             // Group supply details by ItemId and Lot for fast O(1) lookup
             var usedQuantitiesByItemLot = supplyDetails
-                .Where(sd => supplyStatusMap.ContainsKey(sd.SupplyId) && 
+                .Where(sd => supplyStatusMap.ContainsKey(sd.SupplyId) &&
                              supplyStatusMap[sd.SupplyId] == SupplySubmissionStatus.Submitted)
                 .GroupBy(sd => new { sd.ItemId, sd.Lot })
                 .ToDictionary(g => g.Key, g => g.Sum(sd => sd.Quantity));
 
             var reservedQuantitiesByItemLot = supplyDetails
-                .Where(sd => supplyStatusMap.ContainsKey(sd.SupplyId) && 
+                .Where(sd => supplyStatusMap.ContainsKey(sd.SupplyId) &&
                              supplyStatusMap[sd.SupplyId] == SupplySubmissionStatus.Draft)
                 .GroupBy(sd => new { sd.ItemId, sd.Lot })
                 .ToDictionary(g => g.Key, g => g.Sum(sd => sd.Quantity));
@@ -1227,10 +1350,10 @@ namespace Ettad.Inventory.Service.Inventories
             foreach (var detail in details)
             {
                 var key = new { detail.ItemId, detail.Lot };
-                
+
                 long used = usedQuantitiesByItemLot.TryGetValue(key, out var usedQty) ? usedQty : 0;
                 long reserved = reservedQuantitiesByItemLot.TryGetValue(key, out var reservedQty) ? reservedQty : 0;
-                
+
                 detail.UsedQuantity = used;
                 detail.ReservedQuantityByOrdersOnProcessing = reserved;
                 detail.RemainingQuantity = Math.Max(0, detail.OriginalQuantity - used - reserved);
@@ -1241,16 +1364,16 @@ namespace Ettad.Inventory.Service.Inventories
 
         public async Task<APIOperationResponse<bool>> ToggleReadyForIssueAsync(long inventoryDetailId)
         {
-            _logger.LogInformation("Toggling ReadyForIssue status. InventoryDetailId: {InventoryDetailId}, User: {UserId}", 
+            _logger.LogInformation("Toggling ReadyForIssue status. InventoryDetailId: {InventoryDetailId}, User: {UserId}",
                 inventoryDetailId, _currentUserService.UserId);
 
             try
             {
                 var inventoryDetail = await _inventoryDetailRepository.FindOneAsync(id => id.Id == inventoryDetailId);
-                
+
                 if (inventoryDetail == null)
                 {
-                    _logger.LogWarning("Inventory detail not found. InventoryDetailId: {InventoryDetailId}, User: {UserId}", 
+                    _logger.LogWarning("Inventory detail not found. InventoryDetailId: {InventoryDetailId}, User: {UserId}",
                         inventoryDetailId, _currentUserService.UserId);
                     return APIOperationResponse<bool>.Fail(ResponseType.NotFound, "Inventory detail not found");
                 }
@@ -1258,14 +1381,14 @@ namespace Ettad.Inventory.Service.Inventories
                 inventoryDetail.ReadyForIssue = !inventoryDetail.ReadyForIssue;
                 await _inventoryDetailRepository.UpdateAsync(inventoryDetail);
 
-                _logger.LogInformation("ReadyForIssue status toggled successfully. InventoryDetailId: {InventoryDetailId}, NewStatus: {NewStatus}, User: {UserId}", 
+                _logger.LogInformation("ReadyForIssue status toggled successfully. InventoryDetailId: {InventoryDetailId}, NewStatus: {NewStatus}, User: {UserId}",
                     inventoryDetailId, inventoryDetail.ReadyForIssue, _currentUserService.UserId);
 
                 return APIOperationResponse<bool>.Success(inventoryDetail.ReadyForIssue, "Status updated successfully");
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error toggling ReadyForIssue status. InventoryDetailId: {InventoryDetailId}, User: {UserId}", 
+                _logger.LogError(ex, "Error toggling ReadyForIssue status. InventoryDetailId: {InventoryDetailId}, User: {UserId}",
                     inventoryDetailId, _currentUserService.UserId);
                 return APIOperationResponse<bool>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
             }
@@ -1273,7 +1396,7 @@ namespace Ettad.Inventory.Service.Inventories
 
         public async Task<APIOperationResponse<ImportResult<InventoryImportRowDto>>> ImportAsync(IFormFile file, long depotId, string language = "en")
         {
-            _logger.LogInformation("Starting inventory import. DepotId: {DepotId}, Language: {Language}, User: {UserId}", 
+            _logger.LogInformation("Starting inventory import. DepotId: {DepotId}, Language: {Language}, User: {UserId}",
                 depotId, language, _currentUserService.UserId);
 
             var userId = _currentUserService.UserId;
@@ -1282,7 +1405,7 @@ namespace Ettad.Inventory.Service.Inventories
                 _logger.LogWarning("User {UserId} attempted to import inventory to unauthorized depot {DepotId}", userId, depotId);
                 return APIOperationResponse<ImportResult<InventoryImportRowDto>>.Fail(ResponseType.Forbidden, "You do not have access to this depot.");
             }
- 
+
             try
             {
                 // Parse Excel file
@@ -1291,7 +1414,7 @@ namespace Ettad.Inventory.Service.Inventories
 
                 if (importResult.SuccessCount == 0)
                 {
-                    _logger.LogWarning("No valid rows found in Excel file. DepotId: {DepotId}, User: {UserId}", 
+                    _logger.LogWarning("No valid rows found in Excel file. DepotId: {DepotId}, User: {UserId}",
                         depotId, _currentUserService.UserId);
                     return APIOperationResponse<ImportResult<InventoryImportRowDto>>.Success(importResult, "Import processed with no valid records");
                 }
@@ -1320,7 +1443,7 @@ namespace Ettad.Inventory.Service.Inventories
 
                 // Process valid records with transaction support
                 await using var transaction = await _context.Database.BeginTransactionAsync();
-                
+
                 try
                 {
                     // Group rows by invoice number
@@ -1364,7 +1487,7 @@ namespace Ettad.Inventory.Service.Inventories
                                     else
                                     {
                                         // If no parentheses, try to match by item name
-                                        var foundItem = allItems.FirstOrDefault(i => 
+                                        var foundItem = allItems.FirstOrDefault(i =>
                                             i.Name != null && i.Name.Equals(itemNameValue, StringComparison.OrdinalIgnoreCase));
                                         if (foundItem != null)
                                         {
@@ -1393,10 +1516,10 @@ namespace Ettad.Inventory.Service.Inventories
                                 // Resolve Supplier name to ID
                                 if (!string.IsNullOrWhiteSpace(row.Supplier) && !row.SupplierId.HasValue)
                                 {
-                                    var supplier = suppliers.FirstOrDefault(s => 
+                                    var supplier = suppliers.FirstOrDefault(s =>
                                         s.NameEn.Equals(row.Supplier, StringComparison.OrdinalIgnoreCase) ||
                                         s.NameAr.Equals(row.Supplier, StringComparison.OrdinalIgnoreCase));
-                                    
+
                                     if (supplier != null)
                                     {
                                         row.SupplierId = supplier.Id;
@@ -1411,10 +1534,10 @@ namespace Ettad.Inventory.Service.Inventories
                                 // Resolve Manufacturer name to ID
                                 if (!string.IsNullOrWhiteSpace(row.Manufacturer) && !row.ManufacturerId.HasValue)
                                 {
-                                    var manufacturer = manufacturers.FirstOrDefault(m => 
+                                    var manufacturer = manufacturers.FirstOrDefault(m =>
                                         m.NameEn.Equals(row.Manufacturer, StringComparison.OrdinalIgnoreCase) ||
                                         m.NameAr.Equals(row.Manufacturer, StringComparison.OrdinalIgnoreCase));
-                                    
+
                                     if (manufacturer != null)
                                     {
                                         row.ManufacturerId = manufacturer.Id;
@@ -1429,10 +1552,10 @@ namespace Ettad.Inventory.Service.Inventories
                                 // Resolve Country name to ID
                                 if (!string.IsNullOrWhiteSpace(row.Country) && !row.CountryId.HasValue)
                                 {
-                                    var country = countries.FirstOrDefault(c => 
+                                    var country = countries.FirstOrDefault(c =>
                                         c.NameEn.Equals(row.Country, StringComparison.OrdinalIgnoreCase) ||
                                         c.NameAr.Equals(row.Country, StringComparison.OrdinalIgnoreCase));
-                                    
+
                                     if (country != null)
                                     {
                                         row.CountryId = country.Id;
@@ -1556,7 +1679,7 @@ namespace Ettad.Inventory.Service.Inventories
                         {
                             _logger.LogError(ex, "Error processing invoice group. InvoiceNumber: {InvoiceNumber}, DepotId: {DepotId}, User: {UserId}",
                                 invoiceNumber, depotId, _currentUserService.UserId);
-                            
+
                             importResult.Errors.Add(new ImportError
                             {
                                 RowNumber = 0,
@@ -1605,7 +1728,7 @@ namespace Ettad.Inventory.Service.Inventories
 
         public async Task<APIOperationResponse<ImportResult<InventoryImportRowDto>>> ImportPreviewAsync(IFormFile file, long depotId, string language = "en")
         {
-            _logger.LogInformation("Starting inventory import preview. DepotId: {DepotId}, Language: {Language}, User: {UserId}", 
+            _logger.LogInformation("Starting inventory import preview. DepotId: {DepotId}, Language: {Language}, User: {UserId}",
                 depotId, language, _currentUserService.UserId);
 
             var userId = _currentUserService.UserId;
@@ -1614,7 +1737,7 @@ namespace Ettad.Inventory.Service.Inventories
                 _logger.LogWarning("User {UserId} attempted to preview inventory import for unauthorized depot {DepotId}", userId, depotId);
                 return APIOperationResponse<ImportResult<InventoryImportRowDto>>.Fail(ResponseType.Forbidden, "You do not have access to this depot.");
             }
- 
+
             try
             {
                 // Parse Excel file
@@ -1623,7 +1746,7 @@ namespace Ettad.Inventory.Service.Inventories
 
                 if (importResult.SuccessCount == 0)
                 {
-                    _logger.LogWarning("No valid rows found in Excel file for preview. DepotId: {DepotId}, User: {UserId}", 
+                    _logger.LogWarning("No valid rows found in Excel file for preview. DepotId: {DepotId}, User: {UserId}",
                         depotId, _currentUserService.UserId);
                     return APIOperationResponse<ImportResult<InventoryImportRowDto>>.Success(importResult, "Preview processed with no valid records");
                 }
@@ -1673,7 +1796,7 @@ namespace Ettad.Inventory.Service.Inventories
                         else
                         {
                             // If no parentheses, try to match by item name
-                            var foundItem = allItems.FirstOrDefault(i => 
+                            var foundItem = allItems.FirstOrDefault(i =>
                                 i.Name != null && i.Name.Equals(itemNameValue, StringComparison.OrdinalIgnoreCase));
                             if (foundItem != null)
                             {
@@ -1703,10 +1826,10 @@ namespace Ettad.Inventory.Service.Inventories
                         // Resolve Supplier name to ID
                         if (!string.IsNullOrWhiteSpace(row.Supplier))
                         {
-                            var supplier = suppliers.FirstOrDefault(s => 
+                            var supplier = suppliers.FirstOrDefault(s =>
                                 s.NameEn.Equals(row.Supplier, StringComparison.OrdinalIgnoreCase) ||
                                 s.NameAr.Equals(row.Supplier, StringComparison.OrdinalIgnoreCase));
-                            
+
                             if (supplier != null)
                             {
                                 row.SupplierId = supplier.Id;
@@ -1720,10 +1843,10 @@ namespace Ettad.Inventory.Service.Inventories
                         // Resolve Manufacturer name to ID
                         if (!string.IsNullOrWhiteSpace(row.Manufacturer))
                         {
-                            var manufacturer = manufacturers.FirstOrDefault(m => 
+                            var manufacturer = manufacturers.FirstOrDefault(m =>
                                 m.NameEn.Equals(row.Manufacturer, StringComparison.OrdinalIgnoreCase) ||
                                 m.NameAr.Equals(row.Manufacturer, StringComparison.OrdinalIgnoreCase));
-                            
+
                             if (manufacturer != null)
                             {
                                 row.ManufacturerId = manufacturer.Id;
@@ -1737,10 +1860,10 @@ namespace Ettad.Inventory.Service.Inventories
                         // Resolve Country name to ID
                         if (!string.IsNullOrWhiteSpace(row.Country))
                         {
-                            var country = countries.FirstOrDefault(c => 
+                            var country = countries.FirstOrDefault(c =>
                                 c.NameEn.Equals(row.Country, StringComparison.OrdinalIgnoreCase) ||
                                 c.NameAr.Equals(row.Country, StringComparison.OrdinalIgnoreCase));
-                            
+
                             if (country != null)
                             {
                                 row.CountryId = country.Id;
@@ -1843,23 +1966,23 @@ namespace Ettad.Inventory.Service.Inventories
                 { "تاريخ الاستلام", nameof(InventoryImportRowDto.ReceivedDate) },
                 { "ملاحظات", nameof(InventoryImportRowDto.Notes) }
             };
- 
+
             return mappings;
         }
 
         private async Task<List<BaseItem>> LoadAllItemsAsync()
         {
             var items = new List<BaseItem>();
-            
+
             // Load all ammunition, weapons, and explosives
             var ammunitions = await _context.Ammunitions
                 .Where(a => !a.IsDeleted)
                 .ToListAsync();
-            
+
             var weapons = await _context.Weapons
                 .Where(w => !w.IsDeleted)
                 .ToListAsync();
-            
+
             var explosives = await _context.Explosives
                 .Where(e => !e.IsDeleted)
                 .ToListAsync();

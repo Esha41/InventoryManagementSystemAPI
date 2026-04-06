@@ -87,11 +87,12 @@ namespace Ettad.Inventory.API.Controllers
         /// Create a new inventory with details
         /// </summary>
         [HttpPost]
+        [Consumes("multipart/form-data")]
         [ProducesResponseType((int)HttpStatusCode.Created)]
         [CheckAuthorize("Permissions.Inventory.Create")]
-        public async Task<IActionResult> Create([FromBody] CreateInventoryDto dto)
+        public async Task<IActionResult> Create([FromForm] CreateInventoryDto dto, [FromForm] List<IFormFile>? files = null)
         {
-            var result = await _inventoryService.CreateAsync(dto);
+            var result = await _inventoryService.CreateAsync(dto, files);
             return ProcessResponse(result);
         }
 
@@ -149,11 +150,32 @@ namespace Ettad.Inventory.API.Controllers
         /// Update an existing inventory and its details
         /// </summary>
         [HttpPut("{id}")]
+        [Consumes("multipart/form-data")]
         [ProducesResponseType((int)HttpStatusCode.OK)]
         [CheckAuthorize("Permissions.Inventory.Edit")]
-        public async Task<IActionResult> Update(long id, [FromBody] UpdateInventoryDto dto)
+        public async Task<IActionResult> Update(long id, [FromForm] string dto, [FromForm] List<IFormFile>? files = null, [FromForm] long? filesItemId = null)
         {
-            var result = await _inventoryService.UpdateAsync(id, dto);
+            if (string.IsNullOrWhiteSpace(dto))
+            {
+                return BadRequest("dto is required");
+            }
+
+            UpdateInventoryDto? parsedDto;
+            try
+            {
+                parsedDto = Newtonsoft.Json.JsonConvert.DeserializeObject<UpdateInventoryDto>(dto);
+            }
+            catch (Newtonsoft.Json.JsonException ex)
+            {
+                return BadRequest($"Invalid JSON for dto: {ex.Message}");
+            }
+
+            if (parsedDto == null)
+            {
+                return BadRequest("Invalid dto payload");
+            }
+
+            var result = await _inventoryService.UpdateAsync(id, parsedDto, files, filesItemId);
             return ProcessResponse(result);
         }
 

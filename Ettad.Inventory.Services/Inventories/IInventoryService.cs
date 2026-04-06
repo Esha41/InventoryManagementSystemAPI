@@ -10,8 +10,8 @@ namespace Ettad.Inventory.Service.Inventories
     {
         Task<APIOperationResponse<InventoryDto>> GetByIdAsync(long id);
         Task<APIOperationResponse<List<InventoryDto>>> GetAllAsync();
-        Task<APIOperationResponse<long>> CreateAsync(CreateInventoryDto inputDto);
-        Task<APIOperationResponse<bool>> UpdateAsync(long id, UpdateInventoryDto inputDto);
+        Task<APIOperationResponse<long>> CreateAsync(CreateInventoryDto inputDto, List<IFormFile>? files = null);
+        Task<APIOperationResponse<bool>> UpdateAsync(long id, UpdateInventoryDto inputDto, List<IFormFile>? files = null, long? filesItemId = null);
         Task<APIOperationResponse<bool>> DeleteAsync(long id);
         Task<APIOperationResponse<OrderSupplySuggestionDto>> SuggestSupplyForOrderAsync(long orderId, List<long>? depotIds = null);
         Task<APIOperationResponse<List<LotDetailDto>>> GetLotsByItemIdAsync(long itemId);

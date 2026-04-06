@@ -384,8 +384,8 @@ namespace Ettad.Inventory.Service.Assets
                 {
                     var uploadFilesResult = await _fileUploadService.UploadFilesForEntityAsync(
                         files, 
-                        FileEntityType.Asset, 
-                        createdAsset.Id);
+                        FileEntityType.Weapon,
+                        batch.Id);
                     
                     if (!uploadFilesResult.Succeeded)
                     {
@@ -413,7 +413,7 @@ namespace Ettad.Inventory.Service.Assets
             }
         }
 
-        public async Task<APIOperationResponse<List<long>>> CreateBulkAsync(List<CreateAssetDto> inputDtos)
+        public async Task<APIOperationResponse<List<long>>> CreateBulkAsync(List<CreateAssetDto> inputDtos, List<IFormFile>? files = null)
         {
             if (inputDtos == null || !inputDtos.Any())
                 return APIOperationResponse<List<long>>.Fail(ResponseType.BadRequest, "No assets provided");
@@ -474,7 +474,7 @@ namespace Ettad.Inventory.Service.Assets
 
                 // Pre-resolve all unique BatchNumbers
                 var batchCache = new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase);
-
+                long batchId = 0L;
                 foreach (var dto in inputDtos)
                 {
                     var validationResult = await _createValidator.ValidateAsync(dto);
@@ -508,6 +508,7 @@ namespace Ettad.Inventory.Service.Assets
                     }
 
                     var batch = await _batchService.GetOrCreateAsync(dto.BatchNumber, dto.DepotId, dto.BatchPrimaryPurposId);
+                    batchId=batch.Id;
                     if (!batchCache.ContainsKey(batchKey))
                         batchCache[batchKey] = batch.Id;
 
@@ -533,6 +534,20 @@ namespace Ettad.Inventory.Service.Assets
 
                 _logger.LogInformation("Bulk asset creation completed successfully. Created: {Count}, User: {UserId}",
                     createdIds.Count, _currentUserService.UserId);
+
+                // If files provided, upload them for each created asset
+                if (files != null && files.Any())
+                {
+                        var uploadFilesResult = await _fileUploadService.UploadFilesForEntityAsync(
+                            files,
+                            FileEntityType.Weapon,
+                            batchId);
+
+                        if (!uploadFilesResult.Succeeded)
+                        {
+                            _logger.LogWarning("File upload failed during bulk creation for AssetId {AssetId}: {Error}", inputDtos.First().ItemId, uploadFilesResult.Message);
+                        }
+                }
 
                 return APIOperationResponse<List<long>>.Success(createdIds, "Assets created successfully");
             }
@@ -628,7 +643,7 @@ namespace Ettad.Inventory.Service.Assets
             }
         }
 
-        public async Task<APIOperationResponse<bool>> UpdateAsync(long id, UpdateAssetDto inputDto)
+        public async Task<APIOperationResponse<bool>> UpdateAsync(long id, UpdateAssetDto inputDto, List<IFormFile>? files = null)
         {
             _logger.LogInformation("Updating asset. AssetId: {AssetId}, User: {UserId}", 
                 id, _currentUserService.UserId);
@@ -667,6 +682,26 @@ namespace Ettad.Inventory.Service.Assets
 
                 // Update in repository
                 await _assetRepository.UpdateAsync(existingAsset);
+
+                // Upload files (if any) and link them to the asset
+                if (files != null && files.Any())
+                {
+                    var uploadFilesResult = await _fileUploadService.UploadFilesForEntityAsync(
+                        files,
+                        FileEntityType.Weapon,
+                        existingAsset.BatchId);
+
+                    if (!uploadFilesResult.Succeeded)
+                    {
+                        _logger.LogWarning("File upload failed during asset update. Error: {Error}, User: {UserId}",
+                            uploadFilesResult.Message, _currentUserService.UserId);
+                    }
+                    else
+                    {
+                        _logger.LogInformation("Files uploaded and linked to asset. AssetId: {AssetId}, FileCount: {FileCount}, User: {UserId}",
+                            existingAsset.Id, files.Count, _currentUserService.UserId);
+                    }
+                }
                 
                 _logger.LogInformation("Asset updated successfully. AssetId: {AssetId}, User: {UserId}", 
                     id, _currentUserService.UserId);
