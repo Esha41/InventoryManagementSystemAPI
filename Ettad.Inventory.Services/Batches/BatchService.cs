@@ -16,6 +16,8 @@ using Ettad.Lookups.Services.Contracts;
 using Ettad.EntityFramework.DataBaseContext;
 using Ettad.CrossCutting.Comman.Time;
 using Ettad.CrossCutting.Comman.Models;
+using Ettad.Inventory.Service.AssetHistory;
+using Ettad.Inventory.Service.AssetHistory.Dtos;
 
 namespace Ettad.Inventory.Service.Batches
 {
@@ -31,6 +33,8 @@ namespace Ettad.Inventory.Service.Batches
         private readonly IDateTimeProvider _dateTimeProvider;
         private readonly IDepotAccessService _depotAccessService;
         private readonly IValidator<BulkUpdateBatchAssetsDto> _bulkUpdateValidator;
+        private readonly IValidator<UpdateBatchDto> _updateBatchValidator;
+        private readonly IAssetHistoryService _historyService;
 
         public BatchService(
             ICrossCuttingRepository<Batch> batchRepository,
@@ -42,7 +46,9 @@ namespace Ettad.Inventory.Service.Batches
             ApplicationDbContext context,
             IDateTimeProvider dateTimeProvider,
             IDepotAccessService depotAccessService,
-            IValidator<BulkUpdateBatchAssetsDto> bulkUpdateValidator)
+            IValidator<BulkUpdateBatchAssetsDto> bulkUpdateValidator,
+            IValidator<UpdateBatchDto> updateBatchValidator,
+            IAssetHistoryService historyService)
         {
             _batchRepository = batchRepository;
             _assetRepository = assetRepository;
@@ -54,6 +60,8 @@ namespace Ettad.Inventory.Service.Batches
             _dateTimeProvider = dateTimeProvider;
             _depotAccessService = depotAccessService;
             _bulkUpdateValidator = bulkUpdateValidator;
+            _updateBatchValidator = updateBatchValidator;
+            _historyService = historyService;
         }
 
         public async Task<Batch> GetOrCreateAsync(string batchNumber, long depotId, long? primaryPurposId = null)
@@ -182,6 +190,7 @@ namespace Ettad.Inventory.Service.Batches
                     .Include(nameof(Asset.Item))
                     .Include(nameof(Asset.Depot))
                     .Include($"{nameof(Asset.CurrentAssignment)}.{nameof(AssetAssignment.Department)}")
+                    .Include($"{nameof(Asset.CurrentAssignment)}.{nameof(AssetAssignment.Custodian)}")
                     .AsSplitQuery();
 
                 if (serialNumberOnly == true)
@@ -504,6 +513,51 @@ namespace Ettad.Inventory.Service.Batches
             }
         }
 
+        public async Task<APIOperationResponse<bool>> UpdateBatchAsync(long id, UpdateBatchDto dto)
+        {
+            _logger.LogInformation("Updating batch metadata. BatchId: {BatchId}, User: {UserId}", id, _currentUserService.UserId);
+
+            try
+            {
+                var validationResult = await _updateBatchValidator.ValidateAsync(dto);
+                if (!validationResult.IsValid)
+                {
+                    var errors = string.Join(", ", validationResult.Errors.Select(e => e.ErrorMessage));
+                    return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, errors);
+                }
+
+                var trimmed = dto.BatchNumber.Trim();
+                var batch = await _batchRepository.FindOneAsync(p => p.Id == id && !p.IsDeleted);
+                if (batch == null)
+                    return APIOperationResponse<bool>.Fail(ResponseType.NotFound, "Batch not found");
+
+                var userId = _currentUserService.UserId;
+                if (!string.IsNullOrEmpty(userId) && !await _depotAccessService.HasDepotAccessAsync(userId, batch.DepotId))
+                    return APIOperationResponse<bool>.Fail(ResponseType.Forbidden, "You do not have access to this depot.");
+
+                if (!string.Equals(batch.BatchNumber, trimmed, StringComparison.Ordinal))
+                {
+                    var duplicate = await _batchRepository.FindOneAsync(
+                        p => !p.IsDeleted && p.Id != id && p.BatchNumber == trimmed);
+                    if (duplicate != null)
+                        return APIOperationResponse<bool>.Fail(ResponseType.Conflict, "A batch with this number already exists.");
+                }
+
+                batch.BatchNumber = trimmed;
+                batch.ModificationDate = _dateTimeProvider.Now;
+                batch.ModifiedBy = _currentUserService.UserId;
+                await _batchRepository.UpdateAsync(batch);
+
+                _logger.LogInformation("Batch metadata updated. BatchId: {BatchId}, User: {UserId}", id, _currentUserService.UserId);
+                return APIOperationResponse<bool>.Success(true, "Batch updated successfully");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating batch. BatchId: {BatchId}, User: {UserId}", id, _currentUserService.UserId);
+                return APIOperationResponse<bool>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
+            }
+        }
+
         public async Task<APIOperationResponse<bool>> BulkUpdateAssetsAsync(long batchId, BulkUpdateBatchAssetsDto inputDto)
         {
             _logger.LogInformation("Bulk updating assets in batch. BatchId: {BatchId}, ItemCount: {ItemCount}, User: {UserId}",
@@ -581,6 +635,16 @@ namespace Ettad.Inventory.Service.Batches
                         asset.ModificationDate = _dateTimeProvider.Now;
                         asset.ModifiedBy = _currentUserService.UserId;
 
+                        if (item.UpdateAssignment)
+                        {
+                            var (assignOk, assignError) = await TryApplyBulkItemAssignmentAsync(asset, item);
+                            if (!assignOk)
+                            {
+                                await transaction.RollbackAsync();
+                                return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, assignError ?? "Assignment update failed.");
+                            }
+                        }
+
                         await _assetRepository.UpdateAsync(asset);
                     }
 
@@ -605,6 +669,156 @@ namespace Ettad.Inventory.Service.Batches
                     batchId, _currentUserService.UserId);
                 return APIOperationResponse<bool>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
             }
+        }
+
+        private async Task<(bool Ok, string? Error)> TryApplyBulkItemAssignmentAsync(Asset asset, BatchAssetUpdateItem item)
+        {
+            if (!item.UpdateAssignment)
+                return (true, null);
+
+            var inSupply = await _context.AssetSupplyDetails.AnyAsync(sd => !sd.IsDeleted && sd.AssetId == asset.Id);
+            if (inSupply)
+                return (false, $"Cannot change assignment for asset {asset.Id} while it is included in a supply order.");
+
+            var notes = string.IsNullOrWhiteSpace(item.AssignmentNotes) ? null : item.AssignmentNotes.Trim();
+
+            if (!item.AssignToEmployeeId.HasValue && !item.AssignToDepartmentId.HasValue)
+            {
+                if (!asset.IsAssigned || !asset.CurrentAssignmentId.HasValue)
+                    return (true, null);
+
+                var assignment = await _context.AssetAssignments
+                    .FirstOrDefaultAsync(a => a.Id == asset.CurrentAssignmentId.Value && !a.IsDeleted);
+                if (assignment == null || assignment.Status != AssetAssignmentStatus.Active)
+                {
+                    asset.IsAssigned = false;
+                    asset.CurrentAssignmentId = null;
+                    return (true, null);
+                }
+
+                var prevDept = assignment.DepartmentId;
+                var prevCust = assignment.CustodianId;
+                assignment.Status = AssetAssignmentStatus.Returned;
+                assignment.ActualReturnDate = _dateTimeProvider.Now;
+                assignment.ModificationDate = _dateTimeProvider.Now;
+                assignment.ModifiedBy = _currentUserService.UserId;
+
+                asset.IsAssigned = false;
+                asset.CurrentAssignmentId = null;
+
+                await _context.SaveChangesAsync();
+                await _historyService.RecordHistoryAsync(asset.Id, AssetHistoryActionType.Returned, new AssetHistoryContext
+                {
+                    Description = "Assignment removed from batch edit",
+                    PreviousDepartmentId = prevDept,
+                    PreviousCustodianId = prevCust,
+                    AssetAssignmentId = assignment.Id
+                });
+
+                return (true, null);
+            }
+
+            long? custodianId = null;
+            long? departmentId = null;
+            if (item.AssignToEmployeeId.HasValue)
+            {
+                var emp = await _context.Employees
+                    .FirstOrDefaultAsync(e => e.Id == item.AssignToEmployeeId.Value && !e.IsDeleted);
+                if (emp == null)
+                    return (false, $"Employee not found: {item.AssignToEmployeeId.Value}");
+                custodianId = emp.Id;
+                departmentId = emp.DepartmentId;
+                if (!departmentId.HasValue || departmentId.Value <= 0)
+                    return (false, "Assignee employee has no department on record; update the employee or assign to a department only.");
+            }
+            else
+            {
+                departmentId = item.AssignToDepartmentId;
+            }
+
+            if (!departmentId.HasValue || departmentId.Value <= 0)
+                return (false, "A valid department is required when assigning from batch edit.");
+
+            var deptExists = await _context.Departments.AnyAsync(d => d.Id == departmentId.Value && !d.IsDeleted);
+            if (!deptExists)
+                return (false, $"Department not found: {departmentId.Value}");
+
+            if (asset.CurrentAssignmentId.HasValue)
+            {
+                var existing = await _context.AssetAssignments
+                    .FirstOrDefaultAsync(a => a.Id == asset.CurrentAssignmentId.Value && !a.IsDeleted);
+                if (existing != null && existing.Status == AssetAssignmentStatus.Active
+                    && existing.DepartmentId == departmentId
+                    && existing.CustodianId == custodianId)
+                {
+                    if (!string.IsNullOrEmpty(notes) && !string.Equals(existing.Notes, notes, StringComparison.Ordinal))
+                    {
+                        existing.Notes = string.IsNullOrEmpty(existing.Notes) ? notes : $"{existing.Notes}\n{notes}";
+                        existing.ModificationDate = _dateTimeProvider.Now;
+                        existing.ModifiedBy = _currentUserService.UserId;
+                        await _context.SaveChangesAsync();
+                    }
+
+                    return (true, null);
+                }
+            }
+
+            if (asset.CurrentAssignmentId.HasValue)
+            {
+                var old = await _context.AssetAssignments
+                    .FirstOrDefaultAsync(a => a.Id == asset.CurrentAssignmentId.Value && !a.IsDeleted);
+                if (old != null && old.Status == AssetAssignmentStatus.Active)
+                {
+                    var prevDept = old.DepartmentId;
+                    var prevCust = old.CustodianId;
+                    old.Status = AssetAssignmentStatus.Returned;
+                    old.ActualReturnDate = _dateTimeProvider.Now;
+                    old.ModificationDate = _dateTimeProvider.Now;
+                    old.ModifiedBy = _currentUserService.UserId;
+                    await _context.SaveChangesAsync();
+                    await _historyService.RecordHistoryAsync(asset.Id, AssetHistoryActionType.Returned, new AssetHistoryContext
+                    {
+                        Description = "Previous assignment ended before batch-edit reassignment",
+                        PreviousDepartmentId = prevDept,
+                        PreviousCustodianId = prevCust,
+                        AssetAssignmentId = old.Id
+                    });
+                }
+
+                asset.CurrentAssignmentId = null;
+                asset.IsAssigned = false;
+            }
+
+            var now = _dateTimeProvider.Now;
+            var newAssignment = new AssetAssignment
+            {
+                AssetId = asset.Id,
+                DepartmentId = departmentId,
+                CustodianId = custodianId,
+                AssignDate = now,
+                Status = AssetAssignmentStatus.Active,
+                Notes = notes,
+                ConditionOnAssign = asset.Condition,
+                CreationDate = now,
+                CreatedBy = _currentUserService.UserId
+            };
+
+            _context.AssetAssignments.Add(newAssignment);
+            await _context.SaveChangesAsync();
+
+            asset.IsAssigned = true;
+            asset.CurrentAssignmentId = newAssignment.Id;
+
+            await _historyService.RecordHistoryAsync(asset.Id, AssetHistoryActionType.Assigned, new AssetHistoryContext
+            {
+                Description = "Asset assigned from batch edit",
+                NewDepartmentId = departmentId,
+                NewCustodianId = custodianId,
+                AssetAssignmentId = newAssignment.Id,
+                Notes = notes
+            });
+
+            return (true, null);
         }
 
         public async Task<APIOperationResponse<bool>> RemoveAssetFromBatchAsync(long batchId, long assetId)

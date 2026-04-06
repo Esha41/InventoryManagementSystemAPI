@@ -30,9 +30,9 @@ namespace Ettad.Data.Entities
         public long? DepartmentId { get; set; }
 
         /// <summary>
-        /// The custodian (employee) responsible for the asset
+        /// The custodian (employee) responsible for the asset, if any (department-only assignments omit this).
         /// </summary>
-        public long CustodianId { get; set; }
+        public long? CustodianId { get; set; }
 
         /// <summary>
         /// Physical location of the asset during this assignment
@@ -100,7 +100,7 @@ namespace Ettad.Data.Entities
         public Order Order { get; set; }
         public AssetSupply AssetSupply { get; set; }
         public Department Department { get; set; }
-        public Employee Custodian { get; set; }
+        public Employee? Custodian { get; set; }
         public Rank ReceiverRank { get; set; }
 
         #endregion
