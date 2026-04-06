@@ -7,7 +7,8 @@ namespace Ettad.Inventory.Service.Batches
 {
     public interface IBatchService
     {
-        Task<Batch> GetOrCreateAsync(string batchNumber, long depotId);
+        Task<Batch> GetOrCreateAsync(string batchNumber, long depotId, long? primaryPurposId = null);
+        Task<APIOperationResponse<BatchDto>> UpdateAsync(long id, UpdateBatchDto dto);
         Task<APIOperationResponse<BatchDto>> GetByIdAsync(long id, bool? serialNumberOnly = null, int? quantity = null, bool? filterByIsAssigned = null);
         Task<APIOperationResponse<BatchDto>> GetByBatchNumberAsync(string batchNumber, bool? serialNumberOnly = null, int? quantity = null, bool? filterByIsAssigned = null);
         Task<APIOperationResponse<List<BatchDto>>> GetAllAsync(long? depotId = null);
