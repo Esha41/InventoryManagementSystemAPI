@@ -422,9 +422,6 @@ namespace Ettad.EntityFramework.Migrations
                     b.Property<DateTime?>("DeletionDate")
                         .HasColumnType("datetime2");
 
-                    b.Property<string>("DeliveryReceipt")
-                        .HasColumnType("nvarchar(max)");
-
                     b.Property<long>("DepotId")
                         .HasColumnType("bigint");
 
@@ -2088,9 +2085,6 @@ namespace Ettad.EntityFramework.Migrations
 
                     b.Property<DateTime?>("DeletionDate")
                         .HasColumnType("datetime2");
-
-                    b.Property<string>("DeliveryReceipt")
-                        .HasColumnType("nvarchar(max)");
 
                     b.Property<long>("DepoId")
                         .HasColumnType("bigint");
