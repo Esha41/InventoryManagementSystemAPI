@@ -35,9 +35,17 @@ namespace Ettad.Inventory.Service.Batches.Validators
                     .MaximumLength(2000).When(x => !string.IsNullOrWhiteSpace(x.AssignmentNotes))
                     .WithMessage("Assignment notes cannot exceed 2000 characters");
 
-                item.RuleFor(x => x)
-                    .Must(x => !(x.UpdateAssignment && x.AssignToEmployeeId.HasValue && x.AssignToDepartmentId.HasValue))
-                    .WithMessage("Specify either assign to employee or assign to department, not both.");
+                // Use AssignToEmployeeId as the rule target so PropertyName is Items[i].AssignToEmployeeId (see MergeFluentValidationIntoImportPreview).
+                item.RuleFor(x => x.AssignToEmployeeId)
+                    .Custom((_, context) =>
+                    {
+                        var row = (BatchAssetUpdateItem)context.InstanceToValidate;
+                        if (row.UpdateAssignment && row.AssignToEmployeeId.HasValue && row.AssignToDepartmentId.HasValue)
+                        {
+                            context.AddFailure("Specify either assign to employee or assign to department, not both.");
+                        }
+                    })
+                    .When(x => x.UpdateAssignment);
             });
         }
     }
