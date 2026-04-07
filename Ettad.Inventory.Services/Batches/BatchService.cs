@@ -595,6 +595,22 @@ namespace Ettad.Inventory.Service.Batches
                             }
                     }
 
+                    // Delete removed existing files (only on Save)
+                    if (inputDto.RemovedFileIds != null && inputDto.RemovedFileIds.Any())
+                    {
+                        foreach (var fileId in inputDto.RemovedFileIds.Distinct())
+                        {
+                            try
+                            {
+                                await _fileUploadService.DeleteAsync(fileId);
+                            }
+                            catch (Exception exDel)
+                            {
+                                _logger.LogWarning(exDel, "Failed deleting removed file {FileId} during Batch bulk update. BatchId: {BatchId}", fileId, batchId);
+                            }
+                        }
+                    }
+
                     _logger.LogInformation("Bulk update completed. BatchId: {BatchId}, UpdatedCount: {Count}, User: {UserId}",
                         batchId, inputDto.Items.Count, _currentUserService.UserId);
 

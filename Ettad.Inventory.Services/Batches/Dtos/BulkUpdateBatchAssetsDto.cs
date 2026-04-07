@@ -5,6 +5,11 @@ namespace Ettad.Inventory.Service.Batches.Dtos
     public class BulkUpdateBatchAssetsDto
     {
         public List<BatchAssetUpdateItem> Items { get; set; } = new();
+
+        /// <summary>
+        /// Existing uploaded file master ids the user removed in UI; deleted during bulk update.
+        /// </summary>
+        public List<long> RemovedFileIds { get; set; } = new();
     }
 
     public class BatchAssetUpdateItem
