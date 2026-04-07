@@ -411,9 +411,6 @@ namespace Ettad.Inventory.Service.Explosives
                 await using var transaction = await _context.Database.BeginTransactionAsync();
                 try
                 {
-                    await _context.Database.ExecuteSqlRawAsync(
-                        "DELETE FROM BaseItemPrimaryPurposes WHERE BaseItemId = {0}", id);
-
                     var explosiveDeleted = await _context.Database.ExecuteSqlRawAsync(
                         "DELETE FROM Explosives WHERE Id = {0}", id);
 
