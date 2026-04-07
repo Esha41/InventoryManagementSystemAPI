@@ -36,6 +36,27 @@ namespace Ettad.Inventory.Service.Assets.Validators
             RuleFor(x => x.Notes)
                 .MaximumLength(5000).When(x => !string.IsNullOrWhiteSpace(x.Notes))
                 .WithMessage("Notes cannot exceed 5000 characters");
+
+            RuleFor(x => x.AssignToEmployeeId)
+                .GreaterThan(0).When(x => x.AssignToEmployeeId.HasValue)
+                .WithMessage("Assign to employee ID must be greater than 0 when provided");
+
+            RuleFor(x => x.AssignToDepartmentId)
+                .GreaterThan(0).When(x => x.AssignToDepartmentId.HasValue)
+                .WithMessage("Assign to department ID must be greater than 0 when provided");
+
+            RuleFor(x => x.AssignmentNotes)
+                .MaximumLength(2000).When(x => !string.IsNullOrWhiteSpace(x.AssignmentNotes))
+                .WithMessage("Assignment notes cannot exceed 2000 characters");
+
+            RuleFor(x => x)
+                .Must(x => !(x.AssignToEmployeeId.HasValue && x.AssignToDepartmentId.HasValue))
+                .WithMessage("Specify either assign to employee or assign to department, not both.");
+
+            RuleFor(x => x)
+                .Must(x => string.IsNullOrWhiteSpace(x.AssignmentNotes) ||
+                          x.AssignToEmployeeId.HasValue || x.AssignToDepartmentId.HasValue)
+                .WithMessage("Assignment notes require at least one of assign to employee or assign to department.");
         }
     }
 }

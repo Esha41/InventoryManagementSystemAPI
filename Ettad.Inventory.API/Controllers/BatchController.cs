@@ -72,9 +72,9 @@ namespace Ettad.Inventory.API.Controllers
         [HttpPut("{id}")]
         [ProducesResponseType((int)HttpStatusCode.OK)]
         [CheckAuthorize("Permissions.Asset.Edit")]
-        public async Task<IActionResult> Update(long id, [FromBody] UpdateBatchDto dto)
+        public async Task<IActionResult> UpdateBatch(long id, [FromBody] UpdateBatchDto dto)
         {
-            var result = await _batchService.UpdateAsync(id, dto);
+            var result = await _batchService.UpdateBatchAsync(id, dto);
             return ProcessResponse(result);
         }
 
