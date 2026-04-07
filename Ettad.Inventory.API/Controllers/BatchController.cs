@@ -2,10 +2,13 @@ using Ettad.CrossCutting.Common.Security;
 using Ettad.Inventory.Service.Batches;
 using Ettad.Inventory.Service.Batches.Dtos;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using System.Net;
 using Ettad.CrossCutting.Comman.Models;
 using Ettad.ResponseHandler.Models;
+using System.Text;
+using System.Text.Json.Serialization;
 
 namespace Ettad.Inventory.API.Controllers
 {
@@ -76,11 +79,32 @@ namespace Ettad.Inventory.API.Controllers
         }
 
         [HttpPut("{id}/assets")]
+        [Consumes("multipart/form-data")]
         [ProducesResponseType((int)HttpStatusCode.OK)]
         [CheckAuthorize("Permissions.Asset.Edit")]
-        public async Task<IActionResult> BulkUpdateAssets(long id, [FromBody] BulkUpdateBatchAssetsDto dto)
+        public async Task<IActionResult> BulkUpdateAssets(long id, [FromForm] string dtoJson, [FromForm] List<IFormFile>? files = null)
         {
-            var result = await _batchService.BulkUpdateAssetsAsync(id, dto);
+            if (string.IsNullOrWhiteSpace(dtoJson))
+                return BadRequest("dtoJson is required");
+
+            BulkUpdateBatchAssetsDto? dto;
+            try
+            {
+                dto = System.Text.Json.JsonSerializer.Deserialize<BulkUpdateBatchAssetsDto>(dtoJson, new System.Text.Json.JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true,
+                    Converters = { new JsonStringEnumConverter() }
+                });
+            }
+            catch (System.Text.Json.JsonException ex)
+            {
+                return BadRequest($"Invalid dtoJson payload: {ex.Message}");
+            }
+
+            if (dto == null)
+                return BadRequest("Invalid dtoJson payload");
+
+            var result = await _batchService.BulkUpdateAssetsAsync(id, dto, files);
             return ProcessResponse(result);
         }
 

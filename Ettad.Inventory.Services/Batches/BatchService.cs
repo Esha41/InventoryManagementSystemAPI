@@ -13,6 +13,7 @@ using Ettad.ResponseHandler.Consts;
 using Ettad.ResponseHandler.Models;
 using Ettad.Application.Common.Interfaces;
 using Ettad.Lookups.Services.Contracts;
+using Microsoft.AspNetCore.Http;
 using Ettad.EntityFramework.DataBaseContext;
 using Ettad.CrossCutting.Comman.Time;
 using Ettad.CrossCutting.Comman.Models;
@@ -504,7 +505,7 @@ namespace Ettad.Inventory.Service.Batches
             }
         }
 
-        public async Task<APIOperationResponse<bool>> BulkUpdateAssetsAsync(long batchId, BulkUpdateBatchAssetsDto inputDto)
+        public async Task<APIOperationResponse<bool>> BulkUpdateAssetsAsync(long batchId, BulkUpdateBatchAssetsDto inputDto, List<IFormFile>? files = null)
         {
             _logger.LogInformation("Bulk updating assets in batch. BatchId: {BatchId}, ItemCount: {ItemCount}, User: {UserId}",
                 batchId, inputDto?.Items?.Count, _currentUserService.UserId);
@@ -576,7 +577,6 @@ namespace Ettad.Inventory.Service.Batches
                         asset.WarrantyExpiryDate = item.WarrantyExpiryDate;
                         asset.Condition = string.IsNullOrWhiteSpace(item.Condition) ? null : item.Condition.Trim();
                         asset.PurchasePrice = item.PurchasePrice;
-                        asset.DeliveryReceipt = string.IsNullOrWhiteSpace(item.DeliveryReceipt) ? null : item.DeliveryReceipt.Trim();
                         asset.Notes = string.IsNullOrWhiteSpace(item.Notes) ? null : item.Notes.Trim();
                         asset.ModificationDate = _dateTimeProvider.Now;
                         asset.ModifiedBy = _currentUserService.UserId;
@@ -585,6 +585,18 @@ namespace Ettad.Inventory.Service.Batches
                     }
 
                     await transaction.CommitAsync();
+
+                    // Attach uploaded files (if any) to each asset in the request.
+                    if (files != null && files.Any())
+                    {
+                            var uploadResult = await _fileUploadService.UploadFilesForEntityAsync(files, FileEntityType.Weapon, batchId);
+                            if (!uploadResult.Succeeded)
+                            {
+                                _logger.LogWarning("File upload failed during batch bulk update. BatchId: {BatchId}, Message: {Message}",
+                                    batchId, uploadResult.Message);
+                                return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, $"File upload failed: {uploadResult.Message}");
+                            }
+                    }
 
                     _logger.LogInformation("Bulk update completed. BatchId: {BatchId}, UpdatedCount: {Count}, User: {UserId}",
                         batchId, inputDto.Items.Count, _currentUserService.UserId);
