@@ -16,7 +16,7 @@ namespace Ettad.EntityFramework.Configurations
                 .IsRequired()
                 .HasMaxLength(500);
 
-            builder.HasIndex(x => x.BatchNumber)
+            builder.HasIndex(x => new { x.DepotId, x.BatchNumber })
                 .IsUnique()
                 .HasFilter("[IsDeleted] = 0");
 

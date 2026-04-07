@@ -38,13 +38,14 @@ namespace Ettad.Inventory.API.Controllers
         [CheckAuthorize("Permissions.Asset.View", "Permissions.Asset.Page")]
         public async Task<IActionResult> GetByBatchNumber(
             string batchNumber,
+            [FromQuery] long? depotId = null,
             [FromQuery] bool? serialNumberOnly = null,
             [FromQuery] bool? filterByIsAssigned = null,
             [FromQuery] int assetsPage = 1,
             [FromQuery] int assetsPageSize = 50,
             [FromQuery] bool includeAllAssets = false)
         {
-            var result = await _batchService.GetByBatchNumberAsync(batchNumber, serialNumberOnly, filterByIsAssigned, assetsPage, assetsPageSize, includeAllAssets);
+            var result = await _batchService.GetByBatchNumberAsync(batchNumber, depotId, serialNumberOnly, filterByIsAssigned, assetsPage, assetsPageSize, includeAllAssets);
             return ProcessResponse(result);
         }
 

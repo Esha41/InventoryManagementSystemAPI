@@ -565,7 +565,7 @@ namespace Ettad.Inventory.Service.Assets
                     }
                 }
 
-                // Pre-resolve all unique BatchNumbers
+                // Pre-resolve all unique (depot, batch number) pairs
                 var batchCache = new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase);
                 long batchId = 0L;
                 foreach (var dto in inputDtos)
@@ -586,7 +586,8 @@ namespace Ettad.Inventory.Service.Assets
                     }
 
                     var batchKey = dto.BatchNumber.Trim();
-                    if (batchCache.TryGetValue(batchKey, out var existingBatchId))
+                    var cacheKey = $"{dto.DepotId}:{batchKey}";
+                    if (batchCache.TryGetValue(cacheKey, out var existingBatchId))
                     {
                         if (dto.BatchPrimaryPurposId.HasValue)
                         {
@@ -595,18 +596,18 @@ namespace Ettad.Inventory.Service.Assets
                             {
                                 await transaction.RollbackAsync();
                                 return APIOperationResponse<List<long>>.Fail(ResponseType.BadRequest,
-                                    $"Conflicting primary purpose for batch number {dto.BatchNumber.Trim()}.");
+                                    $"Conflicting primary purpose for batch number {batchKey} in depot {dto.DepotId}.");
                             }
                         }
                     }
 
                     var batch = await _batchService.GetOrCreateAsync(dto.BatchNumber, dto.DepotId, dto.BatchPrimaryPurposId);
                     batchId=batch.Id;
-                    if (!batchCache.ContainsKey(batchKey))
-                        batchCache[batchKey] = batch.Id;
+                    if (!batchCache.ContainsKey(cacheKey))
+                        batchCache[cacheKey] = batch.Id;
 
                     var asset = _mapper.Map<Asset>(dto);
-                    asset.BatchId = batchCache[batchKey];
+                    asset.BatchId = batchCache[cacheKey];
                     asset.CreationDate = _dateTimeProvider.Now;
                     asset.CreatedBy = _currentUserService.UserId;
                     asset.Status = AssetStatus.ReadyToIssue;

@@ -70,7 +70,7 @@ namespace Ettad.Inventory.Service.Batches
             var trimmedBatchNumber = batchNumber.Trim();
 
             var existing = await _batchRepository.FindOneAsync(
-                p => !p.IsDeleted && p.BatchNumber == trimmedBatchNumber);
+                p => !p.IsDeleted && p.BatchNumber == trimmedBatchNumber && p.DepotId == depotId);
 
             if (existing != null)
             {
@@ -263,23 +263,70 @@ namespace Ettad.Inventory.Service.Batches
             }
         }
 
-        public async Task<APIOperationResponse<BatchDto>> GetByBatchNumberAsync(string batchNumber, bool? serialNumberOnly = null, bool? filterByIsAssigned = null, int assetsPage = 1, int assetsPageSize = 50, bool includeAllAssets = false)
+        public async Task<APIOperationResponse<List<BatchDto>>> GetByBatchNumberAsync(string batchNumber, long? depotId = null, bool? serialNumberOnly = null, bool? filterByIsAssigned = null, int assetsPage = 1, int assetsPageSize = 50, bool includeAllAssets = false)
         {
             if (string.IsNullOrWhiteSpace(batchNumber))
-                return APIOperationResponse<BatchDto>.Fail(ResponseType.BadRequest, "Batch number is required.");
+                return APIOperationResponse<List<BatchDto>>.Fail(ResponseType.BadRequest, "Batch number is required.");
 
             var trimmedBatchNumber = batchNumber.Trim();
 
-            _logger.LogInformation("Getting batch by BatchNumber. BatchNumber: {BatchNumber}, User: {UserId}",
-                trimmedBatchNumber, _currentUserService.UserId);
+            _logger.LogInformation("Getting batch(es) by BatchNumber. BatchNumber: {BatchNumber}, DepotId: {DepotId}, User: {UserId}",
+                trimmedBatchNumber, depotId, _currentUserService.UserId);
 
-            var batch = await _batchRepository.FindOneAsync(
-                p => p.BatchNumber == trimmedBatchNumber && !p.IsDeleted);
+            try
+            {
+                if (depotId.HasValue && depotId.Value > 0)
+                {
+                    var userId = _currentUserService.UserId;
+                    if (!string.IsNullOrEmpty(userId) && !await _depotAccessService.HasDepotAccessAsync(userId, depotId.Value))
+                        return APIOperationResponse<List<BatchDto>>.Fail(ResponseType.Forbidden, "You do not have access to this depot.");
 
-            if (batch == null)
-                return APIOperationResponse<BatchDto>.Fail(ResponseType.NotFound, "Batch not found");
+                    var batch = await _batchRepository.FindOneAsync(
+                        p => p.BatchNumber == trimmedBatchNumber && !p.IsDeleted && p.DepotId == depotId.Value);
 
-            return await GetByIdAsync(batch.Id, serialNumberOnly, filterByIsAssigned, assetsPage, assetsPageSize, includeAllAssets);
+                    if (batch == null)
+                        return APIOperationResponse<List<BatchDto>>.Fail(ResponseType.NotFound, "Batch not found");
+
+                    var one = await GetByIdAsync(batch.Id, serialNumberOnly, filterByIsAssigned, assetsPage, assetsPageSize, includeAllAssets);
+                    if (!one.Succeeded || one.Data == null)
+                        return APIOperationResponse<List<BatchDto>>.Fail(
+                            (ResponseType)one.StatusCode,
+                            one.Message ?? "Could not load batch.");
+
+                    return APIOperationResponse<List<BatchDto>>.Success(new List<BatchDto> { one.Data });
+                }
+
+                var userDepotIds = await _depotAccessService.GetUserAccessibleDepotIdsAsync();
+                if (userDepotIds != null && userDepotIds.Count == 0)
+                    return APIOperationResponse<List<BatchDto>>.Success(new List<BatchDto>());
+
+                var matchesQuery = _context.Batches
+                    .AsNoTracking()
+                    .Where(b => !b.IsDeleted && b.BatchNumber == trimmedBatchNumber);
+                if (userDepotIds != null)
+                    matchesQuery = matchesQuery.Where(b => userDepotIds.Contains(b.DepotId));
+
+                var matches = await matchesQuery
+                    .OrderBy(b => b.DepotId)
+                    .Select(b => b.Id)
+                    .ToListAsync();
+
+                var list = new List<BatchDto>();
+                foreach (var id in matches)
+                {
+                    var item = await GetByIdAsync(id, serialNumberOnly, filterByIsAssigned, assetsPage, assetsPageSize, includeAllAssets);
+                    if (item.Succeeded && item.Data != null)
+                        list.Add(item.Data);
+                }
+
+                return APIOperationResponse<List<BatchDto>>.Success(list);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving batch(es) by BatchNumber. BatchNumber: {BatchNumber}, User: {UserId}",
+                    trimmedBatchNumber, _currentUserService.UserId);
+                return APIOperationResponse<List<BatchDto>>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
+            }
         }
 
         private static int NormalizeBatchAssetsPageSize(int requested)
@@ -704,7 +751,7 @@ namespace Ettad.Inventory.Service.Batches
                 if (!string.Equals(batch.BatchNumber, trimmed, StringComparison.Ordinal))
                 {
                     var duplicate = await _batchRepository.FindOneAsync(
-                        p => !p.IsDeleted && p.Id != id && p.BatchNumber == trimmed);
+                        p => !p.IsDeleted && p.Id != id && p.BatchNumber == trimmed && p.DepotId == batch.DepotId);
                     if (duplicate != null)
                         return APIOperationResponse<bool>.Fail(ResponseType.Conflict, "A batch with this number already exists.");
                 }
