@@ -23,6 +23,7 @@ namespace Ettad.Inventory.Service.Ammunitions.Dtos
 
         // Ammunition Properties
         public string? ArmNumber { get; set; }
+        public string? Caliber { get; set; }
         public decimal? BulletDiameter { get; set; }
         public bool? IsLinked { get; set; }
         public string? Primer { get; set; }

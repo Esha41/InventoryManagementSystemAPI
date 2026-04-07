@@ -12,6 +12,8 @@ namespace Ettad.Data.Entities
 
         public string? ArmNumber { get; set; }
 
+        public string? Caliber { get; set; }
+
         public bool IsLinked { get; set; }
        
         public string? Primer { get; set; }

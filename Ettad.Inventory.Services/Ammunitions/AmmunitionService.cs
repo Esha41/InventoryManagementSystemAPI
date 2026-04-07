@@ -618,7 +618,7 @@ namespace Ettad.Inventory.Service.Ammunitions
                         "الاسم*", "رقم الصنف*", "رقم الجزء", "رقم ARM", "NSN", "السعر", "الكمية الدنيا",
                         "قطر الرصاصة", "وحدة قطر الرصاصة", "الوزن الكلي", "مرتبط", "الكبسولة",
                         "نوع الغلاف", "المادة الدافعة", "التوافق", "قسم الخطر", "خيار الطبيعة",
-                        "الغرض الأساسي", "لون المقذوف", "مادة المقذوف",
+                        "الغرض الأساسي", "لون المقذوف", "مادة المقذوف", "العيار",
                         "رقم الأمم المتحدة", "التوزيع", "الرقم المرجعي", "التصنيف", "النوع", "ملاحظات"
                    }
                    : new[]
@@ -626,7 +626,7 @@ namespace Ettad.Inventory.Service.Ammunitions
                         "Name*", "Item No*", "Part No", "Arm Number", "NSN", "Price", "Minimum Quantity",
                         "Bullet Diameter", "Bullet Diameter Unit", "Total Weight", "Is Linked", "Primer",
                         "Case Type", "Propellant", "Compatibility", "Hazard Division", "Nature Option",
-                        "Primary Purpose", "Projectile Color", "Projectile Material",
+                        "Primary Purpose", "Projectile Color", "Projectile Material", "Caliber",
                         "UN Number", "Distribution", "Reference No", "Classification", "Type", "Notes"
                    };
 
@@ -675,12 +675,13 @@ namespace Ettad.Inventory.Service.Ammunitions
                             : firstAsset.BaseItemPrimaryPurposes?.FirstOrDefault()?.PrimaryPurpos?.NameEn;
                         sheet.Cells[2, 19].Value = isAr ? firstAsset.ProjectileColor?.NameAr : firstAsset.ProjectileColor?.NameEn;
                         sheet.Cells[2, 20].Value = isAr ? firstAsset.ProjectailMaterial?.NameAr : firstAsset.ProjectailMaterial?.NameEn;
-                        sheet.Cells[2, 21].Value = firstAsset.UNNumber;
-                        sheet.Cells[2, 22].Value = firstAsset.Distribution;
-                        sheet.Cells[2, 23].Value = firstAsset.ReferenceNo;
-                        sheet.Cells[2, 24].Value = isAr ? firstAsset.Classification?.NameAr : firstAsset.Classification?.NameEn;
-                        sheet.Cells[2, 25].Value = isAr ? firstAsset.Type?.NameAr : firstAsset.Type?.NameEn;
-                        sheet.Cells[2, 26].Value = firstAsset.Notes;
+                        sheet.Cells[2, 21].Value = firstAsset.Caliber;
+                        sheet.Cells[2, 22].Value = firstAsset.UNNumber;
+                        sheet.Cells[2, 23].Value = firstAsset.Distribution;
+                        sheet.Cells[2, 24].Value = firstAsset.ReferenceNo;
+                        sheet.Cells[2, 25].Value = isAr ? firstAsset.Classification?.NameAr : firstAsset.Classification?.NameEn;
+                        sheet.Cells[2, 26].Value = isAr ? firstAsset.Type?.NameAr : firstAsset.Type?.NameEn;
+                        sheet.Cells[2, 27].Value = firstAsset.Notes;
                     }
                     else
                     {
@@ -714,8 +715,8 @@ namespace Ettad.Inventory.Service.Ammunitions
                     AddDataValidation(sheet, 18, "PrimaryPurposes");
                     AddDataValidation(sheet, 19, "ProjectileColors");
                     AddDataValidation(sheet, 20, "ProjectileMaterials");
-                    AddDataValidation(sheet, 24, "Classifications");
-                    AddDataValidation(sheet, 25, "ItemTypes");
+                    AddDataValidation(sheet, 25, "Classifications");
+                    AddDataValidation(sheet, 26, "ItemTypes");
                 }
             );
         }
@@ -787,6 +788,7 @@ namespace Ettad.Inventory.Service.Ammunitions
                 UNNumber = importDto.UNNumber,
                 Notes = importDto.Notes,
                 ArmNumber = importDto.ArmNumber,
+                Caliber = importDto.Caliber,
                 BulletDiameter = importDto.BulletDiameter,
                 IsLinked = importDto.IsLinked,
                 Primer = importDto.Primer,
@@ -891,6 +893,7 @@ namespace Ettad.Inventory.Service.Ammunitions
                 { "Primary Purpose", nameof(AmmunitionImportDto.PrimaryPurpose) },
                 { "Projectile Color", nameof(AmmunitionImportDto.ProjectileColor) },
                 { "Projectile Material", nameof(AmmunitionImportDto.ProjectileMaterial) },
+                { "Caliber", nameof(AmmunitionImportDto.Caliber) },
                 { "UN Number", nameof(AmmunitionImportDto.UNNumber) },
                 { "Distribution", nameof(AmmunitionImportDto.Distribution) },
                 { "Reference No", nameof(AmmunitionImportDto.ReferenceNo) },
@@ -918,6 +921,7 @@ namespace Ettad.Inventory.Service.Ammunitions
                 { "الغرض الأساسي", nameof(AmmunitionImportDto.PrimaryPurpose) },
                 { "لون المقذوف", nameof(AmmunitionImportDto.ProjectileColor) },
                 { "مادة المقذوف", nameof(AmmunitionImportDto.ProjectileMaterial) },
+                { "العيار", nameof(AmmunitionImportDto.Caliber) },
                 { "رقم الأمم المتحدة", nameof(AmmunitionImportDto.UNNumber) },
                 { "التوزيع", nameof(AmmunitionImportDto.Distribution) },
                 { "الرقم المرجعي", nameof(AmmunitionImportDto.ReferenceNo) },

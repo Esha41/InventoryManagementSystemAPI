@@ -21,6 +21,10 @@ namespace Ettad.EntityFramework.Configurations
                 .IsRequired(false)
                 .HasMaxLength(200);
 
+            builder.Property(x => x.Caliber)
+                .IsRequired(false)
+                .HasMaxLength(100);
+
             builder.HasOne(x => x.NatureOption)
                 .WithMany()
                 .IsRequired(false)
