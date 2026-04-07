@@ -1,3 +1,4 @@
+using Ettad.Data.Enums;
 using Ettad.Inventory.Service.Inventories.Dtos;
 using Ettad.Inventory.Services.Common;
 using Ettad.ResponseHandler.Models;
@@ -23,5 +24,7 @@ namespace Ettad.Inventory.Service.Inventories
         Task<APIOperationResponse<ImportResult<InventoryImportRowDto>>> ImportAsync(IFormFile file, long depotId, string language = "en");
         Task<APIOperationResponse<ImportResult<InventoryImportRowDto>>> ImportPreviewAsync(IFormFile file, long depotId, string language = "en");
         Task<APIOperationResponse<PaginatedList<InventoryDetailDto>>> GetInventoryDetailsByDepotIdPaginatedAsync(long depotId, PagedListRequest request);
+        Task<APIOperationResponse<byte[]>> ExportToExcelAsync(ItemType? itemType = null);
+        Task<APIOperationResponse<byte[]>> GenerateImportTemplateAsync(long depotId, string language = "en");
     }
 }

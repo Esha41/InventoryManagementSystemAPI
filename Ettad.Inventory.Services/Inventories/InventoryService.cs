@@ -18,6 +18,9 @@ using Ettad.CrossCutting.Comman.Models;
 using Ettad.CrossCutting.Comman.Time;
 using Ettad.CrossCutting.Comman.FileUpload;
 using Ettad.Comman.Enums;
+using Ettad.Services;
+using OfficeOpenXml;
+using OfficeOpenXml.DataValidation;
 using InventoryEntity = Ettad.Data.Entities.Inventory;
 using InventoryDetailEntity = Ettad.Data.Entities.InventoryDetail;
 
@@ -47,6 +50,7 @@ namespace Ettad.Inventory.Service.Inventories
         private readonly IValidator<CreateInventoryDto> _createValidator;
         private readonly IValidator<UpdateInventoryDto> _updateValidator;
         private readonly IExcelImportService _excelImportService;
+        private readonly IExcelExportService _excelExportService;
         private readonly ICurrentUserService _currentUserService;
         private readonly ILogger<InventoryService> _logger;
         private readonly IDateTimeProvider _dateTimeProvider;
@@ -66,6 +70,7 @@ namespace Ettad.Inventory.Service.Inventories
             IValidator<CreateInventoryDto> createValidator,
             IValidator<UpdateInventoryDto> updateValidator,
             IExcelImportService excelImportService,
+            IExcelExportService excelExportService,
             ICurrentUserService currentUserService,
             ILogger<InventoryService> logger,
             IDateTimeProvider dateTimeProvider,
@@ -84,6 +89,7 @@ namespace Ettad.Inventory.Service.Inventories
             _createValidator = createValidator;
             _updateValidator = updateValidator;
             _excelImportService = excelImportService;
+            _excelExportService = excelExportService;
             _currentUserService = currentUserService;
             _logger = logger;
             _dateTimeProvider = dateTimeProvider;
@@ -1543,6 +1549,8 @@ namespace Ettad.Inventory.Service.Inventories
                 var suppliers = await _context.Suppliers.Where(s => !s.IsDeleted).ToListAsync();
                 var manufacturers = await _context.Manufacturers.Where(m => !m.IsDeleted).ToListAsync();
                 var countries = await _context.Countries.Where(c => !c.IsDeleted).ToListAsync();
+                var primaryPurposes = await _context.PrimaryPurposes.Where(p => !p.IsDeleted).ToListAsync();
+                var itemPrimaryPurposes = await _context.BaseItemPrimaryPurposes.ToListAsync();
 
                 // Load existing inventory for duplicate checking
                 var existingInventoryDetails = await _inventoryDetailRepository.FindAsync(
@@ -1684,6 +1692,37 @@ namespace Ettad.Inventory.Service.Inventories
                                     }
                                 }
 
+                                // Resolve Primary Purpose name to ID
+                                if (!string.IsNullOrWhiteSpace(row.PrimaryPurpose) && !row.PrimaryPurposId.HasValue)
+                                {
+                                    var purpose = primaryPurposes.FirstOrDefault(p =>
+                                        p.NameEn.Equals(row.PrimaryPurpose, StringComparison.OrdinalIgnoreCase) ||
+                                        p.NameAr.Equals(row.PrimaryPurpose, StringComparison.OrdinalIgnoreCase));
+
+                                    if (purpose != null)
+                                    {
+                                        var allowedForItem = itemPrimaryPurposes
+                                            .Where(ip => ip.BaseItemId == itemId.Value)
+                                            .Select(ip => ip.PrimaryPurposId)
+                                            .ToHashSet();
+
+                                        if (allowedForItem.Count == 0 || allowedForItem.Contains(purpose.Id))
+                                        {
+                                            row.PrimaryPurposId = purpose.Id;
+                                        }
+                                        else
+                                        {
+                                            invoiceErrors.Add($"Primary Purpose '{row.PrimaryPurpose}' is not allowed for item {row.ItemName ?? row.ItemNo}");
+                                            continue;
+                                        }
+                                    }
+                                    else
+                                    {
+                                        invoiceErrors.Add($"Primary Purpose not found: {row.PrimaryPurpose}");
+                                        continue;
+                                    }
+                                }
+
                                 // Check for duplicates
                                 var duplicateKey = $"{itemId.Value}_{row.Lot}_{row.BatchNo ?? ""}";
                                 if (existingKeys.Contains(duplicateKey))
@@ -1709,7 +1748,8 @@ namespace Ettad.Inventory.Service.Inventories
                                     OriginalQuantity = row.OriginalQuantity,
                                     BatchNo = row.BatchNo,
                                     ExpiryDate = row.ExpiryDate,
-                                    ReadyForIssue = row.ReadyForIssue
+                                    ReadyForIssue = row.ReadyForIssue,
+                                    PrimaryPurposId = row.PrimaryPurposId
                                 });
 
                                 // Add to existing keys to prevent duplicates within import
@@ -1875,6 +1915,8 @@ namespace Ettad.Inventory.Service.Inventories
                 var suppliers = await _context.Suppliers.Where(s => !s.IsDeleted).ToListAsync();
                 var manufacturers = await _context.Manufacturers.Where(m => !m.IsDeleted).ToListAsync();
                 var countries = await _context.Countries.Where(c => !c.IsDeleted).ToListAsync();
+                var primaryPurposes = await _context.PrimaryPurposes.Where(p => !p.IsDeleted).ToListAsync();
+                var itemPrimaryPurposes = await _context.BaseItemPrimaryPurposes.ToListAsync();
 
                 // Load existing inventory for duplicate checking
                 var existingInventoryDetails = await _inventoryDetailRepository.FindAsync(
@@ -1991,6 +2033,35 @@ namespace Ettad.Inventory.Service.Inventories
                             }
                         }
 
+                        // Resolve Primary Purpose name to ID
+                        if (!string.IsNullOrWhiteSpace(row.PrimaryPurpose))
+                        {
+                            var purpose = primaryPurposes.FirstOrDefault(p =>
+                                p.NameEn.Equals(row.PrimaryPurpose, StringComparison.OrdinalIgnoreCase) ||
+                                p.NameAr.Equals(row.PrimaryPurpose, StringComparison.OrdinalIgnoreCase));
+
+                            if (purpose != null)
+                            {
+                                var allowedForItem = itemPrimaryPurposes
+                                    .Where(ip => ip.BaseItemId == itemId.Value)
+                                    .Select(ip => ip.PrimaryPurposId)
+                                    .ToHashSet();
+
+                                if (allowedForItem.Count == 0 || allowedForItem.Contains(purpose.Id))
+                                {
+                                    row.PrimaryPurposId = purpose.Id;
+                                }
+                                else
+                                {
+                                    rowErrors.Add($"Primary Purpose '{row.PrimaryPurpose}' is not allowed for item {row.ItemName ?? row.ItemNo}");
+                                }
+                            }
+                            else
+                            {
+                                rowErrors.Add($"Primary Purpose not found: {row.PrimaryPurpose}");
+                            }
+                        }
+
                         // Check for duplicates
                         var duplicateKey = $"{itemId.Value}_{row.Lot}_{row.BatchNo ?? ""}";
                         if (existingKeys.Contains(duplicateKey))
@@ -2057,6 +2128,7 @@ namespace Ettad.Inventory.Service.Inventories
                 { "Supplier", nameof(InventoryImportRowDto.Supplier) },
                 { "Manufacturer", nameof(InventoryImportRowDto.Manufacturer) },
                 { "Country", nameof(InventoryImportRowDto.Country) },
+                { "Primary Purpose", nameof(InventoryImportRowDto.PrimaryPurpose) },
                 { "Original Quantity", nameof(InventoryImportRowDto.OriginalQuantity) },
                 { "Batch No", nameof(InventoryImportRowDto.BatchNo) },
                 { "Expiry Date", nameof(InventoryImportRowDto.ExpiryDate) },
@@ -2074,6 +2146,7 @@ namespace Ettad.Inventory.Service.Inventories
                 { "المورد", nameof(InventoryImportRowDto.Supplier) },
                 { "المصنع", nameof(InventoryImportRowDto.Manufacturer) },
                 { "بلد المنشأ", nameof(InventoryImportRowDto.Country) },
+                { "الغرض الأساسي", nameof(InventoryImportRowDto.PrimaryPurpose) },
                 { "الكمية الأصلية", nameof(InventoryImportRowDto.OriginalQuantity) },
                 { "رقم التشغيلة", nameof(InventoryImportRowDto.BatchNo) },
                 { "تاريخ الانتهاء", nameof(InventoryImportRowDto.ExpiryDate) },
@@ -2091,7 +2164,6 @@ namespace Ettad.Inventory.Service.Inventories
         {
             var items = new List<BaseItem>();
 
-            // Load all ammunition, weapons, and explosives
             var ammunitions = await _context.Ammunitions
                 .Where(a => !a.IsDeleted)
                 .ToListAsync();
@@ -2110,5 +2182,268 @@ namespace Ettad.Inventory.Service.Inventories
 
             return items;
         }
+
+        #region Excel Export & Template
+
+        public async Task<APIOperationResponse<byte[]>> ExportToExcelAsync(ItemType? itemType = null)
+        {
+            _logger.LogInformation("Starting inventory export. ItemType filter: {ItemType}, User: {UserId}",
+                itemType?.ToString() ?? "All", _currentUserService.UserId);
+
+            try
+            {
+                var summaryResult = await GetInventorySummaryForAllItemsAsync();
+
+                if (!summaryResult.Succeeded || summaryResult.Data == null)
+                {
+                    return APIOperationResponse<byte[]>.Fail(ResponseType.BadRequest, "Failed to retrieve inventory data");
+                }
+
+                var items = summaryResult.Data.AsEnumerable();
+                if (itemType.HasValue)
+                {
+                    items = items.Where(x => x.ItemType == itemType.Value);
+                }
+
+                var itemsList = items.ToList();
+                if (!itemsList.Any())
+                {
+                    return APIOperationResponse<byte[]>.Fail(ResponseType.BadRequest, "No inventory items found to export");
+                }
+
+                var columnMappings = new Dictionary<string, Func<ItemInventorySummaryDto, object>>
+                {
+                    { "Item Name", item => item.ItemName ?? "" },
+                    { "Item No", item => item.ItemNo ?? "" },
+                    { "Type", item => GetItemTypeName(item.ItemType) },
+                    { "NSN", item => item.Nsn ?? "" },
+                    { "Part No", item => item.PartNo ?? "" },
+                    { "Total Quantity", item => item.TotalQuantity },
+                    { "Used Quantity", item => item.UsedQuantity },
+                    { "Reserved Quantity", item => item.ReservedQuantityByOrdersOnProcessing },
+                    { "Remaining Quantity", item => item.RemainingQuantity },
+                    { "Total Lots", item => item.TotalLots }
+                };
+
+                var excelData = _excelExportService.ExportToExcel(itemsList, "Inventory Summary", columnMappings);
+
+                _logger.LogInformation("Excel export completed. Items: {Count}, Size: {Size} bytes", itemsList.Count, excelData.Length);
+                return APIOperationResponse<byte[]>.Success(excelData);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error generating Excel export for inventory");
+                return APIOperationResponse<byte[]>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
+            }
+        }
+
+        public async Task<APIOperationResponse<byte[]>> GenerateImportTemplateAsync(long depotId, string language = "en")
+        {
+            _logger.LogInformation("Generating inventory import template. DepotId: {DepotId}, Language: {Language}, User: {UserId}",
+                depotId, language, _currentUserService.UserId);
+
+            try
+            {
+                var allItems = await LoadAllItemsForTemplate();
+
+                var suppliers = await _context.Suppliers
+                    .Where(s => !s.IsDeleted)
+                    .OrderBy(s => s.NameEn ?? s.NameAr)
+                    .ToListAsync();
+
+                var manufacturers = await _context.Manufacturers
+                    .Where(m => !m.IsDeleted)
+                    .OrderBy(m => m.NameEn ?? m.NameAr)
+                    .ToListAsync();
+
+                var countries = await _context.Countries
+                    .Where(c => !c.IsDeleted)
+                    .OrderBy(c => c.NameEn ?? c.NameAr)
+                    .ToListAsync();
+
+                var primaryPurposes = await _context.PrimaryPurposes
+                    .Where(p => !p.IsDeleted)
+                    .OrderBy(p => p.NameEn ?? p.NameAr)
+                    .ToListAsync();
+
+                ExcelPackage.License.SetNonCommercialPersonal("Ettad");
+                using var package = new ExcelPackage();
+
+                var templateSheet = package.Workbook.Worksheets.Add("Import Template");
+
+                var headers = language == "ar"
+                    ? new[]
+                    {
+                        "اسم الصنف", "الدفعة", "المورد", "المصنع", "بلد المنشأ",
+                        "الغرض الأساسي", "الكمية الأصلية", "رقم التشغيلة", "تاريخ الانتهاء", "جاهز للصرف",
+                        "رقم الفاتورة", "تاريخ الفاتورة", "تاريخ الاستلام", "ملاحظات"
+                    }
+                    : new[]
+                    {
+                        "Item Name", "Lot", "Supplier", "Manufacturer", "Country",
+                        "Primary Purpose", "Original Quantity", "Batch No", "Expiry Date", "Ready For Issue",
+                        "Invoice Number", "Invoice Date", "Received Date", "Notes"
+                    };
+
+                for (int col = 1; col <= headers.Length; col++)
+                {
+                    templateSheet.Cells[1, col].Value = headers[col - 1];
+                    templateSheet.Cells[1, col].Style.Font.Bold = true;
+                    templateSheet.Cells[1, col].Style.Fill.PatternType = OfficeOpenXml.Style.ExcelFillStyle.Solid;
+                    templateSheet.Cells[1, col].Style.Fill.BackgroundColor.SetColor(System.Drawing.Color.LightGray);
+                    templateSheet.Cells[1, col].Style.HorizontalAlignment = OfficeOpenXml.Style.ExcelHorizontalAlignment.Center;
+                }
+
+                templateSheet.Cells[2, 1].Value = allItems.FirstOrDefault().DisplayName ?? "";
+                templateSheet.Cells[2, 2].Value = "LOT-001";
+                templateSheet.Cells[2, 3].Value = "";
+                templateSheet.Cells[2, 4].Value = "";
+                templateSheet.Cells[2, 5].Value = "";
+                templateSheet.Cells[2, 6].Value = "";
+                templateSheet.Cells[2, 7].Value = 100;
+                templateSheet.Cells[2, 8].Value = "BATCH001";
+                templateSheet.Cells[2, 9].Value = "2025-12-31";
+                templateSheet.Cells[2, 10].Value = "Yes";
+                templateSheet.Cells[2, 11].Value = "INV-001";
+                templateSheet.Cells[2, 12].Value = "2025-01-01";
+                templateSheet.Cells[2, 13].Value = "2025-01-02";
+                templateSheet.Cells[2, 14].Value = "Sample inventory entry";
+
+                var itemsSheet = CreateItemsLookupSheet(package, "Items", allItems);
+                var suppliersSheet = CreateLookupSheet(package, "Suppliers", suppliers.Select(s => s.NameEn ?? s.NameAr ?? "").Where(n => !string.IsNullOrWhiteSpace(n)).ToList());
+                var manufacturersSheet = CreateLookupSheet(package, "Manufacturers", manufacturers.Select(m => m.NameEn ?? m.NameAr ?? "").Where(n => !string.IsNullOrWhiteSpace(n)).ToList());
+                var countriesSheet = CreateLookupSheet(package, "Countries", countries.Select(c => c.NameEn ?? c.NameAr ?? "").Where(n => !string.IsNullOrWhiteSpace(n)).ToList());
+                var primaryPurposesSheet = CreateLookupSheet(package, "PrimaryPurposes", primaryPurposes.Select(p => p.NameEn ?? p.NameAr ?? "").Where(n => !string.IsNullOrWhiteSpace(n)).ToList());
+
+                AddDataValidation(templateSheet, 1, itemsSheet, "Items");
+                AddDataValidation(templateSheet, 3, suppliersSheet, "Suppliers");
+                AddDataValidation(templateSheet, 4, manufacturersSheet, "Manufacturers");
+                AddDataValidation(templateSheet, 5, countriesSheet, "Countries");
+                AddDataValidation(templateSheet, 6, primaryPurposesSheet, "PrimaryPurposes");
+
+                var readyForIssueValidation = templateSheet.DataValidations.AddListValidation("J2:J10000");
+                readyForIssueValidation.Formula.Values.Add("Yes");
+                readyForIssueValidation.Formula.Values.Add("No");
+                readyForIssueValidation.ShowErrorMessage = true;
+                readyForIssueValidation.ErrorTitle = "Invalid Value";
+                readyForIssueValidation.Error = "Please select 'Yes' or 'No'";
+
+                templateSheet.Column(1).Width = 30;
+                templateSheet.Column(2).Width = 18;
+                templateSheet.Column(3).Width = 20;
+                templateSheet.Column(4).Width = 20;
+                templateSheet.Column(5).Width = 20;
+                templateSheet.Column(6).Width = 22;
+                templateSheet.Column(7).Width = 18;
+                templateSheet.Column(8).Width = 15;
+                templateSheet.Column(9).Width = 15;
+                templateSheet.Column(10).Width = 15;
+                templateSheet.Column(11).Width = 20;
+                templateSheet.Column(12).Width = 15;
+                templateSheet.Column(13).Width = 15;
+                templateSheet.Column(14).Width = 30;
+
+                templateSheet.View.FreezePanes(2, 1);
+
+                var excelData = package.GetAsByteArray();
+
+                _logger.LogInformation("Inventory import template generated. DepotId: {DepotId}, Size: {Size} bytes", depotId, excelData.Length);
+                return APIOperationResponse<byte[]>.Success(excelData);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error generating inventory import template. DepotId: {DepotId}", depotId);
+                return APIOperationResponse<byte[]>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
+            }
+        }
+
+        private async Task<List<(string DisplayName, string ItemNo)>> LoadAllItemsForTemplate()
+        {
+            var allBaseItems = await LoadAllItemsAsync();
+            var result = new List<(string DisplayName, string ItemNo)>();
+
+            foreach (var item in allBaseItems)
+            {
+                var itemName = item.Name ?? "";
+                var itemNo = item.ItemNo ?? "";
+                if (!string.IsNullOrWhiteSpace(itemName) && !string.IsNullOrWhiteSpace(itemNo))
+                {
+                    result.Add(($"{itemName} ({itemNo})", itemNo));
+                }
+            }
+
+            return result.OrderBy(i => i.DisplayName).ToList();
+        }
+
+        private static string GetItemTypeName(ItemType itemType)
+        {
+            return itemType switch
+            {
+                ItemType.Ammunition => "Ammunition",
+                ItemType.Weapon => "Weapon",
+                ItemType.Explosive => "Explosive",
+                ItemType.Accessory => "Accessory",
+                _ => "Unknown"
+            };
+        }
+
+        private static ExcelWorksheet CreateLookupSheet(ExcelPackage package, string sheetName, List<string> values)
+        {
+            var lookupSheet = package.Workbook.Worksheets.Add(sheetName);
+            lookupSheet.Hidden = eWorkSheetHidden.Hidden;
+
+            for (int i = 0; i < values.Count; i++)
+            {
+                lookupSheet.Cells[i + 1, 1].Value = values[i];
+            }
+
+            return lookupSheet;
+        }
+
+        private static ExcelWorksheet CreateItemsLookupSheet(ExcelPackage package, string sheetName, List<(string DisplayName, string ItemNo)> items)
+        {
+            var lookupSheet = package.Workbook.Worksheets.Add(sheetName);
+            lookupSheet.Hidden = eWorkSheetHidden.Hidden;
+
+            for (int i = 0; i < items.Count; i++)
+            {
+                lookupSheet.Cells[i + 1, 1].Value = items[i].DisplayName;
+                lookupSheet.Cells[i + 1, 2].Value = items[i].ItemNo;
+            }
+
+            return lookupSheet;
+        }
+
+        private static void AddDataValidation(ExcelWorksheet worksheet, int column, ExcelWorksheet lookupSheet, string lookupSheetName)
+        {
+            var columnLetter = GetColumnLetter(column);
+            var validationRange = $"{columnLetter}2:{columnLetter}10000";
+
+            var validation = worksheet.DataValidations.AddListValidation(validationRange);
+
+            var lastRow = lookupSheet.Dimension?.End.Row ?? 1;
+            validation.Formula.ExcelFormula = $"'{lookupSheetName}'!$A$1:$A${lastRow}";
+
+            validation.ShowErrorMessage = true;
+            validation.ErrorTitle = "Invalid Value";
+            validation.Error = $"Please select a value from the {lookupSheetName} list";
+            validation.ShowInputMessage = true;
+            validation.PromptTitle = "Select Value";
+            validation.Prompt = $"Select a {lookupSheetName.ToLower()} from the dropdown list";
+        }
+
+        private static string GetColumnLetter(int columnNumber)
+        {
+            string columnLetter = "";
+            while (columnNumber > 0)
+            {
+                columnNumber--;
+                columnLetter = (char)('A' + columnNumber % 26) + columnLetter;
+                columnNumber /= 26;
+            }
+            return columnLetter;
+        }
+
+        #endregion
     }
 }
