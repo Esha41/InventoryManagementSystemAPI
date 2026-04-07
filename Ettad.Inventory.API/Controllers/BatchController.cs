@@ -138,5 +138,48 @@ namespace Ettad.Inventory.API.Controllers
             var result = await _batchService.RemoveAssetFromBatchAsync(batchId, assetId);
             return ProcessResponse(result);
         }
+
+        /// <summary>Export all assets in this batch as an Excel file (same columns as batch import).</summary>
+        [HttpGet("{id}/assets/export")]
+        [ProducesResponseType(typeof(FileContentResult), (int)HttpStatusCode.OK)]
+        [CheckAuthorize("Permissions.Asset.View", "Permissions.Asset.Page")]
+        public async Task<IActionResult> ExportBatchAssets(long id, [FromQuery] string language = "en")
+        {
+            var result = await _batchService.ExportBatchAssetsExcelAsync(id, language);
+            if (!result.Succeeded || result.Data == null || result.Data.Length == 0)
+                return ProcessResponse(result);
+
+            var fileName = $"Batch_{id}_Assets_{DateTime.UtcNow:yyyyMMdd}.xlsx";
+            return File(
+                result.Data,
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                fileName);
+        }
+
+        /// <summary>Validate batch asset Excel updates without saving.</summary>
+        [HttpPost("{id}/assets/import-preview")]
+        [ProducesResponseType((int)HttpStatusCode.OK)]
+        [CheckAuthorize("Permissions.Asset.Edit")]
+        public async Task<IActionResult> ImportBatchAssetsPreview(IFormFile file, long id, [FromQuery] string language = "en")
+        {
+            if (file == null || file.Length == 0)
+                return BadRequest(new { message = "File is required" });
+
+            var result = await _batchService.ImportBatchAssetsPreviewAsync(id, file, language);
+            return ProcessResponse(result);
+        }
+
+        /// <summary>Apply batch asset updates from Excel.</summary>
+        [HttpPost("{id}/assets/import")]
+        [ProducesResponseType((int)HttpStatusCode.OK)]
+        [CheckAuthorize("Permissions.Asset.Edit")]
+        public async Task<IActionResult> ImportBatchAssets(IFormFile file, long id, [FromQuery] string language = "en")
+        {
+            if (file == null || file.Length == 0)
+                return BadRequest(new { message = "File is required" });
+
+            var result = await _batchService.ImportBatchAssetsAsync(id, file, language);
+            return ProcessResponse(result);
+        }
     }
 }

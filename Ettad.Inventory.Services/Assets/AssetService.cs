@@ -22,6 +22,7 @@ using Ettad.CrossCutting.Comman.Time;
 using OfficeOpenXml.DataValidation;
 using Ettad.CrossCutting.Comman.Models;
 using Ettad.Inventory.Service.Batches;
+using Ettad.Inventory.Service.Batches.Dtos;
 using Ettad.Inventory.Service.AssetHistory;
 using Ettad.Inventory.Service.AssetHistory.Dtos;
 
@@ -1338,7 +1339,7 @@ namespace Ettad.Inventory.Service.Assets
         {
             try
             {
-                _logger.LogInformation("Generating asset import template. DepotId: {DepotId}, Language: {Language}", 
+                _logger.LogInformation("Generating asset import template. DepotId: {DepotId}, Language: {Language}",
                     depotId, language);
 
                 var userId = _currentUserService.UserId;
@@ -1348,95 +1349,132 @@ namespace Ettad.Inventory.Service.Assets
                     return APIOperationResponse<byte[]>.Fail(ResponseType.Forbidden, "You do not have access to this depot.");
                 }
 
-                // Asset import is for weapons only – match the UI add-weapon flow
-                var weapons = await _context.Weapons
-                    .Where(w => !w.IsDeleted)
-                    .ToListAsync();
+                var isAr = string.Equals(language, "ar", StringComparison.OrdinalIgnoreCase);
 
+                var weapons = await _context.Weapons.AsNoTracking()
+                    .Where(w => !w.IsDeleted).ToListAsync();
                 var itemNames = weapons.Cast<BaseItem>()
                     .Where(i => !string.IsNullOrWhiteSpace(i.Name) && !string.IsNullOrWhiteSpace(i.ItemNo))
-                    .Select(i => $"{i.Name} ({i.ItemNo})")
+                    .Select(i => $"{i.Name!.Trim()} ({i.ItemNo!.Trim()})")
                     .OrderBy(n => n)
                     .ToList();
 
-                // Generate Excel with EPPlus
-                using var package = new ExcelPackage();
-                
-                // Main template sheet
-                var templateSheet = package.Workbook.Worksheets.Add("Asset Import");
+                var statusLabels = BatchAssetExcelStatusLabels.GetLabelsForLanguage(language).ToList();
+                var assignModeLabels = BatchAssetExcelAssignmentModes.GetLabelsForLanguage(language).ToList();
 
-                // Headers - Bilingual support (English / Arabic)
-                var headers = language == "ar"
+                var departments = await _context.Departments.AsNoTracking()
+                    .Where(d => !d.IsDeleted).OrderBy(d => d.Id).ToListAsync();
+                var departmentLabels = departments
+                    .Select(d => isAr
+                        ? (!string.IsNullOrWhiteSpace(d.NameAr) ? d.NameAr.Trim() : (d.NameEn ?? "").Trim())
+                        : (!string.IsNullOrWhiteSpace(d.NameEn) ? d.NameEn.Trim() : (d.NameAr ?? "").Trim()))
+                    .Where(s => !string.IsNullOrWhiteSpace(s))
+                    .GroupBy(s => s, StringComparer.OrdinalIgnoreCase).Select(g => g.First())
+                    .OrderBy(s => s).ToList();
+
+                var employees = await _context.Employees.AsNoTracking()
+                    .Where(e => !e.IsDeleted).OrderBy(e => e.Id).ToListAsync();
+                var employeeLabels = employees
+                    .Select(e => FormatEmployeeDisplayForLanguage(e, language))
+                    .Where(s => !string.IsNullOrWhiteSpace(s))
+                    .GroupBy(s => s, StringComparer.OrdinalIgnoreCase).Select(g => g.First())
+                    .OrderBy(s => s).ToList();
+
+                using var package = new ExcelPackage();
+                var ws = package.Workbook.Worksheets.Add("Asset Import");
+
+                var headers = isAr
                     ? new[]
                     {
-                        "اسم الصنف", "رقم الصنف", "رقم الدفعة", "رقم التسلسل", "RFID",
-                        "تاريخ الشراء", "تاريخ انتهاء الضمان", "سعر الشراء", "ملاحظات"
+                        "اسم الصنف", "رقم الدفعة", "رقم التسلسل", "RFID", "الحالة التشغيلية",
+                        "تاريخ الشراء", "تاريخ انتهاء الضمان", "سعر الشراء", "إيصال التسليم", "ملاحظات",
+                        "وضع التعيين", "القسم", "الموظف", "ملاحظات التخصيص"
                     }
                     : new[]
                     {
-                        "Item Name", "Item No", "Batch Number", "Serial Number", "RFID",
-                        "Purchase Date", "Warranty Expiry Date", "Purchase Price", "Notes"
+                        "Item Name", "Batch Number", "Serial Number", "RFID", "Status",
+                        "Purchase Date", "Warranty Expiry Date", "Purchase Price", "Delivery Receipt", "Notes",
+                        "Assignment Mode", "Department", "Employee", "Assignment Notes"
                     };
 
-                // Add headers with formatting
-                for (int col = 1; col <= headers.Length; col++)
+                for (int col = 0; col < headers.Length; col++)
                 {
-                    templateSheet.Cells[1, col].Value = headers[col - 1];
-                    templateSheet.Cells[1, col].Style.Font.Bold = true;
-                    templateSheet.Cells[1, col].Style.Fill.PatternType = OfficeOpenXml.Style.ExcelFillStyle.Solid;
-                    templateSheet.Cells[1, col].Style.Fill.BackgroundColor.SetColor(System.Drawing.Color.LightGray);
-                    templateSheet.Cells[1, col].Style.HorizontalAlignment = OfficeOpenXml.Style.ExcelHorizontalAlignment.Center;
+                    ws.Cells[1, col + 1].Value = headers[col];
+                    ws.Cells[1, col + 1].Style.Font.Bold = true;
+                    ws.Cells[1, col + 1].Style.Fill.PatternType = OfficeOpenXml.Style.ExcelFillStyle.Solid;
+                    ws.Cells[1, col + 1].Style.Fill.BackgroundColor.SetColor(System.Drawing.Color.LightGray);
+                    ws.Cells[1, col + 1].Style.HorizontalAlignment = OfficeOpenXml.Style.ExcelHorizontalAlignment.Center;
                 }
 
-                // Sample data row
-                templateSheet.Cells[2, 1].Value = itemNames.FirstOrDefault() ?? "";
-                templateSheet.Cells[2, 2].Value = "";
-                templateSheet.Cells[2, 3].Value = ""; // Batch Number
-                templateSheet.Cells[2, 4].Value = "";
-                templateSheet.Cells[2, 5].Value = "";
-                templateSheet.Cells[2, 6].Value = _dateTimeProvider.Now.ToString("yyyy-MM-dd");
-                templateSheet.Cells[2, 7].Value = _dateTimeProvider.Now.AddYears(1).ToString("yyyy-MM-dd");
-                templateSheet.Cells[2, 8].Value = 0;
-                templateSheet.Cells[2, 9].Value = "";
-
-                // Create hidden lookup sheet for items
-                var lookupSheet = package.Workbook.Worksheets.Add("Items");
-                lookupSheet.Hidden = eWorkSheetHidden.Hidden;
-                for (int i = 0; i < itemNames.Count; i++)
+                // Hidden lookup sheets
+                static void FillLookupSheet(ExcelWorksheet sheet, IReadOnlyList<string> values)
                 {
-                    lookupSheet.Cells[i + 1, 1].Value = itemNames[i];
+                    for (int i = 0; i < values.Count; i++)
+                        sheet.Cells[i + 1, 1].Value = values[i];
+                    if (values.Count == 0)
+                        sheet.Cells[1, 1].Value = "";
                 }
 
-                // Add data validation dropdown for Item Name (column 1)
-                var itemNameColumn = GetColumnLetter(1);
-                var itemNameValidationRange = $"{itemNameColumn}2:{itemNameColumn}10000";
-                var itemNameValidation = templateSheet.DataValidations.AddListValidation(itemNameValidationRange);
-                var lastRow = lookupSheet.Dimension?.End.Row ?? 1;
-                itemNameValidation.Formula.ExcelFormula = $"'Items'!$A$1:$A${lastRow}";
-                itemNameValidation.ShowErrorMessage = true;
-                itemNameValidation.ErrorTitle = "Invalid Value";
-                itemNameValidation.Error = "Please select an item from the dropdown list";
-                itemNameValidation.ShowInputMessage = true;
-                itemNameValidation.PromptTitle = "Select Item";
-                itemNameValidation.Prompt = "Select an item from the dropdown list";
+                var itemsSheet = package.Workbook.Worksheets.Add("Items");
+                itemsSheet.Hidden = eWorkSheetHidden.Hidden;
+                FillLookupSheet(itemsSheet, itemNames);
 
-                // Set column widths
-                templateSheet.Column(1).Width = 30; // Item Name
-                templateSheet.Column(2).Width = 15; // Item No
-                templateSheet.Column(3).Width = 20; // Batch Number
-                templateSheet.Column(4).Width = 20; // Serial Number
-                templateSheet.Column(5).Width = 20; // RFID
-                templateSheet.Column(6).Width = 15; // Purchase Date
-                templateSheet.Column(7).Width = 20; // Warranty Expiry Date
-                templateSheet.Column(8).Width = 15; // Purchase Price
-                templateSheet.Column(9).Width = 30; // Notes
+                var statusesSheet = package.Workbook.Worksheets.Add("Statuses");
+                statusesSheet.Hidden = eWorkSheetHidden.Hidden;
+                FillLookupSheet(statusesSheet, statusLabels);
 
-                // Freeze header row
-                templateSheet.View.FreezePanes(2, 1);
+                var assignModesSheet = package.Workbook.Worksheets.Add("AssignmentModes");
+                assignModesSheet.Hidden = eWorkSheetHidden.Hidden;
+                FillLookupSheet(assignModesSheet, assignModeLabels);
+
+                var departmentsSheet = package.Workbook.Worksheets.Add("Departments");
+                departmentsSheet.Hidden = eWorkSheetHidden.Hidden;
+                FillLookupSheet(departmentsSheet, departmentLabels);
+
+                var employeesSheet = package.Workbook.Worksheets.Add("Employees");
+                employeesSheet.Hidden = eWorkSheetHidden.Hidden;
+                FillLookupSheet(employeesSheet, employeeLabels);
+
+                // Data validation dropdowns via dynamic header lookup
+                var headerIndex = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+                for (int i = 0; i < headers.Length; i++)
+                    headerIndex[headers[i]] = i + 1;
+
+                void AddListValidation(int colIdx, ExcelWorksheet lookup, string sheetName)
+                {
+                    var colLetter = GetColumnLetter(colIdx);
+                    var range = $"{colLetter}2:{colLetter}10000";
+                    var v = ws.DataValidations.AddListValidation(range);
+                    var lr = lookup.Dimension?.End.Row ?? 1;
+                    v.Formula.ExcelFormula = $"'{sheetName}'!$A$1:$A${lr}";
+                    v.ShowErrorMessage = true;
+                    v.ErrorTitle = "Invalid Value";
+                    v.Error = "Please select a value from the dropdown list";
+                    v.ShowInputMessage = true;
+                    v.PromptTitle = "Select";
+                    v.Prompt = "Choose from the list";
+                }
+
+                var hdrItemName = isAr ? "اسم الصنف" : "Item Name";
+                var hdrStatus = isAr ? "الحالة التشغيلية" : "Status";
+                var hdrAssignMode = isAr ? "وضع التعيين" : "Assignment Mode";
+                var hdrDept = isAr ? "القسم" : "Department";
+                var hdrEmployee = isAr ? "الموظف" : "Employee";
+
+                AddListValidation(headerIndex[hdrItemName], itemsSheet, "Items");
+                AddListValidation(headerIndex[hdrStatus], statusesSheet, "Statuses");
+                AddListValidation(headerIndex[hdrAssignMode], assignModesSheet, "AssignmentModes");
+                AddListValidation(headerIndex[hdrDept], departmentsSheet, "Departments");
+                AddListValidation(headerIndex[hdrEmployee], employeesSheet, "Employees");
+
+                for (int c = 1; c <= headers.Length; c++)
+                    ws.Column(c).AutoFit();
+
+                ws.View.FreezePanes(2, 1);
 
                 var excelData = package.GetAsByteArray();
 
-                _logger.LogInformation("Asset import template generated successfully. DepotId: {DepotId}, FileSize: {FileSize} bytes, ItemCount: {ItemCount}", 
+                _logger.LogInformation("Asset import template generated successfully. DepotId: {DepotId}, FileSize: {FileSize} bytes, ItemCount: {ItemCount}",
                     depotId, excelData.Length, itemNames.Count);
 
                 return APIOperationResponse<byte[]>.Success(excelData, "Template generated successfully");
@@ -1446,6 +1484,19 @@ namespace Ettad.Inventory.Service.Assets
                 _logger.LogError(ex, "Error generating asset import template. DepotId: {DepotId}", depotId);
                 return APIOperationResponse<byte[]>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
             }
+        }
+
+        private static string FormatEmployeeDisplayForLanguage(Employee? e, string language)
+        {
+            if (e == null) return "";
+            var isAr = string.Equals(language, "ar", StringComparison.OrdinalIgnoreCase);
+            var name = isAr
+                ? (!string.IsNullOrWhiteSpace(e.NameAr) ? e.NameAr : e.NameEn)
+                : (!string.IsNullOrWhiteSpace(e.NameEn) ? e.NameEn : e.NameAr);
+            name = string.IsNullOrWhiteSpace(name) ? "" : name.Trim();
+            if (!string.IsNullOrWhiteSpace(e.MilitaryId))
+                return $"{name} ({e.MilitaryId.Trim()})".Trim();
+            return name;
         }
 
         private Dictionary<string, string> GetColumnMappings(string language = "en")
