@@ -424,6 +424,23 @@ namespace Ettad.Inventory.Service.Inventories
                     }
                 }
 
+                // Handle removed existing files (delete on Save)
+                if (inputDto.RemovedFileIds != null && inputDto.RemovedFileIds.Any())
+                {
+                    foreach (var fileId in inputDto.RemovedFileIds.Distinct())
+                    {
+                        try
+                        {
+                            // Best-effort delete; file service will remove DB links + storage if implemented.
+                            await _fileUploadService.DeleteAsync(fileId);
+                        }
+                        catch (Exception exDel)
+                        {
+                            _logger.LogWarning(exDel, "Failed deleting removed file {FileId} during Inventory update. InventoryId: {InventoryId}", fileId, id);
+                        }
+                    }
+                }
+
                 return APIOperationResponse<bool>.Success(true, "Inventory updated successfully");
             }
             catch (Exception ex)

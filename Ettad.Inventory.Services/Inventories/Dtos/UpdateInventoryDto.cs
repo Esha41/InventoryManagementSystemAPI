@@ -17,6 +17,11 @@ namespace Ettad.Inventory.Service.Inventories.Dtos
         public string? Notes { get; set; }
 
         public List<UpdateInventoryDetailDto> InventoryDetails { get; set; } = new();
+
+        /// <summary>
+        /// Existing uploaded file master ids the user removed in UI; deleted during update.
+        /// </summary>
+        public List<long> RemovedFileIds { get; set; } = new();
     }
 
     public class UpdateInventoryDetailDto
