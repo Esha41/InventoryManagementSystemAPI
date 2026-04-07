@@ -19,13 +19,9 @@ namespace Ettad.Inventory.Service.Batches.Dtos
 
         public AssetStatus? Status { get; set; }
 
-        public string? AssetTag { get; set; }
-
         public DateTime? PurchaseDate { get; set; }
 
         public DateTime? WarrantyExpiryDate { get; set; }
-
-        public string? Condition { get; set; }
 
         public decimal? PurchasePrice { get; set; }
 

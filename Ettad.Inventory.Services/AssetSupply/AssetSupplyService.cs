@@ -279,8 +279,6 @@ namespace Ettad.Inventory.Service.AssetSupply
                             Id = a.Id,
                             SerialNumber = a.SerialNumber!,
                             RFID = a.RFID,
-                            AssetTag = a.AssetTag,
-                            Condition = a.Condition,
                             Status = a.Status,
                             PurchaseDate = a.PurchaseDate,
                             DepotId = a.DepotId,
@@ -628,7 +626,7 @@ namespace Ettad.Inventory.Service.AssetSupply
                             AssetId = d.AssetId,
                             ItemId = asset.ItemId,
                             SequenceNo = sequenceNo++,
-                            ConditionOnSupply = d.ConditionOnSupply ?? asset.Condition,
+                            ConditionOnSupply = d.ConditionOnSupply,
                             CustodianId = d.CustodianId,
                             Notes = d.Notes,
                             IsDelivered = true,
@@ -961,8 +959,6 @@ namespace Ettad.Inventory.Service.AssetSupply
                 // Update asset
                 asset.IsAssigned = false;
                 asset.CurrentAssignmentId = null;
-                if (!string.IsNullOrEmpty(dto.ConditionOnReturn))
-                    asset.Condition = dto.ConditionOnReturn;
                 asset.ModificationDate = _dateTimeProvider.Now;
                 asset.ModifiedBy = _currentUserService.UserId;
 

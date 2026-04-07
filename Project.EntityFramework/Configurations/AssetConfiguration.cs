@@ -32,19 +32,11 @@ namespace Ettad.EntityFramework.Configurations
                 .IsRequired(false)
                 .HasConversion<int>();
 
-            builder.Property(x => x.AssetTag)
-                .IsRequired(false)
-                .HasMaxLength(500);
-
             builder.Property(x => x.PurchaseDate)
                 .IsRequired(false);
 
             builder.Property(x => x.WarrantyExpiryDate)
                 .IsRequired(false);
-
-            builder.Property(x => x.Condition)
-                .IsRequired(false)
-                .HasMaxLength(500);
 
             builder.Property(x => x.PurchasePrice)
                 .IsRequired(false)

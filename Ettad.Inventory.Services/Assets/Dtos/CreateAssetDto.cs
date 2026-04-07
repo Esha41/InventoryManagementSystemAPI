@@ -17,13 +17,9 @@ namespace Ettad.Inventory.Service.Assets.Dtos
 
         public long DepotId { get; set; }
 
-        public string? AssetTag { get; set; }
-
         public DateTime? PurchaseDate { get; set; }
 
         public DateTime? WarrantyExpiryDate { get; set; }
-
-        public string? Condition { get; set; }
 
         public decimal? PurchasePrice { get; set; }
 

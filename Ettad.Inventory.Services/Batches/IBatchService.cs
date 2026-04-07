@@ -10,8 +10,8 @@ namespace Ettad.Inventory.Service.Batches
     {
         Task<Batch> GetOrCreateAsync(string batchNumber, long depotId, long? primaryPurposId = null);
         Task<APIOperationResponse<BatchDto>> UpdateAsync(long id, UpdateBatchDto dto);
-        Task<APIOperationResponse<BatchDto>> GetByIdAsync(long id, bool? serialNumberOnly = null, int? quantity = null, bool? filterByIsAssigned = null);
-        Task<APIOperationResponse<BatchDto>> GetByBatchNumberAsync(string batchNumber, bool? serialNumberOnly = null, int? quantity = null, bool? filterByIsAssigned = null);
+        Task<APIOperationResponse<BatchDto>> GetByIdAsync(long id, bool? serialNumberOnly = null, bool? filterByIsAssigned = null, int assetsPage = 1, int assetsPageSize = 50, bool includeAllAssets = false);
+        Task<APIOperationResponse<BatchDto>> GetByBatchNumberAsync(string batchNumber, bool? serialNumberOnly = null, bool? filterByIsAssigned = null, int assetsPage = 1, int assetsPageSize = 50, bool includeAllAssets = false);
         Task<APIOperationResponse<List<BatchDto>>> GetAllAsync(long? depotId = null);
         Task<APIOperationResponse<List<BatchSummaryDto>>> GetSummaryAsync(long depotId);
         Task<APIOperationResponse<PaginatedList<BatchDto>>> SearchAsync(long? depotId, PagedListRequest request);
