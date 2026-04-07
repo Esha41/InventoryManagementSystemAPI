@@ -10,10 +10,10 @@ namespace Ettad.Inventory.Service.Batches
     public interface IBatchService
     {
         Task<Batch> GetOrCreateAsync(string batchNumber, long depotId);
-        Task<APIOperationResponse<BatchDto>> GetByIdAsync(long id, bool? serialNumberOnly = null, bool? filterByIsAssigned = null, int assetsPage = 1, int assetsPageSize = 50, bool includeAllAssets = false);
+        Task<APIOperationResponse<BatchDto>> GetByIdAsync(long id, bool? serialNumberOnly = null, bool? filterByIsAssigned = null, int assetsPage = 1, int assetsPageSize = 50, bool includeAllAssets = false, BatchAssetFilterDto? filters = null);
         Task<APIOperationResponse<List<BatchDto>>> GetByBatchNumberAsync(string batchNumber, long? depotId = null, bool? serialNumberOnly = null, bool? filterByIsAssigned = null, int assetsPage = 1, int assetsPageSize = 50, bool includeAllAssets = false);
         Task<APIOperationResponse<List<BatchDto>>> GetAllAsync(long? depotId = null);
-        Task<APIOperationResponse<List<BatchSummaryDto>>> GetSummaryAsync(long depotId);
+        Task<APIOperationResponse<List<BatchSummaryDto>>> GetSummaryAsync(long depotId, BatchAssetFilterDto? filters = null);
         Task<APIOperationResponse<PaginatedList<BatchDto>>> SearchAsync(long? depotId, PagedListRequest request);
         Task<APIOperationResponse<bool>> DeleteAsync(long id);
         Task<APIOperationResponse<bool>> BulkUpdateAssetsAsync(long batchId, BulkUpdateBatchAssetsDto inputDto, List<IFormFile>? files = null);

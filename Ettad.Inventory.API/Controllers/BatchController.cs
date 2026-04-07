@@ -27,9 +27,9 @@ namespace Ettad.Inventory.API.Controllers
         [HttpGet("summary")]
         [ProducesResponseType((int)HttpStatusCode.OK)]
         [CheckAuthorize("Permissions.Asset.View", "Permissions.Asset.Page")]
-        public async Task<IActionResult> GetSummary([FromQuery] long depotId)
+        public async Task<IActionResult> GetSummary([FromQuery] long depotId, [FromQuery] BatchAssetFilterDto? filters = null)
         {
-            var result = await _batchService.GetSummaryAsync(depotId);
+            var result = await _batchService.GetSummaryAsync(depotId, filters);
             return ProcessResponse(result);
         }
 
@@ -58,9 +58,10 @@ namespace Ettad.Inventory.API.Controllers
             [FromQuery] bool? filterByIsAssigned = null,
             [FromQuery] int assetsPage = 1,
             [FromQuery] int assetsPageSize = 50,
-            [FromQuery] bool includeAllAssets = false)
+            [FromQuery] bool includeAllAssets = false,
+            [FromQuery] BatchAssetFilterDto? filters = null)
         {
-            var result = await _batchService.GetByIdAsync(id, serialNumberOnly, filterByIsAssigned, assetsPage, assetsPageSize, includeAllAssets);
+            var result = await _batchService.GetByIdAsync(id, serialNumberOnly, filterByIsAssigned, assetsPage, assetsPageSize, includeAllAssets, filters);
             return ProcessResponse(result);
         }
 

@@ -101,7 +101,7 @@ namespace Ettad.Inventory.Service.Batches
             return created;
         }
 
-        public async Task<APIOperationResponse<BatchDto>> GetByIdAsync(long id, bool? serialNumberOnly = null, bool? filterByIsAssigned = null, int assetsPage = 1, int assetsPageSize = 50, bool includeAllAssets = false)
+        public async Task<APIOperationResponse<BatchDto>> GetByIdAsync(long id, bool? serialNumberOnly = null, bool? filterByIsAssigned = null, int assetsPage = 1, int assetsPageSize = 50, bool includeAllAssets = false, BatchAssetFilterDto? filters = null)
         {
             _logger.LogInformation(
                 "Getting batch by ID. BatchId: {BatchId}, SerialNumberOnly: {SerialNumberOnly}, FilterByIsAssigned: {FilterByIsAssigned}, AssetsPage: {AssetsPage}, AssetsPageSize: {AssetsPageSize}, IncludeAllAssets: {IncludeAllAssets}, User: {UserId}",
@@ -137,6 +137,8 @@ namespace Ettad.Inventory.Service.Batches
                     .Include($"{nameof(Asset.CurrentAssignment)}.{nameof(AssetAssignment.Department)}")
                     .Include($"{nameof(Asset.CurrentAssignment)}.{nameof(AssetAssignment.Custodian)}")
                     .AsSplitQuery();
+
+                assetQuery = ApplyAssetFilters(assetQuery, filters);
 
                 if (serialNumberOnly == true)
                     assetQuery = assetQuery.Where(a => !string.IsNullOrEmpty(a.SerialNumber));
@@ -332,7 +334,7 @@ namespace Ettad.Inventory.Service.Batches
             }
         }
 
-        public async Task<APIOperationResponse<List<BatchSummaryDto>>> GetSummaryAsync(long depotId)
+        public async Task<APIOperationResponse<List<BatchSummaryDto>>> GetSummaryAsync(long depotId, BatchAssetFilterDto? filters = null)
         {
             _logger.LogInformation("Getting batch summary. DepotId: {DepotId}, User: {UserId}",
                 depotId, _currentUserService.UserId);
@@ -352,13 +354,19 @@ namespace Ettad.Inventory.Service.Batches
                 Dictionary<long, int> countDict = new();
                 if (batchIds.Any())
                 {
-                    var assetCounts = await _context.Assets
-                        .Where(a => !a.IsDeleted && batchIds.Contains(a.BatchId))
+                    var assetQuery = _context.Assets
+                        .Where(a => !a.IsDeleted && batchIds.Contains(a.BatchId));
+
+                    assetQuery = ApplyAssetFilters(assetQuery, filters);
+
+                    var assetCounts = await assetQuery
                         .GroupBy(a => a.BatchId)
                         .Select(g => new { BatchId = g.Key, Count = g.Count() })
                         .ToListAsync();
                     countDict = assetCounts.ToDictionary(c => c.BatchId, c => c.Count);
                 }
+
+                var hasFilters = filters?.HasAnyFilter == true;
 
                 var summaries = batches
                     .OrderByDescending(b => b.CreationDate)
@@ -369,6 +377,7 @@ namespace Ettad.Inventory.Service.Batches
                         BatchNumber = b.BatchNumber,
                         Quantity = countDict.TryGetValue(b.Id, out var count) ? count : 0
                     })
+                    .Where(s => !hasFilters || s.Quantity > 0)
                     .ToList();
 
                 return APIOperationResponse<List<BatchSummaryDto>>.Success(summaries);
@@ -2125,6 +2134,25 @@ namespace Ettad.Inventory.Service.Batches
 
             foreach (var row in rowsToRemove)
                 importResult.SuccessfulRecords.Remove(row);
+        }
+
+        private static IQueryable<Asset> ApplyAssetFilters(IQueryable<Asset> query, BatchAssetFilterDto? filters)
+        {
+            if (filters == null) return query;
+
+            if (filters.ItemIds is { Count: > 0 })
+                query = query.Where(a => filters.ItemIds.Contains(a.ItemId));
+
+            if (filters.SupplierIds is { Count: > 0 })
+                query = query.Where(a => a.SupplierId.HasValue && filters.SupplierIds.Contains(a.SupplierId.Value));
+
+            if (filters.ManufacturerIds is { Count: > 0 })
+                query = query.Where(a => a.ManufacturerId.HasValue && filters.ManufacturerIds.Contains(a.ManufacturerId.Value));
+
+            if (filters.PrimaryPurposeIds is { Count: > 0 })
+                query = query.Where(a => a.PrimaryPurposId.HasValue && filters.PrimaryPurposeIds.Contains(a.PrimaryPurposId.Value));
+
+            return query;
         }
     }
 }
