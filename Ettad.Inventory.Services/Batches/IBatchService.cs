@@ -2,6 +2,7 @@ using Ettad.Data.Entities;
 using Ettad.Inventory.Service.Batches.Dtos;
 using Ettad.ResponseHandler.Models;
 using Ettad.CrossCutting.Comman.Models;
+using Microsoft.AspNetCore.Http;
 
 namespace Ettad.Inventory.Service.Batches
 {
@@ -15,8 +16,8 @@ namespace Ettad.Inventory.Service.Batches
         Task<APIOperationResponse<List<BatchSummaryDto>>> GetSummaryAsync(long depotId);
         Task<APIOperationResponse<PaginatedList<BatchDto>>> SearchAsync(long? depotId, PagedListRequest request);
         Task<APIOperationResponse<bool>> DeleteAsync(long id);
+        Task<APIOperationResponse<bool>> BulkUpdateAssetsAsync(long batchId, BulkUpdateBatchAssetsDto inputDto, List<IFormFile>? files = null);
         Task<APIOperationResponse<bool>> UpdateBatchAsync(long id, UpdateBatchDto dto);
-        Task<APIOperationResponse<bool>> BulkUpdateAssetsAsync(long batchId, BulkUpdateBatchAssetsDto inputDto);
         Task<APIOperationResponse<bool>> RemoveAssetFromBatchAsync(long batchId, long assetId);
     }
 }
