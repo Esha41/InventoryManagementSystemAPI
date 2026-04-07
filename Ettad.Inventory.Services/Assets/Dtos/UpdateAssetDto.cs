@@ -21,6 +21,12 @@ namespace Ettad.Inventory.Service.Assets.Dtos
         public string? DeliveryReceipt { get; set; }
 
         public string? Notes { get; set; }
+
+        public long? SupplierId { get; set; }
+
+        public long? ManufacturerId { get; set; }
+
+        public long? PrimaryPurposId { get; set; }
     }
 }
 

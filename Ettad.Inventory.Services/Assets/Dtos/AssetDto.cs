@@ -42,6 +42,12 @@ namespace Ettad.Inventory.Service.Assets.Dtos
 
         public bool IsDeleted { get; set; }
 
+        public long? SupplierId { get; set; }
+
+        public long? ManufacturerId { get; set; }
+
+        public long? PrimaryPurposId { get; set; }
+
         #region Navigation Properties
 
         public BaseItemDto Item { get; set; }
@@ -51,6 +57,12 @@ namespace Ettad.Inventory.Service.Assets.Dtos
         public DepartmentDto Department { get; set; }
 
         public EmployeeDto? Custodian { get; set; }
+
+        public SupplierDto? Supplier { get; set; }
+
+        public ManufacturerDto? Manufacturer { get; set; }
+
+        public PrimaryPurposDto? PrimaryPurpos { get; set; }
 
         public List<FileUploadDto> Images { get; set; }
 

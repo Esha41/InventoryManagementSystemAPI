@@ -37,6 +37,18 @@ namespace Ettad.Inventory.Service.Assets.Validators
                 .GreaterThan(0).When(x => x.AssignToDepartmentId.HasValue)
                 .WithMessage("Assign to department ID must be greater than 0 when provided");
 
+            RuleFor(x => x.SupplierId)
+                .GreaterThan(0).When(x => x.SupplierId.HasValue)
+                .WithMessage("Supplier ID must be greater than 0 when provided");
+
+            RuleFor(x => x.ManufacturerId)
+                .GreaterThan(0).When(x => x.ManufacturerId.HasValue)
+                .WithMessage("Manufacturer ID must be greater than 0 when provided");
+
+            RuleFor(x => x.PrimaryPurposId)
+                .GreaterThan(0).When(x => x.PrimaryPurposId.HasValue)
+                .WithMessage("Primary purpose ID must be greater than 0 when provided");
+
             RuleFor(x => x.AssignmentNotes)
                 .MaximumLength(2000).When(x => !string.IsNullOrWhiteSpace(x.AssignmentNotes))
                 .WithMessage("Assignment notes cannot exceed 2000 characters");

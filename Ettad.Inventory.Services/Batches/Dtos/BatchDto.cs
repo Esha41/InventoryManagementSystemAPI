@@ -11,8 +11,6 @@ namespace Ettad.Inventory.Service.Batches.Dtos
 
         public long DepotId { get; set; }
 
-        public long? PrimaryPurposId { get; set; }
-
         /// <summary>Total number of assets in this batch matching the same filters (not the current page size).</summary>
         public int AssetCount { get; set; }
 
@@ -26,8 +24,6 @@ namespace Ettad.Inventory.Service.Batches.Dtos
         public int AssetsTotalPages { get; set; }
 
         public DepotDto Depot { get; set; }
-
-        public PrimaryPurposDto PrimaryPurpos { get; set; }
 
         public List<AssetDto> Assets { get; set; } = new();
     }

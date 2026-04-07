@@ -55,6 +55,9 @@ namespace Ettad.Inventory.Service.Assets
                     nameof(Asset.Item),
                     nameof(Asset.Depot),
                     nameof(Asset.Batch),
+                    nameof(Asset.Supplier),
+                    nameof(Asset.Manufacturer),
+                    nameof(Asset.PrimaryPurpos),
                     $"{nameof(Asset.CurrentAssignment)}.{nameof(AssetAssignment.Custodian)}",
                     $"{nameof(Asset.CurrentAssignment)}.{nameof(AssetAssignment.Department)}"
                 );
@@ -230,6 +233,9 @@ namespace Ettad.Inventory.Service.Assets
                     nameof(Asset.Item),
                     nameof(Asset.Depot),
                     nameof(Asset.Batch),
+                    nameof(Asset.Supplier),
+                    nameof(Asset.Manufacturer),
+                    nameof(Asset.PrimaryPurpos),
                     $"{nameof(Asset.CurrentAssignment)}.{nameof(AssetAssignment.Custodian)}",
                     $"{nameof(Asset.CurrentAssignment)}.{nameof(AssetAssignment.Department)}"
                 );
@@ -280,6 +286,9 @@ namespace Ettad.Inventory.Service.Assets
                     nameof(Asset.Item),
                     nameof(Asset.Depot),
                     nameof(Asset.Batch),
+                    nameof(Asset.Supplier),
+                    nameof(Asset.Manufacturer),
+                    nameof(Asset.PrimaryPurpos),
                     $"{nameof(Asset.CurrentAssignment)}.{nameof(AssetAssignment.Custodian)}",
                     $"{nameof(Asset.CurrentAssignment)}.{nameof(AssetAssignment.Department)}"
                 );
@@ -346,6 +355,9 @@ namespace Ettad.Inventory.Service.Assets
                     nameof(Asset.Item),
                     nameof(Asset.Depot),
                     nameof(Asset.Batch),
+                    nameof(Asset.Supplier),
+                    nameof(Asset.Manufacturer),
+                    nameof(Asset.PrimaryPurpos),
                     $"{nameof(Asset.CurrentAssignment)}.{nameof(AssetAssignment.Custodian)}",
                     $"{nameof(Asset.CurrentAssignment)}.{nameof(AssetAssignment.Department)}"
                 );
@@ -434,12 +446,12 @@ namespace Ettad.Inventory.Service.Assets
                         return APIOperationResponse<long>.Fail(ResponseType.BadRequest, "Serial number already exists");
                 }
 
-                var batchPurposeError = await ValidateBatchPrimaryPurposForItemAsync(inputDto.ItemId, inputDto.BatchPrimaryPurposId);
-                if (batchPurposeError != null)
-                    return APIOperationResponse<long>.Fail(ResponseType.BadRequest, batchPurposeError);
+                var lookupError = await ValidateAssetLookupIdsAsync(inputDto.ItemId, inputDto.SupplierId, inputDto.ManufacturerId, inputDto.PrimaryPurposId);
+                if (lookupError != null)
+                    return APIOperationResponse<long>.Fail(ResponseType.BadRequest, lookupError);
 
                 // Resolve BatchNumber into BatchId (get-or-create)
-                var batch = await _batchService.GetOrCreateAsync(inputDto.BatchNumber, inputDto.DepotId, inputDto.BatchPrimaryPurposId);
+                var batch = await _batchService.GetOrCreateAsync(inputDto.BatchNumber, inputDto.DepotId);
 
                 // Map DTO to entity
                 var asset = _mapper.Map<Asset>(inputDto);
@@ -579,30 +591,17 @@ namespace Ettad.Inventory.Service.Assets
                         continue;
                     }
 
-                    var batchPurposeErr = await ValidateBatchPrimaryPurposForItemAsync(dto.ItemId, dto.BatchPrimaryPurposId);
-                    if (batchPurposeErr != null)
+                    var lookupErr = await ValidateAssetLookupIdsAsync(dto.ItemId, dto.SupplierId, dto.ManufacturerId, dto.PrimaryPurposId);
+                    if (lookupErr != null)
                     {
-                        errorMessages.Add($"Item {inputDtos.IndexOf(dto) + 1}: {batchPurposeErr}");
+                        errorMessages.Add($"Item {inputDtos.IndexOf(dto) + 1}: {lookupErr}");
                         continue;
                     }
 
                     var batchKey = dto.BatchNumber.Trim();
                     var cacheKey = $"{dto.DepotId}:{batchKey}";
-                    if (batchCache.TryGetValue(cacheKey, out var existingBatchId))
-                    {
-                        if (dto.BatchPrimaryPurposId.HasValue)
-                        {
-                            var bs = await _context.Batches.AsNoTracking().FirstAsync(b => b.Id == existingBatchId);
-                            if (bs.PrimaryPurposId.HasValue && bs.PrimaryPurposId.Value != dto.BatchPrimaryPurposId.Value)
-                            {
-                                await transaction.RollbackAsync();
-                                return APIOperationResponse<List<long>>.Fail(ResponseType.BadRequest,
-                                    $"Conflicting primary purpose for batch number {batchKey} in depot {dto.DepotId}.");
-                            }
-                        }
-                    }
 
-                    var batch = await _batchService.GetOrCreateAsync(dto.BatchNumber, dto.DepotId, dto.BatchPrimaryPurposId);
+                    var batch = await _batchService.GetOrCreateAsync(dto.BatchNumber, dto.DepotId);
                     batchId=batch.Id;
                     if (!batchCache.ContainsKey(cacheKey))
                         batchCache[cacheKey] = batch.Id;
@@ -685,6 +684,10 @@ namespace Ettad.Inventory.Service.Assets
                     _logger.LogWarning("User {UserId} attempted bulk template create in unauthorized depot {DepotId}", userId, dto.DepotId);
                     return APIOperationResponse<BulkCreateFromTemplateResultDto>.Fail(ResponseType.Forbidden, "You do not have access to this depot.");
                 }
+
+                var templateLookupErr = await ValidateAssetLookupIdsAsync(dto.ItemId, dto.SupplierId, dto.ManufacturerId, dto.PrimaryPurposId);
+                if (templateLookupErr != null)
+                    return APIOperationResponse<BulkCreateFromTemplateResultDto>.Fail(ResponseType.BadRequest, templateLookupErr);
 
                 var batch = await _batchService.GetOrCreateAsync(dto.BatchNumber.Trim(), dto.DepotId);
                 var now = _dateTimeProvider.Now;
@@ -775,6 +778,10 @@ namespace Ettad.Inventory.Service.Assets
                     if (duplicate != null)
                         return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, "Serial number already exists");
                 }
+
+                var updateLookupErr = await ValidateAssetLookupIdsAsync(inputDto.ItemId, inputDto.SupplierId, inputDto.ManufacturerId, inputDto.PrimaryPurposId);
+                if (updateLookupErr != null)
+                    return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, updateLookupErr);
 
                 // Map updates to entity
                 _mapper.Map(inputDto, existingAsset);
@@ -1067,7 +1074,10 @@ namespace Ettad.Inventory.Service.Assets
                             PurchaseDate = row.PurchaseDate,
                             WarrantyExpiryDate = row.WarrantyExpiryDate,
                             PurchasePrice = row.PurchasePrice,
-                            Notes = string.IsNullOrWhiteSpace(row.Notes) ? null : row.Notes.Trim()
+                            Notes = string.IsNullOrWhiteSpace(row.Notes) ? null : row.Notes.Trim(),
+                            SupplierId = row.SupplierId,
+                            ManufacturerId = row.ManufacturerId,
+                            PrimaryPurposId = row.PrimaryPurposId
                         };
 
                         var validationResult = await _createValidator.ValidateAsync(createDto);
@@ -1084,20 +1094,20 @@ namespace Ettad.Inventory.Service.Assets
                             continue;
                         }
 
-                        var purposeErrImport = await ValidateBatchPrimaryPurposForItemAsync(createDto.ItemId, createDto.BatchPrimaryPurposId);
-                        if (purposeErrImport != null)
+                        var importLookupErr = await ValidateAssetLookupIdsAsync(createDto.ItemId, createDto.SupplierId, createDto.ManufacturerId, createDto.PrimaryPurposId);
+                        if (importLookupErr != null)
                         {
                             importResult.SuccessfulRecords.Remove(row);
                             importResult.Errors.Add(new ImportError
                             {
-                                ErrorMessage = purposeErrImport,
+                                ErrorMessage = importLookupErr,
                                 ColumnName = "N/A"
                             });
                             errorCount++;
                             continue;
                         }
 
-                        var batch = await _batchService.GetOrCreateAsync(createDto.BatchNumber, depotId, createDto.BatchPrimaryPurposId);
+                        var batch = await _batchService.GetOrCreateAsync(createDto.BatchNumber, depotId);
                         var asset = _mapper.Map<Asset>(createDto);
                         asset.BatchId = batch.Id;
                         asset.CreationDate = _dateTimeProvider.Now;
@@ -1296,7 +1306,10 @@ namespace Ettad.Inventory.Service.Assets
                         PurchaseDate = row.PurchaseDate,
                         WarrantyExpiryDate = row.WarrantyExpiryDate,
                         PurchasePrice = row.PurchasePrice,
-                        Notes = string.IsNullOrWhiteSpace(row.Notes) ? null : row.Notes.Trim()
+                        Notes = string.IsNullOrWhiteSpace(row.Notes) ? null : row.Notes.Trim(),
+                        SupplierId = row.SupplierId,
+                        ManufacturerId = row.ManufacturerId,
+                        PrimaryPurposId = row.PrimaryPurposId
                     };
 
                     var validationResult = await _createValidator.ValidateAsync(createDto);
@@ -1514,6 +1527,9 @@ namespace Ettad.Inventory.Service.Assets
                 { "Warranty Expiry Date", nameof(AssetImportDto.WarrantyExpiryDate) },
                 { "Purchase Price", nameof(AssetImportDto.PurchasePrice) },
                 { "Notes", nameof(AssetImportDto.Notes) },
+                { "Supplier ID", nameof(AssetImportDto.SupplierId) },
+                { "Manufacturer ID", nameof(AssetImportDto.ManufacturerId) },
+                { "Primary Purpose ID", nameof(AssetImportDto.PrimaryPurposId) },
  
                 // Arabic headers
                 { "اسم الصنف", nameof(AssetImportDto.ItemName) },
@@ -1525,7 +1541,10 @@ namespace Ettad.Inventory.Service.Assets
                 { "تاريخ الشراء", nameof(AssetImportDto.PurchaseDate) },
                 { "تاريخ انتهاء الضمان", nameof(AssetImportDto.WarrantyExpiryDate) },
                 { "سعر الشراء", nameof(AssetImportDto.PurchasePrice) },
-                { "ملاحظات", nameof(AssetImportDto.Notes) }
+                { "ملاحظات", nameof(AssetImportDto.Notes) },
+                { "معرف المورد", nameof(AssetImportDto.SupplierId) },
+                { "معرف المصنع", nameof(AssetImportDto.ManufacturerId) },
+                { "معرف الغرض الأساسي", nameof(AssetImportDto.PrimaryPurposId) }
             };
  
             // Add RFID without asterisk if needed
@@ -1547,14 +1566,33 @@ namespace Ettad.Inventory.Service.Assets
             return weapons.Cast<BaseItem>().ToList();
         }
 
-        private async Task<string?> ValidateBatchPrimaryPurposForItemAsync(long itemId, long? batchPrimaryPurposId)
+        private async Task<string?> ValidatePrimaryPurposForItemAsync(long itemId, long? primaryPurposId)
         {
-            if (!batchPrimaryPurposId.HasValue)
+            if (!primaryPurposId.HasValue)
                 return null;
 
             var ok = await _context.BaseItemPrimaryPurposes
-                .AnyAsync(x => x.BaseItemId == itemId && x.PrimaryPurposId == batchPrimaryPurposId.Value);
-            return ok ? null : "Batch primary purpose is not configured for this catalog item.";
+                .AnyAsync(x => x.BaseItemId == itemId && x.PrimaryPurposId == primaryPurposId.Value);
+            return ok ? null : "Primary purpose is not configured for this catalog item.";
+        }
+
+        private async Task<string?> ValidateAssetLookupIdsAsync(long itemId, long? supplierId, long? manufacturerId, long? primaryPurposId)
+        {
+            if (supplierId.HasValue)
+            {
+                var okSupplier = await _context.Suppliers.AnyAsync(s => s.Id == supplierId.Value && !s.IsDeleted);
+                if (!okSupplier)
+                    return "Supplier is invalid or deleted.";
+            }
+
+            if (manufacturerId.HasValue)
+            {
+                var okManufacturer = await _context.Manufacturers.AnyAsync(m => m.Id == manufacturerId.Value && !m.IsDeleted);
+                if (!okManufacturer)
+                    return "Manufacturer is invalid or deleted.";
+            }
+
+            return await ValidatePrimaryPurposForItemAsync(itemId, primaryPurposId);
         }
 
         /// <summary>

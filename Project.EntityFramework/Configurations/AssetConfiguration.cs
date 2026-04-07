@@ -86,6 +86,24 @@ namespace Ettad.EntityFramework.Configurations
                 .OnDelete(DeleteBehavior.ClientCascade);
 
             builder.HasIndex(x => x.BatchId);
+
+            builder.HasOne(x => x.Supplier)
+                .WithMany()
+                .IsRequired(false)
+                .HasForeignKey(x => x.SupplierId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.HasOne(x => x.Manufacturer)
+                .WithMany()
+                .IsRequired(false)
+                .HasForeignKey(x => x.ManufacturerId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.HasOne(x => x.PrimaryPurpos)
+                .WithMany()
+                .IsRequired(false)
+                .HasForeignKey(x => x.PrimaryPurposId)
+                .OnDelete(DeleteBehavior.Restrict);
         }
     }
 }

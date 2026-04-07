@@ -26,12 +26,6 @@ namespace Ettad.EntityFramework.Configurations
                 .HasForeignKey(x => x.DepotId)
                 .OnDelete(DeleteBehavior.Restrict);
 
-            builder.HasOne(x => x.PrimaryPurpos)
-                .WithMany()
-                .IsRequired(false)
-                .HasForeignKey(x => x.PrimaryPurposId)
-                .OnDelete(DeleteBehavior.Restrict);
-
             builder.HasMany(x => x.Assets)
                 .WithOne(x => x.Batch)
                 .HasForeignKey(x => x.BatchId)

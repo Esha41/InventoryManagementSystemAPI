@@ -39,6 +39,9 @@ namespace Ettad.Inventory.Service.Assets.Profiles
                 .ForMember(dest => dest.CustodianId, opt => opt.MapFrom(src => src.CurrentAssignment != null ? src.CurrentAssignment.CustodianId : null))
                 .ForMember(dest => dest.Location, opt => opt.MapFrom(src => src.CurrentAssignment != null ? src.CurrentAssignment.Location : null))
                 .ForMember(dest => dest.BatchNumber, opt => opt.MapFrom(src => src.Batch != null ? src.Batch.BatchNumber : string.Empty))
+                .ForMember(dest => dest.Supplier, opt => opt.MapFrom(src => src.Supplier != null ? src.Supplier : null))
+                .ForMember(dest => dest.Manufacturer, opt => opt.MapFrom(src => src.Manufacturer != null ? src.Manufacturer : null))
+                .ForMember(dest => dest.PrimaryPurpos, opt => opt.MapFrom(src => src.PrimaryPurpos != null ? src.PrimaryPurpos : null))
                 .ForMember(dest => dest.Images, opt => opt.Ignore());
 
             CreateMap<CreateAssetDto, Asset>()
@@ -52,7 +55,10 @@ namespace Ettad.Inventory.Service.Assets.Profiles
                 .ForMember(dest => dest.Depot, opt => opt.Ignore())
                 .ForMember(dest => dest.Batch, opt => opt.Ignore())
                 .ForMember(dest => dest.BatchId, opt => opt.Ignore())
-                .ForMember(dest => dest.Status, opt => opt.Ignore());
+                .ForMember(dest => dest.Status, opt => opt.Ignore())
+                .ForMember(dest => dest.Supplier, opt => opt.Ignore())
+                .ForMember(dest => dest.Manufacturer, opt => opt.Ignore())
+                .ForMember(dest => dest.PrimaryPurpos, opt => opt.Ignore());
 
             CreateMap<UpdateAssetDto, Asset>()
                 .ForMember(dest => dest.Id, opt => opt.Ignore())
@@ -65,7 +71,10 @@ namespace Ettad.Inventory.Service.Assets.Profiles
                 .ForMember(dest => dest.Depot, opt => opt.Ignore())
                 .ForMember(dest => dest.Batch, opt => opt.Ignore())
                 .ForMember(dest => dest.BatchId, opt => opt.Ignore())
-                .ForMember(dest => dest.DepotId, opt => opt.Ignore());
+                .ForMember(dest => dest.DepotId, opt => opt.Ignore())
+                .ForMember(dest => dest.Supplier, opt => opt.Ignore())
+                .ForMember(dest => dest.Manufacturer, opt => opt.Ignore())
+                .ForMember(dest => dest.PrimaryPurpos, opt => opt.Ignore());
         }
     }
 }

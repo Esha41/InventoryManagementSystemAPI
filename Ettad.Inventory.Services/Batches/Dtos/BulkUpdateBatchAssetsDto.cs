@@ -42,5 +42,11 @@ namespace Ettad.Inventory.Service.Batches.Dtos
         public long? AssignToEmployeeId { get; set; }
 
         public string? AssignmentNotes { get; set; }
+
+        public long? SupplierId { get; set; }
+
+        public long? ManufacturerId { get; set; }
+
+        public long? PrimaryPurposId { get; set; }
     }
 }

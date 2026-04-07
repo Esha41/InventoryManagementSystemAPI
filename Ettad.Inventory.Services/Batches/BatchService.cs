@@ -75,7 +75,7 @@ namespace Ettad.Inventory.Service.Batches
             _excelImportService = excelImportService;
         }
 
-        public async Task<Batch> GetOrCreateAsync(string batchNumber, long depotId, long? primaryPurposId = null)
+        public async Task<Batch> GetOrCreateAsync(string batchNumber, long depotId)
         {
             var trimmedBatchNumber = batchNumber.Trim();
 
@@ -83,92 +83,22 @@ namespace Ettad.Inventory.Service.Batches
                 p => !p.IsDeleted && p.BatchNumber == trimmedBatchNumber && p.DepotId == depotId);
 
             if (existing != null)
-            {
-                if (primaryPurposId.HasValue && existing.PrimaryPurposId == null)
-                {
-                    var tracked = await _context.Batches
-                        .FirstOrDefaultAsync(b => b.Id == existing.Id && !b.IsDeleted);
-                    if (tracked != null)
-                    {
-                        tracked.PrimaryPurposId = primaryPurposId;
-                        tracked.ModificationDate = _dateTimeProvider.Now;
-                        tracked.ModifiedBy = _currentUserService.UserId;
-                        await _context.SaveChangesAsync();
-                    }
-                }
-
                 return existing;
-            }
 
             var batch = new Batch
             {
                 BatchNumber = trimmedBatchNumber,
                 DepotId = depotId,
-                PrimaryPurposId = primaryPurposId,
                 CreationDate = _dateTimeProvider.Now,
                 CreatedBy = _currentUserService.UserId
             };
 
             var created = await _batchRepository.AddAsync(batch);
 
-            _logger.LogInformation("Batch created implicitly. BatchId: {BatchId}, BatchNumber: {BatchNumber}, DepotId: {DepotId}, PrimaryPurposId: {PrimaryPurposId}, User: {UserId}",
-                created.Id, trimmedBatchNumber, depotId, primaryPurposId?.ToString() ?? "null", _currentUserService.UserId);
+            _logger.LogInformation("Batch created implicitly. BatchId: {BatchId}, BatchNumber: {BatchNumber}, DepotId: {DepotId}, User: {UserId}",
+                created.Id, trimmedBatchNumber, depotId, _currentUserService.UserId);
 
             return created;
-        }
-
-        public async Task<APIOperationResponse<BatchDto>> UpdateAsync(long id, UpdateBatchDto dto)
-        {
-            if (dto == null)
-                return APIOperationResponse<BatchDto>.Fail(ResponseType.BadRequest, "Invalid request");
-
-            _logger.LogInformation("Updating batch. BatchId: {BatchId}, User: {UserId}", id, _currentUserService.UserId);
-
-            try
-            {
-                var batch = await _context.Batches.FirstOrDefaultAsync(b => b.Id == id && !b.IsDeleted);
-                if (batch == null)
-                    return APIOperationResponse<BatchDto>.Fail(ResponseType.NotFound, "Batch not found");
-
-                var userId = _currentUserService.UserId;
-                if (!string.IsNullOrEmpty(userId) && !await _depotAccessService.HasDepotAccessAsync(userId, batch.DepotId))
-                    return APIOperationResponse<BatchDto>.Fail(ResponseType.Forbidden, "You do not have access to this depot.");
-
-                if (dto.PrimaryPurposId.HasValue)
-                {
-                    var purposeOk = await _context.PrimaryPurposes
-                        .AnyAsync(p => p.Id == dto.PrimaryPurposId.Value && !p.IsDeleted);
-                    if (!purposeOk)
-                        return APIOperationResponse<BatchDto>.Fail(ResponseType.BadRequest, "Invalid primary purpose.");
-
-                    var itemIds = await _context.Assets.AsNoTracking()
-                        .Where(a => !a.IsDeleted && a.BatchId == id)
-                        .Select(a => a.ItemId)
-                        .Distinct()
-                        .ToListAsync();
-
-                    foreach (var itemId in itemIds)
-                    {
-                        var allowed = await _context.BaseItemPrimaryPurposes
-                            .AnyAsync(bp => bp.BaseItemId == itemId && bp.PrimaryPurposId == dto.PrimaryPurposId.Value);
-                        if (!allowed)
-                            return APIOperationResponse<BatchDto>.Fail(ResponseType.BadRequest,
-                                "Primary purpose is not allowed for one or more items in this batch.");
-                    }
-                }
-
-                batch.PrimaryPurposId = dto.PrimaryPurposId;
-                batch.ModificationDate = _dateTimeProvider.Now;
-                batch.ModifiedBy = _currentUserService.UserId;
-                await _context.SaveChangesAsync();
-
-                return await GetByIdAsync(id, includeAllAssets: true);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error updating batch. BatchId: {BatchId}, User: {UserId}", id, _currentUserService.UserId);
-                return APIOperationResponse<BatchDto>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
-            }
         }
 
         public async Task<APIOperationResponse<BatchDto>> GetByIdAsync(long id, bool? serialNumberOnly = null, bool? filterByIsAssigned = null, int assetsPage = 1, int assetsPageSize = 50, bool includeAllAssets = false)
@@ -182,8 +112,7 @@ namespace Ettad.Inventory.Service.Batches
                 var batch = await _batchRepository.FindOneAsync(
                     p => p.Id == id && !p.IsDeleted,
                     false,
-                    nameof(Batch.Depot),
-                    nameof(Batch.PrimaryPurpos));
+                    nameof(Batch.Depot));
 
                 if (batch == null)
                     return APIOperationResponse<BatchDto>.Fail(ResponseType.NotFound, "Batch not found");
@@ -200,7 +129,11 @@ namespace Ettad.Inventory.Service.Batches
                     .AsNoTracking()
                     .Where(a => !a.IsDeleted && a.BatchId == id)
                     .Include(nameof(Asset.Item))
+                    .Include($"{nameof(Asset.Item)}.{nameof(BaseItem.BaseItemPrimaryPurposes)}.{nameof(BaseItemPrimaryPurpos.PrimaryPurpos)}")
                     .Include(nameof(Asset.Depot))
+                    .Include(nameof(Asset.Supplier))
+                    .Include(nameof(Asset.Manufacturer))
+                    .Include(nameof(Asset.PrimaryPurpos))
                     .Include($"{nameof(Asset.CurrentAssignment)}.{nameof(AssetAssignment.Department)}")
                     .Include($"{nameof(Asset.CurrentAssignment)}.{nameof(AssetAssignment.Custodian)}")
                     .AsSplitQuery();
@@ -370,8 +303,7 @@ namespace Ettad.Inventory.Service.Batches
                 var batches = await _batchRepository.FindAsync(
                     p => !p.IsDeleted && (!depotId.HasValue || p.DepotId == depotId.Value),
                     false,
-                    nameof(Batch.Depot),
-                    nameof(Batch.PrimaryPurpos));
+                    nameof(Batch.Depot));
 
                 var dtos = _mapper.Map<List<BatchDto>>(batches.ToList());
 
@@ -468,8 +400,7 @@ namespace Ettad.Inventory.Service.Batches
                 var query = _batchRepository.Find(
                     p => !p.IsDeleted && (!depotId.HasValue || p.DepotId == depotId.Value),
                     false,
-                    nameof(Batch.Depot),
-                    nameof(Batch.PrimaryPurpos));
+                    nameof(Batch.Depot));
 
                 var paginatedEntities = await PaginatedList<Batch>.CreateAsyncForTableBinding(query, request);
 
@@ -829,6 +760,11 @@ namespace Ettad.Inventory.Service.Batches
             foreach (var item in inputDto.Items)
             {
                 var asset = assetDict[item.AssetId];
+                var lookupErr = await ValidateAssetLookupIdsForBulkUpdateAsync(
+                    item.ItemId, item.SupplierId, item.ManufacturerId, item.PrimaryPurposId);
+                if (lookupErr != null)
+                    return (false, lookupErr);
+
                 asset.ItemId = item.ItemId;
                 asset.SerialNumber = string.IsNullOrWhiteSpace(item.SerialNumber) ? null : item.SerialNumber.Trim();
                 asset.RFID = string.IsNullOrWhiteSpace(item.RFID) ? null : item.RFID.Trim();
@@ -838,6 +774,9 @@ namespace Ettad.Inventory.Service.Batches
                 asset.PurchasePrice = item.PurchasePrice;
                 asset.DeliveryReceipt = string.IsNullOrWhiteSpace(item.DeliveryReceipt) ? null : item.DeliveryReceipt.Trim();
                 asset.Notes = string.IsNullOrWhiteSpace(item.Notes) ? null : item.Notes.Trim();
+                asset.SupplierId = item.SupplierId;
+                asset.ManufacturerId = item.ManufacturerId;
+                asset.PrimaryPurposId = item.PrimaryPurposId;
                 asset.ModificationDate = _dateTimeProvider.Now;
                 asset.ModifiedBy = _currentUserService.UserId;
 
@@ -852,6 +791,36 @@ namespace Ettad.Inventory.Service.Batches
             }
 
             return (true, null);
+        }
+
+        private async Task<string?> ValidatePrimaryPurposForItemBulkAsync(long itemId, long? primaryPurposId)
+        {
+            if (!primaryPurposId.HasValue)
+                return null;
+
+            var ok = await _context.BaseItemPrimaryPurposes
+                .AnyAsync(x => x.BaseItemId == itemId && x.PrimaryPurposId == primaryPurposId.Value);
+            return ok ? null : "Primary purpose is not configured for this catalog item.";
+        }
+
+        private async Task<string?> ValidateAssetLookupIdsForBulkUpdateAsync(
+            long itemId, long? supplierId, long? manufacturerId, long? primaryPurposId)
+        {
+            if (supplierId.HasValue)
+            {
+                var okSupplier = await _context.Suppliers.AnyAsync(s => s.Id == supplierId.Value && !s.IsDeleted);
+                if (!okSupplier)
+                    return "Supplier is invalid or deleted.";
+            }
+
+            if (manufacturerId.HasValue)
+            {
+                var okManufacturer = await _context.Manufacturers.AnyAsync(m => m.Id == manufacturerId.Value && !m.IsDeleted);
+                if (!okManufacturer)
+                    return "Manufacturer is invalid or deleted.";
+            }
+
+            return await ValidatePrimaryPurposForItemBulkAsync(itemId, primaryPurposId);
         }
 
         private async Task<(bool Ok, string? Error)> TryApplyBulkItemAssignmentAsync(Asset asset, BatchAssetUpdateItem item)
@@ -1645,13 +1614,6 @@ namespace Ettad.Inventory.Service.Batches
 
                     if (rowErrors.Count == 0)
                     {
-                        var ppErr = await ValidateBatchPrimaryPurposeForItemImportAsync(row.ItemId, batch.PrimaryPurposId);
-                        if (ppErr != null)
-                            rowErrors.Add(ppErr);
-                    }
-
-                    if (rowErrors.Count == 0)
-                    {
                         var createDto = MapImportRowToCreateAssetDto(batch, row);
                         var vr = await _createAssetValidator.ValidateAsync(createDto);
                         if (!vr.IsValid)
@@ -1850,7 +1812,6 @@ namespace Ettad.Inventory.Service.Batches
             {
                 ItemId = row.ItemId,
                 BatchNumber = batch.BatchNumber,
-                BatchPrimaryPurposId = batch.PrimaryPurposId,
                 SerialNumber = row.SerialNumber,
                 RFID = row.RFID,
                 DepotId = batch.DepotId,
@@ -1867,16 +1828,6 @@ namespace Ettad.Inventory.Service.Batches
                 dto.AssignmentNotes = row.AssignmentNotes;
             }
             return dto;
-        }
-
-        private async Task<string?> ValidateBatchPrimaryPurposeForItemImportAsync(long itemId, long? batchPrimaryPurposId)
-        {
-            if (!batchPrimaryPurposId.HasValue)
-                return null;
-
-            var ok = await _context.BaseItemPrimaryPurposes
-                .AnyAsync(x => x.BaseItemId == itemId && x.PrimaryPurposId == batchPrimaryPurposId.Value);
-            return ok ? null : "Batch primary purpose is not configured for this catalog item.";
         }
 
         private static bool WantsBatchImportIntakeAssignment(CreateAssetDto dto) =>

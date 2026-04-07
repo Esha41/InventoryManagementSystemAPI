@@ -71,6 +71,12 @@ namespace Ettad.Data.Entities
 
         public long BatchId { get; set; }
 
+        public long? SupplierId { get; set; }
+
+        public long? ManufacturerId { get; set; }
+
+        public long? PrimaryPurposId { get; set; }
+
         #region Navigation Properties
 
         public BaseItem Item { get; set; }
@@ -80,6 +86,12 @@ namespace Ettad.Data.Entities
         public ICollection<AssetAssignment> Assignments { get; set; }
         public ICollection<AssetHistory> History { get; set; }
         public ICollection<AssetSupplyDetail> SupplyDetails { get; set; }
+
+        public Supplier Supplier { get; set; }
+
+        public Manufacturer Manufacturer { get; set; }
+
+        public PrimaryPurpos PrimaryPurpos { get; set; }
 
         #endregion
     }

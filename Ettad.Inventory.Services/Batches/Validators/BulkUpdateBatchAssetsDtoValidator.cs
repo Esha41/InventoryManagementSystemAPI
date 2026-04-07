@@ -35,6 +35,18 @@ namespace Ettad.Inventory.Service.Batches.Validators
                     .MaximumLength(2000).When(x => !string.IsNullOrWhiteSpace(x.AssignmentNotes))
                     .WithMessage("Assignment notes cannot exceed 2000 characters");
 
+                item.RuleFor(x => x.SupplierId)
+                    .GreaterThan(0).When(x => x.SupplierId.HasValue)
+                    .WithMessage("Supplier ID must be greater than 0 when provided");
+
+                item.RuleFor(x => x.ManufacturerId)
+                    .GreaterThan(0).When(x => x.ManufacturerId.HasValue)
+                    .WithMessage("Manufacturer ID must be greater than 0 when provided");
+
+                item.RuleFor(x => x.PrimaryPurposId)
+                    .GreaterThan(0).When(x => x.PrimaryPurposId.HasValue)
+                    .WithMessage("Primary purpose ID must be greater than 0 when provided");
+
                 // Use AssignToEmployeeId as the rule target so PropertyName is Items[i].AssignToEmployeeId (see MergeFluentValidationIntoImportPreview).
                 item.RuleFor(x => x.AssignToEmployeeId)
                     .Custom((_, context) =>

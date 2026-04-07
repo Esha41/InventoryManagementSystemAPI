@@ -19,6 +19,12 @@ namespace Ettad.Inventory.Service.Assets.Dtos
         public DateTime? WarrantyExpiryDate { get; set; }
         public decimal? PurchasePrice { get; set; }
         public string? Notes { get; set; }
+
+        public long? SupplierId { get; set; }
+
+        public long? ManufacturerId { get; set; }
+
+        public long? PrimaryPurposId { get; set; }
     }
 }
 

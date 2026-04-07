@@ -8,9 +8,6 @@ namespace Ettad.Inventory.Service.Assets.Dtos
 
         public string BatchNumber { get; set; } = string.Empty;
 
-        /// <summary>Optional: set on the batch when the batch is first created (must be allowed for <see cref="ItemId"/>).</summary>
-        public long? BatchPrimaryPurposId { get; set; }
-
         public string? SerialNumber { get; set; }
 
         public string? RFID { get; set; }
@@ -26,6 +23,12 @@ namespace Ettad.Inventory.Service.Assets.Dtos
         public string? DeliveryReceipt { get; set; }
 
         public string? Notes { get; set; }
+
+        public long? SupplierId { get; set; }
+
+        public long? ManufacturerId { get; set; }
+
+        public long? PrimaryPurposId { get; set; }
 
         /// <summary>Optional: assign to this employee on intake (uses the employee's department only; do not send <see cref="AssignToDepartmentId"/>).</summary>
         public long? AssignToEmployeeId { get; set; }
