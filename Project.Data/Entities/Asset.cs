@@ -35,11 +35,6 @@ namespace Ettad.Data.Entities
         public AssetStatus? Status { get; set; }
 
         /// <summary>
-        /// Internal asset tag/barcode number
-        /// </summary>
-        public string? AssetTag { get; set; }
-
-        /// <summary>
         /// Date when the asset was purchased
         /// </summary>
         public DateTime? PurchaseDate { get; set; }
@@ -48,11 +43,6 @@ namespace Ettad.Data.Entities
         /// Date when warranty expires
         /// </summary>
         public DateTime? WarrantyExpiryDate { get; set; }
-
-        /// <summary>
-        /// Physical condition of the asset
-        /// </summary>
-        public string? Condition { get; set; }
 
         /// <summary>
         /// Original purchase price

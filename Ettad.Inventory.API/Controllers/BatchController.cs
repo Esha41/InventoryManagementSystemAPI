@@ -33,18 +33,30 @@ namespace Ettad.Inventory.API.Controllers
         [HttpGet("by-number/{batchNumber}")]
         [ProducesResponseType((int)HttpStatusCode.OK)]
         [CheckAuthorize("Permissions.Asset.View", "Permissions.Asset.Page")]
-        public async Task<IActionResult> GetByBatchNumber(string batchNumber, [FromQuery] bool? serialNumberOnly = null, [FromQuery] int? quantity = null, [FromQuery] bool? filterByIsAssigned = null)
+        public async Task<IActionResult> GetByBatchNumber(
+            string batchNumber,
+            [FromQuery] bool? serialNumberOnly = null,
+            [FromQuery] bool? filterByIsAssigned = null,
+            [FromQuery] int assetsPage = 1,
+            [FromQuery] int assetsPageSize = 50,
+            [FromQuery] bool includeAllAssets = false)
         {
-            var result = await _batchService.GetByBatchNumberAsync(batchNumber, serialNumberOnly, quantity, filterByIsAssigned);
+            var result = await _batchService.GetByBatchNumberAsync(batchNumber, serialNumberOnly, filterByIsAssigned, assetsPage, assetsPageSize, includeAllAssets);
             return ProcessResponse(result);
         }
 
         [HttpGet("{id}")]
         [ProducesResponseType((int)HttpStatusCode.OK)]
         [CheckAuthorize("Permissions.Asset.View", "Permissions.Asset.Page")]
-        public async Task<IActionResult> GetById(long id, [FromQuery] bool? serialNumberOnly = null, [FromQuery] int? quantity = null, [FromQuery] bool? filterByIsAssigned = null)
+        public async Task<IActionResult> GetById(
+            long id,
+            [FromQuery] bool? serialNumberOnly = null,
+            [FromQuery] bool? filterByIsAssigned = null,
+            [FromQuery] int assetsPage = 1,
+            [FromQuery] int assetsPageSize = 50,
+            [FromQuery] bool includeAllAssets = false)
         {
-            var result = await _batchService.GetByIdAsync(id, serialNumberOnly, quantity, filterByIsAssigned);
+            var result = await _batchService.GetByIdAsync(id, serialNumberOnly, filterByIsAssigned, assetsPage, assetsPageSize, includeAllAssets);
             return ProcessResponse(result);
         }
 

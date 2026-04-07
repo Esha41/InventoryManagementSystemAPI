@@ -190,7 +190,7 @@ namespace Ettad.Inventory.Service.Assets
                 AssignDate = now,
                 Status = AssetAssignmentStatus.Active,
                 Notes = string.IsNullOrWhiteSpace(dto.AssignmentNotes) ? null : dto.AssignmentNotes.Trim(),
-                ConditionOnAssign = asset.Condition,
+                ConditionOnAssign = null,
                 CreationDate = now,
                 CreatedBy = _currentUserService.UserId
             };
@@ -934,7 +934,6 @@ namespace Ettad.Inventory.Service.Assets
 
                 var existingSerialNumbers = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
                 var existingRFIDs = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-                var existingAssetTags = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
                 foreach (var asset in existingAssets)
                 {
@@ -942,8 +941,6 @@ namespace Ettad.Inventory.Service.Assets
                         existingSerialNumbers.Add(asset.SerialNumber);
                     if (!string.IsNullOrWhiteSpace(asset.RFID))
                         existingRFIDs.Add(asset.RFID);
-                    if (!string.IsNullOrWhiteSpace(asset.AssetTag))
-                        existingAssetTags.Add(asset.AssetTag);
                 }
 
                 // Process valid records with transaction support
@@ -1028,15 +1025,6 @@ namespace Ettad.Inventory.Service.Assets
                             }
                         }
 
-                        // Check for duplicate AssetTag
-                        if (!string.IsNullOrWhiteSpace(row.AssetTag))
-                        {
-                            if (existingAssetTags.Contains(row.AssetTag))
-                            {
-                                rowErrors.Add($"Asset tag already exists: {row.AssetTag}");
-                            }
-                        }
-
                         // If validation failed, move from successful to errors
                         if (rowErrors.Any())
                         {
@@ -1074,10 +1062,8 @@ namespace Ettad.Inventory.Service.Assets
                             DepotId = depotId,
                             SerialNumber = string.IsNullOrWhiteSpace(row.SerialNumber) ? null : row.SerialNumber.Trim(),
                             RFID = string.IsNullOrWhiteSpace(row.RFID) ? null : row.RFID.Trim(),
-                            AssetTag = string.IsNullOrWhiteSpace(row.AssetTag) ? null : row.AssetTag.Trim(),
                             PurchaseDate = row.PurchaseDate,
                             WarrantyExpiryDate = row.WarrantyExpiryDate,
-                            Condition = string.IsNullOrWhiteSpace(row.Condition) ? null : row.Condition.Trim(),
                             PurchasePrice = row.PurchasePrice,
                             Notes = string.IsNullOrWhiteSpace(row.Notes) ? null : row.Notes.Trim()
                         };
@@ -1125,8 +1111,6 @@ namespace Ettad.Inventory.Service.Assets
                             existingSerialNumbers.Add(asset.SerialNumber);
                         if (!string.IsNullOrWhiteSpace(asset.RFID))
                             existingRFIDs.Add(asset.RFID);
-                        if (!string.IsNullOrWhiteSpace(asset.AssetTag))
-                            existingAssetTags.Add(asset.AssetTag);
 
                         _logger.LogInformation("Created asset from import. AssetId: {AssetId}, SerialNumber: {SerialNumber}, DepotId: {DepotId}, User: {UserId}",
                             asset.Id, asset.SerialNumber, depotId, _currentUserService.UserId);
@@ -1203,7 +1187,6 @@ namespace Ettad.Inventory.Service.Assets
 
                 var existingSerialNumbers = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
                 var existingRFIDs = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-                var existingAssetTags = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
                 foreach (var asset in existingAssets)
                 {
@@ -1211,8 +1194,6 @@ namespace Ettad.Inventory.Service.Assets
                         existingSerialNumbers.Add(asset.SerialNumber);
                     if (!string.IsNullOrWhiteSpace(asset.RFID))
                         existingRFIDs.Add(asset.RFID);
-                    if (!string.IsNullOrWhiteSpace(asset.AssetTag))
-                        existingAssetTags.Add(asset.AssetTag);
                 }
 
                 foreach (var row in importResult.SuccessfulRecords.ToList())
@@ -1285,14 +1266,6 @@ namespace Ettad.Inventory.Service.Assets
                         }
                     }
 
-                    if (!string.IsNullOrWhiteSpace(row.AssetTag))
-                    {
-                        if (existingAssetTags.Contains(row.AssetTag))
-                        {
-                            rowErrors.Add($"Asset tag already exists: {row.AssetTag}");
-                        }
-                    }
-
                     if (string.IsNullOrWhiteSpace(row.BatchNumber))
                     {
                         rowErrors.Add("Batch number is required");
@@ -1318,10 +1291,8 @@ namespace Ettad.Inventory.Service.Assets
                         DepotId = depotId,
                         SerialNumber = string.IsNullOrWhiteSpace(row.SerialNumber) ? null : row.SerialNumber.Trim(),
                         RFID = string.IsNullOrWhiteSpace(row.RFID) ? null : row.RFID.Trim(),
-                        AssetTag = string.IsNullOrWhiteSpace(row.AssetTag) ? null : row.AssetTag.Trim(),
                         PurchaseDate = row.PurchaseDate,
                         WarrantyExpiryDate = row.WarrantyExpiryDate,
-                        Condition = string.IsNullOrWhiteSpace(row.Condition) ? null : row.Condition.Trim(),
                         PurchasePrice = row.PurchasePrice,
                         Notes = string.IsNullOrWhiteSpace(row.Notes) ? null : row.Notes.Trim()
                     };
@@ -1345,8 +1316,6 @@ namespace Ettad.Inventory.Service.Assets
                         existingSerialNumbers.Add(row.SerialNumber);
                     if (!string.IsNullOrWhiteSpace(row.RFID))
                         existingRFIDs.Add(row.RFID);
-                    if (!string.IsNullOrWhiteSpace(row.AssetTag))
-                        existingAssetTags.Add(row.AssetTag);
                 }
 
                 importResult.TotalProcessed = importResult.SuccessfulRecords.Count + importResult.Errors.Count;
@@ -1399,13 +1368,13 @@ namespace Ettad.Inventory.Service.Assets
                 var headers = language == "ar"
                     ? new[]
                     {
-                        "اسم الصنف", "رقم الصنف", "رقم الدفعة", "رقم التسلسل", "RFID", "علامة الأصل",
-                        "تاريخ الشراء", "تاريخ انتهاء الضمان", "الحالة", "سعر الشراء", "ملاحظات"
+                        "اسم الصنف", "رقم الصنف", "رقم الدفعة", "رقم التسلسل", "RFID",
+                        "تاريخ الشراء", "تاريخ انتهاء الضمان", "سعر الشراء", "ملاحظات"
                     }
                     : new[]
                     {
-                        "Item Name", "Item No", "Batch Number", "Serial Number", "RFID", "Asset Tag",
-                        "Purchase Date", "Warranty Expiry Date", "Condition", "Purchase Price", "Notes"
+                        "Item Name", "Item No", "Batch Number", "Serial Number", "RFID",
+                        "Purchase Date", "Warranty Expiry Date", "Purchase Price", "Notes"
                     };
 
                 // Add headers with formatting
@@ -1424,12 +1393,10 @@ namespace Ettad.Inventory.Service.Assets
                 templateSheet.Cells[2, 3].Value = ""; // Batch Number
                 templateSheet.Cells[2, 4].Value = "";
                 templateSheet.Cells[2, 5].Value = "";
-                templateSheet.Cells[2, 6].Value = "";
-                templateSheet.Cells[2, 7].Value = _dateTimeProvider.Now.ToString("yyyy-MM-dd");
-                templateSheet.Cells[2, 8].Value = _dateTimeProvider.Now.AddYears(1).ToString("yyyy-MM-dd");
+                templateSheet.Cells[2, 6].Value = _dateTimeProvider.Now.ToString("yyyy-MM-dd");
+                templateSheet.Cells[2, 7].Value = _dateTimeProvider.Now.AddYears(1).ToString("yyyy-MM-dd");
+                templateSheet.Cells[2, 8].Value = 0;
                 templateSheet.Cells[2, 9].Value = "";
-                templateSheet.Cells[2, 10].Value = 0;
-                templateSheet.Cells[2, 11].Value = "";
 
                 // Create hidden lookup sheet for items
                 var lookupSheet = package.Workbook.Worksheets.Add("Items");
@@ -1458,12 +1425,10 @@ namespace Ettad.Inventory.Service.Assets
                 templateSheet.Column(3).Width = 20; // Batch Number
                 templateSheet.Column(4).Width = 20; // Serial Number
                 templateSheet.Column(5).Width = 20; // RFID
-                templateSheet.Column(6).Width = 15; // Asset Tag
-                templateSheet.Column(7).Width = 15; // Purchase Date
-                templateSheet.Column(8).Width = 20; // Warranty Expiry Date
-                templateSheet.Column(9).Width = 15; // Condition
-                templateSheet.Column(10).Width = 15; // Purchase Price
-                templateSheet.Column(11).Width = 30; // Notes
+                templateSheet.Column(6).Width = 15; // Purchase Date
+                templateSheet.Column(7).Width = 20; // Warranty Expiry Date
+                templateSheet.Column(8).Width = 15; // Purchase Price
+                templateSheet.Column(9).Width = 30; // Notes
 
                 // Freeze header row
                 templateSheet.View.FreezePanes(2, 1);
@@ -1493,10 +1458,8 @@ namespace Ettad.Inventory.Service.Assets
                 { "Batch Number", nameof(AssetImportDto.BatchNumber) },
                 { "Serial Number", nameof(AssetImportDto.SerialNumber) },
                 { "RFID", nameof(AssetImportDto.RFID) },
-                { "Asset Tag", nameof(AssetImportDto.AssetTag) },
                 { "Purchase Date", nameof(AssetImportDto.PurchaseDate) },
                 { "Warranty Expiry Date", nameof(AssetImportDto.WarrantyExpiryDate) },
-                { "Condition", nameof(AssetImportDto.Condition) },
                 { "Purchase Price", nameof(AssetImportDto.PurchasePrice) },
                 { "Notes", nameof(AssetImportDto.Notes) },
  
@@ -1507,10 +1470,8 @@ namespace Ettad.Inventory.Service.Assets
                 { "رقم الدفعة", nameof(AssetImportDto.BatchNumber) },
                 { "رقم التسلسل", nameof(AssetImportDto.SerialNumber) },
                 { "RFID*", nameof(AssetImportDto.RFID) }, // Sometimes templates have RFID in English even in Arabic template
-                { "علامة الأصل", nameof(AssetImportDto.AssetTag) },
                 { "تاريخ الشراء", nameof(AssetImportDto.PurchaseDate) },
                 { "تاريخ انتهاء الضمان", nameof(AssetImportDto.WarrantyExpiryDate) },
-                { "الحالة", nameof(AssetImportDto.Condition) },
                 { "سعر الشراء", nameof(AssetImportDto.PurchasePrice) },
                 { "ملاحظات", nameof(AssetImportDto.Notes) }
             };

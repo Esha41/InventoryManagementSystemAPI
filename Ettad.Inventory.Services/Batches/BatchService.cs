@@ -151,7 +151,7 @@ namespace Ettad.Inventory.Service.Batches
                 batch.ModifiedBy = _currentUserService.UserId;
                 await _context.SaveChangesAsync();
 
-                return await GetByIdAsync(id);
+                return await GetByIdAsync(id, includeAllAssets: true);
             }
             catch (Exception ex)
             {
@@ -160,10 +160,11 @@ namespace Ettad.Inventory.Service.Batches
             }
         }
 
-        public async Task<APIOperationResponse<BatchDto>> GetByIdAsync(long id, bool? serialNumberOnly = null, int? quantity = null, bool? filterByIsAssigned = null)
+        public async Task<APIOperationResponse<BatchDto>> GetByIdAsync(long id, bool? serialNumberOnly = null, bool? filterByIsAssigned = null, int assetsPage = 1, int assetsPageSize = 50, bool includeAllAssets = false)
         {
-            _logger.LogInformation("Getting batch by ID. BatchId: {BatchId}, SerialNumberOnly: {SerialNumberOnly}, Quantity: {Quantity}, FilterByIsAssigned: {FilterByIsAssigned}, User: {UserId}",
-                id, serialNumberOnly, quantity, filterByIsAssigned, _currentUserService.UserId);
+            _logger.LogInformation(
+                "Getting batch by ID. BatchId: {BatchId}, SerialNumberOnly: {SerialNumberOnly}, FilterByIsAssigned: {FilterByIsAssigned}, AssetsPage: {AssetsPage}, AssetsPageSize: {AssetsPageSize}, IncludeAllAssets: {IncludeAllAssets}, User: {UserId}",
+                id, serialNumberOnly, filterByIsAssigned, assetsPage, assetsPageSize, includeAllAssets, _currentUserService.UserId);
 
             try
             {
@@ -199,13 +200,43 @@ namespace Ettad.Inventory.Service.Batches
                 if (filterByIsAssigned.HasValue)
                     assetQuery = assetQuery.Where(a => a.IsAssigned == filterByIsAssigned.Value);
 
-                if (quantity.HasValue && quantity.Value > 0)
-                    assetQuery = assetQuery.Take(quantity.Value);
+                var totalCount = await assetQuery.CountAsync();
 
-                var assets = await assetQuery.ToListAsync();
+                var effectivePageSize = NormalizeBatchAssetsPageSize(assetsPageSize);
+                int effectivePage;
+                int totalPages;
+
+                if (includeAllAssets)
+                {
+                    effectivePage = 1;
+                    totalPages = 1;
+                }
+                else
+                {
+                    totalPages = totalCount == 0 ? 1 : (int)Math.Ceiling(totalCount / (double)effectivePageSize);
+                    effectivePage = Math.Max(1, Math.Min(assetsPage < 1 ? 1 : assetsPage, totalPages));
+                }
+
+                IQueryable<Asset> orderedQuery = assetQuery.OrderBy(a => a.Id);
+
+                List<Asset> assets;
+                if (includeAllAssets)
+                {
+                    assets = await orderedQuery.ToListAsync();
+                }
+                else
+                {
+                    assets = await orderedQuery
+                        .Skip((effectivePage - 1) * effectivePageSize)
+                        .Take(effectivePageSize)
+                        .ToListAsync();
+                }
 
                 dto.Assets = _mapper.Map<List<AssetDto>>(assets);
-                dto.AssetCount = dto.Assets.Count;
+                dto.AssetCount = totalCount;
+                dto.AssetsPageIndex = includeAllAssets ? 1 : effectivePage;
+                dto.AssetsPageSize = includeAllAssets ? totalCount : effectivePageSize;
+                dto.AssetsTotalPages = includeAllAssets ? 1 : totalPages;
 
                 var entityIds = dto.Assets.Select(a => a.BatchId).Distinct().ToList();
                 if (entityIds.Any())
@@ -231,7 +262,7 @@ namespace Ettad.Inventory.Service.Batches
             }
         }
 
-        public async Task<APIOperationResponse<BatchDto>> GetByBatchNumberAsync(string batchNumber, bool? serialNumberOnly = null, int? quantity = null, bool? filterByIsAssigned = null)
+        public async Task<APIOperationResponse<BatchDto>> GetByBatchNumberAsync(string batchNumber, bool? serialNumberOnly = null, bool? filterByIsAssigned = null, int assetsPage = 1, int assetsPageSize = 50, bool includeAllAssets = false)
         {
             if (string.IsNullOrWhiteSpace(batchNumber))
                 return APIOperationResponse<BatchDto>.Fail(ResponseType.BadRequest, "Batch number is required.");
@@ -247,7 +278,19 @@ namespace Ettad.Inventory.Service.Batches
             if (batch == null)
                 return APIOperationResponse<BatchDto>.Fail(ResponseType.NotFound, "Batch not found");
 
-            return await GetByIdAsync(batch.Id, serialNumberOnly, quantity, filterByIsAssigned);
+            return await GetByIdAsync(batch.Id, serialNumberOnly, filterByIsAssigned, assetsPage, assetsPageSize, includeAllAssets);
+        }
+
+        private static int NormalizeBatchAssetsPageSize(int requested)
+        {
+            return requested switch
+            {
+                50 => 50,
+                100 => 100,
+                200 => 200,
+                500 => 500,
+                _ => 50
+            };
         }
 
         public async Task<APIOperationResponse<List<BatchDto>>> GetAllAsync(long? depotId = null)
@@ -625,10 +668,8 @@ namespace Ettad.Inventory.Service.Batches
                         asset.SerialNumber = string.IsNullOrWhiteSpace(item.SerialNumber) ? null : item.SerialNumber.Trim();
                         asset.RFID = string.IsNullOrWhiteSpace(item.RFID) ? null : item.RFID.Trim();
                         asset.Status = item.Status;
-                        asset.AssetTag = string.IsNullOrWhiteSpace(item.AssetTag) ? null : item.AssetTag.Trim();
                         asset.PurchaseDate = item.PurchaseDate;
                         asset.WarrantyExpiryDate = item.WarrantyExpiryDate;
-                        asset.Condition = string.IsNullOrWhiteSpace(item.Condition) ? null : item.Condition.Trim();
                         asset.PurchasePrice = item.PurchasePrice;
                         asset.DeliveryReceipt = string.IsNullOrWhiteSpace(item.DeliveryReceipt) ? null : item.DeliveryReceipt.Trim();
                         asset.Notes = string.IsNullOrWhiteSpace(item.Notes) ? null : item.Notes.Trim();
@@ -798,7 +839,7 @@ namespace Ettad.Inventory.Service.Batches
                 AssignDate = now,
                 Status = AssetAssignmentStatus.Active,
                 Notes = notes,
-                ConditionOnAssign = asset.Condition,
+                ConditionOnAssign = null,
                 CreationDate = now,
                 CreatedBy = _currentUserService.UserId
             };
