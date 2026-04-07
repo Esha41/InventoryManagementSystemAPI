@@ -32,6 +32,9 @@ namespace Ettad.Inventory.Service.Inventories
         private static readonly string InventoryDetailsItemWithPrimaryPurposesInclude =
             $"{nameof(InventoryEntity.InventoryDetails)}.{nameof(InventoryDetailEntity.Item)}.{nameof(BaseItem.BaseItemPrimaryPurposes)}.{nameof(BaseItemPrimaryPurpos.PrimaryPurpos)}";
 
+        /// <summary>Frontend i18n key sent in API error <c>Message</c> (see <c>inventory.json</c>).</summary>
+        private const string LotLinkedToSupplyOrderErrorKey = "warehouseInventory.errors.lotLinkedToSupplyOrder";
+
         private readonly ApplicationDbContext _context;
         private readonly ICrossCuttingRepository<InventoryEntity> _inventoryRepository;
         private readonly ICrossCuttingRepository<InventoryDetailEntity> _inventoryDetailRepository;
@@ -333,6 +336,25 @@ namespace Ettad.Inventory.Service.Inventories
                     .Where(d => !existingDetailIds.Contains(d.Id))
                     .ToList();
 
+                if (detailsToRemove.Any())
+                {
+                    var removalPairs = detailsToRemove.Select(d => (d.ItemId, d.Lot.Trim())).ToList();
+                    var removalAllocations = await CalculateLotAllocationAsync(removalPairs);
+                    var blockedRemovalLots = detailsToRemove
+                        .Where(d =>
+                        {
+                            var a = removalAllocations.GetValueOrDefault((d.ItemId, d.Lot.Trim()));
+                            return (a.Used + a.Reserved) > 0;
+                        })
+                        .ToList();
+                    if (blockedRemovalLots.Any())
+                    {
+                        _logger.LogWarning("Cannot remove lot(s) with active supply allocations. Lots: {Lots}, InventoryId: {InventoryId}, User: {UserId}",
+                            string.Join(", ", blockedRemovalLots.Select(d => d.Lot)), id, _currentUserService.UserId);
+                        return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, LotLinkedToSupplyOrderErrorKey);
+                    }
+                }
+
                 foreach (var detail in detailsToRemove)
                 {
                     await _inventoryDetailRepository.DeleteAsync(detail);
@@ -346,6 +368,18 @@ namespace Ettad.Inventory.Service.Inventories
                         var existingDetail = existingInventory.InventoryDetails.FirstOrDefault(d => d.Id == detailDto.Id.Value);
                         if (existingDetail != null)
                         {
+                            // Guard: new quantity must not drop below what is already used/reserved in supplies
+                            var lotKey = existingDetail.Lot.Trim();
+                            var qtyAlloc = (await CalculateLotAllocationAsync(new[] { (existingDetail.ItemId, lotKey) }))
+                                .GetValueOrDefault((existingDetail.ItemId, lotKey));
+                            long minAllowed = qtyAlloc.Used + qtyAlloc.Reserved;
+                            if (detailDto.OriginalQuantity < minAllowed)
+                            {
+                                _logger.LogWarning("Quantity reduction blocked for lot. Lot: {Lot}, MinAllowed: {MinAllowed}, Requested: {Requested}, InventoryId: {InventoryId}, User: {UserId}",
+                                    existingDetail.Lot, minAllowed, detailDto.OriginalQuantity, id, _currentUserService.UserId);
+                                return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, LotLinkedToSupplyOrderErrorKey);
+                            }
+
                             // Update the existing detail
                             _mapper.Map(detailDto, existingDetail);
                             existingDetail.Lot = (detailDto.Lot ?? string.Empty).Trim();
@@ -411,6 +445,27 @@ namespace Ettad.Inventory.Service.Inventories
                     _logger.LogWarning("Inventory not found for deletion. InventoryId: {InventoryId}, User: {UserId}",
                         id, _currentUserService.UserId);
                     return APIOperationResponse<bool>.Fail(ResponseType.NotFound, "Inventory not found");
+                }
+
+                // Guard: block deletion if any lot in this inventory has active or pending supply allocations
+                var inventoryDetails = await _inventoryDetailRepository.FindAsync(d => d.InventoryId == id);
+                if (inventoryDetails.Any())
+                {
+                    var detailPairs = inventoryDetails.Select(d => (d.ItemId, d.Lot.Trim())).ToList();
+                    var deleteAllocations = await CalculateLotAllocationAsync(detailPairs);
+                    var blockedDeleteLots = inventoryDetails
+                        .Where(d =>
+                        {
+                            var a = deleteAllocations.GetValueOrDefault((d.ItemId, d.Lot.Trim()));
+                            return (a.Used + a.Reserved) > 0;
+                        })
+                        .ToList();
+                    if (blockedDeleteLots.Any())
+                    {
+                        _logger.LogWarning("Cannot delete inventory with active supply allocations. Lots: {Lots}, InventoryId: {InventoryId}, User: {UserId}",
+                            string.Join(", ", blockedDeleteLots.Select(d => d.Lot)), id, _currentUserService.UserId);
+                        return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, LotLinkedToSupplyOrderErrorKey);
+                    }
                 }
 
                 // Delete any files linked to this inventory for Ammunition and Explosive entity types
@@ -1360,6 +1415,51 @@ namespace Ettad.Inventory.Service.Inventories
                 detail.CurrentQuantity = Math.Max(0, detail.OriginalQuantity - used);
                 detail.IsLotEmpty = detail.RemainingQuantity <= 0;
             }
+        }
+
+        /// <summary>
+        /// Returns used (Submitted) and reserved (Draft) supply quantities for each (ItemId, Lot) pair.
+        /// </summary>
+        private async Task<Dictionary<(long ItemId, string Lot), (long Used, long Reserved)>> CalculateLotAllocationAsync(
+            IEnumerable<(long ItemId, string Lot)> itemLotPairs)
+        {
+            var pairs = itemLotPairs.ToList();
+            if (!pairs.Any())
+                return new Dictionary<(long, string), (long, long)>();
+
+            var itemIds = pairs.Select(p => p.ItemId).Distinct().ToList();
+            var lotNumbers = pairs.Select(p => p.Lot).Distinct().ToList();
+
+            var supplyDetails = await _supplyDetailsRepository.FindAsync(
+                sd => itemIds.Contains(sd.ItemId) && lotNumbers.Contains(sd.Lot) && !sd.IsDeleted
+            );
+
+            var uniqueSupplyIds = supplyDetails.Select(sd => sd.SupplyId).Distinct().ToList();
+            var supplies = uniqueSupplyIds.Any()
+                ? await _supplyRepository.FindAsync(s => uniqueSupplyIds.Contains(s.Id) && !s.IsDeleted)
+                : new List<Supply>();
+
+            var supplyStatusMap = supplies.ToDictionary(s => s.Id, s => s.SubmissionStatus);
+
+            var usedByItemLot = supplyDetails
+                .Where(sd => supplyStatusMap.TryGetValue(sd.SupplyId, out var st) && st == SupplySubmissionStatus.Submitted)
+                .GroupBy(sd => (sd.ItemId, sd.Lot))
+                .ToDictionary(g => g.Key, g => g.Sum(sd => sd.Quantity));
+
+            var reservedByItemLot = supplyDetails
+                .Where(sd => supplyStatusMap.TryGetValue(sd.SupplyId, out var st) && st == SupplySubmissionStatus.Draft)
+                .GroupBy(sd => (sd.ItemId, sd.Lot))
+                .ToDictionary(g => g.Key, g => g.Sum(sd => sd.Quantity));
+
+            return pairs.ToDictionary(
+                p => p,
+                p =>
+                {
+                    long used = usedByItemLot.TryGetValue((p.ItemId, p.Lot), out var u) ? u : 0;
+                    long reserved = reservedByItemLot.TryGetValue((p.ItemId, p.Lot), out var r) ? r : 0;
+                    return (used, reserved);
+                }
+            );
         }
 
         public async Task<APIOperationResponse<bool>> ToggleReadyForIssueAsync(long inventoryDetailId)
