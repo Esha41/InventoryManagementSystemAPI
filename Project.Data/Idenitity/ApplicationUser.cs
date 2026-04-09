@@ -29,6 +29,7 @@ namespace Ettad.Comman.Idenitity
         public string? LdapUserName { get; set; }
 
         public bool IsActive { get; set; } = true;
+        public bool IsOnboardingCompleted { get; set; } = false;
 
         // Soft delete properties
         public bool IsDeleted { get; set; } = false;

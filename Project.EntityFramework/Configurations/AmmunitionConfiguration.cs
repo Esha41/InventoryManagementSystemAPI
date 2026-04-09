@@ -21,16 +21,14 @@ namespace Ettad.EntityFramework.Configurations
                 .IsRequired(false)
                 .HasMaxLength(200);
 
+            builder.Property(x => x.Caliber)
+                .IsRequired(false)
+                .HasMaxLength(100);
+
             builder.HasOne(x => x.NatureOption)
                 .WithMany()
                 .IsRequired(false)
                 .HasForeignKey(x => x.NatureOptionId)
-                .OnDelete(DeleteBehavior.Restrict);
-
-            builder.HasOne(x => x.PrimaryPurpos)
-                .WithMany()
-                .IsRequired(false)
-                .HasForeignKey(x => x.PrimaryPurposId)
                 .OnDelete(DeleteBehavior.Restrict);
 
             builder.HasOne(x => x.ProjectileColor)

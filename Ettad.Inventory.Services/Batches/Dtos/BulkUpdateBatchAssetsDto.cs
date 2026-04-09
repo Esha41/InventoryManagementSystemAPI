@@ -5,6 +5,11 @@ namespace Ettad.Inventory.Service.Batches.Dtos
     public class BulkUpdateBatchAssetsDto
     {
         public List<BatchAssetUpdateItem> Items { get; set; } = new();
+
+        /// <summary>
+        /// Existing uploaded file master ids the user removed in UI; deleted during bulk update.
+        /// </summary>
+        public List<long> RemovedFileIds { get; set; } = new();
     }
 
     public class BatchAssetUpdateItem
@@ -19,16 +24,34 @@ namespace Ettad.Inventory.Service.Batches.Dtos
 
         public AssetStatus? Status { get; set; }
 
-        public string? AssetTag { get; set; }
-
         public DateTime? PurchaseDate { get; set; }
 
         public DateTime? WarrantyExpiryDate { get; set; }
 
-        public string? Condition { get; set; }
-
         public decimal? PurchasePrice { get; set; }
 
+        public string? DeliveryReceipt { get; set; }
+
         public string? Notes { get; set; }
+
+        /// <summary>
+        /// When true, applies <see cref="AssignToDepartmentId"/>, <see cref="AssignToEmployeeId"/>, and clears assignment if both are null.
+        /// When false, existing assignment is left unchanged.
+        /// </summary>
+        public bool UpdateAssignment { get; set; }
+
+        /// <summary>Department-only assignment. Omit when <see cref="AssignToEmployeeId"/> is set.</summary>
+        public long? AssignToDepartmentId { get; set; }
+
+        /// <summary>Employee assignment; uses the employee's department. Omit when using department-only assignment.</summary>
+        public long? AssignToEmployeeId { get; set; }
+
+        public string? AssignmentNotes { get; set; }
+
+        public long? SupplierId { get; set; }
+
+        public long? ManufacturerId { get; set; }
+
+        public long? PrimaryPurposId { get; set; }
     }
 }

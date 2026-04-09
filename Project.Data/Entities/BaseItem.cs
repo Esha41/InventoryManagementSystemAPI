@@ -37,6 +37,8 @@ namespace Ettad.Data.Entities
 
         public ItemTypeLookup Type { get; set; }
 
+        public ICollection<BaseItemPrimaryPurpos> BaseItemPrimaryPurposes { get; set; }
+
         #endregion
     }
 }

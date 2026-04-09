@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Http;
 using OfficeOpenXml;
 using System.ComponentModel.DataAnnotations;
+using System.Globalization;
 using System.Reflection;
 
 namespace Ettad.Inventory.Services.Common
@@ -27,7 +28,8 @@ namespace Ettad.Inventory.Services.Common
     {
         Task<ImportResult<T>> ImportFromExcelAsync<T>(
             IFormFile file,
-            Dictionary<string, string> columnMappings) where T : new();
+            Dictionary<string, string> columnMappings,
+            string? worksheetName = null) where T : new();
     }
 
     public class ExcelImportService : IExcelImportService
@@ -40,7 +42,8 @@ namespace Ettad.Inventory.Services.Common
 
         public async Task<ImportResult<T>> ImportFromExcelAsync<T>(
             IFormFile file,
-            Dictionary<string, string> columnMappings) where T : new()
+            Dictionary<string, string> columnMappings,
+            string? worksheetName = null) where T : new()
         {
             var result = new ImportResult<T>();
 
@@ -55,7 +58,29 @@ namespace Ettad.Inventory.Services.Common
                 await file.CopyToAsync(stream);
                 using (var package = new ExcelPackage(stream))
                 {
-                    ExcelWorksheet worksheet = package.Workbook.Worksheets.FirstOrDefault();
+                    ExcelWorksheet? worksheet = null;
+                    if (!string.IsNullOrWhiteSpace(worksheetName))
+                    {
+                        foreach (var ws in package.Workbook.Worksheets)
+                        {
+                            if (string.Equals(ws.Name, worksheetName.Trim(), StringComparison.OrdinalIgnoreCase))
+                            {
+                                worksheet = ws;
+                                break;
+                            }
+                        }
+
+                        if (worksheet == null)
+                        {
+                            result.Errors.Add(new ImportError { ErrorMessage = $"Worksheet \"{worksheetName}\" was not found in the Excel file." });
+                            return result;
+                        }
+                    }
+                    else
+                    {
+                        worksheet = package.Workbook.Worksheets.FirstOrDefault();
+                    }
+
                     if (worksheet == null)
                     {
                         result.Errors.Add(new ImportError { ErrorMessage = "No worksheets found in the Excel file" });
@@ -104,16 +129,15 @@ namespace Ettad.Inventory.Services.Common
                                 var excelHeader = map.Key;
                                 var propertyName = map.Value;
 
-                            if (headerMap.TryGetValue(excelHeader, out int colIndex))
-                            {
-                                // Use .Value instead of .Text to properly read numeric cells
-                                var cellValue = worksheet.Cells[row, colIndex].Value?.ToString() ?? string.Empty;
-                                if (!string.IsNullOrWhiteSpace(cellValue))
+                                if (headerMap.TryGetValue(excelHeader, out int colIndex))
                                 {
-                                    rowHasData = true;
-                                    SetProperty(item, propertyName, cellValue.Trim());
+                                    var cellValue = ConvertCellToImportString(worksheet.Cells[row, colIndex].Value);
+                                    if (!string.IsNullOrWhiteSpace(cellValue))
+                                    {
+                                        rowHasData = true;
+                                        SetProperty(item, propertyName, cellValue.Trim());
+                                    }
                                 }
-                            }
                             }
 
                             if (rowHasData)
@@ -171,6 +195,24 @@ namespace Ettad.Inventory.Services.Common
             return result;
         }
 
+        /// <summary>Stable string for Excel cell values (handles numeric types without losing whole IDs).</summary>
+        private static string ConvertCellToImportString(object? raw)
+        {
+            if (raw == null)
+                return string.Empty;
+            return raw switch
+            {
+                int i => i.ToString(CultureInfo.InvariantCulture),
+                long l => l.ToString(CultureInfo.InvariantCulture),
+                double d => d.ToString("G15", CultureInfo.InvariantCulture),
+                decimal m => m.ToString("G29", CultureInfo.InvariantCulture),
+                float f => f.ToString("G9", CultureInfo.InvariantCulture),
+                bool b => b ? "true" : "false",
+                DateTime dt => dt.ToString("O", CultureInfo.InvariantCulture),
+                _ => raw.ToString() ?? string.Empty
+            };
+        }
+
         private void SetProperty<T>(T obj, string propertyName, string value)
         {
             var property = typeof(T).GetProperty(propertyName, BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase);
@@ -184,9 +226,17 @@ namespace Ettad.Inventory.Services.Common
                     if (targetType == typeof(string))
                         convertedValue = value;
                     else if (targetType == typeof(int))
-                        convertedValue = int.Parse(value);
+                    {
+                        if (!TryParseExcelInt32(value, out var iv))
+                            throw new Exception($"Invalid integer: '{value}'");
+                        convertedValue = iv;
+                    }
                     else if (targetType == typeof(long))
-                        convertedValue = long.Parse(value);
+                    {
+                        if (!TryParseExcelInt64(value, out var lv))
+                            throw new Exception($"Invalid integer: '{value}'");
+                        convertedValue = lv;
+                    }
                     else if (targetType == typeof(double))
                         convertedValue = double.Parse(value);
                     else if (targetType == typeof(decimal))
@@ -228,6 +278,34 @@ namespace Ettad.Inventory.Services.Common
                     throw new Exception($"Failed to convert value '{value}' for property '{propertyName}' ({targetType.Name})");
                 }
             }
+        }
+
+        private static bool TryParseExcelInt32(string value, out int result)
+        {
+            var t = value.Trim();
+            if (int.TryParse(t, NumberStyles.Integer, CultureInfo.InvariantCulture, out result))
+                return true;
+            if (double.TryParse(t, NumberStyles.Any, CultureInfo.InvariantCulture, out var d))
+            {
+                result = (int)Math.Round(d);
+                return true;
+            }
+            result = 0;
+            return false;
+        }
+
+        private static bool TryParseExcelInt64(string value, out long result)
+        {
+            var t = value.Trim();
+            if (long.TryParse(t, NumberStyles.Integer, CultureInfo.InvariantCulture, out result))
+                return true;
+            if (double.TryParse(t, NumberStyles.Any, CultureInfo.InvariantCulture, out var d))
+            {
+                result = (long)Math.Round(d);
+                return true;
+            }
+            result = 0;
+            return false;
         }
     }
 }

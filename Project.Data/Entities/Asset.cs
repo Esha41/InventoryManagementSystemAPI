@@ -35,11 +35,6 @@ namespace Ettad.Data.Entities
         public AssetStatus? Status { get; set; }
 
         /// <summary>
-        /// Internal asset tag/barcode number
-        /// </summary>
-        public string? AssetTag { get; set; }
-
-        /// <summary>
         /// Date when the asset was purchased
         /// </summary>
         public DateTime? PurchaseDate { get; set; }
@@ -50,14 +45,14 @@ namespace Ettad.Data.Entities
         public DateTime? WarrantyExpiryDate { get; set; }
 
         /// <summary>
-        /// Physical condition of the asset
-        /// </summary>
-        public string? Condition { get; set; }
-
-        /// <summary>
         /// Original purchase price
         /// </summary>
         public decimal? PurchasePrice { get; set; }
+
+        /// <summary>
+        /// Optional delivery receipt reference
+        /// </summary>
+        public string? DeliveryReceipt { get; set; }
 
         /// <summary>
         /// General notes about the asset
@@ -76,6 +71,12 @@ namespace Ettad.Data.Entities
 
         public long BatchId { get; set; }
 
+        public long? SupplierId { get; set; }
+
+        public long? ManufacturerId { get; set; }
+
+        public long? PrimaryPurposId { get; set; }
+
         #region Navigation Properties
 
         public BaseItem Item { get; set; }
@@ -85,6 +86,12 @@ namespace Ettad.Data.Entities
         public ICollection<AssetAssignment> Assignments { get; set; }
         public ICollection<AssetHistory> History { get; set; }
         public ICollection<AssetSupplyDetail> SupplyDetails { get; set; }
+
+        public Supplier Supplier { get; set; }
+
+        public Manufacturer Manufacturer { get; set; }
+
+        public PrimaryPurpos PrimaryPurpos { get; set; }
 
         #endregion
     }

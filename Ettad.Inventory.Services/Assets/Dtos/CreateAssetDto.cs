@@ -14,17 +14,30 @@ namespace Ettad.Inventory.Service.Assets.Dtos
 
         public long DepotId { get; set; }
 
-        public string? AssetTag { get; set; }
-
         public DateTime? PurchaseDate { get; set; }
 
         public DateTime? WarrantyExpiryDate { get; set; }
 
-        public string? Condition { get; set; }
-
         public decimal? PurchasePrice { get; set; }
 
+        public string? DeliveryReceipt { get; set; }
+
         public string? Notes { get; set; }
+
+        public long? SupplierId { get; set; }
+
+        public long? ManufacturerId { get; set; }
+
+        public long? PrimaryPurposId { get; set; }
+
+        /// <summary>Optional: assign to this employee on intake (uses the employee's department only; do not send <see cref="AssignToDepartmentId"/>).</summary>
+        public long? AssignToEmployeeId { get; set; }
+
+        /// <summary>Optional: department-only intake assignment. Omit when <see cref="AssignToEmployeeId"/> is set.</summary>
+        public long? AssignToDepartmentId { get; set; }
+
+        /// <summary>Optional notes stored on the asset assignment when intake assignment is created.</summary>
+        public string? AssignmentNotes { get; set; }
     }
 }
 

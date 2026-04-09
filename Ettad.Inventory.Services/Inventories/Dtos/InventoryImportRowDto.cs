@@ -16,11 +16,13 @@ namespace Ettad.Inventory.Service.Inventories.Dtos
         public string? Supplier { get; set; }
         public string? Manufacturer { get; set; }
         public string? Country { get; set; }
+        public string? PrimaryPurpose { get; set; }
         
         // Internal IDs (populated during import processing)
         public long? SupplierId { get; set; }
         public long? ManufacturerId { get; set; }
         public long? CountryId { get; set; }
+        public long? PrimaryPurposId { get; set; }
         
         public long OriginalQuantity { get; set; }
         public string? BatchNo { get; set; }

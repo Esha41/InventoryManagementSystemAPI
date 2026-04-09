@@ -6,6 +6,8 @@ namespace Ettad.Inventory.Service.Inventories.Dtos
 
         public string? InvoiceNumber { get; set; }
 
+        public string? DeliveryReceipt { get; set; }
+
         public DateTime? InvoiceDate { get; set; }
 
         public DateTime? RecievedDate { get; set; }
@@ -38,5 +40,7 @@ namespace Ettad.Inventory.Service.Inventories.Dtos
         public bool ReadyForIssue { get; set; } = true;
 
         public long OriginalQuantity { get; set; }
+
+        public long? PrimaryPurposId { get; set; }
     }
 }

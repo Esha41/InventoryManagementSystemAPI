@@ -70,5 +70,46 @@ namespace Ettad.Lookups.Services.Implementation
 
             return hasAccess;
         }
+
+        public async Task<List<long>?> GetUserAccessibleDepotIdsAsync(CancellationToken cancellationToken = default)
+        {
+            if (_currentUserService.IsSuperAdmin)
+            {
+                _logger.LogDebug("SuperAdmin — unrestricted depot access");
+                return null;
+            }
+
+            var hasViewAll = await _permissionService.HasPermissionAsync("Permissions.Depots.ViewAll");
+            if (hasViewAll)
+            {
+                _logger.LogDebug("User has Depots.ViewAll — unrestricted depot access");
+                return null;
+            }
+
+            var canReadScoped = await _permissionService.HasPermissionAsync("Permissions.Depots.View")
+                || await _permissionService.HasPermissionAsync("Permissions.Inventory.View");
+            if (!canReadScoped)
+            {
+                _logger.LogDebug("User {UserId} lacks Depots.View/Inventory.View — no depot access", _currentUserService.UserId);
+                return new List<long>();
+            }
+
+            var userId = _currentUserService.UserId;
+            if (string.IsNullOrEmpty(userId))
+            {
+                _logger.LogWarning("UserId is null — returning empty depot list");
+                return new List<long>();
+            }
+
+            var depotIds = await _userDepotRepository
+                .Find(ud => ud.UserId == userId)
+                .Select(ud => ud.DepotId)
+                .ToListAsync(cancellationToken);
+
+            _logger.LogDebug("User {UserId} has access to {Count} depots: [{DepotIds}]",
+                userId, depotIds.Count, string.Join(", ", depotIds));
+
+            return depotIds;
+        }
     }
 }
