@@ -25,14 +25,6 @@ namespace Ettad.EntityFramework.Configurations
                 .HasConversion<int>()
                 .HasDefaultValue(SupplyFulfillmentStatus.Partial);
 
-            builder.Property(x => x.ReceiverName)
-                .IsRequired(false)
-                .HasMaxLength(255);
-
-            builder.Property(x => x.ReceiverMilitaryId)
-                .IsRequired(false)
-                .HasMaxLength(100);
-
             builder.Property(x => x.Location)
                 .IsRequired(false)
                 .HasMaxLength(500);
@@ -52,6 +44,7 @@ namespace Ettad.EntityFramework.Configurations
             builder.HasIndex(x => x.OrderId);
             builder.HasIndex(x => x.SubmissionStatus);
             builder.HasIndex(x => x.DepartmentId);
+            builder.HasIndex(x => x.ReceiverEmployeeId);
 
             // Relationships
             builder.HasOne(x => x.Order)
@@ -72,10 +65,10 @@ namespace Ettad.EntityFramework.Configurations
                 .HasForeignKey(x => x.CustodianId)
                 .OnDelete(DeleteBehavior.Restrict);
 
-            builder.HasOne(x => x.ReceiverRank)
+            builder.HasOne(x => x.ReceiverEmployee)
                 .WithMany()
                 .IsRequired(false)
-                .HasForeignKey(x => x.ReceiverRankId)
+                .HasForeignKey(x => x.ReceiverEmployeeId)
                 .OnDelete(DeleteBehavior.Restrict);
         }
     }

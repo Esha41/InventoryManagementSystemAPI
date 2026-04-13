@@ -145,7 +145,7 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
 					nameof(Supply.Order),
 					$"{nameof(Supply.Order)}.{nameof(Order.RequestItems)}",
 					$"{nameof(Supply.Order)}.{nameof(Order.RequestItems)}.{nameof(RequestItem.Item)}",
-					nameof(Supply.ReceiverRank),
+					nameof(Supply.ReceiverEmployee),
 					$"{nameof(Supply.SupplyDetails)}.{nameof(SupplyDetail.Item)}"
 				);
 
@@ -197,7 +197,7 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
                     nameof(Supply.Order),
                     $"{nameof(Supply.Order)}.{nameof(Order.RequestItems)}",
                     $"{nameof(Supply.Order)}.{nameof(Order.RequestItems)}.{nameof(RequestItem.Item)}",
-                    nameof(Supply.ReceiverRank),
+                    nameof(Supply.ReceiverEmployee),
                     $"{nameof(Supply.SupplyDetails)}.{nameof(SupplyDetail.Item)}"
                 );
 
@@ -263,7 +263,7 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
 					nameof(Supply.Order),
 					$"{nameof(Supply.Order)}.{nameof(Order.RequestItems)}",
 					$"{nameof(Supply.Order)}.{nameof(Order.RequestItems)}.{nameof(RequestItem.Item)}",
-					nameof(Supply.ReceiverRank),
+					nameof(Supply.ReceiverEmployee),
 					$"{nameof(Supply.SupplyDetails)}.{nameof(SupplyDetail.Item)}"
 				);
 
@@ -321,7 +321,7 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
 					false,
 					nameof(Supply.Order),
 					$"{nameof(Supply.Order)}.{nameof(Order.RequestItems)}",
-					nameof(Supply.ReceiverRank),
+					nameof(Supply.ReceiverEmployee),
 					$"{nameof(Supply.SupplyDetails)}.{nameof(SupplyDetail.Item)}"
 				);
 
@@ -1270,9 +1270,15 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
 				}
 
 				// Update receiver information and submission metadata
-				supply.RecieverName = inputDto.RecieverName;
-				supply.ReceiverRankId = inputDto.ReceiverRankId;
-				supply.RecieverMilitaryId = inputDto.RecieverMilitaryId;
+				var receiverEmployee = await _context.Employees
+					.AsNoTracking()
+					.FirstOrDefaultAsync(e => e.Id == inputDto.ReceiverEmployeeId && !e.IsDeleted);
+				if (receiverEmployee == null)
+				{
+					return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, "Receiver employee not found.");
+				}
+
+				supply.ReceiverEmployeeId = inputDto.ReceiverEmployeeId;
 				supply.Notes = inputDto.Notes;
 				supply.SubmissionStatus = SupplySubmissionStatus.Submitted;
 				supply.FulfillmentStatus = CalculateFulfillmentStatus(supply);

@@ -1,5 +1,6 @@
 using AutoMapper;
 using Ettad.Data.Entities;
+using Ettad.Inventory.Service.Assets.Dtos;
 using Ettad.Inventory.Service.AssetSupply.Dtos;
 using Ettad.Module.lookup.Dtos;
 using Ettad.User.Services.DTO;
@@ -13,7 +14,7 @@ namespace Ettad.Inventory.Service.AssetSupply.Profiles
             // Entity to DTO mappings
             CreateMap<Ettad.Data.Entities.AssetSupply, AssetSupplyDto>()
                 .ForMember(dest => dest.Department, opt => opt.MapFrom(src => src.Department))
-                .ForMember(dest => dest.ReceiverRank, opt => opt.MapFrom(src => src.ReceiverRank))
+                .ForMember(dest => dest.ReceiverEmployee, opt => opt.MapFrom(src => src.ReceiverEmployee))
                 .ForMember(dest => dest.Custodian, opt => opt.MapFrom(src => src.Custodian));
 
             CreateMap<AssetSupplyDetail, AssetSupplyDetailDto>()
@@ -39,7 +40,7 @@ namespace Ettad.Inventory.Service.AssetSupply.Profiles
                 .ForMember(dest => dest.Order, opt => opt.Ignore())
                 .ForMember(dest => dest.Department, opt => opt.Ignore())
                 .ForMember(dest => dest.Custodian, opt => opt.Ignore())
-                .ForMember(dest => dest.ReceiverRank, opt => opt.Ignore())
+                .ForMember(dest => dest.ReceiverEmployee, opt => opt.Ignore())
                 .ForMember(dest => dest.SupplyDetails, opt => opt.Ignore())
                 .ForMember(dest => dest.Assignments, opt => opt.Ignore());
 

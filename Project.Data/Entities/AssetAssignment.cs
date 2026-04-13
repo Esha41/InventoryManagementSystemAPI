@@ -80,19 +80,9 @@ namespace Ettad.Data.Entities
         public string? ConditionOnReturn { get; set; }
 
         /// <summary>
-        /// Name of the receiver when assignment was made
+        /// Employee receiving the assignment (name, military ID, and rank come from this record).
         /// </summary>
-        public string? ReceiverName { get; set; }
-
-        /// <summary>
-        /// Military ID of the receiver
-        /// </summary>
-        public string? ReceiverMilitaryId { get; set; }
-
-        /// <summary>
-        /// Rank of the receiver
-        /// </summary>
-        public long? ReceiverRankId { get; set; }
+        public long? ReceiverEmployeeId { get; set; }
 
         #region Navigation Properties
 
@@ -101,7 +91,7 @@ namespace Ettad.Data.Entities
         public AssetSupply AssetSupply { get; set; }
         public Department Department { get; set; }
         public Employee? Custodian { get; set; }
-        public Rank ReceiverRank { get; set; }
+        public Employee? ReceiverEmployee { get; set; }
 
         #endregion
     }

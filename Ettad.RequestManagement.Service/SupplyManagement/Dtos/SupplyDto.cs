@@ -1,4 +1,5 @@
 using Ettad.Data.Enums;
+using Ettad.Inventory.Service.Assets.Dtos;
 using Ettad.RequestManagement.Service.Orders.Dto;
 using Ettad.Inventory.Service.Common.Dtos;
 using Ettad.Module.lookup.Dtos;
@@ -11,16 +12,14 @@ namespace Ettad.RequestManagement.Service.SupplyManagement.Dtos
         public long Id { get; set; }
         public long OrderId { get; set; }
         public DateTime? SupplyDate { get; set; }
-        public string? RecieverName { get; set; }
-        public long? ReceiverRankId { get; set; }
-        public string? RecieverMilitaryId { get; set; }
+        public long? ReceiverEmployeeId { get; set; }
         public SupplySubmissionStatus SubmissionStatus { get; set; }
         public SupplyFulfillmentStatus FulfillmentStatus { get; set; }
         public string? Notes { get; set; }
 
         #region Navigation Properties
         public OrderDto Order { get; set; }
-        public RankDto? ReceiverRank { get; set; }
+        public EmployeeDto? ReceiverEmployee { get; set; }
         public List<SupplyDetailDto> SupplyDetails { get; set; } = new();
         public List<FileUploadDto> Files { get; set; } = new();
         #endregion

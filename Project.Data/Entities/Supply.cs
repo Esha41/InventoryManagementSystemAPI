@@ -7,9 +7,7 @@ namespace Ettad.Data.Entities
     {
         public long OrderId { get; set; }
         public DateTime? SupplyDate { get; set; }
-        public string? RecieverName { get; set; }
-        public long? ReceiverRankId { get; set; }
-        public string? RecieverMilitaryId { get; set; }
+        public long? ReceiverEmployeeId { get; set; }
         public SupplySubmissionStatus SubmissionStatus { get; set; }
         public SupplyFulfillmentStatus FulfillmentStatus { get; set; }
         public string? Notes { get; set; }
@@ -17,7 +15,7 @@ namespace Ettad.Data.Entities
         #region Navigation Properties
 
         public Order Order { get; set; }
-        public Rank ReceiverRank { get; set; }
+        public Employee? ReceiverEmployee { get; set; }
         public ICollection<SupplyDetail> SupplyDetails { get; set; }
 
         #endregion
