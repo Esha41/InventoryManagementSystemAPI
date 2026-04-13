@@ -4,6 +4,7 @@ using Ettad.EntityFramework.DataBaseContext;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Ettad.EntityFramework.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260406122259_MissingMigration")]
+    partial class MissingMigration
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -396,8 +399,16 @@ namespace Ettad.EntityFramework.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
 
+                    b.Property<string>("AssetTag")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
                     b.Property<long>("BatchId")
                         .HasColumnType("bigint");
+
+                    b.Property<string>("Condition")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
 
                     b.Property<string>("CreatedBy")
                         .HasColumnType("nvarchar(max)");
@@ -431,9 +442,6 @@ namespace Ettad.EntityFramework.Migrations
                     b.Property<long>("ItemId")
                         .HasColumnType("bigint");
 
-                    b.Property<long?>("ManufacturerId")
-                        .HasColumnType("bigint");
-
                     b.Property<DateTime?>("ModificationDate")
                         .HasColumnType("datetime2");
 
@@ -443,9 +451,6 @@ namespace Ettad.EntityFramework.Migrations
                     b.Property<string>("Notes")
                         .HasMaxLength(5000)
                         .HasColumnType("nvarchar(max)");
-
-                    b.Property<long?>("PrimaryPurposId")
-                        .HasColumnType("bigint");
 
                     b.Property<DateTime?>("PurchaseDate")
                         .HasColumnType("datetime2");
@@ -464,9 +469,6 @@ namespace Ettad.EntityFramework.Migrations
                     b.Property<int?>("Status")
                         .HasColumnType("int");
 
-                    b.Property<long?>("SupplierId")
-                        .HasColumnType("bigint");
-
                     b.Property<DateTime?>("WarrantyExpiryDate")
                         .HasColumnType("datetime2");
 
@@ -482,18 +484,12 @@ namespace Ettad.EntityFramework.Migrations
 
                     b.HasIndex("ItemId");
 
-                    b.HasIndex("ManufacturerId");
-
-                    b.HasIndex("PrimaryPurposId");
-
                     b.HasIndex("RFID")
                         .HasFilter("[RFID] IS NOT NULL AND [IsDeleted] = 0");
 
                     b.HasIndex("SerialNumber")
                         .IsUnique()
                         .HasFilter("[SerialNumber] IS NOT NULL AND [IsDeleted] = 0");
-
-                    b.HasIndex("SupplierId");
 
                     b.ToTable("Assets", (string)null);
                 });
@@ -1116,11 +1112,18 @@ namespace Ettad.EntityFramework.Migrations
                     b.Property<string>("ModifiedBy")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<long?>("PrimaryPurposId")
+                        .HasColumnType("bigint");
+
                     b.HasKey("Id");
 
-                    b.HasIndex("DepotId", "BatchNumber")
+                    b.HasIndex("BatchNumber")
                         .IsUnique()
                         .HasFilter("[IsDeleted] = 0");
+
+                    b.HasIndex("DepotId");
+
+                    b.HasIndex("PrimaryPurposId");
 
                     b.ToTable("Batches", (string)null);
                 });
@@ -4542,10 +4545,6 @@ namespace Ettad.EntityFramework.Migrations
                     b.Property<long?>("BulletDiameterUnitId")
                         .HasColumnType("bigint");
 
-                    b.Property<string>("Caliber")
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
                     b.Property<long?>("CaseTypeId")
                         .HasColumnType("bigint");
 
@@ -4781,21 +4780,6 @@ namespace Ettad.EntityFramework.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("Ettad.Data.Entities.Manufacturer", "Manufacturer")
-                        .WithMany()
-                        .HasForeignKey("ManufacturerId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.HasOne("Ettad.Data.Entities.PrimaryPurpos", "PrimaryPurpos")
-                        .WithMany()
-                        .HasForeignKey("PrimaryPurposId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.HasOne("Ettad.Data.Entities.Supplier", "Supplier")
-                        .WithMany()
-                        .HasForeignKey("SupplierId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
                     b.Navigation("Batch");
 
                     b.Navigation("CurrentAssignment");
@@ -4803,12 +4787,6 @@ namespace Ettad.EntityFramework.Migrations
                     b.Navigation("Depot");
 
                     b.Navigation("Item");
-
-                    b.Navigation("Manufacturer");
-
-                    b.Navigation("PrimaryPurpos");
-
-                    b.Navigation("Supplier");
                 });
 
             modelBuilder.Entity("Ettad.Data.Entities.AssetAssignment", b =>
@@ -5054,7 +5032,14 @@ namespace Ettad.EntityFramework.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("Ettad.Data.Entities.PrimaryPurpos", "PrimaryPurpos")
+                        .WithMany()
+                        .HasForeignKey("PrimaryPurposId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.Navigation("Depot");
+
+                    b.Navigation("PrimaryPurpos");
                 });
 
             modelBuilder.Entity("Ettad.Data.Entities.Employee", b =>
