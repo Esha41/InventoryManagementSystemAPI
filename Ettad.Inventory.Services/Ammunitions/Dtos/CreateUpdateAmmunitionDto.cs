@@ -6,6 +6,8 @@ namespace Ettad.Inventory.Service.Ammunitions.Dtos
     {
         public string? ArmNumber { get; set; }
 
+        public string? Caliber { get; set; }
+
         public decimal? BulletDiameter { get; set; }
 
         public long? BulletDiameterUnitId { get; set; }
@@ -17,8 +19,6 @@ namespace Ettad.Inventory.Service.Ammunitions.Dtos
         public decimal? TotalWeight { get; set; }
 
         public long? NatureOptionId { get; set; }
-
-        public long? PrimaryPurposId { get; set; }
 
         public long? ProjectileColorId { get; set; }
 

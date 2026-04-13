@@ -27,17 +27,37 @@ namespace Ettad.Inventory.Service.Batches.Validators
                     .MaximumLength(500).When(x => !string.IsNullOrWhiteSpace(x.RFID))
                     .WithMessage("RFID cannot exceed 500 characters");
 
-                item.RuleFor(x => x.AssetTag)
-                    .MaximumLength(500).When(x => !string.IsNullOrWhiteSpace(x.AssetTag))
-                    .WithMessage("Asset tag cannot exceed 500 characters");
-
-                item.RuleFor(x => x.Condition)
-                    .MaximumLength(500).When(x => !string.IsNullOrWhiteSpace(x.Condition))
-                    .WithMessage("Condition cannot exceed 500 characters");
-
                 item.RuleFor(x => x.Notes)
                     .MaximumLength(5000).When(x => !string.IsNullOrWhiteSpace(x.Notes))
                     .WithMessage("Notes cannot exceed 5000 characters");
+
+                item.RuleFor(x => x.AssignmentNotes)
+                    .MaximumLength(2000).When(x => !string.IsNullOrWhiteSpace(x.AssignmentNotes))
+                    .WithMessage("Assignment notes cannot exceed 2000 characters");
+
+                item.RuleFor(x => x.SupplierId)
+                    .GreaterThan(0).When(x => x.SupplierId.HasValue)
+                    .WithMessage("Supplier ID must be greater than 0 when provided");
+
+                item.RuleFor(x => x.ManufacturerId)
+                    .GreaterThan(0).When(x => x.ManufacturerId.HasValue)
+                    .WithMessage("Manufacturer ID must be greater than 0 when provided");
+
+                item.RuleFor(x => x.PrimaryPurposId)
+                    .GreaterThan(0).When(x => x.PrimaryPurposId.HasValue)
+                    .WithMessage("Primary purpose ID must be greater than 0 when provided");
+
+                // Use AssignToEmployeeId as the rule target so PropertyName is Items[i].AssignToEmployeeId (see MergeFluentValidationIntoImportPreview).
+                item.RuleFor(x => x.AssignToEmployeeId)
+                    .Custom((_, context) =>
+                    {
+                        var row = (BatchAssetUpdateItem)context.InstanceToValidate;
+                        if (row.UpdateAssignment && row.AssignToEmployeeId.HasValue && row.AssignToDepartmentId.HasValue)
+                        {
+                            context.AddFailure("Specify either assign to employee or assign to department, not both.");
+                        }
+                    })
+                    .When(x => x.UpdateAssignment);
             });
         }
     }

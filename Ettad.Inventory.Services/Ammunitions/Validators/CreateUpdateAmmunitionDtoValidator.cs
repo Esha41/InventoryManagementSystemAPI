@@ -34,6 +34,10 @@ namespace Ettad.Inventory.Service.Ammunitions.Validators
                 .MaximumLength(200).When(x => !string.IsNullOrEmpty(x.ArmNumber))
                 .WithMessage("Arm number cannot exceed 200 characters");
 
+            RuleFor(x => x.Caliber)
+                .MaximumLength(100).When(x => !string.IsNullOrEmpty(x.Caliber))
+                .WithMessage("Caliber cannot exceed 100 characters");
+
             RuleFor(x => x.Primer)
                 .MaximumLength(100).When(x => !string.IsNullOrEmpty(x.Primer))
                 .WithMessage("Primer cannot exceed 100 characters");
@@ -63,9 +67,9 @@ namespace Ettad.Inventory.Service.Ammunitions.Validators
                 .GreaterThan(0).When(x => x.NatureOptionId.HasValue)
                 .WithMessage("Nature option ID must be greater than 0 when provided");
 
-            RuleFor(x => x.PrimaryPurposId)
-                .GreaterThan(0).When(x => x.PrimaryPurposId.HasValue)
-                .WithMessage("Primary purpose ID must be greater than 0 when provided");
+            RuleForEach(x => x.PrimaryPurposIds)
+                .GreaterThan(0)
+                .WithMessage("Primary purpose ID must be greater than 0");
 
             RuleFor(x => x.ProjectileColorId)
                 .GreaterThan(0).When(x => x.ProjectileColorId.HasValue)

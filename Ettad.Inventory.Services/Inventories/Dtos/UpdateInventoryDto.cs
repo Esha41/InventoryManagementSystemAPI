@@ -6,6 +6,8 @@ namespace Ettad.Inventory.Service.Inventories.Dtos
 
         public string? InvoiceNumber { get; set; }
 
+        public string? DeliveryReceipt { get; set; }
+
         public DateTime? InvoiceDate { get; set; }
 
         public DateTime? RecievedDate { get; set; }
@@ -15,6 +17,11 @@ namespace Ettad.Inventory.Service.Inventories.Dtos
         public string? Notes { get; set; }
 
         public List<UpdateInventoryDetailDto> InventoryDetails { get; set; } = new();
+
+        /// <summary>
+        /// Existing uploaded file master ids the user removed in UI; deleted during update.
+        /// </summary>
+        public List<long> RemovedFileIds { get; set; } = new();
     }
 
     public class UpdateInventoryDetailDto
@@ -40,6 +47,8 @@ namespace Ettad.Inventory.Service.Inventories.Dtos
         public bool ReadyForIssue { get; set; } = true;
 
         public long OriginalQuantity { get; set; }
+
+        public long? PrimaryPurposId { get; set; }
     }
 }
 

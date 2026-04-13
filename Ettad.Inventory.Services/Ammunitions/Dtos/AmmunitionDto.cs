@@ -15,6 +15,8 @@ namespace Ettad.Inventory.Service.Ammunitions.Dtos
 
         public string? ArmNumber { get; set; }
 
+        public string? Caliber { get; set; }
+
         public bool IsLinked { get; set; }
 
         public string? Primer { get; set; }
@@ -22,8 +24,6 @@ namespace Ettad.Inventory.Service.Ammunitions.Dtos
         public decimal? TotalWeight { get; set; }
 
         public long? NatureOptionId { get; set; }
-
-        public long? PrimaryPurposId { get; set; }
 
         public long? ProjectileColorId { get; set; }
 
@@ -41,7 +41,6 @@ namespace Ettad.Inventory.Service.Ammunitions.Dtos
 
         public UnitDto BulletDiameterUnit { get; set; }
         public NatureOptionDto NatureOption { get; set; }
-        public PrimaryPurposDto PrimaryPurpos { get; set; }
         public ColorDto ProjectileColor { get; set; }
         public ProjectailMaterialDto ProjectailMaterial { get; set; }
         public CaseTypeDto CaseType { get; set; }

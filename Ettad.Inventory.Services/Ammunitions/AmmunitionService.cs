@@ -110,7 +110,7 @@ namespace Ettad.Inventory.Service.Ammunitions
                     false,
                     nameof(Ammunition.BulletDiameterUnit),
                     nameof(Ammunition.NatureOption),
-                    nameof(Ammunition.PrimaryPurpos),
+                    "BaseItemPrimaryPurposes.PrimaryPurpos",
                     nameof(Ammunition.ProjectileColor),
                     nameof(Ammunition.ProjectailMaterial),
                     nameof(Ammunition.CaseType),
@@ -154,7 +154,7 @@ namespace Ettad.Inventory.Service.Ammunitions
                     false,
                     nameof(Ammunition.BulletDiameterUnit),
                     nameof(Ammunition.NatureOption),
-                    nameof(Ammunition.PrimaryPurpos),
+                    "BaseItemPrimaryPurposes.PrimaryPurpos",
                     nameof(Ammunition.ProjectileColor),
                     nameof(Ammunition.ProjectailMaterial),
                     nameof(Ammunition.CaseType),
@@ -203,7 +203,7 @@ namespace Ettad.Inventory.Service.Ammunitions
                     false,
                     nameof(Ammunition.BulletDiameterUnit),
                     nameof(Ammunition.NatureOption),
-                    nameof(Ammunition.PrimaryPurpos),
+                    "BaseItemPrimaryPurposes.PrimaryPurpos",
                     nameof(Ammunition.ProjectileColor),
                     nameof(Ammunition.ProjectailMaterial),
                     nameof(Ammunition.CaseType),
@@ -264,7 +264,7 @@ namespace Ettad.Inventory.Service.Ammunitions
                     false,
                     nameof(Ammunition.BulletDiameterUnit),
                     nameof(Ammunition.NatureOption),
-                    nameof(Ammunition.PrimaryPurpos),
+                    "BaseItemPrimaryPurposes.PrimaryPurpos",
                     nameof(Ammunition.ProjectileColor),
                     nameof(Ammunition.ProjectailMaterial),
                     nameof(Ammunition.CaseType),
@@ -339,6 +339,14 @@ namespace Ettad.Inventory.Service.Ammunitions
 
                 var createdAmmunition = await _ammunitionRepository.AddAsync(ammunition);
 
+                if (inputDto.PrimaryPurposIds != null && inputDto.PrimaryPurposIds.Any())
+                {
+                    createdAmmunition.BaseItemPrimaryPurposes = inputDto.PrimaryPurposIds
+                        .Select(pid => new BaseItemPrimaryPurpos { BaseItemId = createdAmmunition.Id, PrimaryPurposId = pid })
+                        .ToList();
+                    await _context.SaveChangesAsync();
+                }
+
                 if (files != null && files.Any())
                 {
                     await _fileUploadService.UploadFilesForEntityAsync(
@@ -389,6 +397,20 @@ namespace Ettad.Inventory.Service.Ammunitions
                 existingAmmunition.Nsn = string.IsNullOrWhiteSpace(inputDto.Nsn) ? null : inputDto.Nsn.Trim();
 
                 await _ammunitionRepository.UpdateAsync(existingAmmunition);
+
+                var existingPurposes = await _context.BaseItemPrimaryPurposes
+                    .Where(x => x.BaseItemId == id)
+                    .ToListAsync();
+                _context.BaseItemPrimaryPurposes.RemoveRange(existingPurposes);
+
+                if (inputDto.PrimaryPurposIds != null && inputDto.PrimaryPurposIds.Any())
+                {
+                    var newPurposes = inputDto.PrimaryPurposIds
+                        .Select(pid => new BaseItemPrimaryPurpos { BaseItemId = id, PrimaryPurposId = pid })
+                        .ToList();
+                    await _context.BaseItemPrimaryPurposes.AddRangeAsync(newPurposes);
+                }
+                await _context.SaveChangesAsync();
 
                 return APIOperationResponse<bool>.Success(true, "Ammunition updated successfully");
             }
@@ -472,6 +494,9 @@ namespace Ettad.Inventory.Service.Ammunitions
                 await using var transaction = await _context.Database.BeginTransactionAsync();
                 try
                 {
+                    await _context.Database.ExecuteSqlRawAsync(
+                        "DELETE FROM BaseItemPrimaryPurposes WHERE BaseItemId = {0}", id);
+
                     var ammoDeleted = await _context.Database.ExecuteSqlRawAsync(
                         "DELETE FROM Ammunitions WHERE Id = {0}", id);
 
@@ -593,7 +618,7 @@ namespace Ettad.Inventory.Service.Ammunitions
                         "الاسم*", "رقم الصنف*", "رقم الجزء", "رقم ARM", "NSN", "السعر", "الكمية الدنيا",
                         "قطر الرصاصة", "وحدة قطر الرصاصة", "الوزن الكلي", "مرتبط", "الكبسولة",
                         "نوع الغلاف", "المادة الدافعة", "التوافق", "قسم الخطر", "خيار الطبيعة",
-                        "الغرض الأساسي", "لون المقذوف", "مادة المقذوف",
+                        "الغرض الأساسي", "لون المقذوف", "مادة المقذوف", "العيار",
                         "رقم الأمم المتحدة", "التوزيع", "الرقم المرجعي", "التصنيف", "النوع", "ملاحظات"
                    }
                    : new[]
@@ -601,7 +626,7 @@ namespace Ettad.Inventory.Service.Ammunitions
                         "Name*", "Item No*", "Part No", "Arm Number", "NSN", "Price", "Minimum Quantity",
                         "Bullet Diameter", "Bullet Diameter Unit", "Total Weight", "Is Linked", "Primer",
                         "Case Type", "Propellant", "Compatibility", "Hazard Division", "Nature Option",
-                        "Primary Purpose", "Projectile Color", "Projectile Material",
+                        "Primary Purpose", "Projectile Color", "Projectile Material", "Caliber",
                         "UN Number", "Distribution", "Reference No", "Classification", "Type", "Notes"
                    };
 
@@ -612,7 +637,7 @@ namespace Ettad.Inventory.Service.Ammunitions
                 .Include(a => a.Compatibility)
                 .Include(a => a.HazardDivision)
                 .Include(a => a.NatureOption)
-                .Include(a => a.PrimaryPurpos)
+                .Include(a => a.BaseItemPrimaryPurposes).ThenInclude(bp => bp.PrimaryPurpos)
                 .Include(a => a.ProjectileColor)
                 .Include(a => a.ProjectailMaterial)
                 .Include(a => a.Classification)
@@ -645,15 +670,18 @@ namespace Ettad.Inventory.Service.Ammunitions
                         sheet.Cells[2, 15].Value = isAr ? firstAsset.Compatibility?.NameAr : firstAsset.Compatibility?.NameEn;
                         sheet.Cells[2, 16].Value = isAr ? firstAsset.HazardDivision?.NameAr : firstAsset.HazardDivision?.NameEn;
                         sheet.Cells[2, 17].Value = isAr ? firstAsset.NatureOption?.NameAr : firstAsset.NatureOption?.NameEn;
-                        sheet.Cells[2, 18].Value = isAr ? firstAsset.PrimaryPurpos?.NameAr : firstAsset.PrimaryPurpos?.NameEn;
+                        sheet.Cells[2, 18].Value = isAr
+                            ? firstAsset.BaseItemPrimaryPurposes?.FirstOrDefault()?.PrimaryPurpos?.NameAr
+                            : firstAsset.BaseItemPrimaryPurposes?.FirstOrDefault()?.PrimaryPurpos?.NameEn;
                         sheet.Cells[2, 19].Value = isAr ? firstAsset.ProjectileColor?.NameAr : firstAsset.ProjectileColor?.NameEn;
                         sheet.Cells[2, 20].Value = isAr ? firstAsset.ProjectailMaterial?.NameAr : firstAsset.ProjectailMaterial?.NameEn;
-                        sheet.Cells[2, 21].Value = firstAsset.UNNumber;
-                        sheet.Cells[2, 22].Value = firstAsset.Distribution;
-                        sheet.Cells[2, 23].Value = firstAsset.ReferenceNo;
-                        sheet.Cells[2, 24].Value = isAr ? firstAsset.Classification?.NameAr : firstAsset.Classification?.NameEn;
-                        sheet.Cells[2, 25].Value = isAr ? firstAsset.Type?.NameAr : firstAsset.Type?.NameEn;
-                        sheet.Cells[2, 26].Value = firstAsset.Notes;
+                        sheet.Cells[2, 21].Value = firstAsset.Caliber;
+                        sheet.Cells[2, 22].Value = firstAsset.UNNumber;
+                        sheet.Cells[2, 23].Value = firstAsset.Distribution;
+                        sheet.Cells[2, 24].Value = firstAsset.ReferenceNo;
+                        sheet.Cells[2, 25].Value = isAr ? firstAsset.Classification?.NameAr : firstAsset.Classification?.NameEn;
+                        sheet.Cells[2, 26].Value = isAr ? firstAsset.Type?.NameAr : firstAsset.Type?.NameEn;
+                        sheet.Cells[2, 27].Value = firstAsset.Notes;
                     }
                     else
                     {
@@ -687,8 +715,8 @@ namespace Ettad.Inventory.Service.Ammunitions
                     AddDataValidation(sheet, 18, "PrimaryPurposes");
                     AddDataValidation(sheet, 19, "ProjectileColors");
                     AddDataValidation(sheet, 20, "ProjectileMaterials");
-                    AddDataValidation(sheet, 24, "Classifications");
-                    AddDataValidation(sheet, 25, "ItemTypes");
+                    AddDataValidation(sheet, 25, "Classifications");
+                    AddDataValidation(sheet, 26, "ItemTypes");
                 }
             );
         }
@@ -760,6 +788,7 @@ namespace Ettad.Inventory.Service.Ammunitions
                 UNNumber = importDto.UNNumber,
                 Notes = importDto.Notes,
                 ArmNumber = importDto.ArmNumber,
+                Caliber = importDto.Caliber,
                 BulletDiameter = importDto.BulletDiameter,
                 IsLinked = importDto.IsLinked,
                 Primer = importDto.Primer,
@@ -772,7 +801,9 @@ namespace Ettad.Inventory.Service.Ammunitions
             dto.CompatibilityId = FindLookupIdCached("Compatibilities", importDto.Compatibility);
             dto.HazardDivisionId = FindLookupIdCached("HazardDivisions", importDto.HazardDivision);
             dto.NatureOptionId = FindLookupIdCached("NatureOptions", importDto.NatureOption);
-            dto.PrimaryPurposId = FindLookupIdCached("PrimaryPurposes", importDto.PrimaryPurpose);
+            var primaryPurposId = FindLookupIdCached("PrimaryPurposes", importDto.PrimaryPurpose);
+            if (primaryPurposId.HasValue)
+                dto.PrimaryPurposIds = new List<long> { primaryPurposId.Value };
             dto.ProjectileColorId = FindLookupIdCached("ProjectileColors", importDto.ProjectileColor);
             dto.ProjectailMaterialId = FindLookupIdCached("ProjectileMaterials", importDto.ProjectileMaterial);
             dto.ClassificationId = FindLookupIdCached("Classifications", importDto.Classification);
@@ -862,6 +893,7 @@ namespace Ettad.Inventory.Service.Ammunitions
                 { "Primary Purpose", nameof(AmmunitionImportDto.PrimaryPurpose) },
                 { "Projectile Color", nameof(AmmunitionImportDto.ProjectileColor) },
                 { "Projectile Material", nameof(AmmunitionImportDto.ProjectileMaterial) },
+                { "Caliber", nameof(AmmunitionImportDto.Caliber) },
                 { "UN Number", nameof(AmmunitionImportDto.UNNumber) },
                 { "Distribution", nameof(AmmunitionImportDto.Distribution) },
                 { "Reference No", nameof(AmmunitionImportDto.ReferenceNo) },
@@ -889,6 +921,7 @@ namespace Ettad.Inventory.Service.Ammunitions
                 { "الغرض الأساسي", nameof(AmmunitionImportDto.PrimaryPurpose) },
                 { "لون المقذوف", nameof(AmmunitionImportDto.ProjectileColor) },
                 { "مادة المقذوف", nameof(AmmunitionImportDto.ProjectileMaterial) },
+                { "العيار", nameof(AmmunitionImportDto.Caliber) },
                 { "رقم الأمم المتحدة", nameof(AmmunitionImportDto.UNNumber) },
                 { "التوزيع", nameof(AmmunitionImportDto.Distribution) },
                 { "الرقم المرجعي", nameof(AmmunitionImportDto.ReferenceNo) },

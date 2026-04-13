@@ -11,7 +11,6 @@ namespace Ettad.Inventory.Service.AssetSupply.Dtos
         public long AssetSupplyId { get; set; }
         public long AssetId { get; set; }
         public string? AssetSerialNumber { get; set; }
-        public string? AssetTag { get; set; }
         public long ItemId { get; set; }
         public string? ItemName { get; set; }
         public int SequenceNo { get; set; }

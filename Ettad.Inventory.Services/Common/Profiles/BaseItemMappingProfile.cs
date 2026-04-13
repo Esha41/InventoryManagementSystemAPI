@@ -1,10 +1,7 @@
-﻿using Ettad.Data.Entities;
-using Ettad.Inventory.Service.Common.Dtos;
-using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using Ettad.Data.Entities;
+using Ettad.Inventory.Service.Common.Dtos;
 
 namespace Ettad.Inventory.Service.Common.Profiles
 {
@@ -12,13 +9,20 @@ namespace Ettad.Inventory.Service.Common.Profiles
     {
         public BaseItemMappingProfile()
         {
-            // BaseItem to BaseItemDto mapping (for polymorphic mapping from Ammunition, Explosive, Weapon, Accessory)
-            CreateMap<BaseItem, BaseItemDto>();
-            
-            // Explicit mappings for derived types to ensure ItemType is correctly mapped
-            CreateMap<Ammunition, BaseItemDto>();
-            CreateMap<Weapon, BaseItemDto>();
-            CreateMap<Explosive, BaseItemDto>();
+            CreateMap<BaseItem, BaseItemDto>()
+                .ForMember(dest => dest.PrimaryPurposes, opt => opt.MapFrom(src =>
+                    src.BaseItemPrimaryPurposes == null
+                        ? new List<PrimaryPurpos>()
+                        : src.BaseItemPrimaryPurposes.Where(x => x.PrimaryPurpos != null).Select(x => x.PrimaryPurpos).ToList()));
+
+            CreateMap<Ammunition, BaseItemDto>()
+                .IncludeBase<BaseItem, BaseItemDto>();
+            CreateMap<Weapon, BaseItemDto>()
+                .IncludeBase<BaseItem, BaseItemDto>();
+            CreateMap<Explosive, BaseItemDto>()
+                .IncludeBase<BaseItem, BaseItemDto>();
+            CreateMap<Accessory, BaseItemDto>()
+                .IncludeBase<BaseItem, BaseItemDto>();
         }
     }
 }

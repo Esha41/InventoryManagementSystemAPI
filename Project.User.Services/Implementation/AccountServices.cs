@@ -286,16 +286,16 @@ namespace Ettad.User.Services.Implementation
                     "server.invalidLogin");
             }
 
-            // Check if user already has an active session (single-session: block unless ForceLogin)
-            if (!loginInformation.ForceLogin && !string.IsNullOrEmpty(user.RefreshToken) && user.RefreshTokenExpiryDate.HasValue && user.RefreshTokenExpiryDate.Value > _dateTimeProvider.Now)
+            // Check if user already has an active session (single-session: block unless ForceLogin or same browser via refresh cookie)
+            if (!loginInformation.ForceLogin && !string.IsNullOrEmpty(user.RefreshToken) && user.RefreshTokenExpiryDate.HasValue && user.RefreshTokenExpiryDate.Value > _dateTimeProvider.Now && !RequestRefreshTokenMatchesUser(user))
             {
                 _logger.LogInformation(
-                    "[ADMIN LOGIN] BLOCKED - Already logged in elsewhere | Username: {Username} | UserId: {UserId} | IP: {ClientIP}",
+                    "[ADMIN LOGIN] BLOCKED - Active session exists | Username: {Username} | UserId: {UserId} | IP: {ClientIP}",
                     loginInformation.Username, user.Id, clientIp);
                 return APIOperationResponse<AuthenticatedResponse>.Fail(
                     ResponseType.Conflict,
                     CommonErrorCodes.ALREADY_LOGGED_IN,
-                    "You are already logged in on another device.");
+                    "An active session was found. This may be from a previous session or another device.");
             }
 
             // Record successful login
@@ -634,16 +634,16 @@ namespace Ettad.User.Services.Implementation
                     }
                 }
 
-                // Check if user already has an active session (single-session: block unless ForceLogin)
-                if (!loginInformation.ForceLogin && !string.IsNullOrEmpty(user.RefreshToken) && user.RefreshTokenExpiryDate.HasValue && user.RefreshTokenExpiryDate.Value > _dateTimeProvider.Now)
+                // Check if user already has an active session (single-session: block unless ForceLogin or same browser via refresh cookie)
+                if (!loginInformation.ForceLogin && !string.IsNullOrEmpty(user.RefreshToken) && user.RefreshTokenExpiryDate.HasValue && user.RefreshTokenExpiryDate.Value > _dateTimeProvider.Now && !RequestRefreshTokenMatchesUser(user))
                 {
                     _logger.LogInformation(
-                        "[LDAP LOGIN] BLOCKED - Already logged in elsewhere | Username: {Username} | UserId: {UserId} | IP: {ClientIP}",
+                        "[LDAP LOGIN] BLOCKED - Active session exists | Username: {Username} | UserId: {UserId} | IP: {ClientIP}",
                         resolvedUsername, user.Id, clientIp);
                     return APIOperationResponse<AuthenticatedResponse>.Fail(
                         ResponseType.Conflict,
                         CommonErrorCodes.ALREADY_LOGGED_IN,
-                        "You are already logged in on another device.");
+                        "An active session was found. This may be from a previous session or another device.");
                 }
 
                 // Step 10: Generate authentication response
@@ -732,6 +732,20 @@ namespace Ettad.User.Services.Implementation
                     CommonErrorCodes.SERVER_ERROR,
                     "server.unableToRefreshToken");
             }
+        }
+
+        /// <summary>
+        /// True when the login request carries the same refresh token cookie as the user's current session (same browser/client).
+        /// </summary>
+        private bool RequestRefreshTokenMatchesUser(ApplicationUser user)
+        {
+            var cookieToken = _httpContextAccessor.HttpContext?.Request.Cookies["refreshToken"];
+            if (string.IsNullOrEmpty(cookieToken) || string.IsNullOrEmpty(user.RefreshToken))
+                return false;
+            if (cookieToken != user.RefreshToken)
+                return false;
+            _logger.LogDebug("Request refresh token cookie matches user's active session (same client).");
+            return true;
         }
 
         private async Task<AuthenticatedResponse> CreateAndReturnAuthResponseAsync(ApplicationUser user, CancellationToken cancellationToken)

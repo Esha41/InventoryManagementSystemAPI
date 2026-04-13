@@ -91,16 +91,6 @@ namespace Ettad.Inventory.Service.AssetSupply.Dtos
         public string? RFID { get; set; }
 
         /// <summary>
-        /// Asset tag/barcode
-        /// </summary>
-        public string? AssetTag { get; set; }
-
-        /// <summary>
-        /// Current condition of the asset
-        /// </summary>
-        public string? Condition { get; set; }
-
-        /// <summary>
         /// Current status of the asset
         /// </summary>
         public AssetStatus? Status { get; set; }

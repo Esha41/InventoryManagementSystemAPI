@@ -27,6 +27,8 @@ namespace Ettad.Inventory.Service.Common.Dtos
         public long? ClassificationId { get; set; }
 
         public long? TypeId { get; set; }
+
+        public List<long>? PrimaryPurposIds { get; set; }
     }
 }
 

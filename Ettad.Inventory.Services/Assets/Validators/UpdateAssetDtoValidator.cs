@@ -18,17 +18,21 @@ namespace Ettad.Inventory.Service.Assets.Validators
                 .MaximumLength(500).When(x => !string.IsNullOrWhiteSpace(x.RFID))
                 .WithMessage("RFID cannot exceed 500 characters");
 
-            RuleFor(x => x.AssetTag)
-                .MaximumLength(500).When(x => !string.IsNullOrWhiteSpace(x.AssetTag))
-                .WithMessage("Asset tag cannot exceed 500 characters");
-
-            RuleFor(x => x.Condition)
-                .MaximumLength(500).When(x => !string.IsNullOrWhiteSpace(x.Condition))
-                .WithMessage("Condition cannot exceed 500 characters");
-
             RuleFor(x => x.Notes)
                 .MaximumLength(5000).When(x => !string.IsNullOrWhiteSpace(x.Notes))
                 .WithMessage("Notes cannot exceed 5000 characters");
+
+            RuleFor(x => x.SupplierId)
+                .GreaterThan(0).When(x => x.SupplierId.HasValue)
+                .WithMessage("Supplier ID must be greater than 0 when provided");
+
+            RuleFor(x => x.ManufacturerId)
+                .GreaterThan(0).When(x => x.ManufacturerId.HasValue)
+                .WithMessage("Manufacturer ID must be greater than 0 when provided");
+
+            RuleFor(x => x.PrimaryPurposId)
+                .GreaterThan(0).When(x => x.PrimaryPurposId.HasValue)
+                .WithMessage("Primary purpose ID must be greater than 0 when provided");
         }
     }
 }

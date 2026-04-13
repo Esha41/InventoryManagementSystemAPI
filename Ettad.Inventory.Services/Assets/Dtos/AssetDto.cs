@@ -24,23 +24,29 @@ namespace Ettad.Inventory.Service.Assets.Dtos
 
         public long? DepartmentId { get; set; }
 
+        public long? CustodianId { get; set; }
+
         public string? Location { get; set; }
 
         public AssetStatus? Status { get; set; }
-
-        public string? AssetTag { get; set; }
 
         public DateTime? PurchaseDate { get; set; }
 
         public DateTime? WarrantyExpiryDate { get; set; }
 
-        public string? Condition { get; set; }
-
         public decimal? PurchasePrice { get; set; }
+
+        public string? DeliveryReceipt { get; set; }
 
         public string? Notes { get; set; }
 
         public bool IsDeleted { get; set; }
+
+        public long? SupplierId { get; set; }
+
+        public long? ManufacturerId { get; set; }
+
+        public long? PrimaryPurposId { get; set; }
 
         #region Navigation Properties
 
@@ -49,6 +55,14 @@ namespace Ettad.Inventory.Service.Assets.Dtos
         public DepotDto Depot { get; set; }
 
         public DepartmentDto Department { get; set; }
+
+        public EmployeeDto? Custodian { get; set; }
+
+        public SupplierDto? Supplier { get; set; }
+
+        public ManufacturerDto? Manufacturer { get; set; }
+
+        public PrimaryPurposDto? PrimaryPurpos { get; set; }
 
         public List<FileUploadDto> Images { get; set; }
 

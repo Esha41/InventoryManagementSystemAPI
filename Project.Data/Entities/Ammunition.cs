@@ -12,6 +12,8 @@ namespace Ettad.Data.Entities
 
         public string? ArmNumber { get; set; }
 
+        public string? Caliber { get; set; }
+
         public bool IsLinked { get; set; }
        
         public string? Primer { get; set; }
@@ -19,8 +21,6 @@ namespace Ettad.Data.Entities
         public decimal? TotalWeight { get; set; }
 
         public long? NatureOptionId { get; set; }
-
-        public long? PrimaryPurposId { get; set; }
 
         public long? ProjectileColorId { get; set; }
 
@@ -38,7 +38,6 @@ namespace Ettad.Data.Entities
 
         public Unit BulletDiameterUnit { get; set; }
         public NatureOption NatureOption { get; set; }
-        public PrimaryPurpos PrimaryPurpos { get; set; }
         public Color ProjectileColor { get; set; }
         public ProjectailMaterial ProjectailMaterial { get; set; }
         public CaseType CaseType { get; set; }

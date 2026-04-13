@@ -18,7 +18,6 @@ namespace Ettad.Inventory.Service.AssetSupply.Profiles
 
             CreateMap<AssetSupplyDetail, AssetSupplyDetailDto>()
                 .ForMember(dest => dest.AssetSerialNumber, opt => opt.MapFrom(src => src.Asset != null ? src.Asset.SerialNumber : null))
-                .ForMember(dest => dest.AssetTag, opt => opt.MapFrom(src => src.Asset != null ? src.Asset.AssetTag : null))
                 .ForMember(dest => dest.ItemName, opt => opt.MapFrom(src => src.Item != null ? src.Item.Name : null))
                 .ForMember(dest => dest.Custodian, opt => opt.MapFrom(src => src.Custodian));
 

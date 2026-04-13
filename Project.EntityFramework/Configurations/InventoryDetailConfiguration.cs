@@ -69,6 +69,12 @@ namespace Ettad.EntityFramework.Configurations
                 .IsRequired(false)
                 .HasForeignKey(x => x.CountryId)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            builder.HasOne(x => x.PrimaryPurpos)
+                .WithMany()
+                .IsRequired(false)
+                .HasForeignKey(x => x.PrimaryPurposId)
+                .OnDelete(DeleteBehavior.Restrict);
         }
     }
 }

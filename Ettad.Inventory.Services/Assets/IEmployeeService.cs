@@ -1,5 +1,7 @@
 using Ettad.Inventory.Service.Assets.Dtos;
+using Ettad.Inventory.Services.Common;
 using Ettad.ResponseHandler.Models;
+using Microsoft.AspNetCore.Http;
 
 namespace Ettad.Inventory.Service.Assets
 {
@@ -10,6 +12,11 @@ namespace Ettad.Inventory.Service.Assets
         Task<APIOperationResponse<long>> CreateAsync(CreateUpdateEmployeeDto inputDto);
         Task<APIOperationResponse<bool>> UpdateAsync(long id, CreateUpdateEmployeeDto inputDto);
         Task<APIOperationResponse<bool>> DeleteAsync(long id);
+
+        Task<APIOperationResponse<byte[]>> GenerateImportTemplateAsync(string language = "en");
+        Task<APIOperationResponse<byte[]>> ExportAsync(string language = "en");
+        Task<APIOperationResponse<ImportResult<EmployeeExcelImportRowDto>>> ImportPreviewAsync(IFormFile file, string language = "en");
+        Task<APIOperationResponse<ImportResult<EmployeeExcelImportRowDto>>> ImportAsync(IFormFile file, string language = "en");
     }
 }
 

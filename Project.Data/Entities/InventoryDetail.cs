@@ -28,6 +28,8 @@ namespace Ettad.Data.Entities
 
         public bool IsLotEmpty { get; set; } = false;
 
+        public long? PrimaryPurposId { get; set; }
+
         public bool IsReturned { get; set; } = false;
 
         #region Navigation Properties
@@ -37,6 +39,7 @@ namespace Ettad.Data.Entities
         public Supplier Supplier { get; set; }
         public Manufacturer Manufacturer { get; set; }
         public Country Country { get; set; }
+        public PrimaryPurpos PrimaryPurpos { get; set; }
 
 
         #endregion
