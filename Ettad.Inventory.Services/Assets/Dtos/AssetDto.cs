@@ -57,7 +57,7 @@ namespace Ettad.Inventory.Service.Assets.Dtos
 
         public DepotDto Depot { get; set; }
 
-        /// <summary>Depot of the intake batch (where the asset was created with that batch).</summary>
+        /// <summary>Same as <see cref="Depot"/> (mapped from <c>Asset.Depot</c>).</summary>
         public DepotDto? CreatedDepot { get; set; }
 
         public DepartmentDto Department { get; set; }
