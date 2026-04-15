@@ -1,3 +1,4 @@
+using Ettad.CrossCutting.Comman.Models;
 using Ettad.CrossCutting.Common.Security;
 using Ettad.Data.Entities;
 using Ettad.Data.Enums;
@@ -204,6 +205,17 @@ namespace Ettad.Lookups.Domain.API.Controllers
             _depotService = depotService;
             _currentUserService = currentUserService;
             _userDepotService = userDepotService;
+        }
+
+        /// <summary>
+        /// Paged depot list (same permission and visibility rules as GET /Lookup/Depot).
+        /// </summary>
+        [HttpPost("paginated")]
+        public async Task<IActionResult> GetDepotsPaginated([FromBody] PagedListRequest request)
+        {
+            _logger?.LogInformation("HTTP POST paginated depot list. Page {Page}, PageSize {PageSize}", request?.Page, request?.PageSize);
+            var result = await _depotService.GetDepotsPaginatedAsync(request);
+            return ProcessResponse(result);
         }
 
         /// <summary>
