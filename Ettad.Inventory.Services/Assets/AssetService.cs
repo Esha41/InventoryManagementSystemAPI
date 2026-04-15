@@ -205,7 +205,7 @@ namespace Ettad.Inventory.Service.Assets
             asset.IsAssigned = true;
             asset.CurrentAssignmentId = assignment.Id;
             asset.ModificationDate = now;
-            asset.ModifiedBy = _currentUserService.UserId;
+            asset.ModifiedBy = _currentUserService.UserId;           
             await _context.SaveChangesAsync();
 
             await _historyService.RecordHistoryAsync(asset.Id, AssetHistoryActionType.Assigned, new AssetHistoryContext
