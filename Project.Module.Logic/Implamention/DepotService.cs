@@ -2,6 +2,7 @@ using AutoMapper;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Ettad.Application.Common.Interfaces;
+using Ettad.CrossCutting.Comman.Models;
 using Ettad.CrossCutting.Comman.Time;
 using Ettad.CrossCutting.Data.Repository;
 using Ettad.Data.Entities;
@@ -127,6 +128,77 @@ namespace Ettad.Lookups.Services.Implementation
                     ResponseType.InternalServerError,
                     CommonErrorCodes.OPERATION_FAILED,
                     $"Error deleting depot: {ex.Message}");
+            }
+        }
+
+        public async Task<APIOperationResponse<PaginatedList<Depot>>> GetDepotsPaginatedAsync(PagedListRequest request)
+        {
+            try
+            {
+                request ??= new PagedListRequest();
+                if (request.Page <= 0)
+                {
+                    request.Page = 1;
+                }
+
+                var pageSize = request.PageSize <= 0 ? 10 : request.PageSize;
+                if (pageSize > 1000)
+                {
+                    pageSize = 1000;
+                }
+                request.PageSize = pageSize;
+
+                var baseQuery = _repository.Find(x => !x.IsDeleted);
+                IQueryable<Depot> query;
+
+                if (_currentUserService.IsSuperAdmin)
+                {
+                    query = baseQuery;
+                }
+                else if (await _permissionService.HasPermissionAsync("Permissions.Depots.ViewAll"))
+                {
+                    query = baseQuery;
+                }
+                else
+                {
+                    var canReadScoped = await _permissionService.HasPermissionAsync("Permissions.Depots.View")
+                        || await _permissionService.HasPermissionAsync("Permissions.Inventory.View");
+                    if (!canReadScoped)
+                    {
+                        var empty = new PaginatedList<Depot>(new List<Depot>(), 0, 1, request.PageSize);
+                        return APIOperationResponse<PaginatedList<Depot>>.Success(empty);
+                    }
+
+                    var userId = _currentUserService.UserId;
+                    if (string.IsNullOrEmpty(userId))
+                    {
+                        var emptyUser = new PaginatedList<Depot>(new List<Depot>(), 0, 1, request.PageSize);
+                        return APIOperationResponse<PaginatedList<Depot>>.Success(emptyUser);
+                    }
+
+                    var assignedDepotIds = await _userDepotRepository
+                        .Find(ud => ud.UserId == userId)
+                        .Select(ud => ud.DepotId)
+                        .ToListAsync();
+
+                    query = baseQuery.Where(d => assignedDepotIds.Contains(d.Id));
+                }
+
+                if (request.Filter == null || string.IsNullOrEmpty(request.Filter.sortField))
+                {
+                    query = query.OrderBy(d => d.NameEn).ThenBy(d => d.Id);
+                }
+
+                var paginated = await PaginatedList<Depot>.CreateAsyncForTableBinding(query, request);
+                return APIOperationResponse<PaginatedList<Depot>>.Success(paginated);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving paginated depots");
+                return APIOperationResponse<PaginatedList<Depot>>.Fail(
+                    ResponseType.InternalServerError,
+                    CommonErrorCodes.OPERATION_FAILED,
+                    $"Error retrieving depots: {ex.Message}");
             }
         }
     }
