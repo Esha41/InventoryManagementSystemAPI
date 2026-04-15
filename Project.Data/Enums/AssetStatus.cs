@@ -8,6 +8,6 @@ namespace Ettad.Data.Enums
         UnserviceableUnrepairable = 4,
         AwaitingDisposal = 5,
         Disposed = 6,
-        Returned = 7,
+        NotReadyToIssue = 7,
     }
 }

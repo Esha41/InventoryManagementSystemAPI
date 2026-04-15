@@ -15,6 +15,11 @@ namespace Ettad.RequestManagement.Service.Returns.Dtos
 
         public long? RequestItemId { get; set; }
 
+        /// <summary>From RequestItem.Item when included (for workflow summary).</summary>
+        public string? ItemName { get; set; }
+
+        public string? ItemNo { get; set; }
+
         public long? ReturnedQuantity { get; set; }
 
         public long? ReceivedQuantity { get; set; }

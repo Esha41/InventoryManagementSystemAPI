@@ -1,9 +1,14 @@
+using Ettad.Data.Enums;
+
 namespace Ettad.RequestManagement.Service.Returns.Dtos
 {
     public class ProcessReturnItemsDto
     {
         public List<ReturnAmmoExplosiveItemDto> AmmoExplosiveItems { get; set; } = new();
         public List<ReturnWeaponItemDto> WeaponItems { get; set; } = new();
+
+        /// <summary>Optional completion notes (stored as the current approval step comments).</summary>
+        public string? WorkflowStepComments { get; set; }
     }
 
     public class ReturnAmmoExplosiveItemDto
@@ -21,8 +26,8 @@ namespace Ettad.RequestManagement.Service.Returns.Dtos
 
         public long? RequestItemId { get; set; }
 
-        /// <summary>Zero-based indices into the multipart <c>files</c> list for this line.</summary>
-        public List<int>? AttachmentFileIndexes { get; set; }
+        /// <summary>Whether returned stock is ready for issue; persisted on <c>InventoryDetail.ReadyForIssue</c>.</summary>
+        public bool ReadyForIssue { get; set; }
     }
 
     public class ReturnWeaponItemDto
@@ -33,11 +38,12 @@ namespace Ettad.RequestManagement.Service.Returns.Dtos
 
         public string BatchNumber { get; set; }
 
+        /// <summary>Asset condition after receipt; persisted on <c>Asset.Status</c>.</summary>
+        public AssetStatus Status { get; set; }
+
         /// <summary>Row notes; persisted on <c>Asset.Notes</c> (replace on this action).</summary>
         public string? Notes { get; set; }
 
         public long? RequestItemId { get; set; }
-
-        public List<int>? AttachmentFileIndexes { get; set; }
     }
 }

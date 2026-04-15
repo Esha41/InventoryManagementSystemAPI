@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using AutoMapper;
@@ -498,16 +499,9 @@ namespace Ettad.RequestManagement.Service.Returns
                 }
 
                 var depotId = returnEntity.ReturnToDepotId.Value;
-                var fileCount = files?.Count ?? 0;
 
                 foreach (var item in dto.AmmoExplosiveItems ?? Enumerable.Empty<ReturnAmmoExplosiveItemDto>())
                 {
-                    var badIndexes = ValidateAttachmentFileIndexes(item.AttachmentFileIndexes, fileCount);
-                    if (badIndexes != null)
-                    {
-                        return badIndexes;
-                    }
-
                     var badRi = await ValidateRequestItemBelongsToReturnAsync(returnEntity.Id, item.RequestItemId);
                     if (badRi != null)
                     {
@@ -517,12 +511,6 @@ namespace Ettad.RequestManagement.Service.Returns
 
                 foreach (var item in dto.WeaponItems ?? Enumerable.Empty<ReturnWeaponItemDto>())
                 {
-                    var badIndexes = ValidateAttachmentFileIndexes(item.AttachmentFileIndexes, fileCount);
-                    if (badIndexes != null)
-                    {
-                        return badIndexes;
-                    }
-
                     var badRi = await ValidateRequestItemBelongsToReturnAsync(returnEntity.Id, item.RequestItemId);
                     if (badRi != null)
                     {
@@ -568,7 +556,7 @@ namespace Ettad.RequestManagement.Service.Returns
                         {
                             existingDetail.ItemQuantity += item.Quantity;
                             existingDetail.IsReturned = true;
-                            existingDetail.ReadyForIssue = false;
+                            existingDetail.ReadyForIssue = item.ReadyForIssue;
                             existingDetail.Notes = detailNotes;
                             await _inventoryDetailRepository.UpdateAsync(existingDetail);
 
@@ -600,7 +588,7 @@ namespace Ettad.RequestManagement.Service.Returns
                                 ItemQuantity = item.Quantity,
                                 InventoryId = returnInventory.Id,
                                 IsReturned = true,
-                                ReadyForIssue = false,
+                                ReadyForIssue = item.ReadyForIssue,
                                 IsLotEmpty = string.IsNullOrEmpty(lotKey),
                                 Notes = detailNotes
                             };
@@ -619,6 +607,12 @@ namespace Ettad.RequestManagement.Service.Returns
                 {
                     foreach (var item in dto.WeaponItems)
                     {
+                        if (!Enum.IsDefined(typeof(AssetStatus), item.Status))
+                        {
+                            return APIOperationResponse<bool>.Fail(ResponseType.BadRequest,
+                                $"Invalid asset status for item {item.ItemId}, serial '{item.SerialNumber}'.");
+                        }
+
                         var baseItem = await _baseItemRepository.FindOneAsync(i => i.Id == item.ItemId && !i.IsDeleted);
                         if (baseItem == null)
                         {
@@ -661,7 +655,7 @@ namespace Ettad.RequestManagement.Service.Returns
 
                         if (asset != null)
                         {
-                            asset.Status = AssetStatus.Returned;
+                            asset.Status = item.Status;
                             asset.BatchId = batch.Id;
                             asset.DepotId = depotId;
                             asset.Notes = assetNotes;
@@ -671,8 +665,8 @@ namespace Ettad.RequestManagement.Service.Returns
 
                             weaponReceipts.Add((item, asset.Id));
 
-                            _logger.LogInformation("Updated existing asset. AssetId: {AssetId}, SerialNumber: {SerialNumber}, Status: Returned",
-                                asset.Id, serialNumber);
+                            _logger.LogInformation("Updated existing asset. AssetId: {AssetId}, SerialNumber: {SerialNumber}, Status: {Status}",
+                                asset.Id, serialNumber, item.Status);
                         }
                         else
                         {
@@ -682,7 +676,7 @@ namespace Ettad.RequestManagement.Service.Returns
                                 SerialNumber = serialNumber,
                                 DepotId = depotId,
                                 BatchId = batch.Id,
-                                Status = AssetStatus.Returned,
+                                Status = item.Status,
                                 IsAssigned = false,
                                 Notes = assetNotes,
                                 CreationDate = _dateTimeProvider.Now,
@@ -692,8 +686,8 @@ namespace Ettad.RequestManagement.Service.Returns
 
                             weaponReceipts.Add((item, newAsset.Id));
 
-                            _logger.LogInformation("Created new asset. SerialNumber: {SerialNumber}, ItemId: {ItemId}, DepotId: {DepotId}, Status: Returned",
-                                serialNumber, item.ItemId, depotId);
+                            _logger.LogInformation("Created new asset. SerialNumber: {SerialNumber}, ItemId: {ItemId}, DepotId: {DepotId}, Status: {Status}",
+                                serialNumber, item.ItemId, depotId, item.Status);
                         }
                     }
                 }
@@ -725,12 +719,6 @@ namespace Ettad.RequestManagement.Service.Returns
                     };
 
                     line = await _returnTrackingLineRepository.AddAsync(line);
-
-                    var uploadFail = await UploadLineAttachmentsAsync(files, ammoDto.AttachmentFileIndexes, line.Id);
-                    if (uploadFail != null)
-                    {
-                        return uploadFail;
-                    }
                 }
 
                 foreach (var (weaponDto, assetId) in weaponReceipts)
@@ -759,13 +747,31 @@ namespace Ettad.RequestManagement.Service.Returns
                     };
 
                     line = await _returnTrackingLineRepository.AddAsync(line);
+                }
 
-                    var uploadFail = await UploadLineAttachmentsAsync(files, weaponDto.AttachmentFileIndexes, line.Id);
-                    if (uploadFail != null)
+                var currentStep = await _workflowApprovalService.GetCurrentApprovalStepByRequestIdAsync(returnEntity.Id);
+                if (currentStep == null)
+                {
+                    return APIOperationResponse<bool>.Fail(ResponseType.BadRequest,
+                        "No current workflow step found for this return.");
+                }
+
+                if (files != null && files.Count > 0)
+                {
+                    var stepUpload = await _fileUploadService.UploadFilesForEntityAsync(
+                        files,
+                        FileEntityType.WorkflowApproval,
+                        currentStep.Id);
+                    if (!stepUpload.Succeeded)
                     {
-                        return uploadFail;
+                        return APIOperationResponse<bool>.Fail(ResponseType.BadRequest,
+                            stepUpload.Message ?? "Failed to upload workflow step attachments.");
                     }
                 }
+
+                var completionComment = string.IsNullOrWhiteSpace(dto.WorkflowStepComments)
+                    ? "Return items processed"
+                    : dto.WorkflowStepComments.Trim();
 
                 // Approve workflow and complete the return
                 try
@@ -775,7 +781,7 @@ namespace Ettad.RequestManagement.Service.Returns
                         BaseRequestID = returnEntity.Id,
                         Action = RequestStatus.Approved,
                         IsApproved = true,
-                        Comments = "Return items processed",
+                        Comments = completionComment,
                         SendToHigherApproval = false
                     };
 
@@ -822,7 +828,8 @@ namespace Ettad.RequestManagement.Service.Returns
                 var lines = (await _returnTrackingLineRepository.FindAsync(
                     l => l.ReturnId == returnId && !l.IsDeleted,
                     false,
-                    nameof(ReturnTrackingLine.Depot))).OrderBy(l => l.Id).ToList();
+                    nameof(ReturnTrackingLine.Depot),
+                    $"{nameof(ReturnTrackingLine.RequestItem)}.{nameof(RequestItem.Item)}")).OrderBy(l => l.Id).ToList();
 
                 var ids = lines.Select(l => l.Id).ToList();
                 Dictionary<long, List<FileUploadDto>> filesByLineId = new();
@@ -842,6 +849,8 @@ namespace Ettad.RequestManagement.Service.Returns
                     RequestId = l.RequestId,
                     DepotId = l.DepotId,
                     RequestItemId = l.RequestItemId,
+                    ItemName = l.RequestItem?.Item?.Name,
+                    ItemNo = l.RequestItem?.Item?.ItemNo,
                     ReturnedQuantity = l.ReturnedQuantity,
                     ReceivedQuantity = l.ReceivedQuantity,
                     Lot = l.Lot,
@@ -863,31 +872,6 @@ namespace Ettad.RequestManagement.Service.Returns
             }
         }
 
-        private static APIOperationResponse<bool>? ValidateAttachmentFileIndexes(IList<int>? indexes, int fileCount)
-        {
-            if (indexes == null || indexes.Count == 0)
-            {
-                return null;
-            }
-
-            if (fileCount <= 0)
-            {
-                return APIOperationResponse<bool>.Fail(ResponseType.BadRequest,
-                    "Attachment file indexes were provided but no files were uploaded.");
-            }
-
-            foreach (var i in indexes)
-            {
-                if (i < 0 || i >= fileCount)
-                {
-                    return APIOperationResponse<bool>.Fail(ResponseType.BadRequest,
-                        $"Invalid attachment file index {i}. Files count is {fileCount}.");
-                }
-            }
-
-            return null;
-        }
-
         private async Task<APIOperationResponse<bool>?> ValidateRequestItemBelongsToReturnAsync(long returnId, long? requestItemId)
         {
             if (!requestItemId.HasValue)
@@ -902,33 +886,6 @@ namespace Ettad.RequestManagement.Service.Returns
             {
                 return APIOperationResponse<bool>.Fail(ResponseType.BadRequest,
                     $"Request item {requestItemId.Value} is not part of this return.");
-            }
-
-            return null;
-        }
-
-        private async Task<APIOperationResponse<bool>?> UploadLineAttachmentsAsync(
-            List<IFormFile>? allFiles,
-            IList<int>? indexes,
-            long returnTrackingLineId)
-        {
-            if (indexes == null || indexes.Count == 0 || allFiles == null || allFiles.Count == 0)
-            {
-                return null;
-            }
-
-            var chosen = indexes.Select(i => allFiles[i]).ToList();
-            var uploadResult = await _fileUploadService.UploadFilesForEntityAsync(
-                chosen,
-                FileEntityType.ReturnTrackingLine,
-                returnTrackingLineId);
-
-            if (!uploadResult.Succeeded)
-            {
-                _logger.LogWarning("Failed to upload return tracking line attachments. LineId: {LineId}, Message: {Message}",
-                    returnTrackingLineId, uploadResult.Message);
-                return APIOperationResponse<bool>.Fail(ResponseType.BadRequest,
-                    uploadResult.Message ?? "Failed to upload attachments.");
             }
 
             return null;

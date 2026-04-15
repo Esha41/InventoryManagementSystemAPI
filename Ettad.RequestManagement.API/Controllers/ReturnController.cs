@@ -41,7 +41,9 @@ namespace Ettad.RequestManagement.API.Controllers
         /// </summary>
         [HttpGet("{id}/tracking-lines")]
         [ProducesResponseType((int)HttpStatusCode.OK)]
-        [CheckAuthorize("Permissions.Return.View", "Permissions.Return.Page")]
+        [CheckAuthorize(
+            "Permissions.Return.View", "Permissions.Return.Page",
+            "Permissions.RequestReciever.View", "Permissions.RequestReciever.Page")]
         public async Task<IActionResult> GetTrackingLines(long id)
         {
             var result = await _returnService.GetReturnTrackingLinesAsync(id);
