@@ -12,6 +12,8 @@ using Microsoft.AspNetCore.Mvc;
 namespace Ettad.Modules.ReportManagement.API.Controllers
 {
     [ApiExplorerSettings(IgnoreApi = true)]
+    //[Route("DXXRDV")]
+    //[Route("api/DXXRDV")]
     public class CustomWebDocumentViewerController : WebDocumentViewerController
     {
         public CustomWebDocumentViewerController(IWebDocumentViewerMvcControllerService controllerService) : base(controllerService)
@@ -20,6 +22,9 @@ namespace Ettad.Modules.ReportManagement.API.Controllers
     }
 
     [ApiExplorerSettings(IgnoreApi = true)]
+    [ApiController]
+    [Route("DXXRD")]
+    [Route("api/DXXRD")]
     public class CustomReportDesignerController : ReportDesignerController
     {
         public CustomReportDesignerController(
@@ -28,7 +33,7 @@ namespace Ettad.Modules.ReportManagement.API.Controllers
         {
         }
 
-        [HttpPost("[action]")]
+        [HttpPost("GetDesignerModel")]
         public async Task<IActionResult> GetDesignerModel(
             [FromForm] string reportUrl,
             [FromServices] IReportDesignerModelBuilder designerModelBuilder,
@@ -55,6 +60,8 @@ namespace Ettad.Modules.ReportManagement.API.Controllers
     }
 
     [ApiExplorerSettings(IgnoreApi = true)]
+    //[Route("DXXQB")]
+    //[Route("api/DXXQB")]
     public class CustomQueryBuilderController : QueryBuilderController
     {
         public CustomQueryBuilderController(IQueryBuilderMvcControllerService controllerService) : base(controllerService)
