@@ -32,6 +32,8 @@ namespace Ettad.Data.Entities
 
         public bool IsReturned { get; set; } = false;
 
+        public string? Notes { get; set; }
+
         #region Navigation Properties
 
         public BaseItem Item { get; set; }

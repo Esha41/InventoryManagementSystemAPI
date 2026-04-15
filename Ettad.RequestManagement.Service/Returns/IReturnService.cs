@@ -16,6 +16,8 @@ namespace Ettad.RequestManagement.Service.Returns
         Task<APIOperationResponse<bool>> SetDepotAsync(long returnId, SetReturnDepotDto dto);
         Task<APIOperationResponse<bool>> SetDeliveryDateAsync(long returnId, SetReturnDeliveryDateDto dto);
         Task<APIOperationResponse<bool>> ProcessReturnItemsAsync(long returnId, ProcessReturnItemsDto dto, List<IFormFile>? files = null);
+
+        Task<APIOperationResponse<List<ReturnTrackingLineDto>>> GetReturnTrackingLinesAsync(long returnId);
     }
 }
 

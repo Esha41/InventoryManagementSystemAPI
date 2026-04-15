@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using AutoMapper;
 using FluentValidation;
 using Ettad.CrossCutting.Data.Repository;
@@ -6,6 +7,8 @@ using Ettad.Data.Entities;
 using Ettad.Data.Enums;
 using Ettad.RequestManagement.Service.Returns.Dtos;
 using Ettad.RequestManagement.Service.Common;
+using Ettad.Module.lookup.Dtos;
+using Ettad.CrossCutting.Comman.FileUpload;
 using Ettad.ResponseHandler.Consts;
 using Ettad.ResponseHandler.Models;
 using Ettad.Application.Common.Interfaces;
@@ -44,6 +47,7 @@ namespace Ettad.RequestManagement.Service.Returns
         private readonly ICrossCuttingRepository<Batch> _batchRepository;
         private readonly ICrossCuttingRepository<Depot> _depotRepository;
         private readonly ICrossCuttingRepository<BaseItem> _baseItemRepository;
+        private readonly ICrossCuttingRepository<ReturnTrackingLine> _returnTrackingLineRepository;
 
         public ReturnService(
             ICrossCuttingRepository<Return> returnRepository,
@@ -65,7 +69,8 @@ namespace Ettad.RequestManagement.Service.Returns
             ICrossCuttingRepository<Asset> assetRepository,
             ICrossCuttingRepository<Batch> batchRepository,
             ICrossCuttingRepository<Depot> depotRepository,
-            ICrossCuttingRepository<BaseItem> baseItemRepository)
+            ICrossCuttingRepository<BaseItem> baseItemRepository,
+            ICrossCuttingRepository<ReturnTrackingLine> returnTrackingLineRepository)
         {
             _returnRepository = returnRepository;
             _requestItemRepository = requestItemRepository;
@@ -87,6 +92,7 @@ namespace Ettad.RequestManagement.Service.Returns
             _batchRepository = batchRepository;
             _depotRepository = depotRepository;
             _baseItemRepository = baseItemRepository;
+            _returnTrackingLineRepository = returnTrackingLineRepository;
         }
 
         public async Task<APIOperationResponse<ReturnDto>> GetByIdAsync(long id)
@@ -492,24 +498,42 @@ namespace Ettad.RequestManagement.Service.Returns
                 }
 
                 var depotId = returnEntity.ReturnToDepotId.Value;
+                var fileCount = files?.Count ?? 0;
 
-                // Optional attachments: same linkage as return creation (Order entity + request id)
-                if (files != null && files.Count > 0)
+                foreach (var item in dto.AmmoExplosiveItems ?? Enumerable.Empty<ReturnAmmoExplosiveItemDto>())
                 {
-                    var uploadResult = await _fileUploadService.UploadFilesForEntityAsync(files, FileEntityType.Order, returnId);
-                    if (!uploadResult.Succeeded)
+                    var badIndexes = ValidateAttachmentFileIndexes(item.AttachmentFileIndexes, fileCount);
+                    if (badIndexes != null)
                     {
-                        _logger.LogWarning("Failed to upload process-return attachments. ReturnId: {ReturnId}, Message: {Message}",
-                            returnId, uploadResult.Message);
-                        return APIOperationResponse<bool>.Fail(ResponseType.BadRequest,
-                            uploadResult.Message ?? "Failed to upload attachments.");
+                        return badIndexes;
                     }
 
-                    _logger.LogInformation("Process-return attachments uploaded. ReturnId: {ReturnId}, DetailCount: {Count}",
-                        returnId, uploadResult.Data?.Count ?? 0);
+                    var badRi = await ValidateRequestItemBelongsToReturnAsync(returnEntity.Id, item.RequestItemId);
+                    if (badRi != null)
+                    {
+                        return badRi;
+                    }
                 }
 
-                // Process Ammo/Explosive items
+                foreach (var item in dto.WeaponItems ?? Enumerable.Empty<ReturnWeaponItemDto>())
+                {
+                    var badIndexes = ValidateAttachmentFileIndexes(item.AttachmentFileIndexes, fileCount);
+                    if (badIndexes != null)
+                    {
+                        return badIndexes;
+                    }
+
+                    var badRi = await ValidateRequestItemBelongsToReturnAsync(returnEntity.Id, item.RequestItemId);
+                    if (badRi != null)
+                    {
+                        return badRi;
+                    }
+                }
+
+                var ammoReceipts = new List<(ReturnAmmoExplosiveItemDto Dto, long InventoryDetailId)>();
+                var weaponReceipts = new List<(ReturnWeaponItemDto Dto, long AssetId)>();
+
+                // Process Ammo/Explosive items (inventory details + notes)
                 if (dto.AmmoExplosiveItems != null && dto.AmmoExplosiveItems.Any())
                 {
                     Ettad.Data.Entities.Inventory returnInventory = null;
@@ -529,6 +553,7 @@ namespace Ettad.RequestManagement.Service.Returns
                         }
 
                         var lotKey = (item.Lot ?? string.Empty).Trim();
+                        var detailNotes = string.IsNullOrWhiteSpace(item.Notes) ? null : item.Notes.Trim();
 
                         var existingDetail = await _inventoryDetailRepository.FindOneAsync(
                             id => id.ItemId == item.ItemId
@@ -544,7 +569,10 @@ namespace Ettad.RequestManagement.Service.Returns
                             existingDetail.ItemQuantity += item.Quantity;
                             existingDetail.IsReturned = true;
                             existingDetail.ReadyForIssue = false;
+                            existingDetail.Notes = detailNotes;
                             await _inventoryDetailRepository.UpdateAsync(existingDetail);
+
+                            ammoReceipts.Add((item, existingDetail.Id));
 
                             _logger.LogInformation("Updated existing inventory detail. ItemId: {ItemId}, Lot: {Lot}, NewQuantity: {Quantity}",
                                 item.ItemId, lotKey, existingDetail.ItemQuantity);
@@ -573,9 +601,12 @@ namespace Ettad.RequestManagement.Service.Returns
                                 InventoryId = returnInventory.Id,
                                 IsReturned = true,
                                 ReadyForIssue = false,
-                                IsLotEmpty = string.IsNullOrEmpty(lotKey)
+                                IsLotEmpty = string.IsNullOrEmpty(lotKey),
+                                Notes = detailNotes
                             };
-                            await _inventoryDetailRepository.AddAsync(newDetail);
+                            newDetail = await _inventoryDetailRepository.AddAsync(newDetail);
+
+                            ammoReceipts.Add((item, newDetail.Id));
 
                             _logger.LogInformation("Created new inventory detail. ItemId: {ItemId}, Lot: {Lot}, Quantity: {Quantity}, InventoryId: {InventoryId}",
                                 item.ItemId, lotKey, item.Quantity, returnInventory.Id);
@@ -583,7 +614,7 @@ namespace Ettad.RequestManagement.Service.Returns
                     }
                 }
 
-                // Process Weapon items
+                // Process Weapon items (assets + notes)
                 if (dto.WeaponItems != null && dto.WeaponItems.Any())
                 {
                     foreach (var item in dto.WeaponItems)
@@ -622,6 +653,7 @@ namespace Ettad.RequestManagement.Service.Returns
                         }
 
                         var serialNumber = (item.SerialNumber ?? string.Empty).Trim();
+                        var assetNotes = string.IsNullOrWhiteSpace(item.Notes) ? null : item.Notes.Trim();
 
                         var asset = await _assetRepository.FindOneAsync(
                             a => a.SerialNumber == serialNumber && a.ItemId == item.ItemId && !a.IsDeleted
@@ -632,9 +664,12 @@ namespace Ettad.RequestManagement.Service.Returns
                             asset.Status = AssetStatus.Returned;
                             asset.BatchId = batch.Id;
                             asset.DepotId = depotId;
+                            asset.Notes = assetNotes;
                             asset.ModificationDate = _dateTimeProvider.Now;
                             asset.ModifiedBy = _currentUserService.UserId;
                             await _assetRepository.UpdateAsync(asset);
+
+                            weaponReceipts.Add((item, asset.Id));
 
                             _logger.LogInformation("Updated existing asset. AssetId: {AssetId}, SerialNumber: {SerialNumber}, Status: Returned",
                                 asset.Id, serialNumber);
@@ -649,14 +684,86 @@ namespace Ettad.RequestManagement.Service.Returns
                                 BatchId = batch.Id,
                                 Status = AssetStatus.Returned,
                                 IsAssigned = false,
+                                Notes = assetNotes,
                                 CreationDate = _dateTimeProvider.Now,
                                 CreatedBy = _currentUserService.UserId
                             };
-                            await _assetRepository.AddAsync(newAsset);
+                            newAsset = await _assetRepository.AddAsync(newAsset);
+
+                            weaponReceipts.Add((item, newAsset.Id));
 
                             _logger.LogInformation("Created new asset. SerialNumber: {SerialNumber}, ItemId: {ItemId}, DepotId: {DepotId}, Status: Returned",
                                 serialNumber, item.ItemId, depotId);
                         }
+                    }
+                }
+
+                var now = _dateTimeProvider.Now;
+                var userId = _currentUserService.UserId;
+
+                foreach (var (ammoDto, inventoryDetailId) in ammoReceipts)
+                {
+                    var lotKey = (ammoDto.Lot ?? string.Empty).Trim();
+                    var receiptNotes = string.IsNullOrWhiteSpace(ammoDto.Notes) ? null : ammoDto.Notes.Trim();
+                    var line = new ReturnTrackingLine
+                    {
+                        ReturnId = returnEntity.Id,
+                        RequestId = returnEntity.Id,
+                        DepotId = depotId,
+                        RequestItemId = ammoDto.RequestItemId,
+                        ReturnedQuantity = ammoDto.ReturnedQuantity ?? ammoDto.Quantity,
+                        ReceivedQuantity = ammoDto.Quantity,
+                        Lot = string.IsNullOrEmpty(lotKey) ? null : lotKey,
+                        BatchNumber = null,
+                        SerialNumber = null,
+                        Notes = receiptNotes,
+                        InventoryDetailId = inventoryDetailId,
+                        AssetId = null,
+                        CreationDate = now,
+                        CreatedBy = userId,
+                        IsDeleted = false
+                    };
+
+                    line = await _returnTrackingLineRepository.AddAsync(line);
+
+                    var uploadFail = await UploadLineAttachmentsAsync(files, ammoDto.AttachmentFileIndexes, line.Id);
+                    if (uploadFail != null)
+                    {
+                        return uploadFail;
+                    }
+                }
+
+                foreach (var (weaponDto, assetId) in weaponReceipts)
+                {
+                    var batchNumber = (weaponDto.BatchNumber ?? string.Empty).Trim();
+                    var serialNumber = (weaponDto.SerialNumber ?? string.Empty).Trim();
+                    var receiptNotes = string.IsNullOrWhiteSpace(weaponDto.Notes) ? null : weaponDto.Notes.Trim();
+
+                    var line = new ReturnTrackingLine
+                    {
+                        ReturnId = returnEntity.Id,
+                        RequestId = returnEntity.Id,
+                        DepotId = depotId,
+                        RequestItemId = weaponDto.RequestItemId,
+                        ReturnedQuantity = 1,
+                        ReceivedQuantity = 1,
+                        Lot = null,
+                        BatchNumber = string.IsNullOrEmpty(batchNumber) ? null : batchNumber,
+                        SerialNumber = string.IsNullOrEmpty(serialNumber) ? null : serialNumber,
+                        Notes = receiptNotes,
+                        AssetId = assetId,
+                        InventoryDetailId = null,
+                        CreationDate = now,
+                        CreatedBy = userId,
+                        IsDeleted = false
+                    };
+
+                    line = await _returnTrackingLineRepository.AddAsync(line);
+
+                    var uploadFail = await UploadLineAttachmentsAsync(files, weaponDto.AttachmentFileIndexes, line.Id);
+                    if (uploadFail != null)
+                    {
+                        return uploadFail;
                     }
                 }
 
@@ -698,6 +805,133 @@ namespace Ettad.RequestManagement.Service.Returns
                 _logger.LogError(ex, "Error processing return items. ReturnId: {ReturnId}, User: {UserId}", returnId, _currentUserService.UserId);
                 return APIOperationResponse<bool>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
             }
+        }
+
+        public async Task<APIOperationResponse<List<ReturnTrackingLineDto>>> GetReturnTrackingLinesAsync(long returnId)
+        {
+            _logger.LogInformation("Getting return tracking lines. ReturnId: {ReturnId}, User: {UserId}", returnId, _currentUserService.UserId);
+
+            try
+            {
+                var returnEntity = await _returnRepository.FindOneAsync(r => r.Id == returnId && !r.IsDeleted);
+                if (returnEntity == null)
+                {
+                    return APIOperationResponse<List<ReturnTrackingLineDto>>.Fail(ResponseType.NotFound, "Return not found");
+                }
+
+                var lines = (await _returnTrackingLineRepository.FindAsync(
+                    l => l.ReturnId == returnId && !l.IsDeleted,
+                    false,
+                    nameof(ReturnTrackingLine.Depot))).OrderBy(l => l.Id).ToList();
+
+                var ids = lines.Select(l => l.Id).ToList();
+                Dictionary<long, List<FileUploadDto>> filesByLineId = new();
+                if (ids.Count > 0)
+                {
+                    var filesResult = await _fileUploadService.GetByEntitiesAsync(FileEntityType.ReturnTrackingLine, ids);
+                    if (filesResult.Succeeded && filesResult.Data != null)
+                    {
+                        filesByLineId = filesResult.Data;
+                    }
+                }
+
+                var dtos = lines.Select(l => new ReturnTrackingLineDto
+                {
+                    Id = l.Id,
+                    ReturnId = l.ReturnId,
+                    RequestId = l.RequestId,
+                    DepotId = l.DepotId,
+                    RequestItemId = l.RequestItemId,
+                    ReturnedQuantity = l.ReturnedQuantity,
+                    ReceivedQuantity = l.ReceivedQuantity,
+                    Lot = l.Lot,
+                    BatchNumber = l.BatchNumber,
+                    SerialNumber = l.SerialNumber,
+                    Notes = l.Notes,
+                    AssetId = l.AssetId,
+                    InventoryDetailId = l.InventoryDetailId,
+                    Depot = l.Depot != null ? _mapper.Map<DepotDto>(l.Depot) : null,
+                    Files = filesByLineId.TryGetValue(l.Id, out var f) ? f : new List<FileUploadDto>()
+                }).ToList();
+
+                return APIOperationResponse<List<ReturnTrackingLineDto>>.Success(dtos);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting return tracking lines. ReturnId: {ReturnId}", returnId);
+                return APIOperationResponse<List<ReturnTrackingLineDto>>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
+            }
+        }
+
+        private static APIOperationResponse<bool>? ValidateAttachmentFileIndexes(IList<int>? indexes, int fileCount)
+        {
+            if (indexes == null || indexes.Count == 0)
+            {
+                return null;
+            }
+
+            if (fileCount <= 0)
+            {
+                return APIOperationResponse<bool>.Fail(ResponseType.BadRequest,
+                    "Attachment file indexes were provided but no files were uploaded.");
+            }
+
+            foreach (var i in indexes)
+            {
+                if (i < 0 || i >= fileCount)
+                {
+                    return APIOperationResponse<bool>.Fail(ResponseType.BadRequest,
+                        $"Invalid attachment file index {i}. Files count is {fileCount}.");
+                }
+            }
+
+            return null;
+        }
+
+        private async Task<APIOperationResponse<bool>?> ValidateRequestItemBelongsToReturnAsync(long returnId, long? requestItemId)
+        {
+            if (!requestItemId.HasValue)
+            {
+                return null;
+            }
+
+            var ri = await _requestItemRepository.FindOneAsync(
+                r => r.Id == requestItemId.Value && r.RequestId == returnId && !r.IsDeleted);
+
+            if (ri == null)
+            {
+                return APIOperationResponse<bool>.Fail(ResponseType.BadRequest,
+                    $"Request item {requestItemId.Value} is not part of this return.");
+            }
+
+            return null;
+        }
+
+        private async Task<APIOperationResponse<bool>?> UploadLineAttachmentsAsync(
+            List<IFormFile>? allFiles,
+            IList<int>? indexes,
+            long returnTrackingLineId)
+        {
+            if (indexes == null || indexes.Count == 0 || allFiles == null || allFiles.Count == 0)
+            {
+                return null;
+            }
+
+            var chosen = indexes.Select(i => allFiles[i]).ToList();
+            var uploadResult = await _fileUploadService.UploadFilesForEntityAsync(
+                chosen,
+                FileEntityType.ReturnTrackingLine,
+                returnTrackingLineId);
+
+            if (!uploadResult.Succeeded)
+            {
+                _logger.LogWarning("Failed to upload return tracking line attachments. LineId: {LineId}, Message: {Message}",
+                    returnTrackingLineId, uploadResult.Message);
+                return APIOperationResponse<bool>.Fail(ResponseType.BadRequest,
+                    uploadResult.Message ?? "Failed to upload attachments.");
+            }
+
+            return null;
         }
 
         private async Task NotifyReturnAsync(string title, string message, long entityId)

@@ -40,6 +40,10 @@ namespace Ettad.EntityFramework.Configurations
                 .IsRequired()
                 .HasDefaultValue(false);
 
+            builder.Property(x => x.Notes)
+                .IsRequired(false)
+                .HasMaxLength(5000);
+
             builder.HasOne(x => x.Inventory)
                 .WithMany(x => x.InventoryDetails)
                 .IsRequired()

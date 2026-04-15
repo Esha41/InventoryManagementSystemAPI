@@ -37,6 +37,18 @@ namespace Ettad.RequestManagement.API.Controllers
         }
 
         /// <summary>
+        /// Return tracking lines for a processed return (inventory detail or asset per row, with linked files).
+        /// </summary>
+        [HttpGet("{id}/tracking-lines")]
+        [ProducesResponseType((int)HttpStatusCode.OK)]
+        [CheckAuthorize("Permissions.Return.View", "Permissions.Return.Page")]
+        public async Task<IActionResult> GetTrackingLines(long id)
+        {
+            var result = await _returnService.GetReturnTrackingLinesAsync(id);
+            return ProcessResponse(result);
+        }
+
+        /// <summary>
         /// Get all returns with details and navigation properties
         /// </summary>
         [HttpGet]
