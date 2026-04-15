@@ -2,7 +2,7 @@ using AutoMapper;
 using Ettad.Data.Entities;
 using Ettad.Modules.ReportManagement.API.Services.Dtos;
 
-namespace Ettad.Modules.ReportManagement.API.Mapper
+namespace Ettad.Modules.ReportManagement.API.Services.Mapper
 {
     public class ReportManagementMappingProfile : Profile
     {

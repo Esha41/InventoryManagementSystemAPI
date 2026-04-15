@@ -15,12 +15,12 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Project.Comman\Ettad.CrossCutting.Comman.csproj" />
-    <ProjectReference Include="..\Project.EntityFramework\Ettad.EntityFramework.csproj" />
-    <ProjectReference Include="..\Project.Repository\Ettad.Repository.csproj" />
-    <ProjectReference Include="..\Project.ResponseHandler\Ettad.CrossCutting.ResponseHandler.csproj" />
-    <ProjectReference Include="..\Project.User.Services\Ettad.User.Services.csproj" />
-    <ProjectReference Include="..\Ettad.Inventory.Services\Ettad.Inventory.Service.csproj" />
+    <ProjectReference Include="..\..\..\Project.Comman\Ettad.CrossCutting.Comman.csproj" />
+    <ProjectReference Include="..\..\..\Project.EntityFramework\Ettad.EntityFramework.csproj" />
+    <ProjectReference Include="..\..\..\Project.Repository\Ettad.Repository.csproj" />
+    <ProjectReference Include="..\..\..\Project.ResponseHandler\Ettad.CrossCutting.ResponseHandler.csproj" />
+    <ProjectReference Include="..\..\..\Project.User.Services\Ettad.User.Services.csproj" />
+    <ProjectReference Include="..\..\..\Ettad.Inventory.Services\Ettad.Inventory.Service.csproj" />
   </ItemGroup>
 
 </Project>

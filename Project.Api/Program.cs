@@ -42,6 +42,7 @@ using System.Text.Json;
 using Ettad.Modules.ReportManagement.API.Services.Dtos;
 using Ettad.Modules.ReportManagement.API.Services.Interfaces;
 using Ettad.Modules.ReportManagement.API.Services.Implementation;
+using Ettad.Modules.ReportManagement.API.Services.Mapper;
 
 // Configure Serilog
 Log.Logger = new LoggerConfiguration()
@@ -300,7 +301,7 @@ try
     builder.Services.AddScoped<SoftDeleteInterceptor>();
 
     builder.Services.AddAutoMapper(typeof(Ettad.Module.lookup.Mapper.LookupMappingProfile));
-    builder.Services.AddAutoMapper(typeof(Ettad.Modules.ReportManagement.API.Mapper.ReportManagementMappingProfile));
+    builder.Services.AddAutoMapper(typeof(ReportManagementMappingProfile));
 
     // Register Employee services directly
     builder.Services.AddScoped<IUserService, UserService>();
