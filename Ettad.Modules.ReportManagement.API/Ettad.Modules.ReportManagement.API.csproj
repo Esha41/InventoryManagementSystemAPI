@@ -23,8 +23,4 @@
     <ProjectReference Include="..\Ettad.Inventory.Services\Ettad.Inventory.Service.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <None Include="..\Project.Api\appsettings.json" Link="appsettings.json" />
-  </ItemGroup>
-
 </Project>
