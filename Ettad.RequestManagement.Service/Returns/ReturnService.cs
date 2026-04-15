@@ -201,6 +201,42 @@ namespace Ettad.RequestManagement.Service.Returns
                     return APIOperationResponse<long>.Fail(ResponseType.BadRequest, "Request purpose must be of type Return");
                 }
 
+                // Validate item types, reject weapon mixed with other types (same rule as orders), and pick workflow template
+                WorkflowType returnWorkflowType = WorkflowType.Return;
+                if (inputDto.ReturnItems != null && inputDto.ReturnItems.Any())
+                {
+                    var itemIds = inputDto.ReturnItems.Select(ri => ri.ItemId).Distinct().ToList();
+                    var items = await _baseItemRepository.FindAsync(
+                        item => itemIds.Contains(item.Id) && !item.IsDeleted);
+
+                    if (items.Count() != itemIds.Count)
+                    {
+                        var foundIds = items.Select(i => i.Id).ToList();
+                        var missingIds = itemIds.Except(foundIds).ToList();
+                        _logger.LogWarning("Some items not found for return. Missing ItemIds: {MissingIds}, User: {UserId}",
+                            string.Join(", ", missingIds), currentUserId);
+                        return APIOperationResponse<long>.Fail(ResponseType.BadRequest,
+                            $"One or more items not found. Item IDs: {string.Join(", ", missingIds)}");
+                    }
+
+                    var itemTypes = items.Select(i => i.ItemType).Distinct().ToList();
+                    var hasWeapon = itemTypes.Contains(ItemType.Weapon);
+                    var hasAmmunition = itemTypes.Contains(ItemType.Ammunition);
+                    var hasExplosive = itemTypes.Contains(ItemType.Explosive);
+                    var hasOtherTypes = itemTypes.Any(t => t != ItemType.Weapon && t != ItemType.Ammunition && t != ItemType.Explosive);
+
+                    if (hasWeapon && (hasAmmunition || hasExplosive || hasOtherTypes))
+                    {
+                        _logger.LogWarning("Invalid return: Weapons cannot be returned with other item types. ItemTypes: {ItemTypes}, User: {UserId}",
+                            string.Join(", ", itemTypes), currentUserId);
+                        return APIOperationResponse<long>.Fail(ResponseType.BadRequest,
+                            "Weapons cannot be returned with other item types. All items in a weapon return must be weapons.");
+                    }
+
+                    var hasAmmoOrExplosive = items.Any(i => i.ItemType == ItemType.Ammunition || i.ItemType == ItemType.Explosive);
+                    returnWorkflowType = hasAmmoOrExplosive ? WorkflowType.Return : WorkflowType.Return_Weapon;
+                }
+
                 // Step 1: Save files first (before creating return) to create FileUplodMaster records
                 // When files are selected: if file upload fails or throws an exception, do not create the return.
                 List<long> savedFileMasterIds = null;
@@ -289,20 +325,20 @@ namespace Ettad.RequestManagement.Service.Returns
                     }
                 }
 
-                // Start workflow for the return
+                // Start workflow for the return (Return vs Return_Weapon based on line item types)
                 var workflowStarted = await _workflowApprovalService.StartWorkflowAsync(
                     createdReturn.Id,
-                    WorkflowType.Return);
+                    returnWorkflowType);
 
                 if (workflowStarted)
                 {
-                    _logger.LogInformation("Workflow started successfully for return. ReturnId: {ReturnId}, User: {UserId}",
-                        createdReturn.Id, currentUserId);
+                    _logger.LogInformation("Workflow started successfully for return. ReturnId: {ReturnId}, WorkflowType: {WorkflowType}, User: {UserId}",
+                        createdReturn.Id, returnWorkflowType, currentUserId);
                 }
                 else
                 {
-                    _logger.LogWarning("Failed to start workflow for return. ReturnId: {ReturnId}, User: {UserId}",
-                        createdReturn.Id, currentUserId);
+                    _logger.LogWarning("Failed to start workflow for return. ReturnId: {ReturnId}, WorkflowType: {WorkflowType}, User: {UserId}",
+                        createdReturn.Id, returnWorkflowType, currentUserId);
                 }
 
                 await NotifyReturnAsync(

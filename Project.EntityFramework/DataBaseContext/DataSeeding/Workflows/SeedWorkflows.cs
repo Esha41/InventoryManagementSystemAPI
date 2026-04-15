@@ -148,6 +148,23 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding.Workflows
             }
         }
 
+        public static async Task SeedReturnWeaponWorkflowAsync(ApplicationDbContext context)
+        {
+            try
+            {
+                await SeedWorkflowAsync(
+                    context,
+                    WorkflowType.Return_Weapon,
+                    "Return Workflow (Weapon)",
+                    GetReturn_Weapon_Steps);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Seeding Return (Weapon) workflow error: {ex.Message}");
+                throw;
+            }
+        }
+
         private static List<WorkflowStepSeedDefinition> GetNormalOrderForTrainingPurposeSteps()
         {
             return new List<WorkflowStepSeedDefinition>
@@ -362,6 +379,25 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding.Workflows
                 new(2, "Requesting Entity Commander (Order Requesting Entity)", "Order Requesting Entity", CanReturn: true),
                 new(3, "Auditor of Ammunition Division (Directorate of Armament)", "Directorate of Armament", CanReturn: true),
                 new(4, "Head of Ammunition Division (Directorate of Armament)", "Directorate of Armament", CanReturn: true),
+                new(5, "Director of the Armament Entity (Directorate of Armament)", "Directorate of Armament", CanReturn: true),
+                new(6, "Head of Logistics (Directorate of Armament)", "Directorate of Armament", CanReturn: true),
+                new(7, "Director of the Armament Entity (Directorate of Armament)", "Directorate of Armament", CanReturn: true),
+                new(8, "Auditor of Audit Depo (Inventory)", "Inventory", CanReturn: true),
+                new(9, "Head of Audit Depo (Inventory)", "Inventory", CanReturn: true),
+                new(10, "Auditor of Depo Division (Inventory)", "Inventory", CanReturn: true),
+                new(11, "Depo Commander (Inventory)", "Inventory", CanReturn: true),
+                new(12, "Depo Officer (Inventory)", "Inventory", CanReturn: true),
+            };
+        }
+
+        private static List<WorkflowStepSeedDefinition> GetReturn_Weapon_Steps()
+        {
+            return new List<WorkflowStepSeedDefinition>
+            {
+                new(1, "Supply Officer (Order Requesting Entity)", "Order Requesting Entity"),
+                new(2, "Requesting Entity Commander (Order Requesting Entity)", "Order Requesting Entity", CanReturn: true),
+                new(3, "Auditor of Weapons Division (Directorate of Armament)", "Directorate of Armament", CanReturn: true),
+                new(4, "Head of Weapons Division (Directorate of Armament)", "Directorate of Armament", CanReturn: true),
                 new(5, "Director of the Armament Entity (Directorate of Armament)", "Directorate of Armament", CanReturn: true),
                 new(6, "Head of Logistics (Directorate of Armament)", "Directorate of Armament", CanReturn: true),
                 new(7, "Director of the Armament Entity (Directorate of Armament)", "Directorate of Armament", CanReturn: true),
