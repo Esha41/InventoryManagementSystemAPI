@@ -33,6 +33,7 @@ namespace Ettad.Inventory.Service.Assets.Profiles
             CreateMap<Asset, AssetDto>()
                 .ForMember(dest => dest.Item, opt => opt.MapFrom(src => src.Item != null ? src.Item : null))
                 .ForMember(dest => dest.Depot, opt => opt.MapFrom(src => src.Depot != null ? src.Depot : null))
+                .ForMember(dest => dest.CreatedDepot, opt => opt.MapFrom(src => src.Batch != null && src.Batch.Depot != null ? src.Batch.Depot : null))
                 .ForMember(dest => dest.Department, opt => opt.MapFrom(src => src.CurrentAssignment != null && src.CurrentAssignment.Department != null ? src.CurrentAssignment.Department : null))
                 .ForMember(dest => dest.DepartmentId, opt => opt.MapFrom(src => src.CurrentAssignment != null ? src.CurrentAssignment.DepartmentId : null))
                 .ForMember(dest => dest.Custodian, opt => opt.MapFrom(src => src.CurrentAssignment != null && src.CurrentAssignment.Custodian != null ? src.CurrentAssignment.Custodian : null))
@@ -41,7 +42,7 @@ namespace Ettad.Inventory.Service.Assets.Profiles
                 .ForMember(dest => dest.BatchNumber, opt => opt.MapFrom(src => src.Batch != null ? src.Batch.BatchNumber : string.Empty))
                 .ForMember(dest => dest.Supplier, opt => opt.MapFrom(src => src.Supplier != null ? src.Supplier : null))
                 .ForMember(dest => dest.Manufacturer, opt => opt.MapFrom(src => src.Manufacturer != null ? src.Manufacturer : null))
-                .ForMember(dest => dest.PrimaryPurpos, opt => opt.MapFrom(src => src.PrimaryPurpos != null ? src.PrimaryPurpos : null))
+                .ForMember(dest => dest.PrimaryPurpos, opt => opt.MapFrom(src => src.PrimaryPurpos != null ? src.PrimaryPurpos : null))               
                 .ForMember(dest => dest.Images, opt => opt.Ignore());
 
             CreateMap<CreateAssetDto, Asset>()
