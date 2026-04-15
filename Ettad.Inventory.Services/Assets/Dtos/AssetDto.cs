@@ -42,9 +42,6 @@ namespace Ettad.Inventory.Service.Assets.Dtos
 
         public bool IsDeleted { get; set; }
 
-        /// <summary>When the asset record was created (audit).</summary>
-        public DateTime CreationDate { get; set; }
-
         public long? SupplierId { get; set; }
 
         public long? ManufacturerId { get; set; }
@@ -56,9 +53,6 @@ namespace Ettad.Inventory.Service.Assets.Dtos
         public BaseItemDto Item { get; set; }
 
         public DepotDto Depot { get; set; }
-
-        /// <summary>Depot of the intake batch (where the asset was created with that batch).</summary>
-        public DepotDto? CreatedDepot { get; set; }
 
         public DepartmentDto Department { get; set; }
 

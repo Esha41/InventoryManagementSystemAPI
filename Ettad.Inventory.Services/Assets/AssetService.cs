@@ -55,7 +55,6 @@ namespace Ettad.Inventory.Service.Assets
                     nameof(Asset.Item),
                     nameof(Asset.Depot),
                     nameof(Asset.Batch),
-                    $"{nameof(Asset.Batch)}.{nameof(Batch.Depot)}",
                     nameof(Asset.Supplier),
                     nameof(Asset.Manufacturer),
                     nameof(Asset.PrimaryPurpos),
@@ -207,7 +206,6 @@ namespace Ettad.Inventory.Service.Assets
             asset.CurrentAssignmentId = assignment.Id;
             asset.ModificationDate = now;
             asset.ModifiedBy = _currentUserService.UserId;
-            asset.Status = AssetStatus.Assigned;
             await _context.SaveChangesAsync();
 
             await _historyService.RecordHistoryAsync(asset.Id, AssetHistoryActionType.Assigned, new AssetHistoryContext
@@ -235,7 +233,6 @@ namespace Ettad.Inventory.Service.Assets
                     nameof(Asset.Item),
                     nameof(Asset.Depot),
                     nameof(Asset.Batch),
-                    $"{nameof(Asset.Batch)}.{nameof(Batch.Depot)}",
                     nameof(Asset.Supplier),
                     nameof(Asset.Manufacturer),
                     nameof(Asset.PrimaryPurpos),
@@ -289,7 +286,6 @@ namespace Ettad.Inventory.Service.Assets
                     nameof(Asset.Item),
                     nameof(Asset.Depot),
                     nameof(Asset.Batch),
-                    $"{nameof(Asset.Batch)}.{nameof(Batch.Depot)}",
                     nameof(Asset.Supplier),
                     nameof(Asset.Manufacturer),
                     nameof(Asset.PrimaryPurpos),
@@ -359,7 +355,6 @@ namespace Ettad.Inventory.Service.Assets
                     nameof(Asset.Item),
                     nameof(Asset.Depot),
                     nameof(Asset.Batch),
-                    $"{nameof(Asset.Batch)}.{nameof(Batch.Depot)}",
                     nameof(Asset.Supplier),
                     nameof(Asset.Manufacturer),
                     nameof(Asset.PrimaryPurpos),
