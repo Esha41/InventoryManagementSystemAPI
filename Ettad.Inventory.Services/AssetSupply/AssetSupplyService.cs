@@ -683,8 +683,8 @@ namespace Ettad.Inventory.Service.AssetSupply
                         asset.IsAssigned = true;
                         asset.CurrentAssignmentId = assignment.Id;
                         asset.ModificationDate = _dateTimeProvider.Now;
-                        asset.ModifiedBy = _currentUserService.UserId;
-                        asset.Status = AssetStatus.Assigned;
+                        asset.ModifiedBy = _currentUserService.UserId;                                              
+
 
                         await _historyService.RecordHistoryAsync(asset.Id, AssetHistoryActionType.Assigned, new AssetHistoryContext
                         {
