@@ -15,6 +15,7 @@ namespace Ettad.Data.Enums
         NormalOrderForTrainingPurpose = 5,
         NormalOrder_Weapon = 6,
         OrderFromAllowance_Weapon = 7,
-        NormalOrderForTrainingPurpose_Weapon = 8
+        NormalOrderForTrainingPurpose_Weapon = 8,
+        Return_Weapon = 9
     }
 }

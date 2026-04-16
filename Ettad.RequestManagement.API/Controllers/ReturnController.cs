@@ -36,6 +36,20 @@ namespace Ettad.RequestManagement.API.Controllers
         }
 
         /// <summary>
+        /// Return tracking lines for a processed return (inventory detail or asset per row, with linked files).
+        /// </summary>
+        [HttpGet("{id}/tracking-lines")]
+        [ProducesResponseType((int)HttpStatusCode.OK)]
+        [CheckAuthorize(
+            "Permissions.Return.View", "Permissions.Return.Page",
+            "Permissions.RequestReciever.View", "Permissions.RequestReciever.Page")]
+        public async Task<IActionResult> GetTrackingLines(long id)
+        {
+            var result = await _returnService.GetReturnTrackingLinesAsync(id);
+            return ProcessResponse(result);
+        }
+
+        /// <summary>
         /// Get all returns with details and navigation properties
         /// </summary>
         [HttpGet]
@@ -48,42 +62,23 @@ namespace Ettad.RequestManagement.API.Controllers
         }
 
         /// <summary>
-        /// Create a new return (Supports both Multipart/Form-Data and Application/JSON)
+        /// Create a new return (multipart/form-data: DTO fields + optional files).
         /// </summary>
         /// <returns>Created return ID</returns>
         [HttpPost]
+        [Consumes("multipart/form-data")]
         [ProducesResponseType(typeof(APIOperationResponse<long>), (int)HttpStatusCode.Created)]
         [ProducesResponseType((int)HttpStatusCode.BadRequest)]
         [CheckAuthorize("Permissions.Return.Create")]
-        public async Task<IActionResult> Create()
+        public async Task<IActionResult> Create(
+            [FromForm] CreateReturnDto dto,
+            [FromForm] List<IFormFile>? files = null)
         {
             try
             {
-                CreateReturnDto dto;
-                List<IFormFile>? files = null;
-
-                if (Request.HasFormContentType)
-                {
-                    // Handle Multipart/Form-Data
-                    dto = new CreateReturnDto();
-                    await TryUpdateModelAsync(dto);
-                    files = Request.Form.Files.ToList();
-                }
-                else
-                {
-                    // Handle Application/JSON
-                    using var reader = new StreamReader(Request.Body);
-                    var body = await reader.ReadToEndAsync();
-                    dto = System.Text.Json.JsonSerializer.Deserialize<CreateReturnDto>(body, new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-                }
-
-                if (dto == null)
-                    return BadRequest(APIOperationResponse<long>.Fail(ResponseType.BadRequest, "Invalid request data"));
-
                 var result = files != null && files.Count > 0
                     ? await _returnService.CreateAsync(dto, files)
                     : await _returnService.CreateAsync(dto);
-
                 return ProcessResponse(result);
             }
             catch (Exception ex)
@@ -115,6 +110,53 @@ namespace Ettad.RequestManagement.API.Controllers
             var result = await _returnService.DeleteAsync(id);
             return ProcessResponse(result);
         }
+
+        /// <summary>
+        /// Set or update the depot for a return
+        /// </summary>
+        [HttpPut("{id}/set-depot")]
+        [ProducesResponseType(typeof(APIOperationResponse<bool>), (int)HttpStatusCode.OK)]
+        [ProducesResponseType((int)HttpStatusCode.BadRequest)]
+        [ProducesResponseType((int)HttpStatusCode.NotFound)]
+        [CheckAuthorize("SetReturnDepot")]
+        public async Task<IActionResult> SetDepot(long id, [FromBody] SetReturnDepotDto dto)
+        {
+            var result = await _returnService.SetDepotAsync(id, dto);
+            return ProcessResponse(result);
+        }
+
+        /// <summary>
+        /// Set or update the delivery date for a return
+        /// </summary>
+        [HttpPut("{id}/set-delivery-date")]
+        [ProducesResponseType(typeof(APIOperationResponse<bool>), (int)HttpStatusCode.OK)]
+        [ProducesResponseType((int)HttpStatusCode.BadRequest)]
+        [ProducesResponseType((int)HttpStatusCode.NotFound)]
+        [CheckAuthorize("SetReturnDeliveryDate")]
+        public async Task<IActionResult> SetDeliveryDate(long id, [FromBody] SetReturnDeliveryDateDto dto)
+        {
+            var result = await _returnService.SetDeliveryDateAsync(id, dto);
+            return ProcessResponse(result);
+        }
+
+        /// <summary>
+        /// Process return items (ammo/explosive inventory update and weapon asset status update), then approve and close the return.
+        /// Expects <c>multipart/form-data</c> (DTO fields + optional <c>files</c>).
+        /// </summary>
+        [HttpPut("{id}/process-items")]
+        [Consumes("multipart/form-data")]
+        [ProducesResponseType(typeof(APIOperationResponse<bool>), (int)HttpStatusCode.OK)]
+        [ProducesResponseType((int)HttpStatusCode.BadRequest)]
+        [ProducesResponseType((int)HttpStatusCode.NotFound)]
+        [CheckAuthorize("ProcessReturnItems")]
+        [RequestFormLimits(MultipartBodyLengthLimit = 104857600)]
+        public async Task<IActionResult> ProcessItems(
+            long id,
+            [FromForm] ProcessReturnItemsDto dto,
+            [FromForm] List<IFormFile>? files = null)
+        {
+            var result = await _returnService.ProcessReturnItemsAsync(id, dto, files);
+            return ProcessResponse(result);
+        }
     }
 }
-

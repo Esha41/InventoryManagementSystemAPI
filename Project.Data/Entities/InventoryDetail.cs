@@ -30,6 +30,10 @@ namespace Ettad.Data.Entities
 
         public long? PrimaryPurposId { get; set; }
 
+        public bool IsReturned { get; set; } = false;
+
+        public string? Notes { get; set; }
+
         #region Navigation Properties
 
         public BaseItem Item { get; set; }
