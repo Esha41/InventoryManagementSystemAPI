@@ -1,8 +1,8 @@
-﻿using DevExpress.XtraReports.UI;
+using DevExpress.XtraReports.UI;
 using Ettad.Reporting.Reports;
-using Ettad.Modules.ReportManagement.API.Reports.Templates;
+using Ettad.ReportManagement.Service.Reports.Templates;
 
-namespace Ettad.Modules.ReportManagement.API.Reports.Factories
+namespace Ettad.ReportManagement.Service.Reports.Factories
 {
     public class ReportFactory
     {
@@ -16,3 +16,4 @@ namespace Ettad.Modules.ReportManagement.API.Reports.Factories
         }
     }
 }
+

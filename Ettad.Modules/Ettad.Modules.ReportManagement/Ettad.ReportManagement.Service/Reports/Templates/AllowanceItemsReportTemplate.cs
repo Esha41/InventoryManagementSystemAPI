@@ -1,8 +1,9 @@
-﻿using DevExpress.DataAccess.ObjectBinding;
-using Ettad.Modules.ReportManagement.API.Reports.DataSources;
+using DevExpress.DataAccess.ObjectBinding;
+using Ettad.ReportManagement.Service.Reports.DataSources;
 using System.ComponentModel;
+using Microsoft.Extensions.DependencyInjection;
 
-namespace Ettad.Modules.ReportManagement.API.Reports.Templates
+namespace Ettad.ReportManagement.Service.Reports.Templates
 {
     public partial class AllowanceItemsReportTemplate : DevExpress.XtraReports.UI.XtraReport
     {
@@ -3669,7 +3670,7 @@ namespace Ettad.Modules.ReportManagement.API.Reports.Templates
             // xrLabel5
             // 
             this.xrLabel5.ExpressionBindings.AddRange(new DevExpress.XtraReports.UI.ExpressionBinding[] {
-            new DevExpress.XtraReports.UI.ExpressionBinding("BeforePrint", "Text", "Iif(?Language == \'ar\', \'السنة:\', \'Year:\')")});
+            new DevExpress.XtraReports.UI.ExpressionBinding("BeforePrint", "Text", "Iif(?Language == \'ar\', \'?????:\', \'Year:\')")});
             this.xrLabel5.LocationFloat = new DevExpress.Utils.PointFloat(0F, 112.5556F);
             this.xrLabel5.Multiline = true;
             this.xrLabel5.Name = "xrLabel5";
@@ -3691,7 +3692,7 @@ namespace Ettad.Modules.ReportManagement.API.Reports.Templates
             // xrLabel1
             // 
             this.xrLabel1.ExpressionBindings.AddRange(new DevExpress.XtraReports.UI.ExpressionBinding[] {
-            new DevExpress.XtraReports.UI.ExpressionBinding("BeforePrint", "Text", "Iif(?Language == \'ar\', \'تم الإنشاء في:\', \'Generated on :\')")});
+            new DevExpress.XtraReports.UI.ExpressionBinding("BeforePrint", "Text", "Iif(?Language == \'ar\', \'?? ??????? ??:\', \'Generated on :\')")});
             this.xrLabel1.LocationFloat = new DevExpress.Utils.PointFloat(598.0834F, 102.5556F);
             this.xrLabel1.Multiline = true;
             this.xrLabel1.Name = "xrLabel1";
@@ -3713,7 +3714,7 @@ namespace Ettad.Modules.ReportManagement.API.Reports.Templates
             this.xrLabelReportTitle.Borders = DevExpress.XtraPrinting.BorderSide.Bottom;
             this.xrLabelReportTitle.BorderWidth = 3F;
             this.xrLabelReportTitle.ExpressionBindings.AddRange(new DevExpress.XtraReports.UI.ExpressionBinding[] {
-            new DevExpress.XtraReports.UI.ExpressionBinding("BeforePrint", "Text", "Iif(?Language == \'ar\', \'تقرير بنود المخصصات\', \'Allowance Items Report\')")});
+            new DevExpress.XtraReports.UI.ExpressionBinding("BeforePrint", "Text", "Iif(?Language == \'ar\', \'????? ???? ????????\', \'Allowance Items Report\')")});
             this.xrLabelReportTitle.Font = new DevExpress.Drawing.DXFont("Segoe UI", 22F, DevExpress.Drawing.DXFontStyle.Bold);
             this.xrLabelReportTitle.LocationFloat = new DevExpress.Utils.PointFloat(224.1667F, 10F);
             this.xrLabelReportTitle.Multiline = true;
@@ -3778,7 +3779,7 @@ namespace Ettad.Modules.ReportManagement.API.Reports.Templates
             | DevExpress.XtraPrinting.BorderSide.Bottom)));
             this.xrTableCellSrNoHeader.BorderWidth = 1F;
             this.xrTableCellSrNoHeader.ExpressionBindings.AddRange(new DevExpress.XtraReports.UI.ExpressionBinding[] {
-            new DevExpress.XtraReports.UI.ExpressionBinding("BeforePrint", "Text", "Iif(?Language == \'ar\', \'م\', \'Sr #\')")});
+            new DevExpress.XtraReports.UI.ExpressionBinding("BeforePrint", "Text", "Iif(?Language == \'ar\', \'?\', \'Sr #\')")});
             this.xrTableCellSrNoHeader.ForeColor = System.Drawing.Color.White;
             this.xrTableCellSrNoHeader.Multiline = true;
             this.xrTableCellSrNoHeader.Name = "xrTableCellSrNoHeader";
@@ -3796,7 +3797,7 @@ namespace Ettad.Modules.ReportManagement.API.Reports.Templates
             | DevExpress.XtraPrinting.BorderSide.Bottom)));
             this.xrTableCell3.BorderWidth = 1F;
             this.xrTableCell3.ExpressionBindings.AddRange(new DevExpress.XtraReports.UI.ExpressionBinding[] {
-            new DevExpress.XtraReports.UI.ExpressionBinding("BeforePrint", "Text", "Iif(?Language == \'ar\', \'القسم\', \'Department\')")});
+            new DevExpress.XtraReports.UI.ExpressionBinding("BeforePrint", "Text", "Iif(?Language == \'ar\', \'?????\', \'Department\')")});
             this.xrTableCell3.ForeColor = System.Drawing.Color.White;
             this.xrTableCell3.Multiline = true;
             this.xrTableCell3.Name = "xrTableCell3";
@@ -3813,7 +3814,7 @@ namespace Ettad.Modules.ReportManagement.API.Reports.Templates
             | DevExpress.XtraPrinting.BorderSide.Bottom)));
             this.xrTableCell4.BorderWidth = 1F;
             this.xrTableCell4.ExpressionBindings.AddRange(new DevExpress.XtraReports.UI.ExpressionBinding[] {
-            new DevExpress.XtraReports.UI.ExpressionBinding("BeforePrint", "Text", "Iif(?Language == \'ar\', \'اسم العنصر\', \'Item Name\')")});
+            new DevExpress.XtraReports.UI.ExpressionBinding("BeforePrint", "Text", "Iif(?Language == \'ar\', \'??? ??????\', \'Item Name\')")});
             this.xrTableCell4.ForeColor = System.Drawing.Color.White;
             this.xrTableCell4.Multiline = true;
             this.xrTableCell4.Name = "xrTableCell4";
@@ -3830,7 +3831,7 @@ namespace Ettad.Modules.ReportManagement.API.Reports.Templates
             | DevExpress.XtraPrinting.BorderSide.Bottom)));
             this.xrTableCell5.BorderWidth = 1F;
             this.xrTableCell5.ExpressionBindings.AddRange(new DevExpress.XtraReports.UI.ExpressionBinding[] {
-            new DevExpress.XtraReports.UI.ExpressionBinding("BeforePrint", "Text", "Iif(?Language == \'ar\', \'الكمية الإجمالية\', \'Total Quantity\')")});
+            new DevExpress.XtraReports.UI.ExpressionBinding("BeforePrint", "Text", "Iif(?Language == \'ar\', \'?????? ?????????\', \'Total Quantity\')")});
             this.xrTableCell5.ForeColor = System.Drawing.Color.White;
             this.xrTableCell5.Multiline = true;
             this.xrTableCell5.Name = "xrTableCell5";
@@ -3847,7 +3848,7 @@ namespace Ettad.Modules.ReportManagement.API.Reports.Templates
             | DevExpress.XtraPrinting.BorderSide.Bottom)));
             this.xrTableCell6.BorderWidth = 1F;
             this.xrTableCell6.ExpressionBindings.AddRange(new DevExpress.XtraReports.UI.ExpressionBinding[] {
-            new DevExpress.XtraReports.UI.ExpressionBinding("BeforePrint", "Text", "Iif(?Language == \'ar\', \'الكمية المستخدمة\', \'Used Quantity\')")});
+            new DevExpress.XtraReports.UI.ExpressionBinding("BeforePrint", "Text", "Iif(?Language == \'ar\', \'?????? ?????????\', \'Used Quantity\')")});
             this.xrTableCell6.ForeColor = System.Drawing.Color.White;
             this.xrTableCell6.Multiline = true;
             this.xrTableCell6.Name = "xrTableCell6";
@@ -3864,7 +3865,7 @@ namespace Ettad.Modules.ReportManagement.API.Reports.Templates
             | DevExpress.XtraPrinting.BorderSide.Bottom)));
             this.xrTableCell7.BorderWidth = 1F;
             this.xrTableCell7.ExpressionBindings.AddRange(new DevExpress.XtraReports.UI.ExpressionBinding[] {
-            new DevExpress.XtraReports.UI.ExpressionBinding("BeforePrint", "Text", "Iif(?Language == \'ar\', \'الكمية المحجوزة\', \'Hold Quantity\')")});
+            new DevExpress.XtraReports.UI.ExpressionBinding("BeforePrint", "Text", "Iif(?Language == \'ar\', \'?????? ????????\', \'Hold Quantity\')")});
             this.xrTableCell7.ForeColor = System.Drawing.Color.White;
             this.xrTableCell7.Multiline = true;
             this.xrTableCell7.Name = "xrTableCell7";
@@ -3881,7 +3882,7 @@ namespace Ettad.Modules.ReportManagement.API.Reports.Templates
             | DevExpress.XtraPrinting.BorderSide.Bottom)));
             this.xrTableCell8.BorderWidth = 1F;
             this.xrTableCell8.ExpressionBindings.AddRange(new DevExpress.XtraReports.UI.ExpressionBinding[] {
-            new DevExpress.XtraReports.UI.ExpressionBinding("BeforePrint", "Text", "Iif(?Language == \'ar\', \'الكمية المتبقية\', \'Remaining Quantity\')")});
+            new DevExpress.XtraReports.UI.ExpressionBinding("BeforePrint", "Text", "Iif(?Language == \'ar\', \'?????? ????????\', \'Remaining Quantity\')")});
             this.xrTableCell8.ForeColor = System.Drawing.Color.White;
             this.xrTableCell8.Multiline = true;
             this.xrTableCell8.Name = "xrTableCell8";
@@ -3913,7 +3914,7 @@ namespace Ettad.Modules.ReportManagement.API.Reports.Templates
             // xrLabel6
             // 
             this.xrLabel6.ExpressionBindings.AddRange(new DevExpress.XtraReports.UI.ExpressionBinding[] {
-            new DevExpress.XtraReports.UI.ExpressionBinding("BeforePrint", "Text", "Iif(?Language == \'ar\', \'سري - للاستخدام الداخلي فقط\', \'Confidential – For interna" +
+            new DevExpress.XtraReports.UI.ExpressionBinding("BeforePrint", "Text", "Iif(?Language == \'ar\', \'??? - ????????? ??????? ???\', \'Confidential � For interna" +
                     "l use only\')")});
             this.xrLabel6.Font = new DevExpress.Drawing.DXFont("Segoe UI", 8F, DevExpress.Drawing.DXFontStyle.Italic);
             this.xrLabel6.LocationFloat = new DevExpress.Utils.PointFloat(96.80557F, 0F);
@@ -3923,13 +3924,13 @@ namespace Ettad.Modules.ReportManagement.API.Reports.Templates
             this.xrLabel6.SizeF = new System.Drawing.SizeF(573.4939F, 18F);
             this.xrLabel6.StylePriority.UseFont = false;
             this.xrLabel6.StylePriority.UseTextAlignment = false;
-            this.xrLabel6.Text = "Confidential – For internal use only";
+            this.xrLabel6.Text = "Confidential � For internal use only";
             this.xrLabel6.TextAlignment = DevExpress.XtraPrinting.TextAlignment.TopCenter;
             // 
             // xrPageInfo
             // 
             this.xrPageInfo.ExpressionBindings.AddRange(new DevExpress.XtraReports.UI.ExpressionBinding[] {
-            new DevExpress.XtraReports.UI.ExpressionBinding("BeforePrint", "TextFormatString", "Iif(?Language == \'ar\', \'صفحة {0} من {1}\', \'Page {0} of {1}\')")});
+            new DevExpress.XtraReports.UI.ExpressionBinding("BeforePrint", "TextFormatString", "Iif(?Language == \'ar\', \'???? {0} ?? {1}\', \'Page {0} of {1}\')")});
             this.xrPageInfo.Font = new DevExpress.Drawing.DXFont("Segoe UI", 8F);
             this.xrPageInfo.LocationFloat = new DevExpress.Utils.PointFloat(670.2996F, 0F);
             this.xrPageInfo.Name = "xrPageInfo";
@@ -3948,7 +3949,7 @@ namespace Ettad.Modules.ReportManagement.API.Reports.Templates
             // xrLabelReportFooter
             // 
             this.xrLabelReportFooter.ExpressionBindings.AddRange(new DevExpress.XtraReports.UI.ExpressionBinding[] {
-            new DevExpress.XtraReports.UI.ExpressionBinding("BeforePrint", "Text", "Iif(?Language == \'ar\', \'نهاية التقرير\', \'End of Report\')")});
+            new DevExpress.XtraReports.UI.ExpressionBinding("BeforePrint", "Text", "Iif(?Language == \'ar\', \'????? ???????\', \'End of Report\')")});
             this.xrLabelReportFooter.Font = new DevExpress.Drawing.DXFont("Segoe UI", 9F, DevExpress.Drawing.DXFontStyle.Italic);
             this.xrLabelReportFooter.LocationFloat = new DevExpress.Utils.PointFloat(0F, 0F);
             this.xrLabelReportFooter.Name = "xrLabelReportFooter";
@@ -3997,14 +3998,14 @@ namespace Ettad.Modules.ReportManagement.API.Reports.Templates
             // 
             this.AllowanceItemDS.Constructor = objectConstructorInfo3;
             this.AllowanceItemDS.DataMember = "Get";
-            this.AllowanceItemDS.DataSource = typeof(global::Ettad.Modules.ReportManagement.API.Reports.DataSources.AllowanceItemsDataSource);
+            this.AllowanceItemDS.DataSource = typeof(global::Ettad.ReportManagement.Service.Reports.DataSources.AllowanceItemsDataSource);
             this.AllowanceItemDS.Name = "AllowanceItemDS";
             // 
             // DesignTimeDS
             // 
             this.DesignTimeDS.Constructor = objectConstructorInfo4;
             this.DesignTimeDS.DataMember = "GetDesignTimeData";
-            this.DesignTimeDS.DataSource = typeof(global::Ettad.Modules.ReportManagement.API.Reports.DataSources.AllowanceItemsDataSource);
+            this.DesignTimeDS.DataSource = typeof(global::Ettad.ReportManagement.Service.Reports.DataSources.AllowanceItemsDataSource);
             this.DesignTimeDS.Name = "DesignTimeDS";
             // 
             // GroupFooter1
@@ -4063,7 +4064,7 @@ namespace Ettad.Modules.ReportManagement.API.Reports.Templates
             | DevExpress.XtraPrinting.BorderSide.Bottom)));
             this.xrTableCell14.BorderWidth = 1F;
             this.xrTableCell14.ExpressionBindings.AddRange(new DevExpress.XtraReports.UI.ExpressionBinding[] {
-            new DevExpress.XtraReports.UI.ExpressionBinding("BeforePrint", "Text", "Iif(?Language == \'ar\', \'الإجمالي\', \'Total\')")});
+            new DevExpress.XtraReports.UI.ExpressionBinding("BeforePrint", "Text", "Iif(?Language == \'ar\', \'????????\', \'Total\')")});
             this.xrTableCell14.ForeColor = System.Drawing.Color.White;
             this.xrTableCell14.Multiline = true;
             this.xrTableCell14.Name = "xrTableCell14";
@@ -4206,3 +4207,4 @@ namespace Ettad.Modules.ReportManagement.API.Reports.Templates
         }
     }
 }
+

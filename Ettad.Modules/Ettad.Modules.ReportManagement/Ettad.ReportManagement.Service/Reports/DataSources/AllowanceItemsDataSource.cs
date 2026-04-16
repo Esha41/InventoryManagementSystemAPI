@@ -3,8 +3,9 @@ using Ettad.Data.Entities;
 using Ettad.Lookups.Services.Contracts;
 using Ettad.Module.lookup.Dtos;
 using Ettad.ReportManagement.Service.Dtos;
+using Microsoft.Extensions.DependencyInjection;
 
-namespace Ettad.Modules.ReportManagement.API.Reports.DataSources
+namespace Ettad.ReportManagement.Service.Reports.DataSources
 {
     public class AllowanceItemsDataSource
     {
@@ -102,3 +103,4 @@ namespace Ettad.Modules.ReportManagement.API.Reports.DataSources
         }
     }
 }
+

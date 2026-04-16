@@ -2,12 +2,13 @@ using DevExpress.XtraReports.UI;
 using DevExpress.XtraReports.Web.ClientControls;
 using DevExpress.XtraReports.Web.Extensions;
 using Ettad.Data.Enums;
-using Ettad.Modules.ReportManagement.API.Reports.Factories;
+using Ettad.ReportManagement.Service.Reports.Factories;
 using Ettad.ReportManagement.Service.Dtos;
 using Ettad.ReportManagement.Service.Interfaces;
 using Microsoft.AspNetCore.WebUtilities;
+using Microsoft.Extensions.DependencyInjection;
 
-namespace Ettad.Modules.ReportManagement.API.Reports
+namespace Ettad.ReportManagement.Service.Reports
 {
     /// <summary>
     /// Custom report storage extension that saves reports to the database using IReportService

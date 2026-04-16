@@ -33,7 +33,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using Moujam.Casiher.Comman.Models;
-using Ettad.Modules.ReportManagement.API.Reports.DataSources;
+using Ettad.ReportManagement.Service.Reports.DataSources;
 using Serilog;
 using Serilog.Events;
 using Swashbuckle.AspNetCore.SwaggerGen;
@@ -155,8 +155,8 @@ try
     builder.Services.AddScoped<IScheduledReportExecutionService, ScheduledReportExecutionService>();
 
     // Register custom report storage extension
-    builder.Services.AddScoped<Ettad.Modules.ReportManagement.API.Reports.Factories.ReportFactory>();
-    builder.Services.AddScoped<ReportStorageWebExtension, Ettad.Modules.ReportManagement.API.Reports.CustomReportStorageWebExtension>();
+    builder.Services.AddScoped<Ettad.ReportManagement.Service.Reports.Factories.ReportFactory>();
+    builder.Services.AddScoped<ReportStorageWebExtension, Ettad.ReportManagement.Service.Reports.CustomReportStorageWebExtension>();
     #endregion
 
     // Configure Hangfire for background jobs
@@ -409,7 +409,7 @@ try
             }
         };
     });
-    Ettad.Modules.ReportManagement.API.Reports.DataSources.ReportServiceLocator.ServiceProvider = app.Services;
+    Ettad.ReportManagement.Service.Reports.DataSources.ReportServiceLocator.ServiceProvider = app.Services;
 
     // Configure the HTTP request pipeline.
     // Add error handling for Swagger - only in Development environment
