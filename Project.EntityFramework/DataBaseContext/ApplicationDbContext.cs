@@ -84,6 +84,12 @@ namespace Ettad.EntityFramework.DataBaseContext
         public DbSet<LoginAttempt> LoginAttempts { get; set; }
         public DbSet<BlacklistedToken> BlacklistedTokens { get; set; }
         public DbSet<UserDelegation> UserDelegations { get; set; }
+        public DbSet<ReportEntity> Reports { get; set; }
+        public DbSet<ReportStatus> ReportStatuses { get; set; }
+        public DbSet<ReportRole> ReportRoles { get; set; }
+        public DbSet<ScheduledReport> ScheduledReports { get; set; }
+        public DbSet<ScheduledReportRecipient> ScheduledReportRecipients { get; set; }
+        public DbSet<ScheduledReportExecution> ScheduledReportExecutions { get; set; }
         public DbSet<Announcement> Announcements { get; set; }
         public DbSet<AnnouncementDismissal> AnnouncementDismissals { get; set; }
         public DbSet<WeaponSupplySelection> WeaponSupplySelections { get; set; }

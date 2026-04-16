@@ -515,4 +515,5 @@ public static class MainEntities
         CrudOperation.Edit,
         CrudOperation.Delete,
     };
+
 }

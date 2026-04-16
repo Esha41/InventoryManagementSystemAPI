@@ -1,3 +1,6 @@
+using DevExpress.AspNetCore;
+using DevExpress.AspNetCore.Reporting;
+using DevExpress.XtraReports.Web.Extensions;
 using Ettad.Comman.Idenitity;
 using Ettad.CrossCutting.Comman.FileUpload;
 using Ettad.CrossCutting.Comman.Idenitity;
@@ -6,6 +9,7 @@ using Ettad.CrossCutting.Data.Repository;
 using Ettad.EntityFramework.DataBaseContext;
 using Ettad.EntityFramework.Interceptors;
 using Ettad.Inventory.Service;
+using Ettad.Inventory.Service.AllowanceItems;
 using Ettad.Inventory.Service.Monitoring;
 using Ettad.LdapSettings.Services;
 using Ettad.Lookups.Services.Contracts;
@@ -29,11 +33,16 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using Moujam.Casiher.Comman.Models;
+using Ettad.ReportManagement.Service.Reports.DataSources;
 using Serilog;
 using Serilog.Events;
 using Swashbuckle.AspNetCore.SwaggerGen;
 using System.Text;
 using System.Text.Json;
+using Ettad.ReportManagement.Service.Dtos;
+using Ettad.ReportManagement.Service.Interfaces;
+using Ettad.ReportManagement.Service.Implementation;
+using Ettad.ReportManagement.Service.Mapper;
 
 // Configure Serilog
 Log.Logger = new LoggerConfiguration()
@@ -72,6 +81,10 @@ try
     // Register ICurrentUserService early so interceptor can use it
     builder.Services.AddScoped<Ettad.Application.Common.Interfaces.ICurrentUserService, Ettad.User.Services.Implementation.CurrentUserService>();
 
+    #region DevExpress Reporting Configuration
+
+    // Register DevExpress Reporting services
+    builder.Services.AddDevExpressControls();
     // Add services to the container.
     // Register controllers from all referenced assemblies
     builder.Services.AddControllers()
@@ -85,12 +98,36 @@ try
         .AddApplicationPart(typeof(Ettad.Modules.EmailSystem.API.Controllers.EmailSettingsController).Assembly)
         .AddApplicationPart(typeof(Ettad.Modules.FileUpload.API.Controllers.FileUploadController).Assembly)
         .AddApplicationPart(typeof(Ettad.LdapSettings.APIs.Controllers.LdapSettingsController).Assembly)
+        .AddApplicationPart(typeof(Ettad.Modules.ReportManagement.API.Controllers.ReportController).Assembly) 
+        .AddApplicationPart(typeof(Ettad.Modules.ReportManagement.API.Controllers.CustomQueryBuilderController).Assembly) 
+        .AddApplicationPart(typeof(Ettad.Modules.ReportManagement.API.Controllers.CustomReportDesignerController).Assembly) 
+        .AddApplicationPart(typeof(Ettad.Modules.ReportManagement.API.Controllers.CustomWebDocumentViewerController).Assembly) 
         .AddApplicationPart(typeof(Ettad.Announcement.API.Controllers.AnnouncementController).Assembly)
         .AddJsonOptions(options =>
         {
             options.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
             options.JsonSerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter());
         });
+    builder.Services.ConfigureReportingServices(configurator => {
+        if (builder.Environment.IsDevelopment())
+        {
+            configurator.UseDevelopmentMode();
+        }
+        configurator.ConfigureReportDesigner(designerConfigurator => {
+        });
+        configurator.ConfigureWebDocumentViewer(viewerConfigurator => {
+            // Use cache for document generation and export.
+            // This setting is necessary in asynchronous mode and when a report has interactive or drill down features.
+            viewerConfigurator.UseCachedReportSourceBuilder();
+        });
+    });
+    DevExpress.Utils.DeserializationSettings.RegisterTrustedClass(typeof(AllowanceItemReportDto));
+    DevExpress.Utils.DeserializationSettings.RegisterTrustedClass(typeof(AllowanceItemsDataSource));
+    DevExpress.Utils.DeserializationSettings.RegisterTrustedClass(typeof(IAllowanceItemService));
+    DevExpress.Utils.DeserializationSettings.RegisterTrustedClass(typeof(IAllowanceItemQueryService));
+    // Register IServiceProvider and IServiceScope as trusted types to allow ObjectDataSource deserialization
+    DevExpress.Utils.DeserializationSettings.RegisterTrustedClass(typeof(System.IServiceProvider));
+    DevExpress.Utils.DeserializationSettings.RegisterTrustedClass(typeof(Microsoft.Extensions.DependencyInjection.IServiceScope));
 
     // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
     builder.Services.AddEndpointsApiExplorer();
@@ -110,6 +147,18 @@ try
     builder.Services.AddScoped<IFileStorageService, FileStorageService>();
     builder.Services.AddScoped<IFileUploadService, Ettad.Modules.FileUpload.API.Services.FileUploadService>();
     builder.Services.AddScoped<IExcelExportService, ExcelExportService>();
+    builder.Services.AddScoped<Ettad.CrossCutting.Comman.Time.IDateTimeProvider, Ettad.CrossCutting.Comman.Time.SystemDateTimeProvider>();
+    
+    // Register Report services
+    builder.Services.AddScoped<IReportService, ReportService>();
+    builder.Services.AddScoped<IScheduledReportService, ScheduledReportService>();
+    builder.Services.AddScoped<IScheduledReportExecutionService, ScheduledReportExecutionService>();
+
+    // Register custom report storage extension
+    builder.Services.AddScoped<Ettad.ReportManagement.Service.Reports.Factories.ReportFactory>();
+    builder.Services.AddScoped<ReportStorageWebExtension, Ettad.ReportManagement.Service.Reports.CustomReportStorageWebExtension>();
+    #endregion
+
     // Configure Hangfire for background jobs
     var hangfireConnectionString = builder.Configuration.GetConnectionString("DefaultConnection");
     builder.Services.AddHangfire(config => config
@@ -252,6 +301,7 @@ try
     builder.Services.AddScoped<SoftDeleteInterceptor>();
 
     builder.Services.AddAutoMapper(typeof(Ettad.Module.lookup.Mapper.LookupMappingProfile));
+    builder.Services.AddAutoMapper(typeof(ReportManagementMappingProfile));
 
     // Register Employee services directly
     builder.Services.AddScoped<IUserService, UserService>();
@@ -359,6 +409,7 @@ try
             }
         };
     });
+    Ettad.ReportManagement.Service.Reports.DataSources.ReportServiceLocator.ServiceProvider = app.Services;
 
     // Configure the HTTP request pipeline.
     // Add error handling for Swagger - only in Development environment
@@ -376,6 +427,10 @@ try
     }
   
     app.UseStaticFiles();
+    
+    // DevExpress Reporting middleware - must be before UseRouting
+    app.UseDevExpressControls();
+    
     app.UseHttpsRedirection();
 
     // Add HSTS (HTTP Strict Transport Security) - only in non-development environments
@@ -404,6 +459,7 @@ try
 
     app.UseAuthorization();
 
+    // Map DevExpress Reporting endpoints
     app.MapControllers();
 
     app.MapHub<Ettad.Notification.Service.Hubs.NotificationHub>("/hubs/notification");
@@ -460,7 +516,7 @@ try
         
         Log.Information("Low Stock Monitor job registered with schedule: {Schedule}", lowStockCronExpression);
     }
-
+    
     Log.Information("Ettad Backend API started successfully");
     app.Run();
 }
@@ -750,3 +806,4 @@ public class FileUploadOperationFilter : IOperationFilter
         return type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Nullable<>);
     }
 }
+

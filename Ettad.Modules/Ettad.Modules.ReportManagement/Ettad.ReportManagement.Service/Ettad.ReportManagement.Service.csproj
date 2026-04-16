@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="AutoMapper" Version="12.0.1" />
+    <PackageReference Include="AutoMapper.Extensions.Microsoft.DependencyInjection" Version="12.0.1" />
+    <PackageReference Include="DevExpress.AspNetCore.Reporting" Version="25.2.3" />
+    <PackageReference Include="DevExpress.Reporting.Core" Version="25.2.3" />
+    <PackageReference Include="Hangfire.Core" Version="1.8.20" />
+    <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="8.0.10" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.2" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="8.0.10" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\Project.Comman\Ettad.CrossCutting.Comman.csproj" />
+    <ProjectReference Include="..\..\..\Project.Data\Ettad.Data.csproj" />
+    <ProjectReference Include="..\..\..\Project.Repository\Ettad.Repository.csproj" />
+    <ProjectReference Include="..\..\..\Project.ResponseHandler\Ettad.CrossCutting.ResponseHandler.csproj" />
+    <ProjectReference Include="..\..\..\Project.User.Services\Ettad.User.Services.csproj" />
+    <ProjectReference Include="..\..\..\Ettad.Inventory.Services\Ettad.Inventory.Service.csproj" />
+  </ItemGroup>
+
+</Project>
