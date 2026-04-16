@@ -86,6 +86,11 @@ namespace Ettad.EntityFramework.DataBaseContext
         public DbSet<UserDelegation> UserDelegations { get; set; }
         public DbSet<Announcement> Announcements { get; set; }
         public DbSet<AnnouncementDismissal> AnnouncementDismissals { get; set; }
+
+        // Help Center
+        public DbSet<HelpCenterArticle> HelpCenterArticles { get; set; }
+        public DbSet<HelpCenterContactMessage> HelpCenterContactMessages { get; set; }
+        public DbSet<HelpCenterTermsConditions> HelpCenterTermsConditions { get; set; }
         public DbSet<WeaponSupplySelection> WeaponSupplySelections { get; set; }
        
         protected override void OnModelCreating(ModelBuilder modelBuilder)

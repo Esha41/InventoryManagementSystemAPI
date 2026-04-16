@@ -306,6 +306,19 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
             PlainPermissions.WarehouseMapView.ToString(),
         };
 
+        public static List<string> ReadHelpCenter = new()
+        {
+            "Permissions.HelpCenter.Page",
+            "Permissions.HelpCenter.View",
+        };
+
+        public static List<string> WriteHelpCenter = new()
+        {
+            "Permissions.HelpCenter.Create",
+            "Permissions.HelpCenter.Edit",
+            "Permissions.HelpCenter.Delete",
+        };
+
         public static List<string> ReadDelegation = new()
         {
             "Permissions.UserDelegations.Page",

@@ -15,8 +15,9 @@ namespace Ettad.Comman.Enums
         Weapon = 7,
         Explosive = 8,
         Asset = 9,
-        AssetSupply = 10
-       
+        AssetSupply = 10,
+        HelpCenter = 11
+
         // Add other entities here as needed
     }
 }
