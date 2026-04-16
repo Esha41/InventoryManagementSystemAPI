@@ -1,6 +1,7 @@
 ﻿using Ettad.Inventory.Service.AllowanceItems;
-using Ettad.CrossCutting.Data.Repository;
 using Ettad.Data.Entities;
+using Ettad.Lookups.Services.Contracts;
+using Ettad.Module.lookup.Dtos;
 using Ettad.Modules.ReportManagement.API.Services.Dtos;
 
 namespace Ettad.Modules.ReportManagement.API.Reports.DataSources
@@ -14,14 +15,14 @@ namespace Ettad.Modules.ReportManagement.API.Reports.DataSources
             // Use query service that doesn't require HttpContext or permissions
             var allowanceQueryService = scope.ServiceProvider.GetRequiredService<IAllowanceItemQueryService>();
 
-            var departmentRepository = scope.ServiceProvider.GetRequiredService<ICrossCuttingRepository<Department>>();
+            var departmentLookupService = scope.ServiceProvider.GetRequiredService<ILookupService<Department, CreateUpdateDepartmentDto>>();
 
             var allowanceItems = allowanceQueryService.GetAllAsync().GetAwaiter().GetResult();
 
-            // Get all departments to map DepartmentId to DepartmentName
-            var departments = departmentRepository.GetAllAsync().GetAwaiter().GetResult()
-                                                 .Where(d => !d.IsDeleted)
-                                                 .ToDictionary(d => d.Id, d => d.NameEn ?? d.NameAr ?? string.Empty);
+            // Resolve departments through the service layer (no direct repository usage in API/report layer)
+            var departmentResponse = departmentLookupService.GetLookupItems(includeDeleted: false).GetAwaiter().GetResult();
+            var departments = (departmentResponse.Data ?? new List<Department>())
+                .ToDictionary(d => d.Id, d => d.NameEn ?? d.NameAr ?? string.Empty);
 
             return allowanceItems.Select(a => new AllowanceItemReportDto
             {
