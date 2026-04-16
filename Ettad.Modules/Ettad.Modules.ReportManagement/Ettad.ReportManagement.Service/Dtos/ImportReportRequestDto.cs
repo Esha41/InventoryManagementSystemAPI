@@ -1,4 +1,6 @@
-namespace Ettad.Modules.ReportManagement.API.Services.Dtos
+using Microsoft.AspNetCore.Http;
+
+namespace Ettad.ReportManagement.Service.Dtos
 {
     public class ImportReportRequestDto
     {
@@ -8,3 +10,4 @@ namespace Ettad.Modules.ReportManagement.API.Services.Dtos
         public string? Description { get; set; }
     }
 }
+

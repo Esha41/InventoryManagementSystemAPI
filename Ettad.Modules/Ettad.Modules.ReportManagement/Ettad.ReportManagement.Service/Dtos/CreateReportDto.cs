@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace Ettad.Modules.ReportManagement.API.Services.Dtos
+namespace Ettad.ReportManagement.Service.Dtos
 {
     public class CreateReportDto
     {
@@ -23,3 +23,4 @@ namespace Ettad.Modules.ReportManagement.API.Services.Dtos
         public string? ReportParameters { get; set; }
     }
 }
+

@@ -1,5 +1,5 @@
 
-namespace Ettad.Modules.ReportManagement.API.Services.Dtos
+namespace Ettad.ReportManagement.Service.Dtos
 {
     /// <summary>
     /// DTO for setting a report as public with role restrictions
@@ -18,3 +18,4 @@ namespace Ettad.Modules.ReportManagement.API.Services.Dtos
         public List<string> RoleIds { get; set; } = new List<string>();
     }
 }
+

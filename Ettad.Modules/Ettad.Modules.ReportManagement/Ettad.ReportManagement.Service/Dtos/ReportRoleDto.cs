@@ -1,4 +1,4 @@
-namespace Ettad.Modules.ReportManagement.API.Services.Dtos
+namespace Ettad.ReportManagement.Service.Dtos
 {
     /// <summary>
     /// DTO for report role information
@@ -11,3 +11,4 @@ namespace Ettad.Modules.ReportManagement.API.Services.Dtos
         public string? RoleNameAr { get; set; }
     }
 }
+

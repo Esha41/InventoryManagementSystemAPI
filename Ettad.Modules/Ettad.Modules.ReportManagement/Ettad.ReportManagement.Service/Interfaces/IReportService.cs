@@ -1,7 +1,7 @@
 using Ettad.ResponseHandler.Models;
-using Ettad.Modules.ReportManagement.API.Services.Dtos;
+using Ettad.ReportManagement.Service.Dtos;
 
-namespace Ettad.Modules.ReportManagement.API.Services.Interfaces
+namespace Ettad.ReportManagement.Service.Interfaces
 {
     public interface IReportService
     {
@@ -21,3 +21,4 @@ namespace Ettad.Modules.ReportManagement.API.Services.Interfaces
         //Task<APIOperationResponse<Guid>> ImportAsync(IFormFile file, string? reportName = null, string? url = null, string? description = null);
      }
 }
+

@@ -1,7 +1,7 @@
 using Ettad.ResponseHandler.Models;
-using Ettad.Modules.ReportManagement.API.Services.Dtos;
+using Ettad.ReportManagement.Service.Dtos;
 
-namespace Ettad.Modules.ReportManagement.API.Services.Interfaces
+namespace Ettad.ReportManagement.Service.Interfaces
 {
     public interface IScheduledReportService
     {
@@ -15,3 +15,4 @@ namespace Ettad.Modules.ReportManagement.API.Services.Interfaces
         Task<APIOperationResponse<bool>> ExecuteNowAsync(Guid id);
     }
 }
+

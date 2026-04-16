@@ -1,6 +1,6 @@
 using System.Threading.Tasks;
 
-namespace Ettad.Modules.ReportManagement.API.Services.Interfaces
+namespace Ettad.ReportManagement.Service.Interfaces
 {
     public interface IScheduledReportExecutionService
     {
@@ -8,3 +8,4 @@ namespace Ettad.Modules.ReportManagement.API.Services.Interfaces
         Task ExecuteReportAsync(Guid scheduledReportId);
     }
 }
+

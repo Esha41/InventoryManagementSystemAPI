@@ -3,8 +3,8 @@ using DevExpress.XtraReports.Web.ClientControls;
 using DevExpress.XtraReports.Web.Extensions;
 using Ettad.Data.Enums;
 using Ettad.Modules.ReportManagement.API.Reports.Factories;
-using Ettad.Modules.ReportManagement.API.Services.Dtos;
-using Ettad.Modules.ReportManagement.API.Services.Interfaces;
+using Ettad.ReportManagement.Service.Dtos;
+using Ettad.ReportManagement.Service.Interfaces;
 using Microsoft.AspNetCore.WebUtilities;
 
 namespace Ettad.Modules.ReportManagement.API.Reports
@@ -215,3 +215,4 @@ namespace Ettad.Modules.ReportManagement.API.Reports
         }
     }
 }
+

@@ -39,10 +39,10 @@ using Serilog.Events;
 using Swashbuckle.AspNetCore.SwaggerGen;
 using System.Text;
 using System.Text.Json;
-using Ettad.Modules.ReportManagement.API.Services.Dtos;
-using Ettad.Modules.ReportManagement.API.Services.Interfaces;
-using Ettad.Modules.ReportManagement.API.Services.Implementation;
-using Ettad.Modules.ReportManagement.API.Services.Mapper;
+using Ettad.ReportManagement.Service.Dtos;
+using Ettad.ReportManagement.Service.Interfaces;
+using Ettad.ReportManagement.Service.Implementation;
+using Ettad.ReportManagement.Service.Mapper;
 
 // Configure Serilog
 Log.Logger = new LoggerConfiguration()
@@ -806,3 +806,4 @@ public class FileUploadOperationFilter : IOperationFilter
         return type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Nullable<>);
     }
 }
+

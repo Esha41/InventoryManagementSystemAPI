@@ -1,4 +1,4 @@
-namespace Ettad.Modules.ReportManagement.API.Services.Dtos
+namespace Ettad.ReportManagement.Service.Dtos
 {
     public class ReportDto
     {
@@ -21,3 +21,4 @@ namespace Ettad.Modules.ReportManagement.API.Services.Dtos
         public List<ReportRoleDto>? Roles { get; set; }
     }
 }
+

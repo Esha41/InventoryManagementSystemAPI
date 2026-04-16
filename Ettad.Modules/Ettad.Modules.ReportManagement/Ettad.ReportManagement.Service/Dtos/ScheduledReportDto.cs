@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace Ettad.Modules.ReportManagement.API.Services.Dtos
+namespace Ettad.ReportManagement.Service.Dtos
 {
     public class ScheduledReportDto
     {
@@ -87,3 +87,4 @@ namespace Ettad.Modules.ReportManagement.API.Services.Dtos
         public bool IsActive { get; set; }
     }
 }
+

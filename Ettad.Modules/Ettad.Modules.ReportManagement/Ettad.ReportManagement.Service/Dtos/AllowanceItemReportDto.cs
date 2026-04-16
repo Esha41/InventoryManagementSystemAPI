@@ -1,4 +1,4 @@
-﻿namespace Ettad.Modules.ReportManagement.API.Services.Dtos
+namespace Ettad.ReportManagement.Service.Dtos
 {
     public class AllowanceItemReportDto
     {
@@ -13,3 +13,4 @@
         public DateTime CreatedOn { get; set; }
     }
 }
+

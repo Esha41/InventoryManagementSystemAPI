@@ -1,7 +1,7 @@
-using Ettad.Modules.ReportManagement.API.Services.Interfaces;
+using Ettad.ReportManagement.Service.Interfaces;
 using Hangfire;
 
-namespace Ettad.Modules.ReportManagement.API.Services
+namespace Ettad.ReportManagement.Service.BackgroundJob
 {
     /// <summary>
     /// Hangfire job class for scheduled report execution.
@@ -23,3 +23,4 @@ namespace Ettad.Modules.ReportManagement.API.Services
         }
     }
 }
+

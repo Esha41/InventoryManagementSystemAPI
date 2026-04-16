@@ -2,12 +2,12 @@ using Ettad.CrossCutting.Comman.Time;
 using Ettad.CrossCutting.Data.Repository;
 using Ettad.Data.Entities;
 using DevExpress.XtraReports.UI;
-using Ettad.Modules.ReportManagement.API.Reports.Factories;
 using Ettad.User.Services.Helpers;
 using Ettad.User.Services.Interfaces;
-using Ettad.Modules.ReportManagement.API.Services.Interfaces;
+using Ettad.ReportManagement.Service.Interfaces;
+using Microsoft.Extensions.Logging;
 
-namespace Ettad.Modules.ReportManagement.API.Services.Implementation
+namespace Ettad.ReportManagement.Service.Implementation
 {
     public class ScheduledReportExecutionService : IScheduledReportExecutionService
     {
@@ -16,7 +16,6 @@ namespace Ettad.Modules.ReportManagement.API.Services.Implementation
         private readonly IDateTimeProvider _dateTimeProvider;
         private readonly ILogger<ScheduledReportExecutionService> _logger;
         private readonly IReportService _reportService;
-        private readonly ReportFactory _reportFactory;
         private readonly IEmailSender _emailSender;
         private readonly IUserService _userService;
 
@@ -26,7 +25,6 @@ namespace Ettad.Modules.ReportManagement.API.Services.Implementation
             IDateTimeProvider dateTimeProvider,
             ILogger<ScheduledReportExecutionService> logger,
             IReportService reportService,
-            ReportFactory reportFactory,
             IEmailSender emailSender,
             IUserService userService)
         {
@@ -35,7 +33,6 @@ namespace Ettad.Modules.ReportManagement.API.Services.Implementation
             _dateTimeProvider = dateTimeProvider;
             _logger = logger;
             _reportService = reportService;
-            _reportFactory = reportFactory;
             _emailSender = emailSender;
             _userService = userService;
         }
@@ -243,8 +240,8 @@ namespace Ettad.Modules.ReportManagement.API.Services.Implementation
                 }
                 else
                 {
-                    // Fallback to factory if no layout data
-                    report = _reportFactory.Create(reportUrl);
+                    _logger.LogWarning("Report {ReportUrl} has no saved layout data.", reportUrl);
+                    return null;
                 }
 
                 // Export report to memory stream based on format
@@ -413,3 +410,4 @@ namespace Ettad.Modules.ReportManagement.API.Services.Implementation
         }
     }
 }
+

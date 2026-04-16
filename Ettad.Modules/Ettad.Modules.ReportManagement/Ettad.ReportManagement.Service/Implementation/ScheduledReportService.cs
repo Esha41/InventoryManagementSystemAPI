@@ -5,12 +5,13 @@ using Ettad.CrossCutting.Data.Repository;
 using Ettad.ResponseHandler.Consts;
 using Ettad.ResponseHandler.Models;
 using Microsoft.EntityFrameworkCore;
-using Ettad.Modules.ReportManagement.API.Services.Dtos;
+using Microsoft.Extensions.Logging;
+using Ettad.ReportManagement.Service.Dtos;
 using Ettad.Data.Entities;
 using Ettad.User.Services.Interfaces;
-using Ettad.Modules.ReportManagement.API.Services.Interfaces;
+using Ettad.ReportManagement.Service.Interfaces;
 
-namespace Ettad.Modules.ReportManagement.API.Services.Implementation
+namespace Ettad.ReportManagement.Service.Implementation
 {
     public class ScheduledReportService : IScheduledReportService
     {
@@ -545,3 +546,4 @@ namespace Ettad.Modules.ReportManagement.API.Services.Implementation
         }
     }
 }
+

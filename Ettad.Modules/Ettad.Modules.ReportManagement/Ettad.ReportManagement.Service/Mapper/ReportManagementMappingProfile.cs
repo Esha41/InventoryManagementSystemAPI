@@ -1,8 +1,8 @@
 using AutoMapper;
 using Ettad.Data.Entities;
-using Ettad.Modules.ReportManagement.API.Services.Dtos;
+using Ettad.ReportManagement.Service.Dtos;
 
-namespace Ettad.Modules.ReportManagement.API.Services.Mapper
+namespace Ettad.ReportManagement.Service.Mapper
 {
     public class ReportManagementMappingProfile : Profile
     {
@@ -99,3 +99,4 @@ namespace Ettad.Modules.ReportManagement.API.Services.Mapper
         }
     }
 }
+

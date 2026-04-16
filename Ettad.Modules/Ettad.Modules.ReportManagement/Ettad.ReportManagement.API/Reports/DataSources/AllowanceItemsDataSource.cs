@@ -1,8 +1,8 @@
-﻿using Ettad.Inventory.Service.AllowanceItems;
+using Ettad.Inventory.Service.AllowanceItems;
 using Ettad.Data.Entities;
 using Ettad.Lookups.Services.Contracts;
 using Ettad.Module.lookup.Dtos;
-using Ettad.Modules.ReportManagement.API.Services.Dtos;
+using Ettad.ReportManagement.Service.Dtos;
 
 namespace Ettad.Modules.ReportManagement.API.Reports.DataSources
 {

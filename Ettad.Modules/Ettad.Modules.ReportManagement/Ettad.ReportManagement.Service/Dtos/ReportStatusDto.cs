@@ -1,4 +1,4 @@
-namespace Ettad.Modules.ReportManagement.API.Services.Dtos
+namespace Ettad.ReportManagement.Service.Dtos
 {
     public class ReportStatusDto
     {
@@ -7,3 +7,4 @@ namespace Ettad.Modules.ReportManagement.API.Services.Dtos
         public string NameAr { get; set; } = string.Empty;
     }
 }
+
