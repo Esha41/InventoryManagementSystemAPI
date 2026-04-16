@@ -12,8 +12,8 @@ using Microsoft.AspNetCore.Mvc;
 namespace Ettad.Modules.ReportManagement.API.Controllers
 {
     [ApiExplorerSettings(IgnoreApi = true)]
-    //[Route("DXXRDV")]
-    //[Route("api/DXXRDV")]
+    [Route("DXXRDV")]
+    [Route("api/DXXRDV")]
     public class CustomWebDocumentViewerController : WebDocumentViewerController
     {
         public CustomWebDocumentViewerController(IWebDocumentViewerMvcControllerService controllerService) : base(controllerService)
@@ -60,8 +60,8 @@ namespace Ettad.Modules.ReportManagement.API.Controllers
     }
 
     [ApiExplorerSettings(IgnoreApi = true)]
-    //[Route("DXXQB")]
-    //[Route("api/DXXQB")]
+    [Route("DXXQB")]
+    [Route("api/DXXQB")]
     public class CustomQueryBuilderController : QueryBuilderController
     {
         public CustomQueryBuilderController(IQueryBuilderMvcControllerService controllerService) : base(controllerService)
