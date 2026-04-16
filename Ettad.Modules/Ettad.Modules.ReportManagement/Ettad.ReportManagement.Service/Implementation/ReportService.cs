@@ -545,23 +545,23 @@ namespace Ettad.ReportManagement.Service.Implementation
                 {
                     new ReportTemplateDto
                     {
-                        Url = "BaseReportTemplate",
+                        Url = ReportConstants.BaseReportTemplate,
                         Name = "Base Report Template",
                         Description = "A basic report template with standard sections"
                     },
                     new ReportTemplateDto
                     {
-                        Url = "AllowanceItemsReportTemplate",
+                        Url = ReportConstants.AllowanceItemsReportTemplate,
                         Name = "Allowance Items Report",
                         Description = "Template for allowance items reporting"
+                    },
+                    new ReportTemplateDto
+                    {
+                        Url = ReportConstants.UserReportTemplate,
+                        Name = "Users Report",
+                        Description = "Template for Users"
                     }
                 };
-
-                // add filtering logic here based on user permissions/department if needed
-                // if (!canViewAll && userDepartmentId.HasValue)
-                // {
-                //     // Filter templates based on department
-                // }
 
                 _logger.LogInformation("Retrieved {Count} report templates. User: {UserId}", templates.Count, _currentUserService.UserId);
                 return APIOperationResponse<List<ReportTemplateDto>>.Success(templates);
