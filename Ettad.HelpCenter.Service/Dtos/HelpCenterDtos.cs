@@ -60,6 +60,19 @@ namespace Ettad.HelpCenter.Service.Dtos
         public string AdminReply { get; set; } = string.Empty;
     }
 
+    /// <summary>Support email and phone displayed on the Contact Us tab (managed in admin).</summary>
+    public class HelpCenterContactDisplayDto
+    {
+        public string SupportEmail { get; set; } = string.Empty;
+        public string SupportPhone { get; set; } = string.Empty;
+    }
+
+    public class UpdateHelpCenterContactDisplayDto
+    {
+        public string SupportEmail { get; set; } = string.Empty;
+        public string SupportPhone { get; set; } = string.Empty;
+    }
+
     // ─── Terms & Conditions ─────────────────────────────────────────────────────
 
     public class HelpCenterTermsDto

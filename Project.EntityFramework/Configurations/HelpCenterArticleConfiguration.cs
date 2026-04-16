@@ -16,8 +16,10 @@ namespace Ettad.EntityFramework.Configurations
                 .IsRequired()
                 .HasMaxLength(300);
 
+            // Rich HTML (Quill) including embedded images (data URIs) — unbounded text
             builder.Property(a => a.Content)
-                .IsRequired();
+                .IsRequired()
+                .HasColumnType("nvarchar(max)");
 
             builder.Property(a => a.Category)
                 .HasMaxLength(100);

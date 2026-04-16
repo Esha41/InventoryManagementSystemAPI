@@ -20,6 +20,10 @@ namespace Ettad.HelpCenter.Service
         Task<APIOperationResponse<bool>> ReplyContactMessageAsync(long id, ReplyContactMessageDto dto, string repliedBy);
         Task<APIOperationResponse<bool>> DeleteContactMessageAsync(long id, string deletedBy);
 
+        Task<APIOperationResponse<HelpCenterContactDisplayDto>> GetContactDisplaySettingsAsync();
+        Task<APIOperationResponse<HelpCenterContactDisplayDto>> UpdateContactDisplaySettingsAsync(
+            UpdateHelpCenterContactDisplayDto dto, string modifiedBy);
+
         // ── Terms & Conditions ────────────────────────────────────────────────
         Task<APIOperationResponse<HelpCenterTermsDto>> GetActiveTermsAsync();
         Task<APIOperationResponse<List<HelpCenterTermsDto>>> GetAllTermsVersionsAsync();

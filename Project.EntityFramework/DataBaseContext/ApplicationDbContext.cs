@@ -91,6 +91,7 @@ namespace Ettad.EntityFramework.DataBaseContext
         public DbSet<HelpCenterArticle> HelpCenterArticles { get; set; }
         public DbSet<HelpCenterContactMessage> HelpCenterContactMessages { get; set; }
         public DbSet<HelpCenterTermsConditions> HelpCenterTermsConditions { get; set; }
+        public DbSet<HelpCenterContactDisplaySettings> HelpCenterContactDisplaySettings { get; set; }
         public DbSet<WeaponSupplySelection> WeaponSupplySelections { get; set; }
        
         protected override void OnModelCreating(ModelBuilder modelBuilder)

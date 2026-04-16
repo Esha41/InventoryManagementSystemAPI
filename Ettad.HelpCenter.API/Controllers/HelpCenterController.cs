@@ -163,6 +163,30 @@ namespace Ettad.HelpCenter.API.Controllers
             return ProcessResponse(result);
         }
 
+        /// <summary>Support email and phone shown on the user Contact tab.</summary>
+        [HttpGet("contact/display")]
+        [ProducesResponseType((int)HttpStatusCode.OK)]
+        public async Task<IActionResult> GetContactDisplaySettings()
+        {
+            var result = await _helpCenterService.GetContactDisplaySettingsAsync();
+            return ProcessResponse(result);
+        }
+
+        /// <summary>Update support email and phone (admin).</summary>
+        [HttpPut("contact/display")]
+        [ProducesResponseType((int)HttpStatusCode.OK)]
+        [CheckAuthorize("Permissions.HelpCenter.Edit")]
+        public async Task<IActionResult> UpdateContactDisplaySettings([FromBody] UpdateHelpCenterContactDisplayDto dto)
+        {
+            var userId = _currentUserService.UserId;
+            if (string.IsNullOrEmpty(userId))
+                return ProcessResponse(APIOperationResponse<HelpCenterContactDisplayDto>.Fail(
+                    Ettad.ResponseHandler.Consts.ResponseType.Unauthorized, "User not authenticated"));
+
+            var result = await _helpCenterService.UpdateContactDisplaySettingsAsync(dto, userId);
+            return ProcessResponse(result);
+        }
+
         // ── Terms & Conditions ────────────────────────────────────────────────
 
         /// <summary>Whether the user must accept the current active terms (e.g. after a new version was published).</summary>

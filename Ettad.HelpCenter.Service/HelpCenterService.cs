@@ -1,3 +1,4 @@
+using System.Net.Mail;
 using Ettad.Comman.Idenitity;
 using Ettad.CrossCutting.Comman.Time;
 using Ettad.CrossCutting.Data.Repository;
@@ -305,6 +306,89 @@ namespace Ettad.HelpCenter.Service
             }
         }
 
+        public async Task<APIOperationResponse<HelpCenterContactDisplayDto>> GetContactDisplaySettingsAsync()
+        {
+            try
+            {
+                var row = await _db.HelpCenterContactDisplaySettings.AsNoTracking()
+                    .FirstOrDefaultAsync(x => x.Id == 1);
+                if (row is null)
+                {
+                    return APIOperationResponse<HelpCenterContactDisplayDto>.Success(
+                        new HelpCenterContactDisplayDto());
+                }
+
+                return APIOperationResponse<HelpCenterContactDisplayDto>.Success(MapContactDisplay(row));
+            }
+            catch (Exception ex)
+            {
+                return APIOperationResponse<HelpCenterContactDisplayDto>.Fail(
+                    ResponseType.InternalServerError, ex.Message);
+            }
+        }
+
+        public async Task<APIOperationResponse<HelpCenterContactDisplayDto>> UpdateContactDisplaySettingsAsync(
+            UpdateHelpCenterContactDisplayDto dto, string modifiedBy)
+        {
+            try
+            {
+                var email = (dto.SupportEmail ?? string.Empty).Trim();
+                var phone = (dto.SupportPhone ?? string.Empty).Trim();
+
+                if (email.Length > 200)
+                    return APIOperationResponse<HelpCenterContactDisplayDto>.Fail(
+                        ResponseType.BadRequest, "Support email is too long");
+
+                if (phone.Length > 50)
+                    return APIOperationResponse<HelpCenterContactDisplayDto>.Fail(
+                        ResponseType.BadRequest, "Support phone is too long");
+
+                if (!string.IsNullOrEmpty(email) && !IsPlausibleEmail(email))
+                    return APIOperationResponse<HelpCenterContactDisplayDto>.Fail(
+                        ResponseType.BadRequest, "Invalid support email format");
+
+                var row = await _db.HelpCenterContactDisplaySettings.FirstOrDefaultAsync(x => x.Id == 1);
+                if (row is null)
+                {
+                    row = new HelpCenterContactDisplaySettings { Id = 1 };
+                    _db.HelpCenterContactDisplaySettings.Add(row);
+                }
+
+                row.SupportEmail = email;
+                row.SupportPhone = phone;
+                row.ModifiedAt = _dateTime.Now;
+                row.ModifiedBy = modifiedBy;
+
+                await _db.SaveChangesAsync();
+                return APIOperationResponse<HelpCenterContactDisplayDto>.Success(MapContactDisplay(row));
+            }
+            catch (Exception ex)
+            {
+                return APIOperationResponse<HelpCenterContactDisplayDto>.Fail(
+                    ResponseType.InternalServerError, ex.Message);
+            }
+        }
+
+        private static HelpCenterContactDisplayDto MapContactDisplay(HelpCenterContactDisplaySettings x) =>
+            new()
+            {
+                SupportEmail = x.SupportEmail ?? string.Empty,
+                SupportPhone = x.SupportPhone ?? string.Empty
+            };
+
+        private static bool IsPlausibleEmail(string email)
+        {
+            try
+            {
+                var addr = new MailAddress(email);
+                return string.Equals(addr.Address, email, StringComparison.OrdinalIgnoreCase);
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
         // ── Terms & Conditions ────────────────────────────────────────────────
 
         public async Task<APIOperationResponse<HelpCenterTermsDto>> GetActiveTermsAsync()
@@ -351,6 +435,18 @@ namespace Ettad.HelpCenter.Service
                 if (string.IsNullOrWhiteSpace(dto.Content))
                     return APIOperationResponse<HelpCenterTermsDto>.Fail(ResponseType.BadRequest, "Content is required");
 
+                var trimmedVersion = dto.Version.Trim();
+                if (trimmedVersion.Length > 50)
+                    return APIOperationResponse<HelpCenterTermsDto>.Fail(ResponseType.BadRequest,
+                        "Version must be 50 characters or fewer");
+
+                // DB has a unique index on Version (all rows, including soft-deleted). Reusing a label fails SaveChanges.
+                var versionTaken = await _db.HelpCenterTermsConditions
+                    .AnyAsync(t => t.Version == trimmedVersion);
+                if (versionTaken)
+                    return APIOperationResponse<HelpCenterTermsDto>.Fail(ResponseType.BadRequest,
+                        "This version label is already in use. Enter a new version (for example 1.1). Labels cannot be reused even after a version is deleted.");
+
                 await using var tx = await _db.Database.BeginTransactionAsync();
 
                 var activeTerms = await _db.HelpCenterTermsConditions
@@ -366,7 +462,7 @@ namespace Ettad.HelpCenter.Service
 
                 var newTerms = new HelpCenterTermsConditions
                 {
-                    Version = dto.Version.Trim(),
+                    Version = trimmedVersion,
                     Content = dto.Content,
                     IsActive = true,
                     EffectiveDate = dto.EffectiveDate,
@@ -380,6 +476,19 @@ namespace Ettad.HelpCenter.Service
 
                 return APIOperationResponse<HelpCenterTermsDto>.Success(
                     MapTermsToDto(newTerms), "Terms published successfully");
+            }
+            catch (DbUpdateException ex)
+            {
+                var inner = ex.InnerException?.Message ?? ex.Message;
+                if (inner.Contains("IX_HelpCenterTermsConditions_Version", StringComparison.OrdinalIgnoreCase)
+                    || inner.Contains("UNIQUE KEY constraint", StringComparison.OrdinalIgnoreCase)
+                    || inner.Contains("duplicate key", StringComparison.OrdinalIgnoreCase))
+                {
+                    return APIOperationResponse<HelpCenterTermsDto>.Fail(ResponseType.BadRequest,
+                        "This version label is already in use. Enter a different version.");
+                }
+
+                return APIOperationResponse<HelpCenterTermsDto>.Fail(ResponseType.InternalServerError, inner);
             }
             catch (Exception ex)
             {
@@ -478,10 +587,14 @@ namespace Ettad.HelpCenter.Service
                     if (string.IsNullOrWhiteSpace(dto.Version))
                         return APIOperationResponse<HelpCenterTermsDto>.Fail(ResponseType.BadRequest, "Version cannot be empty");
                     var trimmed = dto.Version.Trim();
+                    if (trimmed.Length > 50)
+                        return APIOperationResponse<HelpCenterTermsDto>.Fail(ResponseType.BadRequest, "Version must be 50 characters or fewer");
+                    // Unique index applies to all rows (including soft-deleted).
                     var versionTaken = await _db.HelpCenterTermsConditions
-                        .AnyAsync(t => !t.IsDeleted && t.Id != id && t.Version == trimmed);
+                        .AnyAsync(t => t.Id != id && t.Version == trimmed);
                     if (versionTaken)
-                        return APIOperationResponse<HelpCenterTermsDto>.Fail(ResponseType.BadRequest, "This version label is already in use");
+                        return APIOperationResponse<HelpCenterTermsDto>.Fail(ResponseType.BadRequest,
+                            "This version label is already in use. Labels cannot be reused even after a version is deleted.");
                     entity.Version = trimmed;
                 }
 

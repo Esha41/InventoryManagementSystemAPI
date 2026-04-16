@@ -17,7 +17,8 @@ namespace Ettad.EntityFramework.Configurations
                 .HasMaxLength(50);
 
             builder.Property(t => t.Content)
-                .IsRequired();
+                .IsRequired()
+                .HasColumnType("nvarchar(max)");
 
             builder.Property(t => t.IsActive)
                 .IsRequired()
