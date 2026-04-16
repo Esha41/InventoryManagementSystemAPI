@@ -113,8 +113,14 @@ try
         {
             configurator.UseDevelopmentMode();
         }
+
+        // Register connection strings so the Web Report Designer's Data Source Wizard
+        // shows "Existing Data Connections" based on appsettings.json -> ConnectionStrings.
         configurator.ConfigureReportDesigner(designerConfigurator => {
+            designerConfigurator.RegisterDataSourceWizardConfigurationConnectionStringsProvider(
+                configuration.GetSection("ConnectionStrings"));
         });
+
         configurator.ConfigureWebDocumentViewer(viewerConfigurator => {
             // Use cache for document generation and export.
             // This setting is necessary in asynchronous mode and when a report has interactive or drill down features.
