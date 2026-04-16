@@ -7,7 +7,6 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using System.Net;
-using System.Text.Json;
 using Ettad.ResponseHandler.Consts;
 
 namespace Ettad.RequestManagement.API.Controllers
@@ -63,42 +62,23 @@ namespace Ettad.RequestManagement.API.Controllers
         }
 
         /// <summary>
-        /// Create a new return (Supports both Multipart/Form-Data and Application/JSON)
+        /// Create a new return (multipart/form-data: DTO fields + optional files).
         /// </summary>
         /// <returns>Created return ID</returns>
         [HttpPost]
+        [Consumes("multipart/form-data")]
         [ProducesResponseType(typeof(APIOperationResponse<long>), (int)HttpStatusCode.Created)]
         [ProducesResponseType((int)HttpStatusCode.BadRequest)]
         [CheckAuthorize("Permissions.Return.Create")]
-        public async Task<IActionResult> Create()
+        public async Task<IActionResult> Create(
+            [FromForm] CreateReturnDto dto,
+            [FromForm] List<IFormFile>? files = null)
         {
             try
             {
-                CreateReturnDto dto;
-                List<IFormFile>? files = null;
-
-                if (Request.HasFormContentType)
-                {
-                    // Handle Multipart/Form-Data
-                    dto = new CreateReturnDto();
-                    await TryUpdateModelAsync(dto);
-                    files = Request.Form.Files.ToList();
-                }
-                else
-                {
-                    // Handle Application/JSON
-                    using var reader = new StreamReader(Request.Body);
-                    var body = await reader.ReadToEndAsync();
-                    dto = System.Text.Json.JsonSerializer.Deserialize<CreateReturnDto>(body, new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-                }
-
-                if (dto == null)
-                    return BadRequest(APIOperationResponse<long>.Fail(ResponseType.BadRequest, "Invalid request data"));
-
                 var result = files != null && files.Count > 0
                     ? await _returnService.CreateAsync(dto, files)
                     : await _returnService.CreateAsync(dto);
-
                 return ProcessResponse(result);
             }
             catch (Exception ex)
@@ -161,62 +141,22 @@ namespace Ettad.RequestManagement.API.Controllers
 
         /// <summary>
         /// Process return items (ammo/explosive inventory update and weapon asset status update), then approve and close the return.
-        /// Supports <c>application/json</c> (body = DTO) or <c>multipart/form-data</c> with field <c>payload</c> (JSON) and optional <c>files</c>.
+        /// Expects <c>multipart/form-data</c> (DTO fields + optional <c>files</c>).
         /// </summary>
         [HttpPut("{id}/process-items")]
+        [Consumes("multipart/form-data")]
         [ProducesResponseType(typeof(APIOperationResponse<bool>), (int)HttpStatusCode.OK)]
         [ProducesResponseType((int)HttpStatusCode.BadRequest)]
         [ProducesResponseType((int)HttpStatusCode.NotFound)]
         [CheckAuthorize("ProcessReturnItems")]
         [RequestFormLimits(MultipartBodyLengthLimit = 104857600)]
-        public async Task<IActionResult> ProcessItems(long id)
+        public async Task<IActionResult> ProcessItems(
+            long id,
+            [FromForm] ProcessReturnItemsDto dto,
+            [FromForm] List<IFormFile>? files = null)
         {
-            ProcessReturnItemsDto dto;
-            List<IFormFile>? files = null;
-
-            if (Request.HasFormContentType)
-            {
-                var form = await Request.ReadFormAsync();
-                var payload = form["payload"].FirstOrDefault();
-                if (string.IsNullOrWhiteSpace(payload))
-                {
-                    return BadRequest(APIOperationResponse<bool>.Fail(ResponseType.BadRequest, "Missing form field 'payload' with JSON body."));
-                }
-
-                dto = JsonSerializer.Deserialize<ProcessReturnItemsDto>(payload, new JsonSerializerOptions
-                {
-                    PropertyNameCaseInsensitive = true
-                });
-
-                if (dto == null)
-                {
-                    return BadRequest(APIOperationResponse<bool>.Fail(ResponseType.BadRequest, "Invalid JSON in 'payload'."));
-                }
-
-                var fileList = form.Files.Where(f => f.Length > 0).ToList();
-                if (fileList.Count > 0)
-                {
-                    files = fileList;
-                }
-            }
-            else
-            {
-                using var reader = new StreamReader(Request.Body);
-                var body = await reader.ReadToEndAsync();
-                dto = JsonSerializer.Deserialize<ProcessReturnItemsDto>(body, new JsonSerializerOptions
-                {
-                    PropertyNameCaseInsensitive = true
-                });
-
-                if (dto == null)
-                {
-                    return BadRequest(APIOperationResponse<bool>.Fail(ResponseType.BadRequest, "Invalid request body."));
-                }
-            }
-
             var result = await _returnService.ProcessReturnItemsAsync(id, dto, files);
             return ProcessResponse(result);
         }
     }
 }
-

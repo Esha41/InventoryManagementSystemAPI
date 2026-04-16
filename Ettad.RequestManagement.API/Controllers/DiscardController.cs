@@ -48,38 +48,20 @@ namespace Ettad.RequestManagement.API.Controllers
         }
 
         /// <summary>
-        /// Create a new discard (Supports both Multipart/Form-Data and Application/JSON)
+        /// Create a new discard (multipart/form-data: DTO fields + optional files).
         /// </summary>
         /// <returns>Created discard ID</returns>
         [HttpPost]
+        [Consumes("multipart/form-data")]
         [ProducesResponseType(typeof(APIOperationResponse<long>), (int)HttpStatusCode.Created)]
         [ProducesResponseType((int)HttpStatusCode.BadRequest)]
         [CheckAuthorize("Permissions.Discard.Create")]
-        public async Task<IActionResult> Create()
+        public async Task<IActionResult> Create(
+            [FromForm] CreateDiscardDto dto,
+            [FromForm] List<IFormFile>? files = null)
         {
             try
             {
-                CreateDiscardDto dto;
-                List<IFormFile>? files = null;
-
-                if (Request.HasFormContentType)
-                {
-                    // Handle Multipart/Form-Data
-                    dto = new CreateDiscardDto();
-                    await TryUpdateModelAsync(dto);
-                    files = Request.Form.Files.ToList();
-                }
-                else
-                {
-                    // Handle Application/JSON
-                    using var reader = new StreamReader(Request.Body);
-                    var body = await reader.ReadToEndAsync();
-                    dto = System.Text.Json.JsonSerializer.Deserialize<CreateDiscardDto>(body, new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-                }
-
-                if (dto == null)
-                    return BadRequest(APIOperationResponse<long>.Fail(ResponseType.BadRequest, "Invalid request data"));
-
                 var result = files != null && files.Count > 0
                     ? await _discardService.CreateAsync(dto, files)
                     : await _discardService.CreateAsync(dto);
