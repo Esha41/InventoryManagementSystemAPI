@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
@@ -32,9 +32,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Compile Update="Reports\Templates\DepotReportTemplate.cs">
-      <SubType>XtraReport</SubType>
-    </Compile>
     <Compile Update="Reports\Templates\UsersReportTemplate.cs">
       <SubType>XtraReport</SubType>
     </Compile>
