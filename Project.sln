@@ -73,7 +73,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ettad.LdapSettings.Services
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ettad.Modules.FileUpload.API", "Ettad.Modules\Ettad.Modules.ExternalAPIs\Ettad.Modules.FileUpload.API\Ettad.Modules.FileUpload.API.csproj", "{3A813F21-5E0A-4712-92F9-8CF5BB54B8D8}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ettad.ReportManagement.API", "Ettad.Modules\Ettad.Modules.ReportManagement\Ettad.ReportManagement.API\Ettad.ReportManagement.API.csproj", "{6FB52022-243A-4A40-AC33-AE62531B9097}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ettad.ReportManagemeqnt.API", "Ettad.Modules\Ettad.Modules.ReportManagement\Ettad.ReportManagement.API\Ettad.ReportManagemeqnt.API.csproj", "{6FB52022-243A-4A40-AC33-AE62531B9097}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ettad.Announcement.Service", "Ettad.Announcement.Service\Ettad.Announcement.Service.csproj", "{D7687EEE-ED1E-49E9-895C-1FD57C408351}"
 EndProject
