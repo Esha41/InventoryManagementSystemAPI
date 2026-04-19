@@ -184,7 +184,6 @@ namespace Ettad.ReportManagement.Service.Reports
         {
             // Generate unique URL if default URL already exists
             var url = defaultUrl;
-            var counter = 1;
             var reportName = report.DisplayName;
 
             if (ReportExists(reportName))

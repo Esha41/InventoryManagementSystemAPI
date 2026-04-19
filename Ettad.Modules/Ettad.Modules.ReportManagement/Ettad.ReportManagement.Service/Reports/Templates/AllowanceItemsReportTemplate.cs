@@ -49,7 +49,6 @@ namespace Ettad.ReportManagement.Service.Reports.Templates
         private DevExpress.XtraReports.UI.XRTableCell xrTableCellSrNoDetail;
         [System.Xml.Serialization.XmlIgnore]
         [System.NonSerialized]
-        private readonly IServiceScope? _scope;
         private ObjectDataSource AllowanceItemDS;
         private ObjectDataSource DesignTimeDS;
         private DevExpress.XtraReports.UI.GroupFooterBand GroupFooter1;

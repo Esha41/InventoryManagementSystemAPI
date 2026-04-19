@@ -1,5 +1,6 @@
 using DevExpress.AspNetCore;
 using DevExpress.AspNetCore.Reporting;
+using DevExpress.DataAccess;
 using DevExpress.XtraReports.Web.Extensions;
 using Ettad.Comman.Idenitity;
 using Ettad.CrossCutting.Comman.FileUpload;
@@ -82,8 +83,6 @@ try
     // Register ICurrentUserService early so interceptor can use it
     builder.Services.AddScoped<Ettad.Application.Common.Interfaces.ICurrentUserService, Ettad.User.Services.Implementation.CurrentUserService>();
 
-    #region DevExpress Reporting Configuration
-
     // Register DevExpress Reporting services
     builder.Services.AddDevExpressControls();
     // Add services to the container.
@@ -115,14 +114,22 @@ try
         {
             configurator.UseDevelopmentMode();
         }
+
+        // Register connection strings so the Web Report Designer's Data Source Wizard
+        // shows "Existing Data Connections" based on appsettings.json -> ConnectionStrings.
         configurator.ConfigureReportDesigner(designerConfigurator => {
+            designerConfigurator.EnableCustomSql();
+            designerConfigurator.RegisterDataSourceWizardConfigurationConnectionStringsProvider(
+                configuration.GetSection("ConnectionStrings"));
         });
+
         configurator.ConfigureWebDocumentViewer(viewerConfigurator => {
             // Use cache for document generation and export.
             // This setting is necessary in asynchronous mode and when a report has interactive or drill down features.
             viewerConfigurator.UseCachedReportSourceBuilder();
         });
     });
+
     DevExpress.Utils.DeserializationSettings.RegisterTrustedClass(typeof(AllowanceItemReportDto));
     DevExpress.Utils.DeserializationSettings.RegisterTrustedClass(typeof(AllowanceItemsDataSource));
     DevExpress.Utils.DeserializationSettings.RegisterTrustedClass(typeof(IAllowanceItemService));
@@ -159,7 +166,6 @@ try
     // Register custom report storage extension
     builder.Services.AddScoped<Ettad.ReportManagement.Service.Reports.Factories.ReportFactory>();
     builder.Services.AddScoped<ReportStorageWebExtension, Ettad.ReportManagement.Service.Reports.CustomReportStorageWebExtension>();
-    #endregion
 
     // Configure Hangfire for background jobs
     var hangfireConnectionString = builder.Configuration.GetConnectionString("DefaultConnection");

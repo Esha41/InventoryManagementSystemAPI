@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
@@ -19,6 +19,7 @@
     <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="8.0.10" />
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.2" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="8.0.10" />
+    <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="3.0.2" />
   </ItemGroup>
 
   <ItemGroup>
@@ -28,6 +29,12 @@
     <ProjectReference Include="..\..\..\Project.ResponseHandler\Ettad.CrossCutting.ResponseHandler.csproj" />
     <ProjectReference Include="..\..\..\Project.User.Services\Ettad.User.Services.csproj" />
     <ProjectReference Include="..\..\..\Ettad.Inventory.Services\Ettad.Inventory.Service.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Update="Reports\Templates\UsersReportTemplate.cs">
+      <SubType>XtraReport</SubType>
+    </Compile>
   </ItemGroup>
 
 </Project>
