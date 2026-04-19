@@ -6,9 +6,9 @@ namespace Ettad.Inventory.Service.Monitoring
     public interface ILowStockMonitoringService
     {
         /// <summary>
-        /// Gets the count of items that are below minimum stock level
+        /// Gets the count of items that are below minimum stock level, optionally filtered by depot.
         /// </summary>
-        Task<APIOperationResponse<int>> GetLowStockItemsCountAsync();
+        Task<APIOperationResponse<int>> GetLowStockItemsCountAsync(long? depotId = null);
 
         /// <summary>
         /// Gets the list of items that are below minimum stock level with their details

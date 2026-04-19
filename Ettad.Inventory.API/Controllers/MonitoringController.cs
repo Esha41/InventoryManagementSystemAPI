@@ -25,14 +25,14 @@ namespace Ettad.Inventory.API.Controllers
         }
 
         /// <summary>
-        /// Get the count of items that are below minimum stock level
+        /// Get the count of items that are below minimum stock level, optionally filtered by depot.
         /// </summary>
         [HttpGet("low-stock/count")]
         [ProducesResponseType(typeof(APIOperationResponse<int>), (int)HttpStatusCode.OK)]
         [CheckAuthorize("Permissions.Inventory.View", "Permissions.Inventory.Page")]
-        public async Task<IActionResult> GetLowStockItemsCount()
+        public async Task<IActionResult> GetLowStockItemsCount([FromQuery] long? depotId = null)
         {
-            var result = await _lowStockMonitoringService.GetLowStockItemsCountAsync();
+            var result = await _lowStockMonitoringService.GetLowStockItemsCountAsync(depotId);
             return ProcessResponse(result);
         }
 
@@ -49,14 +49,14 @@ namespace Ettad.Inventory.API.Controllers
         }
 
         /// <summary>
-        /// Get the count of lots that are about to expire in the next 30 days
+        /// Get the count of lots that are about to expire in the next 30 days, optionally filtered by depot.
         /// </summary>
         [HttpGet("expiring-lots/count")]
         [ProducesResponseType(typeof(APIOperationResponse<int>), (int)HttpStatusCode.OK)]
         [CheckAuthorize("Permissions.Inventory.View", "Permissions.Inventory.Page")]
-        public async Task<IActionResult> GetExpiringLotsCount()
+        public async Task<IActionResult> GetExpiringLotsCount([FromQuery] long? depotId = null)
         {
-            var result = await _expiringLotMonitoringService.GetExpiringLotsCountAsync();
+            var result = await _expiringLotMonitoringService.GetExpiringLotsCountAsync(depotId);
             return ProcessResponse(result);
         }
 

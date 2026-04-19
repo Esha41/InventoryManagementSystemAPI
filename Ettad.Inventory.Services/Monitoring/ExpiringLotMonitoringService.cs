@@ -42,28 +42,31 @@ namespace Ettad.Inventory.Service.Monitoring
             _supplyRepository = supplyRepository;
         }
 
-        public async Task<APIOperationResponse<int>> GetExpiringLotsCountAsync()
+        public async Task<APIOperationResponse<int>> GetExpiringLotsCountAsync(long? depotId = null)
         {
-            _logger.LogInformation("Getting expiring lots count (next 30 days)");
+            _logger.LogInformation("Getting expiring lots count (next 30 days). DepotId: {DepotId}", depotId?.ToString() ?? "All");
 
             try
             {
                 var today = _dateTimeProvider.Now.Date;
                 var thirtyDaysFromNow = today.AddDays(30);
 
-                var expiringLots = await _context.InventoryDetails
+                var query = _context.InventoryDetails
                     .Include(id => id.Inventory)
                         .ThenInclude(inv => inv.Depo)
                     .Include(id => id.Item)
                     .Include(id => id.Supplier)
                     .Include(id => id.Manufacturer)
-                    .Where(id => 
+                    .Where(id =>
                         id.ExpiryDate.HasValue &&
                         id.ExpiryDate.Value.Date >= today &&
                         id.ExpiryDate.Value.Date <= thirtyDaysFromNow &&
-                        !id.Inventory.IsDeleted)
-                    .AsNoTracking()
-                    .ToListAsync();
+                        !id.Inventory.IsDeleted);
+
+                if (depotId.HasValue)
+                    query = query.Where(id => id.Inventory.DepoId == depotId.Value);
+
+                var expiringLots = await query.AsNoTracking().ToListAsync();
 
                 // Filter out empty lots by calculating remaining quantity
                 var expiringLotsWithQuantity = new List<InventoryDetail>();
