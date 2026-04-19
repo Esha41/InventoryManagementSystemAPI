@@ -35,6 +35,29 @@ namespace Ettad.Inventory.Service.Inventories
         private static readonly string InventoryDetailsItemWithPrimaryPurposesInclude =
             $"{nameof(InventoryEntity.InventoryDetails)}.{nameof(InventoryDetailEntity.Item)}.{nameof(BaseItem.BaseItemPrimaryPurposes)}.{nameof(BaseItemPrimaryPurpos.PrimaryPurpos)}";
 
+        /// <summary>Maps weapon/ammunition caliber from <see cref="BaseItem"/> hierarchy.</summary>
+        private static void MapCaliberFromBaseItem(BaseItem item, out string caliber, out string caliberUnitName)
+        {
+            caliber = null;
+            caliberUnitName = null;
+            if (item == null) return;
+
+            switch (item)
+            {
+                case Ammunition ammunition:
+                    caliber = ammunition.Caliber;
+                    break;
+                case Weapon weapon:
+                    caliber = weapon.Caliber;
+                    if (weapon.CaliberUnit != null)
+                    {
+                        caliberUnitName = weapon.CaliberUnit.NameEn ?? weapon.CaliberUnit.NameAr;
+                    }
+
+                    break;
+            }
+        }
+
         /// <summary>Frontend i18n key sent in API error <c>Message</c> (see <c>inventory.json</c>).</summary>
         private const string LotLinkedToSupplyOrderErrorKey = "warehouseInventory.errors.lotLinkedToSupplyOrder";
 
@@ -705,10 +728,10 @@ namespace Ettad.Inventory.Service.Inventories
             }
         }
 
-        public async Task<APIOperationResponse<List<LotDetailDto>>> GetLotsByItemIdAsync(long itemId)
+        public async Task<APIOperationResponse<List<LotDetailDto>>> GetLotsByItemIdAsync(long itemId, long? depotId = null)
         {
-            _logger.LogInformation("Getting lots for item. ItemId: {ItemId}, User: {UserId}",
-                itemId, _currentUserService.UserId);
+            _logger.LogInformation("Getting lots for item. ItemId: {ItemId}, DepotId: {DepotId}, User: {UserId}",
+                itemId, depotId?.ToString() ?? "All", _currentUserService.UserId);
 
             try
             {
@@ -735,6 +758,18 @@ namespace Ettad.Inventory.Service.Inventories
                 if (userDepotIds != null)
                 {
                     lots = lots.Where(l => userDepotIds.Contains(l.Inventory.DepoId)).ToList();
+                }
+
+                // Further filter by a specific depot if requested
+                if (depotId.HasValue)
+                {
+                    var userId = _currentUserService.UserId;
+                    if (!string.IsNullOrEmpty(userId) && !await _depotAccessService.HasDepotAccessAsync(userId, depotId.Value))
+                    {
+                        _logger.LogWarning("User {UserId} attempted to access lots for unauthorized depot {DepotId}", userId, depotId.Value);
+                        return APIOperationResponse<List<LotDetailDto>>.Fail(ResponseType.Forbidden, "You do not have access to this depot.");
+                    }
+                    lots = lots.Where(l => l.Inventory.DepoId == depotId.Value).ToList();
                 }
 
                 _logger.LogInformation("Found {LotCount} lots for item. ItemId: {ItemId}",
@@ -1164,12 +1199,35 @@ namespace Ettad.Inventory.Service.Inventories
             }
         }
 
-        public async Task<APIOperationResponse<List<ItemInventorySummaryDto>>> GetInventorySummaryForAllItemsAsync()
+        public async Task<APIOperationResponse<List<ItemInventorySummaryDto>>> GetInventorySummaryForAllItemsAsync(long? depotId = null, List<long>? depotIds = null)
         {
-            _logger.LogInformation("Getting inventory summary for all items. User: {UserId}", _currentUserService.UserId);
+            // Merge depotId (single, backward-compat) and depotIds (multi-select)
+            var effectiveDepotIds = new HashSet<long>();
+            if (depotIds?.Any() == true) foreach (var d in depotIds) effectiveDepotIds.Add(d);
+            if (depotId.HasValue) effectiveDepotIds.Add(depotId.Value);
+
+            _logger.LogInformation("Getting inventory summary for all items. DepotIds: [{DepotIds}], User: {UserId}",
+                effectiveDepotIds.Any() ? string.Join(",", effectiveDepotIds) : "All", _currentUserService.UserId);
 
             try
             {
+                // Validate access to all requested depots
+                if (effectiveDepotIds.Any())
+                {
+                    var userId = _currentUserService.UserId;
+                    if (!string.IsNullOrEmpty(userId))
+                    {
+                        foreach (var dId in effectiveDepotIds)
+                        {
+                            if (!await _depotAccessService.HasDepotAccessAsync(userId, dId))
+                            {
+                                _logger.LogWarning("User {UserId} attempted to access inventory summary for unauthorized depot {DepotId}", userId, dId);
+                                return APIOperationResponse<List<ItemInventorySummaryDto>>.Fail(ResponseType.Forbidden, "You do not have access to one or more of the requested depots.");
+                            }
+                        }
+                    }
+                }
+
                 // 1. Get all valid inventory details
                 var inventoryDetails = await _inventoryDetailRepository.FindAsync(
                     id => id.ItemQuantity > 0, // We only care about lots that were created with quantity
@@ -1183,6 +1241,19 @@ namespace Ettad.Inventory.Service.Inventories
                 var activeDetails = inventoryDetails
                     .Where(id => !id.Inventory.IsDeleted)
                     .ToList();
+
+                // Restrict to the user's assigned depots (null = unrestricted)
+                var userDepotIds = await _depotAccessService.GetUserAccessibleDepotIdsAsync();
+                if (userDepotIds != null)
+                {
+                    activeDetails = activeDetails.Where(id => userDepotIds.Contains(id.Inventory.DepoId)).ToList();
+                }
+
+                // Further filter to the specific requested depots
+                if (effectiveDepotIds.Any())
+                {
+                    activeDetails = activeDetails.Where(id => effectiveDepotIds.Contains(id.Inventory.DepoId)).ToList();
+                }
 
                 if (!activeDetails.Any())
                 {
@@ -1224,6 +1295,7 @@ namespace Ettad.Inventory.Service.Inventories
                     var itemType = firstLotItem?.ItemType ?? default(ItemType);
                     var nsn = firstLotItem?.Nsn ?? string.Empty;
                     var partNo = firstLotItem?.PartNo ?? string.Empty;
+                    MapCaliberFromBaseItem(firstLotItem, out var caliberValue, out var caliberUnitDisplay);
 
                     // Calculate total entered quantity (sum of Original Quantities in lots)
                     long totalQuantity = lots.Sum(l => l.ItemQuantity);
@@ -1256,6 +1328,8 @@ namespace Ettad.Inventory.Service.Inventories
                         ItemType = itemType,
                         Nsn = nsn,
                         PartNo = partNo,
+                        Caliber = caliberValue,
+                        CaliberUnitName = caliberUnitDisplay,
                         TotalQuantity = totalQuantity,
                         UsedQuantity = usedQuantity,
                         ReservedQuantityByOrdersOnProcessing = reservedQuantity,
@@ -1304,6 +1378,10 @@ namespace Ettad.Inventory.Service.Inventories
                 var nsn = firstLotItem?.Nsn ?? string.Empty;
                 var partNo = firstLotItem?.PartNo ?? string.Empty;
 
+                var itemForCaliber = firstLotItem ?? await _context.Set<BaseItem>().AsNoTracking()
+                    .FirstOrDefaultAsync(x => x.Id == itemId);
+                MapCaliberFromBaseItem(itemForCaliber, out var summaryCaliber, out var summaryCaliberUnit);
+
                 if (lots.Count == 0)
                 {
                     _logger.LogInformation("No lots found for item. ItemId: {ItemId}, User: {UserId}",
@@ -1318,6 +1396,8 @@ namespace Ettad.Inventory.Service.Inventories
                         ItemType = itemType,
                         Nsn = nsn,
                         PartNo = partNo,
+                        Caliber = summaryCaliber,
+                        CaliberUnitName = summaryCaliberUnit,
                         TotalQuantity = 0,
                         UsedQuantity = 0,
                         ReservedQuantityByOrdersOnProcessing = 0,
@@ -1365,6 +1445,8 @@ namespace Ettad.Inventory.Service.Inventories
                     ItemType = itemType,
                     Nsn = nsn,
                     PartNo = partNo,
+                    Caliber = summaryCaliber,
+                    CaliberUnitName = summaryCaliberUnit,
                     TotalQuantity = totalQuantity,
                     UsedQuantity = usedQuantity,
                     ReservedQuantityByOrdersOnProcessing = reservedQuantity,
@@ -2218,6 +2300,7 @@ namespace Ettad.Inventory.Service.Inventories
                     { "Type", item => GetItemTypeName(item.ItemType) },
                     { "NSN", item => item.Nsn ?? "" },
                     { "Part No", item => item.PartNo ?? "" },
+                    { "Caliber", item => item.Caliber ?? "" },
                     { "Total Quantity", item => item.TotalQuantity },
                     { "Used Quantity", item => item.UsedQuantity },
                     { "Reserved Quantity", item => item.ReservedQuantityByOrdersOnProcessing },

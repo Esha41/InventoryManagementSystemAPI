@@ -20,7 +20,7 @@ namespace Ettad.Inventory.Service.Assets.Profiles
                 .ForMember(dest => dest.IsLdapUser, opt => opt.MapFrom(src => src.IsLdapUser))
                 .ForMember(dest => dest.IsSuperAdmin, opt => opt.MapFrom(src => src.IsSuperAdmin))
                 .ForMember(dest => dest.ExtraEmployeesView, opt => opt.MapFrom(src => src.ExtraEmployeesView ?? string.Empty))
-                .ForMember(dest => dest.DeparmentId, opt => opt.MapFrom(src => src.DepartmentId))
+                .ForMember(dest => dest.DepartmentId, opt => opt.MapFrom(src => src.DepartmentId))
                 .ForMember(dest => dest.FullNameEN, opt => opt.MapFrom(src => src.FullNameEN ?? string.Empty))
                 .ForMember(dest => dest.FullNameAR, opt => opt.MapFrom(src => src.FullNameAR ?? string.Empty))
                 .ForMember(dest => dest.RankId, opt => opt.MapFrom(src => src.RankId))

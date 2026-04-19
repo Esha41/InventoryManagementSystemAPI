@@ -905,7 +905,7 @@ public class UserService : IUserService
             RoleName = role.Name,
             IsSelected = userRoleNames.Contains(role.Name),
             IsSuperAdmin = role.IsSuperAdmin,
-            DeparmentId = user.DepartmentId
+            DepartmentId = user.DepartmentId
         }).ToList();
 
         return APIOperationResponse<List<UserRoleDto>>.Success(userRolesList);
@@ -1229,7 +1229,7 @@ public class UserService : IUserService
             IsSuperAdmin = user.IsSuperAdmin,
             IsActive = user.IsActive,
             ExtraEmployeesView = user.ExtraEmployeesView ?? string.Empty,
-            DeparmentId = user.DepartmentId,
+            DepartmentId = user.DepartmentId,
             FullNameEN = user.FullNameEN ?? string.Empty,
             FullNameAR = user.FullNameAR ?? string.Empty,
             RankId = user.RankId,

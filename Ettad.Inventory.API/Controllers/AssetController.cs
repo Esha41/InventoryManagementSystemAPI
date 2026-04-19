@@ -59,6 +59,19 @@ namespace Ettad.Inventory.API.Controllers
             return ProcessResponse(result);
         }
 
+        /// <summary>
+        /// Get all assets belonging to a specific catalog item, optionally scoped to one depot.
+        /// Used by the inventory dashboard to show individual weapon records in the expanded accordion.
+        /// </summary>
+        [HttpGet("item/{itemId}")]
+        [ProducesResponseType((int)HttpStatusCode.OK)]
+        [CheckAuthorize("Permissions.Asset.View", "Permissions.Asset.Page")]
+        public async Task<IActionResult> GetAssetsByItemId(long itemId, [FromQuery] long? depotId = null)
+        {
+            var result = await _assetService.GetAssetsByItemIdAsync(itemId, depotId);
+            return ProcessResponse(result);
+        }
+
         [HttpPost("search")]
         [ProducesResponseType((int)HttpStatusCode.OK)]
         [CheckAuthorize("Permissions.Asset.View", "Permissions.Asset.Page")]
