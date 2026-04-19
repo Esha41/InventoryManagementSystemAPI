@@ -12,6 +12,6 @@ namespace Ettad.User.Services.DTO
         public string RoleName { get; set; }
         public bool IsSelected { get; set; }
         public bool IsSuperAdmin { get; set; }
-        public long? DeparmentId { get; set; }
+        public long? DepartmentId { get; set; }
     }
 }
