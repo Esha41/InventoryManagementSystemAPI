@@ -329,6 +329,16 @@ public static class MainEntities
     };
 
     [Category(CrudPermissionsGenerator.Dashboard)]
+    public static readonly CrudOperation[] HelpCenter = new[]
+    {
+        CrudOperation.Page,
+        CrudOperation.View,
+        CrudOperation.Create,
+        CrudOperation.Edit,
+        CrudOperation.Delete
+    };
+
+    [Category(CrudPermissionsGenerator.Dashboard)]
     public static readonly CrudOperation[] ForecastPage = new[]
     {
         CrudOperation.Page,
