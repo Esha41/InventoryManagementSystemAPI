@@ -83,17 +83,6 @@ try
     // Register ICurrentUserService early so interceptor can use it
     builder.Services.AddScoped<Ettad.Application.Common.Interfaces.ICurrentUserService, Ettad.User.Services.Implementation.CurrentUserService>();
 
-    #region DevExpress Reporting Configuration
-
-    // SqlDataSource resolves ConnectionName here at runtime (Web Document Viewer, export, preview).
-    // RegisterDataSourceWizardConfigurationConnectionStringsProvider only wires the designer wizard UI.
-    var namedConnectionStrings = configuration
-        .GetSection("ConnectionStrings")
-        .GetChildren()
-        .Where(c => !string.IsNullOrEmpty(c.Value))
-        .ToDictionary(c => c.Key, c => c.Value!, StringComparer.OrdinalIgnoreCase);
-    DefaultConnectionStringProvider.AssignConnectionStrings(namedConnectionStrings);
-
     // Register DevExpress Reporting services
     builder.Services.AddDevExpressControls();
     // Add services to the container.
@@ -141,8 +130,6 @@ try
         });
     });
 
-    DevExpress.DataAccess.Sql.SqlDataSource.AllowCustomSqlQueries = true;
-    DevExpress.DataAccess.Sql.SqlDataSource.DisableCustomQueryValidation = true;
     DevExpress.Utils.DeserializationSettings.RegisterTrustedClass(typeof(AllowanceItemReportDto));
     DevExpress.Utils.DeserializationSettings.RegisterTrustedClass(typeof(AllowanceItemsDataSource));
     DevExpress.Utils.DeserializationSettings.RegisterTrustedClass(typeof(IAllowanceItemService));
@@ -179,7 +166,6 @@ try
     // Register custom report storage extension
     builder.Services.AddScoped<Ettad.ReportManagement.Service.Reports.Factories.ReportFactory>();
     builder.Services.AddScoped<ReportStorageWebExtension, Ettad.ReportManagement.Service.Reports.CustomReportStorageWebExtension>();
-    #endregion
 
     // Configure Hangfire for background jobs
     var hangfireConnectionString = builder.Configuration.GetConnectionString("DefaultConnection");
