@@ -13,5 +13,8 @@ namespace Ettad.User.Services.DTO
         public string Audience { get; set; } = string.Empty;
         public int AccessTokenExpireInMinutes { get; set; } = 60 * 24;
         public int RefreshTokenExpireInMinutes { get; set; } = 60 * 24; // default 1 day
+
+        /// <summary>Expiry for the token used only to call select-role after login.</summary>
+        public int RoleSelectionTokenExpireInMinutes { get; set; } = 15;
     }
 }

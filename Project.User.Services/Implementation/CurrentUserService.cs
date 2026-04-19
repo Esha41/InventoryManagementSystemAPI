@@ -139,5 +139,7 @@ namespace Ettad.User.Services.Implementation
          .User?
          .Claims
          .FirstOrDefault(item => item.Type == "IsSuperAdmin")?.Value);
+
+        public string? ActiveRoleId => _httpContextAccessor.HttpContext?.User?.FindFirstValue("ActiveRoleId");
     }
 }

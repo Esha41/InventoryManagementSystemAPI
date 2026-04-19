@@ -115,11 +115,8 @@ namespace Ettad.Announcement.Service
 
                 var dismissedIds = new HashSet<long>(dismissals.Select(d => d.AnnouncementId));
 
-                // Get user's role IDs for role-targeted announcements
-                var userRoleIds = await _context.UserRoles
-                    .Where(ur => ur.UserId == userId)
-                    .Select(ur => ur.RoleId)
-                    .ToListAsync();
+                // Effective role ID(s) for role-targeted announcements (active session)
+                var userRoleIds = await Ettad.EntityFramework.Helpers.EffectiveAspNetRoleIds.ForUserAsync(_context, userId);
                 var userRoleIdSet = new HashSet<string>(userRoleIds, StringComparer.OrdinalIgnoreCase);
 
                 // Filter announcements

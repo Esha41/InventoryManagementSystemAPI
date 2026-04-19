@@ -7,6 +7,7 @@ using Ettad.Data.Entities;
 using Ettad.Data.Entities.Workflows;
 using Ettad.Data.Enums;
 using Ettad.EntityFramework.DataBaseContext;
+using Ettad.EntityFramework.Helpers;
 using Ettad.Notification.Service;
 using Ettad.ResponseHandler.Consts;
 using Ettad.ResponseHandler.Models;
@@ -192,11 +193,10 @@ namespace Ettad.Workflows.Service.Imeplemention
         {
             var currentUserId = _currentUserService.UserId;
 
-            // 1. Get all role IDs of current user
-            var userRoleIds = await _context.Set<IdentityUserRole<string>>()
-                .Where(ur => ur.UserId == currentUserId)
-                .Select(ur => ur.RoleId)
-                .ToListAsync();
+            // 1. Effective role ID(s) for current user (active session)
+            var userRoleIds = string.IsNullOrEmpty(currentUserId)
+                ? new List<string>()
+                : await EffectiveAspNetRoleIds.ForUserAsync(_context, currentUserId);
 
             // 1.5 Get active delegations (users who delegated to current user for workflow approval)
             var activeDelegatorIds = await _userDelegationService.GetActiveDelegatorsForUserAsync(currentUserId, DelegationScope.WorkflowApproval);
@@ -204,10 +204,8 @@ namespace Ettad.Workflows.Service.Imeplemention
             
             if (activeDelegatorIds != null && activeDelegatorIds.Any())
             {
-                delegatorRoleIds = await _context.Set<IdentityUserRole<string>>()
-                    .Where(ur => activeDelegatorIds.Contains(ur.UserId))
-                    .Select(ur => ur.RoleId)
-                    .ToListAsync();
+                foreach (var delegatorId in activeDelegatorIds)
+                    delegatorRoleIds.AddRange(await EffectiveAspNetRoleIds.ForUserAsync(_context, delegatorId));
             }
 
             // Ensure lists are not null for Contains queries (though EF handles this, it's safer)
@@ -923,11 +921,10 @@ namespace Ettad.Workflows.Service.Imeplemention
             if (_currentUserService.IsSuperAdmin)
                 return step;
 
-            // 1. Get current user's roles
-            var userRoleIds = await _context.Set<IdentityUserRole<string>>()
-                .Where(ur => ur.UserId == currentUserId)
-                .Select(ur => ur.RoleId)
-                .ToListAsync();
+            // 1. Effective role ID(s) for current user
+            var userRoleIds = string.IsNullOrEmpty(currentUserId)
+                ? new List<string>()
+                : await EffectiveAspNetRoleIds.ForUserAsync(_context, currentUserId);
 
             var workflowStep = step.WorkflowStep;
             var allowedRoles = new List<string> { workflowStep.ApplicationRoleId };
@@ -954,11 +951,9 @@ namespace Ettad.Workflows.Service.Imeplemention
                     return step;
                 }
 
-                // Check if any delegator has the required role
-                var delegatorRoleIds = await _context.Set<IdentityUserRole<string>>()
-                    .Where(ur => activeDelegatorIds.Contains(ur.UserId))
-                    .Select(ur => ur.RoleId)
-                    .ToListAsync();
+                var delegatorRoleIds = new List<string>();
+                foreach (var delegatorId in activeDelegatorIds)
+                    delegatorRoleIds.AddRange(await EffectiveAspNetRoleIds.ForUserAsync(_context, delegatorId));
 
                 if (delegatorRoleIds.Any(r => allowedRoles.Contains(r)))
                 {
@@ -1313,28 +1308,35 @@ namespace Ettad.Workflows.Service.Imeplemention
             var userDepartmentId = _currentUserService.DepartmentId;
 
             // --- DELEGATION & ROLE PRE-FETCHING START ---
-            // Get all role IDs for current user and their delegators
-            var userRoleIds = await _context.Set<IdentityUserRole<string>>()
-                .Where(ur => ur.UserId == currentUserId)
-                .Select(ur => ur.RoleId)
-                .ToListAsync();
+            var userRoleIds = string.IsNullOrEmpty(currentUserId)
+                ? new List<string>()
+                : await EffectiveAspNetRoleIds.ForUserAsync(_context, currentUserId);
 
             var activeDelegatorIds = await _userDelegationService.GetActiveDelegatorsForUserAsync(currentUserId, DelegationScope.WorkflowApproval);
             
             var delegatorRoleIds = new List<string>();
-            if (activeDelegatorIds.Any())
-            {
-                delegatorRoleIds = await _context.Set<IdentityUserRole<string>>()
-                    .Where(ur => activeDelegatorIds.Contains(ur.UserId))
-                    .Select(ur => ur.RoleId)
-                    .ToListAsync();
-            }
+            foreach (var delegatorId in activeDelegatorIds)
+                delegatorRoleIds.AddRange(await EffectiveAspNetRoleIds.ForUserAsync(_context, delegatorId));
 
-            // Pre-fetch all relevant role names for name-based matching later
-            var allRelevantRoleNames = await _context.Set<IdentityUserRole<string>>()
-                .Where(ur => ur.UserId == currentUserId || activeDelegatorIds.Contains(ur.UserId))
-                .Join(_context.Roles, ur => ur.RoleId, r => r.Id, (ur, r) => r.Name)
-                .ToListAsync();
+            var allRelevantRoleNames = new List<string>();
+            if (userRoleIds.Count > 0)
+            {
+                allRelevantRoleNames.AddRange(await _context.Roles
+                    .Where(r => userRoleIds.Contains(r.Id))
+                    .Select(r => r.Name!)
+                    .ToListAsync());
+            }
+            foreach (var delegatorId in activeDelegatorIds)
+            {
+                var dRoleIds = await EffectiveAspNetRoleIds.ForUserAsync(_context, delegatorId);
+                if (dRoleIds.Count > 0)
+                {
+                    allRelevantRoleNames.AddRange(await _context.Roles
+                        .Where(r => dRoleIds.Contains(r.Id))
+                        .Select(r => r.Name!)
+                        .ToListAsync());
+                }
+            }
             // --- DELEGATION & ROLE PRE-FETCHING END ---
 
             List<long> allowedRequestIds;
@@ -1346,14 +1348,12 @@ namespace Ettad.Workflows.Service.Imeplemention
                 WorkflowRoleNames.RequestingEntityCommander
             };
 
-            // Get user's role names to check if they are restricted
-            var userRoleNames = await _context.Set<IdentityUserRole<string>>()
-                .Where(ur => ur.UserId == currentUserId)
-                .Join(_context.Roles,
-                    ur => ur.RoleId,
-                    r => r.Id,
-                    (ur, r) => r.Name)
-                .ToListAsync();
+            var userRoleNames = userRoleIds.Count == 0
+                ? new List<string>()
+                : await _context.Roles
+                    .Where(r => userRoleIds.Contains(r.Id))
+                    .Select(r => r.Name!)
+                    .ToListAsync();
 
             var shouldFilterByDepartment = userDepartmentId.HasValue && 
                 userRoleNames.Any(roleName => restrictedRoles.Contains(roleName));
@@ -1860,28 +1860,35 @@ namespace Ettad.Workflows.Service.Imeplemention
             var userDepartmentId = _currentUserService.DepartmentId;
 
             // --- DELEGATION & ROLE PRE-FETCHING START ---
-            // Get all role IDs for current user and their delegators
-            var userRoleIds = await _context.Set<IdentityUserRole<string>>()
-                .Where(ur => ur.UserId == currentUserId)
-                .Select(ur => ur.RoleId)
-                .ToListAsync();
+            var userRoleIds = string.IsNullOrEmpty(currentUserId)
+                ? new List<string>()
+                : await EffectiveAspNetRoleIds.ForUserAsync(_context, currentUserId);
 
             var activeDelegatorIds = await _userDelegationService.GetActiveDelegatorsForUserAsync(currentUserId, DelegationScope.WorkflowApproval);
             
             var delegatorRoleIds = new List<string>();
-            if (activeDelegatorIds.Any())
-            {
-                delegatorRoleIds = await _context.Set<IdentityUserRole<string>>()
-                    .Where(ur => activeDelegatorIds.Contains(ur.UserId))
-                    .Select(ur => ur.RoleId)
-                    .ToListAsync();
-            }
+            foreach (var delegatorId in activeDelegatorIds)
+                delegatorRoleIds.AddRange(await EffectiveAspNetRoleIds.ForUserAsync(_context, delegatorId));
 
-            // Pre-fetch all relevant role names for name-based matching later
-            var allRelevantRoleNames = await _context.Set<IdentityUserRole<string>>()
-                .Where(ur => ur.UserId == currentUserId || activeDelegatorIds.Contains(ur.UserId))
-                .Join(_context.Roles, ur => ur.RoleId, r => r.Id, (ur, r) => r.Name)
-                .ToListAsync();
+            var allRelevantRoleNames = new List<string>();
+            if (userRoleIds.Count > 0)
+            {
+                allRelevantRoleNames.AddRange(await _context.Roles
+                    .Where(r => userRoleIds.Contains(r.Id))
+                    .Select(r => r.Name!)
+                    .ToListAsync());
+            }
+            foreach (var delegatorId in activeDelegatorIds)
+            {
+                var dRoleIds = await EffectiveAspNetRoleIds.ForUserAsync(_context, delegatorId);
+                if (dRoleIds.Count > 0)
+                {
+                    allRelevantRoleNames.AddRange(await _context.Roles
+                        .Where(r => dRoleIds.Contains(r.Id))
+                        .Select(r => r.Name!)
+                        .ToListAsync());
+                }
+            }
             // --- DELEGATION & ROLE PRE-FETCHING END ---
 
             bool hasPermission = false;
@@ -1893,14 +1900,12 @@ namespace Ettad.Workflows.Service.Imeplemention
                 WorkflowRoleNames.RequestingEntityCommander
             };
 
-            // Get user's role names to check if they are restricted
-            var userRoleNames = await _context.Set<IdentityUserRole<string>>()
-                .Where(ur => ur.UserId == currentUserId)
-                .Join(_context.Roles,
-                    ur => ur.RoleId,
-                    r => r.Id,
-                    (ur, r) => r.Name)
-                .ToListAsync();
+            var userRoleNames = userRoleIds.Count == 0
+                ? new List<string>()
+                : await _context.Roles
+                    .Where(r => userRoleIds.Contains(r.Id))
+                    .Select(r => r.Name!)
+                    .ToListAsync();
 
             var shouldFilterByDepartment = userDepartmentId.HasValue && 
                 userRoleNames.Any(roleName => restrictedRoles.Contains(roleName));

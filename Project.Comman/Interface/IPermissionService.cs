@@ -18,4 +18,7 @@ public interface IPermissionService
     /// <param name="userId">The user ID</param>
     /// <returns>List of permission names</returns>
     Task<List<string>> GetUserPermissions(string userId);
+
+    /// <summary>Clears cached permission lists for this user (call after role assignment or default role change).</summary>
+    Task InvalidatePermissionCacheForUserAsync(string userId);
 }

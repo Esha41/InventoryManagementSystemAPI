@@ -40,8 +40,11 @@ public class UserService : IUserService
     private readonly ICrossCuttingRepository<BlacklistedToken> _blacklistedTokenRepository;
 
     private readonly ApplicationDbContext _context;
+    private readonly IPermissionService _permissionService;
+
     public UserService(UserManager<ApplicationUser> userManager, RoleManager<ApplicationRole> roleManager
          , ICurrentUserService currentUserService, ILogger<UserService> logger, ApplicationDbContext context,
+         IPermissionService permissionService,
          IDateTimeProvider dateTimeProvider, ILdapSettingsService ldapSettingsService, ICrossCuttingRepository<BaseRequest> baserequest,
          ICrossCuttingRepository<WorkflowStepApprovalLog> approvalLogRepository, ICrossCuttingRepository<OrderItemHistory> orderItemHistoryRepository,
          ICrossCuttingRepository<Notification> notificationRepository, ICrossCuttingRepository<UserDepot> userDepotRepository,
@@ -69,6 +72,26 @@ public class UserService : IUserService
         _userDelegationRepository = userDelegationRepository;
         _workflowStepNotifierRepository = workflowStepNotifierRepository;
         _blacklistedTokenRepository = blacklistedTokenRepository;
+        _permissionService = permissionService;
+    }
+
+    private async Task SyncDefaultRoleIdAsync(ApplicationUser user)
+    {
+        var names = await _userManager.GetRolesAsync(user);
+        var ids = new List<string>();
+        foreach (var n in names)
+        {
+            var r = await _roleManager.FindByNameAsync(n);
+            if (r != null)
+                ids.Add(r.Id);
+        }
+
+        if (ids.Count == 0)
+            user.DefaultRoleId = null;
+        else if (ids.Count == 1)
+            user.DefaultRoleId = ids[0];
+        else if (!string.IsNullOrEmpty(user.DefaultRoleId) && !ids.Contains(user.DefaultRoleId))
+            user.DefaultRoleId = null;
     }
 
     public async Task<APIOperationResponse<UserDto>> GetByIdAsync(string id)
@@ -520,6 +543,9 @@ public class UserService : IUserService
             }
         }
 
+        await SyncDefaultRoleIdAsync(user);
+        await _userManager.UpdateAsync(user);
+
         _logger.LogInformation("User created successfully. UserId: {UserId}, Username: {Username}, CreatedBy: {CreatedBy}",
             user.Id, user.UserName, _currentUserService.UserId);
 
@@ -637,6 +663,12 @@ public class UserService : IUserService
                     return APIOperationResponse<UserDto>.Fail(ResponseType.InternalServerError, errors);
                 }
             }
+        }
+
+        if (dto.RoleIds != null)
+        {
+            await SyncDefaultRoleIdAsync(user);
+            await _permissionService.InvalidatePermissionCacheForUserAsync(user.Id);
         }
 
         // 4️⃣ Update user
@@ -949,6 +981,10 @@ public class UserService : IUserService
             return APIOperationResponse<bool>.Fail(ResponseType.InternalServerError, "Failed to add new user roles.");
         }
 
+        await SyncDefaultRoleIdAsync(user);
+        await _userManager.UpdateAsync(user);
+        await _permissionService.InvalidatePermissionCacheForUserAsync(userId);
+
         _logger.LogInformation("User roles updated successfully. TargetUserId: {TargetUserId}, Username: {Username}, OldRoles: {OldRoles}, NewRoles: {NewRoles}, UpdatedBy: {UpdatedBy}",
             userId, user.UserName, string.Join(", ", currentRoles), string.Join(", ", dto.RoleNames), _currentUserService.UserId);
         return APIOperationResponse<bool>.Success(true, "User roles updated successfully.");
@@ -1140,14 +1176,15 @@ public class UserService : IUserService
 
         var roles = await _roleManager.Roles
             .Where(r => r.Name != null && roleNames.Contains(r.Name))
-            .Select(r => new { r.Id, r.Name })
+            .Select(r => new { r.Id, r.Name, r.NameAr })
             .ToListAsync();
 
         dto.Roles = roles
             .Select(r => new UserRoleSummaryDto
             {
                 Id = r.Id,
-                Name = r.Name ?? string.Empty
+                Name = r.Name ?? string.Empty,
+                NameAr = r.NameAr
             })
             .ToList();
     }
@@ -1168,7 +1205,8 @@ public class UserService : IUserService
             .Select(r => new UserRoleSummaryDto
             {
                 Id = r.Id,
-                Name = r.Name ?? string.Empty
+                Name = r.Name ?? string.Empty,
+                NameAr = r.NameAr
             })
             .ToList();
     }
@@ -1236,6 +1274,7 @@ public class UserService : IUserService
             MilitoryId = user.MilitoryId,
             LdapUserName = user.LdapUserName ?? string.Empty,
             IsOnboardingCompleted = user.IsOnboardingCompleted,
+            DefaultRoleId = user.DefaultRoleId,
         };
 
         if (user.Department != null)

@@ -1,7 +1,9 @@
 using Ettad.Application.Common.Interfaces;
 using Ettad.Comman.Idenitity;
 using Ettad.CrossCutting.Comman.Idenitity;
+using Ettad.User.Services.Helpers;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 
@@ -61,55 +63,64 @@ public class PermissionService : IPermissionService
         if (string.IsNullOrEmpty(userId))
             return new List<string>();
 
-        // Try to get from cache
-        var cacheKey = $"user_permissions_{userId}";
-        if (_cache.TryGetValue(cacheKey, out List<string>? cachedPermissions) && cachedPermissions != null)
-        {
-            _logger.LogInformation("Returning cached permissions for user {UserId}: {Count} permissions", userId, cachedPermissions.Count);
-            return cachedPermissions;
-        }
-
-        // Load from database
-        _logger.LogInformation("Loading permissions from database for user {UserId}", userId);
-        var permissions = new List<string>();
-
-        var user = await _userManager.FindByIdAsync(userId);
+        var user = await _userManager.Users.FirstOrDefaultAsync(u => u.Id == userId);
         if (user == null)
         {
             _logger.LogWarning("User {UserId} not found", userId);
-            return permissions;
+            return new List<string>();
         }
 
-        var userRoles = await _userManager.GetRolesAsync(user);
-        _logger.LogInformation("User {UserId} has {Count} roles: {Roles}", userId, userRoles.Count, string.Join(", ", userRoles));
+        var effectiveRole = await EffectiveRoleResolver.ResolveAsync(_userManager, _roleManager, user);
+        if (effectiveRole == null)
+            return new List<string>();
 
-        foreach (var roleName in userRoles)
+        var cacheKey = $"user_permissions_{userId}_{effectiveRole.Id}";
+        if (_cache.TryGetValue(cacheKey, out List<string>? cachedPermissions) && cachedPermissions != null)
         {
-            var role = await _roleManager.FindByNameAsync(roleName);
-            if (role == null) continue;
+            _logger.LogInformation("Returning cached permissions for user {UserId} role {RoleId}: {Count} permissions", userId, effectiveRole.Id, cachedPermissions.Count);
+            return cachedPermissions;
+        }
 
-            // Get all claims for this role
-            var roleClaims = await _roleManager.GetClaimsAsync(role);
-            _logger.LogInformation("Role {RoleName} has {Count} claims", roleName, roleClaims.Count);
-            
-            // Add both Type and Value to support different claim formats
-            foreach (var claim in roleClaims)
-            {
-                _logger.LogDebug("Role {RoleName} - Claim Type: {Type}, Value: {Value}", roleName, claim.Type, claim.Value);
-                
-                if (!string.IsNullOrWhiteSpace(claim.Type) && !permissions.Contains(claim.Type))
-                    permissions.Add(claim.Type);
-                
-                if (!string.IsNullOrWhiteSpace(claim.Value) && !permissions.Contains(claim.Value))
-                    permissions.Add(claim.Value);
-            }
+        _logger.LogInformation("Loading permissions from database for user {UserId} active role {RoleName}", userId, effectiveRole.Name);
+
+        var permissions = new List<string>();
+
+        var roleClaims = await _roleManager.GetClaimsAsync(effectiveRole);
+        _logger.LogInformation("Role {RoleName} has {Count} claims", effectiveRole.Name, roleClaims.Count);
+
+        foreach (var claim in roleClaims)
+        {
+            if (!string.IsNullOrWhiteSpace(claim.Type) && !permissions.Contains(claim.Type))
+                permissions.Add(claim.Type);
+
+            if (!string.IsNullOrWhiteSpace(claim.Value) && !permissions.Contains(claim.Value))
+                permissions.Add(claim.Value);
         }
 
         _logger.LogInformation("Loaded {Count} total permissions for user {UserId}", permissions.Count, userId);
 
-        // Cache the permissions
         _cache.Set(cacheKey, permissions, TimeSpan.FromMinutes(CacheExpirationMinutes));
 
         return permissions;
+    }
+
+    public async Task InvalidatePermissionCacheForUserAsync(string userId)
+    {
+        if (string.IsNullOrEmpty(userId))
+            return;
+
+        _cache.Remove($"user_permissions_{userId}");
+
+        var user = await _userManager.FindByIdAsync(userId);
+        if (user == null)
+            return;
+
+        var roleNames = await _userManager.GetRolesAsync(user);
+        foreach (var name in roleNames)
+        {
+            var r = await _roleManager.FindByNameAsync(name);
+            if (r != null)
+                _cache.Remove($"user_permissions_{userId}_{r.Id}");
+        }
     }
 }
