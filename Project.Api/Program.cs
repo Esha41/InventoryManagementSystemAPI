@@ -1,5 +1,6 @@
 using DevExpress.AspNetCore;
 using DevExpress.AspNetCore.Reporting;
+using DevExpress.DataAccess;
 using DevExpress.XtraReports.Web.Extensions;
 using Ettad.Comman.Idenitity;
 using Ettad.CrossCutting.Comman.FileUpload;
@@ -84,6 +85,15 @@ try
 
     #region DevExpress Reporting Configuration
 
+    // SqlDataSource resolves ConnectionName here at runtime (Web Document Viewer, export, preview).
+    // RegisterDataSourceWizardConfigurationConnectionStringsProvider only wires the designer wizard UI.
+    var namedConnectionStrings = configuration
+        .GetSection("ConnectionStrings")
+        .GetChildren()
+        .Where(c => !string.IsNullOrEmpty(c.Value))
+        .ToDictionary(c => c.Key, c => c.Value!, StringComparer.OrdinalIgnoreCase);
+    DefaultConnectionStringProvider.AssignConnectionStrings(namedConnectionStrings);
+
     // Register DevExpress Reporting services
     builder.Services.AddDevExpressControls();
     // Add services to the container.
@@ -119,6 +129,7 @@ try
         // Register connection strings so the Web Report Designer's Data Source Wizard
         // shows "Existing Data Connections" based on appsettings.json -> ConnectionStrings.
         configurator.ConfigureReportDesigner(designerConfigurator => {
+            designerConfigurator.EnableCustomSql();
             designerConfigurator.RegisterDataSourceWizardConfigurationConnectionStringsProvider(
                 configuration.GetSection("ConnectionStrings"));
         });
@@ -129,6 +140,9 @@ try
             viewerConfigurator.UseCachedReportSourceBuilder();
         });
     });
+
+    DevExpress.DataAccess.Sql.SqlDataSource.AllowCustomSqlQueries = true;
+    DevExpress.DataAccess.Sql.SqlDataSource.DisableCustomQueryValidation = true;
     DevExpress.Utils.DeserializationSettings.RegisterTrustedClass(typeof(AllowanceItemReportDto));
     DevExpress.Utils.DeserializationSettings.RegisterTrustedClass(typeof(AllowanceItemsDataSource));
     DevExpress.Utils.DeserializationSettings.RegisterTrustedClass(typeof(IAllowanceItemService));

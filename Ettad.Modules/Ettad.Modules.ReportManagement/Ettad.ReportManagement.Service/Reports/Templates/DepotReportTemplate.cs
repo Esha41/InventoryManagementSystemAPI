@@ -2080,7 +2080,7 @@ namespace Ettad.ReportManagement.Service.Reports.Templates
             // 
             // EttadDataSource
             // 
-            this.EttadDataSource.ConnectionName = "localhost_EttadDb_Connection";
+            this.EttadDataSource.ConnectionName = "DefaultConnection";
             this.EttadDataSource.Name = "EttadDataSource";
             columnExpression1.ColumnName = "MigrationId";
             table1.Name = "__EFMigrationsHistory";
@@ -6003,7 +6003,7 @@ namespace Ettad.ReportManagement.Service.Reports.Templates
             // 
             // UsersDataSource
             // 
-            this.UsersDataSource.ConnectionName = "localhost_EttadDb_Connection";
+            this.UsersDataSource.ConnectionName = "DefaultConnection";
             msSqlConnectionParameters1.AuthorizationType = DevExpress.DataAccess.ConnectionParameters.MsSqlAuthorizationType.SqlServer;
             msSqlConnectionParameters1.DatabaseName = "EttadDb";
             msSqlConnectionParameters1.Password = "Pass@1234";
