@@ -1,4 +1,5 @@
 using Ettad.Data.Enums;
+using Ettad.Inventory.Service.Assets.Dtos;
 using Ettad.Module.lookup.Dtos;
 using Ettad.User.Services.DTO;
 using Ettad.CrossCutting.Comman.FileUpload;
@@ -20,11 +21,10 @@ namespace Ettad.Inventory.Service.AssetSupply.Dtos
         
         public DepartmentDto? Department { get; set; }
         public UserDto? Custodian { get; set; }
-        public RankDto? ReceiverRank { get; set; }
-        
-        public string? ReceiverName { get; set; }
-        public string? ReceiverMilitaryId { get; set; }
-        
+
+        public long? ReceiverEmployeeId { get; set; }
+        public EmployeeDto? ReceiverEmployee { get; set; }
+
         public string? Location { get; set; }
         public DateTime? ExpectedReturnDate { get; set; }
         public string? Notes { get; set; }

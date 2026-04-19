@@ -128,9 +128,9 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
                 SupplyDate = data.SupplyDate,
                 SubmissionStatus = data.SubmissionStatus,
                 FulfillmentStatus = data.FulfillmentStatus,
-                ReceiverName = data.ReceiverName,
-                ReceiverMilitaryId = data.ReceiverMilitaryId,
-                ReceiverRankName = data.ReceiverRank?.NameEn ?? data.ReceiverRank?.NameAr,
+                ReceiverName = data.ReceiverEmployee?.NameEn ?? data.ReceiverEmployee?.NameAr,
+                ReceiverMilitaryId = data.ReceiverEmployee?.MilitaryId,
+                ReceiverRankName = data.ReceiverEmployee?.Rank?.NameEn ?? data.ReceiverEmployee?.Rank?.NameAr,
                 Notes = data.Notes,
                 IsWeaponOrder = true,
                 IsOrderCompleted = order.Status == RequestStatus.Approved,
@@ -232,7 +232,8 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
 
             var supply = await _context.Set<Supply>()
                 .AsNoTracking()
-                .Include(s => s.ReceiverRank)
+                .Include(s => s.ReceiverEmployee)
+                    .ThenInclude(e => e.Rank)
                 .Include(s => s.SupplyDetails)
                 .ThenInclude(sd => sd.Item)
                 .FirstOrDefaultAsync(s => s.OrderId == orderId && !s.IsDeleted);
@@ -243,9 +244,9 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
             dto.SupplyDate = supply.SupplyDate;
             dto.SubmissionStatus = supply.SubmissionStatus;
             dto.FulfillmentStatus = supply.FulfillmentStatus;
-            dto.ReceiverName = supply.RecieverName;
-            dto.ReceiverMilitaryId = supply.RecieverMilitaryId;
-            dto.ReceiverRankName = supply.ReceiverRank?.NameEn ?? supply.ReceiverRank?.NameAr;
+            dto.ReceiverName = supply.ReceiverEmployee?.NameEn ?? supply.ReceiverEmployee?.NameAr;
+            dto.ReceiverMilitaryId = supply.ReceiverEmployee?.MilitaryId;
+            dto.ReceiverRankName = supply.ReceiverEmployee?.Rank?.NameEn ?? supply.ReceiverEmployee?.Rank?.NameAr;
             dto.Notes = supply.Notes;
 
             var details = supply.SupplyDetails?.Where(sd => !sd.IsDeleted).ToList() ?? new List<SupplyDetail>();

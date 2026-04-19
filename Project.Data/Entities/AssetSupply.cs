@@ -42,19 +42,9 @@ namespace Ettad.Data.Entities
         public string CustodianId { get; set; }
 
         /// <summary>
-        /// Name of the person receiving the supply
+        /// Employee receiving the supply (name, military ID, and rank come from this record).
         /// </summary>
-        public string? ReceiverName { get; set; }
-
-        /// <summary>
-        /// Military ID of the receiver
-        /// </summary>
-        public string? ReceiverMilitaryId { get; set; }
-
-        /// <summary>
-        /// Rank of the receiver
-        /// </summary>
-        public long? ReceiverRankId { get; set; }
+        public long? ReceiverEmployeeId { get; set; }
 
         /// <summary>
         /// Location where assets will be assigned
@@ -76,7 +66,7 @@ namespace Ettad.Data.Entities
         public Order Order { get; set; }
         public Department Department { get; set; }
         public ApplicationUser Custodian { get; set; }
-        public Rank ReceiverRank { get; set; }
+        public Employee? ReceiverEmployee { get; set; }
         public ICollection<AssetSupplyDetail> SupplyDetails { get; set; }
         public ICollection<AssetAssignment> Assignments { get; set; }
 

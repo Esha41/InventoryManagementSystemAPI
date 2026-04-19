@@ -17,19 +17,9 @@ namespace Ettad.Inventory.Service.AssetSupply.Dtos
         // public string? CustodianId { get; set; }
 
         /// <summary>
-        /// Name of the person receiving the supply (Required)
+        /// Employee receiving the supply (Required)
         /// </summary>
-        public string ReceiverName { get; set; }
-
-        /// <summary>
-        /// Military ID of the receiver (Required)
-        /// </summary>
-        public string ReceiverMilitaryId { get; set; }
-
-        /// <summary>
-        /// Rank ID of the receiver (Required)
-        /// </summary>
-        public long ReceiverRankId { get; set; }
+        public long ReceiverEmployeeId { get; set; }
 
         /// <summary>
         /// Location where assets will be assigned

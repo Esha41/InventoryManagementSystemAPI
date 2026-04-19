@@ -314,7 +314,8 @@ namespace Ettad.Inventory.Service.AssetSupply
                 var supply = await _context.AssetSupplies
                     .Include(s => s.Department)
                     .Include(s => s.Custodian)
-                    .Include(s => s.ReceiverRank)
+                    .Include(s => s.ReceiverEmployee)
+                        .ThenInclude(e => e!.Rank)
                     .Include(s => s.SupplyDetails)
                         .ThenInclude(d => d.Asset)
                     .Include(s => s.SupplyDetails)
@@ -360,7 +361,8 @@ namespace Ettad.Inventory.Service.AssetSupply
                 var supply = await _context.AssetSupplies
                     .Include(s => s.Department)
                     .Include(s => s.Custodian)
-                    .Include(s => s.ReceiverRank)
+                    .Include(s => s.ReceiverEmployee)
+                        .ThenInclude(e => e!.Rank)
                     .Include(s => s.SupplyDetails)
                         .ThenInclude(d => d.Asset)
                     .Include(s => s.SupplyDetails)
@@ -400,6 +402,8 @@ namespace Ettad.Inventory.Service.AssetSupply
                 var supplies = await _context.AssetSupplies
                     .Include(s => s.Department)
                     .Include(s => s.Custodian)
+                    .Include(s => s.ReceiverEmployee)
+                        .ThenInclude(e => e!.Rank)
                     .Include(s => s.SupplyDetails)
                     .Where(s => !s.IsDeleted)
                     .OrderByDescending(s => s.CreationDate)
@@ -485,6 +489,14 @@ namespace Ettad.Inventory.Service.AssetSupply
                 {
                     return APIOperationResponse<long>.Fail(ResponseType.BadRequest,
                         $"A supply already exists for this order. Supply ID: {existingSupply.Id}");
+                }
+
+                var receiverEmployee = await _context.Employees
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(e => e.Id == dto.ReceiverEmployeeId && !e.IsDeleted);
+                if (receiverEmployee == null)
+                {
+                    return APIOperationResponse<long>.Fail(ResponseType.BadRequest, "Receiver employee not found.");
                 }
 
                 // Store order data before detaching to avoid tracking conflicts
@@ -670,9 +682,7 @@ namespace Ettad.Inventory.Service.AssetSupply
                             Status = AssetAssignmentStatus.Active,
                             Purpose = orderUsagePurpose,
                             ConditionOnAssign = detail.ConditionOnSupply,
-                            ReceiverName = supply.ReceiverName,
-                            ReceiverMilitaryId = supply.ReceiverMilitaryId,
-                            ReceiverRankId = supply.ReceiverRankId,
+                            ReceiverEmployeeId = dto.ReceiverEmployeeId,
                             CreationDate = _dateTimeProvider.Now,
                             CreatedBy = _currentUserService.UserId
                         };

@@ -1,5 +1,6 @@
 using AutoMapper;
 using Ettad.Data.Entities;
+using Ettad.Inventory.Service.Assets.Dtos;
 using Ettad.RequestManagement.Service.SupplyManagement.Dtos;
 using Ettad.RequestManagement.Service.Orders.Dto;
 using Ettad.Inventory.Service.Common.Dtos;
@@ -14,7 +15,7 @@ namespace Ettad.RequestManagement.Service.SupplyManagement.Profiles
             // Entity to DTO
             CreateMap<Supply, SupplyDto>()
                 .ForMember(dest => dest.Order, opt => opt.MapFrom(src => src.Order))
-                .ForMember(dest => dest.ReceiverRank, opt => opt.MapFrom(src => src.ReceiverRank));
+                .ForMember(dest => dest.ReceiverEmployee, opt => opt.MapFrom(src => src.ReceiverEmployee));
 
             CreateMap<SupplyDetail, SupplyDetailDto>()
                 .ForMember(dest => dest.Item, opt => opt.MapFrom(src => src.Item))
@@ -35,7 +36,7 @@ namespace Ettad.RequestManagement.Service.SupplyManagement.Profiles
                 .ForMember(dest => dest.SubmissionStatus, opt => opt.Ignore()) // Set in service
                 .ForMember(dest => dest.FulfillmentStatus, opt => opt.Ignore()) // Set in service
                 .ForMember(dest => dest.Order, opt => opt.Ignore())
-                .ForMember(dest => dest.ReceiverRank, opt => opt.Ignore())
+                .ForMember(dest => dest.ReceiverEmployee, opt => opt.Ignore())
                 .ForMember(dest => dest.SupplyDetails, opt => opt.Ignore()); // Handle separately
 
             CreateMap<CreateSupplyDetailDto, SupplyDetail>()
@@ -59,7 +60,7 @@ namespace Ettad.RequestManagement.Service.SupplyManagement.Profiles
                 .ForMember(dest => dest.DeletionDate, opt => opt.Ignore())
                 .ForMember(dest => dest.DeletedBy, opt => opt.Ignore())
                 .ForMember(dest => dest.Order, opt => opt.Ignore())
-                .ForMember(dest => dest.ReceiverRank, opt => opt.Ignore())
+                .ForMember(dest => dest.ReceiverEmployee, opt => opt.Ignore())
                 .ForMember(dest => dest.SupplyDetails, opt => opt.Ignore());
 
             CreateMap<UpdateSupplyDetailDto, SupplyDetail>()
