@@ -13,6 +13,10 @@ namespace Ettad.Inventory.Service.Inventories.Dtos
         public ItemType ItemType { get; set; }
         public string Nsn { get; set; }
         public string PartNo { get; set; }
+        /// <summary>From catalog (ammunition / weapon); null for other types or when not set.</summary>
+        public string Caliber { get; set; }
+        /// <summary>Display name for caliber unit (e.g. weapon), when available.</summary>
+        public string CaliberUnitName { get; set; }
         public long TotalQuantity { get; set; }
         public long UsedQuantity { get; set; }
         public long ReservedQuantityByOrdersOnProcessing { get; set; }
