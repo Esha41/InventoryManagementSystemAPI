@@ -93,6 +93,12 @@ namespace Ettad.EntityFramework.DataBaseContext
         public DbSet<ScheduledReportExecution> ScheduledReportExecutions { get; set; }
         public DbSet<Announcement> Announcements { get; set; }
         public DbSet<AnnouncementDismissal> AnnouncementDismissals { get; set; }
+
+        // Help Center
+        public DbSet<HelpCenterArticle> HelpCenterArticles { get; set; }
+        public DbSet<HelpCenterContactMessage> HelpCenterContactMessages { get; set; }
+        public DbSet<HelpCenterTermsConditions> HelpCenterTermsConditions { get; set; }
+        public DbSet<HelpCenterContactDisplaySettings> HelpCenterContactDisplaySettings { get; set; }
         public DbSet<WeaponSupplySelection> WeaponSupplySelections { get; set; }
        
         protected override void OnModelCreating(ModelBuilder modelBuilder)

@@ -64,6 +64,8 @@
     <ProjectReference Include="..\Ettad.Modules\\Ettad.Modules.ReportManagement\\Ettad.ReportManagement.API\\Ettad.ReportManagement.API.csproj" />
     <ProjectReference Include="..\Ettad.Announcement.API\Ettad.Announcement.API.csproj" />
     <ProjectReference Include="..\Ettad.Announcement.Service\Ettad.Announcement.Service.csproj" />
+    <ProjectReference Include="..\Ettad.HelpCenter.API\Ettad.HelpCenter.API.csproj" />
+    <ProjectReference Include="..\Ettad.HelpCenter.Service\Ettad.HelpCenter.Service.csproj" />
   </ItemGroup>
 
   <ItemGroup>

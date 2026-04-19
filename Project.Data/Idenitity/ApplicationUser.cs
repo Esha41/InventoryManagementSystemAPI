@@ -31,6 +31,12 @@ namespace Ettad.Comman.Idenitity
         public bool IsActive { get; set; } = true;
         public bool IsOnboardingCompleted { get; set; } = false;
 
+        /// <summary>Matches DB column from migration (FK to HelpCenterTermsConditions).</summary>
+        public long? LastAcceptedTermsConditionsId { get; set; }
+
+        [ForeignKey(nameof(LastAcceptedTermsConditionsId))]
+        public HelpCenterTermsConditions? LastAcceptedTermsConditions { get; set; }
+
         // Soft delete properties
         public bool IsDeleted { get; set; } = false;
         public DateTime? DeletionDate { get; set; }
