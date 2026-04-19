@@ -1882,7 +1882,6 @@ namespace Ettad.ReportManagement.Service.Reports.Templates
             DevExpress.DataAccess.Sql.ColumnExpression columnExpression826 = new DevExpress.DataAccess.Sql.ColumnExpression();
             DevExpress.DataAccess.Sql.Column column827 = new DevExpress.DataAccess.Sql.Column();
             DevExpress.DataAccess.Sql.ColumnExpression columnExpression827 = new DevExpress.DataAccess.Sql.ColumnExpression();
-            DevExpress.DataAccess.ConnectionParameters.MsSqlConnectionParameters msSqlConnectionParameters1 = new DevExpress.DataAccess.ConnectionParameters.MsSqlConnectionParameters();
             DevExpress.DataAccess.Sql.CustomSqlQuery customSqlQuery3 = new DevExpress.DataAccess.Sql.CustomSqlQuery();
             DevExpress.XtraReports.UI.XRSummary xrSummary1 = new DevExpress.XtraReports.UI.XRSummary();
             DevExpress.XtraReports.Parameters.StaticListLookUpSettings staticListLookUpSettings1 = new DevExpress.XtraReports.Parameters.StaticListLookUpSettings();
@@ -5565,13 +5564,6 @@ namespace Ettad.ReportManagement.Service.Reports.Templates
             // UsersDataSource
             // 
             this.UsersDataSource.ConnectionName = "DefaultConnection";
-            msSqlConnectionParameters1.AuthorizationType = DevExpress.DataAccess.ConnectionParameters.MsSqlAuthorizationType.SqlServer;
-            msSqlConnectionParameters1.DatabaseName = "EttadDb";
-            msSqlConnectionParameters1.Password = "Pass@1234";
-            msSqlConnectionParameters1.ServerName = "LAPTOP-6GL041B3\\MSSQLSERVER02";
-            msSqlConnectionParameters1.TrustServerCertificate = DevExpress.Utils.DefaultBoolean.True;
-            msSqlConnectionParameters1.UserName = "sa";
-            this.UsersDataSource.ConnectionParameters = msSqlConnectionParameters1;
             this.UsersDataSource.Name = "UsersDataSource";
             customSqlQuery3.Name = "AspNetUsers_1";
             customSqlQuery3.Sql = resources.GetString("customSqlQuery3.Sql");
