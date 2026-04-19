@@ -16,11 +16,10 @@ namespace Ettad.Comman.Enums
         Explosive = 8,
         Asset = 9,
         AssetSupply = 10,
-        HelpCenter = 11,
-
+        ReturnTrackingLine = 11,
+        HelpCenter = 12,
         /// <summary>User manual PDFs/docs (singleton: use entityId = 1 for all manual files).</summary>
-        HelpCenterUserManual = 12
-
+        HelpCenterUserManual = 13
         // Add other entities here as needed
     }
 }

@@ -128,6 +128,7 @@ namespace Ettad.EntityFramework.DataBaseContext
                 await SeedWorkflows.SeedOrderFromAllowance_Weapon_WorkflowAsync(context);
                 await SeedWorkflows.SeedDiscardWorkflowAsync(context);
                 await SeedWorkflows.SeedReturnWorkflowAsync(context);
+                await SeedWorkflows.SeedReturnWeaponWorkflowAsync(context);
                 // ========================
                 // SYSTEM ADMIN ROLE (LIMITED)
                 // ========================

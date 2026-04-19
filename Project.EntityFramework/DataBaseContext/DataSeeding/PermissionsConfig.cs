@@ -332,6 +332,21 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
             "Permissions.UserDelegations.Create",
             "Permissions.UserDelegations.Delete",
         };
+
+        public static List<string> ReadReport = new()
+        {
+            "Permissions.BITool.Page",
+            "Permissions.BITool.View",
+        };
+
+        public static List<string> WriteReport = new()
+        {
+            "Permissions.BITool.Page",
+            "Permissions.BITool.View",
+            "Permissions.BITool.Create",
+            "Permissions.BITool.Edit",
+            "Permissions.BITool.Delete",
+        };
        
         public static List<string> RequestReciever =
             ReadRequestReciever

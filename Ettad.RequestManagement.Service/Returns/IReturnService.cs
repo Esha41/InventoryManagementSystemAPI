@@ -13,6 +13,11 @@ namespace Ettad.RequestManagement.Service.Returns
         Task<APIOperationResponse<long>> CreateAsync(CreateReturnDto inputDto, List<IFormFile> files);
         Task<APIOperationResponse<bool>> ChangePriorityAsync(long id, RequestPriority priority);
         Task<APIOperationResponse<bool>> DeleteAsync(long id);
+        Task<APIOperationResponse<bool>> SetDepotAsync(long returnId, SetReturnDepotDto dto);
+        Task<APIOperationResponse<bool>> SetDeliveryDateAsync(long returnId, SetReturnDeliveryDateDto dto);
+        Task<APIOperationResponse<bool>> ProcessReturnItemsAsync(long returnId, ProcessReturnItemsDto dto, List<IFormFile>? files = null);
+
+        Task<APIOperationResponse<List<ReturnTrackingLineDto>>> GetReturnTrackingLinesAsync(long returnId);
     }
 }
 

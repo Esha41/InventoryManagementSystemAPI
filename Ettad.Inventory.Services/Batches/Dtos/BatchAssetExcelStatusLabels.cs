@@ -8,6 +8,7 @@ namespace Ettad.Inventory.Service.Batches.Dtos
         private static readonly IReadOnlyList<AssetStatus> Ordered = new[]
         {
             AssetStatus.ReadyToIssue,
+            AssetStatus.NotReadyToIssue,
             AssetStatus.InMaintenance,
             AssetStatus.UnserviceableRepairable,
             AssetStatus.UnserviceableUnrepairable,
@@ -54,6 +55,7 @@ namespace Ettad.Inventory.Service.Batches.Dtos
         private static string ToLabelEn(AssetStatus s) => s switch
         {
             AssetStatus.ReadyToIssue => "Ready to Issue",
+            AssetStatus.NotReadyToIssue => "Not Ready to Issue",
             AssetStatus.InMaintenance => "In Maintenance",
             AssetStatus.UnserviceableRepairable => "Unserviceable (Repairable)",
             AssetStatus.UnserviceableUnrepairable => "Unserviceable (Unrepairable)",
@@ -65,6 +67,7 @@ namespace Ettad.Inventory.Service.Batches.Dtos
         private static string ToLabelAr(AssetStatus s) => s switch
         {
             AssetStatus.ReadyToIssue => "جاهز للصرف",
+            AssetStatus.NotReadyToIssue => "غير جاهز للصرف",
             AssetStatus.InMaintenance => "قيد الصيانة",
             AssetStatus.UnserviceableRepairable => "غير صالح (قابل للإصلاح)",
             AssetStatus.UnserviceableUnrepairable => "غير صالح (غير قابل للإصلاح)",

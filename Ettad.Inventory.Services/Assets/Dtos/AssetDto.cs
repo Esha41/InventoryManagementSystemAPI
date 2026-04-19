@@ -45,6 +45,13 @@ namespace Ettad.Inventory.Service.Assets.Dtos
         /// <summary>When the asset record was created (audit).</summary>
         public DateTime CreationDate { get; set; }
 
+
+        /// <summary>Expected return date for the current checkout assignment, if any.</summary>
+        public DateTime? ExpectedReturnDate { get; set; }
+
+        /// <summary>Actual return date when the current assignment was completed (returned), if any.</summary>
+        public DateTime? ActualReturnDate { get; set; }
+
         public long? SupplierId { get; set; }
 
         public long? ManufacturerId { get; set; }

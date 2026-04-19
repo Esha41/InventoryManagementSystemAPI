@@ -16,6 +16,7 @@
   <ItemGroup>
     <PackageReference Include="AutoMapper" Version="12.0.1" />
     <PackageReference Include="AutoMapper.Extensions.Microsoft.DependencyInjection" Version="12.0.1" />
+    <PackageReference Include="DevExpress.AspNetCore.Reporting" Version="25.2.3" />
     <PackageReference Include="EPPlus" Version="8.4.0" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.10" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="8.0.10">
@@ -23,6 +24,7 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
     <PackageReference Include="Refit.HttpClientFactory" Version="7.2.1" />
+    <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="3.0.2" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2" />
     
     <!-- Serilog Packages -->
@@ -35,6 +37,9 @@
     <PackageReference Include="Serilog.Sinks.File" Version="5.0.0" />
     <PackageReference Include="Serilog.Sinks.MSSqlServer" Version="6.6.1" />
     <PackageReference Include="Serilog.Sinks.Seq" Version="7.0.1" />
+    
+    <!-- AI/NLP Packages - Azure Cognitive Services Text Analytics (Free tier: 5000 transactions/month) -->
+    <PackageReference Include="Azure.AI.TextAnalytics" Version="5.3.0" />
   </ItemGroup>
 
   <ItemGroup>
@@ -53,9 +58,10 @@
     <ProjectReference Include="..\Project.User.Services\Ettad.User.Services.csproj" />
     <ProjectReference Include="..\Ettad.Notification.Service\Ettad.Notification.Service.csproj" />
     <ProjectReference Include="..\Ettad.Notification.API\Ettad.Notification.API.csproj" />
-    <ProjectReference Include="..\Ettad.Modules.EmailSystem.API\Ettad.Modules.EmailSystem.API.csproj" />
+    <ProjectReference Include="..\Ettad.Modules\Ettad.Modules.ExternalAPIs\Ettad.Modules.EmailSystem.API\Ettad.Modules.EmailSystem.API.csproj" />
     <ProjectReference Include="..\Ettad.LdapSettings.APIs\Ettad.LdapSettings.APIs.csproj" />
-    <ProjectReference Include="..\Ettad.Modules.FileUpload.API\Ettad.Modules.FileUpload.API.csproj" />
+    <ProjectReference Include="..\Ettad.Modules\Ettad.Modules.ExternalAPIs\Ettad.Modules.FileUpload.API\Ettad.Modules.FileUpload.API.csproj" />
+    <ProjectReference Include="..\Ettad.Modules\\Ettad.Modules.ReportManagement\\Ettad.ReportManagement.API\\Ettad.ReportManagement.API.csproj" />
     <ProjectReference Include="..\Ettad.Announcement.API\Ettad.Announcement.API.csproj" />
     <ProjectReference Include="..\Ettad.Announcement.Service\Ettad.Announcement.Service.csproj" />
     <ProjectReference Include="..\Ettad.HelpCenter.API\Ettad.HelpCenter.API.csproj" />

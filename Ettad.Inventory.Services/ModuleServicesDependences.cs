@@ -61,6 +61,7 @@ namespace Ettad.Inventory.Service
             services.AddAutoMapper(typeof(ExplosiveMappingProfile));
 
             services.AddScoped<IAllowanceItemService, AllowanceItemService>();
+            services.AddScoped<IAllowanceItemQueryService, AllowanceItemQueryService>();
             services.AddScoped<IItemDepartmentAssignmentService, ItemDepartmentAssignmentService>();
             services.AddAutoMapper(typeof(ItemDepartmentAssignmentMappingProfile));
             services.AddScoped<IInventoryService, InventoryService>();
