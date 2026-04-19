@@ -306,6 +306,19 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
             PlainPermissions.WarehouseMapView.ToString(),
         };
 
+        public static List<string> ReadHelpCenter = new()
+        {
+            "Permissions.HelpCenter.Page",
+            "Permissions.HelpCenter.View",
+        };
+
+        public static List<string> WriteHelpCenter = new()
+        {
+            "Permissions.HelpCenter.Create",
+            "Permissions.HelpCenter.Edit",
+            "Permissions.HelpCenter.Delete",
+        };
+
         public static List<string> ReadDelegation = new()
         {
             "Permissions.UserDelegations.Page",
@@ -318,6 +331,21 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
             "Permissions.UserDelegations.View",
             "Permissions.UserDelegations.Create",
             "Permissions.UserDelegations.Delete",
+        };
+
+        public static List<string> ReadReport = new()
+        {
+            "Permissions.BITool.Page",
+            "Permissions.BITool.View",
+        };
+
+        public static List<string> WriteReport = new()
+        {
+            "Permissions.BITool.Page",
+            "Permissions.BITool.View",
+            "Permissions.BITool.Create",
+            "Permissions.BITool.Edit",
+            "Permissions.BITool.Delete",
         };
        
         public static List<string> RequestReciever =

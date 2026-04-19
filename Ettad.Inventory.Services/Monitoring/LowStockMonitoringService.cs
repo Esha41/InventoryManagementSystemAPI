@@ -25,9 +25,9 @@ namespace Ettad.Inventory.Service.Monitoring
             _logger = logger;
         }
 
-        public async Task<APIOperationResponse<int>> GetLowStockItemsCountAsync()
+        public async Task<APIOperationResponse<int>> GetLowStockItemsCountAsync(long? depotId = null)
         {
-            _logger.LogInformation("Getting low stock items count");
+            _logger.LogInformation("Getting low stock items count. DepotId: {DepotId}", depotId?.ToString() ?? "All");
 
             try
             {
@@ -42,15 +42,12 @@ namespace Ettad.Inventory.Service.Monitoring
 
                 foreach (var item in itemsToCheck)
                 {
-                    var lowStockInfo = await CheckItemStockAsync(item);
+                    var lowStockInfo = await CheckItemStockAsync(item, depotId);
                     if (lowStockInfo != null)
-                    {
                         lowStockCount++;
-                    }
                 }
 
                 _logger.LogInformation($"Found {lowStockCount} items below minimum stock level.");
-
                 return APIOperationResponse<int>.Success(lowStockCount);
             }
             catch (System.Exception ex)
@@ -77,7 +74,7 @@ namespace Ettad.Inventory.Service.Monitoring
 
                 foreach (var item in itemsToCheck)
                 {
-                    var lowStockInfo = await CheckItemStockAsync(item);
+                    var lowStockInfo = await CheckItemStockAsync(item, null);
                     if (lowStockInfo != null)
                     {
                         lowStockItems.Add(new LowStockItemDto
@@ -96,7 +93,6 @@ namespace Ettad.Inventory.Service.Monitoring
                 }
 
                 _logger.LogInformation($"Found {lowStockItems.Count} items below minimum stock level.");
-
                 return APIOperationResponse<List<LowStockItemDto>>.Success(lowStockItems);
             }
             catch (System.Exception ex)
@@ -106,11 +102,15 @@ namespace Ettad.Inventory.Service.Monitoring
             }
         }
 
-        private async Task<LowStockItemInfo?> CheckItemStockAsync(BaseItem item)
+        private async Task<LowStockItemInfo?> CheckItemStockAsync(BaseItem item, long? depotId)
         {
-            var totalStock = await _context.InventoryDetails
-                .Where(id => id.ItemId == item.Id && !id.Inventory.IsDeleted)
-                .SumAsync(id => id.ItemQuantity);
+            var inventoryQuery = _context.InventoryDetails
+                .Where(id => id.ItemId == item.Id && !id.Inventory.IsDeleted);
+
+            if (depotId.HasValue)
+                inventoryQuery = inventoryQuery.Where(id => id.Inventory.DepoId == depotId.Value);
+
+            var totalStock = await inventoryQuery.SumAsync(id => id.ItemQuantity);
 
             var supplyDetails = await _context.SupplyDetails
                 .Include(sd => sd.Supply)

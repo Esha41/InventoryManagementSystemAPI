@@ -13,7 +13,7 @@ namespace Ettad.User.Services.DTO
         public bool IsSuperAdmin { get; set; }
         public bool IsActive { get; set; } = true;
         public string ExtraEmployeesView { get; set; }
-        public long? DeparmentId { get; set; }
+        public long? DepartmentId { get; set; }
         public List<UserRoleSummaryDto> Roles { get; set; } = new();
         public string FullNameEN { get; set; }
         public string FullNameAR { get; set; }

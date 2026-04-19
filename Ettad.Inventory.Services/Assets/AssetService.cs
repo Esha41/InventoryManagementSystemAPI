@@ -205,7 +205,7 @@ namespace Ettad.Inventory.Service.Assets
             asset.IsAssigned = true;
             asset.CurrentAssignmentId = assignment.Id;
             asset.ModificationDate = now;
-            asset.ModifiedBy = _currentUserService.UserId;
+            asset.ModifiedBy = _currentUserService.UserId;           
             await _context.SaveChangesAsync();
 
             await _historyService.RecordHistoryAsync(asset.Id, AssetHistoryActionType.Assigned, new AssetHistoryContext
@@ -407,6 +407,55 @@ namespace Ettad.Inventory.Service.Assets
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error retrieving all assets. User: {UserId}", _currentUserService.UserId);
+                return APIOperationResponse<List<AssetDto>>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
+            }
+        }
+
+        public async Task<APIOperationResponse<List<AssetDto>>> GetAssetsByItemIdAsync(long itemId, long? depotId = null)
+        {
+            _logger.LogInformation("Getting assets by itemId. ItemId: {ItemId}, DepotId: {DepotId}, User: {UserId}",
+                itemId, depotId?.ToString() ?? "All", _currentUserService.UserId);
+
+            try
+            {
+                if (depotId.HasValue && depotId.Value > 0)
+                {
+                    var userId = _currentUserService.UserId;
+                    if (!string.IsNullOrEmpty(userId) && !await _depotAccessService.HasDepotAccessAsync(userId, depotId.Value))
+                    {
+                        _logger.LogWarning("User {UserId} attempted to access assets for unauthorized depot {DepotId}", userId, depotId);
+                        return APIOperationResponse<List<AssetDto>>.Fail(ResponseType.Forbidden, "You do not have access to this depot.");
+                    }
+                }
+
+                var assets = await _assetRepository.FindAsync(
+                    a => !a.IsDeleted && a.ItemId == itemId && (!depotId.HasValue || depotId.Value <= 0 || a.DepotId == depotId.Value),
+                    false,
+                    nameof(Asset.Item),
+                    nameof(Asset.Depot),
+                    nameof(Asset.Batch),
+                    nameof(Asset.Supplier),
+                    nameof(Asset.Manufacturer),
+                    nameof(Asset.PrimaryPurpos),
+                    $"{nameof(Asset.CurrentAssignment)}.{nameof(AssetAssignment.Custodian)}",
+                    $"{nameof(Asset.CurrentAssignment)}.{nameof(AssetAssignment.Department)}"
+                );
+
+                // Restrict to user's accessible depots
+                var userDepotIds = await _depotAccessService.GetUserAccessibleDepotIdsAsync();
+                if (userDepotIds != null)
+                    assets = assets.Where(a => userDepotIds.Contains(a.DepotId)).ToList();
+
+                var dtos = _mapper.Map<List<AssetDto>>(assets);
+
+                _logger.LogInformation("Assets by itemId retrieved. ItemId: {ItemId}, Count: {Count}, User: {UserId}",
+                    itemId, dtos.Count, _currentUserService.UserId);
+
+                return APIOperationResponse<List<AssetDto>>.Success(dtos);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting assets by itemId. ItemId: {ItemId}, User: {UserId}", itemId, _currentUserService.UserId);
                 return APIOperationResponse<List<AssetDto>>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
             }
         }

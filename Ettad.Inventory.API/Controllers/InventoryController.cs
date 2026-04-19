@@ -137,9 +137,9 @@ namespace Ettad.Inventory.API.Controllers
         [HttpGet("item/{itemId}/lots")]
         [ProducesResponseType((int)HttpStatusCode.OK)]
         [CheckAuthorize("Permissions.Inventory.View", "Permissions.Inventory.Page")]
-        public async Task<IActionResult> GetLotsByItemId(long itemId)
+        public async Task<IActionResult> GetLotsByItemId(long itemId, [FromQuery] long? depotId = null)
         {
-            var result = await _inventoryService.GetLotsByItemIdAsync(itemId);
+            var result = await _inventoryService.GetLotsByItemIdAsync(itemId, depotId);
             return ProcessResponse(result);
         }
 
@@ -169,9 +169,9 @@ namespace Ettad.Inventory.API.Controllers
         [HttpGet("items/summary")]
         [ProducesResponseType((int)HttpStatusCode.OK)]
         [CheckAuthorize("Permissions.Inventory.View", "Permissions.Inventory.Page")]
-        public async Task<IActionResult> GetInventorySummaryForAllItems()
+        public async Task<IActionResult> GetInventorySummaryForAllItems([FromQuery] long? depotId = null, [FromQuery] List<long>? depotIds = null)
         {
-            var result = await _inventoryService.GetInventorySummaryForAllItemsAsync();
+            var result = await _inventoryService.GetInventorySummaryForAllItemsAsync(depotId, depotIds);
             return ProcessResponse(result);
         }
 

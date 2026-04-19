@@ -348,7 +348,7 @@ namespace Ettad.User.Services.Implementation
                     Email = u.Email,
                     IsActive = u.IsActive,
                     MilitoryId = u.MilitoryId,
-                    DeparmentId = u.DepartmentId,
+                    DepartmentId = u.DepartmentId,
                     RankId = u.RankId
                 })
                 .ToListAsync();

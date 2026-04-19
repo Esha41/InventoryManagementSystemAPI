@@ -63,6 +63,7 @@ namespace Ettad.EntityFramework.DataBaseContext
         public DbSet<Order> Orders { get; set; }
         public DbSet<Discard> Discards { get; set; }
         public DbSet<Return> Returns { get; set; }
+        public DbSet<ReturnTrackingLine> ReturnTrackingLines { get; set; }
         public DbSet<Supply> Supplies { get; set; }
         public DbSet<SupplyDetail> SupplyDetails { get; set; }
 
@@ -84,8 +85,20 @@ namespace Ettad.EntityFramework.DataBaseContext
         public DbSet<LoginAttempt> LoginAttempts { get; set; }
         public DbSet<BlacklistedToken> BlacklistedTokens { get; set; }
         public DbSet<UserDelegation> UserDelegations { get; set; }
+        public DbSet<ReportEntity> Reports { get; set; }
+        public DbSet<ReportStatus> ReportStatuses { get; set; }
+        public DbSet<ReportRole> ReportRoles { get; set; }
+        public DbSet<ScheduledReport> ScheduledReports { get; set; }
+        public DbSet<ScheduledReportRecipient> ScheduledReportRecipients { get; set; }
+        public DbSet<ScheduledReportExecution> ScheduledReportExecutions { get; set; }
         public DbSet<Announcement> Announcements { get; set; }
         public DbSet<AnnouncementDismissal> AnnouncementDismissals { get; set; }
+
+        // Help Center
+        public DbSet<HelpCenterArticle> HelpCenterArticles { get; set; }
+        public DbSet<HelpCenterContactMessage> HelpCenterContactMessages { get; set; }
+        public DbSet<HelpCenterTermsConditions> HelpCenterTermsConditions { get; set; }
+        public DbSet<HelpCenterContactDisplaySettings> HelpCenterContactDisplaySettings { get; set; }
         public DbSet<WeaponSupplySelection> WeaponSupplySelections { get; set; }
        
         protected override void OnModelCreating(ModelBuilder modelBuilder)

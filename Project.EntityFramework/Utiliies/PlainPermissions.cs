@@ -84,9 +84,26 @@ namespace Ettad.Data.Enums
         [Category(PlainPermissionsGenerator.Workflow)]
         OrderDecreaseQuantity,
 
+        [Category(PlainPermissionsGenerator.Workflow)]
+        SetReturnDepot,
+
+        [Category(PlainPermissionsGenerator.Workflow)]
+        SetReturnDeliveryDate,
+
+        [Category(PlainPermissionsGenerator.Workflow)]
+        ProcessReturnItems,
+
         [Category(PlainPermissionsGenerator.Inventory)]
         AllowanceItemViewAllDepartments,
 
+        [Category(PlainPermissionsGenerator.BITool)]
+        ReportDesigner,
+
+        [Category(PlainPermissionsGenerator.BITool)]
+        ReportDashboard,
+
+        [Category(PlainPermissionsGenerator.BITool)]
+        ScheduledReports,
         [Category(PlainPermissionsGenerator.Inventory)]
         WarehouseMapView,
     }
