@@ -42,8 +42,6 @@ namespace Ettad.Modules.ReportManagement.API.Controllers
         {
             try
             {
-                var ds = new SqlDataSource("DefaultConnection");
-
                 var designerModel = designerModelBuilder
                     .Report(reportUrl ?? "BaseReportTemplate")
                     .BuildModel();

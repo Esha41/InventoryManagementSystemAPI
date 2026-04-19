@@ -68,13 +68,6 @@ namespace Ettad.ReportManagement.Service.Reports.Templates
         public UsersReportTemplate()
         {
             InitializeComponent();
-
-            // if (ReportServiceLocator.ServiceProvider != null)
-            //{
-            // //   this.ComponentStorage.Remove(this.DesignTimeDS);
-            //  //  this.DataSource = this.AllowanceItemDS;
-            //    this.FilterString = "[DepartmentId] In (?Department) And [Year] In (?Year)";
-            //}
         }
 
         private void InitializeComponent()
@@ -1950,7 +1943,7 @@ namespace Ettad.ReportManagement.Service.Reports.Templates
             columnExpression3.Table = table1;
             column3.Expression = columnExpression3;
             columnExpression4.ColumnName = "Year";
-            columnExpression4.Table = table1;l
+            columnExpression4.Table = table1;
             column4.Expression = columnExpression4;
             columnExpression5.ColumnName = "Quantity";
             columnExpression5.Table = table1;
