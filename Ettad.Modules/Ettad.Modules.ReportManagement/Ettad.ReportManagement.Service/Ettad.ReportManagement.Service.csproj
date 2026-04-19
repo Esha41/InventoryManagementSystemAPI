@@ -32,9 +32,18 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Compile Update="Reports\Templates\DepotReportTemplate.cs">
+      <SubType>XtraReport</SubType>
+    </Compile>
     <Compile Update="Reports\Templates\UsersReportTemplate.cs">
       <SubType>XtraReport</SubType>
     </Compile>
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="appsettings.json">
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 
 </Project>
