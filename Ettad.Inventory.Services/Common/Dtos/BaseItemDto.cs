@@ -15,6 +15,7 @@ namespace Ettad.Inventory.Service.Common.Dtos
         public string? PartNo { get; set; }
         public decimal? Price { get; set; }
         public long? MinimumQuantity { get; set; }
+        public long? CriticalQuantity { get; set; }
         public string? Distribution { get; set; }
         public string? ReferenceNo { get; set; }
         public string? UNNumber { get; set; }

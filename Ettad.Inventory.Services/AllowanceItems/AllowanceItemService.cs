@@ -418,7 +418,7 @@ namespace Ettad.Inventory.Service.AllowanceItems
                         detail.UsedQuantityFromAllowance = 0;
                         detail.ReservedQuantityByOrdersOnProcessing = 0;
                     }
-                    detail.RemainingQuantityFromAllowance = Math.Max(0, detail.Quantity - detail.UsedQuantityFromAllowance - detail.ReservedQuantityByOrdersOnProcessing);
+                    detail.RemainingQuantityFromAllowance = detail.Quantity - detail.UsedQuantityFromAllowance - detail.ReservedQuantityByOrdersOnProcessing;
                 }
 
                 var result = new AllowanceItemByDepartmentDto
@@ -501,7 +501,7 @@ namespace Ettad.Inventory.Service.AllowanceItems
                             detail.UsedQuantityFromAllowance = 0;
                             detail.ReservedQuantityByOrdersOnProcessing = 0;
                         }
-                        detail.RemainingQuantityFromAllowance = Math.Max(0, detail.Quantity - detail.UsedQuantityFromAllowance - detail.ReservedQuantityByOrdersOnProcessing);
+                        detail.RemainingQuantityFromAllowance = detail.Quantity - detail.UsedQuantityFromAllowance - detail.ReservedQuantityByOrdersOnProcessing;
                     }
 
                     result.Add(new AllowanceItemByDepartmentDto
@@ -792,7 +792,7 @@ namespace Ettad.Inventory.Service.AllowanceItems
                     DepartmentId = departmentId,
                     Year = year,
                     TotalOriginalQuantity = totalOriginalQuantity,
-                    TotalRemainingQuantity = Math.Max(0, totalRemainingQuantity),
+                    TotalRemainingQuantity = totalRemainingQuantity,
                     TotalReservedQuantityByOrdersOnProcessing = totalReservedQuantity,
                     TotalUsedQuantity = totalUsedQuantity
                 };
@@ -929,7 +929,7 @@ namespace Ettad.Inventory.Service.AllowanceItems
                     var itemOriginalQuantity = allowanceItem.Quantity;
                     var itemUsedQuantity = usedQuantityByItem.TryGetValue(itemId, out var used) ? used : 0;
                     var itemReservedQuantity = reservedQuantityByItem.TryGetValue(itemId, out var reserved) ? reserved : 0;
-                    var itemRemainingQuantity = Math.Max(0, itemOriginalQuantity - itemUsedQuantity - itemReservedQuantity);
+                    var itemRemainingQuantity = itemOriginalQuantity - itemUsedQuantity - itemReservedQuantity;
 
                     // Get item details
                     var item = allowanceItem.Item;
@@ -1052,8 +1052,8 @@ namespace Ettad.Inventory.Service.AllowanceItems
                     dto.ReservedQuantityByOrdersOnProcessing = 0;
                 }
 
-                // Calculate RemainingQuantity
-                dto.RemainingQuantityFromAllowance = Math.Max(0, allowanceItem.Quantity - dto.UsedQuantityFromAllowance - dto.ReservedQuantityByOrdersOnProcessing);
+                // Remaining may be negative when used + reserved exceeds the allowance cap
+                dto.RemainingQuantityFromAllowance = allowanceItem.Quantity - dto.UsedQuantityFromAllowance - dto.ReservedQuantityByOrdersOnProcessing;
             }
             catch (Exception ex)
             {

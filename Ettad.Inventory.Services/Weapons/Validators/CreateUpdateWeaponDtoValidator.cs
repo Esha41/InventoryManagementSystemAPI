@@ -34,6 +34,10 @@ namespace Ettad.Inventory.Service.Weapons.Validators
             RuleFor(x => x.Model)
                 .MaximumLength(200).When(x => !string.IsNullOrEmpty(x.Model))
                 .WithMessage("Model cannot exceed 200 characters");
+
+            RuleFor(x => x.CriticalQuantity)
+                .GreaterThan(0).When(x => x.CriticalQuantity.HasValue)
+                .WithMessage("Critical quantity must be greater than 0 when provided");
         }
     }
 }

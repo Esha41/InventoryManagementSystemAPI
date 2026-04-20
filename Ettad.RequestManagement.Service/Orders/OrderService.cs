@@ -740,19 +740,6 @@ namespace Ettad.RequestManagement.Service.Orders
                     return APIOperationResponse<bool>.Fail(ResponseType.NotFound, "Order item not found");
                 }
 
-                // Validation for orders from allowance
-                if (order.IsFromAllowance)
-                {
-                    var currentYear = _dateTimeProvider.Now.Year;
-                    var verificationResult = await CalculateAllowanceAvailabilityAsync(requestItem.ItemId, order.DepartmentId, currentYear);
-
-                    if (!verificationResult.CanFulfillRequest || verificationResult.AvailableQuantity < newQuantity)
-                    {
-                        return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, 
-                            $"Exceeded allowance quantity. Available: {verificationResult.AvailableQuantity}");
-                    }
-                }
-
                 var oldQuantity = requestItem.Quantity;
                 requestItem.Quantity = newQuantity;
                 requestItem.ModificationDate = _dateTimeProvider.Now;
@@ -948,23 +935,12 @@ namespace Ettad.RequestManagement.Service.Orders
 
             var allowanceByItemId = allowanceItems.ToDictionary(ai => ai.ItemId, ai => ai.Quantity);
 
-            // Validate each item
+            // Validate each item (must exist in allowance; quantity may exceed remaining — negative balance allowed)
             foreach (var requestItem in requestItems)
             {
-                // Check if item exists in allowance
                 if (!allowanceByItemId.ContainsKey(requestItem.ItemId))
                 {
                     errors.Add($"This item is not found in the department's allowance for year {currentYear}");
-                    continue;
-                }
-
-                // Calculate allowance availability
-                var verification = await CalculateAllowanceAvailabilityAsync(requestItem.ItemId, departmentId, currentYear);
-
-                // Check if requested quantity can be fulfilled
-                if (!verification.CanFulfillRequest || verification.AvailableQuantity < requestItem.Quantity)
-                {
-                    errors.Add($"Exceeded allowance quantity. Available: {verification.AvailableQuantity}");
                 }
             }
 

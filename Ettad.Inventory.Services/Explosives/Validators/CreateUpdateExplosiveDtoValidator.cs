@@ -30,6 +30,10 @@ namespace Ettad.Inventory.Service.Explosives.Validators
             RuleFor(x => x.CompatibilityId)
                 .GreaterThan(0).When(x => x.CompatibilityId.HasValue)
                 .WithMessage("Compatibility must be valid when provided");
+
+            RuleFor(x => x.CriticalQuantity)
+                .GreaterThan(0).When(x => x.CriticalQuantity.HasValue)
+                .WithMessage("Critical quantity must be greater than 0 when provided");
         }
     }
 }

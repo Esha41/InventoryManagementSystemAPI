@@ -19,6 +19,8 @@ namespace Ettad.Data.Entities
 
         public long? MinimumQuantity { get; set; }
 
+        public long? CriticalQuantity { get; set; }
+
         public string? Distribution { get; set; }
 
         public string? ReferenceNo { get; set; }

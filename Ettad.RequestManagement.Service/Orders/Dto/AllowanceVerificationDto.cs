@@ -41,9 +41,9 @@ namespace Ettad.RequestManagement.Service.Orders.Dto
         public long UsedQuantity { get; set; }
 
         /// <summary>
-        /// Available quantity = OriginalAllowanceQuantity - ReservedByOrdersUnderProcessing - UsedQuantity
+        /// Available quantity = OriginalAllowanceQuantity - ReservedByOrdersUnderProcessing - UsedQuantity (may be negative when over-consumed)
         /// </summary>
-        public long AvailableQuantity => Math.Max(0, OriginalAllowanceQuantity - ReservedByOrdersUnderProcessing - UsedQuantity);
+        public long AvailableQuantity => OriginalAllowanceQuantity - ReservedByOrdersUnderProcessing - UsedQuantity;
 
         /// <summary>
         /// Indicates if the requested quantity can be fulfilled from available allowance
