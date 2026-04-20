@@ -1,6 +1,7 @@
 using Ettad.CrossCutting.Common.Security;
 using Ettad.Inventory.Service.Monitoring;
 using Ettad.Inventory.Service.Monitoring.Dtos;
+using System.Collections.Generic;
 using Ettad.ResponseHandler.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -15,13 +16,16 @@ namespace Ettad.Inventory.API.Controllers
     {
         private readonly ILowStockMonitoringService _lowStockMonitoringService;
         private readonly IExpiringLotMonitoringService _expiringLotMonitoringService;
+        private readonly IInventoryDashboardMonitoringService _inventoryDashboardMonitoringService;
 
         public MonitoringController(
             ILowStockMonitoringService lowStockMonitoringService,
-            IExpiringLotMonitoringService expiringLotMonitoringService)
+            IExpiringLotMonitoringService expiringLotMonitoringService,
+            IInventoryDashboardMonitoringService inventoryDashboardMonitoringService)
         {
             _lowStockMonitoringService = lowStockMonitoringService;
             _expiringLotMonitoringService = expiringLotMonitoringService;
+            _inventoryDashboardMonitoringService = inventoryDashboardMonitoringService;
         }
 
         /// <summary>
@@ -69,6 +73,66 @@ namespace Ettad.Inventory.API.Controllers
         public async Task<IActionResult> GetExpiringLots()
         {
             var result = await _expiringLotMonitoringService.GetExpiringLotsAsync();
+            return ProcessResponse(result);
+        }
+
+        /// <summary>
+        /// Weapon asset headline metrics (depot-scoped), aligned with inventory summary depot filtering.
+        /// </summary>
+        [HttpGet("dashboard/weapon-assets")]
+        [ProducesResponseType(typeof(APIOperationResponse<WeaponAssetDashboardDto>), (int)HttpStatusCode.OK)]
+        [CheckAuthorize("Permissions.Inventory.View", "Permissions.Inventory.Page")]
+        public async Task<IActionResult> GetWeaponAssetDashboard([FromQuery] long? depotId = null, [FromQuery] List<long>? depotIds = null)
+        {
+            var result = await _inventoryDashboardMonitoringService.GetWeaponAssetDashboardAsync(depotId, depotIds);
+            return ProcessResponse(result);
+        }
+
+        /// <summary>
+        /// Supply pipeline headline metrics (draft supplies, orders awaiting fulfillment).
+        /// </summary>
+        [HttpGet("dashboard/pipeline")]
+        [ProducesResponseType(typeof(APIOperationResponse<InventoryPipelineDashboardDto>), (int)HttpStatusCode.OK)]
+        [CheckAuthorize("Permissions.Inventory.View", "Permissions.Inventory.Page")]
+        public async Task<IActionResult> GetPipelineDashboard([FromQuery] long? depotId = null, [FromQuery] List<long>? depotIds = null)
+        {
+            var result = await _inventoryDashboardMonitoringService.GetPipelineDashboardAsync(depotId, depotIds);
+            return ProcessResponse(result);
+        }
+
+        /// <summary>
+        /// Combined weapon + pipeline dashboard metrics in one round-trip.
+        /// </summary>
+        [HttpGet("dashboard/inventory-summary")]
+        [ProducesResponseType(typeof(APIOperationResponse<InventoryDashboardSummaryDto>), (int)HttpStatusCode.OK)]
+        [CheckAuthorize("Permissions.Inventory.View", "Permissions.Inventory.Page")]
+        public async Task<IActionResult> GetInventoryDashboardSummary([FromQuery] long? depotId = null, [FromQuery] List<long>? depotIds = null)
+        {
+            var result = await _inventoryDashboardMonitoringService.GetInventoryDashboardSummaryAsync(depotId, depotIds);
+            return ProcessResponse(result);
+        }
+
+        /// <summary>
+        /// Draft Supply and AssetSupply rows (same depot rules as pipeline draft count).
+        /// </summary>
+        [HttpGet("dashboard/draft-supplies")]
+        [ProducesResponseType(typeof(APIOperationResponse<List<DraftSupplyListItemDto>>), (int)HttpStatusCode.OK)]
+        [CheckAuthorize("Permissions.Inventory.View", "Permissions.Inventory.Page")]
+        public async Task<IActionResult> GetDraftSuppliesList([FromQuery] long? depotId = null, [FromQuery] List<long>? depotIds = null)
+        {
+            var result = await _inventoryDashboardMonitoringService.GetDraftSuppliesListAsync(depotId, depotIds);
+            return ProcessResponse(result);
+        }
+
+        /// <summary>
+        /// Approved orders not fully fulfilled (same rules as pipeline awaiting count).
+        /// </summary>
+        [HttpGet("dashboard/orders-awaiting-fulfillment")]
+        [ProducesResponseType(typeof(APIOperationResponse<List<OrderAwaitingFulfillmentListItemDto>>), (int)HttpStatusCode.OK)]
+        [CheckAuthorize("Permissions.Inventory.View", "Permissions.Inventory.Page")]
+        public async Task<IActionResult> GetOrdersAwaitingFulfillmentList([FromQuery] long? depotId = null, [FromQuery] List<long>? depotIds = null)
+        {
+            var result = await _inventoryDashboardMonitoringService.GetOrdersAwaitingFulfillmentListAsync(depotId, depotIds);
             return ProcessResponse(result);
         }
     }

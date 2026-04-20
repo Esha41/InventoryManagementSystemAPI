@@ -87,6 +87,7 @@ namespace Ettad.Inventory.Service
             services.AddScoped<ILowStockMonitorSettingsService, LowStockMonitorSettingsService>();
             services.AddScoped<ILowStockMonitoringService, LowStockMonitoringService>();
             services.AddScoped<IExpiringLotMonitoringService, ExpiringLotMonitoringService>();
+            services.AddScoped<IInventoryDashboardMonitoringService, InventoryDashboardMonitoringService>();
             services.AddScoped<LowStockEmailTemplateService>();
             services.AddScoped<LowStockMonitorJob>();
             services.AddScoped<IExcelImportService, ExcelImportService>();
