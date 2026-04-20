@@ -1,4 +1,5 @@
 using AutoMapper;
+using Ettad.Application.Common.Interfaces;
 using Ettad.Announcement.Service.Dtos;
 using Ettad.CrossCutting.Comman.Time;
 using Ettad.CrossCutting.Data.Repository;
@@ -22,6 +23,7 @@ namespace Ettad.Announcement.Service
         private readonly IMapper _mapper;
         private readonly ApplicationDbContext _context;
         private readonly INotificationHelperService _notificationHelper;
+        private readonly IEffectiveRoleService _effectiveRoleService;
 
         public AnnouncementService(
             ICrossCuttingRepository<AnnouncementEntity> announcementRepository,
@@ -29,7 +31,8 @@ namespace Ettad.Announcement.Service
             IDateTimeProvider dateTimeProvider,
             IMapper mapper,
             ApplicationDbContext context,
-            INotificationHelperService notificationHelper)
+            INotificationHelperService notificationHelper,
+            IEffectiveRoleService effectiveRoleService)
         {
             _announcementRepository = announcementRepository;
             _dismissalRepository = dismissalRepository;
@@ -37,6 +40,7 @@ namespace Ettad.Announcement.Service
             _mapper = mapper;
             _context = context;
             _notificationHelper = notificationHelper;
+            _effectiveRoleService = effectiveRoleService;
         }
 
         public async Task<APIOperationResponse<List<AnnouncementDto>>> GetAllAnnouncementsAsync()
@@ -116,7 +120,7 @@ namespace Ettad.Announcement.Service
                 var dismissedIds = new HashSet<long>(dismissals.Select(d => d.AnnouncementId));
 
                 // Effective role ID(s) for role-targeted announcements (active session)
-                var userRoleIds = await Ettad.EntityFramework.Helpers.EffectiveAspNetRoleIds.ForUserAsync(_context, userId);
+                var userRoleIds = (await _effectiveRoleService.GetEffectiveRoleIdsAsync(userId)).ToList();
                 var userRoleIdSet = new HashSet<string>(userRoleIds, StringComparer.OrdinalIgnoreCase);
 
                 // Filter announcements

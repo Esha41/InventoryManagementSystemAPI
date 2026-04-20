@@ -18,12 +18,12 @@ namespace Ettad.User.Services.Implementation
     using Microsoft.EntityFrameworkCore;
     using Microsoft.Extensions.Options;
     using Microsoft.IdentityModel.Tokens;
+    using Ettad.Application.Common.Interfaces;
     using Ettad.Comman.Idenitity;
     using Ettad.CrossCutting.Comman.Exception;
     using Ettad.CrossCutting.Comman.Idenitity;
     using Ettad.CrossCutting.Comman.Time;
     using Ettad.User.Services.DTO;
-    using Ettad.User.Services.Helpers;
     using Ettad.User.Services.Interfaces;
     using StackExchange.Redis;
 
@@ -36,16 +36,20 @@ namespace Ettad.User.Services.Implementation
         private readonly JwtOptions _jwtOptions;
         private readonly IDateTimeProvider _dateTimeProvider;
         private readonly RoleManager<ApplicationRole> _roleManager;
+        private readonly IEffectiveRoleService _effectiveRoleService;
 
         public JwtServices(
             UserManager<ApplicationUser> userManager,
             IOptions<JwtOptions> jwtOptions,
-            IDateTimeProvider dateTimeProvider, RoleManager<ApplicationRole> roleManager)
+            IDateTimeProvider dateTimeProvider,
+            RoleManager<ApplicationRole> roleManager,
+            IEffectiveRoleService effectiveRoleService)
         {
             _userManager = userManager ?? throw new ArgumentNullException(nameof(userManager));
             _jwtOptions = jwtOptions?.Value ?? throw new ArgumentNullException(nameof(jwtOptions));
             _dateTimeProvider = dateTimeProvider ?? throw new ArgumentNullException(nameof(dateTimeProvider));
             _roleManager = roleManager;
+            _effectiveRoleService = effectiveRoleService ?? throw new ArgumentNullException(nameof(effectiveRoleService));
 
             if (string.IsNullOrWhiteSpace(_jwtOptions.Secret))
                 throw new ArgumentException("JWT secret must be configured in JwtOptions.Secret");
@@ -70,7 +74,10 @@ namespace Ettad.User.Services.Implementation
                 .FirstOrDefaultAsync(u => u.Id == userId)
                        ?? throw new Exception("server.invalidLogin");
 
-            var effectiveRole = await EffectiveRoleResolver.ResolveAsync(_userManager, _roleManager, user);
+            var effectiveRoleId = await _effectiveRoleService.GetEffectiveRoleIdAsync(user.Id);
+            var effectiveRole = !string.IsNullOrEmpty(effectiveRoleId)
+                ? await _roleManager.FindByIdAsync(effectiveRoleId)
+                : null;
             if (effectiveRole == null)
                 throw new ApiException("server.roleSelectionRequired");
 

@@ -44,6 +44,7 @@ namespace Ettad.User.Services.Implementation
         private readonly ITokenBlacklistService _tokenBlacklistService;
         private readonly IMediator _mediator;
         private readonly IPermissionService _permissionService;
+        private readonly IEffectiveRoleService _effectiveRoleService;
 
         private readonly ApplicationDbContext _context;
 
@@ -61,7 +62,7 @@ namespace Ettad.User.Services.Implementation
             IOptions<AdminUsersOptions> adminUsers, UserManager<ApplicationUser> userRepository,
             SignInManager<ApplicationUser> signInManager, RoleManager<ApplicationRole> roleManager, ICurrentUserService currentUserService, IEmailSender emailSender,
             ILogger<AccountServices> logger, ApplicationDbContext context, IHttpContextAccessor httpContextAccessor, ICaptchaService captchaService, ITokenBlacklistService tokenBlacklistService, IMediator mediator,
-            IPermissionService permissionService)
+            IPermissionService permissionService, IEffectiveRoleService effectiveRoleService)
         {
             _jwtServices = jwtServices ?? throw new ArgumentNullException(nameof(jwtServices));
             _ldapSettingsService = ldapSettingsService ?? throw new ArgumentNullException(nameof(ldapSettingsService));
@@ -82,6 +83,7 @@ namespace Ettad.User.Services.Implementation
             _tokenBlacklistService = tokenBlacklistService ?? throw new ArgumentNullException(nameof(tokenBlacklistService));
             _mediator = mediator ?? throw new ArgumentNullException(nameof(mediator));
             _permissionService = permissionService ?? throw new ArgumentNullException(nameof(permissionService));
+            _effectiveRoleService = effectiveRoleService ?? throw new ArgumentNullException(nameof(effectiveRoleService));
         }
 
         public async Task<APIOperationResponse<AuthenticatedResponse>> Login(
@@ -895,7 +897,10 @@ namespace Ettad.User.Services.Implementation
             if (user == null)
                 return APIOperationResponse<List<ClaimDto>>.Success(roleClaims);
 
-            var effectiveRole = await EffectiveRoleResolver.ResolveAsync(_userRepository, _roleManager, user);
+            var effectiveRoleId = await _effectiveRoleService.GetEffectiveRoleIdAsync(user.Id);
+            var effectiveRole = !string.IsNullOrEmpty(effectiveRoleId)
+                ? await _roleManager.FindByIdAsync(effectiveRoleId)
+                : null;
             if (effectiveRole == null)
                 return APIOperationResponse<List<ClaimDto>>.Success(roleClaims);
 

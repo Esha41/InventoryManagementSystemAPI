@@ -18,6 +18,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Project.Comman\Ettad.CrossCutting.Comman.csproj" />
     <ProjectReference Include="..\Project.Data\Ettad.Data.csproj" />
   </ItemGroup>
 

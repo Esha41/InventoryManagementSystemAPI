@@ -1,7 +1,6 @@
 using Ettad.Application.Common.Interfaces;
 using Ettad.Comman.Idenitity;
 using Ettad.CrossCutting.Comman.Idenitity;
-using Ettad.User.Services.Helpers;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
@@ -17,6 +16,7 @@ public class PermissionService : IPermissionService
     private readonly ICurrentUserService _currentUserService;
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly RoleManager<ApplicationRole> _roleManager;
+    private readonly IEffectiveRoleService _effectiveRoleService;
     private readonly IMemoryCache _cache;
     private readonly ILogger<PermissionService> _logger;
     private const int CacheExpirationMinutes = 5;
@@ -25,12 +25,14 @@ public class PermissionService : IPermissionService
         ICurrentUserService currentUserService,
         UserManager<ApplicationUser> userManager,
         RoleManager<ApplicationRole> roleManager,
+        IEffectiveRoleService effectiveRoleService,
         IMemoryCache cache,
         ILogger<PermissionService> logger)
     {
         _currentUserService = currentUserService;
         _userManager = userManager;
         _roleManager = roleManager;
+        _effectiveRoleService = effectiveRoleService;
         _cache = cache;
         _logger = logger;
     }
@@ -70,7 +72,10 @@ public class PermissionService : IPermissionService
             return new List<string>();
         }
 
-        var effectiveRole = await EffectiveRoleResolver.ResolveAsync(_userManager, _roleManager, user);
+        var effectiveRoleId = await _effectiveRoleService.GetEffectiveRoleIdAsync(userId);
+        var effectiveRole = !string.IsNullOrEmpty(effectiveRoleId)
+            ? await _roleManager.FindByIdAsync(effectiveRoleId)
+            : null;
         if (effectiveRole == null)
             return new List<string>();
 

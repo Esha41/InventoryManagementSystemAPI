@@ -7,7 +7,6 @@ using Ettad.Data.Entities;
 using Ettad.Data.Entities.Workflows;
 using Ettad.Data.Enums;
 using Ettad.EntityFramework.DataBaseContext;
-using Ettad.EntityFramework.Helpers;
 using Ettad.Notification.Service;
 using Ettad.ResponseHandler.Consts;
 using Ettad.ResponseHandler.Models;
@@ -17,7 +16,6 @@ using Ettad.Workflow.Service.Interface;
 using Ettad.Workflows.Service.DTO;
 using Ettad.Workflows.Service.Events;
 using Ettad.Workflows.Service.Interface;
-using Ettad.Application.Common.Interfaces;
 using MediatR;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
@@ -40,6 +38,7 @@ namespace Ettad.Workflows.Service.Imeplemention
         private readonly ICrossCuttingRepository<FileUplodDetails> _fileDetailsRepository;
         private readonly IDateTimeProvider _dateTimeProvider;
         private readonly IOrderItemTrackingService _orderItemTrackingService;
+        private readonly IEffectiveRoleService _effectiveRoleService;
 
         public WorkflowApprovalService(
             ApplicationDbContext context, 
@@ -52,7 +51,8 @@ namespace Ettad.Workflows.Service.Imeplemention
             IFileUploadService fileUploadService,
             ICrossCuttingRepository<FileUplodDetails> fileDetailsRepository,
             IDateTimeProvider dateTimeProvider,
-            IOrderItemTrackingService orderItemTrackingService)
+            IOrderItemTrackingService orderItemTrackingService,
+            IEffectiveRoleService effectiveRoleService)
         {
             _context = context;
             _currentUserService = currentUserService;
@@ -65,6 +65,7 @@ namespace Ettad.Workflows.Service.Imeplemention
             _fileDetailsRepository = fileDetailsRepository;
             _dateTimeProvider = dateTimeProvider;
             _orderItemTrackingService = orderItemTrackingService;
+            _effectiveRoleService = effectiveRoleService;
         }
      
         public async Task<IEnumerable<WorkflowApprovalStepDto>> GetAllAsync()
@@ -196,7 +197,7 @@ namespace Ettad.Workflows.Service.Imeplemention
             // 1. Effective role ID(s) for current user (active session)
             var userRoleIds = string.IsNullOrEmpty(currentUserId)
                 ? new List<string>()
-                : await EffectiveAspNetRoleIds.ForUserAsync(_context, currentUserId);
+                : (await _effectiveRoleService.GetEffectiveRoleIdsAsync(currentUserId)).ToList();
 
             // 1.5 Get active delegations (users who delegated to current user for workflow approval)
             var activeDelegatorIds = await _userDelegationService.GetActiveDelegatorsForUserAsync(currentUserId, DelegationScope.WorkflowApproval);
@@ -205,7 +206,7 @@ namespace Ettad.Workflows.Service.Imeplemention
             if (activeDelegatorIds != null && activeDelegatorIds.Any())
             {
                 foreach (var delegatorId in activeDelegatorIds)
-                    delegatorRoleIds.AddRange(await EffectiveAspNetRoleIds.ForUserAsync(_context, delegatorId));
+                    delegatorRoleIds.AddRange(await _effectiveRoleService.GetEffectiveRoleIdsAsync(delegatorId));
             }
 
             // Ensure lists are not null for Contains queries (though EF handles this, it's safer)
@@ -924,7 +925,7 @@ namespace Ettad.Workflows.Service.Imeplemention
             // 1. Effective role ID(s) for current user
             var userRoleIds = string.IsNullOrEmpty(currentUserId)
                 ? new List<string>()
-                : await EffectiveAspNetRoleIds.ForUserAsync(_context, currentUserId);
+                : (await _effectiveRoleService.GetEffectiveRoleIdsAsync(currentUserId)).ToList();
 
             var workflowStep = step.WorkflowStep;
             var allowedRoles = new List<string> { workflowStep.ApplicationRoleId };
@@ -953,7 +954,7 @@ namespace Ettad.Workflows.Service.Imeplemention
 
                 var delegatorRoleIds = new List<string>();
                 foreach (var delegatorId in activeDelegatorIds)
-                    delegatorRoleIds.AddRange(await EffectiveAspNetRoleIds.ForUserAsync(_context, delegatorId));
+                    delegatorRoleIds.AddRange(await _effectiveRoleService.GetEffectiveRoleIdsAsync(delegatorId));
 
                 if (delegatorRoleIds.Any(r => allowedRoles.Contains(r)))
                 {
@@ -1310,13 +1311,13 @@ namespace Ettad.Workflows.Service.Imeplemention
             // --- DELEGATION & ROLE PRE-FETCHING START ---
             var userRoleIds = string.IsNullOrEmpty(currentUserId)
                 ? new List<string>()
-                : await EffectiveAspNetRoleIds.ForUserAsync(_context, currentUserId);
+                : (await _effectiveRoleService.GetEffectiveRoleIdsAsync(currentUserId)).ToList();
 
             var activeDelegatorIds = await _userDelegationService.GetActiveDelegatorsForUserAsync(currentUserId, DelegationScope.WorkflowApproval);
             
             var delegatorRoleIds = new List<string>();
             foreach (var delegatorId in activeDelegatorIds)
-                delegatorRoleIds.AddRange(await EffectiveAspNetRoleIds.ForUserAsync(_context, delegatorId));
+                delegatorRoleIds.AddRange(await _effectiveRoleService.GetEffectiveRoleIdsAsync(delegatorId));
 
             var allRelevantRoleNames = new List<string>();
             if (userRoleIds.Count > 0)
@@ -1328,7 +1329,7 @@ namespace Ettad.Workflows.Service.Imeplemention
             }
             foreach (var delegatorId in activeDelegatorIds)
             {
-                var dRoleIds = await EffectiveAspNetRoleIds.ForUserAsync(_context, delegatorId);
+                var dRoleIds = await _effectiveRoleService.GetEffectiveRoleIdsAsync(delegatorId);
                 if (dRoleIds.Count > 0)
                 {
                     allRelevantRoleNames.AddRange(await _context.Roles
@@ -1862,13 +1863,13 @@ namespace Ettad.Workflows.Service.Imeplemention
             // --- DELEGATION & ROLE PRE-FETCHING START ---
             var userRoleIds = string.IsNullOrEmpty(currentUserId)
                 ? new List<string>()
-                : await EffectiveAspNetRoleIds.ForUserAsync(_context, currentUserId);
+                : (await _effectiveRoleService.GetEffectiveRoleIdsAsync(currentUserId)).ToList();
 
             var activeDelegatorIds = await _userDelegationService.GetActiveDelegatorsForUserAsync(currentUserId, DelegationScope.WorkflowApproval);
             
             var delegatorRoleIds = new List<string>();
             foreach (var delegatorId in activeDelegatorIds)
-                delegatorRoleIds.AddRange(await EffectiveAspNetRoleIds.ForUserAsync(_context, delegatorId));
+                delegatorRoleIds.AddRange(await _effectiveRoleService.GetEffectiveRoleIdsAsync(delegatorId));
 
             var allRelevantRoleNames = new List<string>();
             if (userRoleIds.Count > 0)
@@ -1880,7 +1881,7 @@ namespace Ettad.Workflows.Service.Imeplemention
             }
             foreach (var delegatorId in activeDelegatorIds)
             {
-                var dRoleIds = await EffectiveAspNetRoleIds.ForUserAsync(_context, delegatorId);
+                var dRoleIds = await _effectiveRoleService.GetEffectiveRoleIdsAsync(delegatorId);
                 if (dRoleIds.Count > 0)
                 {
                     allRelevantRoleNames.AddRange(await _context.Roles

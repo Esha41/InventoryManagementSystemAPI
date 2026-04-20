@@ -6,8 +6,10 @@ using Ettad.CrossCutting.Comman.FileUpload;
 using Ettad.CrossCutting.Comman.Idenitity;
 using Ettad.CrossCutting.Comman.Monitoring;
 using Ettad.CrossCutting.Data.Repository;
+using Ettad.Application.Common.Interfaces;
 using Ettad.EntityFramework.DataBaseContext;
 using Ettad.EntityFramework.Interceptors;
+using Ettad.EntityFramework.Services;
 using Ettad.Inventory.Service;
 using Ettad.Inventory.Service.AllowanceItems;
 using Ettad.Inventory.Service.Monitoring;
@@ -196,6 +198,8 @@ try
         var interceptor = serviceProvider.GetRequiredService<SoftDeleteInterceptor>();
         options.AddInterceptors(interceptor);
     });
+
+    builder.Services.AddScoped<IEffectiveRoleService, EffectiveRoleService>();
     #endregion
 
     #region Identity
