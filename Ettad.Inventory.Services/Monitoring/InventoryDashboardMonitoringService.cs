@@ -1,8 +1,8 @@
 using Ettad.Application.Common.Interfaces;
+using Ettad.CrossCutting.Data.Repository;
 using Ettad.Data.Entities;
 using Ettad.Data.Enums;
 using Ettad.Lookups.Services.Contracts;
-using Ettad.EntityFramework.DataBaseContext;
 using Ettad.Inventory.Service.Monitoring.Dtos;
 using Ettad.ResponseHandler.Consts;
 using Ettad.ResponseHandler.Models;
@@ -17,18 +17,55 @@ namespace Ettad.Inventory.Service.Monitoring
     /// </summary>
     public class InventoryDashboardMonitoringService : IInventoryDashboardMonitoringService
     {
-        private readonly ApplicationDbContext _context;
+        private readonly ICrossCuttingRepository<Asset> _assetRepository;
+        private readonly ICrossCuttingRepository<BaseItem> _baseItemRepository;
+        private readonly ICrossCuttingRepository<Supply> _supplyRepository;
+        private readonly ICrossCuttingRepository<Order> _orderRepository;
+        private readonly ICrossCuttingRepository<Ettad.Data.Entities.AssetSupply> _assetSupplyRepository;
+        private readonly ICrossCuttingRepository<SupplyDetail> _supplyDetailRepository;
+        private readonly ICrossCuttingRepository<InventoryDetail> _inventoryDetailRepository;
+        private readonly ICrossCuttingRepository<WeaponSupplySelection> _weaponSupplySelectionRepository;
+        private readonly ICrossCuttingRepository<RequestItem> _requestItemRepository;
+
+        /// <summary>Base queryables for correlated subqueries (same DbContext as repositories; EF translates via captured IQueryable).</summary>
+        private readonly IQueryable<SupplyDetail> _supplyDetailsAll;
+        private readonly IQueryable<InventoryDetail> _inventoryDetailsAll;
+        private readonly IQueryable<WeaponSupplySelection> _weaponSupplySelectionsAll;
+        private readonly IQueryable<Supply> _suppliesAll;
+
         private readonly IDepotAccessService _depotAccessService;
         private readonly ICurrentUserService _currentUserService;
         private readonly ILogger<InventoryDashboardMonitoringService> _logger;
 
         public InventoryDashboardMonitoringService(
-            ApplicationDbContext context,
+            ICrossCuttingRepository<Asset> assetRepository,
+            ICrossCuttingRepository<BaseItem> baseItemRepository,
+            ICrossCuttingRepository<Supply> supplyRepository,
+            ICrossCuttingRepository<Order> orderRepository,
+            ICrossCuttingRepository<Ettad.Data.Entities.AssetSupply> assetSupplyRepository,
+            ICrossCuttingRepository<SupplyDetail> supplyDetailRepository,
+            ICrossCuttingRepository<InventoryDetail> inventoryDetailRepository,
+            ICrossCuttingRepository<WeaponSupplySelection> weaponSupplySelectionRepository,
+            ICrossCuttingRepository<RequestItem> requestItemRepository,
             IDepotAccessService depotAccessService,
             ICurrentUserService currentUserService,
             ILogger<InventoryDashboardMonitoringService> logger)
         {
-            _context = context;
+            _assetRepository = assetRepository;
+            _baseItemRepository = baseItemRepository;
+            _supplyRepository = supplyRepository;
+            _orderRepository = orderRepository;
+            _assetSupplyRepository = assetSupplyRepository;
+            _supplyDetailRepository = supplyDetailRepository;
+            _inventoryDetailRepository = inventoryDetailRepository;
+            _weaponSupplySelectionRepository = weaponSupplySelectionRepository;
+            _requestItemRepository = requestItemRepository;
+
+            _supplyDetailsAll = _supplyDetailRepository.Find(x => true);
+            _inventoryDetailsAll = _inventoryDetailRepository.Find(x => true);
+            _weaponSupplySelectionsAll = _weaponSupplySelectionRepository.Find(x => true);
+            _suppliesAll = _supplyRepository.Find(x => true);
+
             _depotAccessService = depotAccessService;
             _currentUserService = currentUserService;
             _logger = logger;
@@ -185,8 +222,8 @@ namespace Ettad.Inventory.Service.Monitoring
         private IQueryable<Asset> BaseWeaponAssetQuery(DepotScope scope)
         {
             var q =
-                from a in _context.Assets.AsNoTracking()
-                join i in _context.BaseItems.AsNoTracking() on a.ItemId equals i.Id
+                from a in _assetRepository.Find(a => true)
+                join i in _baseItemRepository.Find(i => true) on a.ItemId equals i.Id
                 where !a.IsDeleted && i.ItemType == ItemType.Weapon
                 select a;
 
@@ -209,8 +246,8 @@ namespace Ettad.Inventory.Service.Monitoring
         private IQueryable<Supply> SupplyDraftBaseQueryable(DepotScope scope)
         {
             var q =
-                from s in _context.Supplies.AsNoTracking()
-                join o in _context.Orders.AsNoTracking() on s.OrderId equals o.Id
+                from s in _supplyRepository.Find(s => true)
+                join o in _orderRepository.Find(o => true) on s.OrderId equals o.Id
                 where !s.IsDeleted && !o.IsDeleted
                       && s.SubmissionStatus == SupplySubmissionStatus.Draft
                       && o.RequestType == RequestType.Order
@@ -222,8 +259,8 @@ namespace Ettad.Inventory.Service.Monitoring
         private IQueryable<Ettad.Data.Entities.AssetSupply> AssetSupplyDraftBaseQueryable(DepotScope scope)
         {
             var q =
-                from a in _context.AssetSupplies.AsNoTracking()
-                join o in _context.Orders.AsNoTracking() on a.OrderId equals o.Id
+                from a in _assetSupplyRepository.Find(a => true)
+                join o in _orderRepository.Find(o => true) on a.OrderId equals o.Id
                 where !a.IsDeleted && !o.IsDeleted
                       && a.SubmissionStatus == SupplySubmissionStatus.Draft
                       && o.RequestType == RequestType.Order
@@ -246,7 +283,7 @@ namespace Ettad.Inventory.Service.Monitoring
         {
             return await SupplyDraftBaseQueryable(scope)
                 .Join(
-                    _context.Orders.AsNoTracking(),
+                    _orderRepository.Find(o => true),
                     s => s.OrderId,
                     o => o.Id,
                     (s, o) => new DraftSupplyListItemDto
@@ -266,7 +303,7 @@ namespace Ettad.Inventory.Service.Monitoring
         {
             return await AssetSupplyDraftBaseQueryable(scope)
                 .Join(
-                    _context.Orders.AsNoTracking(),
+                    _orderRepository.Find(o => true),
                     a => a.OrderId,
                     o => o.Id,
                     (a, o) => new DraftSupplyListItemDto
@@ -291,9 +328,9 @@ namespace Ettad.Inventory.Service.Monitoring
 
             var depots = scope.PipelineDepotIds;
             return q.Where(s =>
-                _context.SupplyDetails.Any(sd =>
+                _supplyDetailsAll.Any(sd =>
                     sd.SupplyId == s.Id && !sd.IsDeleted &&
-                    _context.InventoryDetails.Any(id =>
+                    _inventoryDetailsAll.Any(id =>
                         id.ItemId == sd.ItemId && id.ItemQuantity > 0 &&
                         !id.Inventory.IsDeleted &&
                         depots.Contains(id.Inventory.DepoId))));
@@ -308,14 +345,14 @@ namespace Ettad.Inventory.Service.Monitoring
 
             var depots = scope.PipelineDepotIds;
             return q.Where(a =>
-                _context.WeaponSupplySelections.Any(ws =>
+                _weaponSupplySelectionsAll.Any(ws =>
                     ws.OrderId == a.OrderId && depots.Contains(ws.DepotId)));
         }
 
         private IQueryable<Order> ApprovedOrdersForPipelineQueryable(DepotScope scope)
         {
             var approvedOrders =
-                from o in _context.Orders.AsNoTracking()
+                from o in _orderRepository.Find(o => true)
                 where !o.IsDeleted
                       && o.Status == RequestStatus.Approved
                       && o.RequestType == RequestType.Order
@@ -341,18 +378,18 @@ namespace Ettad.Inventory.Service.Monitoring
             if (orderIds.Count == 0)
                 return new List<OrderAwaitingFulfillmentListItemDto>();
 
-            var requestItems = await _context.RequestItems.AsNoTracking()
+            var requestItems = await _requestItemRepository.Find(ri => true)
                 .Where(ri => orderIds.Contains(ri.RequestId) && !ri.IsDeleted)
-                .Join(_context.BaseItems.AsNoTracking(), ri => ri.ItemId, i => i.Id, (ri, i) => new { ri.RequestId, i.ItemType })
+                .Join(_baseItemRepository.Find(i => true), ri => ri.ItemId, i => i.Id, (ri, i) => new { ri.RequestId, i.ItemType })
                 .ToListAsync();
 
             var itemsByOrder = requestItems.GroupBy(x => x.RequestId).ToDictionary(g => g.Key, g => g.Select(x => x.ItemType).ToList());
 
-            var supplyByOrder = await _context.Supplies.AsNoTracking()
+            var supplyByOrder = await _supplyRepository.Find(s => true)
                 .Where(s => orderIds.Contains(s.OrderId) && !s.IsDeleted)
                 .ToListAsync();
 
-            var assetSupplyByOrder = await _context.AssetSupplies.AsNoTracking()
+            var assetSupplyByOrder = await _assetSupplyRepository.Find(s => true)
                 .Where(s => orderIds.Contains(s.OrderId) && !s.IsDeleted)
                 .ToListAsync();
 
@@ -411,10 +448,10 @@ namespace Ettad.Inventory.Service.Monitoring
 
             var depots = scope.PipelineDepotIds;
             return q.Where(o =>
-                _context.WeaponSupplySelections.Any(ws => ws.OrderId == o.Id && depots.Contains(ws.DepotId))
-                || _context.Supplies.Any(s => s.OrderId == o.Id && !s.IsDeleted &&
-                    _context.SupplyDetails.Any(sd => sd.SupplyId == s.Id && !sd.IsDeleted &&
-                        _context.InventoryDetails.Any(id => id.ItemId == sd.ItemId && id.ItemQuantity > 0 &&
+                _weaponSupplySelectionsAll.Any(ws => ws.OrderId == o.Id && depots.Contains(ws.DepotId))
+                || _suppliesAll.Any(s => s.OrderId == o.Id && !s.IsDeleted &&
+                    _supplyDetailsAll.Any(sd => sd.SupplyId == s.Id && !sd.IsDeleted &&
+                        _inventoryDetailsAll.Any(id => id.ItemId == sd.ItemId && id.ItemQuantity > 0 &&
                             !id.Inventory.IsDeleted && depots.Contains(id.Inventory.DepoId)))));
         }
 
