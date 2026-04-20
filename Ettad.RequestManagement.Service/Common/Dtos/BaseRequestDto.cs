@@ -20,6 +20,7 @@ namespace Ettad.RequestManagement.Service.Common.Dtos
         public RequestPriority Priority { get; set; }
         public RequestStatus Status { get; set; }
         public string? Notes { get; set; }
+        public string? RequestPurposeNotes { get; set; }
         public long DepartmentId { get; set; }
         public string? RequesterId { get; set; }
         public long RequestPurposeId { get; set; }
