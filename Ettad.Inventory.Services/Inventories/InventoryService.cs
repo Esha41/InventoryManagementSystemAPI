@@ -2161,11 +2161,7 @@ namespace Ettad.Inventory.Service.Inventories
                             rowErrors.Add($"Original Quantity must be greater than 0");
                         }
 
-                        // Validate Expiry Date
-                        if (row.ExpiryDate.HasValue && row.ExpiryDate.Value <= _dateTimeProvider.Now)
-                        {
-                            rowErrors.Add($"Expiry date must be in the future");
-                        }
+                        // Expiry date is allowed to be in the past for inventory lots/batches.
                     }
 
                     // If validation failed, move from successful to errors (following asset pattern)
