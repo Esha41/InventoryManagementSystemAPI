@@ -87,6 +87,10 @@ namespace Ettad.Inventory.Service.Ammunitions.Validators
             RuleFor(x => x.MinimumQuantity)
                 .GreaterThan(0).When(x => x.MinimumQuantity.HasValue)
                 .WithMessage("Minimum quantity must be greater than 0 when provided");
+
+            RuleFor(x => x.CriticalQuantity)
+                .GreaterThan(0).When(x => x.CriticalQuantity.HasValue)
+                .WithMessage("Critical quantity must be greater than 0 when provided");
         }
     }
 }

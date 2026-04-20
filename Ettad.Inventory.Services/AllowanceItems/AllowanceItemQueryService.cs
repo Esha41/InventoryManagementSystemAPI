@@ -134,8 +134,7 @@ namespace Ettad.Inventory.Service.AllowanceItems
                     dto.ReservedQuantityByOrdersOnProcessing = 0;
                 }
 
-                // Calculate RemainingQuantity
-                dto.RemainingQuantityFromAllowance = Math.Max(0, allowanceItem.Quantity - dto.UsedQuantityFromAllowance - dto.ReservedQuantityByOrdersOnProcessing);
+                dto.RemainingQuantityFromAllowance = allowanceItem.Quantity - dto.UsedQuantityFromAllowance - dto.ReservedQuantityByOrdersOnProcessing;
             }
             catch (Exception ex)
             {
