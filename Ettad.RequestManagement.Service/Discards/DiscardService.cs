@@ -162,6 +162,12 @@ namespace Ettad.RequestManagement.Service.Discards
                     return APIOperationResponse<long>.Fail(ResponseType.BadRequest, errors);
                 }
 
+                // Validate that at least one file is provided
+                if (files == null || !files.Any() || files.All(f => f == null || f.Length == 0))
+                {
+                    return APIOperationResponse<long>.Fail(ResponseType.BadRequest, "At least one file attachment is required.");
+                }
+
                 // Validate that RequestPurposeId belongs to a RequestPurpose with type Discard
                 var requestPurpose = await _requestPurposeRepository.FindOneAsync(
                     rp => rp.Id == inputDto.RequestPurposeId && rp.RequestType == RequestType.Discard && !rp.IsDeleted
