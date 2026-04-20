@@ -202,6 +202,12 @@ namespace Ettad.RequestManagement.Service.Orders
                     return APIOperationResponse<long>.Fail(ResponseType.BadRequest, errors);
                 }
 
+                // Validate that at least one file is provided
+                if (files == null || !files.Any() || files.All(f => f == null || f.Length == 0))
+                {
+                    return APIOperationResponse<long>.Fail(ResponseType.BadRequest, "At least one file attachment is required.");
+                }
+
                 // Additional validation for orders from allowance
                 if (inputDto.IsFromAllowance)
                 {

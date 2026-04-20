@@ -22,6 +22,10 @@ namespace Ettad.RequestManagement.Service.Discards.Validators
                 .MaximumLength(2000).WithMessage("Notes cannot exceed 2000 characters")
                 .When(x => !string.IsNullOrEmpty(x.Notes));
 
+            RuleFor(x => x.RequestPurposeNotes)
+                .MaximumLength(2000).WithMessage("Request purpose notes cannot exceed 2000 characters")
+                .When(x => !string.IsNullOrEmpty(x.RequestPurposeNotes));
+
             RuleFor(x => x.DiscardItems)
                 .NotEmpty().WithMessage("At least one discard item is required")
                 .Must(items => items != null && items.Count > 0)

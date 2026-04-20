@@ -8,6 +8,7 @@ namespace Ettad.RequestManagement.Service.Orders.Dto
         public string? Reason { get; set; }
         public RequestPriority Priority { get; set; }
         public string? Notes { get; set; }
+        public string? RequestPurposeNotes { get; set; }
         public long RequestPurposeId { get; set; }
         #endregion
 
