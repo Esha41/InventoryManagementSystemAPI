@@ -127,7 +127,9 @@ namespace Ettad.ReportManagement.Service.Reports
                     }
                 }
 
-                urls["BaseReportTemplate"] = "Base Report Template";
+                urls[ReportConstants.BaseReportTemplate] = "Base Report Template";
+                urls[ReportConstants.AllowanceItemsReportTemplate] = "Allowance Items Report";
+                urls[ReportConstants.UserReportTemplate] = "Users Report";
                 return urls;
             }
             catch (FaultException ex)
