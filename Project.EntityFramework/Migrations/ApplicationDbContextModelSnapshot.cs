@@ -1042,10 +1042,6 @@ namespace Ettad.EntityFramework.Migrations
                     b.Property<long>("RequestPurposeId")
                         .HasColumnType("bigint");
 
-                    b.Property<string>("RequestPurposeNotes")
-                        .HasMaxLength(2000)
-                        .HasColumnType("nvarchar(2000)");
-
                     b.Property<int>("RequestType")
                         .HasColumnType("int");
 
