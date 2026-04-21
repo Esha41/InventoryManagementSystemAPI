@@ -23,8 +23,9 @@ namespace Ettad.RequestManagement.Service.Returns.Validators
                 .When(x => !string.IsNullOrEmpty(x.Notes));
 
             RuleFor(x => x.RequestPurposeNotes)
-                .MaximumLength(2000).WithMessage("Request purpose notes cannot exceed 2000 characters")
-                .When(x => !string.IsNullOrEmpty(x.RequestPurposeNotes));
+                .NotEmpty().WithMessage("Request purpose notes is required")
+                .Must(x => !string.IsNullOrWhiteSpace(x))
+                .WithMessage("Request purpose notes is required");
 
             RuleFor(x => x.ReturnItems)
                 .NotEmpty().WithMessage("At least one return item is required")

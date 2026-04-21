@@ -25,8 +25,7 @@ namespace Ettad.EntityFramework.Configurations
                 .IsRequired(false);
 
             builder.Property(x => x.RequestPurposeNotes)
-                .IsRequired(false)
-                .HasMaxLength(2000);
+                .IsRequired();
 
             // Enums stored as int by default
             builder.Property(x => x.RequestType)

@@ -24,8 +24,9 @@ namespace Ettad.RequestManagement.Service.Orders.Validators
                 .GreaterThan(0).WithMessage("Request purpose is required");
 
             RuleFor(x => x.RequestPurposeNotes)
-                .MaximumLength(2000).WithMessage("Request purpose notes cannot exceed 2000 characters")
-                .When(x => !string.IsNullOrEmpty(x.RequestPurposeNotes));
+                .NotEmpty().WithMessage("Request purpose notes is required")
+                .Must(x => !string.IsNullOrWhiteSpace(x))
+                .WithMessage("Request purpose notes is required");
 
             // Order-Specific Properties Validation (uses local time per project convention)
             RuleFor(x => x.UsageDateFrom)
