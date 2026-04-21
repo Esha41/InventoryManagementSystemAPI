@@ -80,6 +80,10 @@ namespace Ettad.EntityFramework.DataBaseContext
         public DbSet<Notification> Notifications { get; set; }
         public DbSet<NotificationReceiver> NotificationReceivers { get; set; }
         public DbSet<Settings> Settings { get; set; }
+        public DbSet<OrderAutoRejectPolicy> OrderAutoRejectPolicies { get; set; }
+        public DbSet<OrderAutoRejectPolicyNotifyRole> OrderAutoRejectPolicyNotifyRoles { get; set; }
+        public DbSet<OrderAutoRejectPolicyReminderDay> OrderAutoRejectPolicyReminderDays { get; set; }
+        public DbSet<WorkflowApprovalStepReminder> WorkflowApprovalStepReminders { get; set; }
         public DbSet<FileUplodMaster> FileUplodMasters { get; set; }
         public DbSet<FileUplodDetails> FileUplodDetails { get; set; }
         public DbSet<LoginAttempt> LoginAttempts { get; set; }

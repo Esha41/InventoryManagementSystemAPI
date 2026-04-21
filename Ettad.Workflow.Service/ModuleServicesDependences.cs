@@ -3,6 +3,8 @@ using Ettad.Services.Helpers;
 using Ettad.Services.Mapper;
 using Ettad.Workflow.Service.Interface;
 using Ettad.Workflow.Service.Imeplemention;
+using Ettad.Workflows.Service.Monitoring;
+using Ettad.Workflows.Service.Settings;
 using System.Reflection;
 
 namespace Ettad.Workflow.Service
@@ -16,6 +18,11 @@ namespace Ettad.Workflow.Service
             
             // Register WorkflowStepNotifierService
             service.AddScoped<IWorkflowStepNotifierService, WorkflowStepNotifierService>();
+
+            service.AddScoped<IOrderAutoRejectBackgroundService, OrderAutoRejectBackgroundService>();
+            service.AddScoped<IOrderAutoRejectSettingsService, OrderAutoRejectSettingsService>();
+            service.AddScoped<IOrderAutoRejectCountdownService, OrderAutoRejectCountdownService>();
+            service.AddScoped<OrderAutoRejectHangfireJob>();
 
             // Register MediatR from multiple assemblies
             service.AddMediatR(cfg =>

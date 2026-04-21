@@ -526,4 +526,17 @@ public static class MainEntities
         CrudOperation.Delete,
     };
 
+    [Category(CrudPermissionsGenerator.General)]
+    public static readonly CrudOperation[] OrderAutoRejectSettings = new[]
+    {
+        CrudOperation.Page,
+        CrudOperation.Edit,
+    };
+
+    [Category(CrudPermissionsGenerator.General)]
+    public static readonly CrudOperation[] OrderAutoReject = new[]
+    {
+        CrudOperation.View,
+    };
+
 }
