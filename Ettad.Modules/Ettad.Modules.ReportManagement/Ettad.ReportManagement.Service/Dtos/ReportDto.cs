@@ -1,12 +1,12 @@
+using Ettad.Data.Enums;
+
 namespace Ettad.ReportManagement.Service.Dtos
 {
     public class ReportDto
     {
         public Guid Id { get; set; }
         public string ReportName { get; set; } = string.Empty;
-        public long ReportStatusId { get; set; }
-        public string ReportStatusNameEn { get; set; } = string.Empty;
-        public string ReportStatusNameAr { get; set; } = string.Empty;
+        public ReportStatuses ReportStatusId { get; set; }
         public string Url { get; set; } = string.Empty;
         public string? Description { get; set; }
         public byte[]? LayoutData { get; set; }

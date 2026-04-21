@@ -14,7 +14,6 @@ namespace Ettad.ReportManagement.Service.Interfaces
         Task<APIOperationResponse<ReportDto>> SetReportPublicAsync(Guid id, SetReportPublicDto dto);
         Task<APIOperationResponse<bool>> DeleteAsync(Guid id);
         Task<bool> IsReportExists(string name);
-        Task<APIOperationResponse<List<ReportStatusDto>>> GetReportStatusesAsync();
         Task<APIOperationResponse<List<ReportTemplateDto>>> GetTemplatesAsync();
         Task<APIOperationResponse<List<string>>> GetReportRoleIdsAsync(Guid reportId);
 

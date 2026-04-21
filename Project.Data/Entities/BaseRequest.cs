@@ -13,7 +13,7 @@ namespace Ettad.Data.Entities
         public RequestPriority Priority { get; set; }
         public RequestStatus Status { get; set; }
         public string Notes { get; set; }
-        public string? RequestPurposeNotes { get; set; }
+        public string RequestPurposeNotes { get; set; } = string.Empty;
         public long DepartmentId { get; set; }
         public string? RequesterId { get; set; }
         public long RequestPurposeId { get; set; }

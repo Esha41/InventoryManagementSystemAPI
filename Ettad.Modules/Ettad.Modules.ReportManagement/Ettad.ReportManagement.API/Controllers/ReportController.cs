@@ -119,18 +119,6 @@ namespace Ettad.Modules.ReportManagement.API.Controllers
         }
 
         /// <summary>
-        /// Get all report statuses
-        /// </summary>
-        [HttpGet("statuses")]
-        [ProducesResponseType((int)HttpStatusCode.OK)]
-        [CheckAuthorize("ReportDesigner")]
-        public async Task<IActionResult> GetReportStatuses()
-        {
-            var result = await _reportService.GetReportStatusesAsync();
-            return ProcessResponse(result);
-        }
-
-        /// <summary>
         /// Get all available report templates
         /// </summary>
         [HttpGet("templates")]

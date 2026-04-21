@@ -90,7 +90,6 @@ namespace Ettad.EntityFramework.DataBaseContext
         public DbSet<BlacklistedToken> BlacklistedTokens { get; set; }
         public DbSet<UserDelegation> UserDelegations { get; set; }
         public DbSet<ReportEntity> Reports { get; set; }
-        public DbSet<ReportStatus> ReportStatuses { get; set; }
         public DbSet<ReportRole> ReportRoles { get; set; }
         public DbSet<ScheduledReport> ScheduledReports { get; set; }
         public DbSet<ScheduledReportRecipient> ScheduledReportRecipients { get; set; }

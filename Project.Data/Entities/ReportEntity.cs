@@ -1,4 +1,5 @@
 using Ettad.CrossCutting.Comman.Base;
+using Ettad.Data.Enums;
 using System;
 
 namespace Ettad.Data.Entities
@@ -14,9 +15,9 @@ namespace Ettad.Data.Entities
         public string ReportName { get; set; } = string.Empty;
 
         /// <summary>
-        /// Report status ID (foreign key to ReportStatus table)
+        /// Report status enum (stored as int, no FK).
         /// </summary>
-        public long ReportStatusId { get; set; }
+        public ReportStatuses ReportStatusId { get; set; }
 
         /// <summary>
         /// Unique URL identifier for the report (used by DevExpress ReportStorage)
@@ -40,9 +41,5 @@ namespace Ettad.Data.Entities
         /// </summary>
         public string ReportParameters { get; set; }
 
-        /// <summary>
-        /// Navigation property for report status
-        /// </summary>
-        public virtual ReportStatus ReportStatus { get; set; }
     }
 }

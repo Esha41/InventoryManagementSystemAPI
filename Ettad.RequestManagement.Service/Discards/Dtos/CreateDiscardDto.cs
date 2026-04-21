@@ -7,7 +7,7 @@ namespace Ettad.RequestManagement.Service.Discards.Dtos
         public string? Reason { get; set; }
         public RequestPriority Priority { get; set; }
         public string? Notes { get; set; }
-        public string? RequestPurposeNotes { get; set; }
+        public string RequestPurposeNotes { get; set; } = string.Empty;
         public long RequestPurposeId { get; set; }
         public List<CreateDiscardItemDto> DiscardItems { get; set; } = new();
     }
