@@ -1,6 +1,7 @@
+
 using Ettad.Data.Enums;
 
-namespace Ettad.Workflows.Service.Monitoring;
+namespace Ettad.Data.Constants;
 
 public static class OrderAutoRejectConstants
 {

@@ -12,6 +12,7 @@ using Ettad.Data.Entities.Settings;
 using System.Text.Json;
 using Microsoft.AspNetCore.Identity;
 using Ettad.CrossCutting.Comman.Idenitity;
+using Ettad.Data.Constants;
 
 namespace Ettad.Inventory.Service.Monitoring
 {

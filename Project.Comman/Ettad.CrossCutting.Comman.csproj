@@ -7,6 +7,15 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="Configuration\**" />
+    <Compile Remove="ExtensionMethods\**" />
+    <EmbeddedResource Remove="Configuration\**" />
+    <EmbeddedResource Remove="ExtensionMethods\**" />
+    <None Remove="Configuration\**" />
+    <None Remove="ExtensionMethods\**" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="AutoMapper" Version="12.0.1" />
     <PackageReference Include="AutoMapper.Extensions.Microsoft.DependencyInjection" Version="12.0.1" />
     <PackageReference Include="FluentValidation" Version="12.0.0" />
@@ -28,11 +37,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Project.ResponseHandler\Ettad.CrossCutting.ResponseHandler.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Folder Include="Configuration\" />
-    <Folder Include="ExtensionMethods\" />
   </ItemGroup>
 
 </Project>

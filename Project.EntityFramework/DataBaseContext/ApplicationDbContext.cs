@@ -1,5 +1,3 @@
-using System;
-using Ettad.Comman.Enums;
 using Ettad.Comman.Idenitity;
 using Ettad.CrossCutting.Comman.Idenitity;
 using Ettad.Data.Entities;
@@ -8,7 +6,6 @@ using Ettad.Data.Entities.Workflows;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
-using Newtonsoft.Json;
 
 namespace Ettad.EntityFramework.DataBaseContext
 {
@@ -25,7 +22,6 @@ namespace Ettad.EntityFramework.DataBaseContext
         public DbSet<WorkflowStepTransition> WorkflowStepTransitions { get; set; }
         public DbSet<WorkflowStepNotifier> WorkflowStepNotifiers { get; set; }
         public DbSet<EmailConfiguration> EmailConfigurations { get; set; }
-
         public DbSet<BaseItem> BaseItems { get; set; }
         public DbSet<Ammunition> Ammunitions { get; set; }
         public DbSet<Weapon> Weapons { get; set; }
@@ -56,7 +52,6 @@ namespace Ettad.EntityFramework.DataBaseContext
         public DbSet<Rank> Ranks { get; set; }
         public DbSet<Classification> Classifications { get; set; }
         public DbSet<ItemTypeLookup> ItemTypes { get; set; }
-
         public DbSet<RequestPurpose> RequestPurposes { get; set; }
         public DbSet<BaseRequest> BaseRequests { get; set; }
         public DbSet<RequestItem> RequestItems { get; set; }
@@ -66,14 +61,11 @@ namespace Ettad.EntityFramework.DataBaseContext
         public DbSet<ReturnTrackingLine> ReturnTrackingLines { get; set; }
         public DbSet<Supply> Supplies { get; set; }
         public DbSet<SupplyDetail> SupplyDetails { get; set; }
-
-        // Asset Management
         public DbSet<AssetAssignment> AssetAssignments { get; set; }
         public DbSet<AssetSupply> AssetSupplies { get; set; }
         public DbSet<AssetSupplyDetail> AssetSupplyDetails { get; set; }
         public DbSet<AssetHistory> AssetHistory { get; set; }
         public DbSet<OrderItemHistory> OrderItemHistory { get; set; }
-
         public DbSet<ApplicationEntity> ApplicationEntities { get;set;}
         public DbSet<RoleApplicationEntity> RoleApplicationEntities { get; set; }
         public DbSet<WorkFlowType> WorkFlowTypes { get; set; }
@@ -96,8 +88,6 @@ namespace Ettad.EntityFramework.DataBaseContext
         public DbSet<ScheduledReportExecution> ScheduledReportExecutions { get; set; }
         public DbSet<Announcement> Announcements { get; set; }
         public DbSet<AnnouncementDismissal> AnnouncementDismissals { get; set; }
-
-        // Help Center
         public DbSet<HelpCenterArticle> HelpCenterArticles { get; set; }
         public DbSet<HelpCenterContactMessage> HelpCenterContactMessages { get; set; }
         public DbSet<HelpCenterTermsConditions> HelpCenterTermsConditions { get; set; }

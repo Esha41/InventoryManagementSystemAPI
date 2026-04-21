@@ -7,6 +7,7 @@ using Ettad.ReportManagement.Service.Dtos;
 using Ettad.ReportManagement.Service.Interfaces;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.DependencyInjection;
+using Ettad.Data.Constants;
 
 namespace Ettad.ReportManagement.Service.Reports
 {
