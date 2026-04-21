@@ -18,8 +18,7 @@ namespace Ettad.ReportManagement.Service.Mapper
                 .ForMember(dest => dest.ModifiedBy, opt => opt.Ignore())
                 .ForMember(dest => dest.IsDeleted, opt => opt.Ignore())
                 .ForMember(dest => dest.DeletionDate, opt => opt.Ignore())
-                .ForMember(dest => dest.DeletedBy, opt => opt.Ignore())
-                .ForMember(dest => dest.ReportStatus, opt => opt.Ignore());
+                .ForMember(dest => dest.DeletedBy, opt => opt.Ignore());
 
             CreateMap<UpdateReportDto, ReportEntity>()
                 .ForMember(dest => dest.Id, opt => opt.Ignore())
@@ -29,16 +28,10 @@ namespace Ettad.ReportManagement.Service.Mapper
                 .ForMember(dest => dest.ModifiedBy, opt => opt.Ignore())
                 .ForMember(dest => dest.IsDeleted, opt => opt.Ignore())
                 .ForMember(dest => dest.DeletionDate, opt => opt.Ignore())
-                .ForMember(dest => dest.DeletedBy, opt => opt.Ignore())
-                .ForMember(dest => dest.ReportStatus, opt => opt.Ignore());
+                .ForMember(dest => dest.DeletedBy, opt => opt.Ignore());
 
             CreateMap<ReportEntity, ReportDto>()
-                .ForMember(dest => dest.ReportStatusNameEn, opt => opt.MapFrom(src => src.ReportStatus != null ? src.ReportStatus.NameEn : string.Empty))
-                .ForMember(dest => dest.ReportStatusNameAr, opt => opt.MapFrom(src => src.ReportStatus != null ? src.ReportStatus.NameAr : string.Empty))
                 .ForMember(dest => dest.Roles, opt => opt.Ignore()); // Roles are mapped separately in service
-
-            // ReportStatus mappings
-            CreateMap<ReportStatus, ReportStatusDto>();
 
             // ScheduledReport mappings
             CreateMap<CreateScheduledReportDto, ScheduledReport>()

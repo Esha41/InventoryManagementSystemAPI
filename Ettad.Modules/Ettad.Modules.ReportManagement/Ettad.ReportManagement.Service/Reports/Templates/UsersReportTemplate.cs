@@ -1284,24 +1284,6 @@ namespace Ettad.ReportManagement.Service.Reports.Templates
             DevExpress.DataAccess.Sql.ColumnExpression columnExpression552 = new DevExpress.DataAccess.Sql.ColumnExpression();
             DevExpress.DataAccess.Sql.Column column553 = new DevExpress.DataAccess.Sql.Column();
             DevExpress.DataAccess.Sql.ColumnExpression columnExpression553 = new DevExpress.DataAccess.Sql.ColumnExpression();
-            DevExpress.DataAccess.Sql.SelectQuery selectQuery52 = new DevExpress.DataAccess.Sql.SelectQuery();
-            DevExpress.DataAccess.Sql.Column column554 = new DevExpress.DataAccess.Sql.Column();
-            DevExpress.DataAccess.Sql.ColumnExpression columnExpression554 = new DevExpress.DataAccess.Sql.ColumnExpression();
-            DevExpress.DataAccess.Sql.Table table52 = new DevExpress.DataAccess.Sql.Table();
-            DevExpress.DataAccess.Sql.Column column555 = new DevExpress.DataAccess.Sql.Column();
-            DevExpress.DataAccess.Sql.ColumnExpression columnExpression555 = new DevExpress.DataAccess.Sql.ColumnExpression();
-            DevExpress.DataAccess.Sql.Column column556 = new DevExpress.DataAccess.Sql.Column();
-            DevExpress.DataAccess.Sql.ColumnExpression columnExpression556 = new DevExpress.DataAccess.Sql.ColumnExpression();
-            DevExpress.DataAccess.Sql.Column column557 = new DevExpress.DataAccess.Sql.Column();
-            DevExpress.DataAccess.Sql.ColumnExpression columnExpression557 = new DevExpress.DataAccess.Sql.ColumnExpression();
-            DevExpress.DataAccess.Sql.Column column558 = new DevExpress.DataAccess.Sql.Column();
-            DevExpress.DataAccess.Sql.ColumnExpression columnExpression558 = new DevExpress.DataAccess.Sql.ColumnExpression();
-            DevExpress.DataAccess.Sql.Column column559 = new DevExpress.DataAccess.Sql.Column();
-            DevExpress.DataAccess.Sql.ColumnExpression columnExpression559 = new DevExpress.DataAccess.Sql.ColumnExpression();
-            DevExpress.DataAccess.Sql.Column column560 = new DevExpress.DataAccess.Sql.Column();
-            DevExpress.DataAccess.Sql.ColumnExpression columnExpression560 = new DevExpress.DataAccess.Sql.ColumnExpression();
-            DevExpress.DataAccess.Sql.Column column561 = new DevExpress.DataAccess.Sql.Column();
-            DevExpress.DataAccess.Sql.ColumnExpression columnExpression561 = new DevExpress.DataAccess.Sql.ColumnExpression();
             DevExpress.DataAccess.Sql.SelectQuery selectQuery53 = new DevExpress.DataAccess.Sql.SelectQuery();
             DevExpress.DataAccess.Sql.Column column562 = new DevExpress.DataAccess.Sql.Column();
             DevExpress.DataAccess.Sql.ColumnExpression columnExpression562 = new DevExpress.DataAccess.Sql.ColumnExpression();
@@ -4308,41 +4290,6 @@ namespace Ettad.ReportManagement.Service.Reports.Templates
             selectQuery51.Columns.Add(column553);
             selectQuery51.Name = "Reports";
             selectQuery51.Tables.Add(table51);
-            columnExpression554.ColumnName = "Id";
-            table52.Name = "ReportStatuses";
-            columnExpression554.Table = table52;
-            column554.Expression = columnExpression554;
-            columnExpression555.ColumnName = "NameAr";
-            columnExpression555.Table = table52;
-            column555.Expression = columnExpression555;
-            columnExpression556.ColumnName = "NameEn";
-            columnExpression556.Table = table52;
-            column556.Expression = columnExpression556;
-            columnExpression557.ColumnName = "IsDeleted";
-            columnExpression557.Table = table52;
-            column557.Expression = columnExpression557;
-            columnExpression558.ColumnName = "CreationDate";
-            columnExpression558.Table = table52;
-            column558.Expression = columnExpression558;
-            columnExpression559.ColumnName = "ModificationDate";
-            columnExpression559.Table = table52;
-            column559.Expression = columnExpression559;
-            columnExpression560.ColumnName = "ModifiedBy";
-            columnExpression560.Table = table52;
-            column560.Expression = columnExpression560;
-            columnExpression561.ColumnName = "CreatedBy";
-            columnExpression561.Table = table52;
-            column561.Expression = columnExpression561;
-            selectQuery52.Columns.Add(column554);
-            selectQuery52.Columns.Add(column555);
-            selectQuery52.Columns.Add(column556);
-            selectQuery52.Columns.Add(column557);
-            selectQuery52.Columns.Add(column558);
-            selectQuery52.Columns.Add(column559);
-            selectQuery52.Columns.Add(column560);
-            selectQuery52.Columns.Add(column561);
-            selectQuery52.Name = "ReportStatuses";
-            selectQuery52.Tables.Add(table52);
             columnExpression562.ColumnName = "Id";
             table53.Name = "RequestItems";
             columnExpression562.Table = table53;
@@ -5534,7 +5481,6 @@ namespace Ettad.ReportManagement.Service.Reports.Templates
             selectQuery49,
             selectQuery50,
             selectQuery51,
-            selectQuery52,
             selectQuery53,
             selectQuery54,
             selectQuery55,

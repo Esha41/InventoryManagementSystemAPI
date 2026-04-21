@@ -1,4 +1,5 @@
 using Ettad.Data.Entities;
+using Ettad.Data.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -18,7 +19,7 @@ namespace Ettad.EntityFramework.Configurations
 
             builder.Property(r => r.ReportStatusId)
                 .IsRequired()
-                .HasDefaultValue(1); // Default to Draft status
+                .HasDefaultValue(ReportStatuses.Draft);
 
             builder.Property(r => r.Url)
                 .IsRequired()
@@ -58,12 +59,6 @@ namespace Ettad.EntityFramework.Configurations
             builder.Property(r => r.DeletedBy)
                 .HasMaxLength(450)
                 .IsRequired(false);
-
-            // Relationships
-            builder.HasOne(r => r.ReportStatus)
-                .WithMany()
-                .HasForeignKey(r => r.ReportStatusId)
-                .OnDelete(DeleteBehavior.Restrict);
 
             // Indexes for faster lookups
             builder.HasIndex(r => r.Url)

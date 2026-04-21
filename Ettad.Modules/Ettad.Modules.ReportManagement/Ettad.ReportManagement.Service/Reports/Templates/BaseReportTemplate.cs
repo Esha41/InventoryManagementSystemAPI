@@ -1012,24 +1012,6 @@ namespace Ettad.Reporting.Reports
             DevExpress.DataAccess.Sql.ColumnExpression columnExpression1019 = new DevExpress.DataAccess.Sql.ColumnExpression();
             DevExpress.DataAccess.Sql.Column column1020 = new DevExpress.DataAccess.Sql.Column();
             DevExpress.DataAccess.Sql.ColumnExpression columnExpression1020 = new DevExpress.DataAccess.Sql.ColumnExpression();
-            DevExpress.DataAccess.Sql.SelectQuery selectQuery91 = new DevExpress.DataAccess.Sql.SelectQuery();
-            DevExpress.DataAccess.Sql.Column column1021 = new DevExpress.DataAccess.Sql.Column();
-            DevExpress.DataAccess.Sql.ColumnExpression columnExpression1021 = new DevExpress.DataAccess.Sql.ColumnExpression();
-            DevExpress.DataAccess.Sql.Table table91 = new DevExpress.DataAccess.Sql.Table();
-            DevExpress.DataAccess.Sql.Column column1022 = new DevExpress.DataAccess.Sql.Column();
-            DevExpress.DataAccess.Sql.ColumnExpression columnExpression1022 = new DevExpress.DataAccess.Sql.ColumnExpression();
-            DevExpress.DataAccess.Sql.Column column1023 = new DevExpress.DataAccess.Sql.Column();
-            DevExpress.DataAccess.Sql.ColumnExpression columnExpression1023 = new DevExpress.DataAccess.Sql.ColumnExpression();
-            DevExpress.DataAccess.Sql.Column column1024 = new DevExpress.DataAccess.Sql.Column();
-            DevExpress.DataAccess.Sql.ColumnExpression columnExpression1024 = new DevExpress.DataAccess.Sql.ColumnExpression();
-            DevExpress.DataAccess.Sql.Column column1025 = new DevExpress.DataAccess.Sql.Column();
-            DevExpress.DataAccess.Sql.ColumnExpression columnExpression1025 = new DevExpress.DataAccess.Sql.ColumnExpression();
-            DevExpress.DataAccess.Sql.Column column1026 = new DevExpress.DataAccess.Sql.Column();
-            DevExpress.DataAccess.Sql.ColumnExpression columnExpression1026 = new DevExpress.DataAccess.Sql.ColumnExpression();
-            DevExpress.DataAccess.Sql.Column column1027 = new DevExpress.DataAccess.Sql.Column();
-            DevExpress.DataAccess.Sql.ColumnExpression columnExpression1027 = new DevExpress.DataAccess.Sql.ColumnExpression();
-            DevExpress.DataAccess.Sql.Column column1028 = new DevExpress.DataAccess.Sql.Column();
-            DevExpress.DataAccess.Sql.ColumnExpression columnExpression1028 = new DevExpress.DataAccess.Sql.ColumnExpression();
             DevExpress.DataAccess.Sql.SelectQuery selectQuery92 = new DevExpress.DataAccess.Sql.SelectQuery();
             DevExpress.DataAccess.Sql.Column column1029 = new DevExpress.DataAccess.Sql.Column();
             DevExpress.DataAccess.Sql.ColumnExpression columnExpression1029 = new DevExpress.DataAccess.Sql.ColumnExpression();
@@ -3778,41 +3760,6 @@ namespace Ettad.Reporting.Reports
             selectQuery90.Columns.Add(column1020);
             selectQuery90.Name = "Reports";
             selectQuery90.Tables.Add(table90);
-            columnExpression1021.ColumnName = "Id";
-            table91.Name = "ReportStatuses";
-            columnExpression1021.Table = table91;
-            column1021.Expression = columnExpression1021;
-            columnExpression1022.ColumnName = "NameAr";
-            columnExpression1022.Table = table91;
-            column1022.Expression = columnExpression1022;
-            columnExpression1023.ColumnName = "NameEn";
-            columnExpression1023.Table = table91;
-            column1023.Expression = columnExpression1023;
-            columnExpression1024.ColumnName = "IsDeleted";
-            columnExpression1024.Table = table91;
-            column1024.Expression = columnExpression1024;
-            columnExpression1025.ColumnName = "CreationDate";
-            columnExpression1025.Table = table91;
-            column1025.Expression = columnExpression1025;
-            columnExpression1026.ColumnName = "ModificationDate";
-            columnExpression1026.Table = table91;
-            column1026.Expression = columnExpression1026;
-            columnExpression1027.ColumnName = "ModifiedBy";
-            columnExpression1027.Table = table91;
-            column1027.Expression = columnExpression1027;
-            columnExpression1028.ColumnName = "CreatedBy";
-            columnExpression1028.Table = table91;
-            column1028.Expression = columnExpression1028;
-            selectQuery91.Columns.Add(column1021);
-            selectQuery91.Columns.Add(column1022);
-            selectQuery91.Columns.Add(column1023);
-            selectQuery91.Columns.Add(column1024);
-            selectQuery91.Columns.Add(column1025);
-            selectQuery91.Columns.Add(column1026);
-            selectQuery91.Columns.Add(column1027);
-            selectQuery91.Columns.Add(column1028);
-            selectQuery91.Name = "ReportStatuses";
-            selectQuery91.Tables.Add(table91);
             columnExpression1029.ColumnName = "Id";
             table92.Name = "RequestItems";
             columnExpression1029.Table = table92;
@@ -4605,7 +4552,6 @@ namespace Ettad.Reporting.Reports
             selectQuery88,
             selectQuery89,
             selectQuery90,
-            selectQuery91,
             selectQuery92,
             selectQuery93,
             selectQuery94,

@@ -203,7 +203,7 @@ namespace Ettad.ReportManagement.Service.Reports
             var createDto = new CreateReportDto
             {
                 ReportName = reportName ?? url,
-                ReportStatusId = (int)ReportStatuses.Draft, // Default to Draft
+                ReportStatusId = ReportStatuses.Draft,
                 Url = url,
                 LayoutData = layoutData
             };

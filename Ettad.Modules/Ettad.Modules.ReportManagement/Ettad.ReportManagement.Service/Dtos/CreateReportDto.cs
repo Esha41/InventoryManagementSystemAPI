@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using Ettad.Data.Enums;
 
 namespace Ettad.ReportManagement.Service.Dtos
 {
@@ -9,7 +10,7 @@ namespace Ettad.ReportManagement.Service.Dtos
         public string ReportName { get; set; } = string.Empty;
 
         [Required]
-        public long ReportStatusId { get; set; } = 1; // Default to Draft
+        public ReportStatuses ReportStatusId { get; set; } = ReportStatuses.Draft;
 
         [Required]
         [MaxLength(500)]

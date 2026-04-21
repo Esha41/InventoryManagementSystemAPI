@@ -18,7 +18,6 @@ namespace Ettad.ReportManagement.Service.Implementation
     public class ReportService : IReportService
     {
         private readonly ICrossCuttingRepository<ReportEntity> _reportRepository;
-        private readonly ICrossCuttingRepository<ReportStatus> _reportStatusRepository;
         private readonly ICrossCuttingRepository<ReportRole> _reportRoleRepository;
         private readonly ICrossCuttingRepository<ScheduledReport> _scheduledReportRepository;
         private readonly ICrossCuttingRepository<ScheduledReportRecipient> _scheduledReportRecipientRepository;
@@ -31,7 +30,6 @@ namespace Ettad.ReportManagement.Service.Implementation
 
         public ReportService(
             ICrossCuttingRepository<ReportEntity> reportRepository,
-            ICrossCuttingRepository<ReportStatus> reportStatusRepository,
             ICrossCuttingRepository<ReportRole> reportRoleRepository,
             ICrossCuttingRepository<ScheduledReport> scheduledReportRepository,
             ICrossCuttingRepository<ScheduledReportRecipient> scheduledReportRecipientRepository,
@@ -43,7 +41,6 @@ namespace Ettad.ReportManagement.Service.Implementation
             IMapper mapper)
         {
             _reportRepository = reportRepository;
-            _reportStatusRepository = reportStatusRepository;
             _reportRoleRepository = reportRoleRepository;
             _scheduledReportRepository = scheduledReportRepository;
             _scheduledReportRecipientRepository = scheduledReportRecipientRepository;
@@ -61,14 +58,9 @@ namespace Ettad.ReportManagement.Service.Implementation
 
             try
             {
-                System.Linq.Expressions.Expression<Func<ReportEntity, bool>> filter;
-
-                filter = r => r.ReportStatusId != (int)ReportStatuses.Inactive;
-
                 var reports = await _reportRepository.FindAsync(
-                                r => r.ReportStatusId != (int)ReportStatuses.Inactive,
-                                false,
-                                nameof(ReportEntity.ReportStatus)
+                                r => r.ReportStatusId != ReportStatuses.Inactive,
+                                false
                             );
 
                 // Get all report IDs
@@ -138,9 +130,8 @@ namespace Ettad.ReportManagement.Service.Implementation
 
                 // Get all published reports
                 var reportsList = (await _reportRepository.FindAsync(
-                    r => r.ReportStatusId == (int)ReportStatuses.Published && !r.IsDeleted,
-                    false,
-                    nameof(ReportEntity.ReportStatus)
+                    r => r.ReportStatusId == ReportStatuses.Published && !r.IsDeleted,
+                    false
                 )).ToList();
 
                 if (!isSuperAdmin)
@@ -188,9 +179,8 @@ namespace Ettad.ReportManagement.Service.Implementation
             try
             {
                 var report = await _reportRepository.FindOneAsync(
-                  x => x.Id == id && x.ReportStatusId != (int)ReportStatuses.Inactive,
-                  false,
-                  nameof(ReportEntity.ReportStatus));
+                  x => x.Id == id && x.ReportStatusId != ReportStatuses.Inactive,
+                  false);
 
                 if (report == null)
                 {
@@ -219,9 +209,8 @@ namespace Ettad.ReportManagement.Service.Implementation
                 if (string.IsNullOrWhiteSpace(url))
                     return APIOperationResponse<ReportDto>.BadRequest("URL is required");
                 var report = await _reportRepository.FindOneAsync(
-                                      x => x.Url == url && x.ReportStatusId != (int)ReportStatuses.Inactive,
-                                      false,
-                                      nameof(ReportEntity.ReportStatus));
+                                      x => x.Url == url && x.ReportStatusId != ReportStatuses.Inactive,
+                                      false);
 
                 if (report == null)
                 {
@@ -276,9 +265,8 @@ namespace Ettad.ReportManagement.Service.Implementation
             try
             {
                 var report = await _reportRepository.FindOneAsync(
-                  x => x.Id == id && x.ReportStatusId != (int)ReportStatuses.Inactive,
-                  false,
-                  nameof(ReportEntity.ReportStatus));
+                  x => x.Id == id && x.ReportStatusId != ReportStatuses.Inactive,
+                  false);
 
                 if (report == null)
                 {
@@ -289,7 +277,7 @@ namespace Ettad.ReportManagement.Service.Implementation
                 // Check if report name already exists (excluding current report)
                 if (report.ReportName != dto.ReportName)
                 {
-                    var reportEntity = await _reportRepository.FindOneAsync(r => r.ReportName == dto.ReportName && r.ReportStatusId != (int)ReportStatuses.Inactive);
+                    var reportEntity = await _reportRepository.FindOneAsync(r => r.ReportName == dto.ReportName && r.ReportStatusId != ReportStatuses.Inactive);
                     if (reportEntity != null)
                     {
                         return APIOperationResponse<bool>.BadRequest("Report with this name already exists, give another.");
@@ -320,7 +308,7 @@ namespace Ettad.ReportManagement.Service.Implementation
             try
             {
                 var report = await _reportRepository.FindOneAsync(
-                    r => r.Id == id && r.ReportStatusId != (int)ReportStatuses.Inactive,
+                    r => r.Id == id && r.ReportStatusId != ReportStatuses.Inactive,
                     false);
 
                 if (report == null)
@@ -330,7 +318,7 @@ namespace Ettad.ReportManagement.Service.Implementation
                 }
 
                 // Update report status
-                report.ReportStatusId = dto.IsPublic ? (int)ReportStatuses.Published : (int)ReportStatuses.Draft;
+                report.ReportStatusId = dto.IsPublic ? ReportStatuses.Published : ReportStatuses.Draft;
                 report.ModificationDate = _dateTimeProvider.Now;
                 report.ModifiedBy = _currentUserService.UserId;
 
@@ -412,8 +400,7 @@ namespace Ettad.ReportManagement.Service.Implementation
 
                 var updated = await _reportRepository.FindOneAsync(
                     r => r.Id == id,
-                    false,
-                    nameof(ReportEntity.ReportStatus));
+                    false);
 
                 // Get role associations for this report (preserve them even when making private)
                 var reportRoles = (await _reportRoleRepository.FindAsync(
@@ -511,26 +498,6 @@ namespace Ettad.ReportManagement.Service.Implementation
             }
         }
 
-        public async Task<APIOperationResponse<List<ReportStatusDto>>> GetReportStatusesAsync()
-        {
-            _logger.LogInformation("Getting all report statuses. User: {UserId}", _currentUserService.UserId);
-
-            try
-            {
-                var statuses = await _reportStatusRepository.GetAllAsync();
-
-                var dtos = _mapper.Map<List<ReportStatusDto>>(statuses);
-
-                _logger.LogInformation("Retrieved {Count} report statuses. User: {UserId}", dtos.Count, _currentUserService.UserId);
-                return APIOperationResponse<List<ReportStatusDto>>.Success(dtos);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error retrieving report statuses. User: {UserId}", _currentUserService.UserId);
-                return APIOperationResponse<List<ReportStatusDto>>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
-            }
-        }
-
         public async Task<APIOperationResponse<List<ReportTemplateDto>>> GetTemplatesAsync()
         {
             _logger.LogInformation("Getting all report templates. User: {UserId}", _currentUserService.UserId);
@@ -578,9 +545,8 @@ namespace Ettad.ReportManagement.Service.Implementation
             var reportExist = false;
 
             var report = await _reportRepository.FindOneAsync(
-                                  x => x.ReportName == name && x.ReportStatusId != (int)ReportStatuses.Inactive,
-                                  false,
-                                  nameof(ReportEntity.ReportStatus));
+                                  x => x.ReportName == name && x.ReportStatusId != ReportStatuses.Inactive,
+                                  false);
 
             if (report == null)
                 return reportExist;
