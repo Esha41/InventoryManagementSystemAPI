@@ -1,11 +1,5 @@
 using Microsoft.EntityFrameworkCore;
-using Ettad.CrossCutting.Comman.ExtensionMethods;
 using Ettad.CrossCutting.Comman.Providers;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Ettad.CrossCutting.Comman.Models
 {

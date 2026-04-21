@@ -30,4 +30,9 @@
     <ProjectReference Include="..\Project.ResponseHandler\Ettad.CrossCutting.ResponseHandler.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Configuration\" />
+    <Folder Include="ExtensionMethods\" />
+  </ItemGroup>
+
 </Project>
