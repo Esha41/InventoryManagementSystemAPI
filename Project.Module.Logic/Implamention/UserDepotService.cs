@@ -20,17 +20,20 @@ namespace Ettad.Lookups.Services.Implementation
         private readonly ICrossCuttingRepository<UserDepot> _userDepotRepository;
         private readonly ICurrentUserService _currentUserService;
         private readonly ILogger<UserDepotService> _logger;
+        private readonly ITransactionManager _transactionManager;
 
         public UserDepotService(
             ApplicationDbContext context,
             ICrossCuttingRepository<UserDepot> userDepotRepository,
             ICurrentUserService currentUserService,
-            ILogger<UserDepotService> logger)
+            ILogger<UserDepotService> logger,
+            ITransactionManager transactionManager)
         {
             _context = context;
             _userDepotRepository = userDepotRepository;
             _currentUserService = currentUserService;
             _logger = logger;
+            _transactionManager = transactionManager;
         }
 
         public async Task<APIOperationResponse<List<DepotUserDto>>> GetUsersByDepotIdAsync(long depotId, CancellationToken cancellationToken = default)
@@ -98,7 +101,7 @@ namespace Ettad.Lookups.Services.Implementation
                     }
                 }
 
-                await using var transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
+                await using var transaction = await _transactionManager.BeginAsync(cancellationToken);
                 try
                 {
                     var existing = await _context.UserDepots.Where(ud => ud.DepotId == depotId).ToListAsync(cancellationToken);
@@ -110,7 +113,7 @@ namespace Ettad.Lookups.Services.Implementation
                     }
 
                     await _context.SaveChangesAsync(cancellationToken);
-                    await transaction.CommitAsync(cancellationToken);
+                    await _transactionManager.CommitAsync(cancellationToken);
 
                     _logger.LogInformation("User {UserName} updated depot {DepotId} assignments. Assigned {Count} users.",
                         _currentUserService.UserName, depotId, userIdList.Count);
@@ -119,7 +122,7 @@ namespace Ettad.Lookups.Services.Implementation
                 }
                 catch
                 {
-                    await transaction.RollbackAsync(cancellationToken);
+                    await _transactionManager.RollbackAsync(cancellationToken);
                     throw;
                 }
             }

@@ -36,6 +36,7 @@ namespace Ettad.Inventory.Service.Weapons
         private readonly ILogger<WeaponService> _logger;
         private readonly IFileUploadService _fileUploadService;
         private readonly ApplicationDbContext _context;
+        private readonly ITransactionManager _transactionManager;
         private readonly IDateTimeProvider _dateTimeProvider;
         private readonly AssetImportManager<CreateUpdateWeaponDto, WeaponImportDto> _importManager;
         private readonly IItemDepartmentAssignmentService _itemDepartmentAssignmentService;
@@ -64,6 +65,7 @@ namespace Ettad.Inventory.Service.Weapons
             IFileUploadService fileUploadService,
             IExcelImportService excelImportService,
             ApplicationDbContext context,
+            ITransactionManager transactionManager,
             IDateTimeProvider dateTimeProvider,
             IItemDepartmentAssignmentService itemDepartmentAssignmentService)
         {
@@ -74,6 +76,7 @@ namespace Ettad.Inventory.Service.Weapons
             _logger = logger;
             _fileUploadService = fileUploadService;
             _context = context;
+            _transactionManager = transactionManager;
             _dateTimeProvider = dateTimeProvider;
             _itemDepartmentAssignmentService = itemDepartmentAssignmentService;
 
@@ -412,7 +415,7 @@ namespace Ettad.Inventory.Service.Weapons
                     return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, "Only soft-deleted weapons can be permanently deleted");
                 }
 
-                await using var transaction = await _context.Database.BeginTransactionAsync();
+                await using var transaction = await _transactionManager.BeginAsync();
                 try
                 {
                     await _context.Database.ExecuteSqlRawAsync(
@@ -423,7 +426,7 @@ namespace Ettad.Inventory.Service.Weapons
 
                     if (weaponDeleted == 0)
                     {
-                        await transaction.RollbackAsync();
+                        await _transactionManager.RollbackAsync();
                         return APIOperationResponse<bool>.Fail(ResponseType.NotFound, "Weapon not found");
                     }
 
@@ -432,16 +435,16 @@ namespace Ettad.Inventory.Service.Weapons
 
                     if (baseDeleted == 0)
                     {
-                        await transaction.RollbackAsync();
+                        await _transactionManager.RollbackAsync();
                         return APIOperationResponse<bool>.Fail(ResponseType.InternalServerError, "Failed to remove base item record");
                     }
 
-                    await transaction.CommitAsync();
+                    await _transactionManager.CommitAsync();
                     return APIOperationResponse<bool>.Success(true, "Weapon permanently deleted");
                 }
                 catch (Exception ex)
                 {
-                    await transaction.RollbackAsync();
+                    await _transactionManager.RollbackAsync();
                     throw;
                 }
             }

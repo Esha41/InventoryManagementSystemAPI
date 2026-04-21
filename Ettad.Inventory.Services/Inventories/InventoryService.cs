@@ -79,6 +79,7 @@ namespace Ettad.Inventory.Service.Inventories
         private readonly IDateTimeProvider _dateTimeProvider;
         private readonly IDepotAccessService _depotAccessService;
         private readonly IFileUploadService _fileUploadService;
+        private readonly ITransactionManager _transactionManager;
 
         public InventoryService(
             ApplicationDbContext context,
@@ -98,7 +99,8 @@ namespace Ettad.Inventory.Service.Inventories
             ILogger<InventoryService> logger,
             IDateTimeProvider dateTimeProvider,
             IDepotAccessService depotAccessService,
-            IFileUploadService fileUploadService)
+            IFileUploadService fileUploadService,
+            ITransactionManager transactionManager)
         {
             _context = context;
             _inventoryRepository = inventoryRepository;
@@ -118,6 +120,7 @@ namespace Ettad.Inventory.Service.Inventories
             _dateTimeProvider = dateTimeProvider;
             _depotAccessService = depotAccessService;
             _fileUploadService = fileUploadService;
+            _transactionManager = transactionManager;
         }
 
         public async Task<APIOperationResponse<InventoryDto>> GetByIdAsync(long id)
@@ -1649,7 +1652,7 @@ namespace Ettad.Inventory.Service.Inventories
                 }
 
                 // Process valid records with transaction support
-                await using var transaction = await _context.Database.BeginTransactionAsync();
+                await using var transaction = await _transactionManager.BeginAsync();
 
                 try
                 {
@@ -1932,13 +1935,13 @@ namespace Ettad.Inventory.Service.Inventories
                     // Commit transaction if all successful
                     if (processedCount > 0)
                     {
-                        await transaction.CommitAsync();
+                        await _transactionManager.CommitAsync();
                         _logger.LogInformation("Inventory import completed successfully. Processed: {ProcessedCount}, Errors: {ErrorCount}, DepotId: {DepotId}, User: {UserId}",
                             processedCount, errorCount, depotId, _currentUserService.UserId);
                     }
                     else
                     {
-                        await transaction.RollbackAsync();
+                        await _transactionManager.RollbackAsync();
                         _logger.LogWarning("Inventory import rolled back - no valid records. DepotId: {DepotId}, User: {UserId}",
                             depotId, _currentUserService.UserId);
                     }
@@ -1951,7 +1954,7 @@ namespace Ettad.Inventory.Service.Inventories
                 }
                 catch (Exception ex)
                 {
-                    await transaction.RollbackAsync();
+                    await _transactionManager.RollbackAsync();
                     _logger.LogError(ex, "Error during inventory import transaction. DepotId: {DepotId}, User: {UserId}",
                         depotId, _currentUserService.UserId);
                     throw;

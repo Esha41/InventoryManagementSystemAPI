@@ -18,19 +18,22 @@ namespace Ettad.HelpCenter.Service
         private readonly ICrossCuttingRepository<HelpCenterTermsConditions> _termsRepo;
         private readonly IDateTimeProvider _dateTime;
         private readonly ApplicationDbContext _db;
+        private readonly ITransactionManager _transactionManager;
 
         public HelpCenterService(
             ICrossCuttingRepository<HelpCenterArticle> articleRepo,
             ICrossCuttingRepository<HelpCenterContactMessage> contactRepo,
             ICrossCuttingRepository<HelpCenterTermsConditions> termsRepo,
             IDateTimeProvider dateTime,
-            ApplicationDbContext db)
+            ApplicationDbContext db,
+            ITransactionManager transactionManager)
         {
             _articleRepo = articleRepo;
             _contactRepo = contactRepo;
             _termsRepo = termsRepo;
             _dateTime = dateTime;
             _db = db;
+            _transactionManager = transactionManager;
         }
 
         // ── Articles ──────────────────────────────────────────────────────────
@@ -447,7 +450,7 @@ namespace Ettad.HelpCenter.Service
                     return APIOperationResponse<HelpCenterTermsDto>.Fail(ResponseType.BadRequest,
                         "This version label is already in use. Enter a new version (for example 1.1). Labels cannot be reused even after a version is deleted.");
 
-                await using var tx = await _db.Database.BeginTransactionAsync();
+                await using var tx = await _transactionManager.BeginAsync();
 
                 var activeTerms = await _db.HelpCenterTermsConditions
                     .Where(t => t.IsActive && !t.IsDeleted)
@@ -472,7 +475,7 @@ namespace Ettad.HelpCenter.Service
 
                 _db.HelpCenterTermsConditions.Add(newTerms);
                 await _db.SaveChangesAsync();
-                await tx.CommitAsync();
+                await _transactionManager.CommitAsync();
 
                 return APIOperationResponse<HelpCenterTermsDto>.Success(
                     MapTermsToDto(newTerms), "Terms published successfully");
@@ -500,13 +503,13 @@ namespace Ettad.HelpCenter.Service
         {
             try
             {
-                await using var tx = await _db.Database.BeginTransactionAsync();
+                await using var tx = await _transactionManager.BeginAsync();
 
                 var target = await _db.HelpCenterTermsConditions
                     .FirstOrDefaultAsync(t => t.Id == id && !t.IsDeleted);
                 if (target is null)
                 {
-                    await tx.RollbackAsync();
+                    await _transactionManager.RollbackAsync();
                     return APIOperationResponse<HelpCenterTermsDto>.Fail(ResponseType.NotFound, "Terms version not found");
                 }
 
@@ -526,7 +529,7 @@ namespace Ettad.HelpCenter.Service
                 target.ModifiedBy = modifiedBy;
 
                 await _db.SaveChangesAsync();
-                await tx.CommitAsync();
+                await _transactionManager.CommitAsync();
 
                 return APIOperationResponse<HelpCenterTermsDto>.Success(
                     MapTermsToDto(target), "Terms version activated");

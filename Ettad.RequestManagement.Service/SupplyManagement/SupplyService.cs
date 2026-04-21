@@ -49,6 +49,7 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
 		private readonly IDateTimeProvider _dateTimeProvider;
 		private readonly IOrderItemTrackingService _orderItemTrackingService;
 		private readonly IWorkflowApprovalService _workflowApprovalService;
+		private readonly ITransactionManager _transactionManager;
 
 	public SupplyService(
 			ApplicationDbContext context,
@@ -73,7 +74,8 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
 			IFileUploadService fileUploadService,
 			IDateTimeProvider dateTimeProvider,
 			IOrderItemTrackingService orderItemTrackingService,
-			IWorkflowApprovalService workflowApprovalService)
+			IWorkflowApprovalService workflowApprovalService,
+			ITransactionManager transactionManager)
 		{
 			_context = context;
 			_inventoryService = inventoryService;
@@ -98,6 +100,7 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
 			_dateTimeProvider = dateTimeProvider;
 			_orderItemTrackingService = orderItemTrackingService;
 			_workflowApprovalService = workflowApprovalService;
+			_transactionManager = transactionManager;
 		}
 
 		public async Task<APIOperationResponse<OrderSupplySuggestionDto>> GetSupplySuggestionAsync(long orderId, List<long>? depotIds = null)
@@ -978,7 +981,7 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
 				supplyId, newDetails?.Count ?? 0, _currentUserService.UserId);
 
 			// Use explicit transaction for atomic operation
-			using var transaction = await _context.Database.BeginTransactionAsync();
+			await using var transaction = await _transactionManager.BeginAsync();
 			
 			try
 			{
@@ -1147,7 +1150,7 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
 
 				// Save all changes in single transaction
 				await _context.SaveChangesAsync();
-				await transaction.CommitAsync();
+				await _transactionManager.CommitAsync();
 
 				_logger.LogInformation("Supply details replaced successfully. SupplyId: {SupplyId}, OldCount: {OldCount}, NewCount: {NewCount}, User: {UserId}", 
 					supplyId, existingDetailIds.Count, createdDetails.Count, _currentUserService.UserId);
@@ -1156,7 +1159,7 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
 			}
 			catch (Exception ex)
 			{
-				await transaction.RollbackAsync();
+				await _transactionManager.RollbackAsync();
 				_logger.LogError(ex, "Error replacing supply details. SupplyId: {SupplyId}, User: {UserId}", 
 					supplyId, _currentUserService.UserId);
 				return APIOperationResponse<bool>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");

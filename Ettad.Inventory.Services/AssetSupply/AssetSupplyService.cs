@@ -44,6 +44,7 @@ namespace Ettad.Inventory.Service.AssetSupply
         private readonly IOrderItemTrackingService _orderItemTrackingService;
         private readonly IWorkflowApprovalService _workflowApprovalService;
         private readonly IFileUploadService _fileUploadService;
+        private readonly ITransactionManager _transactionManager;
 
         public AssetSupplyService(
             ApplicationDbContext context,
@@ -62,7 +63,8 @@ namespace Ettad.Inventory.Service.AssetSupply
             IDateTimeProvider dateTimeProvider,
             IOrderItemTrackingService orderItemTrackingService,
             IWorkflowApprovalService workflowApprovalService,
-            IFileUploadService fileUploadService)
+            IFileUploadService fileUploadService,
+            ITransactionManager transactionManager)
         {
             _context = context;
             _assetSupplyRepository = assetSupplyRepository;
@@ -81,6 +83,7 @@ namespace Ettad.Inventory.Service.AssetSupply
             _orderItemTrackingService = orderItemTrackingService;
             _workflowApprovalService = workflowApprovalService;
             _fileUploadService = fileUploadService;
+            _transactionManager = transactionManager;
         }
 
         public async Task<APIOperationResponse<List<BatchForOrderDepotDto>>> GetBatchesForOrderDepotsAsync(long orderId, List<long> depotIds)
@@ -535,7 +538,7 @@ namespace Ettad.Inventory.Service.AssetSupply
                     defaultDepartmentForAssignmentWithoutCustodian = orderDepartmentId;
 
                 // Now start our transaction for creating the asset supply
-                using var transaction = await _context.Database.BeginTransactionAsync();
+                await using var transaction = await _transactionManager.BeginAsync();
                 try
                 {
                     // Validate all assets
@@ -654,7 +657,7 @@ namespace Ettad.Inventory.Service.AssetSupply
                     {
                         if (!defaultDepartmentForAssignmentWithoutCustodian.HasValue || defaultDepartmentForAssignmentWithoutCustodian.Value <= 0)
                         {
-                            await transaction.RollbackAsync();
+                            await _transactionManager.RollbackAsync();
                             return APIOperationResponse<long>.Fail(ResponseType.BadRequest,
                                 "Cannot assign assets from supply: requester has no department and order has no department. Specify a per-asset custodian or fix order/requester department.");
                         }
@@ -720,7 +723,7 @@ namespace Ettad.Inventory.Service.AssetSupply
 
                     if (!uploadResult.Succeeded)
                     {
-                        await transaction.RollbackAsync();
+                        await _transactionManager.RollbackAsync();
                         _logger.LogError("Failed to upload files for asset supply. SupplyId: {SupplyId}, Error: {Error}", createdSupply.Id, uploadResult.Message);
                         return APIOperationResponse<long>.Fail(ResponseType.BadRequest, $"Failed to upload files: {uploadResult.Message}");
                     }
@@ -782,7 +785,7 @@ namespace Ettad.Inventory.Service.AssetSupply
                         _logger.LogWarning(ex, "Failed to record history for asset supply creation. SupplyId: {SupplyId}", createdSupply.Id);
                     }
 
-                    await transaction.CommitAsync();
+                    await _transactionManager.CommitAsync();
 
                     // Approve workflow step AFTER supply is safely committed
                     try
@@ -815,7 +818,7 @@ namespace Ettad.Inventory.Service.AssetSupply
                 }
                 catch (Exception ex)
                 {
-                    await transaction.RollbackAsync();
+                    await _transactionManager.RollbackAsync();
                     _logger.LogError(ex, "Error creating asset supply. OrderId: {OrderId}, User: {UserId}",
                         dto.OrderId, _currentUserService.UserId);
                     return APIOperationResponse<long>.Fail(

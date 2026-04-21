@@ -36,6 +36,7 @@ namespace Ettad.Inventory.Service.Explosives
         private readonly ILogger<ExplosiveService> _logger;
         private readonly IFileUploadService _fileUploadService;
         private readonly ApplicationDbContext _context;
+        private readonly ITransactionManager _transactionManager;
         private readonly IDateTimeProvider _dateTimeProvider;
         private readonly AssetImportManager<CreateUpdateExplosiveDto, ExplosiveImportDto> _importManager;
         private readonly IItemDepartmentAssignmentService _itemDepartmentAssignmentService;
@@ -65,6 +66,7 @@ namespace Ettad.Inventory.Service.Explosives
             IFileUploadService fileUploadService,
             IExcelImportService excelImportService,
             ApplicationDbContext context,
+            ITransactionManager transactionManager,
             IDateTimeProvider dateTimeProvider,
             IItemDepartmentAssignmentService itemDepartmentAssignmentService)
         {
@@ -75,6 +77,7 @@ namespace Ettad.Inventory.Service.Explosives
             _logger = logger;
             _fileUploadService = fileUploadService;
             _context = context;
+            _transactionManager = transactionManager;
             _dateTimeProvider = dateTimeProvider;
             _itemDepartmentAssignmentService = itemDepartmentAssignmentService;
 
@@ -408,7 +411,7 @@ namespace Ettad.Inventory.Service.Explosives
                     return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, "Only soft-deleted explosives can be permanently deleted");
                 }
 
-                await using var transaction = await _context.Database.BeginTransactionAsync();
+                await using var transaction = await _transactionManager.BeginAsync();
                 try
                 {
                     await _context.Database.ExecuteSqlRawAsync(
@@ -419,7 +422,7 @@ namespace Ettad.Inventory.Service.Explosives
 
                     if (explosiveDeleted == 0)
                     {
-                        await transaction.RollbackAsync();
+                        await _transactionManager.RollbackAsync();
                         return APIOperationResponse<bool>.Fail(ResponseType.NotFound, "Explosive not found");
                     }
 
@@ -428,16 +431,16 @@ namespace Ettad.Inventory.Service.Explosives
 
                     if (baseDeleted == 0)
                     {
-                        await transaction.RollbackAsync();
+                        await _transactionManager.RollbackAsync();
                         return APIOperationResponse<bool>.Fail(ResponseType.InternalServerError, "Failed to remove base item record");
                     }
 
-                    await transaction.CommitAsync();
+                    await _transactionManager.CommitAsync();
                     return APIOperationResponse<bool>.Success(true, "Explosive permanently deleted");
                 }
                 catch (Exception ex)
                 {
-                    await transaction.RollbackAsync();
+                    await _transactionManager.RollbackAsync();
                     throw;
                 }
             }

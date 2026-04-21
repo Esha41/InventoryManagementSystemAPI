@@ -26,6 +26,7 @@ namespace Ettad.Inventory.Service.Assets
         private readonly ILogger<EmployeeService> _logger;
         private readonly IDateTimeProvider _dateTimeProvider;
         private readonly ApplicationDbContext _context;
+        private readonly ITransactionManager _transactionManager;
         private readonly IExcelImportService _excelImportService;
 
         public EmployeeService(
@@ -36,6 +37,7 @@ namespace Ettad.Inventory.Service.Assets
             ILogger<EmployeeService> logger,
             IDateTimeProvider dateTimeProvider,
             ApplicationDbContext context,
+            ITransactionManager transactionManager,
             IExcelImportService excelImportService)
         {
             _employeeRepository = employeeRepository;
@@ -45,6 +47,7 @@ namespace Ettad.Inventory.Service.Assets
             _logger = logger;
             _dateTimeProvider = dateTimeProvider;
             _context = context;
+            _transactionManager = transactionManager;
             _excelImportService = excelImportService;
         }
 
@@ -405,7 +408,7 @@ namespace Ettad.Inventory.Service.Assets
                         importResult.Errors.Count > 0 ? "No valid rows to import" : "No data rows found");
                 }
 
-                await using var transaction = await _context.Database.BeginTransactionAsync();
+                await using var transaction = await _transactionManager.BeginAsync();
                 try
                 {
                     int created = 0, updated = 0;
@@ -443,7 +446,7 @@ namespace Ettad.Inventory.Service.Assets
                         }
                     }
 
-                    await transaction.CommitAsync();
+                    await _transactionManager.CommitAsync();
 
                     _logger.LogInformation("Employee import completed. Created: {Created}, Updated: {Updated}, User: {UserId}",
                         created, updated, _currentUserService.UserId);
@@ -454,7 +457,7 @@ namespace Ettad.Inventory.Service.Assets
                 }
                 catch (Exception exInner)
                 {
-                    await transaction.RollbackAsync();
+                    await _transactionManager.RollbackAsync();
                     _logger.LogError(exInner, "Employee import transaction failed");
                     return APIOperationResponse<ImportResult<EmployeeExcelImportRowDto>>.Fail(
                         ResponseType.InternalServerError, $"An error occurred: {exInner.Message}");
