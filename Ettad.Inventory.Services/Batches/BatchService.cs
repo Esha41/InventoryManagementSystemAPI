@@ -42,6 +42,7 @@ namespace Ettad.Inventory.Service.Batches
         private readonly IAssetHistoryService _historyService;
         private readonly IExcelImportService _excelImportService;
         private readonly IValidator<CreateAssetDto> _createAssetValidator;
+        private readonly ITransactionManager _transactionManager;
 
         public BatchService(
             ICrossCuttingRepository<Batch> batchRepository,
@@ -57,7 +58,8 @@ namespace Ettad.Inventory.Service.Batches
             IValidator<UpdateBatchDto> updateBatchValidator,
             IValidator<CreateAssetDto> createAssetValidator,
             IAssetHistoryService historyService,
-            IExcelImportService excelImportService)
+            IExcelImportService excelImportService,
+            ITransactionManager transactionManager)
         {
             _batchRepository = batchRepository;
             _assetRepository = assetRepository;
@@ -73,6 +75,7 @@ namespace Ettad.Inventory.Service.Batches
             _createAssetValidator = createAssetValidator;
             _historyService = historyService;
             _excelImportService = excelImportService;
+            _transactionManager = transactionManager;
         }
 
         public async Task<Batch> GetOrCreateAsync(string batchNumber, long depotId)
@@ -517,7 +520,7 @@ namespace Ettad.Inventory.Service.Batches
                         _logger.LogWarning(exFiles, "Error while cleaning up files for Batch delete. BatchId: {BatchId}", id);
                     }
 
-                    await using var transaction = await _context.Database.BeginTransactionAsync();
+                    await using var transaction = await _transactionManager.BeginAsync();
                     try
                     {
                         foreach (var assetId in assetIdsInBatch)
@@ -528,11 +531,11 @@ namespace Ettad.Inventory.Service.Batches
                         }
 
                         await _batchRepository.DeleteAsync(batch);
-                        await transaction.CommitAsync();
+                        await _transactionManager.CommitAsync();
                     }
                     catch (Exception ex)
                     {
-                        await transaction.RollbackAsync();
+                        await _transactionManager.RollbackAsync();
                         throw;
                     }
                 }
@@ -570,18 +573,18 @@ namespace Ettad.Inventory.Service.Batches
                         prep.Error ?? "Validation failed");
                 }
 
-                await using var transaction = await _context.Database.BeginTransactionAsync();
+                await using var transaction = await _transactionManager.BeginAsync();
 
                 try
                 {
                     var apply = await ApplyBulkUpdateItemsCoreAsync(prep.AssetDict!, inputDto);
                     if (!apply.Ok)
                     {
-                        await transaction.RollbackAsync();
+                        await _transactionManager.RollbackAsync();
                         return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, apply.Error ?? "Assignment update failed.");
                     }
 
-                    await transaction.CommitAsync();
+                    await _transactionManager.CommitAsync();
 
                     // Attach uploaded files (if any) to each asset in the request.
                     if (files != null && files.Any())
@@ -618,7 +621,7 @@ namespace Ettad.Inventory.Service.Batches
                 }
                 catch (Exception ex)
                 {
-                    await transaction.RollbackAsync();
+                    await _transactionManager.RollbackAsync();
                     _logger.LogError(ex, "Error during bulk update transaction. BatchId: {BatchId}, User: {UserId}",
                         batchId, _currentUserService.UserId);
                     return APIOperationResponse<bool>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
@@ -693,18 +696,18 @@ namespace Ettad.Inventory.Service.Batches
                         prep.Error ?? "Validation failed");
                 }
 
-                await using var transaction = await _context.Database.BeginTransactionAsync();
+                await using var transaction = await _transactionManager.BeginAsync();
 
                 try
                 {
                     var apply = await ApplyBulkUpdateItemsCoreAsync(prep.AssetDict!, inputDto);
                     if (!apply.Ok)
                     {
-                        await transaction.RollbackAsync();
+                        await _transactionManager.RollbackAsync();
                         return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, apply.Error ?? "Assignment update failed.");
                     }
 
-                    await transaction.CommitAsync();
+                    await _transactionManager.CommitAsync();
 
                     _logger.LogInformation("Bulk update completed. BatchId: {BatchId}, UpdatedCount: {Count}, User: {UserId}",
                         batchId, inputDto.Items.Count, _currentUserService.UserId);
@@ -713,7 +716,7 @@ namespace Ettad.Inventory.Service.Batches
                 }
                 catch (Exception ex)
                 {
-                    await transaction.RollbackAsync();
+                    await _transactionManager.RollbackAsync();
                     _logger.LogError(ex, "Error during bulk update transaction. BatchId: {BatchId}, User: {UserId}",
                         batchId, _currentUserService.UserId);
                     return APIOperationResponse<bool>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
@@ -1296,7 +1299,7 @@ namespace Ettad.Inventory.Service.Batches
                     bulkUpdateDict = prep.AssetDict;
                 }
 
-                await using var importTransaction = await _context.Database.BeginTransactionAsync();
+                await using var importTransaction = await _transactionManager.BeginAsync();
                 try
                 {
                     foreach (var row in createRows)
@@ -1304,7 +1307,7 @@ namespace Ettad.Inventory.Service.Batches
                         var createErr = await CreateAssetFromBatchExcelRowAsync(batch, row);
                         if (createErr != null)
                         {
-                            await importTransaction.RollbackAsync();
+                            await _transactionManager.RollbackAsync();
                             return APIOperationResponse<ImportResult<BatchAssetExcelImportRowDto>>.Fail(ResponseType.BadRequest, createErr);
                         }
                     }
@@ -1314,12 +1317,12 @@ namespace Ettad.Inventory.Service.Batches
                         var apply = await ApplyBulkUpdateItemsCoreAsync(bulkUpdateDict, dto);
                         if (!apply.Ok)
                         {
-                            await importTransaction.RollbackAsync();
+                            await _transactionManager.RollbackAsync();
                             return APIOperationResponse<ImportResult<BatchAssetExcelImportRowDto>>.Fail(ResponseType.BadRequest, apply.Error ?? "Update failed");
                         }
                     }
 
-                    await importTransaction.CommitAsync();
+                    await _transactionManager.CommitAsync();
 
                     var total = createRows.Count + (dto?.Items.Count ?? 0);
                     _logger.LogInformation("Batch assets import completed. BatchId: {BatchId}, Created: {Created}, Updated: {Updated}, User: {UserId}",
@@ -1335,7 +1338,7 @@ namespace Ettad.Inventory.Service.Batches
                 }
                 catch (Exception exInner)
                 {
-                    await importTransaction.RollbackAsync();
+                    await _transactionManager.RollbackAsync();
                     _logger.LogError(exInner, "Batch assets import transaction failed. BatchId: {BatchId}", batchId);
                     return APIOperationResponse<ImportResult<BatchAssetExcelImportRowDto>>.Fail(ResponseType.InternalServerError, $"An error occurred: {exInner.Message}");
                 }

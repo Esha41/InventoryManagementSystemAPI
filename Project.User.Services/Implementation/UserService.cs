@@ -38,6 +38,7 @@ public class UserService : IUserService
     private readonly ICrossCuttingRepository<UserDelegation> _userDelegationRepository;
     private readonly ICrossCuttingRepository<WorkflowStepNotifier> _workflowStepNotifierRepository;
     private readonly ICrossCuttingRepository<BlacklistedToken> _blacklistedTokenRepository;
+    private readonly ITransactionManager _transactionManager;
 
     private readonly ApplicationDbContext _context;
     private readonly IPermissionService _permissionService;
@@ -50,7 +51,8 @@ public class UserService : IUserService
          ICrossCuttingRepository<Notification> notificationRepository, ICrossCuttingRepository<UserDepot> userDepotRepository,
          ICrossCuttingRepository<NotificationReceiver> notificationReceiverRepository, ICrossCuttingRepository<AnnouncementDismissal> announcementDismissalRepository,
          ICrossCuttingRepository<LoginAttempt> loginAttemptRepository, ICrossCuttingRepository<UserDelegation> userDelegationRepository,
-         ICrossCuttingRepository<WorkflowStepNotifier> workflowStepNotifierRepository, ICrossCuttingRepository<BlacklistedToken> blacklistedTokenRepository)
+         ICrossCuttingRepository<WorkflowStepNotifier> workflowStepNotifierRepository, ICrossCuttingRepository<BlacklistedToken> blacklistedTokenRepository,
+         ITransactionManager transactionManager)
 
     {
         _userManager = userManager;
@@ -72,6 +74,7 @@ public class UserService : IUserService
         _userDelegationRepository = userDelegationRepository;
         _workflowStepNotifierRepository = workflowStepNotifierRepository;
         _blacklistedTokenRepository = blacklistedTokenRepository;
+        _transactionManager = transactionManager;
         _permissionService = permissionService;
     }
 
@@ -851,7 +854,7 @@ public class UserService : IUserService
 
         try
         {
-            await using var transaction = await _context.Database.BeginTransactionAsync();
+            await using var transaction = await _transactionManager.BeginAsync();
             try
             {
                 // Remove dependent records that have FK to user (no business history)
@@ -866,19 +869,19 @@ public class UserService : IUserService
                 var result = await _userManager.DeleteAsync(user);
                 if (!result.Succeeded)
                 {
-                    await transaction.RollbackAsync();
+                    await _transactionManager.RollbackAsync();
                     var errors = string.Join(",", result.Errors.Select(e => e.Description));
                     return APIOperationResponse<bool>.Fail(ResponseType.InternalServerError, errors);
                 }
 
-                await transaction.CommitAsync();
+                await _transactionManager.CommitAsync();
                 _logger.LogInformation("User permanently deleted. TargetUserId: {TargetUserId}, Username: {Username}, DeletedBy: {DeletedBy}",
                     id, user.UserName, _currentUserService.UserId);
                 return APIOperationResponse<bool>.Success(true, "User permanently deleted");
             }
             catch (Exception ex)
             {
-                await transaction.RollbackAsync();
+                await _transactionManager.RollbackAsync();
                 throw;
             }
         }

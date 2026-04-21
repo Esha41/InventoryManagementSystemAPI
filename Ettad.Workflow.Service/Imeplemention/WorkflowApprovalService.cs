@@ -39,6 +39,7 @@ namespace Ettad.Workflows.Service.Imeplemention
         private readonly IDateTimeProvider _dateTimeProvider;
         private readonly IOrderItemTrackingService _orderItemTrackingService;
         private readonly IEffectiveRoleService _effectiveRoleService;
+        private readonly ITransactionManager _transactionManager;
 
         public WorkflowApprovalService(
             ApplicationDbContext context, 
@@ -52,7 +53,8 @@ namespace Ettad.Workflows.Service.Imeplemention
             ICrossCuttingRepository<FileUplodDetails> fileDetailsRepository,
             IDateTimeProvider dateTimeProvider,
             IOrderItemTrackingService orderItemTrackingService,
-            IEffectiveRoleService effectiveRoleService)
+            IEffectiveRoleService effectiveRoleService,
+            ITransactionManager transactionManager)
         {
             _context = context;
             _currentUserService = currentUserService;
@@ -66,6 +68,7 @@ namespace Ettad.Workflows.Service.Imeplemention
             _dateTimeProvider = dateTimeProvider;
             _orderItemTrackingService = orderItemTrackingService;
             _effectiveRoleService = effectiveRoleService;
+            _transactionManager = transactionManager;
         }
      
         public async Task<IEnumerable<WorkflowApprovalStepDto>> GetAllAsync()
@@ -288,7 +291,7 @@ namespace Ettad.Workflows.Service.Imeplemention
 
         public async Task<APIOperationResponse<bool>> ProcessActionAsync(ApproveRejectWorkflowApprovalDto model, List<IFormFile> files)
         {
-            await using var transaction = await _context.Database.BeginTransactionAsync();
+            await using var transaction = await _transactionManager.BeginAsync();
 
             try
             {
@@ -340,7 +343,7 @@ namespace Ettad.Workflows.Service.Imeplemention
                 await LogStepActionAsync(currentStep.Id, currentStep.WorkflowStepId, oldStatus, model.Action, model.Comments, _currentUserService.UserName);
 
                 await _context.SaveChangesAsync();
-                await transaction.CommitAsync();
+                await _transactionManager.CommitAsync();
 
                 // Step 2: Link files to the approval step (after status update) if files were saved
                 if (savedFileMasterIds != null && savedFileMasterIds.Count > 0)
@@ -379,7 +382,7 @@ namespace Ettad.Workflows.Service.Imeplemention
             }
             catch
             {
-                await transaction.RollbackAsync();
+                await _transactionManager.RollbackAsync();
                 throw;
             }
         }
@@ -1223,7 +1226,7 @@ namespace Ettad.Workflows.Service.Imeplemention
         /// <returns>True if workflow was started successfully, false otherwise</returns>
         public async Task<bool> StartWorkflowAsync(long orderId, WorkflowType workflowType)
         {
-            await using var transaction = await _context.Database.BeginTransactionAsync();
+            await using var transaction = await _transactionManager.BeginAsync();
 
             try
             {
@@ -1257,7 +1260,7 @@ namespace Ettad.Workflows.Service.Imeplemention
 
                             _context.WorkflowApprovalSteps.Add(workflowApprovalStep);
                             await _context.SaveChangesAsync();
-                            await transaction.CommitAsync();
+                            await _transactionManager.CommitAsync();
 
                             // Get the base request to access department ID
                             var baseRequest = await _context.BaseRequests
@@ -1290,12 +1293,12 @@ namespace Ettad.Workflows.Service.Imeplemention
                     }
                 }
 
-                await transaction.CommitAsync();
+                await _transactionManager.CommitAsync();
                 return false;
             }
             catch (Exception ex)
             {
-                await transaction.RollbackAsync();
+                await _transactionManager.RollbackAsync();
                 // Log the error but don't throw - allow order creation to succeed even if workflow initialization fails
                 _logger.LogError(ex, "Error starting workflow for order. OrderId: {OrderId}, WorkflowType: {WorkflowType}",
                     orderId, workflowType);
