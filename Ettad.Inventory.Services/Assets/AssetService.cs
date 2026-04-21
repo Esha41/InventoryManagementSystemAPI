@@ -1,7 +1,5 @@
 using AutoMapper;
 using FluentValidation;
-using Microsoft.EntityFrameworkCore;
-using System.Linq;
 using System.Linq.Expressions;
 using Ettad.CrossCutting.Data.Repository;
 using Ettad.CrossCutting.Comman.FileUpload;
@@ -16,25 +14,96 @@ using Ettad.Application.Common.Interfaces;
 using Ettad.Lookups.Services.Contracts;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
-using Ettad.EntityFramework.DataBaseContext;
 using OfficeOpenXml;
 using Ettad.CrossCutting.Comman.Time;
-using OfficeOpenXml.DataValidation;
 using Ettad.CrossCutting.Comman.Models;
 using Ettad.Inventory.Service.Batches;
 using Ettad.Inventory.Service.Batches.Dtos;
 using Ettad.Inventory.Service.AssetHistory;
 using Ettad.Inventory.Service.AssetHistory.Dtos;
+using System.Text.Json;
 
 namespace Ettad.Inventory.Service.Assets
 {
     public class AssetService : IAssetService
     {
+        private readonly ICrossCuttingRepository<Asset> _assetRepository;
+        private readonly IMapper _mapper;
+        private readonly IValidator<CreateAssetDto> _createValidator;
+        private readonly IValidator<UpdateAssetDto> _updateValidator;
+        private readonly ICurrentUserService _currentUserService;
+        private readonly ILogger<AssetService> _logger;
+        private readonly IFileUploadService _fileUploadService;
+        private readonly IExcelImportService _excelImportService;
+        private readonly IDateTimeProvider _dateTimeProvider;
+        private readonly IDepotAccessService _depotAccessService;
+        private readonly IBatchService _batchService;
+        private readonly IValidator<CreateBulkAssetsFromTemplateDto> _bulkTemplateValidator;
+        private readonly IAssetHistoryService _historyService;
+        private readonly ITransactionManager _transactionManager;
+        private readonly ICrossCuttingRepository<Employee> _employeeRepository;
+        private readonly ICrossCuttingRepository<Department> _departmentRepository;
+        private readonly ICrossCuttingRepository<AssetAssignment> _assetAssignmentRepository;
+        private readonly ICrossCuttingRepository<Weapon> _weaponRepository;
+        private readonly ICrossCuttingRepository<BaseItemPrimaryPurpos> _baseItemPrimaryPurposRepository;
+        private readonly ICrossCuttingRepository<Supplier> _supplierRepository;
+        private readonly ICrossCuttingRepository<Manufacturer> _manufacturerRepository;
+
+        public AssetService(
+            ICrossCuttingRepository<Asset> assetRepository,
+            IMapper mapper,
+            IValidator<CreateAssetDto> createValidator,
+            IValidator<UpdateAssetDto> updateValidator,
+            IValidator<CreateBulkAssetsFromTemplateDto> bulkTemplateValidator,
+            ICurrentUserService currentUserService,
+            ILogger<AssetService> logger,
+            IFileUploadService fileUploadService,
+            IExcelImportService excelImportService,
+            IDateTimeProvider dateTimeProvider,
+            IDepotAccessService depotAccessService,
+            IBatchService batchService,
+            IAssetHistoryService historyService,
+            ITransactionManager transactionManager,
+            ICrossCuttingRepository<Employee> employeeRepository,
+            ICrossCuttingRepository<Department> departmentRepository,
+            ICrossCuttingRepository<AssetAssignment> assetAssignmentRepository,
+            ICrossCuttingRepository<Weapon> weaponRepository,
+            ICrossCuttingRepository<BaseItemPrimaryPurpos> baseItemPrimaryPurposRepository,
+            ICrossCuttingRepository<Supplier> supplierRepository,
+            ICrossCuttingRepository<Manufacturer> manufacturerRepository)
+        {
+            _assetRepository = assetRepository;
+            _mapper = mapper;
+            _createValidator = createValidator;
+            _updateValidator = updateValidator;
+            _bulkTemplateValidator = bulkTemplateValidator;
+            _currentUserService = currentUserService;
+            _logger = logger;
+            _fileUploadService = fileUploadService;
+            _excelImportService = excelImportService;
+            _dateTimeProvider = dateTimeProvider;
+            _depotAccessService = depotAccessService;
+            _batchService = batchService;
+            _historyService = historyService;
+            _transactionManager = transactionManager;
+            _employeeRepository = employeeRepository;
+            _departmentRepository = departmentRepository;
+            _assetAssignmentRepository = assetAssignmentRepository;
+            _weaponRepository = weaponRepository;
+            _baseItemPrimaryPurposRepository = baseItemPrimaryPurposRepository;
+            _supplierRepository = supplierRepository;
+            _manufacturerRepository = manufacturerRepository;
+        }
+
+        private static bool WantsIntakeAssignment(CreateAssetDto dto) =>
+            dto.AssignToEmployeeId.HasValue || dto.AssignToDepartmentId.HasValue;
+
+
         // ... (existing fields)
 
         public async Task<APIOperationResponse<PaginatedList<AssetDto>>> GetAssetsPaginatedAsync(long? depotId, PagedListRequest request)
         {
-            _logger.LogInformation("Getting assets paginated. DepotId: {DepotId}, Page: {Page}, PageSize: {PageSize}, User: {UserId}", 
+            _logger.LogInformation("Getting assets paginated. DepotId: {DepotId}, Page: {Page}, PageSize: {PageSize}, User: {UserId}",
                 depotId, request.Page, request.PageSize, _currentUserService.UserId);
 
             try
@@ -63,7 +132,7 @@ namespace Ettad.Inventory.Service.Assets
                 );
 
                 var paginatedEntities = await PaginatedList<Asset>.CreateAsyncForTableBinding(query, request);
-                
+
                 // Map to DTOs
                 var dtos = new List<AssetDto>();
                 if (paginatedEntities.Items.Any())
@@ -73,7 +142,7 @@ namespace Ettad.Inventory.Service.Assets
                     // Fetch images for the visible page only
                     var entityIds = dtos.Select(d => d.Id).ToList();
                     var imagesResult = await _fileUploadService.GetByEntitiesAsync(FileEntityType.Asset, entityIds);
-                    
+
                     if (imagesResult.Succeeded && imagesResult.Data != null)
                     {
                         foreach (var dto in dtos)
@@ -97,61 +166,11 @@ namespace Ettad.Inventory.Service.Assets
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting assets paginated. DepotId: {DepotId}, User: {UserId}", 
+                _logger.LogError(ex, "Error getting assets paginated. DepotId: {DepotId}, User: {UserId}",
                     depotId, _currentUserService.UserId);
                 return APIOperationResponse<PaginatedList<AssetDto>>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
             }
         }
-
-        private readonly ICrossCuttingRepository<Asset> _assetRepository;
-        private readonly IMapper _mapper;
-        private readonly IValidator<CreateAssetDto> _createValidator;
-        private readonly IValidator<UpdateAssetDto> _updateValidator;
-        private readonly ICurrentUserService _currentUserService;
-        private readonly ILogger<AssetService> _logger;
-        private readonly IFileUploadService _fileUploadService;
-        private readonly IExcelImportService _excelImportService;
-        private readonly ApplicationDbContext _context;
-        private readonly IDateTimeProvider _dateTimeProvider;
-        private readonly IDepotAccessService _depotAccessService;
-        private readonly IBatchService _batchService;
-        private readonly IValidator<CreateBulkAssetsFromTemplateDto> _bulkTemplateValidator;
-        private readonly IAssetHistoryService _historyService;
-
-        public AssetService(
-            ICrossCuttingRepository<Asset> assetRepository,
-            IMapper mapper,
-            IValidator<CreateAssetDto> createValidator,
-            IValidator<UpdateAssetDto> updateValidator,
-            IValidator<CreateBulkAssetsFromTemplateDto> bulkTemplateValidator,
-            ICurrentUserService currentUserService,
-            ILogger<AssetService> logger,
-            IFileUploadService fileUploadService,
-            IExcelImportService excelImportService,
-            ApplicationDbContext context,
-            IDateTimeProvider dateTimeProvider,
-            IDepotAccessService depotAccessService,
-            IBatchService batchService,
-            IAssetHistoryService historyService)
-        {
-            _assetRepository = assetRepository;
-            _mapper = mapper;
-            _createValidator = createValidator;
-            _updateValidator = updateValidator;
-            _bulkTemplateValidator = bulkTemplateValidator;
-            _currentUserService = currentUserService;
-            _logger = logger;
-            _fileUploadService = fileUploadService;
-            _excelImportService = excelImportService;
-            _context = context;
-            _dateTimeProvider = dateTimeProvider;
-            _depotAccessService = depotAccessService;
-            _batchService = batchService;
-            _historyService = historyService;
-        }
-
-        private static bool WantsIntakeAssignment(CreateAssetDto dto) =>
-            dto.AssignToEmployeeId.HasValue || dto.AssignToDepartmentId.HasValue;
 
         private async Task<(bool Ok, string? Error)> TryApplyIntakeAssignmentAsync(Asset asset, CreateAssetDto dto)
         {
@@ -163,8 +182,7 @@ namespace Ettad.Inventory.Service.Assets
 
             if (dto.AssignToEmployeeId.HasValue)
             {
-                var emp = await _context.Employees
-                    .FirstOrDefaultAsync(e => e.Id == dto.AssignToEmployeeId.Value && !e.IsDeleted);
+                var emp = await _employeeRepository.FindOneAsync(e => e.Id == dto.AssignToEmployeeId.Value && !e.IsDeleted);
                 if (emp == null)
                     return (false, $"Employee not found: {dto.AssignToEmployeeId.Value}");
                 custodianId = emp.Id;
@@ -181,7 +199,7 @@ namespace Ettad.Inventory.Service.Assets
             if (!departmentId.HasValue || departmentId.Value <= 0)
                 return (false, "A valid department is required for intake assignment.");
 
-            var deptExists = await _context.Departments.AnyAsync(d => d.Id == departmentId.Value && !d.IsDeleted);
+            var deptExists = await _departmentRepository.FindOneAsync(d => d.Id == departmentId.Value && !d.IsDeleted) != null;
             if (!deptExists)
                 return (false, $"Department not found: {departmentId.Value}");
 
@@ -199,14 +217,13 @@ namespace Ettad.Inventory.Service.Assets
                 CreatedBy = _currentUserService.UserId
             };
 
-            _context.AssetAssignments.Add(assignment);
-            await _context.SaveChangesAsync();
+            await _assetAssignmentRepository.AddAsync(assignment);
 
             asset.IsAssigned = true;
             asset.CurrentAssignmentId = assignment.Id;
             asset.ModificationDate = now;
             asset.ModifiedBy = _currentUserService.UserId;           
-            await _context.SaveChangesAsync();
+            await _assetRepository.UpdateAsync(asset);
 
             await _historyService.RecordHistoryAsync(asset.Id, AssetHistoryActionType.Assigned, new AssetHistoryContext
             {
@@ -511,7 +528,7 @@ namespace Ettad.Inventory.Service.Assets
                 asset.SerialNumber = string.IsNullOrWhiteSpace(inputDto.SerialNumber) ? null : inputDto.SerialNumber.Trim();
                 asset.RFID = string.IsNullOrWhiteSpace(inputDto.RFID) ? null : inputDto.RFID.Trim();
 
-                await using var transaction = await _context.Database.BeginTransactionAsync();
+                await using var transaction = await _transactionManager.BeginAsync();
                 Asset createdAsset;
                 try
                 {
@@ -519,15 +536,15 @@ namespace Ettad.Inventory.Service.Assets
                     var (assignOk, assignError) = await TryApplyIntakeAssignmentAsync(createdAsset, inputDto);
                     if (!assignOk)
                     {
-                        await transaction.RollbackAsync();
+                        await _transactionManager.RollbackAsync();
                         return APIOperationResponse<long>.Fail(ResponseType.BadRequest, assignError ?? "Intake assignment failed");
                     }
 
-                    await transaction.CommitAsync();
+                    await _transactionManager.CommitAsync();
                 }
                 catch
                 {
-                    await transaction.RollbackAsync();
+                    await _transactionManager.RollbackAsync();
                     throw;
                 }
 
@@ -568,15 +585,31 @@ namespace Ettad.Inventory.Service.Assets
             }
         }
 
-        public async Task<APIOperationResponse<List<long>>> CreateBulkAsync(List<CreateAssetDto> inputDtos, List<IFormFile>? files = null)
+        public async Task<APIOperationResponse<List<long>>> CreateBulkAsync(string? dtosJson, List<IFormFile>? files = null)
         {
+            if (string.IsNullOrWhiteSpace(dtosJson))
+                return APIOperationResponse<List<long>>.Fail(ResponseType.BadRequest, "dtosJson is required");
+
+            List<CreateAssetDto>? inputDtos;
+            await using var transaction = await _transactionManager.BeginAsync();
+            try
+            {
+                inputDtos = JsonSerializer.Deserialize<List<CreateAssetDto>>(dtosJson, new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true
+                });
+            }
+            catch (JsonException ex)
+            {
+                return APIOperationResponse<List<long>>.Fail(ResponseType.BadRequest, $"Invalid dtosJson payload: {ex.Message}");
+            }
+
             if (inputDtos == null || !inputDtos.Any())
-                return APIOperationResponse<List<long>>.Fail(ResponseType.BadRequest, "No assets provided");
+                return APIOperationResponse<List<long>>.Fail(ResponseType.BadRequest, "No assets provided in dtosJson");
 
             _logger.LogInformation("Creating bulk assets. Count: {Count}, User: {UserId}",
                 inputDtos.Count, _currentUserService.UserId);
 
-            await using var transaction = await _context.Database.BeginTransactionAsync();
             try
             {
                 var createdIds = new List<long>();
@@ -677,11 +710,11 @@ namespace Ettad.Inventory.Service.Assets
 
                 if (errorMessages.Any())
                 {
-                    await transaction.RollbackAsync();
+                    await _transactionManager.RollbackAsync();
                     return APIOperationResponse<List<long>>.Fail(ResponseType.BadRequest, string.Join("; ", errorMessages));
                 }
 
-                await transaction.CommitAsync();
+                await _transactionManager.CommitAsync();
 
                 _logger.LogInformation("Bulk asset creation completed successfully. Created: {Count}, User: {UserId}",
                     createdIds.Count, _currentUserService.UserId);
@@ -704,7 +737,7 @@ namespace Ettad.Inventory.Service.Assets
             }
             catch (Exception ex)
             {
-                await transaction.RollbackAsync();
+                await _transactionManager.RollbackAsync();
                 _logger.LogError(ex, "Error creating bulk assets. User: {UserId}", _currentUserService.UserId);
                 return APIOperationResponse<List<long>>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
             }
@@ -743,7 +776,7 @@ namespace Ettad.Inventory.Service.Assets
                 long? firstAssetId = null;
                 const int chunkSize = 1000;
 
-                await using var transaction = await _context.Database.BeginTransactionAsync();
+                await using var transaction = await _transactionManager.BeginAsync();
                 try
                 {
                     var remaining = dto.Quantity;
@@ -764,14 +797,12 @@ namespace Ettad.Inventory.Service.Assets
                             chunk.Add(asset);
                         }
 
-                        await _context.Assets.AddRangeAsync(chunk);
-                        await _context.SaveChangesAsync();
-
-                        firstAssetId ??= chunk[0].Id;
+                        var createdChunk = (await _assetRepository.AddRangeAsync(chunk)).ToList();
+                        firstAssetId ??= createdChunk.FirstOrDefault()?.Id;
                         remaining -= take;
                     }
 
-                    await transaction.CommitAsync();
+                    await _transactionManager.CommitAsync();
 
                     _logger.LogInformation("Bulk template asset creation completed. Created: {Count}, FirstId: {FirstId}, User: {UserId}",
                         dto.Quantity, firstAssetId, userId);
@@ -786,7 +817,7 @@ namespace Ettad.Inventory.Service.Assets
                 }
                 catch
                 {
-                    await transaction.RollbackAsync();
+                    await _transactionManager.RollbackAsync();
                     throw;
                 }
             }
@@ -958,6 +989,12 @@ namespace Ettad.Inventory.Service.Assets
 
         public async Task<APIOperationResponse<ImportResult<CreateAssetDto>>> ImportAsync(IFormFile file, long depotId, string language = "en")
         {
+            if (file == null || file.Length == 0)
+                return APIOperationResponse<ImportResult<CreateAssetDto>>.Fail(ResponseType.BadRequest, "File is required");
+
+            if (depotId <= 0)
+                return APIOperationResponse<ImportResult<CreateAssetDto>>.Fail(ResponseType.BadRequest, "Valid depot ID is required");
+
             _logger.LogInformation("Starting asset import. DepotId: {DepotId}, Language: {Language}, User: {UserId}", 
                 depotId, language, _currentUserService.UserId);
 
@@ -1001,9 +1038,7 @@ namespace Ettad.Inventory.Service.Assets
                         existingRFIDs.Add(asset.RFID);
                 }
 
-                // Process valid records with transaction support
-                await using var transaction = await _context.Database.BeginTransactionAsync();
-                
+                await using var transaction = await _transactionManager.BeginAsync();
                 try
                 {
                     var createAssetDtos = new List<CreateAssetDto>();
@@ -1177,16 +1212,15 @@ namespace Ettad.Inventory.Service.Assets
                             asset.Id, asset.SerialNumber, depotId, _currentUserService.UserId);
                     }
 
-                    // Commit transaction if all successful
                     if (processedCount > 0)
                     {
-                        await transaction.CommitAsync();
+                        await _transactionManager.CommitAsync();
                         _logger.LogInformation("Asset import completed successfully. Processed: {ProcessedCount}, Errors: {ErrorCount}, DepotId: {DepotId}, User: {UserId}",
                             processedCount, errorCount, depotId, _currentUserService.UserId);
                     }
                     else
                     {
-                        await transaction.RollbackAsync();
+                        await _transactionManager.RollbackAsync();
                         _logger.LogWarning("Asset import rolled back - no valid records. DepotId: {DepotId}, User: {UserId}",
                             depotId, _currentUserService.UserId);
                     }
@@ -1203,7 +1237,7 @@ namespace Ettad.Inventory.Service.Assets
                 }
                 catch (Exception ex)
                 {
-                    await transaction.RollbackAsync();
+                    await _transactionManager.RollbackAsync();
                     _logger.LogError(ex, "Error during asset import transaction. DepotId: {DepotId}, User: {UserId}",
                         depotId, _currentUserService.UserId);
                     throw;
@@ -1219,6 +1253,12 @@ namespace Ettad.Inventory.Service.Assets
 
         public async Task<APIOperationResponse<ImportResult<AssetImportDto>>> ImportPreviewAsync(IFormFile file, long depotId, string language = "en")
         {
+            if (file == null || file.Length == 0)
+                return APIOperationResponse<ImportResult<AssetImportDto>>.Fail(ResponseType.BadRequest, "File is required");
+
+            if (depotId <= 0)
+                return APIOperationResponse<ImportResult<AssetImportDto>>.Fail(ResponseType.BadRequest, "Valid depot ID is required");
+
             _logger.LogInformation("Starting asset import preview. DepotId: {DepotId}, Language: {Language}, User: {UserId}", 
                 depotId, language, _currentUserService.UserId);
 
@@ -1413,8 +1453,7 @@ namespace Ettad.Inventory.Service.Assets
 
                 var isAr = string.Equals(language, "ar", StringComparison.OrdinalIgnoreCase);
 
-                var weapons = await _context.Weapons.AsNoTracking()
-                    .Where(w => !w.IsDeleted).ToListAsync();
+                var weapons = (await _weaponRepository.FindAsync(w => !w.IsDeleted)).ToList();
                 var itemNames = weapons.Cast<BaseItem>()
                     .Where(i => !string.IsNullOrWhiteSpace(i.Name) && !string.IsNullOrWhiteSpace(i.ItemNo))
                     .Select(i => $"{i.Name!.Trim()} ({i.ItemNo!.Trim()})")
@@ -1424,8 +1463,9 @@ namespace Ettad.Inventory.Service.Assets
                 var statusLabels = BatchAssetExcelStatusLabels.GetLabelsForLanguage(language).ToList();
                 var assignModeLabels = BatchAssetExcelAssignmentModes.GetLabelsForLanguage(language).ToList();
 
-                var departments = await _context.Departments.AsNoTracking()
-                    .Where(d => !d.IsDeleted).OrderBy(d => d.Id).ToListAsync();
+                var departments = (await _departmentRepository.FindAsync(d => !d.IsDeleted))
+                    .OrderBy(d => d.Id)
+                    .ToList();
                 var departmentLabels = departments
                     .Select(d => isAr
                         ? (!string.IsNullOrWhiteSpace(d.NameAr) ? d.NameAr.Trim() : (d.NameEn ?? "").Trim())
@@ -1434,8 +1474,9 @@ namespace Ettad.Inventory.Service.Assets
                     .GroupBy(s => s, StringComparer.OrdinalIgnoreCase).Select(g => g.First())
                     .OrderBy(s => s).ToList();
 
-                var employees = await _context.Employees.AsNoTracking()
-                    .Where(e => !e.IsDeleted).OrderBy(e => e.Id).ToListAsync();
+                var employees = (await _employeeRepository.FindAsync(e => !e.IsDeleted))
+                    .OrderBy(e => e.Id)
+                    .ToList();
                 var employeeLabels = employees
                     .Select(e => FormatEmployeeDisplayForLanguage(e, language))
                     .Where(s => !string.IsNullOrWhiteSpace(s))
@@ -1608,9 +1649,7 @@ namespace Ettad.Inventory.Service.Assets
         /// </summary>
         private async Task<List<BaseItem>> LoadAllItemsAsync()
         {
-            var weapons = await _context.Weapons
-                .Where(w => !w.IsDeleted)
-                .ToListAsync();
+            var weapons = (await _weaponRepository.FindAsync(w => !w.IsDeleted)).ToList();
 
             return weapons.Cast<BaseItem>().ToList();
         }
@@ -1620,8 +1659,8 @@ namespace Ettad.Inventory.Service.Assets
             if (!primaryPurposId.HasValue)
                 return null;
 
-            var ok = await _context.BaseItemPrimaryPurposes
-                .AnyAsync(x => x.BaseItemId == itemId && x.PrimaryPurposId == primaryPurposId.Value);
+            var ok = await _baseItemPrimaryPurposRepository.FindOneAsync(
+                x => x.BaseItemId == itemId && x.PrimaryPurposId == primaryPurposId.Value) != null;
             return ok ? null : "Primary purpose is not configured for this catalog item.";
         }
 
@@ -1629,14 +1668,14 @@ namespace Ettad.Inventory.Service.Assets
         {
             if (supplierId.HasValue)
             {
-                var okSupplier = await _context.Suppliers.AnyAsync(s => s.Id == supplierId.Value && !s.IsDeleted);
+                var okSupplier = await _supplierRepository.FindOneAsync(s => s.Id == supplierId.Value && !s.IsDeleted) != null;
                 if (!okSupplier)
                     return "Supplier is invalid or deleted.";
             }
 
             if (manufacturerId.HasValue)
             {
-                var okManufacturer = await _context.Manufacturers.AnyAsync(m => m.Id == manufacturerId.Value && !m.IsDeleted);
+                var okManufacturer = await _manufacturerRepository.FindOneAsync(m => m.Id == manufacturerId.Value && !m.IsDeleted) != null;
                 if (!okManufacturer)
                     return "Manufacturer is invalid or deleted.";
             }

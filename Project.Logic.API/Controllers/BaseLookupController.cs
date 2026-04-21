@@ -1,12 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
-using System.Collections.Generic;
-using System.Threading.Tasks;
-using System;
 using Ettad.CrossCutting.Comman;
 using Ettad.Lookups.Services.Contracts;
 using Ettad.ResponseHandler.Models;
-using Microsoft.AspNetCore.Authorization;
 
 namespace Ettad.Lookups.Domain.API.Controllers
 {

@@ -1,6 +1,5 @@
 using Ettad.Announcement.Service;
 using Ettad.Announcement.Service.Dtos;
-using Ettad.Application.Common.Interfaces;
 using Ettad.CrossCutting.Common.Security;
 using Ettad.ResponseHandler.Models;
 using Microsoft.AspNetCore.Authorization;
@@ -15,14 +14,10 @@ namespace Ettad.Announcement.API.Controllers
     public class AnnouncementController : ApiControllerBase
     {
         private readonly IAnnouncementService _announcementService;
-        private readonly ICurrentUserService _currentUserService;
 
-        public AnnouncementController(
-            IAnnouncementService announcementService,
-            ICurrentUserService currentUserService)
+        public AnnouncementController(IAnnouncementService announcementService)
         {
             _announcementService = announcementService;
-            _currentUserService = currentUserService;
         }
 
         /// <summary>
@@ -56,15 +51,7 @@ namespace Ettad.Announcement.API.Controllers
         [ProducesResponseType((int)HttpStatusCode.OK)]
         public async Task<IActionResult> GetActive()
         {
-            var userId = _currentUserService.UserId;
-            if (string.IsNullOrEmpty(userId))
-            {
-                return ProcessResponse(APIOperationResponse<List<ActiveAnnouncementDto>>.Fail(
-                    Ettad.ResponseHandler.Consts.ResponseType.Unauthorized,
-                    "User not authenticated"));
-            }
-
-            var result = await _announcementService.GetActiveAnnouncementsForUserAsync(userId);
+            var result = await _announcementService.GetActiveAnnouncementsForUserAsync();
             return ProcessResponse(result);
         }
 
@@ -76,15 +63,7 @@ namespace Ettad.Announcement.API.Controllers
         [CheckAuthorize("Permissions.Announcements.Create")]
         public async Task<IActionResult> Create([FromBody] CreateAnnouncementDto dto)
         {
-            var userId = _currentUserService.UserId;
-            if (string.IsNullOrEmpty(userId))
-            {
-                return ProcessResponse(APIOperationResponse<AnnouncementDto>.Fail(
-                    Ettad.ResponseHandler.Consts.ResponseType.Unauthorized,
-                    "User not authenticated"));
-            }
-
-            var result = await _announcementService.CreateAnnouncementAsync(dto, userId);
+            var result = await _announcementService.CreateAnnouncementAsync(dto);
             return ProcessResponse(result);
         }
 
@@ -96,15 +75,7 @@ namespace Ettad.Announcement.API.Controllers
         [CheckAuthorize("Permissions.Announcements.Edit")]
         public async Task<IActionResult> Update(long id, [FromBody] UpdateAnnouncementDto dto)
         {
-            var userId = _currentUserService.UserId;
-            if (string.IsNullOrEmpty(userId))
-            {
-                return ProcessResponse(APIOperationResponse<AnnouncementDto>.Fail(
-                    Ettad.ResponseHandler.Consts.ResponseType.Unauthorized,
-                    "User not authenticated"));
-            }
-
-            var result = await _announcementService.UpdateAnnouncementAsync(id, dto, userId);
+            var result = await _announcementService.UpdateAnnouncementAsync(id, dto);
             return ProcessResponse(result);
         }
 
@@ -116,15 +87,7 @@ namespace Ettad.Announcement.API.Controllers
         [CheckAuthorize("Permissions.Announcements.Delete")]
         public async Task<IActionResult> Delete(long id)
         {
-            var userId = _currentUserService.UserId;
-            if (string.IsNullOrEmpty(userId))
-            {
-                return ProcessResponse(APIOperationResponse<bool>.Fail(
-                    Ettad.ResponseHandler.Consts.ResponseType.Unauthorized,
-                    "User not authenticated"));
-            }
-
-            var result = await _announcementService.DeleteAnnouncementAsync(id, userId);
+            var result = await _announcementService.DeleteAnnouncementAsync(id);
             return ProcessResponse(result);
         }
 
@@ -135,15 +98,7 @@ namespace Ettad.Announcement.API.Controllers
         [ProducesResponseType((int)HttpStatusCode.OK)]
         public async Task<IActionResult> Dismiss(long id)
         {
-            var userId = _currentUserService.UserId;
-            if (string.IsNullOrEmpty(userId))
-            {
-                return ProcessResponse(APIOperationResponse<bool>.Fail(
-                    Ettad.ResponseHandler.Consts.ResponseType.Unauthorized,
-                    "User not authenticated"));
-            }
-
-            var result = await _announcementService.DismissAnnouncementAsync(id, userId);
+            var result = await _announcementService.DismissAnnouncementAsync(id);
             return ProcessResponse(result);
         }
     }

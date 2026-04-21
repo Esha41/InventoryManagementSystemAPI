@@ -4,7 +4,7 @@ using Ettad.CrossCutting.Comman.Exception;
 using Ettad.CrossCutting.Comman.Idenitity;
 using Ettad.CrossCutting.Comman.Time;
 using Ettad.LdapSettings.Services.Interfaces;
-using Ettad.EntityFramework.DataBaseContext;
+using Ettad.CrossCutting.Data.Repository;
 using Ettad.ResponseHandler.Consts;
 using Ettad.ResponseHandler.Models;
 using Ettad.User.Services.DTO;
@@ -17,10 +17,9 @@ using MediatR;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Logging;
-using System.Collections.Generic;
-using System.Security.Principal;
 
 namespace Ettad.User.Services.Implementation
 {
@@ -28,11 +27,9 @@ namespace Ettad.User.Services.Implementation
     {
         private readonly IJwtServices _jwtServices;
         private readonly ILdapSettingsService _ldapSettingsService;
-        //  private readonly IUnitOfWork _unitOfWork;
         private readonly ILdapAuthenticator _ldapAuthenticator;
         private readonly IDateTimeProvider _dateTimeProvider;
         private readonly JwtOptions _jwtOptions;
-        private readonly AdminUsersOptions _adminUsers;
         private readonly UserManager<ApplicationUser> _userRepository;
         private readonly SignInManager<ApplicationUser> _signInManager;
         private readonly RoleManager<ApplicationRole> _roleManager;
@@ -45,38 +42,32 @@ namespace Ettad.User.Services.Implementation
         private readonly IMediator _mediator;
         private readonly IPermissionService _permissionService;
         private readonly IEffectiveRoleService _effectiveRoleService;
+        private readonly ICrossCuttingRepository<LoginAttempt> _loginAttemptRepository;
+        private readonly int _maxFailedAttempts;
+        private readonly int _lockoutDurationMinutes;
+        private readonly int _captchaRequiredAfterAttempts;
 
-        private readonly ApplicationDbContext _context;
-
-        // Lockout configuration constants
-        private const int MAX_FAILED_ATTEMPTS = 5;
-        private const int LOCKOUT_DURATION_MINUTES = 15;
-        private const int CAPTCHA_REQUIRED_AFTER_ATTEMPTS = 3;
         public AccountServices(
             IJwtServices jwtServices,
             ILdapSettingsService ldapSettingsService,
-            //IUnitOfWork unitOfWork,
             ILdapAuthenticator ldapAuthenticator,
             IDateTimeProvider dateTimeProvider,
-            IOptions<JwtOptions> jwtOptions,
-            IOptions<AdminUsersOptions> adminUsers, UserManager<ApplicationUser> userRepository,
+            IOptions<JwtOptions> jwtOptions,UserManager<ApplicationUser> userRepository,
             SignInManager<ApplicationUser> signInManager, RoleManager<ApplicationRole> roleManager, ICurrentUserService currentUserService, IEmailSender emailSender,
-            ILogger<AccountServices> logger, ApplicationDbContext context, IHttpContextAccessor httpContextAccessor, ICaptchaService captchaService, ITokenBlacklistService tokenBlacklistService, IMediator mediator,
-            IPermissionService permissionService, IEffectiveRoleService effectiveRoleService)
+            ILogger<AccountServices> logger, IHttpContextAccessor httpContextAccessor, ICaptchaService captchaService, ITokenBlacklistService tokenBlacklistService, IMediator mediator,
+            IPermissionService permissionService, IEffectiveRoleService effectiveRoleService, ICrossCuttingRepository<LoginAttempt> loginAttemptRepository,
+            IConfiguration configuration)
         {
             _jwtServices = jwtServices ?? throw new ArgumentNullException(nameof(jwtServices));
             _ldapSettingsService = ldapSettingsService ?? throw new ArgumentNullException(nameof(ldapSettingsService));
-            // _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
             _ldapAuthenticator = ldapAuthenticator ?? throw new ArgumentNullException(nameof(ldapAuthenticator));
             _dateTimeProvider = dateTimeProvider ?? throw new ArgumentNullException(nameof(dateTimeProvider));
             _jwtOptions = jwtOptions?.Value ?? new JwtOptions();
-            _adminUsers = adminUsers?.Value ?? new AdminUsersOptions();
             _userRepository = userRepository ?? throw new ArgumentNullException(nameof(userRepository));
             _signInManager = signInManager;
             _roleManager = roleManager;
             _currentUserService = currentUserService;
             _emailSender = emailSender;
-            _context = context;
             _logger = logger;
             _httpContextAccessor = httpContextAccessor;
             _captchaService = captchaService;
@@ -84,6 +75,11 @@ namespace Ettad.User.Services.Implementation
             _mediator = mediator ?? throw new ArgumentNullException(nameof(mediator));
             _permissionService = permissionService ?? throw new ArgumentNullException(nameof(permissionService));
             _effectiveRoleService = effectiveRoleService ?? throw new ArgumentNullException(nameof(effectiveRoleService));
+            _loginAttemptRepository = loginAttemptRepository ?? throw new ArgumentNullException(nameof(loginAttemptRepository));
+
+            _maxFailedAttempts = configuration.GetValue<int?>("Security:Login:MaxFailedAttempts") ?? 5;
+            _lockoutDurationMinutes = configuration.GetValue<int?>("Security:Login:LockoutDurationMinutes") ?? 15;
+            _captchaRequiredAfterAttempts = configuration.GetValue<int?>("Security:Login:CaptchaRequiredAfterAttempts") ?? 3;
         }
 
         public async Task<APIOperationResponse<AuthenticatedResponse>> Login(
@@ -578,7 +574,7 @@ namespace Ettad.User.Services.Implementation
 
                 if (userIncludingDeleted == null)
                 {
-                    userIncludingDeleted = await _context.Users
+                    userIncludingDeleted = await _userRepository.Users
                         .FirstOrDefaultAsync(u => u.LdapUserName == usernameWithoutDomain, cancellationToken);
                 }
 
@@ -600,7 +596,7 @@ namespace Ettad.User.Services.Implementation
 
                 if (user == null)
                 {
-                    user = await _context.Users
+                    user = await _userRepository.Users
                         .FirstOrDefaultAsync(u => u.LdapUserName == usernameWithoutDomain && !u.IsDeleted, cancellationToken);
                 }
 
@@ -1192,11 +1188,10 @@ namespace Ettad.User.Services.Implementation
         /// </summary>
         private async Task<bool> IsAccountLockedAsync(string username, CancellationToken cancellationToken)
         {
-            var lockoutThreshold = _dateTimeProvider.Now.AddMinutes(-LOCKOUT_DURATION_MINUTES);
+            var lockoutThreshold = _dateTimeProvider.Now.AddMinutes(-_lockoutDurationMinutes);
             
             // Find the most recent successful login for this username
-            var mostRecentSuccessfulLogin = await _context.LoginAttempts
-                .Where(la => la.Username == username && la.IsSuccessful)
+            var mostRecentSuccessfulLogin = await _loginAttemptRepository.Find(la => la.Username == username && la.IsSuccessful)
                 .OrderByDescending(la => la.AttemptDate)
                 .FirstOrDefaultAsync(cancellationToken);
 
@@ -1208,13 +1203,11 @@ namespace Ettad.User.Services.Implementation
                 ? countFromDate.Value
                 : lockoutThreshold;
 
-            var failedAttempts = await _context.LoginAttempts
-                .Where(la => la.Username == username 
+            var failedAttempts = await _loginAttemptRepository.Find(la => la.Username == username 
                     && !la.IsSuccessful 
-                    && la.AttemptDate >= effectiveThreshold)
-                .CountAsync(cancellationToken);
+                    && la.AttemptDate >= effectiveThreshold).CountAsync(cancellationToken);
 
-            return failedAttempts >= MAX_FAILED_ATTEMPTS;
+            return failedAttempts >= _maxFailedAttempts;
         }
 
         /// <summary>
@@ -1224,11 +1217,10 @@ namespace Ettad.User.Services.Implementation
         /// </summary>
         private async Task<bool> IsCaptchaRequiredAsync(string username, CancellationToken cancellationToken)
         {
-            var lockoutThreshold = _dateTimeProvider.Now.AddMinutes(-LOCKOUT_DURATION_MINUTES);
+            var lockoutThreshold = _dateTimeProvider.Now.AddMinutes(-_lockoutDurationMinutes);
             
             // Find the most recent successful login for this username
-            var mostRecentSuccessfulLogin = await _context.LoginAttempts
-                .Where(la => la.Username == username && la.IsSuccessful)
+            var mostRecentSuccessfulLogin = await _loginAttemptRepository.Find(la => la.Username == username && la.IsSuccessful)
                 .OrderByDescending(la => la.AttemptDate)
                 .FirstOrDefaultAsync(cancellationToken);
 
@@ -1241,11 +1233,9 @@ namespace Ettad.User.Services.Implementation
                 : lockoutThreshold;
 
             // Get failed attempts after the most recent successful login (or within lockout window)
-            var failedAttempts = await _context.LoginAttempts
-                .Where(la => la.Username == username 
+            var failedAttempts = await _loginAttemptRepository.Find(la => la.Username == username 
                     && !la.IsSuccessful 
-                    && la.AttemptDate >= effectiveThreshold)
-                .CountAsync(cancellationToken);
+                    && la.AttemptDate >= effectiveThreshold).CountAsync(cancellationToken);
 
             // If no failed attempts, no CAPTCHA required
             if (failedAttempts == 0)
@@ -1254,7 +1244,7 @@ namespace Ettad.User.Services.Implementation
             }
 
             // CAPTCHA required if 3+ failed attempts but less than 5 (which would lock the account)
-            return failedAttempts >= CAPTCHA_REQUIRED_AFTER_ATTEMPTS && failedAttempts < MAX_FAILED_ATTEMPTS;
+            return failedAttempts >= _captchaRequiredAfterAttempts && failedAttempts < _maxFailedAttempts;
         }
 
         /// <summary>
@@ -1282,8 +1272,7 @@ namespace Ettad.User.Services.Implementation
                     AttemptDate = _dateTimeProvider.Now
                 };
 
-                _context.LoginAttempts.Add(loginAttempt);
-                await _context.SaveChangesAsync(cancellationToken);
+                await _loginAttemptRepository.AddAsync(loginAttempt);
             }
             catch (Exception ex)
             {
