@@ -1,7 +1,19 @@
+using Ettad.Data.Enums;
+
 namespace Ettad.Workflows.Service.Monitoring;
 
 public static class OrderAutoRejectConstants
 {
+    public static readonly WorkflowType[] OrderWorkflowTypes =
+    {
+        WorkflowType.NormalOrder,
+        WorkflowType.OrderFromAllowance,
+        WorkflowType.NormalOrderForTrainingPurpose,
+        WorkflowType.NormalOrder_Weapon,
+        WorkflowType.OrderFromAllowance_Weapon,
+        WorkflowType.NormalOrderForTrainingPurpose_Weapon,
+    };
+
     public const string Group = "BackgroundJobs";
 
     public const string TriggerRoleIdKey = "OrderAutoRejectTriggerRoleId";

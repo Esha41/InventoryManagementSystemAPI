@@ -12,16 +12,6 @@ namespace Ettad.Workflows.Service.Monitoring;
 
 public class OrderAutoRejectBackgroundService : IOrderAutoRejectBackgroundService
 {
-    private static readonly WorkflowType[] OrderWorkflowTypes =
-    {
-        WorkflowType.NormalOrder,
-        WorkflowType.OrderFromAllowance,
-        WorkflowType.NormalOrderForTrainingPurpose,
-        WorkflowType.NormalOrder_Weapon,
-        WorkflowType.OrderFromAllowance_Weapon,
-        WorkflowType.NormalOrderForTrainingPurpose_Weapon
-    };
-
     private readonly ApplicationDbContext _context;
     private readonly IDateTimeProvider _dateTimeProvider;
     private readonly INotificationHelperService _notificationHelperService;
@@ -59,12 +49,28 @@ public class OrderAutoRejectBackgroundService : IOrderAutoRejectBackgroundServic
             .Select(br => br.Id)
             .ToListAsync(cancellationToken);
 
+        if (orderRequestIds.Count == 0)
+            return;
+
+        var intIds = orderRequestIds.Select(x => (int)x).ToList();
+        var allSteps = await _context.WorkflowApprovalSteps
+            .Include(s => s.WorkflowStep)
+            .Include(s => s.Reminders)
+            .Where(s => intIds.Contains(s.TargetRequestId)
+                     && OrderAutoRejectConstants.OrderWorkflowTypes.Contains(s.RequestType))
+            .ToListAsync(cancellationToken);
+
+        var stepsByRequestId = allSteps
+            .GroupBy(s => (long)s.TargetRequestId)
+            .ToDictionary(g => g.Key, g => g.ToList());
+
         foreach (var requestId in orderRequestIds)
         {
             cancellationToken.ThrowIfCancellationRequested();
             try
             {
-                await ProcessOrderAsync(requestId, effective, now, cancellationToken);
+                stepsByRequestId.TryGetValue(requestId, out var steps);
+                await ProcessOrderAsync(requestId, steps ?? new List<WorkflowApprovalStep>(), effective, now, cancellationToken);
                 await _context.SaveChangesAsync(cancellationToken);
             }
             catch (Exception ex)
@@ -77,18 +83,20 @@ public class OrderAutoRejectBackgroundService : IOrderAutoRejectBackgroundServic
 
     private async Task ProcessOrderAsync(
         long requestId,
+        List<WorkflowApprovalStep> steps,
         OrderAutoRejectEffectivePolicy policy,
         DateTime now,
         CancellationToken cancellationToken)
     {
-        var steps = await _context.WorkflowApprovalSteps
-            .Include(s => s.WorkflowStep)
-            .Include(s => s.Reminders)
-            .Where(s => s.TargetRequestId == (int)requestId && OrderWorkflowTypes.Contains(s.RequestType))
-            .ToListAsync(cancellationToken);
-
         if (steps.Count == 0)
             return;
+
+
+        foreach (var step in steps)
+        {
+            if (_context.Entry(step).State == Microsoft.EntityFrameworkCore.EntityState.Detached)
+                _context.Attach(step);
+        }
 
         var triggerApproval = steps
             .Where(s =>
@@ -143,6 +151,14 @@ public class OrderAutoRejectBackgroundService : IOrderAutoRejectBackgroundServic
             .FirstOrDefaultAsync(br => br.Id == requestId, cancellationToken);
 
         var recipientIds = await ResolveRecipientUserIdsAsync(baseRequest?.RequesterId, policy, cancellationToken);
+
+        // Always include the pending approver — they are the person who needs to act.
+        if (!string.IsNullOrEmpty(current.ApproverUserId))
+        {
+            var set = new HashSet<string>(recipientIds ?? Enumerable.Empty<string>(), StringComparer.Ordinal);
+            set.Add(current.ApproverUserId);
+            recipientIds = set.ToList();
+        }
 
         await _notificationHelperService.SendNotificationAsync(
             "This order still needs an approval",

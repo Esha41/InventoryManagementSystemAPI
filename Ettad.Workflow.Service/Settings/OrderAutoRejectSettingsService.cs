@@ -135,8 +135,7 @@ public class OrderAutoRejectSettingsService : IOrderAutoRejectSettingsService
 
         if (string.IsNullOrWhiteSpace(dto.TriggerRoleId))
             failures.Add(new ValidationFailure(nameof(dto.TriggerRoleId), "A trigger role must be selected."));
-
-        if (!await _context.Roles.AnyAsync(r => r.Id == dto.TriggerRoleId!.Trim(), cancellationToken))
+        else if (!await _context.Roles.AnyAsync(r => r.Id == dto.TriggerRoleId.Trim(), cancellationToken))
             failures.Add(new ValidationFailure(nameof(dto.TriggerRoleId), "Unknown trigger role id."));
 
         if (dto.ThresholdDays < 1 || dto.ThresholdDays > 365)

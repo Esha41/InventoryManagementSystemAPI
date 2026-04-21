@@ -6,16 +6,6 @@ namespace Ettad.Workflows.Service.Monitoring;
 
 internal static class OrderAutoRejectCountdownHelper
 {
-    private static readonly WorkflowType[] OrderWorkflowTypes =
-    {
-        WorkflowType.NormalOrder,
-        WorkflowType.OrderFromAllowance,
-        WorkflowType.NormalOrderForTrainingPurpose,
-        WorkflowType.NormalOrder_Weapon,
-        WorkflowType.OrderFromAllowance_Weapon,
-        WorkflowType.NormalOrderForTrainingPurpose_Weapon
-    };
-
     public static OrderAutoRejectCountdownDto Compute(
         long requestId,
         IReadOnlyList<WorkflowApprovalStep> steps,
@@ -25,7 +15,7 @@ internal static class OrderAutoRejectCountdownHelper
         if (policy == null || !policy.IsEnabled || string.IsNullOrEmpty(policy.TriggerRoleId))
             return None(requestId);
 
-        var filtered = steps.Where(s => OrderWorkflowTypes.Contains(s.RequestType)).ToList();
+        var filtered = steps.Where(s => OrderAutoRejectConstants.OrderWorkflowTypes.Contains(s.RequestType)).ToList();
         if (filtered.Count == 0)
             return None(requestId);
 
