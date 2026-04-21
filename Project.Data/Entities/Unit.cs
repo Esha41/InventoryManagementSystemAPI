@@ -1,7 +1,6 @@
 using Ettad.CrossCutting.Comman;
 using Ettad.CrossCutting.Comman.Base;
 using Ettad.Data.Enums;
-using Ettad.Data.Interfaces;
 
 namespace Ettad.Data.Entities
 {
