@@ -23,4 +23,7 @@ public interface ICurrentUserService
     bool IsUserHasClaim(string claimName);
     int? OrganizationId { get; }
     bool IsSuperAdmin { get; }
+
+    /// <summary>AspNetRoles.Id for the active session role (JWT ActiveRoleId).</summary>
+    string? ActiveRoleId { get; }
 }

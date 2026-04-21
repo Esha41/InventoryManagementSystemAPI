@@ -10,6 +10,12 @@ namespace Ettad.EntityFramework.Configurations
         {
             builder.Property(x => x.IsActive)
                 .HasDefaultValue(true);
+
+            builder.HasOne(u => u.DefaultRole)
+                .WithMany()
+                .HasForeignKey(u => u.DefaultRoleId)
+                .IsRequired(false)
+                .OnDelete(DeleteBehavior.SetNull);
         }
     }
 }

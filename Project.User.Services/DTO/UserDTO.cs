@@ -24,10 +24,14 @@ namespace Ettad.User.Services.DTO
 
         public string LdapUserName { get; set; }
         public bool IsOnboardingCompleted { get; set; }
+
+        /// <summary>AspNetRoles.Id for the user's default/active session role.</summary>
+        public string? DefaultRoleId { get; set; }
     }
     public class UserRoleSummaryDto
     {
         public string Id { get; set; }
         public string Name { get; set; }
+        public string? NameAr { get; set; }
     }
 }

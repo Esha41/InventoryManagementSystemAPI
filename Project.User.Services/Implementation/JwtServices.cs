@@ -18,6 +18,7 @@ namespace Ettad.User.Services.Implementation
     using Microsoft.EntityFrameworkCore;
     using Microsoft.Extensions.Options;
     using Microsoft.IdentityModel.Tokens;
+    using Ettad.Application.Common.Interfaces;
     using Ettad.Comman.Idenitity;
     using Ettad.CrossCutting.Comman.Exception;
     using Ettad.CrossCutting.Comman.Idenitity;
@@ -28,20 +29,27 @@ namespace Ettad.User.Services.Implementation
 
     public class JwtServices : IJwtServices
     {
+        public const string TokenPurposeClaim = "token_purpose";
+        public const string TokenPurposeRoleSelection = "RoleSelection";
+
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly JwtOptions _jwtOptions;
         private readonly IDateTimeProvider _dateTimeProvider;
         private readonly RoleManager<ApplicationRole> _roleManager;
+        private readonly IEffectiveRoleService _effectiveRoleService;
 
         public JwtServices(
             UserManager<ApplicationUser> userManager,
             IOptions<JwtOptions> jwtOptions,
-            IDateTimeProvider dateTimeProvider, RoleManager<ApplicationRole> roleManager)
+            IDateTimeProvider dateTimeProvider,
+            RoleManager<ApplicationRole> roleManager,
+            IEffectiveRoleService effectiveRoleService)
         {
             _userManager = userManager ?? throw new ArgumentNullException(nameof(userManager));
             _jwtOptions = jwtOptions?.Value ?? throw new ArgumentNullException(nameof(jwtOptions));
             _dateTimeProvider = dateTimeProvider ?? throw new ArgumentNullException(nameof(dateTimeProvider));
             _roleManager = roleManager;
+            _effectiveRoleService = effectiveRoleService ?? throw new ArgumentNullException(nameof(effectiveRoleService));
 
             if (string.IsNullOrWhiteSpace(_jwtOptions.Secret))
                 throw new ArgumentException("JWT secret must be configured in JwtOptions.Secret");
@@ -66,10 +74,17 @@ namespace Ettad.User.Services.Implementation
                 .FirstOrDefaultAsync(u => u.Id == userId)
                        ?? throw new Exception("server.invalidLogin");
 
+            var effectiveRoleId = await _effectiveRoleService.GetEffectiveRoleIdAsync(user.Id);
+            var effectiveRole = !string.IsNullOrEmpty(effectiveRoleId)
+                ? await _roleManager.FindByIdAsync(effectiveRoleId)
+                : null;
+            if (effectiveRole == null)
+                throw new ApiException("server.roleSelectionRequired");
+
             var now = _dateTimeProvider.Now;
             var expires = now.AddMinutes(_jwtOptions.AccessTokenExpireInMinutes);
 
-            var claims = await BuildUserClaimsAsync(user);
+            var claims = await BuildUserClaimsAsync(user, effectiveRole);
             
             // Add unique JWT ID (jti) claim for token blacklisting support
             // This allows us to invalidate specific tokens when users logout
@@ -101,6 +116,69 @@ namespace Ettad.User.Services.Implementation
                 AccessToken = tokenString,
                 ExpiresAt = expires // present local time to caller
             };
+        }
+
+        public string GenerateRoleSelectionToken(string userId)
+        {
+            if (string.IsNullOrWhiteSpace(userId))
+                throw new ArgumentException("userId required", nameof(userId));
+
+            var now = _dateTimeProvider.Now;
+            var expires = now.AddMinutes(Math.Max(1, _jwtOptions.RoleSelectionTokenExpireInMinutes));
+
+            var claims = new List<Claim>
+            {
+                new Claim(JwtRegisteredClaimNames.Sub, userId),
+                new Claim(TokenPurposeClaim, TokenPurposeRoleSelection),
+                new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
+            };
+
+            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtOptions.Secret));
+            var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+
+            var jwt = new JwtSecurityToken(
+                issuer: _jwtOptions.Issuer,
+                audience: _jwtOptions.Audience,
+                claims: claims,
+                notBefore: now,
+                expires: expires,
+                signingCredentials: credentials);
+
+            return new JwtSecurityTokenHandler().WriteToken(jwt);
+        }
+
+        public string? ValidateRoleSelectionTokenAndGetUserId(string token)
+        {
+            if (string.IsNullOrWhiteSpace(token))
+                return null;
+
+            try
+            {
+                var handler = new JwtSecurityTokenHandler();
+                var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtOptions.Secret));
+                var parameters = new TokenValidationParameters
+                {
+                    ValidateIssuerSigningKey = true,
+                    IssuerSigningKey = key,
+                    // Match JwtBearer middleware (Program.cs): issuer/audience are optional in config
+                    ValidateIssuer = false,
+                    ValidateAudience = false,
+                    ValidateLifetime = true,
+                    ClockSkew = TimeSpan.FromMinutes(1)
+                };
+
+                var principal = handler.ValidateToken(token, parameters, out _);
+                var purpose = principal.FindFirst(TokenPurposeClaim)?.Value;
+                if (purpose != TokenPurposeRoleSelection)
+                    return null;
+
+                return principal.FindFirst(JwtRegisteredClaimNames.Sub)?.Value
+                       ?? principal.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            }
+            catch
+            {
+                return null;
+            }
         }
 
         public async Task<AuthenticatedResponse> GenerateAzureJWTokenAsync(LoginWithAzureInformation information)
@@ -153,7 +231,7 @@ namespace Ettad.User.Services.Implementation
         }
 
         // helper: gather claims for the user including roles and user claims
-        private async Task<List<Claim>> BuildUserClaimsAsync(ApplicationUser user)
+        private async Task<List<Claim>> BuildUserClaimsAsync(ApplicationUser user, ApplicationRole effectiveRole)
         {
             var claims = new List<Claim>
         {
@@ -200,35 +278,13 @@ namespace Ettad.User.Services.Implementation
                 }
             }
 
-            var roleNames = await _userManager.GetRolesAsync(user);
+            claims.Add(new Claim("ActiveRoleId", effectiveRole.Id));
+            claims.Add(new Claim(ClaimTypes.Role, effectiveRole.Name ?? string.Empty));
 
-            foreach (var roleName in roleNames)
-            {
-                var role = await _roleManager.FindByNameAsync(roleName); // ApplicationRole
-                if (role != null)
-                {
-                    claims.Add(new Claim(ClaimTypes.Role, role.Name));
+            if (effectiveRole.IsSuperAdmin)
+                claims.Add(new Claim("IsSuperAdmin", "true"));
 
-                    if (role.IsSuperAdmin) // check your custom property
-                    {
-                        claims.Add(new Claim("IsSuperAdmin", "true"));
-                    }
-
-                    //// Add all role claims (permissions) to the token
-                    //var roleClaims = await _roleManager.GetClaimsAsync(role);
-                    //foreach (var roleClaim in roleClaims)
-                    //{
-                    //    // Add permission claims to the token
-                    //    claims.Add(new Claim(roleClaim.Type, roleClaim.Value));
-                    //}
-                }
-            }
-
-            // Include any user claims stored in Identity
-            //   var userClaims = await _userManager.GetClaimsAsync(user);
-            // claims.AddRange(userClaims);
-
-            return claims;
+            return await Task.FromResult(claims);
         }
     }
 

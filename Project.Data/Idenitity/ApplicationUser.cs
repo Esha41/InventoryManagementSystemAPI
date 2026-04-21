@@ -1,4 +1,5 @@
 
+using Ettad.CrossCutting.Comman.Idenitity;
 using Ettad.Data.Entities;
 using Microsoft.AspNetCore.Identity;
 using System.ComponentModel.DataAnnotations.Schema;
@@ -30,6 +31,12 @@ namespace Ettad.Comman.Idenitity
 
         public bool IsActive { get; set; } = true;
         public bool IsOnboardingCompleted { get; set; } = false;
+
+        /// <summary>Active session role (AspNetRoles.Id). Null when multi-role user has not chosen yet.</summary>
+        public string? DefaultRoleId { get; set; }
+
+        [ForeignKey(nameof(DefaultRoleId))]
+        public ApplicationRole? DefaultRole { get; set; }
 
         /// <summary>Matches DB column from migration (FK to HelpCenterTermsConditions).</summary>
         public long? LastAcceptedTermsConditionsId { get; set; }

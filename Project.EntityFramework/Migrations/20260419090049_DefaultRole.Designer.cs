@@ -4,6 +4,7 @@ using Ettad.EntityFramework.DataBaseContext;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Ettad.EntityFramework.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260419090049_DefaultRole")]
+    partial class DefaultRole
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -581,7 +584,15 @@ namespace Ettad.EntityFramework.Migrations
                         .HasMaxLength(1000)
                         .HasColumnType("nvarchar(1000)");
 
-                    b.Property<long?>("ReceiverEmployeeId")
+                    b.Property<string>("ReceiverMilitaryId")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("ReceiverName")
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.Property<long?>("ReceiverRankId")
                         .HasColumnType("bigint");
 
                     b.Property<int>("Status")
@@ -599,7 +610,7 @@ namespace Ettad.EntityFramework.Migrations
 
                     b.HasIndex("OrderId");
 
-                    b.HasIndex("ReceiverEmployeeId");
+                    b.HasIndex("ReceiverRankId");
 
                     b.HasIndex("AssetId", "Status");
 
@@ -782,7 +793,15 @@ namespace Ettad.EntityFramework.Migrations
                     b.Property<long>("OrderId")
                         .HasColumnType("bigint");
 
-                    b.Property<long?>("ReceiverEmployeeId")
+                    b.Property<string>("ReceiverMilitaryId")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("ReceiverName")
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.Property<long?>("ReceiverRankId")
                         .HasColumnType("bigint");
 
                     b.Property<int>("SubmissionStatus")
@@ -801,7 +820,7 @@ namespace Ettad.EntityFramework.Migrations
 
                     b.HasIndex("OrderId");
 
-                    b.HasIndex("ReceiverEmployeeId");
+                    b.HasIndex("ReceiverRankId");
 
                     b.HasIndex("SubmissionStatus");
 
@@ -4379,8 +4398,16 @@ namespace Ettad.EntityFramework.Migrations
                     b.Property<long>("OrderId")
                         .HasColumnType("bigint");
 
-                    b.Property<long?>("ReceiverEmployeeId")
+                    b.Property<long?>("ReceiverRankId")
                         .HasColumnType("bigint");
+
+                    b.Property<string>("RecieverMilitaryId")
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.Property<string>("RecieverName")
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
 
                     b.Property<int>("SubmissionStatus")
                         .HasColumnType("int");
@@ -4392,7 +4419,7 @@ namespace Ettad.EntityFramework.Migrations
 
                     b.HasIndex("OrderId");
 
-                    b.HasIndex("ReceiverEmployeeId");
+                    b.HasIndex("ReceiverRankId");
 
                     b.ToTable("Supplies", (string)null);
                 });
@@ -5536,9 +5563,9 @@ namespace Ettad.EntityFramework.Migrations
                         .HasForeignKey("OrderId")
                         .OnDelete(DeleteBehavior.Restrict);
 
-                    b.HasOne("Ettad.Data.Entities.Employee", "ReceiverEmployee")
+                    b.HasOne("Ettad.Data.Entities.Rank", "ReceiverRank")
                         .WithMany()
-                        .HasForeignKey("ReceiverEmployeeId")
+                        .HasForeignKey("ReceiverRankId")
                         .OnDelete(DeleteBehavior.Restrict);
 
                     b.Navigation("Asset");
@@ -5551,7 +5578,7 @@ namespace Ettad.EntityFramework.Migrations
 
                     b.Navigation("Order");
 
-                    b.Navigation("ReceiverEmployee");
+                    b.Navigation("ReceiverRank");
                 });
 
             modelBuilder.Entity("Ettad.Data.Entities.AssetHistory", b =>
@@ -5633,9 +5660,9 @@ namespace Ettad.EntityFramework.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("Ettad.Data.Entities.Employee", "ReceiverEmployee")
+                    b.HasOne("Ettad.Data.Entities.Rank", "ReceiverRank")
                         .WithMany()
-                        .HasForeignKey("ReceiverEmployeeId")
+                        .HasForeignKey("ReceiverRankId")
                         .OnDelete(DeleteBehavior.Restrict);
 
                     b.Navigation("Custodian");
@@ -5644,7 +5671,7 @@ namespace Ettad.EntityFramework.Migrations
 
                     b.Navigation("Order");
 
-                    b.Navigation("ReceiverEmployee");
+                    b.Navigation("ReceiverRank");
                 });
 
             modelBuilder.Entity("Ettad.Data.Entities.AssetSupplyDetail", b =>
@@ -6125,14 +6152,14 @@ namespace Ettad.EntityFramework.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("Ettad.Data.Entities.Employee", "ReceiverEmployee")
+                    b.HasOne("Ettad.Data.Entities.Rank", "ReceiverRank")
                         .WithMany()
-                        .HasForeignKey("ReceiverEmployeeId")
+                        .HasForeignKey("ReceiverRankId")
                         .OnDelete(DeleteBehavior.Restrict);
 
                     b.Navigation("Order");
 
-                    b.Navigation("ReceiverEmployee");
+                    b.Navigation("ReceiverRank");
                 });
 
             modelBuilder.Entity("Ettad.Data.Entities.SupplyDetail", b =>

@@ -7,8 +7,10 @@ using Ettad.CrossCutting.Comman.FileUpload;
 using Ettad.CrossCutting.Comman.Idenitity;
 using Ettad.CrossCutting.Comman.Monitoring;
 using Ettad.CrossCutting.Data.Repository;
+using Ettad.Application.Common.Interfaces;
 using Ettad.EntityFramework.DataBaseContext;
 using Ettad.EntityFramework.Interceptors;
+using Ettad.EntityFramework.Services;
 using Ettad.Inventory.Service;
 using Ettad.Inventory.Service.AllowanceItems;
 using Ettad.Inventory.Service.Monitoring;
@@ -23,6 +25,7 @@ using Ettad.RequestManagement.Service;
 using Ettad.Services;
 using Ettad.User.Services.DTO;
 using Ettad.User.Services.Helpers;
+using Ettad.User.Services.Implementation;
 using Ettad.User.Services.Interfaces;
 using Ettad.Workflow.Service;
 using Ettad.Workflows.Service.Imeplemention;
@@ -201,6 +204,8 @@ try
         var interceptor = serviceProvider.GetRequiredService<SoftDeleteInterceptor>();
         options.AddInterceptors(interceptor);
     });
+
+    builder.Services.AddScoped<IEffectiveRoleService, EffectiveRoleService>();
     #endregion
 
     #region Identity
@@ -250,6 +255,12 @@ try
                    {
                        OnTokenValidated = async context =>
                        {
+                           // Short-lived "select role" JWT uses a random jti that is not ApplicationUser.CurrentTokenId.
+                           // If sent as Bearer, skip blacklist/session checks or validation fails with 401.
+                           var purposeClaim = context.Principal?.FindFirst(JwtServices.TokenPurposeClaim);
+                           if (purposeClaim != null && purposeClaim.Value == JwtServices.TokenPurposeRoleSelection)
+                               return;
+
                            // Get the token blacklist service from DI
                            var tokenBlacklistService = context.HttpContext.RequestServices
                                .GetRequiredService<Ettad.User.Services.Interfaces.ITokenBlacklistService>();

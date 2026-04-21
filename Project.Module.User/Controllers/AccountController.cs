@@ -53,6 +53,21 @@ namespace Ettad.User.Api.Controllers
         {
             var result = await _authenticationService.Login(request);
 
+            if (result.Succeeded && result.Data != null && !result.Data.RequiresRoleSelection && !string.IsNullOrEmpty(result.Data.RefreshToken))
+            {
+                SetRefreshTokenCookie(Response, result.Data.RefreshToken);
+                result.Data.RefreshToken = string.Empty;
+            }
+
+            return ProcessResponse(result);
+        }
+
+        [HttpPost("select-role")]
+        [AllowAnonymous]
+        [ProducesResponseType((int)HttpStatusCode.OK)]
+        public async Task<IActionResult> SelectRole([FromBody] SelectRoleDto request)
+        {
+            var result = await _authenticationService.SelectRoleAsync(request);
             if (result.Succeeded && result.Data != null && !string.IsNullOrEmpty(result.Data.RefreshToken))
             {
                 SetRefreshTokenCookie(Response, result.Data.RefreshToken);

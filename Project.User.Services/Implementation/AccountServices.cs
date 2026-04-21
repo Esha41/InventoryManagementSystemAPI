@@ -19,6 +19,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Logging;
+using System.Collections.Generic;
 using System.Security.Principal;
 
 namespace Ettad.User.Services.Implementation
@@ -42,6 +43,8 @@ namespace Ettad.User.Services.Implementation
         private readonly ICaptchaService _captchaService;
         private readonly ITokenBlacklistService _tokenBlacklistService;
         private readonly IMediator _mediator;
+        private readonly IPermissionService _permissionService;
+        private readonly IEffectiveRoleService _effectiveRoleService;
 
         private readonly ApplicationDbContext _context;
 
@@ -58,7 +61,8 @@ namespace Ettad.User.Services.Implementation
             IOptions<JwtOptions> jwtOptions,
             IOptions<AdminUsersOptions> adminUsers, UserManager<ApplicationUser> userRepository,
             SignInManager<ApplicationUser> signInManager, RoleManager<ApplicationRole> roleManager, ICurrentUserService currentUserService, IEmailSender emailSender,
-            ILogger<AccountServices> logger, ApplicationDbContext context, IHttpContextAccessor httpContextAccessor, ICaptchaService captchaService, ITokenBlacklistService tokenBlacklistService, IMediator mediator)
+            ILogger<AccountServices> logger, ApplicationDbContext context, IHttpContextAccessor httpContextAccessor, ICaptchaService captchaService, ITokenBlacklistService tokenBlacklistService, IMediator mediator,
+            IPermissionService permissionService, IEffectiveRoleService effectiveRoleService)
         {
             _jwtServices = jwtServices ?? throw new ArgumentNullException(nameof(jwtServices));
             _ldapSettingsService = ldapSettingsService ?? throw new ArgumentNullException(nameof(ldapSettingsService));
@@ -78,6 +82,8 @@ namespace Ettad.User.Services.Implementation
             _captchaService = captchaService;
             _tokenBlacklistService = tokenBlacklistService ?? throw new ArgumentNullException(nameof(tokenBlacklistService));
             _mediator = mediator ?? throw new ArgumentNullException(nameof(mediator));
+            _permissionService = permissionService ?? throw new ArgumentNullException(nameof(permissionService));
+            _effectiveRoleService = effectiveRoleService ?? throw new ArgumentNullException(nameof(effectiveRoleService));
         }
 
         public async Task<APIOperationResponse<AuthenticatedResponse>> Login(
@@ -300,6 +306,16 @@ namespace Ettad.User.Services.Implementation
 
             // Record successful login
             await RecordLoginAttemptAsync(loginInformation.Username, user.Id, true, null, LoginType.Admin, cancellationToken);
+
+            var roleSelection = await TryBuildRoleSelectionResponseAsync(user.Id, cancellationToken);
+            if (roleSelection != null)
+            {
+                var durationSel = (_dateTimeProvider.Now - startTime).TotalMilliseconds;
+                _logger.LogInformation(
+                    "[ADMIN LOGIN] Role selection required | Username: {Username} | UserId: {UserId} | Duration: {Duration}ms",
+                    loginInformation.Username, user.Id, durationSel);
+                return APIOperationResponse<AuthenticatedResponse>.Success(roleSelection);
+            }
 
             var authResponse = await CreateAndReturnAuthResponseAsync(user, cancellationToken);
 
@@ -646,12 +662,21 @@ namespace Ettad.User.Services.Implementation
                         "An active session was found. This may be from a previous session or another device.");
                 }
 
+                // Record successful login before token issuance
+                await RecordLoginAttemptAsync(resolvedUsername, user.Id, true, null, LoginType.LDAP, cancellationToken);
+
+                var roleSelection = await TryBuildRoleSelectionResponseAsync(user.Id, cancellationToken);
+                if (roleSelection != null)
+                {
+                    _logger.LogInformation(
+                        "[LDAP LOGIN] Role selection required | Username: {Username} | UserId: {UserId}",
+                        resolvedUsername, user.Id);
+                    return APIOperationResponse<AuthenticatedResponse>.Success(roleSelection);
+                }
+
                 // Step 10: Generate authentication response
                 _logger.LogDebug("[LDAP LOGIN] Generating auth response | UserId: {UserId}", user.Id);
                 var response = await CreateAndReturnAuthResponseAsync(user, cancellationToken);
-
-                // Record successful login
-                await RecordLoginAttemptAsync(resolvedUsername, user.Id, true, null, LoginType.LDAP, cancellationToken);
 
                 var duration = (_dateTimeProvider.Now - startTime).TotalMilliseconds;
                 _logger.LogInformation(
@@ -734,6 +759,108 @@ namespace Ettad.User.Services.Implementation
             }
         }
 
+        private async Task<AuthenticatedResponse?> TryBuildRoleSelectionResponseAsync(string userId, CancellationToken cancellationToken)
+        {
+            var user = await _userRepository.Users
+                .AsNoTracking()
+                .FirstOrDefaultAsync(u => u.Id == userId, cancellationToken);
+            if (user == null)
+                return null;
+
+            var roleNames = await _userRepository.GetRolesAsync(user);
+            if (roleNames.Count <= 1 || !string.IsNullOrEmpty(user.DefaultRoleId))
+                return null;
+
+            var available = new List<RoleForSelectionDto>();
+            foreach (var name in roleNames)
+            {
+                var role = await _roleManager.FindByNameAsync(name);
+                if (role != null)
+                    available.Add(new RoleForSelectionDto { Id = role.Id, Name = role.Name ?? name, NameAr = role.NameAr });
+            }
+
+            if (available.Count <= 1)
+                return null;
+
+            var token = _jwtServices.GenerateRoleSelectionToken(user.Id);
+            return new AuthenticatedResponse
+            {
+                AccessToken = string.Empty,
+                RefreshToken = string.Empty,
+                ExpiresAt = _dateTimeProvider.Now,
+                RequiresRoleSelection = true,
+                AvailableRoles = available,
+                RoleSelectionToken = token
+            };
+        }
+
+        public async Task<APIOperationResponse<AuthenticatedResponse>> SelectRoleAsync(SelectRoleDto dto, CancellationToken cancellationToken = default)
+        {
+            if (dto == null || string.IsNullOrWhiteSpace(dto.RoleId))
+            {
+                return APIOperationResponse<AuthenticatedResponse>.Fail(
+                    ResponseType.BadRequest,
+                    CommonErrorCodes.INVALID_INPUT,
+                    "Role is required.");
+            }
+
+            string? userId = null;
+            if (!string.IsNullOrWhiteSpace(dto.RoleSelectionToken))
+                userId = _jwtServices.ValidateRoleSelectionTokenAndGetUserId(dto.RoleSelectionToken);
+            else if (!string.IsNullOrEmpty(_currentUserService.UserId))
+                userId = _currentUserService.UserId;
+
+            if (string.IsNullOrEmpty(userId))
+            {
+                return APIOperationResponse<AuthenticatedResponse>.Fail(
+                    ResponseType.Unauthorized,
+                    CommonErrorCodes.UN_AUTHORIZED,
+                    "server.unauthorized");
+            }
+
+            var user = await _userRepository.Users.FirstOrDefaultAsync(u => u.Id == userId && !u.IsDeleted, cancellationToken);
+            if (user == null)
+            {
+                return APIOperationResponse<AuthenticatedResponse>.Fail(
+                    ResponseType.Unauthorized,
+                    CommonErrorCodes.UN_AUTHORIZED,
+                    "server.invalidLogin");
+            }
+
+            var role = await _roleManager.FindByIdAsync(dto.RoleId);
+            if (role == null)
+            {
+                return APIOperationResponse<AuthenticatedResponse>.Fail(
+                    ResponseType.BadRequest,
+                    CommonErrorCodes.INVALID_INPUT,
+                    "Invalid role.");
+            }
+
+            if (!await _userRepository.IsInRoleAsync(user, role.Name!))
+            {
+                return APIOperationResponse<AuthenticatedResponse>.Fail(
+                    ResponseType.Forbidden,
+                    CommonErrorCodes.FORBIDDEN,
+                    "User is not assigned this role.");
+            }
+
+            user.DefaultRoleId = dto.RoleId;
+            var updateResult = await _userRepository.UpdateAsync(user);
+            if (!updateResult.Succeeded)
+            {
+                var err = string.Join(",", updateResult.Errors.Select(e => e.Description));
+                return APIOperationResponse<AuthenticatedResponse>.Fail(
+                    ResponseType.BadRequest,
+                    CommonErrorCodes.FAILED_TO_SAVE_DATA,
+                    err);
+            }
+
+            await _permissionService.InvalidatePermissionCacheForUserAsync(userId);
+
+            var authResponse = await CreateAndReturnAuthResponseAsync(user, cancellationToken);
+            return APIOperationResponse<AuthenticatedResponse>.Success(authResponse);
+        }
+
         /// <summary>
         /// True when the login request carries the same refresh token cookie as the user's current session (same browser/client).
         /// </summary>
@@ -770,27 +897,19 @@ namespace Ettad.User.Services.Implementation
             if (user == null)
                 return APIOperationResponse<List<ClaimDto>>.Success(roleClaims);
 
-            // 2. Get user roles
-            var roles = await _userRepository.GetRolesAsync(user);
+            var effectiveRoleId = await _effectiveRoleService.GetEffectiveRoleIdAsync(user.Id);
+            var effectiveRole = !string.IsNullOrEmpty(effectiveRoleId)
+                ? await _roleManager.FindByIdAsync(effectiveRoleId)
+                : null;
+            if (effectiveRole == null)
+                return APIOperationResponse<List<ClaimDto>>.Success(roleClaims);
 
-            // 3. Collect claims for each role
-            foreach (var roleName in roles)
+            var claims = await _roleManager.GetClaimsAsync(effectiveRole);
+            roleClaims.AddRange(claims.Select(x => new ClaimDto
             {
-                var role = await _roleManager.FindByNameAsync(roleName);
-                if (role != null)
-                {
-                    var claims = await _roleManager.GetClaimsAsync(role);
-
-
-                    roleClaims.AddRange(claims.Select
-                          (x => new ClaimDto
-                          {
-                              Id = x.Value,
-                              ClaimType = x.Type,
-
-                          }));
-                }
-            }
+                Id = x.Value,
+                ClaimType = x.Type,
+            }));
 
             return APIOperationResponse<List<ClaimDto>>.Success(roleClaims);
         }

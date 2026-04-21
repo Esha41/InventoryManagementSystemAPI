@@ -20,5 +20,6 @@ namespace Ettad.User.Services.Interfaces
         Task<APIOperationResponse<string>> LogoutAsync(CancellationToken cancellationToken = default);
         Task<APIOperationResponse<AuthenticatedResponse>> RefreshTokenFromCookieAsync(CancellationToken cancellationToken = default);
 
+        Task<APIOperationResponse<AuthenticatedResponse>> SelectRoleAsync(SelectRoleDto dto, CancellationToken cancellationToken = default);
     }
 }
