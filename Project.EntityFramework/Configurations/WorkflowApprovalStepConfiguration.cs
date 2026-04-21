@@ -48,6 +48,9 @@ namespace Ettad.EntityFramework.Configurations
             builder.Property(x => x.ApprovedDate)
                    .IsRequired(false);
 
+            builder.Property(x => x.ExpirationWarningSentAt)
+                   .IsRequired(false);
+
             // Relationships
             builder.HasOne(x => x.WorkflowStep)
                    .WithMany(x => x.ApprovalSteps)

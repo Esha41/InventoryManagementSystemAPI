@@ -30,6 +30,7 @@ using Ettad.User.Services.Interfaces;
 using Ettad.Workflow.Service;
 using Ettad.Workflows.Service.Imeplemention;
 using Ettad.Workflows.Service.Interface;
+using Ettad.Workflows.Service.Monitoring;
 using Hangfire;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
@@ -48,6 +49,7 @@ using Ettad.ReportManagement.Service.Dtos;
 using Ettad.ReportManagement.Service.Interfaces;
 using Ettad.ReportManagement.Service.Implementation;
 using Ettad.ReportManagement.Service.Mapper;
+using Ettad.Data.Entities.Settings;
 
 // Configure Serilog
 Log.Logger = new LoggerConfiguration()
@@ -535,6 +537,54 @@ try
             lowStockCronExpression);
         
         Log.Information("Low Stock Monitor job registered with schedule: {Schedule}", lowStockCronExpression);
+
+        var orderAutoRejectCron = app.Configuration.GetValue<string>("BackgroundJobs:OrderAutoReject:CronExpression")
+            ?? OrderAutoRejectConstants.DefaultCronExpression;
+        var orderAutoRejectEnabled = true;
+
+        try
+        {
+            var policy = await context.OrderAutoRejectPolicies.AsNoTracking().FirstOrDefaultAsync();
+            if (policy != null)
+            {
+                orderAutoRejectCron = string.IsNullOrWhiteSpace(policy.ScanCron)
+                    ? OrderAutoRejectConstants.DefaultCronExpression
+                    : policy.ScanCron.Trim();
+                orderAutoRejectEnabled = policy.IsEnabled;
+            }
+            else
+            {
+                var orderAutoRejectCronSetting = await context.Settings
+                    .FirstOrDefaultAsync(s => s.Key == OrderAutoRejectConstants.ScanCronKey && s.Group == OrderAutoRejectConstants.Group);
+                orderAutoRejectCron = orderAutoRejectCronSetting?.Value?.Trim()
+                    ?? app.Configuration.GetValue<string>("BackgroundJobs:OrderAutoReject:CronExpression")
+                    ?? OrderAutoRejectConstants.DefaultCronExpression;
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "Could not read OrderAutoRejectPolicies; using Settings/appsettings for order auto-reject cron.");
+            var orderAutoRejectCronSetting = await context.Settings
+                .FirstOrDefaultAsync(s => s.Key == OrderAutoRejectConstants.ScanCronKey && s.Group == OrderAutoRejectConstants.Group);
+            orderAutoRejectCron = orderAutoRejectCronSetting?.Value?.Trim()
+                ?? app.Configuration.GetValue<string>("BackgroundJobs:OrderAutoReject:CronExpression")
+                ?? OrderAutoRejectConstants.DefaultCronExpression;
+        }
+
+        if (orderAutoRejectEnabled)
+        {
+            recurringJobManager.AddOrUpdate<OrderAutoRejectHangfireJob>(
+                OrderAutoRejectConstants.JobId,
+                job => job.ExecuteAsync(),
+                orderAutoRejectCron,
+                new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
+            Log.Information("Order auto-reject job registered with schedule: {Schedule}", orderAutoRejectCron);
+        }
+        else
+        {
+            recurringJobManager.RemoveIfExists(OrderAutoRejectConstants.JobId);
+            Log.Information("Order auto-reject recurring job removed (disabled in policy).");
+        }
     }
     
     Log.Information("Ettad Backend API started successfully");

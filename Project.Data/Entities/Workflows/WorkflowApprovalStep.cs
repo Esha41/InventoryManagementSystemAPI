@@ -36,11 +36,17 @@ namespace Ettad.Data.Entities.Workflows
 
         public bool IsCurrent { get; set; }
 
+        /// <summary>
+        /// When set, a pre-expiry warning was already sent for this approval step (order auto-reject monitor).
+        /// </summary>
+        public DateTime? ExpirationWarningSentAt { get; set; }
+
         // When a step is returned for review, this tracks which step to return to after approval
         public int? ReturnToStepId { get; set; }
 
         // Navigation properties
         public virtual WorkflowStep WorkflowStep { get; set; }
 
+        public virtual ICollection<WorkflowApprovalStepReminder> Reminders { get; set; } = new List<WorkflowApprovalStepReminder>();
     }
 }
