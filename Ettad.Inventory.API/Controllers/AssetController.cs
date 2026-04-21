@@ -7,7 +7,6 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using OfficeOpenXml;
 using System.Net;
-using Ettad.CrossCutting.Comman.Time;
 using Ettad.CrossCutting.Comman.Models;
 
 namespace Ettad.Inventory.API.Controllers
@@ -18,14 +17,11 @@ namespace Ettad.Inventory.API.Controllers
     public class AssetController : ApiControllerBase
     {
         private readonly IAssetService _assetService;
-        private readonly IDateTimeProvider _dateTimeProvider;
 
-        public AssetController(IAssetService assetService, IDateTimeProvider dateTimeProvider)
+        public AssetController(IAssetService assetService)
         {
             _assetService = assetService;
-            _dateTimeProvider = dateTimeProvider;
-            
-            // Set EPPlus license context
+
             ExcelPackage.License.SetNonCommercialPersonal("Ettad");
         }
 
@@ -96,26 +92,7 @@ namespace Ettad.Inventory.API.Controllers
         [CheckAuthorize("Permissions.Asset.Create")]
         public async Task<IActionResult> BulkCreate([FromForm] string dtosJson, [FromForm] List<IFormFile>? files = null)
         {
-            if (string.IsNullOrWhiteSpace(dtosJson))
-                return BadRequest("dtosJson is required");
-
-            List<CreateAssetDto>? dtos;
-            try
-            {
-                dtos = System.Text.Json.JsonSerializer.Deserialize<List<CreateAssetDto>>(dtosJson, new System.Text.Json.JsonSerializerOptions
-                {
-                    PropertyNameCaseInsensitive = true
-                });
-            }
-            catch (System.Text.Json.JsonException ex)
-            {
-                return BadRequest($"Invalid dtosJson payload: {ex.Message}");
-            }
-
-            if (dtos == null || dtos.Count == 0)
-                return BadRequest("No assets provided in dtosJson");
-
-            var result = await _assetService.CreateBulkAsync(dtos, files);
+            var result = await _assetService.CreateBulkAsync(dtosJson, files);
             return ProcessResponse(result);
         }
 
@@ -168,16 +145,6 @@ namespace Ettad.Inventory.API.Controllers
         [CheckAuthorize("Permissions.Asset.Create")]
         public async Task<IActionResult> Import(IFormFile file, [FromForm] long depotId, [FromQuery] string language = "en")
         {
-            if (file == null || file.Length == 0)
-            {
-                return BadRequest(new { message = "File is required" });
-            }
- 
-            if (depotId <= 0)
-            {
-                return BadRequest(new { message = "Valid depot ID is required" });
-            }
- 
             var result = await _assetService.ImportAsync(file, depotId, language);
             return ProcessResponse(result);
         }
@@ -190,16 +157,6 @@ namespace Ettad.Inventory.API.Controllers
         [CheckAuthorize("Permissions.Asset.Create")]
         public async Task<IActionResult> ImportPreview(IFormFile file, [FromForm] long depotId, [FromQuery] string language = "en")
         {
-            if (file == null || file.Length == 0)
-            {
-                return BadRequest(new { message = "File is required" });
-            }
- 
-            if (depotId <= 0)
-            {
-                return BadRequest(new { message = "Valid depot ID is required" });
-            }
- 
             var result = await _assetService.ImportPreviewAsync(file, depotId, language);
             return ProcessResponse(result);
         }
@@ -213,27 +170,16 @@ namespace Ettad.Inventory.API.Controllers
         [CheckAuthorize("Permissions.Asset.Create")]
         public async Task<IActionResult> GenerateImportTemplate([FromQuery] long depotId, [FromQuery] string language = "en")
         {
-            try
-            {
-                var templateResult = await _assetService.GenerateImportTemplateAsync(depotId, language);
-                
-                if (!templateResult.Succeeded || templateResult.Data == null)
-                {
-                    return StatusCode(500, new { message = "Failed to generate template", errors = templateResult.Errors });
-                }
+            var templateResult = await _assetService.GenerateImportTemplateAsync(depotId, language);
+            if (!templateResult.Succeeded || templateResult.Data == null)
+                return ProcessResponse(templateResult);
 
-                var fileName = $"Asset_Import_Template_Depot_{depotId}_{_dateTimeProvider.Now:yyyyMMdd}.xlsx";
-                
-                return File(
-                    templateResult.Data,
-                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                    fileName
-                );
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { message = "An error occurred while generating the template", error = ex.Message });
-            }
+            var fileName = $"Asset_Import_Template_Depot_{depotId}_{DateTime.UtcNow:yyyyMMdd}.xlsx";
+            return File(
+                templateResult.Data,
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                fileName
+            );
         }
     }
 }

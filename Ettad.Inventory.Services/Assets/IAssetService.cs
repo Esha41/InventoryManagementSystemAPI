@@ -12,7 +12,7 @@ namespace Ettad.Inventory.Service.Assets
         Task<APIOperationResponse<AssetDto>> GetByIdAsync(long id);
         Task<APIOperationResponse<AssetDto>> GetBySerialNumberAsync(string serialNumber);
         Task<APIOperationResponse<long>> CreateAsync(CreateAssetDto inputDto, List<IFormFile>? files = null);
-        Task<APIOperationResponse<List<long>>> CreateBulkAsync(List<CreateAssetDto> inputDtos, List<IFormFile>? files = null);
+        Task<APIOperationResponse<List<long>>> CreateBulkAsync(string? dtosJson, List<IFormFile>? files = null);
         Task<APIOperationResponse<bool>> UpdateAsync(long id, UpdateAssetDto inputDto, List<IFormFile>? files = null);
         Task<APIOperationResponse<BulkCreateFromTemplateResultDto>> CreateBulkFromTemplateAsync(CreateBulkAssetsFromTemplateDto dto);
         Task<APIOperationResponse<bool>> UpdateSerialNumberAsync(long assetId, string? serialNumber);

@@ -5,11 +5,9 @@ using Ettad.CrossCutting.Comman.Time;
 using Ettad.CrossCutting.Data.Repository;
 using Ettad.Data.Entities;
 using Ettad.Data.Enums;
-using Ettad.EntityFramework.DataBaseContext;
 using Ettad.Notification.Service;
 using Ettad.ResponseHandler.Consts;
 using Ettad.ResponseHandler.Models;
-using Microsoft.EntityFrameworkCore;
 using System.Text.Json;
 using AnnouncementEntity = Ettad.Data.Entities.Announcement;
 
@@ -21,7 +19,7 @@ namespace Ettad.Announcement.Service
         private readonly ICrossCuttingRepository<AnnouncementDismissal> _dismissalRepository;
         private readonly IDateTimeProvider _dateTimeProvider;
         private readonly IMapper _mapper;
-        private readonly ApplicationDbContext _context;
+        private readonly ICurrentUserService _currentUserService;
         private readonly INotificationHelperService _notificationHelper;
         private readonly IEffectiveRoleService _effectiveRoleService;
 
@@ -30,7 +28,7 @@ namespace Ettad.Announcement.Service
             ICrossCuttingRepository<AnnouncementDismissal> dismissalRepository,
             IDateTimeProvider dateTimeProvider,
             IMapper mapper,
-            ApplicationDbContext context,
+            ICurrentUserService currentUserService,
             INotificationHelperService notificationHelper,
             IEffectiveRoleService effectiveRoleService)
         {
@@ -38,7 +36,7 @@ namespace Ettad.Announcement.Service
             _dismissalRepository = dismissalRepository;
             _dateTimeProvider = dateTimeProvider;
             _mapper = mapper;
-            _context = context;
+            _currentUserService = currentUserService;
             _notificationHelper = notificationHelper;
             _effectiveRoleService = effectiveRoleService;
         }
@@ -93,10 +91,14 @@ namespace Ettad.Announcement.Service
             }
         }
 
-        public async Task<APIOperationResponse<List<ActiveAnnouncementDto>>> GetActiveAnnouncementsForUserAsync(string userId)
+        public async Task<APIOperationResponse<List<ActiveAnnouncementDto>>> GetActiveAnnouncementsForUserAsync()
         {
             try
             {
+                var unauthorized = GetCurrentUserIdOrFail<List<ActiveAnnouncementDto>>(out var userId);
+                if (unauthorized != null)
+                    return unauthorized;
+
                 var now = _dateTimeProvider.Now;
            
                 var startOfToday = now.Date;
@@ -166,12 +168,14 @@ namespace Ettad.Announcement.Service
             }
         }
 
-        public async Task<APIOperationResponse<AnnouncementDto>> CreateAnnouncementAsync(
-            CreateAnnouncementDto dto,
-            string createdBy)
+        public async Task<APIOperationResponse<AnnouncementDto>> CreateAnnouncementAsync(CreateAnnouncementDto dto)
         {
             try
             {
+                var unauthorized = GetCurrentUserIdOrFail<AnnouncementDto>(out var createdBy);
+                if (unauthorized != null)
+                    return unauthorized;
+
                 // Validate
                 if (string.IsNullOrWhiteSpace(dto.Message))
                 {
@@ -232,11 +236,14 @@ namespace Ettad.Announcement.Service
 
         public async Task<APIOperationResponse<AnnouncementDto>> UpdateAnnouncementAsync(
             long id,
-            UpdateAnnouncementDto dto,
-            string updatedBy)
+            UpdateAnnouncementDto dto)
         {
             try
             {
+                var unauthorized = GetCurrentUserIdOrFail<AnnouncementDto>(out var updatedBy);
+                if (unauthorized != null)
+                    return unauthorized;
+
                 var announcement = await _announcementRepository.FindOneAsync(
                     a => a.Id == id && !a.IsDeleted
                 );
@@ -319,10 +326,14 @@ namespace Ettad.Announcement.Service
             }
         }
 
-        public async Task<APIOperationResponse<bool>> DeleteAnnouncementAsync(long id, string deletedBy)
+        public async Task<APIOperationResponse<bool>> DeleteAnnouncementAsync(long id)
         {
             try
             {
+                var unauthorized = GetCurrentUserIdOrFail<bool>(out var deletedBy);
+                if (unauthorized != null)
+                    return unauthorized;
+
                 var announcement = await _announcementRepository.FindOneAsync(
                     a => a.Id == id && !a.IsDeleted
                 );
@@ -352,10 +363,14 @@ namespace Ettad.Announcement.Service
             }
         }
 
-        public async Task<APIOperationResponse<bool>> DismissAnnouncementAsync(long announcementId, string userId)
+        public async Task<APIOperationResponse<bool>> DismissAnnouncementAsync(long announcementId)
         {
             try
             {
+                var unauthorized = GetCurrentUserIdOrFail<bool>(out var userId);
+                if (unauthorized != null)
+                    return unauthorized;
+
                 // Check if announcement exists and is dismissable
                 var announcement = await _announcementRepository.FindOneAsync(
                     a => a.Id == announcementId && !a.IsDeleted
@@ -500,6 +515,15 @@ namespace Ettad.Announcement.Service
                 CreationDate = entity.CreationDate,
                 CreatedBy = entity.CreatedBy
             };
+        }
+
+        private APIOperationResponse<T>? GetCurrentUserIdOrFail<T>(out string userId)
+        {
+            userId = _currentUserService.UserId ?? string.Empty;
+            if (!string.IsNullOrWhiteSpace(userId))
+                return null;
+
+            return APIOperationResponse<T>.Fail(ResponseType.Unauthorized, "User not authenticated");
         }
     }
 }

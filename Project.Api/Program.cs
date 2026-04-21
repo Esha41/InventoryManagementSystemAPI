@@ -148,6 +148,7 @@ try
     builder.Services.AddScoped(typeof(CrossCuttingRepository<>));
 
     builder.Services.AddScoped(typeof(ICrossCuttingRepository<>), typeof(CrossCuttingRepository<>));
+    builder.Services.AddScoped<ITransactionManager, EfTransactionManager>();
 
     builder.Services.AddScoped(typeof(ILookupService<,>), typeof(LookupService<,>));
 

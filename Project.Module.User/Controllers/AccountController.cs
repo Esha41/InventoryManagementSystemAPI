@@ -1,12 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Identity.Data;
 using Microsoft.AspNetCore.Mvc;
 using Ettad.ResponseHandler.Models;
-using Ettad.Services.DataTransferObject.AuthenticationDto;
-using Ettad.Services.Helpers;
-using Ettad.Services.Interfaces;
 using Ettad.User.Services.DTO;
-using Ettad.User.Services.Implementation;
 using Ettad.User.Services.Interfaces;
 using System.Net;
 using Microsoft.Extensions.Options;
@@ -21,7 +16,6 @@ namespace Ettad.User.Api.Controllers
     {
         #region fields
         private readonly IAccountServices _authenticationService;
-        private readonly IHelpureService _helpureService;
         private readonly ICaptchaService _captchaService;
         private readonly IOnboardingService _onboardingService;
         private readonly JwtOptions _jwtOptions;
@@ -30,21 +24,16 @@ namespace Ettad.User.Api.Controllers
         #region ctor
         public AccountController(
             IAccountServices authenticationService,
-            IHelpureService helpureService,
             ICaptchaService captchaService,
             IOnboardingService onboardingService,
             IOptions<JwtOptions> jwtOptions)
         {
             _authenticationService = authenticationService;
-            _helpureService = helpureService;
             _captchaService = captchaService;
             _onboardingService = onboardingService;
             _jwtOptions = jwtOptions?.Value ?? new JwtOptions();
         }
         #endregion
-
-
-
 
         [Route("login")]
         [HttpPost]
