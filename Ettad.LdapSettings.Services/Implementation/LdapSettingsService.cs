@@ -8,13 +8,13 @@ using Ettad.Application.Common.Interfaces;
 using Ettad.EntityFramework.DataBaseContext;
 using Ettad.LdapSettings.Services.DTO;
 using Ettad.LdapSettings.Services.Interfaces;
-using Ettad.Data.Enums;
 using Ettad.ResponseHandler.Consts;
 using Ettad.ResponseHandler.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using SettingsEntity = Ettad.Data.Entities.Settings.Settings;
 using Ettad.CrossCutting.Comman.Time;
+using Ettad.Data.Constants;
 
 namespace Ettad.LdapSettings.Services.Implementation
 {
