@@ -1,7 +1,7 @@
 using System;
 using System.ComponentModel.DataAnnotations;
 
-namespace Ettad.CrossCutting.Comman
+namespace Ettad.CrossCutting.Comman.Interface
 {
     public interface ILookup
     {

@@ -1,8 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
-using Ettad.CrossCutting.Comman;
 using Ettad.Lookups.Services.Contracts;
 using Ettad.ResponseHandler.Models;
+using Ettad.CrossCutting.Comman.Interface;
 
 namespace Ettad.Lookups.Domain.API.Controllers
 {
