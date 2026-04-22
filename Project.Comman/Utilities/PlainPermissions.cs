@@ -1,7 +1,6 @@
-using Ettad.EntityFramework.Utiliies;
 using System.ComponentModel;
 
-namespace Ettad.Data.Enums
+namespace Ettad.CrossCutting.Comman.Utilities
 {
     public enum PlainPermissions
     {
@@ -10,32 +9,32 @@ namespace Ettad.Data.Enums
 
         [Category(PlainPermissionsGenerator.Dashboard)]
         InventoryDashboard,
-      
+
         [Category(PlainPermissionsGenerator.Dashboard)]
         Forecast_view,
 
         [Category(PlainPermissionsGenerator.SystemFeatures)]
         CanChangePassword,
-      
+
         [Category(PlainPermissionsGenerator.SystemFeatures)]
         CanGenerateReport,
-   
+
         [Category(PlainPermissionsGenerator.SystemFeatures)]
         CanImportData,
-    
+
         [Category(PlainPermissionsGenerator.SystemFeatures)]
         EmailLogs,
-      
+
         [Category(PlainPermissionsGenerator.SystemFeatures)]
         AdminImportExport,
-      
+
         [Category(PlainPermissionsGenerator.SystemFeatures)]
         StockNotificationSettingsPage,
 
         /// <summary>Admin dashboard: view all delegations, history, and delegation system settings.</summary>
         [Category(PlainPermissionsGenerator.SystemFeatures)]
         DelegationManagement,
-      
+
         [Category(PlainPermissionsGenerator.Reports)]
         InventorySummaryReportPage,
 

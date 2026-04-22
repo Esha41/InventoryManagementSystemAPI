@@ -1,4 +1,4 @@
-using Ettad.CrossCutting.Comman;
+using Ettad.CrossCutting.Comman.Interface;
 using Ettad.ResponseHandler.Models;
 using System.Collections.Generic;
 using System.Threading.Tasks;

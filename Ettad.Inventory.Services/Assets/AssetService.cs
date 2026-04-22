@@ -3,7 +3,6 @@ using FluentValidation;
 using System.Linq.Expressions;
 using Ettad.CrossCutting.Data.Repository;
 using Ettad.CrossCutting.Comman.FileUpload;
-using Ettad.Comman.Enums;
 using Ettad.Data.Entities;
 using Ettad.Data.Enums;
 using Ettad.Inventory.Service.Assets.Dtos;

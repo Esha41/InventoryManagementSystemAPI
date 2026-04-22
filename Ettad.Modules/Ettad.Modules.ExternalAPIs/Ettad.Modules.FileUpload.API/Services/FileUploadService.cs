@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Ettad.Comman.Enums;
 using Ettad.CrossCutting.Comman.FileUpload;
 using Ettad.CrossCutting.Data.Repository;
 using Ettad.Data.Entities;

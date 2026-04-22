@@ -1,5 +1,5 @@
-using Ettad.CrossCutting.Comman;
 using Ettad.CrossCutting.Comman.Base;
+using Ettad.CrossCutting.Comman.Interface;
 
 namespace Ettad.Data.Entities
 {

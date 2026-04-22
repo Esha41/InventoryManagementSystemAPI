@@ -1,5 +1,4 @@
-using Ettad.Data.Enums;
-using Newtonsoft.Json;
+using Ettad.CrossCutting.Comman.Utilities;
 
 namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
 {

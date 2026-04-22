@@ -12,6 +12,7 @@ using Ettad.Inventory.Service.Monitoring.Dtos;
 using Ettad.ResponseHandler.Consts;
 using Ettad.ResponseHandler.Models;
 using Ettad.CrossCutting.Comman.Time;
+using Ettad.Data.Constants;
 
 namespace Ettad.Inventory.Service.Monitoring
 {

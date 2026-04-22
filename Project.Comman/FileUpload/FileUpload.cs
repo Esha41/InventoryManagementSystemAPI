@@ -1,6 +1,5 @@
 
 using System;
-using Ettad.Comman.Enums;
 using Ettad.ResponseHandler.Models;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;

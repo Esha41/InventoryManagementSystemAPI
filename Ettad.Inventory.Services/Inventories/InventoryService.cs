@@ -17,7 +17,6 @@ using System;
 using Ettad.CrossCutting.Comman.Models;
 using Ettad.CrossCutting.Comman.Time;
 using Ettad.CrossCutting.Comman.FileUpload;
-using Ettad.Comman.Enums;
 using Ettad.Services;
 using OfficeOpenXml;
 using OfficeOpenXml.DataValidation;

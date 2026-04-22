@@ -1,16 +1,13 @@
 using Ettad.Comman.Idenitity;
 using Ettad.CrossCutting.Comman.Idenitity;
+using Ettad.CrossCutting.Comman.Utilities;
 using Ettad.Data.Entities;
 using Ettad.EntityFramework.DataBaseContext.DataSeeding;
 using Ettad.EntityFramework.DataBaseContext.DataSeeding.Workflows;
-using Ettad.EntityFramework.Utiliies;
-using Ettad.Infrastructure.Utilities;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Hosting;
-using System.Collections.Generic;
-using System.Linq;
 using System.Security.Claims;
 using System.Text.RegularExpressions;
 
@@ -38,7 +35,7 @@ namespace Ettad.EntityFramework.DataBaseContext
                 };
 
                 var plainPermissions = PlainPermissionsGenerator.GetPlainPermissionsWithGroup();
-                var crudPermissions = await new CrudPermissionsGenerator(context).GenerateAllPermissions();
+                var crudPermissions = await new CrudPermissionsGenerator().GenerateAllPermissions();
 
                 var existingAdminRole = await roleManager.FindByNameAsync(administratorRole.Name);
                 if (existingAdminRole == null)

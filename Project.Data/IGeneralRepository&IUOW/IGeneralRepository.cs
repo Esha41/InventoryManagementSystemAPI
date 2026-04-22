@@ -12,17 +12,8 @@ namespace Ettad.Data.IGenericRepository_IUOW
         Task DeleteAsync(T entity);
         Task<T> GetLastOrDefaultAsync<TKey>(Expression<Func<T, TKey>> keySelector);
         public Task<T> GetEntityByPropertyWithIncludeAsync(Expression<Func<T, bool>> attributeSelector, params Expression<Func<T, object>>[] includes);
-
-
-     //   IQueryable<T> Find(Expression<Func<T, bool>> predicate, bool disableTracking = true, bool includeSoftDeleted = false);
-
-    
         IQueryable<T> Find(Expression<Func<T, bool>> predicate, bool includeSoftDeleted = false, params string[] includes);
-
-    
         Task<T> FindOneAsync(Expression<Func<T, bool>> predicate, bool includeSoftDeleted = false, params string[] includesPaths);
-
         Task<IEnumerable<T>> FindAsync(Expression<Func<T, bool>> predicate, bool includeSoftDeleted = false, params string[] includes);
-
     }
 }

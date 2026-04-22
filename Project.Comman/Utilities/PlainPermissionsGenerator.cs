@@ -1,9 +1,8 @@
 using System.ComponentModel;
 using System.Reflection;
-using Ettad.Data.Enums;
 using Ettad.CrossCutting.Comman.Models.Identity;
 
-namespace Ettad.EntityFramework.Utiliies
+namespace Ettad.CrossCutting.Comman.Utilities
 {
     public static class PlainPermissionsGenerator
     {
@@ -44,6 +43,4 @@ namespace Ettad.EntityFramework.Utiliies
                 }).ToList();
         }
     }
-
-
 }

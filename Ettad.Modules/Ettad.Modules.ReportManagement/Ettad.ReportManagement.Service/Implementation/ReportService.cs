@@ -12,6 +12,7 @@ using Microsoft.Extensions.Logging;
 using Ettad.ReportManagement.Service.Dtos;
 using Ettad.Data.Entities;
 using Ettad.ReportManagement.Service.Interfaces;
+using Ettad.Data.Constants;
 
 namespace Ettad.ReportManagement.Service.Implementation
 {
