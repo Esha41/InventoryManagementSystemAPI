@@ -1,4 +1,4 @@
-namespace Ettad.Comman.Enums
+namespace Ettad.CrossCutting.Comman.FileUpload
 {
     /// <summary>
     /// Enum to identify which domain entity a file belongs to.

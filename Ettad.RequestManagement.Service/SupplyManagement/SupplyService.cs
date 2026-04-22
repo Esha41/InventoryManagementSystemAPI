@@ -1,7 +1,6 @@
 using AutoMapper;
 using FluentValidation;
 using Ettad.Application.Common.Interfaces;
-using Ettad.Comman.Enums;
 using Ettad.Comman.Idenitity;
 using Ettad.CrossCutting.Comman.FileUpload;
 using Ettad.CrossCutting.Data.Repository;

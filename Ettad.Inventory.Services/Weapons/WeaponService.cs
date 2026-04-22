@@ -5,7 +5,6 @@ using System.Linq;
 using System.Drawing;
 using Ettad.CrossCutting.Data.Repository;
 using Ettad.CrossCutting.Comman.FileUpload;
-using Ettad.Comman.Enums;
 using Ettad.Data.Entities;
 using Ettad.Data.Enums;
 using Ettad.Inventory.Service.Weapons.Dtos;

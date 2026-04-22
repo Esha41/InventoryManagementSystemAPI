@@ -1,5 +1,4 @@
 using Ettad.Application.Common.Interfaces;
-using Ettad.Comman.Enums;
 using Ettad.CrossCutting.Comman.FileUpload;
 using Ettad.CrossCutting.Data.Repository;
 using Ettad.Data.Entities;

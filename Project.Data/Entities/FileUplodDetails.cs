@@ -1,5 +1,5 @@
 using Ettad.CrossCutting.Comman.Base;
-using Ettad.Comman.Enums;
+using Ettad.CrossCutting.Comman.FileUpload;
 
 namespace Ettad.Data.Entities
 {

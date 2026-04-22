@@ -1,5 +1,4 @@
 using Ettad.CrossCutting.Comman.FileUpload;
-using Ettad.Comman.Enums;
 using Ettad.ResponseHandler.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
