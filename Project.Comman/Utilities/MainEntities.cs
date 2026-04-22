@@ -1,5 +1,4 @@
-namespace Ettad.Infrastructure.Enums;
-using Ettad.Infrastructure.Utilities;
+namespace Ettad.CrossCutting.Comman.Utilities;
 using System.ComponentModel;
 
 public enum CrudOperation

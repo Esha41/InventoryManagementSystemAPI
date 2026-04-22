@@ -7,8 +7,6 @@ using Ettad.CrossCutting.Comman.Models;
 using Ettad.CrossCutting.Comman.Models.Identity;
 using Ettad.Data.Entities;
 using Ettad.EntityFramework.DataBaseContext;
-using Ettad.EntityFramework.Utiliies;
-using Ettad.Infrastructure.Utilities;
 using Ettad.ResponseHandler.Models;
 using Ettad.User.Services.DTO;
 using Ettad.User.Services.Interfaces;
@@ -17,6 +15,7 @@ using Microsoft.Extensions.Caching.Memory;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 using Ettad.CrossCutting.Comman.Time;
+using Ettad.CrossCutting.Comman.Utilities;
 
 namespace Ettad.User.Services.Implementation
 {
@@ -481,7 +480,7 @@ namespace Ettad.User.Services.Implementation
             try
             {
                 var roleClaims = (await _roleManager.GetClaimsAsync(role)).Select(c => c.Value).ToList();
-                var allClaims = await new CrudPermissionsGenerator(_context).GenerateAllPermissions();
+                var allClaims = await new CrudPermissionsGenerator().GenerateAllPermissions();
 
                 foreach (var permissions in allClaims)
                 {
