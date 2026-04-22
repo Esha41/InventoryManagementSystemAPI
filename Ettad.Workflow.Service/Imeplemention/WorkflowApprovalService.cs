@@ -291,7 +291,11 @@ namespace Ettad.Workflows.Service.Imeplemention
 
         public async Task<APIOperationResponse<bool>> ProcessActionAsync(ApproveRejectWorkflowApprovalDto model, List<IFormFile> files)
         {
-            await using var transaction = await _transactionManager.BeginAsync();
+            var ownsTransaction = !_transactionManager.HasActiveTransaction;
+            if (ownsTransaction)
+            {
+                await _transactionManager.BeginAsync();
+            }
 
             try
             {
@@ -343,7 +347,10 @@ namespace Ettad.Workflows.Service.Imeplemention
                 await LogStepActionAsync(currentStep.Id, currentStep.WorkflowStepId, oldStatus, model.Action, model.Comments, _currentUserService.UserName);
 
                 await _context.SaveChangesAsync();
-                await _transactionManager.CommitAsync();
+                if (ownsTransaction)
+                {
+                    await _transactionManager.CommitAsync();
+                }
 
                 // Step 2: Link files to the approval step (after status update) if files were saved
                 if (savedFileMasterIds != null && savedFileMasterIds.Count > 0)
@@ -382,7 +389,10 @@ namespace Ettad.Workflows.Service.Imeplemention
             }
             catch
             {
-                await _transactionManager.RollbackAsync();
+                if (ownsTransaction)
+                {
+                    await _transactionManager.RollbackAsync();
+                }
                 throw;
             }
         }
