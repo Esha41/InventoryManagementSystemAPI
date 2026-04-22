@@ -1,7 +1,6 @@
+using Ettad.Data.Interfaces.Repositories;
 
-using Ettad.Data.IGenericRepository_IUOW;
-
-namespace Ettad.CrossCutting.Data.Repository
+namespace Ettad.Data.Interfaces.Repositories
 {
     public interface ICrossCuttingRepository<T> : IGeneralRepository<T> where T : class
     {

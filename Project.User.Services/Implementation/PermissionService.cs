@@ -1,6 +1,7 @@
 using Ettad.Application.Common.Interfaces;
 using Ettad.Comman.Idenitity;
 using Ettad.CrossCutting.Comman.Idenitity;
+using Ettad.Data.Interfaces.Repositories;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
@@ -16,7 +17,7 @@ public class PermissionService : IPermissionService
     private readonly ICurrentUserService _currentUserService;
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly RoleManager<ApplicationRole> _roleManager;
-    private readonly IEffectiveRoleService _effectiveRoleService;
+    private readonly IEffectiveRoleRepository _effectiveRoleService;
     private readonly IMemoryCache _cache;
     private readonly ILogger<PermissionService> _logger;
     private const int CacheExpirationMinutes = 5;
@@ -25,7 +26,7 @@ public class PermissionService : IPermissionService
         ICurrentUserService currentUserService,
         UserManager<ApplicationUser> userManager,
         RoleManager<ApplicationRole> roleManager,
-        IEffectiveRoleService effectiveRoleService,
+        IEffectiveRoleRepository effectiveRoleService,
         IMemoryCache cache,
         ILogger<PermissionService> logger)
     {

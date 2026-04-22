@@ -1,6 +1,6 @@
 using System.Threading;
 
-namespace Ettad.CrossCutting.Data.Repository
+namespace Ettad.Data.Interfaces.Repositories
 {
     public interface ITransactionManager
     {

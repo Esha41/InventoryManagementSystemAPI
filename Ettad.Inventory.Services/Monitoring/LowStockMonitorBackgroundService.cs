@@ -1,18 +1,13 @@
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using Ettad.Data.Entities;
-using Ettad.Data.Enums;
 using Ettad.EntityFramework.DataBaseContext;
 using Ettad.Notification.Service;
-using Ettad.CrossCutting.Data.Repository;
 using Ettad.Data.Entities.Settings;
 using System.Text.Json;
 using Microsoft.AspNetCore.Identity;
 using Ettad.CrossCutting.Comman.Idenitity;
 using Ettad.Data.Constants;
+using Ettad.Data.Interfaces.Repositories;
 
 namespace Ettad.Inventory.Service.Monitoring
 {

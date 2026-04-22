@@ -1,6 +1,5 @@
 using AutoMapper;
 using FluentValidation;
-using Ettad.CrossCutting.Data.Repository;
 using Ettad.Data.Entities;
 using Ettad.Data.Enums;
 using Ettad.RequestManagement.Service.RequestPurposes.Dtos;
@@ -8,6 +7,7 @@ using Ettad.ResponseHandler.Consts;
 using Ettad.ResponseHandler.Models;
 using Ettad.Application.Common.Interfaces;
 using Ettad.CrossCutting.Comman.Time;
+using Ettad.Data.Interfaces.Repositories;
 
 namespace Ettad.RequestManagement.Service.RequestPurposes
 {

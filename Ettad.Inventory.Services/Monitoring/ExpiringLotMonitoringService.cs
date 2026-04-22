@@ -1,7 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Ettad.Data.Entities;
@@ -13,7 +9,7 @@ using Ettad.CrossCutting.Comman.Time;
 using Ettad.Data.Enums;
 using AutoMapper;
 using Ettad.Inventory.Service.Inventories.Dtos;
-using Ettad.CrossCutting.Data.Repository;
+using Ettad.Data.Interfaces.Repositories;
 
 namespace Ettad.Inventory.Service.Monitoring
 {

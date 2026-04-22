@@ -1,5 +1,4 @@
 using Ettad.Application.Common.Interfaces;
-using Ettad.CrossCutting.Data.Repository;
 using Ettad.Data.Entities;
 using Ettad.Data.Enums;
 using Ettad.Lookups.Services.Contracts;
@@ -8,6 +7,7 @@ using Ettad.ResponseHandler.Consts;
 using Ettad.ResponseHandler.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Ettad.Data.Interfaces.Repositories;
 
 namespace Ettad.Inventory.Service.Monitoring
 {

@@ -3,9 +3,10 @@ using Ettad.Comman.Idenitity;
 using Ettad.CrossCutting.Comman.Idenitity;
 using Ettad.CrossCutting.Comman.Models;
 using Ettad.CrossCutting.Comman.Time;
-using Ettad.CrossCutting.Data.Repository;
+using Ettad.CrossCutting.Comman.Utilities;
 using Ettad.Data.Entities;
 using Ettad.Data.Entities.Workflows;
+using Ettad.Data.Interfaces.Repositories;
 using Ettad.EntityFramework.DataBaseContext;
 using Ettad.LdapSettings.Services.Interfaces;
 using Ettad.Module.lookup.Dtos;
@@ -179,7 +180,7 @@ public class UserService : IUserService
         // 4️⃣ Apply remaining safe filters (excluding roles/global search)
         var cleanedFilter = CleanFilter(filter);
         if (cleanedFilter != null)
-            query = Ettad.CrossCutting.Comman.Providers.FilterProvider.ToFilterView(query, cleanedFilter);
+            query = FilterProvider.ToFilterView(query, cleanedFilter);
 
         return query;
     }
@@ -307,7 +308,7 @@ public class UserService : IUserService
         if (filter != null)
         {
             var cleanedFilter = CleanFilter(filter);
-            query = Ettad.CrossCutting.Comman.Providers.FilterProvider.ToFilterView(query, cleanedFilter);
+            query = FilterProvider.ToFilterView(query, cleanedFilter);
         }
 
         var users = await query.ToListAsync();

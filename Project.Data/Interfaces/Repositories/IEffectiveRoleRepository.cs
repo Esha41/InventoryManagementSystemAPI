@@ -1,9 +1,9 @@
-namespace Ettad.Application.Common.Interfaces;
+namespace Ettad.Data.Interfaces.Repositories;
 
 /// <summary>
 /// Resolves AspNetRole id(s) for the user's active session (default role if valid, else sole role, else none).
 /// </summary>
-public interface IEffectiveRoleService
+public interface IEffectiveRoleRepository
 {
     /// <summary>
     /// Returns zero or one role id: empty when the user is missing, has no roles, or must pick among multiple;

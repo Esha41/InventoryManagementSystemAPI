@@ -1,11 +1,11 @@
 using Ettad.CrossCutting.Comman.Time;
-using Ettad.CrossCutting.Data.Repository;
 using Ettad.Data.Entities;
 using DevExpress.XtraReports.UI;
 using Ettad.User.Services.Helpers;
 using Ettad.User.Services.Interfaces;
 using Ettad.ReportManagement.Service.Interfaces;
 using Microsoft.Extensions.Logging;
+using Ettad.Data.Interfaces.Repositories;
 
 namespace Ettad.ReportManagement.Service.Implementation
 {

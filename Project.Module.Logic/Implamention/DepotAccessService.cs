@@ -1,9 +1,9 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Ettad.Application.Common.Interfaces;
-using Ettad.CrossCutting.Data.Repository;
 using Ettad.Data.Entities;
 using Ettad.Lookups.Services.Contracts;
+using Ettad.Data.Interfaces.Repositories;
 
 namespace Ettad.Lookups.Services.Implementation
 {

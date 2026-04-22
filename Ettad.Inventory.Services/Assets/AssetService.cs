@@ -1,7 +1,6 @@
 using AutoMapper;
 using FluentValidation;
 using System.Linq.Expressions;
-using Ettad.CrossCutting.Data.Repository;
 using Ettad.CrossCutting.Comman.FileUpload;
 using Ettad.Data.Entities;
 using Ettad.Data.Enums;
@@ -21,6 +20,7 @@ using Ettad.Inventory.Service.Batches.Dtos;
 using Ettad.Inventory.Service.AssetHistory;
 using Ettad.Inventory.Service.AssetHistory.Dtos;
 using System.Text.Json;
+using Ettad.Data.Interfaces.Repositories;
 
 namespace Ettad.Inventory.Service.Assets
 {

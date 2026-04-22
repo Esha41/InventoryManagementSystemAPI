@@ -4,11 +4,11 @@ using Microsoft.Extensions.Logging;
 using Ettad.Application.Common.Interfaces;
 using Ettad.CrossCutting.Comman.Base;
 using Ettad.CrossCutting.Comman.Time;
-using Ettad.CrossCutting.Data.Repository;
 using Ettad.Lookups.Services.Contracts;
 using Ettad.ResponseHandler.Consts;
 using Ettad.ResponseHandler.Models;
 using Ettad.CrossCutting.Comman.Interface;
+using Ettad.Data.Interfaces.Repositories;
 
 namespace Ettad.Lookups.Services.Implementation
 {

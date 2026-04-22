@@ -4,7 +4,6 @@ using Ettad.CrossCutting.Comman.Exception;
 using Ettad.CrossCutting.Comman.Idenitity;
 using Ettad.CrossCutting.Comman.Time;
 using Ettad.LdapSettings.Services.Interfaces;
-using Ettad.CrossCutting.Data.Repository;
 using Ettad.ResponseHandler.Consts;
 using Ettad.ResponseHandler.Models;
 using Ettad.User.Services.DTO;
@@ -20,6 +19,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Logging;
+using Ettad.Data.Interfaces.Repositories;
 
 namespace Ettad.User.Services.Implementation
 {
@@ -41,7 +41,7 @@ namespace Ettad.User.Services.Implementation
         private readonly ITokenBlacklistService _tokenBlacklistService;
         private readonly IMediator _mediator;
         private readonly IPermissionService _permissionService;
-        private readonly IEffectiveRoleService _effectiveRoleService;
+        private readonly IEffectiveRoleRepository _effectiveRoleService;
         private readonly ICrossCuttingRepository<LoginAttempt> _loginAttemptRepository;
         private readonly int _maxFailedAttempts;
         private readonly int _lockoutDurationMinutes;
@@ -55,7 +55,7 @@ namespace Ettad.User.Services.Implementation
             IOptions<JwtOptions> jwtOptions,UserManager<ApplicationUser> userRepository,
             SignInManager<ApplicationUser> signInManager, RoleManager<ApplicationRole> roleManager, ICurrentUserService currentUserService, IEmailSender emailSender,
             ILogger<AccountServices> logger, IHttpContextAccessor httpContextAccessor, ICaptchaService captchaService, ITokenBlacklistService tokenBlacklistService, IMediator mediator,
-            IPermissionService permissionService, IEffectiveRoleService effectiveRoleService, ICrossCuttingRepository<LoginAttempt> loginAttemptRepository,
+            IPermissionService permissionService, IEffectiveRoleRepository effectiveRoleService, ICrossCuttingRepository<LoginAttempt> loginAttemptRepository,
             IConfiguration configuration)
         {
             _jwtServices = jwtServices ?? throw new ArgumentNullException(nameof(jwtServices));

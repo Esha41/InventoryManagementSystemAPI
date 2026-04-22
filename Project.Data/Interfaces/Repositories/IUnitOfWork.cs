@@ -1,6 +1,6 @@
 using Ettad.Comman.Idenitity;
 
-namespace Ettad.Data.IGenericRepository_IUOW
+namespace Ettad.Data.Interfaces.Repositories
 {
     public interface IUnitOfWork : IDisposable
     {

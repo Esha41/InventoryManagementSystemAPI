@@ -6,14 +6,14 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Linq.Dynamic.Core;
 
-namespace Ettad.CrossCutting.Comman.Providers
+namespace Ettad.CrossCutting.Comman.Utilities
 {
     public static class FilterProvider
     {
         public static IQueryable<T> ToFilterView<T>(this IQueryable<T> query, FilterData filter)
         {
             // Apply filtering logic if filters are present
-            if ((filter.Filters != null && filter.Filters.Any()) || !string.IsNullOrEmpty(filter.Field))
+            if (filter.Filters != null && filter.Filters.Any() || !string.IsNullOrEmpty(filter.Field))
             {
                 query = Filter(query, filter);
             }

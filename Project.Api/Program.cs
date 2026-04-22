@@ -1,5 +1,7 @@
 // Configure Serilog
-using Ettad.Data.Constants;
+
+
+using Ettad.Repository.Repositories;
 
 Log.Logger = new LoggerConfiguration()
     .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
@@ -157,7 +159,7 @@ try
         options.AddInterceptors(interceptor);
     });
 
-    builder.Services.AddScoped<IEffectiveRoleService, EffectiveRoleService>();
+    builder.Services.AddScoped<IEffectiveRoleRepository, EffectiveRoleRepository>();
     #endregion
 
     #region Identity

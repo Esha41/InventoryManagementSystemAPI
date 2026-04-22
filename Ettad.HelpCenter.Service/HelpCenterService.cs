@@ -1,8 +1,8 @@
 using System.Net.Mail;
 using Ettad.Comman.Idenitity;
 using Ettad.CrossCutting.Comman.Time;
-using Ettad.CrossCutting.Data.Repository;
 using Ettad.Data.Entities;
+using Ettad.Data.Interfaces.Repositories;
 using Ettad.EntityFramework.DataBaseContext;
 using Ettad.HelpCenter.Service.Dtos;
 using Ettad.ResponseHandler.Consts;

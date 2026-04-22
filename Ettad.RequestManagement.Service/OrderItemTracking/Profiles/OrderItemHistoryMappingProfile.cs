@@ -1,6 +1,6 @@
 using AutoMapper;
 using Ettad.Data.Entities;
-using Ettad.Application.Common.Interfaces;
+using Ettad.Data.Interfaces.Services;
 
 namespace Ettad.RequestManagement.Service.OrderItemTracking.Profiles
 {

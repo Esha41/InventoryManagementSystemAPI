@@ -1,32 +1,22 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Security.Cryptography;
 using System.Text;
-using System.Threading.Tasks;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
+using Microsoft.IdentityModel.Tokens;
+using Ettad.Comman.Idenitity;
+using Ettad.CrossCutting.Comman.Exception;
+using Ettad.CrossCutting.Comman.Idenitity;
+using Ettad.CrossCutting.Comman.Time;
+using Ettad.User.Services.DTO;
+using Ettad.User.Services.Interfaces;
+using Ettad.Data.Interfaces.Repositories;
+
 
 namespace Ettad.User.Services.Implementation
 {
-    using System;
-    using System.Collections.Generic;
-    using System.IdentityModel.Tokens.Jwt;
-    using System.Linq;
-    using System.Security.Claims;
-    using System.Security.Cryptography;
-    using System.Text;
-    using System.Threading.Tasks;
-    using Microsoft.AspNetCore.Identity;
-    using Microsoft.EntityFrameworkCore;
-    using Microsoft.Extensions.Options;
-    using Microsoft.IdentityModel.Tokens;
-    using Ettad.Application.Common.Interfaces;
-    using Ettad.Comman.Idenitity;
-    using Ettad.CrossCutting.Comman.Exception;
-    using Ettad.CrossCutting.Comman.Idenitity;
-    using Ettad.CrossCutting.Comman.Time;
-    using Ettad.User.Services.DTO;
-    using Ettad.User.Services.Interfaces;
-    using StackExchange.Redis;
-
     public class JwtServices : IJwtServices
     {
         public const string TokenPurposeClaim = "token_purpose";
@@ -36,14 +26,14 @@ namespace Ettad.User.Services.Implementation
         private readonly JwtOptions _jwtOptions;
         private readonly IDateTimeProvider _dateTimeProvider;
         private readonly RoleManager<ApplicationRole> _roleManager;
-        private readonly IEffectiveRoleService _effectiveRoleService;
+        private readonly IEffectiveRoleRepository _effectiveRoleService;
 
         public JwtServices(
             UserManager<ApplicationUser> userManager,
             IOptions<JwtOptions> jwtOptions,
             IDateTimeProvider dateTimeProvider,
             RoleManager<ApplicationRole> roleManager,
-            IEffectiveRoleService effectiveRoleService)
+            IEffectiveRoleRepository effectiveRoleService)
         {
             _userManager = userManager ?? throw new ArgumentNullException(nameof(userManager));
             _jwtOptions = jwtOptions?.Value ?? throw new ArgumentNullException(nameof(jwtOptions));

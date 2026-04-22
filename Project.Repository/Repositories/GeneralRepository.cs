@@ -1,9 +1,9 @@
 using Microsoft.EntityFrameworkCore;
-using Ettad.Data.IGenericRepository_IUOW;
 using Ettad.EntityFramework.DataBaseContext;
 using System.Linq.Expressions;
+using Ettad.Data.Interfaces.Repositories;
 
-namespace Ettad.Repository.Repository
+namespace Ettad.Repository.Repositories
 {
     public class GeneralRepository<T> : IGeneralRepository<T> where T : class
     {

@@ -2,7 +2,6 @@ using AutoMapper;
 using Ettad.Application.Common.Interfaces;
 using Ettad.Announcement.Service.Dtos;
 using Ettad.CrossCutting.Comman.Time;
-using Ettad.CrossCutting.Data.Repository;
 using Ettad.Data.Entities;
 using Ettad.Data.Enums;
 using Ettad.Notification.Service;
@@ -10,6 +9,7 @@ using Ettad.ResponseHandler.Consts;
 using Ettad.ResponseHandler.Models;
 using System.Text.Json;
 using AnnouncementEntity = Ettad.Data.Entities.Announcement;
+using Ettad.Data.Interfaces.Repositories;
 
 namespace Ettad.Announcement.Service
 {
@@ -21,7 +21,7 @@ namespace Ettad.Announcement.Service
         private readonly IMapper _mapper;
         private readonly ICurrentUserService _currentUserService;
         private readonly INotificationHelperService _notificationHelper;
-        private readonly IEffectiveRoleService _effectiveRoleService;
+        private readonly IEffectiveRoleRepository _effectiveRoleService;
 
         public AnnouncementService(
             ICrossCuttingRepository<AnnouncementEntity> announcementRepository,
@@ -30,7 +30,7 @@ namespace Ettad.Announcement.Service
             IMapper mapper,
             ICurrentUserService currentUserService,
             INotificationHelperService notificationHelper,
-            IEffectiveRoleService effectiveRoleService)
+            IEffectiveRoleRepository effectiveRoleService)
         {
             _announcementRepository = announcementRepository;
             _dismissalRepository = dismissalRepository;

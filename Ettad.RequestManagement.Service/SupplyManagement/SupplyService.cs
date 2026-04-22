@@ -3,7 +3,6 @@ using FluentValidation;
 using Ettad.Application.Common.Interfaces;
 using Ettad.Comman.Idenitity;
 using Ettad.CrossCutting.Comman.FileUpload;
-using Ettad.CrossCutting.Data.Repository;
 using Ettad.Data.Entities;
 using Ettad.Data.Enums;
 using Ettad.EntityFramework.DataBaseContext;
@@ -20,6 +19,8 @@ using Microsoft.Extensions.Logging;
 using Ettad.CrossCutting.Comman.Time;
 using Ettad.Workflows.Service.Interface;
 using Ettad.Workflows.Service.DTO;
+using Ettad.Data.Interfaces.Services;
+using Ettad.Data.Interfaces.Repositories;
 
 namespace Ettad.RequestManagement.Service.SupplyManagement
 {

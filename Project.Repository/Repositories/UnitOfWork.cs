@@ -1,10 +1,8 @@
-using Ettad.Data.Entities;
-using Ettad.Data.IGenericRepository_IUOW;
 using Ettad.EntityFramework.DataBaseContext;
 using Ettad.Comman.Idenitity;
-using Ettad.Data.Entities;
+using Ettad.Data.Interfaces.Repositories;
 
-namespace Ettad.Repository.Repository
+namespace Ettad.Repository.Repositories
 {
     public class UnitOfWork : IUnitOfWork
     {

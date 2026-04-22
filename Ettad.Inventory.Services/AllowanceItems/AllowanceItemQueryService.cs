@@ -1,9 +1,9 @@
 using AutoMapper;
-using Ettad.CrossCutting.Data.Repository;
 using Ettad.Data.Entities;
 using Ettad.Inventory.Service.AllowanceItems.Dtos;
 using Ettad.Data.Enums;
 using Microsoft.Extensions.Logging;
+using Ettad.Data.Interfaces.Repositories;
 
 namespace Ettad.Inventory.Service.AllowanceItems
 {

@@ -1,7 +1,6 @@
 using AutoMapper;
 using FluentValidation;
 using Ettad.Application.Common.Interfaces;
-using Ettad.CrossCutting.Data.Repository;
 using Ettad.Data.Entities;
 using Ettad.Notification.Service.Dtos;
 using Ettad.ResponseHandler.Consts;
@@ -11,6 +10,7 @@ using System.Collections.Generic;
 using Ettad.CrossCutting.Comman.Time;
 using System.Linq;
 using NotificationEntity = Ettad.Data.Entities.Notification;
+using Ettad.Data.Interfaces.Repositories;
 
 
 namespace Ettad.Notification.Service

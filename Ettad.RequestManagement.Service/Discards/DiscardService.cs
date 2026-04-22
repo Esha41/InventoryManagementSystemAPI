@@ -1,7 +1,6 @@
 using System.Collections.Generic;
 using AutoMapper;
 using FluentValidation;
-using Ettad.CrossCutting.Data.Repository;
 using Ettad.Data.Entities;
 using Ettad.Data.Enums;
 using Ettad.RequestManagement.Service.Discards.Dtos;
@@ -17,6 +16,7 @@ using Ettad.Workflows.Service.Interface;
 using Microsoft.AspNetCore.Http;
 using Ettad.CrossCutting.Comman.FileUpload;
 using Ettad.CrossCutting.Comman.Time;
+using Ettad.Data.Interfaces.Repositories;
 
 namespace Ettad.RequestManagement.Service.Discards
 {

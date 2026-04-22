@@ -1,9 +1,6 @@
 using AutoMapper;
 using FluentValidation;
 using Microsoft.EntityFrameworkCore;
-using System.Linq;
-using System.Drawing;
-using Ettad.CrossCutting.Data.Repository;
 using Ettad.CrossCutting.Comman.FileUpload;
 using Ettad.Data.Entities;
 using Ettad.Data.Enums;
@@ -15,14 +12,12 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Ettad.Inventory.Services.Common;
 using OfficeOpenXml;
-using OfficeOpenXml.DataValidation;
 using Ettad.EntityFramework.DataBaseContext;
 using Ettad.CrossCutting.Comman.Time;
 using Ettad.CrossCutting.Comman.Models;
-using System.Collections.Generic;
-using System.Threading.Tasks;
 using System;
 using Ettad.Inventory.Service.ItemDepartmentAssignments;
+using Ettad.Data.Interfaces.Repositories;
 
 namespace Ettad.Inventory.Service.Weapons
 {

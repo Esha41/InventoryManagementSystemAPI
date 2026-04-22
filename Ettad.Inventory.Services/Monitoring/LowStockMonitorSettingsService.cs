@@ -1,18 +1,14 @@
-using System;
-using System.Collections.Generic;
-using System.Runtime.InteropServices;
 using System.Text.Json;
-using System.Threading.Tasks;
 using Hangfire;
 using Microsoft.Extensions.Logging;
 using Ettad.Application.Common.Interfaces;
-using Ettad.CrossCutting.Data.Repository;
 using Ettad.Data.Entities.Settings;
 using Ettad.Inventory.Service.Monitoring.Dtos;
 using Ettad.ResponseHandler.Consts;
 using Ettad.ResponseHandler.Models;
 using Ettad.CrossCutting.Comman.Time;
 using Ettad.Data.Constants;
+using Ettad.Data.Interfaces.Repositories;
 
 namespace Ettad.Inventory.Service.Monitoring
 {

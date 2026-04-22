@@ -1,5 +1,4 @@
 using AutoMapper;
-using Ettad.CrossCutting.Data.Repository;
 using Ettad.Data.Entities;
 using Ettad.Data.Enums;
 using Ettad.Inventory.Service.ItemDepartmentAssignments.Dtos;
@@ -7,6 +6,7 @@ using Ettad.ResponseHandler.Consts;
 using Ettad.ResponseHandler.Models;
 using Ettad.Application.Common.Interfaces;
 using Microsoft.Extensions.Logging;
+using Ettad.Data.Interfaces.Repositories;
 
 namespace Ettad.Inventory.Service.ItemDepartmentAssignments
 {

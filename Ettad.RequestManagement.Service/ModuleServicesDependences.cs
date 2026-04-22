@@ -10,7 +10,7 @@ using Ettad.RequestManagement.Service.SupplyManagement;
 using Ettad.RequestManagement.Service.OrderItemTracking;
 using Ettad.RequestManagement.Service.Implementation;
 using Ettad.RequestManagement.Service.Interfaces;
-using Ettad.Application.Common.Interfaces;
+using Ettad.Data.Interfaces.Services;
 
 namespace Ettad.RequestManagement.Service
 {
