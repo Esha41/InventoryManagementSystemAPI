@@ -5,11 +5,6 @@ using Ettad.CrossCutting.Common.Security;
 using Ettad.ResponseHandler.Models;
 using Ettad.User.Services.DTO;
 using Ettad.User.Services.Interfaces;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using Ettad.Application.Common.Interfaces;
 
 namespace Ettad.User.API.Controllers
@@ -27,7 +22,6 @@ namespace Ettad.User.API.Controllers
             _roleService = roleService;
             _currentUserService = currentUserService;
         }
-
 
         [HttpPost("GetRolesWithPagination")]
         [CheckAuthorize(
