@@ -1,5 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
-using Ettad.Repository.Repository;
+using Ettad.Repository.Repositories;
 
 namespace Ettad.Repository
 {

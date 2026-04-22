@@ -1,11 +1,6 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 using Ettad.CrossCutting.Comman.FileUpload;
-using Ettad.CrossCutting.Data.Repository;
 using Ettad.Data.Entities;
+using Ettad.Data.Interfaces.Repositories;
 using Ettad.ResponseHandler.Models;
 using Microsoft.AspNetCore.Http;
 

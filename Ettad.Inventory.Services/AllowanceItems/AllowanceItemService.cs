@@ -1,6 +1,5 @@
 using AutoMapper;
 using FluentValidation;
-using Ettad.CrossCutting.Data.Repository;
 using Ettad.Data.Entities;
 using Ettad.Inventory.Service.AllowanceItems.Dtos;
 using Ettad.Inventory.Service.AllowanceItems.Validators;
@@ -10,6 +9,7 @@ using Ettad.Application.Common.Interfaces;
 using Ettad.Data.Enums;
 using Microsoft.Extensions.Logging;
 using Ettad.CrossCutting.Comman.Time;
+using Ettad.Data.Interfaces.Repositories;
 
 namespace Ettad.Inventory.Service.AllowanceItems
 {

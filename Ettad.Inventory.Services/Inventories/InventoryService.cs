@@ -1,7 +1,6 @@
 using AutoMapper;
 using FluentValidation;
 using Microsoft.EntityFrameworkCore;
-using Ettad.CrossCutting.Data.Repository;
 using Ettad.Data.Entities;
 using Ettad.Data.Enums;
 using Ettad.Inventory.Service.Inventories.Dtos;
@@ -22,6 +21,7 @@ using OfficeOpenXml;
 using OfficeOpenXml.DataValidation;
 using InventoryEntity = Ettad.Data.Entities.Inventory;
 using InventoryDetailEntity = Ettad.Data.Entities.InventoryDetail;
+using Ettad.Data.Interfaces.Repositories;
 
 namespace Ettad.Inventory.Service.Inventories
 {

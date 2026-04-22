@@ -1,12 +1,11 @@
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Configuration;
-using Ettad.CrossCutting.Data.Repository;
 using Ettad.Data.Entities;
 using Ettad.Data.Enums;
 using System.Net;
 using Ettad.CrossCutting.Comman.Time;
+using Ettad.Data.Interfaces.Repositories;
 
 namespace Ettad.Notification.Service.EmailTemplate
 {

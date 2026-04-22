@@ -1,7 +1,8 @@
+using Ettad.Data.Interfaces.Repositories;
 using Ettad.EntityFramework.DataBaseContext;
 using Microsoft.EntityFrameworkCore.Storage;
 
-namespace Ettad.CrossCutting.Data.Repository
+namespace Ettad.Repository.Repositories
 {
     public class EfTransactionManager : ITransactionManager
     {

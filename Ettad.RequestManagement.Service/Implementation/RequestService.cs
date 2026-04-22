@@ -13,8 +13,6 @@ using Microsoft.AspNetCore.Identity;
 using Ettad.User.Services.Interfaces;
 using System.Linq;
 using Ettad.CrossCutting.Comman.Models;
-using Ettad.CrossCutting.Comman.Providers;
-using Ettad.ResponseHandler.Consts;
 using Ettad.Data.Constants;
 
 namespace Ettad.RequestManagement.Service.Implementation

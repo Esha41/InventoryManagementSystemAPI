@@ -3,7 +3,6 @@ using FluentValidation;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.AspNetCore.Http;
-using Ettad.CrossCutting.Data.Repository;
 using Ettad.CrossCutting.Comman.FileUpload;
 using Ettad.Data.Entities;
 using Ettad.Data.Enums;
@@ -22,6 +21,7 @@ using Ettad.Inventory.Service.AssetHistory.Dtos;
 using OfficeOpenXml;
 using OfficeOpenXml.Style;
 using System.Text.RegularExpressions;
+using Ettad.Data.Interfaces.Repositories;
 
 namespace Ettad.Inventory.Service.Batches
 {

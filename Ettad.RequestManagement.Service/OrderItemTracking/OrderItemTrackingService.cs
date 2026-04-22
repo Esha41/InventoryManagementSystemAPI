@@ -2,17 +2,18 @@ using AutoMapper;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Ettad.Application.Common.Interfaces;
-using Ettad.CrossCutting.Data.Repository;
 using Ettad.Data.Entities;
 using Ettad.Data.Enums;
 using Ettad.EntityFramework.DataBaseContext;
 using Ettad.ResponseHandler.Consts;
 using Ettad.ResponseHandler.Models;
 using Ettad.CrossCutting.Comman.Time;
+using Ettad.Data.Interfaces.Services;
+using Ettad.Data.Interfaces.Repositories;
 
 namespace Ettad.RequestManagement.Service.OrderItemTracking
 {
-    public class OrderItemTrackingService : Ettad.Application.Common.Interfaces.IOrderItemTrackingService
+    public class OrderItemTrackingService : IOrderItemTrackingService
     {
         private readonly ApplicationDbContext _context;
         private readonly ICrossCuttingRepository<OrderItemHistory> _historyRepository;

@@ -3,7 +3,6 @@ using FluentValidation;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Ettad.Application.Common.Interfaces;
-using Ettad.CrossCutting.Data.Repository;
 using Ettad.Data.Entities;
 using Ettad.Data.Enums;
 using Ettad.EntityFramework.DataBaseContext;
@@ -19,6 +18,8 @@ using Ettad.Workflows.Service.DTO;
 using Ettad.Inventory.Service.Batches.Dtos;
 using Ettad.Inventory.Service.Assets.Dtos;
 using Microsoft.AspNetCore.Http;
+using Ettad.Data.Interfaces.Services;
+using Ettad.Data.Interfaces.Repositories;
 
 namespace Ettad.Inventory.Service.AssetSupply
 {

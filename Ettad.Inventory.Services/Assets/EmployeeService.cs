@@ -2,7 +2,6 @@ using AutoMapper;
 using FluentValidation;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Http;
-using Ettad.CrossCutting.Data.Repository;
 using Ettad.Data.Entities;
 using Ettad.Inventory.Service.Assets.Dtos;
 using Ettad.Inventory.Services.Common;
@@ -14,6 +13,7 @@ using Ettad.CrossCutting.Comman.Time;
 using Ettad.EntityFramework.DataBaseContext;
 using OfficeOpenXml;
 using OfficeOpenXml.Style;
+using Ettad.Data.Interfaces.Repositories;
 
 namespace Ettad.Inventory.Service.Assets
 {

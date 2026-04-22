@@ -1,6 +1,6 @@
 using System.Linq.Expressions;
 
-namespace Ettad.Data.IGenericRepository_IUOW
+namespace Ettad.Data.Interfaces.Repositories
 {
     public interface IGeneralRepository<T> where T : class
     {

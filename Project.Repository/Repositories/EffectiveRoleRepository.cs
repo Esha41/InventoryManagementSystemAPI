@@ -1,14 +1,14 @@
-using Ettad.Application.Common.Interfaces;
+using Ettad.Data.Interfaces.Repositories;
 using Ettad.EntityFramework.DataBaseContext;
 using Microsoft.EntityFrameworkCore;
 
-namespace Ettad.EntityFramework.Services;
+namespace Ettad.Repository.Repositories;
 
-public class EffectiveRoleService : IEffectiveRoleService
+public class EffectiveRoleRepository : IEffectiveRoleRepository
 {
     private readonly ApplicationDbContext _context;
 
-    public EffectiveRoleService(ApplicationDbContext context)
+    public EffectiveRoleRepository(ApplicationDbContext context)
     {
         _context = context ?? throw new ArgumentNullException(nameof(context));
     }

@@ -1,5 +1,5 @@
-using Ettad.Application.Common.Interfaces;
 using Ettad.CrossCutting.Common.Security;
+using Ettad.Data.Interfaces.Services;
 using Ettad.ResponseHandler.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;

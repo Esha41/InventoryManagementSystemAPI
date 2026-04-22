@@ -1,8 +1,8 @@
-using Ettad.CrossCutting.Data.Repository;
 using Ettad.Data.Entities;
 using Ettad.Data.Enums;
 using Microsoft.EntityFrameworkCore;
 using Ettad.CrossCutting.Comman.Time;
+using Ettad.Data.Interfaces.Repositories;
 
 namespace Ettad.RequestManagement.Service.Common
 {

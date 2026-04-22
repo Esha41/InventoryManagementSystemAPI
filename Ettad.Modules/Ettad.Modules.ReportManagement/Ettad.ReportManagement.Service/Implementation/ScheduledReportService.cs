@@ -1,7 +1,6 @@
 using AutoMapper;
 using Ettad.Application.Common.Interfaces;
 using Ettad.CrossCutting.Comman.Time;
-using Ettad.CrossCutting.Data.Repository;
 using Ettad.ResponseHandler.Consts;
 using Ettad.ResponseHandler.Models;
 using Microsoft.EntityFrameworkCore;
@@ -10,6 +9,7 @@ using Ettad.ReportManagement.Service.Dtos;
 using Ettad.Data.Entities;
 using Ettad.User.Services.Interfaces;
 using Ettad.ReportManagement.Service.Interfaces;
+using Ettad.Data.Interfaces.Repositories;
 
 namespace Ettad.ReportManagement.Service.Implementation
 {

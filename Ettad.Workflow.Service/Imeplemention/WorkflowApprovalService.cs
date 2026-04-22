@@ -1,6 +1,5 @@
 using Ettad.Application.Common.Interfaces;
 using Ettad.CrossCutting.Comman.FileUpload;
-using Ettad.CrossCutting.Data.Repository;
 using Ettad.Data.Entities;
 using Ettad.Data.Entities.Workflows;
 using Ettad.Data.Enums;
@@ -21,6 +20,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Ettad.CrossCutting.Comman.Time;
 using Ettad.Data.Constants;
+using Ettad.Data.Interfaces.Services;
+using Ettad.Data.Interfaces.Repositories;
 
 namespace Ettad.Workflows.Service.Imeplemention
 {
@@ -37,7 +38,7 @@ namespace Ettad.Workflows.Service.Imeplemention
         private readonly ICrossCuttingRepository<FileUplodDetails> _fileDetailsRepository;
         private readonly IDateTimeProvider _dateTimeProvider;
         private readonly IOrderItemTrackingService _orderItemTrackingService;
-        private readonly IEffectiveRoleService _effectiveRoleService;
+        private readonly IEffectiveRoleRepository _effectiveRoleService;
         private readonly ITransactionManager _transactionManager;
 
         public WorkflowApprovalService(
@@ -52,7 +53,7 @@ namespace Ettad.Workflows.Service.Imeplemention
             ICrossCuttingRepository<FileUplodDetails> fileDetailsRepository,
             IDateTimeProvider dateTimeProvider,
             IOrderItemTrackingService orderItemTrackingService,
-            IEffectiveRoleService effectiveRoleService,
+            IEffectiveRoleRepository effectiveRoleService,
             ITransactionManager transactionManager)
         {
             _context = context;

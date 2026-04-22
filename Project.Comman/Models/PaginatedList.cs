@@ -1,5 +1,5 @@
 using Microsoft.EntityFrameworkCore;
-using Ettad.CrossCutting.Comman.Providers;
+using Ettad.CrossCutting.Comman.Utilities;
 
 namespace Ettad.CrossCutting.Comman.Models
 {
