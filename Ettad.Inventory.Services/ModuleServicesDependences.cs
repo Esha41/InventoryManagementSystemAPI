@@ -1,27 +1,19 @@
 using Ettad.Inventory.Service.Weapons.Dtos;
 using Ettad.Inventory.Service.Weapons.Validators;
-using Ettad.Inventory.Service.Weapons.Profiles;
 using Ettad.Inventory.Service.Explosives.Dtos;
 using Ettad.Inventory.Service.Explosives.Validators;
-using Ettad.Inventory.Service.Explosives.Profiles;
 using FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
 using System.Reflection;
 using Ettad.Inventory.Service.Ammunitions.Dtos;
 using Ettad.Inventory.Service.Ammunitions.Validators;
-using Ettad.Inventory.Service.Ammunitions.Profiles;
 using Ettad.Inventory.Service.Assets;
 using Ettad.Inventory.Service.Assets.Dtos;
 using Ettad.Inventory.Service.Assets.Validators;
-using Ettad.Inventory.Service.Assets.Profiles;
 using Ettad.Inventory.Service.AssetSupply.Dtos;
 using Ettad.Inventory.Service.AssetSupply.Validators;
-using Ettad.Inventory.Service.AssetSupply.Profiles;
-using Ettad.Inventory.Service.AssetHistory.Profiles;
-using Ettad.Inventory.Service.ItemDepartmentAssignments.Profiles;
 using Ettad.Inventory.Service.Batches.Dtos;
 using Ettad.Inventory.Service.Batches.Validators;
-using Ettad.Inventory.Service.Batches.Profiles;
 using Ettad.Inventory.Service.AllowanceItems.Interfaces;
 using Ettad.Inventory.Service.Ammunitions.Interfaces;
 using Ettad.Inventory.Service.AssetHistory.Interfaces;
@@ -43,6 +35,14 @@ using Ettad.Inventory.Service.Inventories.Services;
 using Ettad.Inventory.Service.ItemDepartmentAssignments.Services;
 using Ettad.Inventory.Service.Monitoring.Services;
 using Ettad.Inventory.Service.Weapons.Services;
+using Ettad.Inventory.Service.Weapons.Mapper;
+using Ettad.Inventory.Service.Ammunitions.Mapper;
+using Ettad.Inventory.Service.Explosives.Mapper;
+using Ettad.Inventory.Service.ItemDepartmentAssignments.Mapper;
+using Ettad.Inventory.Service.Batches.Mapper;
+using Ettad.Inventory.Service.Assets.Mapper;
+using Ettad.Inventory.Service.AssetSupply.Mapper;
+using Ettad.Inventory.Service.AssetHistory.Mapper;
 
 namespace Ettad.Inventory.Service
 {

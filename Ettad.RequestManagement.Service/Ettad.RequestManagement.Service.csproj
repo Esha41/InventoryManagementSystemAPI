@@ -27,9 +27,8 @@
 	<ItemGroup>
 	  <Folder Include="Discards\Dtos\" />
 	  <Folder Include="Discards\Validators\" />
-	  <Folder Include="Discards\Profiles\" />
-	  <Folder Include="Common\" />
-	  <Folder Include="Orders\Profile\" />
+	  <Folder Include="Discards\Mapper\" />
+	  <Folder Include="Orders\Mapper\" />
 	</ItemGroup>
 
 </Project>
