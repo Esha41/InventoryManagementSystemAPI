@@ -254,6 +254,7 @@ namespace Ettad.Inventory.Service.Weapons.Services
                 }
 
                 var weapon = _mapper.Map<Weapon>(inputDto);
+                weapon.CaliberCategory = inputDto.CaliberCategory ?? WeaponCaliberCategory.Small;
                 weapon.ItemType = ItemType.Weapon;
                 weapon.CreationDate = _dateTimeProvider.Now;
                 weapon.CreatedBy = _currentUserService.UserId;
@@ -312,6 +313,7 @@ namespace Ettad.Inventory.Service.Weapons.Services
                 }
 
                 _mapper.Map(inputDto, existingWeapon);
+                existingWeapon.CaliberCategory = inputDto.CaliberCategory!.Value;
                 existingWeapon.ModificationDate = _dateTimeProvider.Now;
                 existingWeapon.ModifiedBy = _currentUserService.UserId;
                 existingWeapon.Nsn = string.IsNullOrWhiteSpace(inputDto.Nsn) ? null : inputDto.Nsn.Trim();
@@ -667,6 +669,7 @@ namespace Ettad.Inventory.Service.Weapons.Services
             dto.CountryOfManufactureId = FindLookupIdCached("Countries", importDto.CountryOfManufacture);
             dto.ClassificationId = FindLookupIdCached("Classifications", importDto.Classification);
             dto.TypeId = FindLookupIdCached("ItemTypes", importDto.Type);
+            dto.CaliberCategory = WeaponCaliberCategory.Small;
 
             return dto;
         }

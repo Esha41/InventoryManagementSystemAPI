@@ -329,7 +329,7 @@ namespace Ettad.Inventory.Service.Ammunitions.Services
                 }
 
                 var ammunition = _mapper.Map<Ammunition>(inputDto);
-                ammunition.AmmunitionType = AmmunitionType.Small;
+                ammunition.AmmunitionType = inputDto.AmmunitionType ?? AmmunitionType.Small;
                 ammunition.ItemType = ItemType.Ammunition;
                 ammunition.CreationDate = _dateTimeProvider.Now;
                 ammunition.CreatedBy = _currentUserService.UserId;
@@ -389,7 +389,7 @@ namespace Ettad.Inventory.Service.Ammunitions.Services
                 }
 
                 _mapper.Map(inputDto, existingAmmunition);
-                existingAmmunition.AmmunitionType = AmmunitionType.Small;
+                existingAmmunition.AmmunitionType = inputDto.AmmunitionType!.Value;
                 existingAmmunition.ModificationDate = _dateTimeProvider.Now;
                 existingAmmunition.ModifiedBy = _currentUserService.UserId;
                 existingAmmunition.Nsn = string.IsNullOrWhiteSpace(inputDto.Nsn) ? null : inputDto.Nsn.Trim();
@@ -806,6 +806,7 @@ namespace Ettad.Inventory.Service.Ammunitions.Services
             dto.ProjectailMaterialId = FindLookupIdCached("ProjectileMaterials", importDto.ProjectileMaterial);
             dto.ClassificationId = FindLookupIdCached("Classifications", importDto.Classification);
             dto.TypeId = FindLookupIdCached("ItemTypes", importDto.Type);
+            dto.AmmunitionType = AmmunitionType.Small;
 
             return dto;
         }

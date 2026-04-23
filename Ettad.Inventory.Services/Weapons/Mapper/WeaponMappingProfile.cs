@@ -15,6 +15,7 @@ namespace Ettad.Inventory.Service.Weapons.Mapper
                         : new List<PrimaryPurpos>()));
 
             CreateMap<CreateUpdateWeaponDto, Weapon>()
+                .ForMember(dest => dest.CaliberCategory, opt => opt.Ignore())
                 .ForMember(dest => dest.Id, opt => opt.Ignore())
                 .ForMember(dest => dest.CreationDate, opt => opt.Ignore())
                 .ForMember(dest => dest.CreatedBy, opt => opt.Ignore())

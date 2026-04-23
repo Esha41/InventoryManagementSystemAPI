@@ -1,9 +1,13 @@
+using Ettad.Data.Enums;
 using Ettad.Inventory.Service.Common.Dtos;
 
 namespace Ettad.Inventory.Service.Ammunitions.Dtos
 {
     public class CreateUpdateAmmunitionDto : CreateUpdateBaseItemDto
     {
+        /// <summary>Small / Medium / Large — optional on import; UI should send explicitly.</summary>
+        public AmmunitionType? AmmunitionType { get; set; }
+
         public string? ArmNumber { get; set; }
 
         public string? Caliber { get; set; }

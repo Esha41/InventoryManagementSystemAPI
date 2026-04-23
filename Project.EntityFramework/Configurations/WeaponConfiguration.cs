@@ -11,6 +11,10 @@ namespace Ettad.EntityFramework.Configurations
         {
             builder.ToTable("Weapons");
 
+            builder.Property(x => x.CaliberCategory)
+                .IsRequired()
+                .HasDefaultValue(WeaponCaliberCategory.Small);
+
             // Performance indexes for pagination, filtering, and sorting
             // Note: IsDeleted, TypeId, ClassificationId, Name are in BaseItems table
             // CountryOfManufactureId is in Weapons table
