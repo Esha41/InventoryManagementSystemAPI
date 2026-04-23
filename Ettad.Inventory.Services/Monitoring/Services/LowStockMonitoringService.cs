@@ -10,6 +10,8 @@ using Ettad.Inventory.Service.Monitoring.Dtos;
 using Ettad.ResponseHandler.Consts;
 using Ettad.ResponseHandler.Models;
 using Ettad.Inventory.Service.Monitoring.Interfaces;
+using Ettad.Application.Common.Interfaces;
+using Ettad.Lookups.Services.Contracts;
 
 namespace Ettad.Inventory.Service.Monitoring.Services
 {
@@ -17,21 +19,50 @@ namespace Ettad.Inventory.Service.Monitoring.Services
     {
         private readonly ApplicationDbContext _context;
         private readonly ILogger<LowStockMonitoringService> _logger;
+        private readonly ICurrentUserService _currentUserService;
+        private readonly IDepotAccessService _depotAccessService;
 
         public LowStockMonitoringService(
             ApplicationDbContext context,
-            ILogger<LowStockMonitoringService> logger)
+            ILogger<LowStockMonitoringService> logger,
+            ICurrentUserService currentUserService,
+            IDepotAccessService depotAccessService)
         {
             _context = context;
             _logger = logger;
+            _currentUserService = currentUserService;
+            _depotAccessService = depotAccessService;
         }
 
-        public async Task<APIOperationResponse<int>> GetLowStockItemsCountAsync(long? depotId = null)
+        public async Task<APIOperationResponse<int>> GetLowStockItemsCountAsync(long? depotId = null, List<long>? depotIds = null)
         {
-            _logger.LogInformation("Getting low stock items count. DepotId: {DepotId}", depotId?.ToString() ?? "All");
+            var effective = new List<long>();
+            if (depotIds != null) foreach (var d in depotIds) if (d > 0) effective.Add(d);
+            if (depotId.HasValue && depotId.Value > 0) effective.Add(depotId.Value);
+            var distinct = effective.Distinct().ToList();
+
+            _logger.LogInformation("Getting low stock items count. DepotCount: {DepotCount}", distinct.Count > 0 ? distinct.Count : (int?)null);
 
             try
             {
+                if (distinct.Any())
+                {
+                    var userId = _currentUserService.UserId;
+                    if (!string.IsNullOrEmpty(userId))
+                    {
+                        foreach (var dId in distinct)
+                        {
+                            if (!await _depotAccessService.HasDepotAccessAsync(userId, dId))
+                            {
+                                _logger.LogWarning("User {UserId} attempted low-stock count for unauthorized depot {DepotId}", userId, dId);
+                                return APIOperationResponse<int>.Fail(ResponseType.Forbidden, "You do not have access to one or more of the requested depots.");
+                            }
+                        }
+                    }
+                }
+
+                IReadOnlyList<long>? depotFilter = distinct.Count > 0 ? distinct : null;
+
                 var itemsToCheck = await _context.BaseItems
                     .Where(i => i.MinimumQuantity.HasValue && i.MinimumQuantity.Value > 0 && !i.IsDeleted)
                     .AsNoTracking()
@@ -43,7 +74,7 @@ namespace Ettad.Inventory.Service.Monitoring.Services
 
                 foreach (var item in itemsToCheck)
                 {
-                    var lowStockInfo = await CheckItemStockAsync(item, depotId);
+                    var lowStockInfo = await CheckItemStockAsync(item, depotFilter);
                     if (lowStockInfo != null)
                         lowStockCount++;
                 }
@@ -103,13 +134,13 @@ namespace Ettad.Inventory.Service.Monitoring.Services
             }
         }
 
-        private async Task<LowStockItemInfo?> CheckItemStockAsync(BaseItem item, long? depotId)
+        private async Task<LowStockItemInfo?> CheckItemStockAsync(BaseItem item, IReadOnlyList<long>? effectiveDepotIds)
         {
             var inventoryQuery = _context.InventoryDetails
                 .Where(id => id.ItemId == item.Id && !id.Inventory.IsDeleted);
 
-            if (depotId.HasValue)
-                inventoryQuery = inventoryQuery.Where(id => id.Inventory.DepoId == depotId.Value);
+            if (effectiveDepotIds != null && effectiveDepotIds.Count > 0)
+                inventoryQuery = inventoryQuery.Where(id => effectiveDepotIds.Contains(id.Inventory.DepoId));
 
             var totalStock = await inventoryQuery.SumAsync(id => id.ItemQuantity);
 

@@ -11,6 +11,10 @@ using AutoMapper;
 using Ettad.Inventory.Service.Inventories.Dtos;
 using Ettad.Data.Interfaces.Repositories;
 using Ettad.Inventory.Service.Monitoring.Interfaces;
+using Ettad.Application.Common.Interfaces;
+using Ettad.Lookups.Services.Contracts;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace Ettad.Inventory.Service.Monitoring.Services
 {
@@ -22,6 +26,8 @@ namespace Ettad.Inventory.Service.Monitoring.Services
         private readonly IMapper _mapper;
         private readonly ICrossCuttingRepository<SupplyDetail> _supplyDetailsRepository;
         private readonly ICrossCuttingRepository<Supply> _supplyRepository;
+        private readonly ICurrentUserService _currentUserService;
+        private readonly IDepotAccessService _depotAccessService;
 
         public ExpiringLotMonitoringService(
             ApplicationDbContext context,
@@ -29,7 +35,9 @@ namespace Ettad.Inventory.Service.Monitoring.Services
             IDateTimeProvider dateTimeProvider,
             IMapper mapper,
             ICrossCuttingRepository<SupplyDetail> supplyDetailsRepository,
-            ICrossCuttingRepository<Supply> supplyRepository)
+            ICrossCuttingRepository<Supply> supplyRepository,
+            ICurrentUserService currentUserService,
+            IDepotAccessService depotAccessService)
         {
             _context = context;
             _logger = logger;
@@ -37,14 +45,37 @@ namespace Ettad.Inventory.Service.Monitoring.Services
             _mapper = mapper;
             _supplyDetailsRepository = supplyDetailsRepository;
             _supplyRepository = supplyRepository;
+            _currentUserService = currentUserService;
+            _depotAccessService = depotAccessService;
         }
 
-        public async Task<APIOperationResponse<int>> GetExpiringLotsCountAsync(long? depotId = null)
+        public async Task<APIOperationResponse<int>> GetExpiringLotsCountAsync(long? depotId = null, List<long>? depotIds = null)
         {
-            _logger.LogInformation("Getting expiring lots count (next 30 days). DepotId: {DepotId}", depotId?.ToString() ?? "All");
+            var effective = new List<long>();
+            if (depotIds != null) foreach (var d in depotIds) if (d > 0) effective.Add(d);
+            if (depotId.HasValue && depotId.Value > 0) effective.Add(depotId.Value);
+            var distinct = effective.Distinct().ToList();
+
+            _logger.LogInformation("Getting expiring lots count (next 30 days). DepotCount: {DepotCount}", distinct.Count > 0 ? distinct.Count : (int?)null);
 
             try
             {
+                if (distinct.Any())
+                {
+                    var userId = _currentUserService.UserId;
+                    if (!string.IsNullOrEmpty(userId))
+                    {
+                        foreach (var dId in distinct)
+                        {
+                            if (!await _depotAccessService.HasDepotAccessAsync(userId, dId))
+                            {
+                                _logger.LogWarning("User {UserId} attempted expiring-lot count for unauthorized depot {DepotId}", userId, dId);
+                                return APIOperationResponse<int>.Fail(ResponseType.Forbidden, "You do not have access to one or more of the requested depots.");
+                            }
+                        }
+                    }
+                }
+
                 var today = _dateTimeProvider.Now.Date;
                 var thirtyDaysFromNow = today.AddDays(30);
 
@@ -60,8 +91,8 @@ namespace Ettad.Inventory.Service.Monitoring.Services
                         id.ExpiryDate.Value.Date <= thirtyDaysFromNow &&
                         !id.Inventory.IsDeleted);
 
-                if (depotId.HasValue)
-                    query = query.Where(id => id.Inventory.DepoId == depotId.Value);
+                if (distinct.Any())
+                    query = query.Where(id => distinct.Contains(id.Inventory.DepoId));
 
                 var expiringLots = await query.AsNoTracking().ToListAsync();
 

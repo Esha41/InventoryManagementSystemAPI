@@ -1,5 +1,6 @@
 using AutoMapper;
 using FluentValidation;
+using System.Linq;
 using System.Linq.Expressions;
 using Ettad.CrossCutting.Comman.FileUpload;
 using Ettad.Data.Enums;
@@ -22,6 +23,7 @@ using Ettad.Inventory.Service.Batches.Interfaces;
 using Ettad.Inventory.Service.Common.Interfaces;
 using Ettad.Inventory.Service.Assets.Interfaces;
 using Ettad.Data.Entities;
+using System.Collections.Generic;
 
 namespace Ettad.Inventory.Service.Assets.Implementation
 {
@@ -343,27 +345,43 @@ namespace Ettad.Inventory.Service.Assets.Implementation
             }
         }
 
-        public async Task<APIOperationResponse<List<AssetDto>>> GetAllAsync(long? depotId = null)
+        public async Task<APIOperationResponse<List<AssetDto>>> GetAllAsync(long? depotId = null, List<long>? depotIds = null)
         {
-            _logger.LogInformation("Getting all assets. DepotId: {DepotId}, User: {UserId}", depotId, _currentUserService.UserId);
+            var effective = new HashSet<long>();
+            if (depotIds != null) foreach (var d in depotIds) if (d > 0) effective.Add(d);
+            if (depotId.HasValue && depotId.Value > 0) effective.Add(depotId.Value);
+            _logger.LogInformation("Getting all assets. DepotId: {DepotId}, DepotCount: {DepotCount}, User: {UserId}",
+                depotId, effective.Count, _currentUserService.UserId);
             
             try
             {
-                if (depotId.HasValue && depotId.Value > 0)
+                if (effective.Count > 0)
                 {
                     var userId = _currentUserService.UserId;
-                    if (!string.IsNullOrEmpty(userId) && !await _depotAccessService.HasDepotAccessAsync(userId, depotId.Value))
+                    if (!string.IsNullOrEmpty(userId))
                     {
-                        _logger.LogWarning("User {UserId} attempted to access assets for unauthorized depot {DepotId}", userId, depotId);
-                        return APIOperationResponse<List<AssetDto>>.Fail(ResponseType.Forbidden, "You do not have access to this depot.");
+                        foreach (var dId in effective)
+                        {
+                            if (!await _depotAccessService.HasDepotAccessAsync(userId, dId))
+                            {
+                                _logger.LogWarning("User {UserId} attempted to access assets for unauthorized depot {DepotId}", userId, dId);
+                                return APIOperationResponse<List<AssetDto>>.Fail(ResponseType.Forbidden, "You do not have access to one or more of the requested depots.");
+                            }
+                        }
                     }
                 }
 
                 // Build filter predicate
                 Expression<Func<Asset, bool>> filter = a => !a.IsDeleted;
-                if (depotId.HasValue && depotId.Value > 0)
+                if (effective.Count == 1)
                 {
-                    filter = a => !a.IsDeleted && a.DepotId == depotId.Value;
+                    var one = effective.First();
+                    filter = a => !a.IsDeleted && a.DepotId == one;
+                }
+                else if (effective.Count > 1)
+                {
+                    var set = effective.ToArray();
+                    filter = a => !a.IsDeleted && set.Contains(a.DepotId);
                 }
 
                 var assets = await _assetRepository.FindAsync(
