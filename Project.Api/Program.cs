@@ -1,7 +1,15 @@
 // Configure Serilog
 
 
+using Ettad.Inventory.Service.AllowanceItems.Interfaces;
+using Ettad.Inventory.Service.Common.Interfaces;
+using Ettad.Inventory.Service.Monitoring.Services;
+using Ettad.Module.lookup.Interfaces;
+using Ettad.Module.lookup.Services;
+using Ettad.ReportManagement.Service.Services;
 using Ettad.Repository.Repositories;
+using Ettad.User.Services.Services;
+using Ettad.Workflows.Service.Services;
 
 Log.Logger = new LoggerConfiguration()
     .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
@@ -37,7 +45,7 @@ try
     builder.Services.AddMemoryCache();
 
     // Register ICurrentUserService early so interceptor can use it
-    builder.Services.AddScoped<Ettad.Application.Common.Interfaces.ICurrentUserService, Ettad.User.Services.Implementation.CurrentUserService>();
+    builder.Services.AddScoped<Ettad.Application.Common.Interfaces.ICurrentUserService, CurrentUserService>();
 
     // Register DevExpress Reporting services
     builder.Services.AddDevExpressControls();
@@ -105,8 +113,8 @@ try
 
     // Register custom Depot service with inventory validation
     builder.Services.AddScoped<IDepotService, DepotService>();
-    builder.Services.AddScoped<Ettad.Lookups.Services.Contracts.IDepotAccessService, Ettad.Lookups.Services.Implementation.DepotAccessService>();
-    builder.Services.AddScoped<Ettad.Lookups.Services.Contracts.IUserDepotService, Ettad.Lookups.Services.Implementation.UserDepotService>();
+    builder.Services.AddScoped<IDepotAccessService, DepotAccessService>();
+    builder.Services.AddScoped<IUserDepotService, UserDepotService>();
 
     builder.Services.AddScoped<IEmailSender, EmailSender>();
     builder.Services.AddScoped<IWorkflowApprovalService, WorkflowApprovalService>();

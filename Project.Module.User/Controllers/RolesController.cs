@@ -64,7 +64,6 @@ namespace Ettad.User.API.Controllers
         [HttpPost]
         [CheckAuthorize(
              "Permissions.Roles.Create"
-
          )]
         public async Task<IActionResult> CreateRole([FromBody] CreateRoleDto createRoleDto)
         {

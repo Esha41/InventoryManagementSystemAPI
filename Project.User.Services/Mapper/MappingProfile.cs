@@ -2,9 +2,8 @@ using AutoMapper;
 using Ettad.Comman.Idenitity;
 using Ettad.CrossCutting.Comman.Idenitity;
 using Ettad.Data.Entities;
-using Ettad.Services.DataTransferObject.AuthenticationDto;
-using Ettad.Services.DataTransferObject.Customer;
 using Ettad.User.Services.DTO;
+using Ettad.User.Services.DTO.AuthenticationDto;
 namespace Ettad.Services.Mapper
 {
     public class MappingProfile : Profile

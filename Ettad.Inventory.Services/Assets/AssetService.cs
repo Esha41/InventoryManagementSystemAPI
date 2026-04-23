@@ -5,22 +5,22 @@ using Ettad.CrossCutting.Comman.FileUpload;
 using Ettad.Data.Entities;
 using Ettad.Data.Enums;
 using Ettad.Inventory.Service.Assets.Dtos;
-using Ettad.Inventory.Services.Common;
 using Ettad.ResponseHandler.Consts;
 using Ettad.ResponseHandler.Models;
 using Ettad.Application.Common.Interfaces;
-using Ettad.Lookups.Services.Contracts;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using OfficeOpenXml;
 using Ettad.CrossCutting.Comman.Time;
 using Ettad.CrossCutting.Comman.Models;
-using Ettad.Inventory.Service.Batches;
 using Ettad.Inventory.Service.Batches.Dtos;
-using Ettad.Inventory.Service.AssetHistory;
 using Ettad.Inventory.Service.AssetHistory.Dtos;
 using System.Text.Json;
 using Ettad.Data.Interfaces.Repositories;
+using Ettad.Module.lookup.Interfaces;
+using Ettad.Inventory.Service.AssetHistory.Interfaces;
+using Ettad.Inventory.Service.Batches.Interfaces;
+using Ettad.Inventory.Service.Common.Interfaces;
 
 namespace Ettad.Inventory.Service.Assets
 {

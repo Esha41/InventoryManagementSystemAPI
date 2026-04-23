@@ -1,3 +1,5 @@
+using Ettad.Inventory.Service.Monitoring.Services;
+
 namespace Ettad.Inventory.Service.Monitoring.Dtos
 {
     /// <summary>

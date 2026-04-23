@@ -1,12 +1,12 @@
 using Ettad.ResponseHandler.Models;
 using Ettad.CrossCutting.Comman.Models;
-using Ettad.Services.DataTransferObject.AuthenticationDto;
 using Ettad.User.Services.DTO;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Ettad.User.Services.DTO.AuthenticationDto;
 
 namespace Ettad.User.Services.Interfaces
 {

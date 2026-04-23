@@ -1,0 +1,311 @@
+using Microsoft.AspNetCore.Http;
+using OfficeOpenXml;
+using System.ComponentModel.DataAnnotations;
+using System.Globalization;
+using System.Reflection;
+
+namespace Ettad.Inventory.Service.Common.Interfaces
+{
+    public class ImportResult<T>
+    {
+        public List<T> SuccessfulRecords { get; set; } = new List<T>();
+        public List<ImportError> Errors { get; set; } = new List<ImportError>();
+        public int TotalProcessed { get; set; }
+        public int SuccessCount => SuccessfulRecords.Count;
+        public int FailureCount => Errors.Count;
+        public List<string> ImportHeaders { get; set; } = new List<string>();
+    }
+
+    public class ImportError
+    {
+        public int RowNumber { get; set; }
+        public string ErrorMessage { get; set; }
+        public string ColumnName { get; set; }
+        public object RowData { get; set; } // Store the actual row data for preview
+    }
+
+    public interface IExcelImportService
+    {
+        Task<ImportResult<T>> ImportFromExcelAsync<T>(
+            IFormFile file,
+            Dictionary<string, string> columnMappings,
+            string? worksheetName = null) where T : new();
+    }
+
+    public class ExcelImportService : IExcelImportService
+    {
+        public ExcelImportService()
+        {
+            // Set EPPlus license context (EPPlus 8+ API)
+            ExcelPackage.License.SetNonCommercialPersonal("Ettad");
+        }
+
+        public async Task<ImportResult<T>> ImportFromExcelAsync<T>(
+            IFormFile file,
+            Dictionary<string, string> columnMappings,
+            string? worksheetName = null) where T : new()
+        {
+            var result = new ImportResult<T>();
+
+            if (file == null || file.Length == 0)
+            {
+                result.Errors.Add(new ImportError { ErrorMessage = "File is empty or null" });
+                return result;
+            }
+
+            using (var stream = new MemoryStream())
+            {
+                await file.CopyToAsync(stream);
+                using (var package = new ExcelPackage(stream))
+                {
+                    ExcelWorksheet? worksheet = null;
+                    if (!string.IsNullOrWhiteSpace(worksheetName))
+                    {
+                        foreach (var ws in package.Workbook.Worksheets)
+                        {
+                            if (string.Equals(ws.Name, worksheetName.Trim(), StringComparison.OrdinalIgnoreCase))
+                            {
+                                worksheet = ws;
+                                break;
+                            }
+                        }
+
+                        if (worksheet == null)
+                        {
+                            result.Errors.Add(new ImportError { ErrorMessage = $"Worksheet \"{worksheetName}\" was not found in the Excel file." });
+                            return result;
+                        }
+                    }
+                    else
+                    {
+                        worksheet = package.Workbook.Worksheets.FirstOrDefault();
+                    }
+
+                    if (worksheet == null)
+                    {
+                        result.Errors.Add(new ImportError { ErrorMessage = "No worksheets found in the Excel file" });
+                        return result;
+                    }
+
+                    int rowCount = worksheet.Dimension?.Rows ?? 0;
+                    int colCount = worksheet.Dimension?.Columns ?? 0;
+
+                    if (rowCount < 2) 
+                    {
+                        result.Errors.Add(new ImportError { ErrorMessage = "Excel file contains no data (or only headers)" });
+                        return result;
+                    }
+
+                    // Map headers to column indices and populate ImportHeaders
+                    var headerMap = new Dictionary<string, int>();
+                    var headersFound = new HashSet<string>();
+                    for (int col = 1; col <= colCount; col++)
+                    {
+                        var headerVal = worksheet.Cells[1, col].Text?.Trim();
+                        if (!string.IsNullOrEmpty(headerVal) && columnMappings.TryGetValue(headerVal, out var propertyName))
+                        {
+                            headerMap[headerVal] = col;
+                            
+                            // Add camelCase property name to result headers if not already added
+                            var camelPropertyName = System.Text.Json.JsonNamingPolicy.CamelCase.ConvertName(propertyName);
+                            if (!headersFound.Contains(camelPropertyName))
+                            {
+                                result.ImportHeaders.Add(camelPropertyName);
+                                headersFound.Add(camelPropertyName);
+                            }
+                        }
+                    }
+
+                    // Process Data Rows
+                    for (int row = 2; row <= rowCount; row++)
+                    {
+                        try
+                        {
+                            var item = new T();
+                            bool rowHasData = false;
+                            
+                            foreach (var map in columnMappings)
+                            {
+                                var excelHeader = map.Key;
+                                var propertyName = map.Value;
+
+                                if (headerMap.TryGetValue(excelHeader, out int colIndex))
+                                {
+                                    var cellValue = ConvertCellToImportString(worksheet.Cells[row, colIndex].Value);
+                                    if (!string.IsNullOrWhiteSpace(cellValue))
+                                    {
+                                        rowHasData = true;
+                                        SetProperty(item, propertyName, cellValue.Trim());
+                                    }
+                                }
+                            }
+
+                            if (rowHasData)
+                            {
+                                // Set RowNumber if property exists
+                                var rowNumProp = typeof(T).GetProperty("RowNumber", BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase);
+                                if (rowNumProp != null && rowNumProp.CanWrite && rowNumProp.PropertyType == typeof(int))
+                                {
+                                    rowNumProp.SetValue(item, row);
+                                }
+
+                                // Optional: Add Data Annotation Validation here if needed
+                                var ctx = new ValidationContext(item);
+                                var validationResults = new List<ValidationResult>();
+                                if (!Validator.TryValidateObject(item, ctx, validationResults, true))
+                                {
+                                    foreach (var validationError in validationResults)
+                                    {
+                                         result.Errors.Add(new ImportError 
+                                         { 
+                                             RowNumber = row, 
+                                             ErrorMessage = validationError.ErrorMessage,
+                                             ColumnName = string.Join(", ", validationError.MemberNames),
+                                             RowData = item
+                                         });
+                                    }
+                                }
+                                else
+                                {
+                                    result.SuccessfulRecords.Add(item);
+                                }
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            var msg = ex.Message;
+                            if (ex.InnerException != null)
+                            {
+                                msg += $" (Inner: {ex.InnerException.Message})";
+                            }
+                            
+                            result.Errors.Add(new ImportError 
+                            { 
+                                RowNumber = row, 
+                                ErrorMessage = $"Error processing row: {msg}",
+                                RowData = null // Can't reliably provide RowData here
+                            });
+                        }
+                    }
+                    
+                    result.TotalProcessed = rowCount - 1; // Excluding header
+                }
+            }
+
+            return result;
+        }
+
+        /// <summary>Stable string for Excel cell values (handles numeric types without losing whole IDs).</summary>
+        private static string ConvertCellToImportString(object? raw)
+        {
+            if (raw == null)
+                return string.Empty;
+            return raw switch
+            {
+                int i => i.ToString(CultureInfo.InvariantCulture),
+                long l => l.ToString(CultureInfo.InvariantCulture),
+                double d => d.ToString("G15", CultureInfo.InvariantCulture),
+                decimal m => m.ToString("G29", CultureInfo.InvariantCulture),
+                float f => f.ToString("G9", CultureInfo.InvariantCulture),
+                bool b => b ? "true" : "false",
+                DateTime dt => dt.ToString("O", CultureInfo.InvariantCulture),
+                _ => raw.ToString() ?? string.Empty
+            };
+        }
+
+        private void SetProperty<T>(T obj, string propertyName, string value)
+        {
+            var property = typeof(T).GetProperty(propertyName, BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase);
+            if (property != null && property.CanWrite)
+            {
+                var targetType = Nullable.GetUnderlyingType(property.PropertyType) ?? property.PropertyType;
+                object convertedValue = null;
+
+                try 
+                {
+                    if (targetType == typeof(string))
+                        convertedValue = value;
+                    else if (targetType == typeof(int))
+                    {
+                        if (!TryParseExcelInt32(value, out var iv))
+                            throw new Exception($"Invalid integer: '{value}'");
+                        convertedValue = iv;
+                    }
+                    else if (targetType == typeof(long))
+                    {
+                        if (!TryParseExcelInt64(value, out var lv))
+                            throw new Exception($"Invalid integer: '{value}'");
+                        convertedValue = lv;
+                    }
+                    else if (targetType == typeof(double))
+                        convertedValue = double.Parse(value);
+                    else if (targetType == typeof(decimal))
+                        convertedValue = decimal.Parse(value);
+                    else if (targetType == typeof(DateTime))
+                        convertedValue = DateTime.Parse(value); // Adjust format as needed
+                    else if (targetType == typeof(bool))
+                    {
+                        // Handle common Excel boolean formats
+                        var normalizedValue = value.Trim().ToLowerInvariant();
+                        if (normalizedValue == "yes" || normalizedValue == "y" || normalizedValue == "1" || normalizedValue == "true")
+                            convertedValue = true;
+                        else if (normalizedValue == "no" || normalizedValue == "n" || normalizedValue == "0" || normalizedValue == "false")
+                            convertedValue = false;
+                        else
+                            convertedValue = bool.Parse(value); // Fallback to standard parsing
+                    }
+                    else if (targetType.IsEnum)
+                    {
+                        try
+                        {
+                            convertedValue = Enum.Parse(targetType, value, true);
+                        }
+                        catch
+                        {
+                            // Try scrubbing spaces/hyphens
+                            var scrubbed = value.Replace(" ", "").Replace("-", "").Replace("_", "");
+                            convertedValue = Enum.Parse(targetType, scrubbed, true);
+                        }
+                    }
+                    
+                    if (convertedValue != null)
+                        property.SetValue(obj, convertedValue);
+                }
+                catch
+                {
+                    // If conversion fails, you might want to throw or log specifics.
+                    // For now, let it bubble up to be caught as a row error.
+                    throw new Exception($"Failed to convert value '{value}' for property '{propertyName}' ({targetType.Name})");
+                }
+            }
+        }
+
+        private static bool TryParseExcelInt32(string value, out int result)
+        {
+            var t = value.Trim();
+            if (int.TryParse(t, NumberStyles.Integer, CultureInfo.InvariantCulture, out result))
+                return true;
+            if (double.TryParse(t, NumberStyles.Any, CultureInfo.InvariantCulture, out var d))
+            {
+                result = (int)Math.Round(d);
+                return true;
+            }
+            result = 0;
+            return false;
+        }
+
+        private static bool TryParseExcelInt64(string value, out long result)
+        {
+            var t = value.Trim();
+            if (long.TryParse(t, NumberStyles.Integer, CultureInfo.InvariantCulture, out result))
+                return true;
+            if (double.TryParse(t, NumberStyles.Any, CultureInfo.InvariantCulture, out var d))
+            {
+                result = (long)Math.Round(d);
+                return true;
+            }
+            result = 0;
+            return false;
+        }
+    }
+}

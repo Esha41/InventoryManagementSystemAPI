@@ -1,4 +1,4 @@
-using Ettad.Notification.Service;
+using Ettad.Notification.Service.Interfaces;
 using Ettad.User.Services.Events;
 using MediatR;
 using Microsoft.Extensions.Logging;

@@ -4,7 +4,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Http;
 using Ettad.Data.Entities;
 using Ettad.Inventory.Service.Assets.Dtos;
-using Ettad.Inventory.Services.Common;
 using Ettad.ResponseHandler.Consts;
 using Ettad.ResponseHandler.Models;
 using Ettad.Application.Common.Interfaces;
@@ -14,6 +13,7 @@ using Ettad.EntityFramework.DataBaseContext;
 using OfficeOpenXml;
 using OfficeOpenXml.Style;
 using Ettad.Data.Interfaces.Repositories;
+using Ettad.Inventory.Service.Common.Interfaces;
 
 namespace Ettad.Inventory.Service.Assets
 {

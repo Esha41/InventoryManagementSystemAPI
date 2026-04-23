@@ -1,9 +1,9 @@
-using Ettad.Notification.Service;
 using Ettad.User.Services.Events;
 using MediatR;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Logging;
 using Ettad.Comman.Idenitity;
+using Ettad.Notification.Service.Interfaces;
 
 namespace Ettad.Notification.Service.EventHandlers
 {

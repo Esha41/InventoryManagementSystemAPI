@@ -4,8 +4,6 @@ using Ettad.ResponseHandler.Models;
 using Ettad.User.Services.DTO;
 using Ettad.User.Services.Interfaces;
 using Ettad.CrossCutting.Common.Security;
-using System.Collections.Generic;
-using System.Threading.Tasks;
 
 namespace Ettad.User.API.Controllers
 {

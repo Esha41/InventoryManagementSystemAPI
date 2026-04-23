@@ -1,8 +1,8 @@
 using Ettad.Inventory.Service.Assets.Dtos;
-using Ettad.Inventory.Services.Common;
 using Ettad.ResponseHandler.Models;
 using Ettad.CrossCutting.Comman.Models;
 using Microsoft.AspNetCore.Http;
+using Ettad.Inventory.Service.Common.Interfaces;
 
 namespace Ettad.Inventory.Service.Assets
 {
