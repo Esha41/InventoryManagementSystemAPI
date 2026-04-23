@@ -3,12 +3,13 @@ using Ettad.Inventory.Services.Common;
 using Ettad.ResponseHandler.Models;
 using Ettad.CrossCutting.Comman.Models;
 using Microsoft.AspNetCore.Http;
+using System.Collections.Generic;
 
 namespace Ettad.Inventory.Service.Assets
 {
     public interface IAssetService
     {
-        Task<APIOperationResponse<List<AssetDto>>> GetAllAsync(long? depotId = null);
+        Task<APIOperationResponse<List<AssetDto>>> GetAllAsync(long? depotId = null, List<long>? depotIds = null);
         Task<APIOperationResponse<AssetDto>> GetByIdAsync(long id);
         Task<APIOperationResponse<AssetDto>> GetBySerialNumberAsync(string serialNumber);
         Task<APIOperationResponse<long>> CreateAsync(CreateAssetDto inputDto, List<IFormFile>? files = null);
