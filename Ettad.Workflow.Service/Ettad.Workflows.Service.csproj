@@ -22,6 +22,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Project.Comman\Ettad.CrossCutting.Comman.csproj" />
     <ProjectReference Include="..\Project.Data\Ettad.Data.csproj" />
     <ProjectReference Include="..\Project.EntityFramework\Ettad.EntityFramework.csproj" />
     <ProjectReference Include="..\Project.User.Services\Ettad.User.Services.csproj" />
