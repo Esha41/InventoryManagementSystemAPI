@@ -1,10 +1,10 @@
-using Ettad.LdapSettings.Services.DTO;
 using Ettad.LdapSettings.Services.Interfaces;
 using Ettad.ResponseHandler.Models;
 using Ettad.CrossCutting.Common.Security;
 using FluentValidation;
 using Microsoft.AspNetCore.Mvc;
 using System.Net;
+using Ettad.LdapSettings.Services.Dtos;
 
 namespace Ettad.LdapSettings.APIs.Controllers
 {

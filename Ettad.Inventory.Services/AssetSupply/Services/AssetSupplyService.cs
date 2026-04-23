@@ -13,7 +13,7 @@ using Ettad.ResponseHandler.Models;
 using Ettad.CrossCutting.Comman.Time;
 using Ettad.CrossCutting.Comman.FileUpload;
 using Ettad.Workflows.Service.Interface;
-using Ettad.Workflows.Service.DTO;
+using Ettad.Workflows.Service.Dtos;
 using Ettad.Inventory.Service.Batches.Dtos;
 using Ettad.Inventory.Service.Assets.Dtos;
 using Microsoft.AspNetCore.Http;

@@ -1,5 +1,5 @@
 using Ettad.CrossCutting.Comman.Exception;
-using Ettad.LdapSettings.Services.DTO;
+using Ettad.LdapSettings.Services.Dtos;
 using Ettad.User.Services.Interfaces;
 using System;
 using System.Threading.Tasks;

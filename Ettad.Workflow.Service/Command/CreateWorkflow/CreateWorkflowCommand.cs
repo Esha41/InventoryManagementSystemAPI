@@ -5,7 +5,6 @@ using Ettad.Application.Common.Interfaces;
 using Ettad.Data.Enums;
 using Ettad.EntityFramework.DataBaseContext;
 using Ettad.ResponseHandler.Models;
-using Ettad.Workflows.Service.DTO;
 using Ettad.User.Services.DTO;
 using System;
 using System.Collections.Generic;
@@ -14,6 +13,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Ettad.Data.Entities.Workflows;
 using Ettad.CrossCutting.Comman.Time;
+using Ettad.Workflows.Service.Dtos;
 
 namespace Ettad.Workflows.Service.Command.CreateWorkflow
 {

@@ -1,4 +1,4 @@
-namespace Ettad.Workflow.Service.DTO
+namespace Ettad.Workflows.Service.Dtos
 {
     /// <summary>
     /// DTO for workflow step notifier

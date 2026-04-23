@@ -2,7 +2,6 @@ using AutoMapper;
 using FluentValidation;
 using System.Linq.Expressions;
 using Ettad.CrossCutting.Comman.FileUpload;
-using Ettad.Data.Entities;
 using Ettad.Data.Enums;
 using Ettad.Inventory.Service.Assets.Dtos;
 using Ettad.ResponseHandler.Consts;
@@ -21,8 +20,10 @@ using Ettad.Module.lookup.Interfaces;
 using Ettad.Inventory.Service.AssetHistory.Interfaces;
 using Ettad.Inventory.Service.Batches.Interfaces;
 using Ettad.Inventory.Service.Common.Interfaces;
+using Ettad.Inventory.Service.Assets.Interfaces;
+using Ettad.Data.Entities;
 
-namespace Ettad.Inventory.Service.Assets
+namespace Ettad.Inventory.Service.Assets.Implementation
 {
     public class AssetService : IAssetService
     {
@@ -1467,8 +1468,8 @@ namespace Ettad.Inventory.Service.Assets
                     .ToList();
                 var departmentLabels = departments
                     .Select(d => isAr
-                        ? (!string.IsNullOrWhiteSpace(d.NameAr) ? d.NameAr.Trim() : (d.NameEn ?? "").Trim())
-                        : (!string.IsNullOrWhiteSpace(d.NameEn) ? d.NameEn.Trim() : (d.NameAr ?? "").Trim()))
+                        ? !string.IsNullOrWhiteSpace(d.NameAr) ? d.NameAr.Trim() : (d.NameEn ?? "").Trim()
+                        : !string.IsNullOrWhiteSpace(d.NameEn) ? d.NameEn.Trim() : (d.NameAr ?? "").Trim())
                     .Where(s => !string.IsNullOrWhiteSpace(s))
                     .GroupBy(s => s, StringComparer.OrdinalIgnoreCase).Select(g => g.First())
                     .OrderBy(s => s).ToList();
@@ -1593,8 +1594,8 @@ namespace Ettad.Inventory.Service.Assets
             if (e == null) return "";
             var isAr = string.Equals(language, "ar", StringComparison.OrdinalIgnoreCase);
             var name = isAr
-                ? (!string.IsNullOrWhiteSpace(e.NameAr) ? e.NameAr : e.NameEn)
-                : (!string.IsNullOrWhiteSpace(e.NameEn) ? e.NameEn : e.NameAr);
+                ? !string.IsNullOrWhiteSpace(e.NameAr) ? e.NameAr : e.NameEn
+                : !string.IsNullOrWhiteSpace(e.NameEn) ? e.NameEn : e.NameAr;
             name = string.IsNullOrWhiteSpace(name) ? "" : name.Trim();
             if (!string.IsNullOrWhiteSpace(e.MilitaryId))
                 return $"{name} ({e.MilitaryId.Trim()})".Trim();

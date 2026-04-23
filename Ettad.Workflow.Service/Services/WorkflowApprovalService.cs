@@ -6,7 +6,6 @@ using Ettad.ResponseHandler.Models;
 using Ettad.User.Services.DTO;
 using Ettad.User.Services.Interfaces;
 using Ettad.Workflow.Service.Interface;
-using Ettad.Workflows.Service.DTO;
 using Ettad.Workflows.Service.Events;
 using Ettad.Workflows.Service.Interface;
 using MediatR;
@@ -22,6 +21,7 @@ using Ettad.Data.Interfaces.Repositories;
 using Ettad.Data.Entities;
 using Ettad.Data.Interfaces.Services;
 using Ettad.Data.Constants;
+using Ettad.Workflows.Service.Dtos;
 
 namespace Ettad.Workflows.Service.Services
 {

@@ -1,6 +1,6 @@
 using Ettad.CrossCutting.Common.Security;
-using Ettad.Inventory.Service.Assets;
 using Ettad.Inventory.Service.Assets.Dtos;
+using Ettad.Inventory.Service.Employees.Interfaces;
 using Ettad.ResponseHandler.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;

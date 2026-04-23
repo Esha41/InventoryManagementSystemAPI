@@ -14,8 +14,9 @@ using OfficeOpenXml;
 using OfficeOpenXml.Style;
 using Ettad.Data.Interfaces.Repositories;
 using Ettad.Inventory.Service.Common.Interfaces;
+using Ettad.Inventory.Service.Employees.Interfaces;
 
-namespace Ettad.Inventory.Service.Assets
+namespace Ettad.Inventory.Service.Employees.Implementation
 {
     public class EmployeeService : IEmployeeService
     {
@@ -231,8 +232,8 @@ namespace Ettad.Inventory.Service.Assets
                 var departments = await _context.Departments.AsNoTracking().Where(d => !d.IsDeleted).OrderBy(d => d.Id).ToListAsync();
                 var departmentLabels = departments
                     .Select(d => isAr
-                        ? (!string.IsNullOrWhiteSpace(d.NameAr) ? d.NameAr.Trim() : (d.NameEn ?? "").Trim())
-                        : (!string.IsNullOrWhiteSpace(d.NameEn) ? d.NameEn.Trim() : (d.NameAr ?? "").Trim()))
+                        ? !string.IsNullOrWhiteSpace(d.NameAr) ? d.NameAr.Trim() : (d.NameEn ?? "").Trim()
+                        : !string.IsNullOrWhiteSpace(d.NameEn) ? d.NameEn.Trim() : (d.NameAr ?? "").Trim())
                     .Where(s => !string.IsNullOrWhiteSpace(s))
                     .GroupBy(s => s, StringComparer.OrdinalIgnoreCase).Select(g => g.First())
                     .OrderBy(s => s).ToList();
@@ -240,8 +241,8 @@ namespace Ettad.Inventory.Service.Assets
                 var ranks = await _context.Ranks.AsNoTracking().Where(r => !r.IsDeleted).OrderBy(r => r.Id).ToListAsync();
                 var rankLabels = ranks
                     .Select(r => isAr
-                        ? (!string.IsNullOrWhiteSpace(r.NameAr) ? r.NameAr.Trim() : (r.NameEn ?? "").Trim())
-                        : (!string.IsNullOrWhiteSpace(r.NameEn) ? r.NameEn.Trim() : (r.NameAr ?? "").Trim()))
+                        ? !string.IsNullOrWhiteSpace(r.NameAr) ? r.NameAr.Trim() : (r.NameEn ?? "").Trim()
+                        : !string.IsNullOrWhiteSpace(r.NameEn) ? r.NameEn.Trim() : (r.NameAr ?? "").Trim())
                     .Where(s => !string.IsNullOrWhiteSpace(s))
                     .GroupBy(s => s, StringComparer.OrdinalIgnoreCase).Select(g => g.First())
                     .OrderBy(s => s).ToList();
@@ -488,8 +489,8 @@ namespace Ettad.Inventory.Service.Assets
                 {
                     var t = row.DepartmentName.Trim();
                     var dept = departments.FirstOrDefault(d =>
-                        (!string.IsNullOrWhiteSpace(d.NameEn) && string.Equals(d.NameEn.Trim(), t, StringComparison.OrdinalIgnoreCase)) ||
-                        (!string.IsNullOrWhiteSpace(d.NameAr) && string.Equals(d.NameAr.Trim(), t, StringComparison.OrdinalIgnoreCase)));
+                        !string.IsNullOrWhiteSpace(d.NameEn) && string.Equals(d.NameEn.Trim(), t, StringComparison.OrdinalIgnoreCase) ||
+                        !string.IsNullOrWhiteSpace(d.NameAr) && string.Equals(d.NameAr.Trim(), t, StringComparison.OrdinalIgnoreCase));
                     if (dept != null)
                         row.DepartmentId = dept.Id;
                     else
@@ -501,8 +502,8 @@ namespace Ettad.Inventory.Service.Assets
                 {
                     var t = row.RankName.Trim();
                     var rank = ranks.FirstOrDefault(r =>
-                        (!string.IsNullOrWhiteSpace(r.NameEn) && string.Equals(r.NameEn.Trim(), t, StringComparison.OrdinalIgnoreCase)) ||
-                        (!string.IsNullOrWhiteSpace(r.NameAr) && string.Equals(r.NameAr.Trim(), t, StringComparison.OrdinalIgnoreCase)));
+                        !string.IsNullOrWhiteSpace(r.NameEn) && string.Equals(r.NameEn.Trim(), t, StringComparison.OrdinalIgnoreCase) ||
+                        !string.IsNullOrWhiteSpace(r.NameAr) && string.Equals(r.NameAr.Trim(), t, StringComparison.OrdinalIgnoreCase));
                     if (rank != null)
                         row.RankId = rank.Id;
                     else
@@ -586,13 +587,13 @@ namespace Ettad.Inventory.Service.Assets
                 "Name (English)" or "الاسم بالإنجليزي" => emp.NameEn ?? "",
                 "Military ID" or "الرقم العسكري" => emp.MilitaryId ?? "",
                 "Department" or "القسم" => emp.Department == null ? "" :
-                    (isAr
+                    isAr
                         ? (!string.IsNullOrWhiteSpace(emp.Department.NameAr) ? emp.Department.NameAr : emp.Department.NameEn) ?? ""
-                        : (!string.IsNullOrWhiteSpace(emp.Department.NameEn) ? emp.Department.NameEn : emp.Department.NameAr) ?? ""),
+                        : (!string.IsNullOrWhiteSpace(emp.Department.NameEn) ? emp.Department.NameEn : emp.Department.NameAr) ?? "",
                 "Rank" or "الرتبة" => emp.Rank == null ? "" :
-                    (isAr
+                    isAr
                         ? (!string.IsNullOrWhiteSpace(emp.Rank.NameAr) ? emp.Rank.NameAr : emp.Rank.NameEn) ?? ""
-                        : (!string.IsNullOrWhiteSpace(emp.Rank.NameEn) ? emp.Rank.NameEn : emp.Rank.NameAr) ?? ""),
+                        : (!string.IsNullOrWhiteSpace(emp.Rank.NameEn) ? emp.Rank.NameEn : emp.Rank.NameAr) ?? "",
                 "Phone" or "الهاتف" => emp.Phone ?? "",
                 "Email" or "البريد الإلكتروني" => emp.Email ?? "",
                 "Notes" or "ملاحظات" => emp.Notes ?? "",

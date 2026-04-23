@@ -22,4 +22,8 @@
     <ProjectReference Include="..\Ettad.LdapSettings.Services\Ettad.LdapSettings.Services.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="NewFolder\" />
+  </ItemGroup>
+
 </Project>

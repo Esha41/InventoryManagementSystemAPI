@@ -4,7 +4,7 @@ using Ettad.CrossCutting.Comman.Models;
 using Microsoft.AspNetCore.Http;
 using Ettad.Inventory.Service.Common.Interfaces;
 
-namespace Ettad.Inventory.Service.Assets
+namespace Ettad.Inventory.Service.Assets.Interfaces
 {
     public interface IAssetService
     {

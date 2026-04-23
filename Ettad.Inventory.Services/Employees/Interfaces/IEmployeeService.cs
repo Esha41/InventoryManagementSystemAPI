@@ -3,7 +3,7 @@ using Ettad.Inventory.Service.Common.Interfaces;
 using Ettad.ResponseHandler.Models;
 using Microsoft.AspNetCore.Http;
 
-namespace Ettad.Inventory.Service.Assets
+namespace Ettad.Inventory.Service.Employees.Interfaces
 {
     public interface IEmployeeService
     {

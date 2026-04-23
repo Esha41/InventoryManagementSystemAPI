@@ -6,7 +6,7 @@ using System.Text;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 
-namespace Ettad.Workflows.Service.DTO
+namespace Ettad.Workflows.Service.Dtos
 {
     public class WorkflowDto
     {

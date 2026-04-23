@@ -7,7 +7,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Ettad.Workflows.Service.DTO
+namespace Ettad.Workflows.Service.Dtos
 {
     public class BaseRequestDto
     {

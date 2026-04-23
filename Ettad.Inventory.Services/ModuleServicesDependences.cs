@@ -7,7 +7,6 @@ using Microsoft.Extensions.DependencyInjection;
 using System.Reflection;
 using Ettad.Inventory.Service.Ammunitions.Dtos;
 using Ettad.Inventory.Service.Ammunitions.Validators;
-using Ettad.Inventory.Service.Assets;
 using Ettad.Inventory.Service.Assets.Dtos;
 using Ettad.Inventory.Service.Assets.Validators;
 using Ettad.Inventory.Service.AssetSupply.Dtos;
@@ -43,6 +42,10 @@ using Ettad.Inventory.Service.Batches.Mapper;
 using Ettad.Inventory.Service.Assets.Mapper;
 using Ettad.Inventory.Service.AssetSupply.Mapper;
 using Ettad.Inventory.Service.AssetHistory.Mapper;
+using Ettad.Inventory.Service.Assets.Implementation;
+using Ettad.Inventory.Service.Assets.Interfaces;
+using Ettad.Inventory.Service.Employees.Interfaces;
+using Ettad.Inventory.Service.Employees.Implementation;
 
 namespace Ettad.Inventory.Service
 {

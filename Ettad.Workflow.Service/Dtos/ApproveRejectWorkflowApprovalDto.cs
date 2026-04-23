@@ -1,7 +1,7 @@
 using Ettad.Data.Enums;
 using System.ComponentModel.DataAnnotations;
 
-namespace Ettad.Workflows.Service.DTO
+namespace Ettad.Workflows.Service.Dtos
 {
     public class ApproveRejectWorkflowApprovalDto
     {

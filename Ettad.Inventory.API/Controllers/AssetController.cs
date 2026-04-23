@@ -1,5 +1,4 @@
 using Ettad.CrossCutting.Common.Security;
-using Ettad.Inventory.Service.Assets;
 using Ettad.Inventory.Service.Assets.Dtos;
 using Ettad.ResponseHandler.Models;
 using Microsoft.AspNetCore.Authorization;
@@ -8,6 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 using OfficeOpenXml;
 using System.Net;
 using Ettad.CrossCutting.Comman.Models;
+using Ettad.Inventory.Service.Assets.Interfaces;
 
 namespace Ettad.Inventory.API.Controllers
 {

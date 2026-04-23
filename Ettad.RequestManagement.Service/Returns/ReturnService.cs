@@ -13,7 +13,7 @@ using Microsoft.AspNetCore.Identity;
 using Ettad.Comman.Idenitity;
 using Microsoft.Extensions.Logging;
 using Ettad.Workflows.Service.Interface;
-using Ettad.Workflows.Service.DTO;
+using Ettad.Workflows.Service.Dtos;
 using Microsoft.AspNetCore.Http;
 using Ettad.CrossCutting.Comman.Time;
 using Ettad.Data.Interfaces.Repositories;

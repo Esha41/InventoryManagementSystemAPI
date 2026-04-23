@@ -1,12 +1,5 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Runtime.InteropServices;
-using System.Threading;
-using System.Threading.Tasks;
 using Ettad.Application.Common.Interfaces;
 using Ettad.EntityFramework.DataBaseContext;
-using Ettad.LdapSettings.Services.DTO;
 using Ettad.LdapSettings.Services.Interfaces;
 using Ettad.ResponseHandler.Consts;
 using Ettad.ResponseHandler.Models;
@@ -15,6 +8,7 @@ using Microsoft.Extensions.Options;
 using SettingsEntity = Ettad.Data.Entities.Settings.Settings;
 using Ettad.CrossCutting.Comman.Time;
 using Ettad.Data.Constants;
+using Ettad.LdapSettings.Services.Dtos;
 
 namespace Ettad.LdapSettings.Services.Services
 {

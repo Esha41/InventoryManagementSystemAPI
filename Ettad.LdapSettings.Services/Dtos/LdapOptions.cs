@@ -1,4 +1,4 @@
-namespace Ettad.LdapSettings.Services.DTO
+namespace Ettad.LdapSettings.Services.Dtos
 {
     /// <summary>
     /// LDAP configuration options stored in settings and used for LDAP authentication.

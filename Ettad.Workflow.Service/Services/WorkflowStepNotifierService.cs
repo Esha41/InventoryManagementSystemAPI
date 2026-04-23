@@ -3,7 +3,6 @@ using Ettad.Data.Entities.Workflows;
 using Ettad.EntityFramework.DataBaseContext;
 using Ettad.ResponseHandler.Consts;
 using Ettad.ResponseHandler.Models;
-using Ettad.Workflow.Service.DTO;
 using Ettad.Workflow.Service.Interface;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -12,6 +11,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Ettad.Workflows.Service.Dtos;
 
 namespace Ettad.Workflows.Service.Services
 {
