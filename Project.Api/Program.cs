@@ -1,15 +1,7 @@
 // Configure Serilog
 
-
-using Ettad.Inventory.Service.AllowanceItems.Interfaces;
-using Ettad.Inventory.Service.Common.Interfaces;
-using Ettad.Inventory.Service.Monitoring.Services;
-using Ettad.Module.lookup.Interfaces;
-using Ettad.Module.lookup.Services;
-using Ettad.ReportManagement.Service.Services;
-using Ettad.Repository.Repositories;
-using Ettad.User.Services.Services;
-using Ettad.Workflows.Service.Services;
+using Ettad.Module.Logic.Extensions;
+using Ettad.ReportManagement.Service;
 
 Log.Logger = new LoggerConfiguration()
     .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
@@ -43,9 +35,6 @@ try
     builder.Services.AddAuthentication(IISDefaults.AuthenticationScheme);
     // Add MemoryCache for CAPTCHA service
     builder.Services.AddMemoryCache();
-
-    // Register ICurrentUserService early so interceptor can use it
-    builder.Services.AddScoped<Ettad.Application.Common.Interfaces.ICurrentUserService, CurrentUserService>();
 
     // Register DevExpress Reporting services
     builder.Services.AddDevExpressControls();
@@ -104,33 +93,10 @@ try
 
     // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
     builder.Services.AddEndpointsApiExplorer();
-    builder.Services.AddScoped(typeof(CrossCuttingRepository<>));
-
-    builder.Services.AddScoped(typeof(ICrossCuttingRepository<>), typeof(CrossCuttingRepository<>));
-    builder.Services.AddScoped<ITransactionManager, EfTransactionManager>();
-
-    builder.Services.AddScoped(typeof(ILookupService<,>), typeof(LookupService<,>));
-
-    // Register custom Depot service with inventory validation
-    builder.Services.AddScoped<IDepotService, DepotService>();
-    builder.Services.AddScoped<IDepotAccessService, DepotAccessService>();
-    builder.Services.AddScoped<IUserDepotService, UserDepotService>();
-
-    builder.Services.AddScoped<IEmailSender, EmailSender>();
-    builder.Services.AddScoped<IWorkflowApprovalService, WorkflowApprovalService>();
     builder.Services.AddScoped<IFileStorageService, FileStorageService>();
     builder.Services.AddScoped<IFileUploadService, Ettad.Modules.FileUpload.API.Services.FileUploadService>();
-    builder.Services.AddScoped<IExcelExportService, ExcelExportService>();
     builder.Services.AddScoped<Ettad.CrossCutting.Comman.Time.IDateTimeProvider, Ettad.CrossCutting.Comman.Time.SystemDateTimeProvider>();
-    
-    // Register Report services
-    builder.Services.AddScoped<IReportService, ReportService>();
-    builder.Services.AddScoped<IScheduledReportService, ScheduledReportService>();
-    builder.Services.AddScoped<IScheduledReportExecutionService, ScheduledReportExecutionService>();
-
-    // Register custom report storage extension
-    builder.Services.AddScoped<Ettad.ReportManagement.Service.Reports.Factories.ReportFactory>();
-    builder.Services.AddScoped<ReportStorageWebExtension, Ettad.ReportManagement.Service.Reports.CustomReportStorageWebExtension>();
+  
 
     // Configure Hangfire for background jobs
     var hangfireConnectionString = builder.Configuration.GetConnectionString("DefaultConnection");
@@ -151,6 +117,9 @@ try
     builder.Services.AddLdapSettingsServices();
     builder.Services.AddAnnouncementServices();
     builder.Services.AddHelpCenterServices();
+    builder.Services.AddModuleLogicServices();
+    builder.Services.AddReportManagementServices();
+    builder.Services.AddInfrastructureServices();
     #endregion
 
     // Register soft delete interceptor (ICurrentUserService is already registered above)
@@ -275,7 +244,6 @@ try
     builder.Services.Configure<FileSettings>(builder.Configuration.GetSection("FileSettings"));
     //builder.Services.AddRefitClient<IServieMangamentApI>().ConfigureHttpClient(c => c.BaseAddress = new Uri(baseUrl));
     #region Dependency Injection
-    builder.Services.AddInfrastructureServices();
 
     Ettad.User.Services.ModuleServicesDependences.AddReposetoriesServices(builder.Services);
 
