@@ -33,7 +33,7 @@ namespace Ettad.Inventory.Service.Explosives.Validators
 
             RuleFor(x => x.CriticalQuantity)
                 .GreaterThan(0).When(x => x.CriticalQuantity.HasValue)
-                .WithMessage("Critical quantity must be greater than 0 when provided");
+                .WithMessage("Critical stock must be greater than 0 when provided");
         }
     }
 }

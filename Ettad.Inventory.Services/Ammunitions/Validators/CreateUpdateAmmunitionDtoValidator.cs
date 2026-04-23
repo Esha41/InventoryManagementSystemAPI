@@ -1,4 +1,5 @@
 using FluentValidation;
+using Ettad.Data.Enums;
 using Ettad.Inventory.Service.Ammunitions.Dtos;
 
 namespace Ettad.Inventory.Service.Ammunitions.Validators
@@ -15,6 +16,12 @@ namespace Ettad.Inventory.Service.Ammunitions.Validators
             RuleFor(x => x.ItemNo)
                 .NotEmpty().WithMessage("Item number is required")
                 .MaximumLength(100).WithMessage("Item number cannot exceed 100 characters");
+
+            RuleFor(x => x.AmmunitionType)
+                .Cascade(CascadeMode.Stop)
+                .NotNull().WithMessage("Caliber category is required")
+                .Must(v => Enum.IsDefined(typeof(AmmunitionType), v!.Value))
+                .WithMessage("Caliber category must be Small, Medium, or Large");
 
             // All other fields are optional - only validate if provided
             RuleFor(x => x.PartNo)
@@ -90,7 +97,7 @@ namespace Ettad.Inventory.Service.Ammunitions.Validators
 
             RuleFor(x => x.CriticalQuantity)
                 .GreaterThan(0).When(x => x.CriticalQuantity.HasValue)
-                .WithMessage("Critical quantity must be greater than 0 when provided");
+                .WithMessage("Critical stock must be greater than 0 when provided");
         }
     }
 }
