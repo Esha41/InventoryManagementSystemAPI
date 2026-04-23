@@ -12,9 +12,7 @@ using Ettad.Inventory.Service.Inventories.Dtos;
 using Ettad.Data.Interfaces.Repositories;
 using Ettad.Inventory.Service.Monitoring.Interfaces;
 using Ettad.Application.Common.Interfaces;
-using Ettad.Lookups.Services.Contracts;
-using System.Collections.Generic;
-using System.Linq;
+using Ettad.Module.lookup.Interfaces;
 
 namespace Ettad.Inventory.Service.Monitoring.Services
 {
