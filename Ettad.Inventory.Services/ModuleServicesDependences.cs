@@ -112,6 +112,9 @@ namespace Ettad.Inventory.Service
             services.AddScoped<IValidator<ReturnMultipleAssetsDto>, ReturnMultipleAssetsDtoValidator>();
             services.AddAutoMapper(typeof(AssetSupplyMappingProfile));
 
+
+            services.AddScoped<IExcelExportService, ExcelExportService>();
+
             // Asset History Services
             services.AddScoped<IAssetHistoryService, AssetHistoryService>();
             services.AddAutoMapper(typeof(AssetHistoryMappingProfile));
