@@ -36,8 +36,19 @@ namespace Ettad.Workflows.Service.DTO
         public bool CanReturn { get; set; } = false;
         public List<WorkflowStepTransitionDto> Transitions { get; set; } = new List<WorkflowStepTransitionDto>();
 
+        public List<WorkflowStepParallelRoleDto> ParallelRoles { get; set; } = new();
+
         // Approval steps for this workflow step
         public List<WorkflowApprovalStepDto> ApprovalSteps { get; set; } = new();
+    }
+
+    public class WorkflowStepParallelRoleDto
+    {
+        public int Id { get; set; }
+        public int WorkflowStepId { get; set; }
+        public string RoleId { get; set; } = null!;
+        public string? RoleName { get; set; }
+        public string? RoleNameAr { get; set; }
     }
 
     public class WorkflowStepTransitionDto
@@ -95,6 +106,9 @@ namespace Ettad.Workflows.Service.DTO
         public bool ReserveQty { get; set; } = false;
 
         public bool CanReturn { get; set; } = false;
+
+        /// <summary>Additional AspNetRoles.Id values that may approve this step in parallel with <see cref="ApplicationRoleId"/>.</summary>
+        public List<string> ParallelRoleIds { get; set; } = new();
     }
 
 

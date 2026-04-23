@@ -84,6 +84,9 @@ namespace Ettad.Workflows.Service.Command.CreateWorkflow
                     .Include(w => w.WorkflowSteps)
                         .ThenInclude(ws => ws.HigherApprovalRole)
                     .Include(w => w.WorkflowSteps)
+                        .ThenInclude(ws => ws.ParallelRoles)
+                            .ThenInclude(pr => pr.Role)
+                    .Include(w => w.WorkflowSteps)
                         .ThenInclude(ws => ws.Transitions)
                             .ThenInclude(t => t.TargetWorkflowStep)
                                 .ThenInclude(target => target.ApplicationRole)
@@ -166,6 +169,31 @@ namespace Ettad.Workflows.Service.Command.CreateWorkflow
                 _context.WorkflowSteps.AddRange(stepsToAdd);
                 await _context.SaveChangesAsync(cancellationToken);
 
+                var orderedDtos = workflowSteps.OrderBy(s => s.StepOrder).ToList();
+                var orderedEntities = stepsToAdd.OrderBy(s => s.StepOrder).ToList();
+                for (var i = 0; i < orderedEntities.Count && i < orderedDtos.Count; i++)
+                {
+                    var entity = orderedEntities[i];
+                    var dto = orderedDtos[i];
+                    foreach (var rid in (dto.ParallelRoleIds ?? Enumerable.Empty<string>()).Distinct())
+                    {
+                        if (string.IsNullOrEmpty(rid) || rid == entity.ApplicationRoleId)
+                            continue;
+                        _context.WorkflowStepParallelRoles.Add(new WorkflowStepParallelRole
+                        {
+                            WorkflowStepId = entity.Id,
+                            RoleId = rid,
+                            CreatedBy = _currentUserService.UserName,
+                            CreationDate = _dateTimeProvider.Now,
+                            ModifiedBy = _currentUserService.UserName,
+                            ModificationDate = _dateTimeProvider.Now
+                        });
+                    }
+                }
+
+                if (orderedEntities.Count > 0)
+                    await _context.SaveChangesAsync(cancellationToken);
+
                 _logger.LogInformation("Added {StepCount} workflow steps for workflow ID {WorkflowId}", stepsToAdd.Count, workflowId);
                 return true;
             }
@@ -205,6 +233,14 @@ namespace Ettad.Workflows.Service.Command.CreateWorkflow
                     ReserveQty = step.ReserveQty,
                     CanSkip = step.CanSkip,
                     CanReturn = step.CanReturn,
+                    ParallelRoles = step.ParallelRoles?.Select(pr => new WorkflowStepParallelRoleDto
+                    {
+                        Id = pr.Id,
+                        WorkflowStepId = pr.WorkflowStepId,
+                        RoleId = pr.RoleId,
+                        RoleName = pr.Role?.Name,
+                        RoleNameAr = pr.Role?.NameAr
+                    }).ToList() ?? new List<WorkflowStepParallelRoleDto>(),
                     Transitions = step.Transitions?.Select(t => new WorkflowStepTransitionDto
                     {
                         Id = t.Id,

@@ -23,6 +23,10 @@ namespace Ettad.Workflows.Service.Mapper
             CreateMap<WorkflowStep, WorkflowStepDto>()
                 .ForMember(dest => dest.Transitions, opt => opt.Ignore()); // Complex mapping handled manually
             CreateMap<WorkflowStepDto, WorkflowStep>();
+
+            CreateMap<WorkflowStepParallelRole, WorkflowStepParallelRoleDto>()
+                .ForMember(d => d.RoleName, o => o.MapFrom(s => s.Role != null ? s.Role.Name : null))
+                .ForMember(d => d.RoleNameAr, o => o.MapFrom(s => s.Role != null ? s.Role.NameAr : null));
             
             // WorkflowStepTransition
             CreateMap<WorkflowStepTransition, WorkflowStepTransitionDto>()

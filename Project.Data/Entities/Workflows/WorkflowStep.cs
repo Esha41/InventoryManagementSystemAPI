@@ -53,6 +53,8 @@ namespace Ettad.Data.Entities.Workflows
         public virtual ICollection<WorkflowApprovalStep> ApprovalSteps { get; set; } = new List<WorkflowApprovalStep>();
         public virtual ICollection<WorkflowStepNotifier> Notifiers { get; set; } = new List<WorkflowStepNotifier>();
         public virtual ICollection<WorkflowStepTransition> Transitions { get; set; } = new List<WorkflowStepTransition>();
+        /// <summary>Additional approver roles (any-of) alongside <see cref="ApplicationRoleId"/>.</summary>
+        public virtual ICollection<WorkflowStepParallelRole> ParallelRoles { get; set; } = new List<WorkflowStepParallelRole>();
     }
 
 }

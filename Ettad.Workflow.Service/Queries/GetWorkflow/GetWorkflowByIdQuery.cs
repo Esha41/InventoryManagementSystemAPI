@@ -55,6 +55,9 @@ namespace Ettad.Workflows.Service.Queries.GetWorkflowById
                                 .ThenInclude(target => target.HigherApprovalRole)
                     .Include(w => w.WorkflowSteps)
                         .ThenInclude(step => step.ApplicationRole)
+                    .Include(w => w.WorkflowSteps)
+                        .ThenInclude(step => step.ParallelRoles)
+                            .ThenInclude(pr => pr.Role)
                     .FirstOrDefaultAsync(x => x.Id == request.Id && !x.IsDeleted, cancellationToken);
 
                 if (workflow == null)
@@ -84,6 +87,14 @@ namespace Ettad.Workflows.Service.Queries.GetWorkflowById
                         ReserveQty = step.ReserveQty,
                         CanSkip = step.CanSkip,
                         CanReturn = step.CanReturn,
+                        ParallelRoles = step.ParallelRoles?.Select(pr => new WorkflowStepParallelRoleDto
+                        {
+                            Id = pr.Id,
+                            WorkflowStepId = pr.WorkflowStepId,
+                            RoleId = pr.RoleId,
+                            RoleName = pr.Role?.Name,
+                            RoleNameAr = pr.Role?.NameAr
+                        }).ToList() ?? new List<WorkflowStepParallelRoleDto>(),
                         Transitions = step.Transitions.Select(t => new WorkflowStepTransitionDto
                         {
                             Id = t.Id,

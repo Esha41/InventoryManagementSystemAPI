@@ -27,7 +27,11 @@ namespace Ettad.Data.Entities.Workflows
 
         public string? Comments { get; set; }
 
+        /// <summary>User id (AspNetUsers.Id) who performed the action.</summary>
         public string? ChangedBy { get; set; }
+
+        /// <summary>AspNetRoles.Id for the role used when the action was taken.</summary>
+        public string? ChangedByRoleId { get; set; }
 
         public DateTime ChangedAt { get; set; }
 

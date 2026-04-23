@@ -70,7 +70,7 @@ namespace Ettad.Workflows.Service.Imeplemention
             _effectiveRoleService = effectiveRoleService;
             _transactionManager = transactionManager;
         }
-     
+
         public async Task<IEnumerable<WorkflowApprovalStepDto>> GetAllAsync()
         {
             return await _context.WorkflowApprovalSteps
@@ -81,6 +81,7 @@ namespace Ettad.Workflows.Service.Imeplemention
                     TargetRequestId = x.TargetRequestId,
                     RequestType = x.RequestType,
                     ApproverUserId = x.ApproverUserId,
+                    ApproverRoleId = x.ApproverRoleId,
                     IsDelegation = x.IsDelegation,
                     ApprovedDate = x.ApprovedDate,
                     Status = x.Status,
@@ -102,6 +103,7 @@ namespace Ettad.Workflows.Service.Imeplemention
                 TargetRequestId = entity.TargetRequestId,
                 RequestType = entity.RequestType,
                 ApproverUserId = entity.ApproverUserId,
+                ApproverRoleId = entity.ApproverRoleId,
                 IsDelegation = entity.IsDelegation,
                 ApprovedDate = entity.ApprovedDate,
                 Status = entity.Status,
@@ -137,6 +139,7 @@ namespace Ettad.Workflows.Service.Imeplemention
                 TargetRequestId = entity.TargetRequestId,
                 RequestType = entity.RequestType,
                 ApproverUserId = entity.ApproverUserId,
+                ApproverRoleId = entity.ApproverRoleId,
                 IsDelegation = entity.IsDelegation,
                 ApprovedDate = entity.ApprovedDate,
                 Status = entity.Status,
@@ -173,6 +176,7 @@ namespace Ettad.Workflows.Service.Imeplemention
                 TargetRequestId = entity.TargetRequestId,
                 RequestType = entity.RequestType,
                 ApproverUserId = entity.ApproverUserId,
+                ApproverRoleId = entity.ApproverRoleId,
                 IsDelegation = entity.IsDelegation,
                 ApprovedDate = entity.ApprovedDate,
                 Status = entity.Status,
@@ -231,6 +235,8 @@ namespace Ettad.Workflows.Service.Imeplemention
                                 || userRoleIds.Contains(wfs.ApplicationRoleId)
                                 // OR user role matches higher approval
                                 || (!string.IsNullOrEmpty(wfs.HigherApprovalRoleId) && userRoleIds.Contains(wfs.HigherApprovalRoleId))
+                                // OR user role matches a parallel approver role on this step
+                                || _context.WorkflowStepParallelRoles.Any(pr => pr.WorkflowStepId == wfs.Id && userRoleIds.Contains(pr.RoleId))
                                 
                                 // --- Delegation Logic ---
                                 // OR step assigned to a delegator
@@ -239,6 +245,8 @@ namespace Ettad.Workflows.Service.Imeplemention
                                 || delegatorRoleIds.Contains(wfs.ApplicationRoleId)
                                 // OR delegator matches higher approval role
                                 || (!string.IsNullOrEmpty(wfs.HigherApprovalRoleId) && delegatorRoleIds.Contains(wfs.HigherApprovalRoleId))
+                                // OR delegator matches a parallel approver role
+                                || _context.WorkflowStepParallelRoles.Any(pr => pr.WorkflowStepId == wfs.Id && delegatorRoleIds.Contains(pr.RoleId))
                             )
 
                         select new WorkflowApprovalWithOrderDto
@@ -324,27 +332,30 @@ namespace Ettad.Workflows.Service.Imeplemention
                 // Set comments
                 currentStep.Comments = model.Comments;
 
+                var actingUserId = _currentUserService.UserId;
+                var actingRoleId = await ResolveActingRoleIdAsync(actingUserId);
+
                 // Call respective method
                 switch (model.Action)
                 {
                     case RequestStatus.Approved:
-                        await ApproveStepAsync(currentStep, model);
+                        await ApproveStepAsync(currentStep, model, actingRoleId);
                         break;
 
                     case RequestStatus.Rejected:
-                        await RejectStepAsync(currentStep, model);
+                        await RejectStepAsync(currentStep, model, actingRoleId);
                         break;
 
                     case RequestStatus.ReturnedForReview:
-                        await ReturnStepAsync(currentStep, model);
+                        await ReturnStepAsync(currentStep, model, actingRoleId);
                         break;
 
                     default:
                         return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, "Invalid workflow action.");
                 }
 
-                // Log action with original status
-                await LogStepActionAsync(currentStep.Id, currentStep.WorkflowStepId, oldStatus, model.Action, model.Comments, _currentUserService.UserName);
+                // Log action with original status (user id + acting role for audit)
+                await LogStepActionAsync(currentStep.Id, currentStep.WorkflowStepId, oldStatus, model.Action, model.Comments, actingUserId, actingRoleId);
 
                 await _context.SaveChangesAsync();
                 if (ownsTransaction)
@@ -523,6 +534,7 @@ namespace Ettad.Workflows.Service.Imeplemention
                 TargetRequestId = entity.TargetRequestId,
                 RequestType = entity.RequestType,
                 ApproverUserId = entity.ApproverUserId,
+                ApproverRoleId = entity.ApproverRoleId,
                 IsDelegation = entity.IsDelegation,
                 ApprovedDate = entity.ApprovedDate,
                 Status = entity.Status,
@@ -534,7 +546,7 @@ namespace Ettad.Workflows.Service.Imeplemention
         }
 
         // Approve step
-        private async Task ApproveStepAsync(WorkflowApprovalStep step, ApproveRejectWorkflowApprovalDto model)
+        private async Task ApproveStepAsync(WorkflowApprovalStep step, ApproveRejectWorkflowApprovalDto model, string? approverRoleId)
         {
             // Prevent double approval/rejection
             if (step.Status == RequestStatus.Approved || step.Status == RequestStatus.Rejected)
@@ -550,6 +562,7 @@ namespace Ettad.Workflows.Service.Imeplemention
 
             step.Status = RequestStatus.Approved;
             step.ApproverUserId = _currentUserService.UserId;
+            step.ApproverRoleId = approverRoleId;
             step.ApprovedDate = _dateTimeProvider.Now;
             step.IsCurrent = false;
             step.ModifiedBy = _currentUserService.UserId;
@@ -575,6 +588,7 @@ namespace Ettad.Workflows.Service.Imeplemention
 
             //  Continue normal workflow
             var workflowSteps = await _context.WorkflowSteps
+                .Include(ws => ws.ParallelRoles)
                 .Where(ws => ws.WorkflowId == step.WorkflowStep.WorkflowId)
                 .OrderBy(ws => ws.StepOrder)
                 .ToListAsync();
@@ -671,10 +685,8 @@ namespace Ettad.Workflows.Service.Imeplemention
                 _context.WorkflowApprovalSteps.Add(nextApproval);
                 baseRequest.Status = RequestStatus.UnderProcess;
 
-                // Send notification to next step approvers
-                var nextRoles = new List<string> { nextStep.ApplicationRoleId };
-                if (!string.IsNullOrEmpty(nextStep.HigherApprovalRoleId))
-                    nextRoles.Add(nextStep.HigherApprovalRoleId);
+                // Send notification to next step approvers (main + parallel + higher)
+                var nextRoles = CollectApproverRoleIdsForWorkflowStep(nextStep);
 
                 var (userIds, roleIds) = await FilterNotificationRecipientsByDepartmentAsync(nextRoles, baseRequest.DepartmentId);
 
@@ -740,7 +752,7 @@ namespace Ettad.Workflows.Service.Imeplemention
 
 
         // Reject step
-        private async Task RejectStepAsync(WorkflowApprovalStep step, ApproveRejectWorkflowApprovalDto model)
+        private async Task RejectStepAsync(WorkflowApprovalStep step, ApproveRejectWorkflowApprovalDto model, string? approverRoleId)
         {
             // Prevent double approval/rejection
             if (step.Status == RequestStatus.Approved || step.Status == RequestStatus.Rejected)
@@ -756,6 +768,7 @@ namespace Ettad.Workflows.Service.Imeplemention
 
             step.Status = RequestStatus.Rejected;
             step.ApproverUserId = _currentUserService.UserId;
+            step.ApproverRoleId = approverRoleId;
             step.ApprovedDate = _dateTimeProvider.Now;
             step.IsCurrent = false;
             step.ModifiedBy = _currentUserService.UserId;
@@ -816,7 +829,7 @@ namespace Ettad.Workflows.Service.Imeplemention
         }
 
         // Return for review
-        private async Task ReturnStepAsync(WorkflowApprovalStep step, ApproveRejectWorkflowApprovalDto model)
+        private async Task ReturnStepAsync(WorkflowApprovalStep step, ApproveRejectWorkflowApprovalDto model, string? approverRoleId)
         {
             // Prevent double approval/rejection
             if (step.Status == RequestStatus.Approved || step.Status == RequestStatus.Rejected)
@@ -844,6 +857,7 @@ namespace Ettad.Workflows.Service.Imeplemention
 
             // Get the workflow step to return to
             var returnToWorkflowStep = await _context.WorkflowSteps
+                .Include(ws => ws.ParallelRoles)
                 .FirstOrDefaultAsync(ws => ws.Id == model.ReturnToWorkflowStepId.Value);
 
             if (returnToWorkflowStep == null)
@@ -865,6 +879,7 @@ namespace Ettad.Workflows.Service.Imeplemention
             // Mark current step as returned for review
             step.Status = RequestStatus.ReturnedForReview;
             step.ApproverUserId = _currentUserService.UserId;
+            step.ApproverRoleId = approverRoleId;
             step.ApprovedDate = _dateTimeProvider.Now;
             step.IsCurrent = false;
             step.ModifiedBy = _currentUserService.UserId;
@@ -893,10 +908,8 @@ namespace Ettad.Workflows.Service.Imeplemention
             _context.WorkflowApprovalSteps.Add(returnApproval);
             baseRequest.Status = RequestStatus.ReturnedForReview;
 
-            // Send notification to the returned-to step approvers
-            var returnRoles = new List<string> { returnToWorkflowStep.ApplicationRoleId };
-            if (!string.IsNullOrEmpty(returnToWorkflowStep.HigherApprovalRoleId))
-                returnRoles.Add(returnToWorkflowStep.HigherApprovalRoleId);
+            // Send notification to the returned-to step approvers (main + parallel + higher)
+            var returnRoles = CollectApproverRoleIdsForWorkflowStep(returnToWorkflowStep);
 
             var (userIds, roleIds) = await FilterNotificationRecipientsByDepartmentAsync(returnRoles, baseRequest.DepartmentId);
 
@@ -921,59 +934,34 @@ namespace Ettad.Workflows.Service.Imeplemention
         // Helper: get current approval step by request ID
         public async Task<WorkflowApprovalStep> GetCurrentApprovalStepByRequestIdAsync(long requestId)
         {
-            var step = await _context.WorkflowApprovalSteps
+            var steps = await _context.WorkflowApprovalSteps
                 .Include(x => x.WorkflowStep)
                     .ThenInclude(ws => ws.ApplicationRole)
                 .Include(x => x.WorkflowStep)
+                    .ThenInclude(ws => ws.ParallelRoles)
+                .Include(x => x.WorkflowStep)
                     .ThenInclude(ws => ws.Transitions)
-                .FirstOrDefaultAsync(x => x.TargetRequestId == requestId && x.IsCurrent);
+                .Where(x => x.TargetRequestId == requestId && x.IsCurrent)
+                .OrderBy(x => x.Id)
+                .ToListAsync();
 
-            if (step == null)
+            if (!steps.Any())
                 return null;
 
             var currentUserId = _currentUserService.UserId;
+
             if (_currentUserService.IsSuperAdmin)
-                return step;
-
-            // 1. Effective role ID(s) for current user
-            var userRoleIds = string.IsNullOrEmpty(currentUserId)
-                ? new List<string>()
-                : (await _effectiveRoleService.GetEffectiveRoleIdsAsync(currentUserId)).ToList();
-
-            var workflowStep = step.WorkflowStep;
-            var allowedRoles = new List<string> { workflowStep.ApplicationRoleId };
-            if (!string.IsNullOrEmpty(workflowStep.HigherApprovalRoleId))
-                allowedRoles.Add(workflowStep.HigherApprovalRoleId);
-
-            // 2. Check direct authorization
-            bool isDirectlyAuthorized = (step.ApproverUserId == currentUserId) || 
-                                      userRoleIds.Any(r => allowedRoles.Contains(r));
-
-            if (isDirectlyAuthorized)
-                return step;
-
-            // 3. Check delegation authorization
-            // Fetch active delegators using business logic (filtered by workflow approval scope)
-            var activeDelegatorIds = await _userDelegationService.GetActiveDelegatorsForUserAsync(currentUserId, DelegationScope.WorkflowApproval);
-            
-            if (activeDelegatorIds != null && activeDelegatorIds.Any())
             {
-                // Check if step is specifically assigned to a delegator
-                if (activeDelegatorIds.Contains(step.ApproverUserId))
-                {
-                    step.IsDelegation = 1;
-                    return step;
-                }
+                var s0 = steps.First();
+                s0.IsDelegation = 0;
+                return s0;
+            }
 
-                var delegatorRoleIds = new List<string>();
-                foreach (var delegatorId in activeDelegatorIds)
-                    delegatorRoleIds.AddRange(await _effectiveRoleService.GetEffectiveRoleIdsAsync(delegatorId));
-
-                if (delegatorRoleIds.Any(r => allowedRoles.Contains(r)))
-                {
-                    step.IsDelegation = 1;
+            foreach (var step in steps)
+            {
+                step.IsDelegation = 0;
+                if (await TryAuthorizeWorkflowApprovalStepAsync(step, currentUserId))
                     return step;
-                }
             }
 
             throw new UnauthorizedAccessException("User cannot approve/reject this step");
@@ -1045,7 +1033,7 @@ namespace Ettad.Workflows.Service.Imeplemention
         }
 
         // Helper: log step action
-        private async Task LogStepActionAsync(int stepId, int? workflowStepId, RequestStatus oldStatus, RequestStatus newStatus, string comments, string changedBy)
+        private async Task LogStepActionAsync(int stepId, int? workflowStepId, RequestStatus oldStatus, RequestStatus newStatus, string comments, string changedByUserId, string? changedByRoleId)
         {
             _context.WorkflowStepApprovalLog.Add(new WorkflowStepApprovalLog
             {
@@ -1054,11 +1042,12 @@ namespace Ettad.Workflows.Service.Imeplemention
                 OldRequestStatus = oldStatus,
                 NewRequestStatus = newStatus,
                 Comments = comments,
-                ChangedBy = changedBy,
+                ChangedBy = changedByUserId,
+                ChangedByRoleId = changedByRoleId,
                 ChangedAt = _dateTimeProvider.Now,
-                CreatedBy = changedBy,
+                CreatedBy = changedByUserId,
                 CreationDate = _dateTimeProvider.Now,
-                ModifiedBy = changedBy,
+                ModifiedBy = changedByUserId,
                 ModificationDate = _dateTimeProvider.Now
             });
 
@@ -1243,6 +1232,7 @@ namespace Ettad.Workflows.Service.Imeplemention
                 // Get workflow after creating order
                 var workflow = await _context.Workflows
                     .Include(w => w.WorkflowSteps)
+                        .ThenInclude(ws => ws.ParallelRoles)
                     .FirstOrDefaultAsync(w => w.IsActive && !w.IsDeleted && w.WorkflowType == workflowType);
 
                 if (workflow != null)
@@ -1276,10 +1266,8 @@ namespace Ettad.Workflows.Service.Imeplemention
                             var baseRequest = await _context.BaseRequests
                                 .FirstOrDefaultAsync(br => br.Id == orderId);
 
-                            // Notify the approver roles after creating the workflow approval step
-                            var approverRoles = new List<string> { firstWorkflowStep.ApplicationRoleId };
-                            if (!string.IsNullOrEmpty(firstWorkflowStep.HigherApprovalRoleId))
-                                approverRoles.Add(firstWorkflowStep.HigherApprovalRoleId);
+                            // Notify the approver roles after creating the workflow approval step (main + parallel + higher)
+                            var approverRoles = CollectApproverRoleIdsForWorkflowStep(firstWorkflowStep);
 
                             var (userIds, roleIds) = await FilterNotificationRecipientsByDepartmentAsync(
                                 approverRoles, 
@@ -1403,10 +1391,11 @@ namespace Ettad.Workflows.Service.Imeplemention
                                                // Direct Assignment (User OR Delegator)
                                                (ws.ApproverUserId == currentUserId || activeDelegatorIds.Contains(ws.ApproverUserId)) ||
                                                
-                                               // Role Assignment (User Role OR Delegator Role)
+                                               // Role Assignment (User Role OR Delegator Role) + parallel approver roles
                                                (
                                                    (userRoleIds.Contains(wfs.ApplicationRoleId) || delegatorRoleIds.Contains(wfs.ApplicationRoleId)) ||
-                                                   (!string.IsNullOrEmpty(wfs.HigherApprovalRoleId) && (userRoleIds.Contains(wfs.HigherApprovalRoleId) || delegatorRoleIds.Contains(wfs.HigherApprovalRoleId)))
+                                                   (!string.IsNullOrEmpty(wfs.HigherApprovalRoleId) && (userRoleIds.Contains(wfs.HigherApprovalRoleId) || delegatorRoleIds.Contains(wfs.HigherApprovalRoleId))) ||
+                                                   _context.WorkflowStepParallelRoles.Any(pr => pr.WorkflowStepId == wfs.Id && (userRoleIds.Contains(pr.RoleId) || delegatorRoleIds.Contains(pr.RoleId)))
                                                )
                                            )
                                        select br;
@@ -1490,9 +1479,10 @@ namespace Ettad.Workflows.Service.Imeplemention
                                             join role in _context.Roles
                                                 on wfs.ApplicationRoleId equals role.Id into roleJoin
                                             from role in roleJoin.DefaultIfEmpty()
-                                            join user in _context.Users
-                                                on log.ChangedBy equals user.UserName into userJoin
-                                            from user in userJoin.DefaultIfEmpty()
+                                            join actedRole in _context.Roles
+                                                on log.ChangedByRoleId equals actedRole.Id into actedRoleJoin
+                                            from actedRole in actedRoleJoin.DefaultIfEmpty()
+                                            from user in _context.Users.Where(u => u.Id == log.ChangedBy || u.UserName == log.ChangedBy).DefaultIfEmpty()
                                             where allowedRequestIds.Contains((long)was.TargetRequestId)
                                             select new
                                             {
@@ -1516,6 +1506,10 @@ namespace Ettad.Workflows.Service.Imeplemention
                                                     RequireHigherApproval = wfs != null ? wfs.RequireHigherApproval : false,
                                                     HigherApprovalRoleId = wfs != null ? wfs.HigherApprovalRoleId : null,
                                                     CanReturn = wfs != null ? wfs.CanReturn : false,
+                                                    IsDelegation = was.IsDelegation,
+                                                    ChangedByRoleId = log.ChangedByRoleId,
+                                                    ChangedByRoleName = actedRole != null ? actedRole.Name : null,
+                                                    ChangedByRoleNameAr = actedRole != null ? actedRole.NameAr : null,
                                                     Files = new List<FileUploadDto>() // Initialize Files list
                                                 }
                                             })
@@ -1534,6 +1528,9 @@ namespace Ettad.Workflows.Service.Imeplemention
                     .ThenInclude(ws => ws.ApplicationRole)
                 .Include(w => w.WorkflowSteps)
                     .ThenInclude(ws => ws.HigherApprovalRole)
+                .Include(w => w.WorkflowSteps)
+                    .ThenInclude(ws => ws.ParallelRoles)
+                        .ThenInclude(pr => pr.Role)
                 .Where(w => w.IsActive && !w.IsDeleted)
                 .GroupBy(w => w.WorkflowType)
                 .ToDictionaryAsync(g => g.Key, g => g.FirstOrDefault());
@@ -1545,6 +1542,7 @@ namespace Ettad.Workflows.Service.Imeplemention
                                              .Include(ws => ws.HigherApprovalRole)
                                              on was.WorkflowStepId equals wfs.Id
                                          where allowedRequestIds.Contains((long)was.TargetRequestId) &&
+                                               was.IsCurrent &&
                                                (was.Status == RequestStatus.New || was.Status == RequestStatus.UnderProcess)
                                          select new
                                          {
@@ -1571,6 +1569,10 @@ namespace Ettad.Workflows.Service.Imeplemention
             var pendingStepsByRequestId = pendingStepsData
                 .GroupBy(p => p.RequestId)
                 .ToDictionary(g => g.Key, g => g.ToList());
+
+            var pendingParallelWorkflowStepIds = pendingStepsData.Select(p => p.WorkflowStepId).Distinct().ToList();
+            var pendingParallelRolesByWfStep = await BuildParallelRolesByStepIdsAsync(pendingParallelWorkflowStepIds);
+            var pendingParallelRoleIdsByWfStep = await BuildParallelRoleIdsByStepIdsAsync(pendingParallelWorkflowStepIds);
 
             // Get ALL workflow approval steps for these requests (not just pending or logged ones)
             // This ensures we get files for all steps, including completed ones that might not be in the log
@@ -1786,7 +1788,18 @@ namespace Ettad.Workflows.Service.Imeplemention
                                              isCurrentUserApprover = true;
                                          }
                                     }
+
+                                    if (!isCurrentUserApprover && !isHigherApprovalStep &&
+                                        pendingParallelRoleIdsByWfStep.TryGetValue(nextPendingStep.WorkflowStepId, out var parallelRoleIdsForApprover) &&
+                                        parallelRoleIdsForApprover.Any(pid =>
+                                            userRoleIds.Contains(pid) || delegatorRoleIds.Contains(pid)))
+                                    {
+                                        isCurrentUserApprover = true;
+                                    }
                                 }
+
+                                pendingParallelRolesByWfStep.TryGetValue(nextPendingStep.WorkflowStepId, out var parallelRolesForPending);
+                                parallelRolesForPending ??= new List<WorkflowStepParallelRoleDto>();
 
                                 var pendingStep = new ApprovalHistoryDto
                                 {
@@ -1806,7 +1819,10 @@ namespace Ettad.Workflows.Service.Imeplemention
                                     HigherApprovalRoleId = nextPendingStep.HigherApprovalRoleId,
                                     CanReturn = nextPendingStep.CanReturn,
                                     IsPending = true,
-                                    IsCurrentUserApprover = isCurrentUserApprover
+                                    IsCurrentUserApprover = isCurrentUserApprover,
+                                    EligibleParallelRoles = parallelRolesForPending,
+                                    EligibleParallelRoleNamesEn = string.Join(" | ", parallelRolesForPending.Select(x => x.RoleName).Where(x => !string.IsNullOrEmpty(x)).Distinct()),
+                                    EligibleParallelRoleNamesAr = string.Join(" | ", parallelRolesForPending.Select(x => x.RoleNameAr).Where(x => !string.IsNullOrEmpty(x)).Distinct())
                                 };
                                 
                                 // Assign files to pending step if any
@@ -1845,10 +1861,27 @@ namespace Ettad.Workflows.Service.Imeplemention
                                     StepOrder = nextWorkflowStep.StepOrder,
                                     ApplicationRoleId = nextWorkflowStep.ApplicationRoleId,
                                     ApplicationRoleName = nextWorkflowStep.ApplicationRole != null ? nextWorkflowStep.ApplicationRole.Name : null,
+                                    ApplicationRoleNameAr = nextWorkflowStep.ApplicationRole != null ? nextWorkflowStep.ApplicationRole.NameAr : null,
                                     RequireHigherApproval = nextWorkflowStep.RequireHigherApproval,
                                     HigherApprovalRoleId = nextWorkflowStep.HigherApprovalRoleId,
                                     CanReturn = nextWorkflowStep.CanReturn,
                                     IsPending = true,
+                                    EligibleParallelRoles = nextWorkflowStep.ParallelRoles != null
+                                        ? nextWorkflowStep.ParallelRoles.Select(pr => new WorkflowStepParallelRoleDto
+                                        {
+                                            Id = pr.Id,
+                                            WorkflowStepId = pr.WorkflowStepId,
+                                            RoleId = pr.RoleId,
+                                            RoleName = pr.Role?.Name ?? pr.RoleId,
+                                            RoleNameAr = pr.Role?.NameAr ?? pr.Role?.Name ?? pr.RoleId
+                                        }).ToList()
+                                        : new List<WorkflowStepParallelRoleDto>(),
+                                    EligibleParallelRoleNamesEn = nextWorkflowStep.ParallelRoles != null && nextWorkflowStep.ParallelRoles.Count > 0
+                                        ? string.Join(" | ", nextWorkflowStep.ParallelRoles.Select(pr => pr.Role?.Name ?? pr.RoleId).Where(x => !string.IsNullOrEmpty(x)).Distinct())
+                                        : null,
+                                    EligibleParallelRoleNamesAr = nextWorkflowStep.ParallelRoles != null && nextWorkflowStep.ParallelRoles.Count > 0
+                                        ? string.Join(" | ", nextWorkflowStep.ParallelRoles.Select(pr => pr.Role?.NameAr ?? pr.Role?.Name ?? pr.RoleId).Where(x => !string.IsNullOrEmpty(x)).Distinct())
+                                        : null,
                                     Files = new List<FileUploadDto>() // No files for future steps that haven't been created yet
                                 };
                                 combinedHistory.Add(futureStep);
@@ -1963,10 +1996,11 @@ namespace Ettad.Workflows.Service.Imeplemention
                                                // 1. Direct Assignment (User OR Delegators)
                                                (ws.ApproverUserId == currentUserId || activeDelegatorIds.Contains(ws.ApproverUserId)) ||
                                                
-                                               // 2. Role Assignment (User Role OR Delegator Role)
+                                               // 2. Role Assignment (User Role OR Delegator Role) + parallel approver roles
                                                (
                                                    (userRoleIds.Contains(wfs.ApplicationRoleId) || delegatorRoleIds.Contains(wfs.ApplicationRoleId)) ||
-                                                   (!string.IsNullOrEmpty(wfs.HigherApprovalRoleId) && (userRoleIds.Contains(wfs.HigherApprovalRoleId) || delegatorRoleIds.Contains(wfs.HigherApprovalRoleId)))
+                                                   (!string.IsNullOrEmpty(wfs.HigherApprovalRoleId) && (userRoleIds.Contains(wfs.HigherApprovalRoleId) || delegatorRoleIds.Contains(wfs.HigherApprovalRoleId))) ||
+                                                   _context.WorkflowStepParallelRoles.Any(pr => pr.WorkflowStepId == wfs.Id && (userRoleIds.Contains(pr.RoleId) || delegatorRoleIds.Contains(pr.RoleId)))
                                                )
                                            )
                                        select br;
@@ -2043,9 +2077,10 @@ namespace Ettad.Workflows.Service.Imeplemention
                                             join role in _context.Roles
                                                 on wfs.ApplicationRoleId equals role.Id into roleJoin
                                             from role in roleJoin.DefaultIfEmpty()
-                                            join user in _context.Users
-                                                on log.ChangedBy equals user.UserName into userJoin
-                                            from user in userJoin.DefaultIfEmpty()
+                                            join actedRole in _context.Roles
+                                                on log.ChangedByRoleId equals actedRole.Id into actedRoleJoin
+                                            from actedRole in actedRoleJoin.DefaultIfEmpty()
+                                            from user in _context.Users.Where(u => u.Id == log.ChangedBy || u.UserName == log.ChangedBy).DefaultIfEmpty()
                                             where (long)was.TargetRequestId == requestId
                                             select new
                                             {
@@ -2070,6 +2105,10 @@ namespace Ettad.Workflows.Service.Imeplemention
                                                     RequireHigherApproval = wfs != null ? wfs.RequireHigherApproval : false,
                                                     HigherApprovalRoleId = wfs != null ? wfs.HigherApprovalRoleId : null,
                                                     CanReturn = wfs != null ? wfs.CanReturn : false,
+                                                    IsDelegation = was.IsDelegation,
+                                                    ChangedByRoleId = log.ChangedByRoleId,
+                                                    ChangedByRoleName = actedRole != null ? actedRole.Name : null,
+                                                    ChangedByRoleNameAr = actedRole != null ? actedRole.NameAr : null,
                                                     Files = new List<FileUploadDto>() // Initialize Files list
                                                 }
                                             })
@@ -2083,6 +2122,7 @@ namespace Ettad.Workflows.Service.Imeplemention
                                              .Include(ws => ws.HigherApprovalRole)
                                              on was.WorkflowStepId equals wfs.Id
                                          where (long)was.TargetRequestId == requestId &&
+                                               was.IsCurrent &&
                                                (was.Status == RequestStatus.New || was.Status == RequestStatus.UnderProcess)
                                          select new
                                          {
@@ -2104,6 +2144,10 @@ namespace Ettad.Workflows.Service.Imeplemention
                                              CanReturn = wfs.CanReturn
                                          })
                                          .ToListAsync();
+
+            var detailParallelWfStepIds = pendingStepsData.Select(p => p.WorkflowStepId).Distinct().ToList();
+            var detailParallelRolesByWfStep = await BuildParallelRolesByStepIdsAsync(detailParallelWfStepIds);
+            var detailParallelRoleIdsByWfStep = await BuildParallelRoleIdsByStepIdsAsync(detailParallelWfStepIds);
 
             // Get all workflow step IDs from approval history and pending steps to load their transitions
             var workflowStepIds = approvalHistoryData
@@ -2176,6 +2220,9 @@ namespace Ettad.Workflows.Service.Imeplemention
                     .ThenInclude(ws => ws.ApplicationRole)
                 .Include(w => w.WorkflowSteps)
                     .ThenInclude(ws => ws.HigherApprovalRole)
+                .Include(w => w.WorkflowSteps)
+                    .ThenInclude(ws => ws.ParallelRoles)
+                        .ThenInclude(pr => pr.Role)
                 .Include(w => w.WorkflowSteps)
                     .ThenInclude(ws => ws.Transitions)
                         .ThenInclude(t => t.TargetWorkflowStep)
@@ -2386,7 +2433,18 @@ namespace Ettad.Workflows.Service.Imeplemention
                                          isCurrentUserApprover = true;
                                      }
                                 }
+
+                                if (!isCurrentUserApprover && !isHigherApprovalStep &&
+                                    detailParallelRoleIdsByWfStep.TryGetValue(nextPendingStep.WorkflowStepId, out var detailParallelIds) &&
+                                    detailParallelIds.Any(pid =>
+                                        userRoleIds.Contains(pid) || delegatorRoleIds.Contains(pid)))
+                                {
+                                    isCurrentUserApprover = true;
+                                }
                             }
+
+                            detailParallelRolesByWfStep.TryGetValue(nextPendingStep.WorkflowStepId, out var detailParallelRolesForPending);
+                            detailParallelRolesForPending ??= new List<WorkflowStepParallelRoleDto>();
 
                             var pendingStep = new ApprovalHistoryDto
                             {
@@ -2406,7 +2464,10 @@ namespace Ettad.Workflows.Service.Imeplemention
                                 HigherApprovalRoleId = nextPendingStep.HigherApprovalRoleId,
                                 CanReturn = nextPendingStep.CanReturn,
                                 IsPending = true,
-                                IsCurrentUserApprover = isCurrentUserApprover
+                                IsCurrentUserApprover = isCurrentUserApprover,
+                                EligibleParallelRoles = detailParallelRolesForPending,
+                                EligibleParallelRoleNamesEn = string.Join(" | ", detailParallelRolesForPending.Select(x => x.RoleName).Where(x => !string.IsNullOrEmpty(x)).Distinct()),
+                                EligibleParallelRoleNamesAr = string.Join(" | ", detailParallelRolesForPending.Select(x => x.RoleNameAr).Where(x => !string.IsNullOrEmpty(x)).Distinct())
                             };
                             
                             // Assign files to pending step if any
@@ -2455,10 +2516,27 @@ namespace Ettad.Workflows.Service.Imeplemention
                                 StepOrder = nextWorkflowStep.StepOrder,
                                 ApplicationRoleId = nextWorkflowStep.ApplicationRoleId,
                                 ApplicationRoleName = nextWorkflowStep.ApplicationRole != null ? nextWorkflowStep.ApplicationRole.Name : null,
+                                ApplicationRoleNameAr = nextWorkflowStep.ApplicationRole != null ? nextWorkflowStep.ApplicationRole.NameAr : null,
                                 RequireHigherApproval = nextWorkflowStep.RequireHigherApproval,
                                 HigherApprovalRoleId = nextWorkflowStep.HigherApprovalRoleId,
                                 CanReturn = nextWorkflowStep.CanReturn,
                                 IsPending = true,
+                                EligibleParallelRoles = nextWorkflowStep.ParallelRoles != null
+                                    ? nextWorkflowStep.ParallelRoles.Select(pr => new WorkflowStepParallelRoleDto
+                                    {
+                                        Id = pr.Id,
+                                        WorkflowStepId = pr.WorkflowStepId,
+                                        RoleId = pr.RoleId,
+                                        RoleName = pr.Role?.Name ?? pr.RoleId,
+                                        RoleNameAr = pr.Role?.NameAr ?? pr.Role?.Name ?? pr.RoleId
+                                    }).ToList()
+                                    : new List<WorkflowStepParallelRoleDto>(),
+                                EligibleParallelRoleNamesEn = nextWorkflowStep.ParallelRoles != null && nextWorkflowStep.ParallelRoles.Count > 0
+                                    ? string.Join(" | ", nextWorkflowStep.ParallelRoles.Select(pr => pr.Role?.Name ?? pr.RoleId).Where(x => !string.IsNullOrEmpty(x)).Distinct())
+                                    : null,
+                                EligibleParallelRoleNamesAr = nextWorkflowStep.ParallelRoles != null && nextWorkflowStep.ParallelRoles.Count > 0
+                                    ? string.Join(" | ", nextWorkflowStep.ParallelRoles.Select(pr => pr.Role?.NameAr ?? pr.Role?.Name ?? pr.RoleId).Where(x => !string.IsNullOrEmpty(x)).Distinct())
+                                    : null,
                                 Files = new List<FileUploadDto>(), // No files for future steps that haven't been created yet
                                 Transitions = nextWorkflowStep.Transitions?.Select(t => new WorkflowStepTransitionDto
                                 {
@@ -2628,5 +2706,114 @@ namespace Ettad.Workflows.Service.Imeplemention
             return previousSteps;
         }
 
+        private static List<string> CollectApproverRoleIdsForWorkflowStep(WorkflowStep wfs)
+        {
+            var list = new List<string>();
+            if (!string.IsNullOrEmpty(wfs.ApplicationRoleId))
+                list.Add(wfs.ApplicationRoleId);
+            if (!string.IsNullOrEmpty(wfs.HigherApprovalRoleId))
+                list.Add(wfs.HigherApprovalRoleId);
+            if (wfs.ParallelRoles != null)
+            {
+                foreach (var pr in wfs.ParallelRoles)
+                {
+                    if (!string.IsNullOrEmpty(pr.RoleId))
+                        list.Add(pr.RoleId);
+                }
+            }
+            return list.Distinct().ToList();
+        }
+
+        private async Task<bool> TryAuthorizeWorkflowApprovalStepAsync(WorkflowApprovalStep step, string currentUserId)
+        {
+            var userRoleIds = string.IsNullOrEmpty(currentUserId)
+                ? new List<string>()
+                : (await _effectiveRoleService.GetEffectiveRoleIdsAsync(currentUserId)).ToList();
+
+            var workflowStep = step.WorkflowStep;
+            if (workflowStep == null)
+                return false;
+
+            var allowedRoles = CollectApproverRoleIdsForWorkflowStep(workflowStep)
+                .Where(id => !string.IsNullOrEmpty(id))
+                .Distinct()
+                .ToList();
+
+            if ((step.ApproverUserId == currentUserId) || userRoleIds.Any(r => allowedRoles.Contains(r)))
+            {
+                step.IsDelegation = 0;
+                return true;
+            }
+
+            var activeDelegatorIds = await _userDelegationService.GetActiveDelegatorsForUserAsync(currentUserId, DelegationScope.WorkflowApproval);
+            if (activeDelegatorIds == null || !activeDelegatorIds.Any())
+                return false;
+
+            if (activeDelegatorIds.Contains(step.ApproverUserId))
+            {
+                step.IsDelegation = 1;
+                return true;
+            }
+
+            var delegatorRoleIds = new List<string>();
+            foreach (var delegatorId in activeDelegatorIds)
+                delegatorRoleIds.AddRange(await _effectiveRoleService.GetEffectiveRoleIdsAsync(delegatorId));
+
+            if (delegatorRoleIds.Any(r => allowedRoles.Contains(r)))
+            {
+                step.IsDelegation = 1;
+                return true;
+            }
+
+            return false;
+        }
+
+        private async Task<string?> ResolveActingRoleIdAsync(string userId)
+        {
+            if (string.IsNullOrEmpty(userId))
+                return null;
+            var user = await _context.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId);
+            if (user == null)
+                return null;
+            if (!string.IsNullOrEmpty(user.DefaultRoleId))
+                return user.DefaultRoleId;
+            var roles = await _context.Set<IdentityUserRole<string>>()
+                .Where(ur => ur.UserId == userId)
+                .Select(ur => ur.RoleId)
+                .ToListAsync();
+            return roles.Count == 1 ? roles[0] : null;
+        }
+
+        private async Task<Dictionary<int, List<WorkflowStepParallelRoleDto>>> BuildParallelRolesByStepIdsAsync(List<int> stepIds)
+        {
+            if (stepIds == null || stepIds.Count == 0)
+                return new Dictionary<int, List<WorkflowStepParallelRoleDto>>();
+            var distinctIds = stepIds.Distinct().ToList();
+            var rows = await _context.WorkflowStepParallelRoles
+                .Where(pr => distinctIds.Contains(pr.WorkflowStepId))
+                .Join(_context.Roles, pr => pr.RoleId, r => r.Id, (pr, r) => new WorkflowStepParallelRoleDto
+                {
+                    Id = pr.Id,
+                    WorkflowStepId = pr.WorkflowStepId,
+                    RoleId = pr.RoleId,
+                    RoleName = r.Name ?? r.Id,
+                    RoleNameAr = r.NameAr ?? r.Name
+                })
+                .ToListAsync();
+            return rows
+                .GroupBy(x => x.WorkflowStepId)
+                .ToDictionary(g => g.Key, g => g.ToList());
+        }
+
+        private async Task<Dictionary<int, List<string>>> BuildParallelRoleIdsByStepIdsAsync(List<int> stepIds)
+        {
+            if (stepIds == null || stepIds.Count == 0)
+                return new Dictionary<int, List<string>>();
+            var distinctIds = stepIds.Distinct().ToList();
+            return await _context.WorkflowStepParallelRoles
+                .Where(pr => distinctIds.Contains(pr.WorkflowStepId))
+                .GroupBy(pr => pr.WorkflowStepId)
+                .ToDictionaryAsync(g => g.Key, g => g.Select(x => x.RoleId).ToList());
+        }
     }
 }

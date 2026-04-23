@@ -54,6 +54,8 @@ namespace Ettad.Workflows.Service.Command.UpdateWorkflow
 
             var workflow = await _context.Workflows
                 .Include(w => w.WorkflowSteps)
+                    .ThenInclude(ws => ws.ParallelRoles)
+                        .ThenInclude(pr => pr.Role)
                 .FirstOrDefaultAsync(w => w.Id == request.Id, cancellationToken);
 
             if (workflow == null)
@@ -95,9 +97,25 @@ namespace Ettad.Workflows.Service.Command.UpdateWorkflow
 
             await UpdateWorkflowSteps(workflow, request.WorkflowSteps, cancellationToken);
 
-            await _context.SaveChangesAsync(cancellationToken);
+            var freshWorkflow = await _context.Workflows
+                .Include(w => w.WorkflowSteps)
+                    .ThenInclude(ws => ws.ApplicationRole)
+                .Include(w => w.WorkflowSteps)
+                    .ThenInclude(ws => ws.HigherApprovalRole)
+                .Include(w => w.WorkflowSteps)
+                    .ThenInclude(ws => ws.ParallelRoles)
+                        .ThenInclude(pr => pr.Role)
+                .Include(w => w.WorkflowSteps)
+                    .ThenInclude(ws => ws.Transitions)
+                        .ThenInclude(t => t.TargetWorkflowStep)
+                            .ThenInclude(ts => ts.ApplicationRole)
+                .Include(w => w.WorkflowSteps)
+                    .ThenInclude(ws => ws.Transitions)
+                        .ThenInclude(t => t.TargetWorkflowStep)
+                            .ThenInclude(ts => ts.HigherApprovalRole)
+                .FirstOrDefaultAsync(w => w.Id == request.Id, cancellationToken);
 
-            return APIOperationResponse<WorkflowDto>.Success(_mapper.Map<WorkflowDto>(workflow));
+            return APIOperationResponse<WorkflowDto>.Success(_mapper.Map<WorkflowDto>(freshWorkflow));
         }
 
 
@@ -152,6 +170,42 @@ namespace Ettad.Workflows.Service.Command.UpdateWorkflow
                     });
                 }
             }
+
+            await _context.SaveChangesAsync(cancellationToken);
+
+            var stepsForParallel = await _context.WorkflowSteps
+                .Where(ws => ws.WorkflowId == workflow.Id)
+                .Include(ws => ws.ParallelRoles)
+                .ToListAsync(cancellationToken);
+
+            foreach (var dto in incomingSteps.OrderBy(x => x.StepOrder))
+            {
+                var stepEntity = dto.Id > 0
+                    ? stepsForParallel.FirstOrDefault(s => s.Id == dto.Id)
+                    : stepsForParallel.FirstOrDefault(s => s.StepOrder == dto.StepOrder);
+                if (stepEntity == null)
+                    continue;
+
+                if (stepEntity.ParallelRoles != null && stepEntity.ParallelRoles.Count > 0)
+                    _context.WorkflowStepParallelRoles.RemoveRange(stepEntity.ParallelRoles);
+
+                foreach (var rid in (dto.ParallelRoleIds ?? Enumerable.Empty<string>()).Distinct())
+                {
+                    if (string.IsNullOrEmpty(rid) || rid == stepEntity.ApplicationRoleId)
+                        continue;
+                    _context.WorkflowStepParallelRoles.Add(new WorkflowStepParallelRole
+                    {
+                        WorkflowStepId = stepEntity.Id,
+                        RoleId = rid,
+                        CreatedBy = _currentUserService.UserName,
+                        CreationDate = _dateTimeProvider.Now,
+                        ModifiedBy = _currentUserService.UserName,
+                        ModificationDate = _dateTimeProvider.Now
+                    });
+                }
+            }
+
+            await _context.SaveChangesAsync(cancellationToken);
         }
 
     }
