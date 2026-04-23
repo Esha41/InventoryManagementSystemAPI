@@ -1,5 +1,5 @@
 using Ettad.ResponseHandler.Models;
-using Ettad.Workflow.Service.DTO;
+using Ettad.Workflows.Service.Dtos;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 

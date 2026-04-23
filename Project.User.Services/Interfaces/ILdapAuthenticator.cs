@@ -1,9 +1,5 @@
-﻿using Ettad.LdapSettings.Services.DTO;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿
+using Ettad.LdapSettings.Services.Dtos;
 
 namespace Ettad.User.Services.Interfaces
 {

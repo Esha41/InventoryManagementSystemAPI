@@ -1,7 +1,7 @@
 using Ettad.CrossCutting.Common.Security;
 using Ettad.Data.Enums;
-using Ettad.Inventory.Service.AssetHistory;
 using Ettad.Inventory.Service.AssetHistory.Dtos;
+using Ettad.Inventory.Service.AssetHistory.Interfaces;
 using Ettad.ResponseHandler.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;

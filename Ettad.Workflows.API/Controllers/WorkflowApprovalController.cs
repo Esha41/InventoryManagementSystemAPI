@@ -2,7 +2,7 @@ using Ettad.CrossCutting.Common.Security;
 using Ettad.Data.Enums;
 using Ettad.ResponseHandler.Consts;
 using Ettad.ResponseHandler.Models;
-using Ettad.Workflows.Service.DTO;
+using Ettad.Workflows.Service.Dtos;
 using Ettad.Workflows.Service.Interface;
 using MediatR;
 using Microsoft.AspNetCore.Http;

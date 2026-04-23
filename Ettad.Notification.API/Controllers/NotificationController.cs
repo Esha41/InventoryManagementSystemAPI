@@ -1,7 +1,7 @@
 using Ettad.Application.Common.Interfaces;
 using Ettad.CrossCutting.Common.Security;
-using Ettad.Notification.Service;
 using Ettad.Notification.Service.Dtos;
+using Ettad.Notification.Service.Interfaces;
 using Ettad.ResponseHandler.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;

@@ -1,17 +1,12 @@
 using AutoMapper;
-using AutoMapper.QueryableExtensions;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
-using Ettad.Workflows.Service.DTO;
 using Ettad.Application.Common.Interfaces;
 using Ettad.EntityFramework.DataBaseContext;
 using Ettad.ResponseHandler.Models;
 using Ettad.Data.Enums;
 using Ettad.User.Services.DTO;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
+using Ettad.Workflows.Service.Dtos;
 
 namespace Ettad.Workflows.Service.Queries.GetWorkflow
 {

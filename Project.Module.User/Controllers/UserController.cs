@@ -2,14 +2,9 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Ettad.CrossCutting.Common.Security;
 using Ettad.ResponseHandler.Models;
-using Ettad.Services.DataTransferObject.AuthenticationDto;
 using Ettad.User.Services.DTO;
 using Ettad.User.Services.Interfaces;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using Ettad.User.Services.DTO.AuthenticationDto;
 
 namespace Ettad.User.API.Controllers
 {
@@ -120,6 +115,7 @@ namespace Ettad.User.API.Controllers
             var response = await _userService.ToggleUserStatusAsync(id);
             return ProcessResponse(response);
         }
+
         [HttpGet("Summary")]
         [CheckAuthorize("Permissions.SystemUsers.View", "Permissions.SystemUsers.page")]
         public async Task<IActionResult> GetSummary()
@@ -136,5 +132,4 @@ namespace Ettad.User.API.Controllers
             return ProcessResponse(response);
         }
     }
-
 }

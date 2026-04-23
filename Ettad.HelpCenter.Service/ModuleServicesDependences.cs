@@ -1,3 +1,5 @@
+using Ettad.HelpCenter.Service.Interfaces;
+using Ettad.HelpCenter.Service.Services;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Ettad.HelpCenter.Service

@@ -1,5 +1,4 @@
 using Ettad.CrossCutting.Common.Security;
-using Ettad.Inventory.Service.Monitoring;
 using Ettad.Inventory.Service.Monitoring.Dtos;
 using System.Collections.Generic;
 using Ettad.ResponseHandler.Models;
@@ -7,6 +6,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Collections.Generic;
 using System.Net;
+using Ettad.Inventory.Service.Monitoring.Interfaces;
 
 namespace Ettad.Inventory.API.Controllers
 {

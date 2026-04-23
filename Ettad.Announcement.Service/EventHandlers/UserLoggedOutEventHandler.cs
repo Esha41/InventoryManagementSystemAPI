@@ -1,3 +1,4 @@
+using Ettad.Announcement.Service.Interfaces;
 using Ettad.User.Services.Events;
 using MediatR;
 using Microsoft.Extensions.Logging;

@@ -4,7 +4,6 @@ using Ettad.Comman.Idenitity;
 using Ettad.CrossCutting.Comman.FileUpload;
 using Ettad.Data.Entities;
 using Ettad.Data.Enums;
-using Ettad.Notification.Service;
 using Ettad.RequestManagement.Service.Common;
 using Ettad.RequestManagement.Service.Orders.Dto;
 using Ettad.ResponseHandler.Consts;
@@ -18,6 +17,7 @@ using System.Linq;
 using Ettad.CrossCutting.Comman.Time;
 using Ettad.Data.Interfaces.Services;
 using Ettad.Data.Interfaces.Repositories;
+using Ettad.Notification.Service.Interfaces;
 
 namespace Ettad.RequestManagement.Service.Orders
 {

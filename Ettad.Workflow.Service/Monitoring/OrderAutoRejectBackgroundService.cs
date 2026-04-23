@@ -4,7 +4,7 @@ using Ettad.Data.Entities;
 using Ettad.Data.Entities.Workflows;
 using Ettad.Data.Enums;
 using Ettad.EntityFramework.DataBaseContext;
-using Ettad.Notification.Service;
+using Ettad.Notification.Service.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;

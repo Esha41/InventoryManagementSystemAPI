@@ -1,7 +1,7 @@
 using Ettad.Data.Enums;
 using Ettad.Inventory.Service.Inventories.Dtos;
-using Ettad.RequestManagement.Service.SupplyManagement;
 using Ettad.RequestManagement.Service.SupplyManagement.Dtos;
+using Ettad.RequestManagement.Service.SupplyManagement.Interfaces;
 using Ettad.Workflows.Service.Events;
 using MediatR;
 using Microsoft.Extensions.Logging;

@@ -1,5 +1,5 @@
 using Ettad.ResponseHandler.Models;
-using Ettad.Services.DataTransferObject.AuthenticationDto;
+using Ettad.User.Services.DTO.AuthenticationDto;
 
 namespace Ettad.Services.Interfaces
 {

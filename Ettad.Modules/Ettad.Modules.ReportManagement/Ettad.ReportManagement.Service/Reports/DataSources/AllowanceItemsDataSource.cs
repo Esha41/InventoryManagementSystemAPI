@@ -1,9 +1,9 @@
-using Ettad.Inventory.Service.AllowanceItems;
 using Ettad.Data.Entities;
-using Ettad.Lookups.Services.Contracts;
 using Ettad.Module.lookup.Dtos;
 using Ettad.ReportManagement.Service.Dtos;
 using Microsoft.Extensions.DependencyInjection;
+using Ettad.Module.lookup.Interfaces;
+using Ettad.Inventory.Service.AllowanceItems.Interfaces;
 
 namespace Ettad.ReportManagement.Service.Reports.DataSources
 {

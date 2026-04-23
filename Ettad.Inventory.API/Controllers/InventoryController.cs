@@ -1,6 +1,5 @@
 using Ettad.CrossCutting.Common.Security;
 using Ettad.Data.Enums;
-using Ettad.Inventory.Service.Inventories;
 using Ettad.Inventory.Service.Inventories.Dtos;
 using Ettad.CrossCutting.Comman.Models;
 using Ettad.ResponseHandler.Models;
@@ -9,6 +8,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using System.Net;
+using Ettad.Inventory.Service.Inventories.Interfaces;
 
 namespace Ettad.Inventory.API.Controllers
 {

@@ -5,6 +5,8 @@ using System.Reflection;
 using Ettad.Notification.Service.Hubs;
 using Ettad.Notification.Service.EmailTemplate;
 using MediatR;
+using Ettad.Notification.Service.Interfaces;
+using Ettad.Notification.Service.Services;
 
 namespace Ettad.Notification.Service
 {
