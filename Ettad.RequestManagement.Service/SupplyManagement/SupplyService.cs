@@ -1183,6 +1183,13 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
 					return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, "At least one file attachment is required when submitting a supply.");
 				}
 
+				// Pre-filter files before opening a transaction
+				var validFiles = files.Where(f => f != null && f.Length > 0).ToList();
+				if (!validFiles.Any())
+				{
+					return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, "At least one valid file attachment is required when submitting a supply.");
+				}
+
 				var supply = await _supplyRepository.FindOneAsync(
 					s => s.Id == id && !s.IsDeleted,
 					false,
@@ -1218,9 +1225,108 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
 					supply.Order = null; // Clear navigation property to prevent Attach from trying to attach it
 				}
 
-				// Approve workflow step for the order BEFORE anything else
+				await using var transaction = await _transactionManager.BeginAsync();
 				try
 				{
+					// Upload files and link them to the supply
+					var uploadResult = await _fileUploadService.UploadFilesForEntityAsync(
+						validFiles,
+						FileEntityType.Supply,
+						supply.Id
+					);
+
+					if (!uploadResult.Succeeded)
+					{
+						await _transactionManager.RollbackAsync();
+						_logger.LogError("Failed to upload files for supply. SupplyId: {SupplyId}, Error: {Error}, UserId: {UserId}",
+							id, uploadResult.Message, _currentUserService.UserId);
+						return APIOperationResponse<bool>.Fail(ResponseType.BadRequest,
+							$"Failed to upload files: {uploadResult.Message}");
+					}
+
+					// Update receiver information and submission metadata
+					var receiverEmployee = await _context.Employees
+						.AsNoTracking()
+						.FirstOrDefaultAsync(e => e.Id == inputDto.ReceiverEmployeeId && !e.IsDeleted);
+					if (receiverEmployee == null)
+					{
+						await _transactionManager.RollbackAsync();
+						return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, "Receiver employee not found.");
+					}
+
+					supply.ReceiverEmployeeId = inputDto.ReceiverEmployeeId;
+					supply.Notes = inputDto.Notes;
+					supply.SubmissionStatus = SupplySubmissionStatus.Submitted;
+					supply.FulfillmentStatus = CalculateFulfillmentStatus(supply);
+					supply.ModificationDate = _dateTimeProvider.Now;
+					supply.ModifiedBy = _currentUserService.UserId;
+
+					await _supplyRepository.UpdateAsync(supply);
+
+					// Record history for each supply detail when submitting
+					try
+					{
+						var departmentId = _currentUserService.DepartmentId ?? orderDepartmentId ?? 0;
+						var userName = _currentUserService.UserName;
+
+						// Get all order items to find unsupplied items
+						var order = await _orderRepository.FindOneAsync(
+							o => o.Id == orderId && !o.IsDeleted,
+							false,
+							$"{nameof(Order.RequestItems)}");
+
+						var orderItems = order?.RequestItems?.Where(ri => !ri.IsDeleted).ToList() ?? new List<RequestItem>();
+						var suppliedItemIds = supply.SupplyDetails.Where(sd => !sd.IsDeleted).Select(sd => sd.ItemId).Distinct().ToList();
+
+						// Record history for supplied items
+						foreach (var detail in supply.SupplyDetails.Where(sd => !sd.IsDeleted))
+						{
+							var historyContext = new OrderItemHistoryContext
+							{
+								OrderId = orderId,
+								ItemId = detail.ItemId,
+								ActionType = OrderItemActionType.Supplied,
+								OrderStatus = RequestStatus.Approved,
+								SuppliedQuantity = detail.Quantity,
+								DepartmentId = departmentId,
+								ModifiedByUserId = _currentUserService.UserId,
+								ModifiedByUserName = userName,
+								SupplyId = supply.Id,
+								SupplyDetailId = detail.Id,
+								Description = $"Item supplied - quantity: {detail.Quantity}"
+							};
+
+							await _orderItemTrackingService.RecordHistoryAsync(historyContext);
+						}
+
+						// Record history for unsupplied items (items in order but not in supply)
+						foreach (var orderItem in orderItems.Where(ri => !suppliedItemIds.Contains(ri.ItemId)))
+						{
+							var historyContext = new OrderItemHistoryContext
+							{
+								OrderId = orderId,
+								RequestItemId = orderItem.Id,
+								ItemId = orderItem.ItemId,
+								ActionType = OrderItemActionType.Supplied,
+								OrderStatus = RequestStatus.Approved,
+								SuppliedQuantity = 0,
+								DepartmentId = departmentId,
+								ModifiedByUserId = _currentUserService.UserId,
+								ModifiedByUserName = userName,
+								SupplyId = supply.Id,
+								Description = $"Item not yet supplied",
+								Notes = "This item is not yet supplied"
+							};
+
+							await _orderItemTrackingService.RecordHistoryAsync(historyContext);
+						}
+					}
+					catch (Exception ex)
+					{
+						_logger.LogWarning(ex, "Failed to record history for supply submission. SupplyId: {SupplyId}", supply.Id);
+					}
+
+					// Approve the order after the supply is submitted
 					if (orderId > 0)
 					{
 						var approveDto = new ApproveRejectWorkflowApprovalDto
@@ -1235,125 +1341,23 @@ namespace Ettad.RequestManagement.Service.SupplyManagement
 						var approveResult = await _workflowApprovalService.ProcessActionAsync(approveDto);
 						if (!approveResult.Succeeded)
 						{
-							_logger.LogWarning("Failed to approve workflow step for order. OrderId: {OrderId}, Error: {Error}", 
+							await _transactionManager.RollbackAsync();
+							_logger.LogWarning("Failed to approve workflow step for order. OrderId: {OrderId}, Error: {Error}",
 								orderId, approveResult.Message);
-							return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, 
+							return APIOperationResponse<bool>.Fail(ResponseType.BadRequest,
 								$"Failed to approve workflow step: {approveResult.Message}");
 						}
 					}
+
+					await _transactionManager.CommitAsync();
+					return APIOperationResponse<bool>.Success(true, "Supply submitted successfully");
 				}
 				catch (Exception ex)
 				{
-					_logger.LogError(ex, "Error approving workflow step for order. OrderId: {OrderId}, SupplyId: {SupplyId}", 
-						orderId, supply.Id);
-					return APIOperationResponse<bool>.Fail(ResponseType.InternalServerError, 
-						$"Failed to approve workflow step: {ex.Message}");
+					await _transactionManager.RollbackAsync();
+					_logger.LogError(ex, "Error in transaction while submitting supply. SupplyId: {SupplyId}, UserId: {UserId}", id, _currentUserService.UserId);
+					return APIOperationResponse<bool>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
 				}
-
-				// Filter out null or empty files
-				var validFiles = files.Where(f => f != null && f.Length > 0).ToList();
-				if (!validFiles.Any())
-				{
-					return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, "At least one valid file attachment is required when submitting a supply.");
-				}
-
-				// Upload files and link them to the supply
-				var uploadResult = await _fileUploadService.UploadFilesForEntityAsync(
-					validFiles,
-					FileEntityType.Supply,
-					supply.Id
-				);
-
-				if (!uploadResult.Succeeded)
-				{
-					_logger.LogError("Failed to upload files for supply. SupplyId: {SupplyId}, Error: {Error}, UserId: {UserId}",
-						id, uploadResult.Message, _currentUserService.UserId);
-					return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, 
-						$"Failed to upload files: {uploadResult.Message}");
-				}
-
-				// Update receiver information and submission metadata
-				var receiverEmployee = await _context.Employees
-					.AsNoTracking()
-					.FirstOrDefaultAsync(e => e.Id == inputDto.ReceiverEmployeeId && !e.IsDeleted);
-				if (receiverEmployee == null)
-				{
-					return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, "Receiver employee not found.");
-				}
-
-				supply.ReceiverEmployeeId = inputDto.ReceiverEmployeeId;
-				supply.Notes = inputDto.Notes;
-				supply.SubmissionStatus = SupplySubmissionStatus.Submitted;
-				supply.FulfillmentStatus = CalculateFulfillmentStatus(supply);
-				supply.ModificationDate = _dateTimeProvider.Now;
-				supply.ModifiedBy = _currentUserService.UserId;
-
-				await _supplyRepository.UpdateAsync(supply);
-
-				// Record history for each supply detail when submitting
-				try
-				{
-					var departmentId = _currentUserService.DepartmentId ?? orderDepartmentId ?? 0;
-					var userName = _currentUserService.UserName;
-
-					// Get all order items to find unsupplied items
-					var order = await _orderRepository.FindOneAsync(
-						o => o.Id == orderId && !o.IsDeleted,
-						false,
-						$"{nameof(Order.RequestItems)}");
-
-					var orderItems = order?.RequestItems?.Where(ri => !ri.IsDeleted).ToList() ?? new List<RequestItem>();
-					var suppliedItemIds = supply.SupplyDetails.Where(sd => !sd.IsDeleted).Select(sd => sd.ItemId).Distinct().ToList();
-
-					// Record history for supplied items
-					foreach (var detail in supply.SupplyDetails.Where(sd => !sd.IsDeleted))
-					{
-						var historyContext = new OrderItemHistoryContext
-						{
-							OrderId = orderId,
-							ItemId = detail.ItemId,
-							ActionType = OrderItemActionType.Supplied,
-							OrderStatus = RequestStatus.Approved,
-							SuppliedQuantity = detail.Quantity,
-							DepartmentId = departmentId,
-							ModifiedByUserId = _currentUserService.UserId,
-							ModifiedByUserName = userName,
-							SupplyId = supply.Id,
-							SupplyDetailId = detail.Id,
-							Description = $"Item supplied - quantity: {detail.Quantity}"
-						};
-
-						await _orderItemTrackingService.RecordHistoryAsync(historyContext);
-					}
-
-					// Record history for unsupplied items (items in order but not in supply)
-					foreach (var orderItem in orderItems.Where(ri => !suppliedItemIds.Contains(ri.ItemId)))
-					{
-						var historyContext = new OrderItemHistoryContext
-						{
-							OrderId = orderId,
-							RequestItemId = orderItem.Id,
-							ItemId = orderItem.ItemId,
-							ActionType = OrderItemActionType.Supplied,
-							OrderStatus = RequestStatus.Approved,
-							SuppliedQuantity = 0,
-							DepartmentId = departmentId,
-							ModifiedByUserId = _currentUserService.UserId,
-							ModifiedByUserName = userName,
-							SupplyId = supply.Id,
-							Description = $"Item not yet supplied",
-							Notes = "This item is not yet supplied"
-						};
-
-						await _orderItemTrackingService.RecordHistoryAsync(historyContext);
-					}
-				}
-				catch (Exception ex)
-				{
-					_logger.LogWarning(ex, "Failed to record history for supply submission. SupplyId: {SupplyId}", supply.Id);
-				}
-
-				return APIOperationResponse<bool>.Success(true, "Supply submitted successfully");
 			}
 			catch (Exception ex)
 			{

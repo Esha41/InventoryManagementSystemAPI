@@ -783,31 +783,26 @@ namespace Ettad.Inventory.Service.AssetSupply
                         _logger.LogWarning(ex, "Failed to record history for asset supply creation. SupplyId: {SupplyId}", createdSupply.Id);
                     }
 
-                    await _transactionManager.CommitAsync();
+                    // Approve the order after the supply is created
+                    var approveDto = new ApproveRejectWorkflowApprovalDto
+                    {
+                        BaseRequestID = orderId,
+                        Action = RequestStatus.Approved,
+                        IsApproved = true,
+                        Comments = dto.Notes,
+                        SendToHigherApproval = false
+                    };
+                    var approveResult = await _workflowApprovalService.ProcessActionAsync(approveDto);
+                    if (!approveResult.Succeeded)
+                    {
+                        await _transactionManager.RollbackAsync();
+                        _logger.LogError("Workflow approval failed during supply creation. SupplyId: {SupplyId}, OrderId: {OrderId}, Error: {Error}",
+                            createdSupply.Id, orderId, approveResult.Message);
+                        return APIOperationResponse<long>.Fail(ResponseType.BadRequest,
+                            approveResult.Message ?? "Workflow approval failed while creating asset supply.");
+                    }
 
-                    // Approve workflow step AFTER supply is safely committed
-                    try
-                    {
-                        var approveDto = new ApproveRejectWorkflowApprovalDto
-                        {
-                            BaseRequestID = orderId,
-                            Action = RequestStatus.Approved,
-                            IsApproved = true,
-                            Comments = dto.Notes,
-                            SendToHigherApproval = false
-                        };
-                        var approveResult = await _workflowApprovalService.ProcessActionAsync(approveDto);
-                        if (!approveResult.Succeeded)
-                        {
-                            _logger.LogError("Workflow approval failed after supply creation. SupplyId: {SupplyId}, OrderId: {OrderId}, Error: {Error}",
-                                createdSupply.Id, orderId, approveResult.Message);
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogError(ex, "Exception during workflow approval after supply creation. SupplyId: {SupplyId}, OrderId: {OrderId}",
-                            createdSupply.Id, orderId);
-                    }
+                    await _transactionManager.CommitAsync();
 
                     _logger.LogInformation("Asset supply created and submitted. SupplyId: {SupplyId}, OrderId: {OrderId}, User: {UserId}",
                         createdSupply.Id, dto.OrderId, _currentUserService.UserId);

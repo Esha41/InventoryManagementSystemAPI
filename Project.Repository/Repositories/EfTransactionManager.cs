@@ -8,6 +8,7 @@ namespace Ettad.Repository.Repositories
     {
         private readonly ApplicationDbContext _context;
         private IDbContextTransaction _currentTransaction;
+        public bool HasActiveTransaction => _currentTransaction != null;
 
         public EfTransactionManager(ApplicationDbContext context)
         {
