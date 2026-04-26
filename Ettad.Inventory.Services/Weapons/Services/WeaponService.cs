@@ -539,8 +539,8 @@ namespace Ettad.Inventory.Service.Weapons.Services
             var headers = language == "ar"
                    ? new[]
                    {
-                        "الاسم*", "رقم الصنف*", "رقم الجزء", "رقم NSN", "السعر", "الكمية الدنيا",
-                        "العيار", "وحدة العيار", "سنة التصنيع", "بلد التصنيع", "النموذج",
+                        "الاسم*", "رقم الصنف*", "Part No", "رقم NSN", "السعر", "الكمية الدنيا",
+                        "العيار", "وحدة العيار", "سنة الصنع", "بلد الصنع", "النموذج",
                         "رقم الأمم المتحدة", "التوزيع", "الرقم المرجعي", "التصنيف", "النوع", "ملاحظات"
                    }
                    : new[]
@@ -754,14 +754,18 @@ namespace Ettad.Inventory.Service.Weapons.Services
                 // Arabic
                  { "الاسم*", nameof(WeaponImportDto.Name) },
                 { "رقم الصنف*", nameof(WeaponImportDto.ItemNo) },
-                { "رقم الجزء", nameof(WeaponImportDto.PartNo) },
+                { "رقم القطعة", nameof(WeaponImportDto.PartNo) },
+                { "رقم الجزء", nameof(WeaponImportDto.PartNo) }, // backward compatible
                 { "رقم NSN", nameof(WeaponImportDto.Nsn) },
                 { "السعر", nameof(WeaponImportDto.Price) },
                 { "الكمية الدنيا", nameof(WeaponImportDto.MinimumQuantity) },
                 { "العيار", nameof(WeaponImportDto.Caliber) },
                 { "وحدة العيار", nameof(WeaponImportDto.CaliberUnit) },
-                { "سنة التصنيع", nameof(WeaponImportDto.YearOfManufacture) },
-                { "بلد التصنيع", nameof(WeaponImportDto.CountryOfManufacture) },
+                { "سنة الصنع", nameof(WeaponImportDto.YearOfManufacture) },
+                { "سنة التصنيع", nameof(WeaponImportDto.YearOfManufacture) }, // backward compatible
+                { "بلد الصنع", nameof(WeaponImportDto.CountryOfManufacture) },
+                { "بلد التصنيع", nameof(WeaponImportDto.CountryOfManufacture) }, // backward compatible
+                { "بلد المنشأ", nameof(WeaponImportDto.CountryOfManufacture) }, // backward compatible
                 { "النموذج", nameof(WeaponImportDto.Model) },
                 { "رقم الأمم المتحدة", nameof(WeaponImportDto.UNNumber) },
                 { "التوزيع", nameof(WeaponImportDto.Distribution) },

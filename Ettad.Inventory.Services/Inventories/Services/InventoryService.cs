@@ -2225,7 +2225,8 @@ namespace Ettad.Inventory.Service.Inventories.Services
                 { "الدفعة", nameof(InventoryImportRowDto.Lot) },
                 { "المورد", nameof(InventoryImportRowDto.Supplier) },
                 { "المصنع", nameof(InventoryImportRowDto.Manufacturer) },
-                { "بلد المنشأ", nameof(InventoryImportRowDto.Country) },
+                { "بلد الصنع", nameof(InventoryImportRowDto.Country) },
+                { "بلد المنشأ", nameof(InventoryImportRowDto.Country) }, // backward compatible
                 { "الغرض الأساسي", nameof(InventoryImportRowDto.PrimaryPurpose) },
                 { "الكمية الأصلية", nameof(InventoryImportRowDto.OriginalQuantity) },
                 { "رقم التشغيلة", nameof(InventoryImportRowDto.BatchNo) },
@@ -2355,7 +2356,7 @@ namespace Ettad.Inventory.Service.Inventories.Services
                 var headers = language == "ar"
                     ? new[]
                     {
-                        "اسم الصنف", "الدفعة", "المورد", "المصنع", "بلد المنشأ",
+                        "اسم الصنف", "الدفعة", "المورد", "المصنع", "بلد الصنع",
                         "الغرض الأساسي", "الكمية الأصلية", "رقم التشغيلة", "تاريخ الانتهاء", "جاهز للصرف",
                         "رقم الفاتورة", "تاريخ الفاتورة", "تاريخ الاستلام", "ملاحظات"
                     }

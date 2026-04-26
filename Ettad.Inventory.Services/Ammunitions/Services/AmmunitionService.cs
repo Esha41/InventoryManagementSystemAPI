@@ -613,7 +613,7 @@ namespace Ettad.Inventory.Service.Ammunitions.Services
             var headers = language == "ar"
                    ? new[]
                    {
-                        "الاسم*", "رقم الصنف*", "رقم الجزء", "رقم ARM", "NSN", "السعر", "الكمية الدنيا",
+                        "الاسم*", "رقم الصنف*", "Part No", "رقم ARM", "NSN", "السعر", "الكمية الدنيا",
                         "قطر الرصاصة", "وحدة قطر الرصاصة", "الوزن الكلي", "مرتبط", "الكبسولة",
                         "نوع الغلاف", "المادة الدافعة", "التوافق", "قسم الخطر", "خيار الطبيعة",
                         "الغرض الأساسي", "لون المقذوف", "مادة المقذوف", "العيار",
@@ -902,7 +902,8 @@ namespace Ettad.Inventory.Service.Ammunitions.Services
                 // Arabic...
                 { "الاسم*", nameof(AmmunitionImportDto.Name) },
                 { "رقم الصنف*", nameof(AmmunitionImportDto.ItemNo) },
-                { "رقم الجزء", nameof(AmmunitionImportDto.PartNo) },
+                { "رقم القطعة", nameof(AmmunitionImportDto.PartNo) },
+                { "رقم الجزء", nameof(AmmunitionImportDto.PartNo) }, // backward compatible
                 { "رقم ARM", nameof(AmmunitionImportDto.ArmNumber) },
                 { "رقم NSN", nameof(AmmunitionImportDto.Nsn) },
                 { "السعر", nameof(AmmunitionImportDto.Price) },

@@ -530,7 +530,7 @@ namespace Ettad.Inventory.Service.Explosives.Services
              var headers = language == "ar"
                     ? new[]
                     {
-                        "الاسم*", "رقم الصنف*", "رقم الجزء", "رقم ARM", "NSN", "السعر", "الكمية الدنيا",
+                        "الاسم*", "رقم الصنف*", "Part No", "رقم ARM", "NSN", "السعر", "الكمية الدنيا",
                         "رقم الأمم المتحدة", "وحدة",
                         "التوزيع", "الرقم المرجعي", "التوافق", "قسم الخطر", "التصنيف", "النوع", "ملاحظات"
                     }
@@ -748,7 +748,8 @@ namespace Ettad.Inventory.Service.Explosives.Services
                 // Arabic
                 { "الاسم*", nameof(ExplosiveImportDto.Name) },
                 { "رقم الصنف*", nameof(ExplosiveImportDto.ItemNo) },
-                { "رقم الجزء", nameof(ExplosiveImportDto.PartNo) },
+                { "رقم القطعة", nameof(ExplosiveImportDto.PartNo) },
+                { "رقم الجزء", nameof(ExplosiveImportDto.PartNo) }, // backward compatible
                 { "رقم ARM", nameof(ExplosiveImportDto.ArmNumber) },
                 { "رقم NSN", nameof(ExplosiveImportDto.Nsn) },
                 { "السعر", nameof(ExplosiveImportDto.Price) },
