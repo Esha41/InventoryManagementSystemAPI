@@ -8,7 +8,8 @@ namespace Ettad.User.Services.Helpers
 {
     public interface IEmailSender
     {
-        Task SendEmailAsync(string email, string subject, string message);
+        /// <param name="isHtml">When false, body is sent as plain text.</param>
+        Task SendEmailAsync(string email, string subject, string message, bool isHtml = true);
         Task SendEmailWithAttachmentAsync(string email, string subject, string message, byte[] attachmentBytes, string attachmentFileName, string? contentType = null);
     }
 }

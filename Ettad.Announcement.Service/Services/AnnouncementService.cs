@@ -442,8 +442,8 @@ namespace Ettad.Announcement.Service.Services
                 var roleIds = ParseTargetRoleIds(announcement.TargetRoles);
                 var hasTargetRoles = roleIds != null && roleIds.Count > 0;
 
-                // When no target roles: broadcast to all users (like banner). When target roles: notify only those roles.
-                await _notificationHelper.SendNotificationAsync(
+                // In-app + SignalR via notification; email via same pipeline as orders/returns (skipped when email is disabled in settings).
+                await _notificationHelper.SendNotificationAndEmailAsync(
                     title: "Announcement",
                     message: announcement.Message,
                     entityType: "Announcement",

@@ -1,6 +1,7 @@
 // Configure Serilog
 
 using Ettad.Module.Logic.Extensions;
+using Ettad.Modules.EmailSystem.API.Services;
 using Ettad.ReportManagement.Service;
 
 Log.Logger = new LoggerConfiguration()
@@ -96,6 +97,7 @@ try
     builder.Services.AddScoped<IFileStorageService, FileStorageService>();
     builder.Services.AddScoped<IFileUploadService, Ettad.Modules.FileUpload.API.Services.FileUploadService>();
     builder.Services.AddScoped<Ettad.CrossCutting.Comman.Time.IDateTimeProvider, Ettad.CrossCutting.Comman.Time.SystemDateTimeProvider>();
+    builder.Services.AddScoped<IEmailDispatchService, EmailDispatchService>();
   
 
     // Configure Hangfire for background jobs

@@ -91,7 +91,6 @@ public class SettingsProvider : ISettingsProvider
                 }
             }
 
-            // Define all email setting keys
             var emailSettingKeys = new Dictionary<string, string>
             {
                 { "EmailEnabled", emailSettings.EnableEmailNotifications.ToString() },
@@ -99,9 +98,13 @@ public class SettingsProvider : ISettingsProvider
                 { "EmailPort", emailSettings.Port.ToString() },
                 { "EmailSSL", emailSettings.EnableSSL.ToString() },
                 { "EmailSenderName", emailSettings.SenderName },
-                { "EmailUsername", emailSettings.AccountUsername },
-                { "EmailPassword", emailSettings.AccountPassword }
+                { "EmailUsername", emailSettings.AccountUsername }
             };
+
+            if (!string.IsNullOrWhiteSpace(emailSettings.AccountPassword))
+            {
+                emailSettingKeys["EmailPassword"] = emailSettings.AccountPassword;
+            }
 
             foreach (var kvp in emailSettingKeys)
             {
