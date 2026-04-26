@@ -48,11 +48,13 @@ namespace Ettad.Workflows.Service.Command.CreateWorkflow
         {
             _logger.LogInformation("Starting workflow creation for {WorkflowName} at {Time}", request.WorkflowName, _dateTimeProvider.Now);
 
+            await using var transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
             try
             {
                 var deactivationResult = await CheckAndDeactivateDuplicateWorkflows(request, cancellationToken);
                 if (!deactivationResult)
                 {
+                    await transaction.RollbackAsync(cancellationToken);
                     return APIOperationResponse<WorkflowDto>.ServerError("Failed to deactivate duplicate workflows.");
                 }
 
@@ -73,6 +75,7 @@ namespace Ettad.Workflows.Service.Command.CreateWorkflow
                     var stepsResult = await AddWorkflowSteps(request.WorkflowSteps, workflow.Id, cancellationToken);
                     if (!stepsResult)
                     {
+                        await transaction.RollbackAsync(cancellationToken);
                         return APIOperationResponse<WorkflowDto>.ServerError("Workflow created but failed to add workflow steps.");
                     }
                 }
@@ -98,11 +101,13 @@ namespace Ettad.Workflows.Service.Command.CreateWorkflow
 
                 var workflowDto = MapToWorkflowDto(createdWorkflow);
 
+                await transaction.CommitAsync(cancellationToken);
                 _logger.LogInformation("Workflow created successfully with ID {WorkflowId} at {Time}", workflow.Id, _dateTimeProvider.Now);
                 return APIOperationResponse<WorkflowDto>.Success(workflowDto, "Workflow created successfully.");
             }
             catch (Exception ex)
             {
+                await transaction.RollbackAsync(cancellationToken);
                 _logger.LogError(ex, "Error while creating workflow {WorkflowName} at {Time}", request.WorkflowName, _dateTimeProvider.Now);
                 return APIOperationResponse<WorkflowDto>.ServerError($"Workflow creation failed: {ex.Message}");
             }

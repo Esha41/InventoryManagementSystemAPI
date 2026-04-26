@@ -70,52 +70,62 @@ namespace Ettad.Workflows.Service.Command.UpdateWorkflow
                     return APIOperationResponse<WorkflowDto>.BadRequest($"Step {step.Id} is in approval history and cannot be modified");
             }
 
-            // ✅ Deactivate other active workflows of same type
-            if (request.IsActive)
+            await using var transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
+            try
             {
-                var activeDupes = await _context.Workflows
-                    .Where(w => w.IsActive &&
-                                !w.IsDeleted &&
-                                w.Id != workflow.Id &&
-                                w.WorkflowType == request.WorkflowType)
-                    .ToListAsync(cancellationToken);
-
-                foreach (var wf in activeDupes)
+                // ✅ Deactivate other active workflows of same type
+                if (request.IsActive)
                 {
-                    wf.IsActive = false;
-                    wf.ModifiedBy = _currentUserService.UserName;
-                    wf.ModificationDate = _dateTimeProvider.Now;
+                    var activeDupes = await _context.Workflows
+                        .Where(w => w.IsActive &&
+                                    !w.IsDeleted &&
+                                    w.Id != workflow.Id &&
+                                    w.WorkflowType == request.WorkflowType)
+                        .ToListAsync(cancellationToken);
+
+                    foreach (var wf in activeDupes)
+                    {
+                        wf.IsActive = false;
+                        wf.ModifiedBy = _currentUserService.UserName;
+                        wf.ModificationDate = _dateTimeProvider.Now;
+                    }
                 }
+
+                // ✅ Update workflow info
+                workflow.WorkflowName = request.WorkflowName;
+                workflow.WorkflowType = request.WorkflowType;
+                workflow.IsActive = request.IsActive;
+                workflow.ModifiedBy = _currentUserService.UserName;
+                workflow.ModificationDate = _dateTimeProvider.Now;
+
+                await UpdateWorkflowSteps(workflow, request.WorkflowSteps, cancellationToken);
+
+                var freshWorkflow = await _context.Workflows
+                    .Include(w => w.WorkflowSteps)
+                        .ThenInclude(ws => ws.ApplicationRole)
+                    .Include(w => w.WorkflowSteps)
+                        .ThenInclude(ws => ws.HigherApprovalRole)
+                    .Include(w => w.WorkflowSteps)
+                        .ThenInclude(ws => ws.ParallelRoles)
+                            .ThenInclude(pr => pr.Role)
+                    .Include(w => w.WorkflowSteps)
+                        .ThenInclude(ws => ws.Transitions)
+                            .ThenInclude(t => t.TargetWorkflowStep)
+                                .ThenInclude(ts => ts.ApplicationRole)
+                    .Include(w => w.WorkflowSteps)
+                        .ThenInclude(ws => ws.Transitions)
+                            .ThenInclude(t => t.TargetWorkflowStep)
+                                .ThenInclude(ts => ts.HigherApprovalRole)
+                    .FirstOrDefaultAsync(w => w.Id == request.Id, cancellationToken);
+
+                await transaction.CommitAsync(cancellationToken);
+                return APIOperationResponse<WorkflowDto>.Success(_mapper.Map<WorkflowDto>(freshWorkflow));
             }
-
-            // ✅ Update workflow info
-            workflow.WorkflowName = request.WorkflowName;
-            workflow.WorkflowType = request.WorkflowType;
-            workflow.IsActive = request.IsActive;
-            workflow.ModifiedBy = _currentUserService.UserName;
-            workflow.ModificationDate = _dateTimeProvider.Now;
-
-            await UpdateWorkflowSteps(workflow, request.WorkflowSteps, cancellationToken);
-
-            var freshWorkflow = await _context.Workflows
-                .Include(w => w.WorkflowSteps)
-                    .ThenInclude(ws => ws.ApplicationRole)
-                .Include(w => w.WorkflowSteps)
-                    .ThenInclude(ws => ws.HigherApprovalRole)
-                .Include(w => w.WorkflowSteps)
-                    .ThenInclude(ws => ws.ParallelRoles)
-                        .ThenInclude(pr => pr.Role)
-                .Include(w => w.WorkflowSteps)
-                    .ThenInclude(ws => ws.Transitions)
-                        .ThenInclude(t => t.TargetWorkflowStep)
-                            .ThenInclude(ts => ts.ApplicationRole)
-                .Include(w => w.WorkflowSteps)
-                    .ThenInclude(ws => ws.Transitions)
-                        .ThenInclude(t => t.TargetWorkflowStep)
-                            .ThenInclude(ts => ts.HigherApprovalRole)
-                .FirstOrDefaultAsync(w => w.Id == request.Id, cancellationToken);
-
-            return APIOperationResponse<WorkflowDto>.Success(_mapper.Map<WorkflowDto>(freshWorkflow));
+            catch
+            {
+                await transaction.RollbackAsync(cancellationToken);
+                throw;
+            }
         }
 
 
