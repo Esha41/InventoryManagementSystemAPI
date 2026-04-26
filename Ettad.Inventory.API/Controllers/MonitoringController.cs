@@ -1,11 +1,12 @@
 using Ettad.CrossCutting.Common.Security;
-using Ettad.Inventory.Service.Monitoring;
 using Ettad.Inventory.Service.Monitoring.Dtos;
 using System.Collections.Generic;
 using Ettad.ResponseHandler.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Collections.Generic;
 using System.Net;
+using Ettad.Inventory.Service.Monitoring.Interfaces;
 
 namespace Ettad.Inventory.API.Controllers
 {
@@ -34,9 +35,9 @@ namespace Ettad.Inventory.API.Controllers
         [HttpGet("low-stock/count")]
         [ProducesResponseType(typeof(APIOperationResponse<int>), (int)HttpStatusCode.OK)]
         [CheckAuthorize("Permissions.Inventory.View", "Permissions.Inventory.Page")]
-        public async Task<IActionResult> GetLowStockItemsCount([FromQuery] long? depotId = null)
+        public async Task<IActionResult> GetLowStockItemsCount([FromQuery] long? depotId = null, [FromQuery] List<long>? depotIds = null)
         {
-            var result = await _lowStockMonitoringService.GetLowStockItemsCountAsync(depotId);
+            var result = await _lowStockMonitoringService.GetLowStockItemsCountAsync(depotId, depotIds);
             return ProcessResponse(result);
         }
 
@@ -58,9 +59,9 @@ namespace Ettad.Inventory.API.Controllers
         [HttpGet("expiring-lots/count")]
         [ProducesResponseType(typeof(APIOperationResponse<int>), (int)HttpStatusCode.OK)]
         [CheckAuthorize("Permissions.Inventory.View", "Permissions.Inventory.Page")]
-        public async Task<IActionResult> GetExpiringLotsCount([FromQuery] long? depotId = null)
+        public async Task<IActionResult> GetExpiringLotsCount([FromQuery] long? depotId = null, [FromQuery] List<long>? depotIds = null)
         {
-            var result = await _expiringLotMonitoringService.GetExpiringLotsCountAsync(depotId);
+            var result = await _expiringLotMonitoringService.GetExpiringLotsCountAsync(depotId, depotIds);
             return ProcessResponse(result);
         }
 

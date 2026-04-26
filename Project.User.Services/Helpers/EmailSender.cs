@@ -16,7 +16,7 @@ namespace Ettad.User.Services.Helpers
             _settingsProvider = settingsProvider;
         }
 
-        public async Task SendEmailAsync(string email, string subject, string message)
+        public async Task SendEmailAsync(string email, string subject, string message, bool isHtml = true)
         {
             try
             {
@@ -58,7 +58,7 @@ namespace Ettad.User.Services.Helpers
                     From = new MailAddress(emailConfig.Username),
                     Subject = subject,
                     Body = message,
-                    IsBodyHtml = true
+                    IsBodyHtml = isHtml
                 };
 
                 mailMessage.To.Add(email);

@@ -1,8 +1,8 @@
 using Ettad.CrossCutting.Common.Security;
 using Ettad.ResponseHandler.Consts;
 using Ettad.ResponseHandler.Models;
-using Ettad.Workflow.Service.DTO;
 using Ettad.Workflow.Service.Interface;
+using Ettad.Workflows.Service.Dtos;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Linq;

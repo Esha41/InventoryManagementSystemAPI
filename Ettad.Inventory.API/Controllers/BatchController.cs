@@ -1,5 +1,4 @@
 using Ettad.CrossCutting.Common.Security;
-using Ettad.Inventory.Service.Batches;
 using Ettad.Inventory.Service.Batches.Dtos;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -9,6 +8,7 @@ using Ettad.CrossCutting.Comman.Models;
 using Ettad.ResponseHandler.Models;
 using System.Text;
 using System.Text.Json.Serialization;
+using Ettad.Inventory.Service.Batches.Interfaces;
 
 namespace Ettad.Inventory.API.Controllers
 {

@@ -1,22 +1,32 @@
-//using MediatR;
-//using Microsoft.Extensions.DependencyInjection;
-//using Ettad.Module.Logic.Behaviors;
-//using Ettad.Module.Logic.Validators.Project;
+using Ettad.Module.lookup.Interfaces;
+using Ettad.Module.lookup.Services;
+using FluentValidation;
+using MediatR;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Win32;
+using System.Reflection;
 
+namespace Ettad.Module.Logic.Extensions
+{
+    public static class ModuleServicesDependences
+    {
+        public static IServiceCollection AddModuleLogicServices(this IServiceCollection services)
+        {
+            // Register MediatR
+            services.AddMediatR(cfg => {
+                cfg.RegisterServicesFromAssembly(Assembly.GetExecutingAssembly());
+            });
 
-//namespace Ettad.Module.Logic
-//{
-//    public static class ModuleServicesDependences
-//    {
-//        public static IServiceCollection AddLogicServices(this IServiceCollection service)
-//        {
-//            service.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(Program).Assembly));
-//            service.AddValidatorsFromAssemblyContaining<CreateProductValidator>();
+            // Register services
+            services.AddScoped<IDepotService, DepotService>();
+            services.AddScoped<IDepotAccessService, DepotAccessService>();
+            services.AddScoped<IUserDepotService, UserDepotService>();
+            services.AddScoped(typeof(ILookupService<,>), typeof(LookupService<,>));
 
-//            service.AddTransient(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
-//            service.AddValidatorsFromAssemblyContaining<CreateProductValidator>();
+            // Register Validators
+            services.AddValidatorsFromAssembly(Assembly.GetExecutingAssembly());
 
-//            return service;
-//        }
-//    }
-//}
+            return services;
+        }
+    }
+}

@@ -1,11 +1,11 @@
 using Ettad.CrossCutting.Common.Security;
-using Ettad.Inventory.Service.AllowanceItems;
 using Ettad.Inventory.Service.AllowanceItems.Dtos;
 using Ettad.ResponseHandler.Models;
 using Ettad.Data.Enums;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Net;
+using Ettad.Inventory.Service.AllowanceItems.Interfaces;
 
 namespace Ettad.Inventory.API.Controllers
 {

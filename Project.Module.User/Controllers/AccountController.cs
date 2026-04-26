@@ -99,10 +99,9 @@ namespace Ettad.User.Api.Controllers
         public async Task<IActionResult> GetAllUserClaims()
         {
             var result = await _authenticationService.GetRoleClaimsOnlyAsync();
-
-
             return ProcessResponse(result);
         }
+
         [HttpPost("forgot-password")]
         [AllowAnonymous]
         public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordDto request)
@@ -157,6 +156,5 @@ namespace Ettad.User.Api.Controllers
             var result = await _onboardingService.CompleteAsync();
             return ProcessResponse(result);
         }
-
     }
 }

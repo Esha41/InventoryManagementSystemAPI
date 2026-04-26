@@ -1,0 +1,27 @@
+using Ettad.Data.Enums;
+using Ettad.Inventory.Service.Inventories.Dtos;
+using Ettad.RequestManagement.Service.SupplyManagement.Dtos;
+using Ettad.ResponseHandler.Models;
+using Microsoft.AspNetCore.Http;
+
+namespace Ettad.RequestManagement.Service.SupplyManagement.Interfaces
+{
+	public interface ISupplyService
+	{
+		Task<APIOperationResponse<OrderSupplySuggestionDto>> GetSupplySuggestionAsync(long orderId, List<long>? depotIds = null);
+		Task<APIOperationResponse<SupplyDto>> GetByIdAsync(long id);
+		Task<APIOperationResponse<SupplyDto>> GetByOrderIdAsync(long orderId);
+		Task<APIOperationResponse<SupplyDto>> GetDraftByOrderIdAsync(long orderId);
+		Task<APIOperationResponse<List<SupplyDto>>> GetAllAsync();
+		Task<APIOperationResponse<long>> CreateAsync(CreateSupplyDto inputDto);
+		Task<APIOperationResponse<bool>> UpdateSupplyInfoAsync(long id, UpdateSupplyDto inputDto);
+		Task<APIOperationResponse<long>> AddSupplyDetailAsync(long supplyId, CreateSupplyDetailDto detailDto);
+		Task<APIOperationResponse<bool>> UpdateSupplyDetailAsync(long supplyId, long detailId, UpdateSupplyDetailDto detailDto);
+		Task<APIOperationResponse<bool>> DeleteSupplyDetailAsync(long supplyId, long detailId);
+		Task<APIOperationResponse<bool>> ReplaceSupplyDetailsAsync(long supplyId, List<CreateSupplyDetailDto> newDetails);
+		Task<APIOperationResponse<bool>> SubmitSupplyAsync(long id, SubmitSupplyDto inputDto, List<IFormFile> files);
+		Task<APIOperationResponse<bool>> SetSupplyPickupDateAsync(long orderId, SetSupplyPickupDateDto inputDto);
+		Task<APIOperationResponse<bool>> ConfirmSupplyPickupDateAsync(long orderId, ConfirmSupplyPickupDateDto inputDto);
+	}
+}
+

@@ -2,7 +2,6 @@ using AutoMapper;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using Ettad.Workflows.Service.DTO;
 using Ettad.Application.Common.Interfaces;
 using Ettad.Data.Entities.Workflows;
 using Ettad.Data.Enums;
@@ -14,6 +13,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Ettad.CrossCutting.Comman.Time;
+using Ettad.Workflows.Service.Dtos;
 
 namespace Ettad.Workflows.Service.Command.UpdateWorkflow
 {

@@ -2,7 +2,6 @@ using Ettad.CrossCutting.Comman.Models;
 using Ettad.CrossCutting.Common.Security;
 using Ettad.Data.Entities;
 using Ettad.Data.Enums;
-using Ettad.Lookups.Services.Contracts;
 using Ettad.Module.lookup.Dtos;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
@@ -13,6 +12,7 @@ using Microsoft.EntityFrameworkCore;
 using Ettad.ResponseHandler.Models;
 using Ettad.ResponseHandler.Consts;
 using System.Collections.Generic;
+using Ettad.Module.lookup.Interfaces;
 
 namespace Ettad.Lookups.Domain.API.Controllers
 {

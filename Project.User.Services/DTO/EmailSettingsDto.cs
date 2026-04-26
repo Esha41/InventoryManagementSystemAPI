@@ -19,9 +19,9 @@ namespace Ettad.User.Services.DTO
         
         [Required(ErrorMessage = "Account Username is required")]
         public string AccountUsername { get; set; } = string.Empty;
-        
-        [Required(ErrorMessage = "Account Password is required")]
-        public string AccountPassword { get; set; } = string.Empty;
+
+    
+        public string? AccountPassword { get; set; }
     }
 }
 

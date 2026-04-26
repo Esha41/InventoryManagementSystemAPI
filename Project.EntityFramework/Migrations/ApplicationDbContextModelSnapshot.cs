@@ -5377,6 +5377,11 @@ namespace Ettad.EntityFramework.Migrations
                     b.Property<string>("Caliber")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<int>("CaliberCategory")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(1);
+
                     b.Property<long?>("CaliberUnitId")
                         .HasColumnType("bigint");
 

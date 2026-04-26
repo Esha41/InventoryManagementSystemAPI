@@ -1,8 +1,8 @@
 using Ettad.CrossCutting.Common.Security;
 using Ettad.Data.Enums;
 using Ettad.Inventory.Service.Inventories.Dtos;
-using Ettad.RequestManagement.Service.SupplyManagement;
 using Ettad.RequestManagement.Service.SupplyManagement.Dtos;
+using Ettad.RequestManagement.Service.SupplyManagement.Interfaces;
 using Ettad.ResponseHandler.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;

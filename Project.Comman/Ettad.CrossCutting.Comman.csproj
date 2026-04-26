@@ -39,8 +39,4 @@
     <ProjectReference Include="..\Project.ResponseHandler\Ettad.CrossCutting.ResponseHandler.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Folder Include="Helpers\" />
-  </ItemGroup>
-
 </Project>

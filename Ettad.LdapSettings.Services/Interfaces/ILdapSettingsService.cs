@@ -1,7 +1,5 @@
-using Ettad.LdapSettings.Services.DTO;
+using Ettad.LdapSettings.Services.Dtos;
 using Ettad.ResponseHandler.Models;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace Ettad.LdapSettings.Services.Interfaces
 {

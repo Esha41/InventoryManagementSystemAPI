@@ -1,5 +1,5 @@
-using Ettad.Announcement.Service;
 using Ettad.Announcement.Service.Dtos;
+using Ettad.Announcement.Service.Interfaces;
 using Ettad.CrossCutting.Common.Security;
 using Ettad.ResponseHandler.Models;
 using Microsoft.AspNetCore.Authorization;

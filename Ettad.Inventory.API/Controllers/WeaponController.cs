@@ -1,6 +1,5 @@
 using Microsoft.AspNetCore.Http;
 using Ettad.CrossCutting.Common.Security;
-using Ettad.Inventory.Service.Weapons;
 using Ettad.Inventory.Service.Weapons.Dtos;
 using Ettad.ResponseHandler.Models;
 using Microsoft.AspNetCore.Authorization;
@@ -8,6 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 using System.Net;
 using Ettad.CrossCutting.Comman.Time;
 using Ettad.CrossCutting.Comman.Models;
+using Ettad.Inventory.Service.Weapons.Interfaces;
 
 namespace Ettad.Inventory.API.Controllers
 {

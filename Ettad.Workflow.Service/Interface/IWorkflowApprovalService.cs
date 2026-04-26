@@ -1,7 +1,7 @@
 ﻿using Ettad.Data.Entities.Workflows;
 using Ettad.Data.Enums;
 using Ettad.ResponseHandler.Models;
-using Ettad.Workflows.Service.DTO;
+using Ettad.Workflows.Service.Dtos;
 using Microsoft.AspNetCore.Http;
 using System;
 using System.Collections.Generic;

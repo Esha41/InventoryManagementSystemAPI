@@ -1,5 +1,5 @@
 using FluentValidation;
-using Ettad.LdapSettings.Services.DTO;
+using Ettad.LdapSettings.Services.Dtos;
 
 namespace Ettad.LdapSettings.Services.Validators
 {

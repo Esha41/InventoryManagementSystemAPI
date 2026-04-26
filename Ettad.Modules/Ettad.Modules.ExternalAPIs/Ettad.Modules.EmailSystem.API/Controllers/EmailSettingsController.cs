@@ -1,6 +1,9 @@
 using Ettad.Application.Common.Models;
 using Ettad.Application.Common.Interfaces;
 using Ettad.CrossCutting.Common.Security;
+using Ettad.Modules.EmailSystem.API.Models;
+using Ettad.Modules.EmailSystem.API.Services;
+using Ettad.ResponseHandler.Consts;
 using Ettad.ResponseHandler.Models;
 using Ettad.User.Services.DTO;
 using Ettad.User.Services.Interfaces;
@@ -17,11 +20,16 @@ namespace Ettad.Modules.EmailSystem.API.Controllers
     {
         private readonly ISettingsProvider _settingsProvider;
         private readonly ICurrentUserService _currentUserService;
+        private readonly IEmailDispatchService _emailDispatch;
 
-        public EmailSettingsController(ISettingsProvider settingsProvider, ICurrentUserService currentUserService)
+        public EmailSettingsController(
+            ISettingsProvider settingsProvider,
+            ICurrentUserService currentUserService,
+            IEmailDispatchService emailDispatch)
         {
             _settingsProvider = settingsProvider ?? throw new ArgumentNullException(nameof(settingsProvider));
             _currentUserService = currentUserService ?? throw new ArgumentNullException(nameof(currentUserService));
+            _emailDispatch = emailDispatch ?? throw new ArgumentNullException(nameof(emailDispatch));
         }
 
         /// <summary>
@@ -86,5 +94,23 @@ namespace Ettad.Modules.EmailSystem.API.Controllers
             var result = await _settingsProvider.getEmailSettings();
             return ProcessResponse(APIOperationResponse<EmailConfiguration>.Success(result));
         }
+
+      
+        [HttpPost("/api/Email/send")]
+        [ProducesResponseType(typeof(APIOperationResponse<bool>), (int)HttpStatusCode.OK)]
+        [ProducesResponseType((int)HttpStatusCode.BadRequest)]
+        public async Task<IActionResult> SendNotificationEmail([FromBody] SendEmailRequestDto request)
+        {
+            if (!ModelState.IsValid)
+            {
+                return ProcessResponse(APIOperationResponse<bool>.Fail(
+                    ResponseType.BadRequest,
+                    "Invalid request. Check recipient email, subject, and body."));
+            }
+
+            var result = await _emailDispatch.SendAsync(request, HttpContext?.RequestAborted ?? default);
+            return ProcessResponse(result);
+        }
+
     }
 }

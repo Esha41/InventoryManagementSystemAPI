@@ -3,6 +3,8 @@ using Microsoft.Extensions.DependencyInjection;
 using System.Reflection;
 using Ettad.Announcement.Service.Validators;
 using MediatR;
+using Ettad.Announcement.Service.Interfaces;
+using Ettad.Announcement.Service.Services;
 
 namespace Ettad.Announcement.Service
 {

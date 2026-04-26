@@ -1,5 +1,4 @@
 using Ettad.CrossCutting.Common.Security;
-using Ettad.Inventory.Service.Assets;
 using Ettad.Inventory.Service.Assets.Dtos;
 using Ettad.ResponseHandler.Models;
 using Microsoft.AspNetCore.Authorization;
@@ -8,6 +7,8 @@ using Microsoft.AspNetCore.Mvc;
 using OfficeOpenXml;
 using System.Net;
 using Ettad.CrossCutting.Comman.Models;
+using Ettad.Inventory.Service.Assets.Interfaces;
+using System.Collections.Generic;
 
 namespace Ettad.Inventory.API.Controllers
 {
@@ -49,9 +50,9 @@ namespace Ettad.Inventory.API.Controllers
         [HttpGet]
         [ProducesResponseType((int)HttpStatusCode.OK)]
         [CheckAuthorize("Permissions.Asset.View", "Permissions.Asset.Page")]
-        public async Task<IActionResult> GetAll([FromQuery] long? depotId = null)
+        public async Task<IActionResult> GetAll([FromQuery] long? depotId = null, [FromQuery] List<long>? depotIds = null)
         {
-            var result = await _assetService.GetAllAsync(depotId);
+            var result = await _assetService.GetAllAsync(depotId, depotIds);
             return ProcessResponse(result);
         }
 
