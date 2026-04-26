@@ -52,9 +52,9 @@ namespace Ettad.RequestManagement.Service.Request
                 {
                     var searchTerm = filter.Value.ToLower();
                     query = query.Where(r => 
-                        r.RequestNo != null && r.RequestNo.Contains(searchTerm) || 
-                        r.Requester != null && (r.Requester.UserName.Contains(searchTerm) || r.Requester.FullNameEN.Contains(searchTerm) || r.Requester.FullNameAR.Contains(searchTerm)) || 
-                        r.Department != null && (r.Department.NameAr.Contains(searchTerm) || r.Department.NameEn.Contains(searchTerm)));
+                        (r.RequestNo != null && r.RequestNo.Contains(searchTerm)) || 
+                        (r.Requester != null && (r.Requester.UserName.Contains(searchTerm) || r.Requester.FullNameEN.Contains(searchTerm) || r.Requester.FullNameAR.Contains(searchTerm))) || 
+                        (r.Department != null && (r.Department.NameAr.Contains(searchTerm) || r.Department.NameEn.Contains(searchTerm))));
                 }
             }
 
@@ -249,9 +249,10 @@ namespace Ettad.RequestManagement.Service.Request
 
             query = query.Where(r => _context.WorkflowApprovalSteps.Any(was =>
                 was.TargetRequestId == r.Id && (
-                    was.ApproverUserId == userId || activeDelegatorIds.Contains(was.ApproverUserId) ||
-                    userRoles.Contains(was.WorkflowStep.ApplicationRole.Name) || delegatorRoleNames.Contains(was.WorkflowStep.ApplicationRole.Name) ||
-                    was.WorkflowStep.HigherApprovalRole != null && (userRoles.Contains(was.WorkflowStep.HigherApprovalRole.Name) || delegatorRoleNames.Contains(was.WorkflowStep.HigherApprovalRole.Name))
+                    (was.ApproverUserId == userId || activeDelegatorIds.Contains(was.ApproverUserId)) ||
+                    (userRoles.Contains(was.WorkflowStep.ApplicationRole.Name) || delegatorRoleNames.Contains(was.WorkflowStep.ApplicationRole.Name)) ||
+                    (was.WorkflowStep.HigherApprovalRole != null && (userRoles.Contains(was.WorkflowStep.HigherApprovalRole.Name) || delegatorRoleNames.Contains(was.WorkflowStep.HigherApprovalRole.Name))) ||
+                    was.WorkflowStep.ParallelRoles.Any(pr => userRoles.Contains(pr.Role.Name) || delegatorRoleNames.Contains(pr.Role.Name))
                 )
             ));
 
@@ -269,11 +270,12 @@ namespace Ettad.RequestManagement.Service.Request
 
             var myTurnSet = (await _context.WorkflowApprovalSteps
                 .Where(was => was.IsCurrent && fetchedRequestIds.Contains(was.TargetRequestId) && (
-                    was.ApproverUserId == userId || activeDelegatorIds.Contains(was.ApproverUserId) ||
-                    was.ApproverUserId == null && (
-                        userRoles.Contains(was.WorkflowStep.ApplicationRole.Name) || delegatorRoleNames.Contains(was.WorkflowStep.ApplicationRole.Name) ||
-                        was.WorkflowStep.HigherApprovalRole != null && (userRoles.Contains(was.WorkflowStep.HigherApprovalRole.Name) || delegatorRoleNames.Contains(was.WorkflowStep.HigherApprovalRole.Name))
-                    )
+                    (was.ApproverUserId == userId || activeDelegatorIds.Contains(was.ApproverUserId)) ||
+                    (was.ApproverUserId == null && (
+                        (userRoles.Contains(was.WorkflowStep.ApplicationRole.Name) || delegatorRoleNames.Contains(was.WorkflowStep.ApplicationRole.Name)) ||
+                        (was.WorkflowStep.HigherApprovalRole != null && (userRoles.Contains(was.WorkflowStep.HigherApprovalRole.Name) || delegatorRoleNames.Contains(was.WorkflowStep.HigherApprovalRole.Name))) ||
+                        was.WorkflowStep.ParallelRoles.Any(pr => userRoles.Contains(pr.Role.Name) || delegatorRoleNames.Contains(pr.Role.Name))
+                    ))
                 ))
                 .Select(was => (long)was.TargetRequestId)
                 .Distinct()
@@ -370,11 +372,12 @@ namespace Ettad.RequestManagement.Service.Request
                     {
                         query = query.Where(r => _context.WorkflowApprovalSteps.Any(was =>
                             was.TargetRequestId == r.Id && was.IsCurrent && (
-                                was.ApproverUserId == userId || activeDelegatorIds.Contains(was.ApproverUserId) ||
-                                was.ApproverUserId == null && (
-                                    userRoles.Contains(was.WorkflowStep.ApplicationRole.Name) || delegatorRoleNames.Contains(was.WorkflowStep.ApplicationRole.Name) ||
-                                    was.WorkflowStep.HigherApprovalRole != null && (userRoles.Contains(was.WorkflowStep.HigherApprovalRole.Name) || delegatorRoleNames.Contains(was.WorkflowStep.HigherApprovalRole.Name))
-                                )
+                                (was.ApproverUserId == userId || activeDelegatorIds.Contains(was.ApproverUserId)) ||
+                                (was.ApproverUserId == null && (
+                                    (userRoles.Contains(was.WorkflowStep.ApplicationRole.Name) || delegatorRoleNames.Contains(was.WorkflowStep.ApplicationRole.Name)) ||
+                                    (was.WorkflowStep.HigherApprovalRole != null && (userRoles.Contains(was.WorkflowStep.HigherApprovalRole.Name) || delegatorRoleNames.Contains(was.WorkflowStep.HigherApprovalRole.Name))) ||
+                                    was.WorkflowStep.ParallelRoles.Any(pr => userRoles.Contains(pr.Role.Name) || delegatorRoleNames.Contains(pr.Role.Name))
+                                ))
                             )
                         ));
                     }
@@ -382,9 +385,10 @@ namespace Ettad.RequestManagement.Service.Request
                     {
                         query = query.Where(r => _context.WorkflowApprovalSteps.Any(was =>
                             was.TargetRequestId == r.Id && (
-                                was.ApproverUserId == userId || activeDelegatorIds.Contains(was.ApproverUserId) ||
-                                userRoles.Contains(was.WorkflowStep.ApplicationRole.Name) || delegatorRoleNames.Contains(was.WorkflowStep.ApplicationRole.Name) ||
-                                was.WorkflowStep.HigherApprovalRole != null && (userRoles.Contains(was.WorkflowStep.HigherApprovalRole.Name) || delegatorRoleNames.Contains(was.WorkflowStep.HigherApprovalRole.Name))
+                                (was.ApproverUserId == userId || activeDelegatorIds.Contains(was.ApproverUserId)) ||
+                                (userRoles.Contains(was.WorkflowStep.ApplicationRole.Name) || delegatorRoleNames.Contains(was.WorkflowStep.ApplicationRole.Name)) ||
+                                (was.WorkflowStep.HigherApprovalRole != null && (userRoles.Contains(was.WorkflowStep.HigherApprovalRole.Name) || delegatorRoleNames.Contains(was.WorkflowStep.HigherApprovalRole.Name))) ||
+                                was.WorkflowStep.ParallelRoles.Any(pr => userRoles.Contains(pr.Role.Name) || delegatorRoleNames.Contains(pr.Role.Name))
                             )
                         ));
                     }
@@ -413,11 +417,12 @@ namespace Ettad.RequestManagement.Service.Request
                 var fetchedRequestIds = dtos.Select(r => (int)r.Id).ToList();
                 var myTurnSet = (await _context.WorkflowApprovalSteps
                     .Where(was => was.IsCurrent && fetchedRequestIds.Contains(was.TargetRequestId) && (
-                        was.ApproverUserId == userId || activeDelegatorIds.Contains(was.ApproverUserId) || 
-                        was.ApproverUserId == null && (
-                            userRoles.Contains(was.WorkflowStep.ApplicationRole.Name) || delegatorRoleNames.Contains(was.WorkflowStep.ApplicationRole.Name) || 
-                            was.WorkflowStep.HigherApprovalRole != null && (userRoles.Contains(was.WorkflowStep.HigherApprovalRole.Name) || delegatorRoleNames.Contains(was.WorkflowStep.HigherApprovalRole.Name))
-                        )
+                        (was.ApproverUserId == userId || activeDelegatorIds.Contains(was.ApproverUserId)) || 
+                        (was.ApproverUserId == null && (
+                            (userRoles.Contains(was.WorkflowStep.ApplicationRole.Name) || delegatorRoleNames.Contains(was.WorkflowStep.ApplicationRole.Name)) || 
+                            (was.WorkflowStep.HigherApprovalRole != null && (userRoles.Contains(was.WorkflowStep.HigherApprovalRole.Name) || delegatorRoleNames.Contains(was.WorkflowStep.HigherApprovalRole.Name))) ||
+                            was.WorkflowStep.ParallelRoles.Any(pr => userRoles.Contains(pr.Role.Name) || delegatorRoleNames.Contains(pr.Role.Name))
+                        ))
                     ))
                     .Select(was => (long)was.TargetRequestId)
                     .Distinct()

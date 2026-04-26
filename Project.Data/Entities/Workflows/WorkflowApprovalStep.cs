@@ -25,6 +25,9 @@ namespace Ettad.Data.Entities.Workflows
 
         public string? ApproverUserId { get; set; }
 
+        /// <summary>AspNetRoles.Id for the role the user was acting under when this step was completed.</summary>
+        public string? ApproverRoleId { get; set; }
+
         public int IsDelegation { get; set; }
 
         public DateTime? ApprovedDate { get; set; }

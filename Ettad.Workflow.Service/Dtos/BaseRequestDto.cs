@@ -81,6 +81,20 @@ namespace Ettad.Workflows.Service.Dtos
         public bool IsCurrentUserApprover { get; set; } // True if current user can approve this step
         public bool CanReturn { get; set; }
         public int? IsDelegation { get; set; }
+
+        /// <summary>Role id the user acted under (when completed).</summary>
+        public string? ChangedByRoleId { get; set; }
+        public string? ChangedByRoleName { get; set; }
+        public string? ChangedByRoleNameAr { get; set; }
+
+        /// <summary>Structured additional parallel approver roles for pending/future steps.</summary>
+        public List<WorkflowStepParallelRoleDto> EligibleParallelRoles { get; set; } = new();
+
+        /// <summary>Display of additional parallel approver roles for pending steps (EN).</summary>
+        public string? EligibleParallelRoleNamesEn { get; set; }
+        /// <summary>Display of additional parallel approver roles for pending steps (AR).</summary>
+        public string? EligibleParallelRoleNamesAr { get; set; }
+
         public List<FileUploadDto> Files { get; set; } = new List<FileUploadDto>();
         public List<WorkflowStepTransitionDto> Transitions { get; set; } = new List<WorkflowStepTransitionDto>();
     }

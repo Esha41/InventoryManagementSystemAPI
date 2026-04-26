@@ -54,6 +54,8 @@ namespace Ettad.Workflows.Service.Command.UpdateWorkflow
 
             var workflow = await _context.Workflows
                 .Include(w => w.WorkflowSteps)
+                    .ThenInclude(ws => ws.ParallelRoles)
+                        .ThenInclude(pr => pr.Role)
                 .FirstOrDefaultAsync(w => w.Id == request.Id, cancellationToken);
 
             if (workflow == null)
@@ -68,36 +70,62 @@ namespace Ettad.Workflows.Service.Command.UpdateWorkflow
                     return APIOperationResponse<WorkflowDto>.BadRequest($"Step {step.Id} is in approval history and cannot be modified");
             }
 
-            // ✅ Deactivate other active workflows of same type
-            if (request.IsActive)
+            await using var transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
+            try
             {
-                var activeDupes = await _context.Workflows
-                    .Where(w => w.IsActive &&
-                                !w.IsDeleted &&
-                                w.Id != workflow.Id &&
-                                w.WorkflowType == request.WorkflowType)
-                    .ToListAsync(cancellationToken);
-
-                foreach (var wf in activeDupes)
+                // ✅ Deactivate other active workflows of same type
+                if (request.IsActive)
                 {
-                    wf.IsActive = false;
-                    wf.ModifiedBy = _currentUserService.UserName;
-                    wf.ModificationDate = _dateTimeProvider.Now;
+                    var activeDupes = await _context.Workflows
+                        .Where(w => w.IsActive &&
+                                    !w.IsDeleted &&
+                                    w.Id != workflow.Id &&
+                                    w.WorkflowType == request.WorkflowType)
+                        .ToListAsync(cancellationToken);
+
+                    foreach (var wf in activeDupes)
+                    {
+                        wf.IsActive = false;
+                        wf.ModifiedBy = _currentUserService.UserName;
+                        wf.ModificationDate = _dateTimeProvider.Now;
+                    }
                 }
+
+                // ✅ Update workflow info
+                workflow.WorkflowName = request.WorkflowName;
+                workflow.WorkflowType = request.WorkflowType;
+                workflow.IsActive = request.IsActive;
+                workflow.ModifiedBy = _currentUserService.UserName;
+                workflow.ModificationDate = _dateTimeProvider.Now;
+
+                await UpdateWorkflowSteps(workflow, request.WorkflowSteps, cancellationToken);
+
+                var freshWorkflow = await _context.Workflows
+                    .Include(w => w.WorkflowSteps)
+                        .ThenInclude(ws => ws.ApplicationRole)
+                    .Include(w => w.WorkflowSteps)
+                        .ThenInclude(ws => ws.HigherApprovalRole)
+                    .Include(w => w.WorkflowSteps)
+                        .ThenInclude(ws => ws.ParallelRoles)
+                            .ThenInclude(pr => pr.Role)
+                    .Include(w => w.WorkflowSteps)
+                        .ThenInclude(ws => ws.Transitions)
+                            .ThenInclude(t => t.TargetWorkflowStep)
+                                .ThenInclude(ts => ts.ApplicationRole)
+                    .Include(w => w.WorkflowSteps)
+                        .ThenInclude(ws => ws.Transitions)
+                            .ThenInclude(t => t.TargetWorkflowStep)
+                                .ThenInclude(ts => ts.HigherApprovalRole)
+                    .FirstOrDefaultAsync(w => w.Id == request.Id, cancellationToken);
+
+                await transaction.CommitAsync(cancellationToken);
+                return APIOperationResponse<WorkflowDto>.Success(_mapper.Map<WorkflowDto>(freshWorkflow));
             }
-
-            // ✅ Update workflow info
-            workflow.WorkflowName = request.WorkflowName;
-            workflow.WorkflowType = request.WorkflowType;
-            workflow.IsActive = request.IsActive;
-            workflow.ModifiedBy = _currentUserService.UserName;
-            workflow.ModificationDate = _dateTimeProvider.Now;
-
-            await UpdateWorkflowSteps(workflow, request.WorkflowSteps, cancellationToken);
-
-            await _context.SaveChangesAsync(cancellationToken);
-
-            return APIOperationResponse<WorkflowDto>.Success(_mapper.Map<WorkflowDto>(workflow));
+            catch
+            {
+                await transaction.RollbackAsync(cancellationToken);
+                throw;
+            }
         }
 
 
@@ -152,6 +180,42 @@ namespace Ettad.Workflows.Service.Command.UpdateWorkflow
                     });
                 }
             }
+
+            await _context.SaveChangesAsync(cancellationToken);
+
+            var stepsForParallel = await _context.WorkflowSteps
+                .Where(ws => ws.WorkflowId == workflow.Id)
+                .Include(ws => ws.ParallelRoles)
+                .ToListAsync(cancellationToken);
+
+            foreach (var dto in incomingSteps.OrderBy(x => x.StepOrder))
+            {
+                var stepEntity = dto.Id > 0
+                    ? stepsForParallel.FirstOrDefault(s => s.Id == dto.Id)
+                    : stepsForParallel.FirstOrDefault(s => s.StepOrder == dto.StepOrder);
+                if (stepEntity == null)
+                    continue;
+
+                if (stepEntity.ParallelRoles != null && stepEntity.ParallelRoles.Count > 0)
+                    _context.WorkflowStepParallelRoles.RemoveRange(stepEntity.ParallelRoles);
+
+                foreach (var rid in (dto.ParallelRoleIds ?? Enumerable.Empty<string>()).Distinct())
+                {
+                    if (string.IsNullOrEmpty(rid) || rid == stepEntity.ApplicationRoleId)
+                        continue;
+                    _context.WorkflowStepParallelRoles.Add(new WorkflowStepParallelRole
+                    {
+                        WorkflowStepId = stepEntity.Id,
+                        RoleId = rid,
+                        CreatedBy = _currentUserService.UserName,
+                        CreationDate = _dateTimeProvider.Now,
+                        ModifiedBy = _currentUserService.UserName,
+                        ModificationDate = _dateTimeProvider.Now
+                    });
+                }
+            }
+
+            await _context.SaveChangesAsync(cancellationToken);
         }
 
     }

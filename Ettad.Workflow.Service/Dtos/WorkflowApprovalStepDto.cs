@@ -18,7 +18,7 @@ namespace Ettad.Workflows.Service.Dtos
         public WorkflowType RequestType { get; set; }
 
         public string? ApproverUserId { get; set; }
-      //  public string? ApproverRoleId { get; set; }     // instead of ApproverEmployeeId
+        public string? ApproverRoleId { get; set; }
         public int IsDelegation { get; set; }
 
         public DateTime? ApprovedDate { get; set; }
