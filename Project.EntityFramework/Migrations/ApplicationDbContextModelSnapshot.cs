@@ -4875,9 +4875,6 @@ namespace Ettad.EntityFramework.Migrations
                     b.Property<DateTime?>("ApprovedDate")
                         .HasColumnType("datetime2");
 
-                    b.Property<string>("ApproverRoleId")
-                        .HasColumnType("nvarchar(max)");
-
                     b.Property<string>("ApproverUserId")
                         .HasColumnType("nvarchar(max)");
 
@@ -5061,9 +5058,6 @@ namespace Ettad.EntityFramework.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 
-                    b.Property<string>("ChangedByRoleId")
-                        .HasColumnType("nvarchar(max)");
-
                     b.Property<string>("Comments")
                         .HasMaxLength(1000)
                         .HasColumnType("nvarchar(1000)");
@@ -5137,45 +5131,6 @@ namespace Ettad.EntityFramework.Migrations
                     b.HasIndex("WorkflowStepId");
 
                     b.ToTable("WorkflowStepNotifiers", (string)null);
-                });
-
-            modelBuilder.Entity("Ettad.Data.Entities.Workflows.WorkflowStepParallelRole", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("CreatedBy")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<DateTime>("CreationDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<DateTime?>("ModificationDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("ModifiedBy")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("RoleId")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(450)");
-
-                    b.Property<int>("WorkflowStepId")
-                        .HasColumnType("int");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("RoleId");
-
-                    b.HasIndex("WorkflowStepId");
-
-                    b.HasIndex("WorkflowStepId", "RoleId")
-                        .IsUnique();
-
-                    b.ToTable("WorkflowStepParallelRoles", (string)null);
                 });
 
             modelBuilder.Entity("Ettad.Data.Entities.Workflows.WorkflowStepTransition", b =>
@@ -6464,25 +6419,6 @@ namespace Ettad.EntityFramework.Migrations
                     b.Navigation("WorkflowStep");
                 });
 
-            modelBuilder.Entity("Ettad.Data.Entities.Workflows.WorkflowStepParallelRole", b =>
-                {
-                    b.HasOne("Ettad.CrossCutting.Comman.Idenitity.ApplicationRole", "Role")
-                        .WithMany()
-                        .HasForeignKey("RoleId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("Ettad.Data.Entities.Workflows.WorkflowStep", "WorkflowStep")
-                        .WithMany("ParallelRoles")
-                        .HasForeignKey("WorkflowStepId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Role");
-
-                    b.Navigation("WorkflowStep");
-                });
-
             modelBuilder.Entity("Ettad.Data.Entities.Workflows.WorkflowStepTransition", b =>
                 {
                     b.HasOne("Ettad.Data.Entities.Workflows.WorkflowStep", "SourceWorkflowStep")
@@ -6787,8 +6723,6 @@ namespace Ettad.EntityFramework.Migrations
                     b.Navigation("ApprovalSteps");
 
                     b.Navigation("Notifiers");
-
-                    b.Navigation("ParallelRoles");
 
                     b.Navigation("Transitions");
                 });
