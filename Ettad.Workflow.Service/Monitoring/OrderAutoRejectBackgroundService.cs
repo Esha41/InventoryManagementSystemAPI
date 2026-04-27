@@ -53,16 +53,15 @@ public class OrderAutoRejectBackgroundService : IOrderAutoRejectBackgroundServic
         if (orderRequestIds.Count == 0)
             return;
 
-        var intIds = orderRequestIds.Select(x => (int)x).ToList();
         var allSteps = await _context.WorkflowApprovalSteps
             .Include(s => s.WorkflowStep)
             .Include(s => s.Reminders)
-            .Where(s => intIds.Contains(s.TargetRequestId)
+            .Where(s => orderRequestIds.Contains(s.TargetRequestId)
                      && OrderAutoRejectConstants.OrderWorkflowTypes.Contains(s.RequestType))
             .ToListAsync(cancellationToken);
 
         var stepsByRequestId = allSteps
-            .GroupBy(s => (long)s.TargetRequestId)
+            .GroupBy(s => s.TargetRequestId)
             .ToDictionary(g => g.Key, g => g.ToList());
 
         foreach (var requestId in orderRequestIds)
@@ -195,7 +194,7 @@ public class OrderAutoRejectBackgroundService : IOrderAutoRejectBackgroundServic
         current.ModificationDate = now;
 
         var others = await _context.WorkflowApprovalSteps
-            .Where(x => x.TargetRequestId == (int)requestId
+            .Where(x => x.TargetRequestId == requestId
                         && x.IsCurrent
                         && x.Id != current.Id
                         && (x.Status == RequestStatus.New || x.Status == RequestStatus.UnderProcess))

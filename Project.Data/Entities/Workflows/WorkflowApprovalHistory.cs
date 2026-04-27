@@ -19,14 +19,14 @@ namespace Ettad.Data.Entities.Workflows
         public int WorkflowStepId { get; set; }
 
         [Required]
-        public int TargetRequestId { get; set; }
+        public long TargetRequestId { get; set; }
 
         [Required]
         public WorkflowType RequestType { get; set; } // Using enum
 
         public int? ApproverEmployeeId { get; set; }
 
-        public int IsDelagation { get; set; } // Using enum
+        public bool IsDelegation { get; set; }
 
         public DateTime? ApprovedDate { get; set; }
 

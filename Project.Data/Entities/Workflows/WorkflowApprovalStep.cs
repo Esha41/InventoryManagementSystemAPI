@@ -18,7 +18,7 @@ namespace Ettad.Data.Entities.Workflows
         public int WorkflowStepId { get; set; }
 
         [Required]
-        public int TargetRequestId { get; set; }
+        public long TargetRequestId { get; set; }
 
         [Required]
         public WorkflowType RequestType { get; set; } // Using enum
@@ -28,7 +28,7 @@ namespace Ettad.Data.Entities.Workflows
         /// <summary>AspNetRoles.Id for the role the user was acting under when this step was completed.</summary>
         public string? ApproverRoleId { get; set; }
 
-        public int IsDelegation { get; set; }
+        public bool IsDelegation { get; set; }
 
         public DateTime? ApprovedDate { get; set; }
 

@@ -17,14 +17,14 @@ namespace Ettad.Workflows.Service.Dtos
 
         // WorkflowApprovalStep properties (ws)
         public int WorkflowStepId { get; set; }
-        public int TargetRequestId { get; set; }
+        public long TargetRequestId { get; set; }
         public WorkflowType RequestType { get; set; }
         public DateTime? ApprovedDate { get; set; }
         public RequestStatus Status { get; set; }
         public string? Comments { get; set; }
         public bool IsCurrent { get; set; }
         public string? ApproverUserId { get; set; }
-        public int? IsDelegation { get; set; }
+        public bool IsDelegation { get; set; }
 
         // BaseRequest properties (br)
         public long BaseRequestId { get; set; }
