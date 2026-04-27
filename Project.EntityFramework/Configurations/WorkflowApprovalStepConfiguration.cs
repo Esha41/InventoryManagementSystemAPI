@@ -43,7 +43,7 @@ namespace Ettad.EntityFramework.Configurations
                    .HasDefaultValue(false);
 
             builder.Property(x => x.IsDelegation)
-                   .HasDefaultValue(0); // 0 = no delegation, 1 = delegated, etc.
+                   .HasDefaultValue(false);
 
             builder.Property(x => x.ApprovedDate)
                    .IsRequired(false);

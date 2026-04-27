@@ -266,7 +266,7 @@ namespace Ettad.RequestManagement.Service.Request
                 .ToListAsync();
 
             // Fetch IsMyTurn status only for the requested IDs to optimize database traffic
-            var fetchedRequestIds = requests.Select(r => (int)r.Id).ToList();
+            var fetchedRequestIds = requests.Select(r => r.Id).ToList();
 
             var myTurnSet = (await _context.WorkflowApprovalSteps
                 .Where(was => was.IsCurrent && fetchedRequestIds.Contains(was.TargetRequestId) && (
@@ -277,7 +277,7 @@ namespace Ettad.RequestManagement.Service.Request
                         was.WorkflowStep.ParallelRoles.Any(pr => userRoles.Contains(pr.Role.Name) || delegatorRoleNames.Contains(pr.Role.Name))
                     ))
                 ))
-                .Select(was => (long)was.TargetRequestId)
+                .Select(was => was.TargetRequestId)
                 .Distinct()
                 .ToListAsync())
                 .ToHashSet();
@@ -414,7 +414,7 @@ namespace Ettad.RequestManagement.Service.Request
                         .ToListAsync();
                 }
 
-                var fetchedRequestIds = dtos.Select(r => (int)r.Id).ToList();
+                var fetchedRequestIds = dtos.Select(r => r.Id).ToList();
                 var myTurnSet = (await _context.WorkflowApprovalSteps
                     .Where(was => was.IsCurrent && fetchedRequestIds.Contains(was.TargetRequestId) && (
                         (was.ApproverUserId == userId || activeDelegatorIds.Contains(was.ApproverUserId)) || 
@@ -424,7 +424,7 @@ namespace Ettad.RequestManagement.Service.Request
                             was.WorkflowStep.ParallelRoles.Any(pr => userRoles.Contains(pr.Role.Name) || delegatorRoleNames.Contains(pr.Role.Name))
                         ))
                     ))
-                    .Select(was => (long)was.TargetRequestId)
+                    .Select(was => was.TargetRequestId)
                     .Distinct()
                     .ToListAsync())
                     .ToHashSet();

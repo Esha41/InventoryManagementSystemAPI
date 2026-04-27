@@ -13,13 +13,13 @@ namespace Ettad.Workflows.Service.Dtos
         public int Id { get; set; }
 
         public int WorkflowStepId { get; set; }         // link to WorkflowStep
-        public int TargetRequestId { get; set; }
+        public long TargetRequestId { get; set; }
 
         public WorkflowType RequestType { get; set; }
 
         public string? ApproverUserId { get; set; }
         public string? ApproverRoleId { get; set; }
-        public int IsDelegation { get; set; }
+        public bool IsDelegation { get; set; }
 
         public DateTime? ApprovedDate { get; set; }
 
@@ -46,7 +46,7 @@ namespace Ettad.Workflows.Service.Dtos
         public int WorkflowStepId { get; set; }
 
         [Required]
-        public int TargetRequestId { get; set; }
+        public long TargetRequestId { get; set; }
 
         [Required]
         public WorkflowType RequestType { get; set; }
@@ -56,7 +56,7 @@ namespace Ettad.Workflows.Service.Dtos
 
         public string? ApproverUserId { get; set; }
 
-        public int IsDelegation { get; set; } = 0;
+        public bool IsDelegation { get; set; } = false;
 
         public string? Comments { get; set; }
 
@@ -71,7 +71,7 @@ namespace Ettad.Workflows.Service.Dtos
         public int WorkflowStepId { get; set; }
 
         [Required]
-        public int TargetRequestId { get; set; }
+        public long TargetRequestId { get; set; }
 
         [Required]
         public WorkflowType RequestType { get; set; }
@@ -81,7 +81,7 @@ namespace Ettad.Workflows.Service.Dtos
 
         public string? ApproverUserId { get; set; }
 
-        public int IsDelegation { get; set; }
+        public bool IsDelegation { get; set; }
 
         public DateTime? ApprovedDate { get; set; }
 

@@ -953,13 +953,13 @@ namespace Ettad.Workflows.Service.Services
             if (_currentUserService.IsSuperAdmin)
             {
                 var s0 = steps.First();
-                s0.IsDelegation = 0;
+                s0.IsDelegation = false;
                 return s0;
             }
 
             foreach (var step in steps)
             {
-                step.IsDelegation = 0;
+                step.IsDelegation = false;
                 if (await TryAuthorizeWorkflowApprovalStepAsync(step, currentUserId))
                     return step;
             }
@@ -1250,7 +1250,7 @@ namespace Ettad.Workflows.Service.Services
                             var workflowApprovalStep = new WorkflowApprovalStep
                             {
                                 WorkflowStepId = firstWorkflowStep.Id,
-                                TargetRequestId = (int)orderId,
+                                TargetRequestId = orderId,
                                 RequestType = workflowType,
                                 Status = RequestStatus.New,
                                 IsCurrent = true,
@@ -1382,7 +1382,7 @@ namespace Ettad.Workflows.Service.Services
                 {
                     var workflowQuery = from ws in _context.WorkflowApprovalSteps
                                        join br in _context.BaseRequests
-                                           on (long)ws.TargetRequestId equals br.Id
+                                           on ws.TargetRequestId equals br.Id
                                        join wfs in _context.WorkflowSteps
                                            on ws.WorkflowStepId equals wfs.Id
                                        where
@@ -1483,10 +1483,10 @@ namespace Ettad.Workflows.Service.Services
                                                 on log.ChangedByRoleId equals actedRole.Id into actedRoleJoin
                                             from actedRole in actedRoleJoin.DefaultIfEmpty()
                                             from user in _context.Users.Where(u => u.Id == log.ChangedBy || u.UserName == log.ChangedBy).DefaultIfEmpty()
-                                            where allowedRequestIds.Contains((long)was.TargetRequestId)
+                                            where allowedRequestIds.Contains(was.TargetRequestId)
                                             select new
                                             {
-                                                RequestId = (long)was.TargetRequestId,
+                                                RequestId = was.TargetRequestId,
                                                 History = new ApprovalHistoryDto
                                                 {
                                                     Id = log.Id,
@@ -1541,12 +1541,12 @@ namespace Ettad.Workflows.Service.Services
                                              .Include(ws => ws.ApplicationRole)
                                              .Include(ws => ws.HigherApprovalRole)
                                              on was.WorkflowStepId equals wfs.Id
-                                         where allowedRequestIds.Contains((long)was.TargetRequestId) &&
+                                         where allowedRequestIds.Contains(was.TargetRequestId) &&
                                                was.IsCurrent &&
                                                (was.Status == RequestStatus.New || was.Status == RequestStatus.UnderProcess)
                                          select new
                                          {
-                                             RequestId = (long)was.TargetRequestId,
+                                             RequestId = was.TargetRequestId,
                                              was.WorkflowStepId,
                                              WorkflowApprovalStepId = was.Id,
                                              was.Status,
@@ -1577,7 +1577,7 @@ namespace Ettad.Workflows.Service.Services
             // Get ALL workflow approval steps for these requests (not just pending or logged ones)
             // This ensures we get files for all steps, including completed ones that might not be in the log
             var allWorkflowApprovalSteps = await _context.WorkflowApprovalSteps
-                .Where(was => allowedRequestIds.Contains((long)was.TargetRequestId))
+                .Where(was => allowedRequestIds.Contains(was.TargetRequestId))
                 .Select(was => new { was.Id, was.TargetRequestId })
                 .ToListAsync();
 
@@ -1986,7 +1986,7 @@ namespace Ettad.Workflows.Service.Services
                 {
                     var workflowQuery = from ws in _context.WorkflowApprovalSteps
                                        join br in _context.BaseRequests
-                                           on (long)ws.TargetRequestId equals br.Id
+                                           on ws.TargetRequestId equals br.Id
                                        join wfs in _context.WorkflowSteps
                                            on ws.WorkflowStepId equals wfs.Id
                                        where
@@ -2081,10 +2081,10 @@ namespace Ettad.Workflows.Service.Services
                                                 on log.ChangedByRoleId equals actedRole.Id into actedRoleJoin
                                             from actedRole in actedRoleJoin.DefaultIfEmpty()
                                             from user in _context.Users.Where(u => u.Id == log.ChangedBy || u.UserName == log.ChangedBy).DefaultIfEmpty()
-                                            where (long)was.TargetRequestId == requestId
+                                            where was.TargetRequestId == requestId
                                             select new
                                             {
-                                                RequestId = (long)was.TargetRequestId,
+                                                RequestId = was.TargetRequestId,
                                                 WorkflowStepId = log.WorkflowStepId,
                                                 History = new ApprovalHistoryDto
                                                 {
@@ -2121,12 +2121,12 @@ namespace Ettad.Workflows.Service.Services
                                              .Include(ws => ws.ApplicationRole)
                                              .Include(ws => ws.HigherApprovalRole)
                                              on was.WorkflowStepId equals wfs.Id
-                                         where (long)was.TargetRequestId == requestId &&
+                                         where was.TargetRequestId == requestId &&
                                                was.IsCurrent &&
                                                (was.Status == RequestStatus.New || was.Status == RequestStatus.UnderProcess)
                                          select new
                                          {
-                                             RequestId = (long)was.TargetRequestId,
+                                             RequestId = was.TargetRequestId,
                                              was.WorkflowStepId,
                                              WorkflowApprovalStepId = was.Id,
                                              was.Status,
@@ -2741,7 +2741,7 @@ namespace Ettad.Workflows.Service.Services
 
             if ((step.ApproverUserId == currentUserId) || userRoleIds.Any(r => allowedRoles.Contains(r)))
             {
-                step.IsDelegation = 0;
+                step.IsDelegation = false;
                 return true;
             }
 
@@ -2751,7 +2751,7 @@ namespace Ettad.Workflows.Service.Services
 
             if (activeDelegatorIds.Contains(step.ApproverUserId))
             {
-                step.IsDelegation = 1;
+                step.IsDelegation = true;
                 return true;
             }
 
@@ -2761,7 +2761,7 @@ namespace Ettad.Workflows.Service.Services
 
             if (delegatorRoleIds.Any(r => allowedRoles.Contains(r)))
             {
-                step.IsDelegation = 1;
+                step.IsDelegation = true;
                 return true;
             }
 

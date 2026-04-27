@@ -80,7 +80,7 @@ namespace Ettad.Workflows.Service.Dtos
         public bool IsPending { get; set; } // True if this step hasn't been completed yet
         public bool IsCurrentUserApprover { get; set; } // True if current user can approve this step
         public bool CanReturn { get; set; }
-        public int? IsDelegation { get; set; }
+        public bool IsDelegation { get; set; }
 
         /// <summary>Role id the user acted under (when completed).</summary>
         public string? ChangedByRoleId { get; set; }

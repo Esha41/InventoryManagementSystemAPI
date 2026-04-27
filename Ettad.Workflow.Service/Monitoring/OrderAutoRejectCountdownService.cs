@@ -60,14 +60,13 @@ public class OrderAutoRejectCountdownService : IOrderAutoRejectCountdownService
         var policy = await OrderAutoRejectPolicyLoader.LoadAsync(_context, _configuration, _logger, cancellationToken);
         var now = _dateTimeProvider.Now;
 
-        var intIds = allowed.Select(x => (int)x).ToList();
         var allSteps = await _context.WorkflowApprovalSteps
             .AsNoTracking()
             .Include(s => s.WorkflowStep)
-            .Where(s => intIds.Contains(s.TargetRequestId))
+            .Where(s => allowed.Contains(s.TargetRequestId))
             .ToListAsync(cancellationToken);
 
-        var byRequest = allSteps.GroupBy(s => (long)s.TargetRequestId).ToDictionary(g => g.Key, g => g.ToList());
+        var byRequest = allSteps.GroupBy(s => s.TargetRequestId).ToDictionary(g => g.Key, g => g.ToList());
 
         var result = new List<OrderAutoRejectCountdownDto>();
         foreach (var id in allowed)
@@ -97,15 +96,13 @@ public class OrderAutoRejectCountdownService : IOrderAutoRejectCountdownService
             .ToListAsync(cancellationToken);
 
         var now = _dateTimeProvider.Now;
-        var intIds = orderRequestIds.Select(x => (int)x).ToList();
-
         var allSteps = await _context.WorkflowApprovalSteps
             .AsNoTracking()
             .Include(s => s.WorkflowStep)
-            .Where(s => intIds.Contains(s.TargetRequestId))
+            .Where(s => orderRequestIds.Contains(s.TargetRequestId))
             .ToListAsync(cancellationToken);
 
-        var byRequest = allSteps.GroupBy(s => (long)s.TargetRequestId).ToDictionary(g => g.Key, g => g.ToList());
+        var byRequest = allSteps.GroupBy(s => s.TargetRequestId).ToDictionary(g => g.Key, g => g.ToList());
 
         foreach (var requestId in orderRequestIds)
         {
@@ -122,7 +119,7 @@ public class OrderAutoRejectCountdownService : IOrderAutoRejectCountdownService
         return await _context.WorkflowApprovalSteps
             .AsNoTracking()
             .Include(s => s.WorkflowStep)
-            .Where(s => s.TargetRequestId == (int)requestId)
+            .Where(s => s.TargetRequestId == requestId)
             .ToListAsync(cancellationToken);
     }
 
@@ -140,7 +137,6 @@ public class OrderAutoRejectCountdownService : IOrderAutoRejectCountdownService
             return new List<long>();
 
         var distinctSet = distinct.ToHashSet();
-        var intIds = distinct.Select(x => (int)x).ToList();
 
         var asRequester = await _context.BaseRequests
             .AsNoTracking()
@@ -150,8 +146,8 @@ public class OrderAutoRejectCountdownService : IOrderAutoRejectCountdownService
 
         var asApprover = await _context.WorkflowApprovalSteps
             .AsNoTracking()
-            .Where(s => intIds.Contains(s.TargetRequestId) && s.ApproverUserId == userId)
-            .Select(s => (long)s.TargetRequestId)
+            .Where(s => distinct.Contains(s.TargetRequestId) && s.ApproverUserId == userId)
+            .Select(s => s.TargetRequestId)
             .Distinct()
             .ToListAsync(cancellationToken);
 
@@ -170,8 +166,8 @@ public class OrderAutoRejectCountdownService : IOrderAutoRejectCountdownService
             var asRole = await (
                 from s in _context.WorkflowApprovalSteps.AsNoTracking()
                 join ws in _context.WorkflowSteps.AsNoTracking() on s.WorkflowStepId equals ws.Id
-                where intIds.Contains(s.TargetRequestId) && s.IsCurrent && userRoles.Contains(ws.ApplicationRoleId)
-                select (long)s.TargetRequestId
+                where distinct.Contains(s.TargetRequestId) && s.IsCurrent && userRoles.Contains(ws.ApplicationRoleId)
+                select s.TargetRequestId
             ).Distinct().ToListAsync(cancellationToken);
 
             foreach (var id in asRole)
@@ -195,7 +191,7 @@ public class OrderAutoRejectCountdownService : IOrderAutoRejectCountdownService
             return true;
 
         if (await _context.WorkflowApprovalSteps.AsNoTracking()
-                .AnyAsync(s => s.TargetRequestId == (int)requestId && s.ApproverUserId == userId, cancellationToken))
+                .AnyAsync(s => s.TargetRequestId == requestId && s.ApproverUserId == userId, cancellationToken))
             return true;
 
         var userRoles = await _context.UserRoles.AsNoTracking()
@@ -209,7 +205,7 @@ public class OrderAutoRejectCountdownService : IOrderAutoRejectCountdownService
         return await (
             from s in _context.WorkflowApprovalSteps.AsNoTracking()
             join ws in _context.WorkflowSteps.AsNoTracking() on s.WorkflowStepId equals ws.Id
-            where s.TargetRequestId == (int)requestId && s.IsCurrent && userRoles.Contains(ws.ApplicationRoleId)
+            where s.TargetRequestId == requestId && s.IsCurrent && userRoles.Contains(ws.ApplicationRoleId)
             select s.Id
         ).AnyAsync(cancellationToken);
     }
