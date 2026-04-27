@@ -11,10 +11,15 @@ project.lock.json
 
 # User-specific files
 *.suo
+*.user
 *.csproj.user
 *.vbproj.user
 *.userosscache
 *.sln.docstates
+*.DotSettings.user
+
+# JetBrains Rider / IntelliJ
+.idea/
 
 # Build results
 [Dd]ebug/
