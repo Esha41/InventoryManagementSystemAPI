@@ -34,6 +34,12 @@ namespace Ettad.Inventory.Service.Inventories.Services
         private static readonly string InventoryDetailsItemWithPrimaryPurposesInclude =
             $"{nameof(InventoryEntity.InventoryDetails)}.{nameof(InventoryDetailEntity.Item)}.{nameof(BaseItem.BaseItemPrimaryPurposes)}.{nameof(BaseItemPrimaryPurpos.PrimaryPurpos)}";
 
+        private static readonly string ItemLookupCaliberInclude =
+            $"{nameof(InventoryDetailEntity.Item)}.{nameof(Weapon.LookupCaliber)}";
+
+        private static readonly string ItemCaliberUnitInclude =
+            $"{nameof(InventoryDetailEntity.Item)}.{nameof(Weapon.CaliberUnit)}";
+
         /// <summary>Maps weapon/ammunition caliber from <see cref="BaseItem"/> hierarchy.</summary>
         private static void MapCaliberFromBaseItem(BaseItem item, out string caliber, out string caliberUnitName)
         {
@@ -44,10 +50,18 @@ namespace Ettad.Inventory.Service.Inventories.Services
             switch (item)
             {
                 case Ammunition ammunition:
-                    caliber = ammunition.Caliber;
+                    if (ammunition.LookupCaliber != null)
+                    {
+                        caliber = ammunition.LookupCaliber.NameEn ?? ammunition.LookupCaliber.NameAr;
+                    }
+
                     break;
                 case Weapon weapon:
-                    caliber = weapon.Caliber;
+                    if (weapon.LookupCaliber != null)
+                    {
+                        caliber = weapon.LookupCaliber.NameEn ?? weapon.LookupCaliber.NameAr;
+                    }
+
                     if (weapon.CaliberUnit != null)
                     {
                         caliberUnitName = weapon.CaliberUnit.NameEn ?? weapon.CaliberUnit.NameAr;
@@ -68,6 +82,8 @@ namespace Ettad.Inventory.Service.Inventories.Services
         private readonly ICrossCuttingRepository<SupplyDetail> _supplyDetailsRepository;
         private readonly ICrossCuttingRepository<Supply> _supplyRepository;
         private readonly ICrossCuttingRepository<BaseItem> _baseItemRepository;
+        private readonly ICrossCuttingRepository<Weapon> _weaponRepository;
+        private readonly ICrossCuttingRepository<Ammunition> _ammunitionRepository;
         private readonly IMapper _mapper;
         private readonly IValidator<CreateInventoryDto> _createValidator;
         private readonly IValidator<UpdateInventoryDto> _updateValidator;
@@ -89,6 +105,8 @@ namespace Ettad.Inventory.Service.Inventories.Services
             ICrossCuttingRepository<SupplyDetail> supplyDetailsRepository,
             ICrossCuttingRepository<Supply> supplyRepository,
             ICrossCuttingRepository<BaseItem> baseItemRepository,
+            ICrossCuttingRepository<Weapon> weaponRepository,
+            ICrossCuttingRepository<Ammunition> ammunitionRepository,
             IMapper mapper,
             IValidator<CreateInventoryDto> createValidator,
             IValidator<UpdateInventoryDto> updateValidator,
@@ -109,6 +127,8 @@ namespace Ettad.Inventory.Service.Inventories.Services
             _supplyDetailsRepository = supplyDetailsRepository;
             _supplyRepository = supplyRepository;
             _baseItemRepository = baseItemRepository;
+            _weaponRepository = weaponRepository;
+            _ammunitionRepository = ammunitionRepository;
             _mapper = mapper;
             _createValidator = createValidator;
             _updateValidator = updateValidator;
@@ -745,6 +765,8 @@ namespace Ettad.Inventory.Service.Inventories.Services
                     $"{nameof(InventoryDetailEntity.Inventory)}.{nameof(InventoryEntity.Depo)}",
                     nameof(InventoryDetailEntity.Item),
                     ItemWithBaseItemPrimaryPurposesInclude,
+                    ItemLookupCaliberInclude,
+                    ItemCaliberUnitInclude,
                     nameof(InventoryDetailEntity.Supplier),
                     nameof(InventoryDetailEntity.Manufacturer),
                     nameof(InventoryDetailEntity.Country),
@@ -883,6 +905,8 @@ namespace Ettad.Inventory.Service.Inventories.Services
                     $"{nameof(InventoryDetailEntity.Inventory)}.{nameof(InventoryEntity.Depo)}",
                     nameof(InventoryDetailEntity.Item),
                     ItemWithBaseItemPrimaryPurposesInclude,
+                    ItemLookupCaliberInclude,
+                    ItemCaliberUnitInclude,
                     nameof(InventoryDetailEntity.Supplier),
                     nameof(InventoryDetailEntity.Manufacturer),
                     nameof(InventoryDetailEntity.Country),
@@ -1082,6 +1106,8 @@ namespace Ettad.Inventory.Service.Inventories.Services
                     $"{nameof(InventoryDetailEntity.Inventory)}.{nameof(InventoryEntity.Depo)}",
                     nameof(InventoryDetailEntity.Item),
                     ItemWithBaseItemPrimaryPurposesInclude,
+                    ItemLookupCaliberInclude,
+                    ItemCaliberUnitInclude,
                     nameof(InventoryDetailEntity.Supplier),
                     nameof(InventoryDetailEntity.Manufacturer),
                     nameof(InventoryDetailEntity.Country),
@@ -1167,6 +1193,8 @@ namespace Ettad.Inventory.Service.Inventories.Services
                         false,
                         nameof(InventoryDetailEntity.Item),
                         ItemWithBaseItemPrimaryPurposesInclude,
+                        ItemLookupCaliberInclude,
+                        ItemCaliberUnitInclude,
                         nameof(InventoryDetailEntity.Supplier),
                         nameof(InventoryDetailEntity.Manufacturer),
                         nameof(InventoryDetailEntity.Country),
@@ -1236,7 +1264,9 @@ namespace Ettad.Inventory.Service.Inventories.Services
                     false,
                     nameof(InventoryDetailEntity.Inventory),
                     nameof(InventoryDetailEntity.Item),
-                    ItemWithBaseItemPrimaryPurposesInclude
+                    ItemWithBaseItemPrimaryPurposesInclude,
+                    ItemLookupCaliberInclude,
+                    ItemCaliberUnitInclude
                 );
 
                 // Filter out deleted inventory parent records
@@ -1365,7 +1395,9 @@ namespace Ettad.Inventory.Service.Inventories.Services
                     false,
                     nameof(InventoryDetailEntity.Inventory),
                     nameof(InventoryDetailEntity.Item),
-                    ItemWithBaseItemPrimaryPurposesInclude
+                    ItemWithBaseItemPrimaryPurposesInclude,
+                    ItemLookupCaliberInclude,
+                    ItemCaliberUnitInclude
                 );
 
                 var lots = inventoryDetails
