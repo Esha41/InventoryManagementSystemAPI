@@ -15,7 +15,7 @@ namespace Ettad.Inventory.Service.Ammunitions.Dtos
 
         public string? ArmNumber { get; set; }
 
-        public string? Caliber { get; set; }
+        public long? CaliberId { get; set; }
 
         public bool IsLinked { get; set; }
 
@@ -39,6 +39,7 @@ namespace Ettad.Inventory.Service.Ammunitions.Dtos
         
         #region Navigation Properties
 
+        public CaliberDto Caliber { get; set; }
         public UnitDto BulletDiameterUnit { get; set; }
         public NatureOptionDto NatureOption { get; set; }
         public ColorDto ProjectileColor { get; set; }

@@ -41,6 +41,7 @@ namespace Ettad.Inventory.Service.Weapons.Services
         private List<Country> _countries;
         private List<Classification> _classifications;
         private List<ItemTypeLookup> _itemTypes;
+        private List<Caliber> _calibers;
 
         // Optimization: Dictionary for fast O(1) lookups during import
         private Dictionary<string, Dictionary<string, long>> _cachedLookups = new Dictionary<string, Dictionary<string, long>>();
@@ -97,6 +98,7 @@ namespace Ettad.Inventory.Service.Weapons.Services
                     w => w.Id == id && (includeDeleted || !w.IsDeleted),
                     includeDeleted,
                     nameof(Weapon.CaliberUnit),
+                    nameof(Weapon.LookupCaliber),
                     nameof(Weapon.CountryOfManufacture),
                     nameof(Weapon.Classification),
                     nameof(Weapon.Type),
@@ -138,6 +140,7 @@ namespace Ettad.Inventory.Service.Weapons.Services
                     w => (showDeletedOnly ? w.IsDeleted : !w.IsDeleted) && (assignedItemIds == null || assignedItemIds.Contains(w.Id)),
                     showDeletedOnly,
                     nameof(Weapon.CaliberUnit),
+                    nameof(Weapon.LookupCaliber),
                     nameof(Weapon.CountryOfManufacture),
                     nameof(Weapon.Classification),
                     nameof(Weapon.Type),
@@ -192,6 +195,7 @@ namespace Ettad.Inventory.Service.Weapons.Services
                     w => !w.IsDeleted && (assignedItemIds == null || assignedItemIds.Contains(w.Id)),
                     false,
                     nameof(Weapon.CaliberUnit),
+                    nameof(Weapon.LookupCaliber),
                     nameof(Weapon.CountryOfManufacture),
                     nameof(Weapon.Classification),
                     nameof(Weapon.Type),
@@ -551,6 +555,7 @@ namespace Ettad.Inventory.Service.Weapons.Services
                    };
 
             var firstAsset = await _context.Weapons
+                .Include(w => w.LookupCaliber)
                 .Include(w => w.CaliberUnit)
                 .Include(w => w.CountryOfManufacture)
                 .Include(w => w.Classification)
@@ -573,7 +578,7 @@ namespace Ettad.Inventory.Service.Weapons.Services
                         sheet.Cells[2, 4].Value = firstAsset.Nsn;
                         sheet.Cells[2, 5].Value = firstAsset.Price;
                         sheet.Cells[2, 6].Value = firstAsset.MinimumQuantity;
-                        sheet.Cells[2, 7].Value = firstAsset.Caliber;
+                        sheet.Cells[2, 7].Value = isAr ? firstAsset.LookupCaliber?.NameAr : firstAsset.LookupCaliber?.NameEn;
                         sheet.Cells[2, 8].Value = isAr ? firstAsset.CaliberUnit?.NameAr : firstAsset.CaliberUnit?.NameEn;
                         sheet.Cells[2, 9].Value = firstAsset.YearOfManufacture;
                         sheet.Cells[2, 10].Value = isAr ? firstAsset.CountryOfManufacture?.NameAr : firstAsset.CountryOfManufacture?.NameEn;
@@ -594,12 +599,14 @@ namespace Ettad.Inventory.Service.Weapons.Services
                 (package) =>
                 {
                     CreateLookupSheet(package, "Units", _units);
+                    CreateLookupSheet(package, "Calibers", _calibers);
                     CreateLookupSheet(package, "Countries", _countries);
                     CreateLookupSheet(package, "Classifications", _classifications);
                     CreateLookupSheet(package, "ItemTypes", _itemTypes);
                 },
                 (sheet) =>
                 {
+                    AddDataValidation(sheet, 7, "Calibers");
                     AddDataValidation(sheet, 8, "Units");
                     AddDataValidation(sheet, 10, "Countries");
                     AddDataValidation(sheet, 15, "Classifications");
@@ -615,9 +622,11 @@ namespace Ettad.Inventory.Service.Weapons.Services
             _countries = await _context.Countries.Where(c => !c.IsDeleted).ToListAsync();
             _classifications = await _context.Classifications.Where(c => !c.IsDeleted).ToListAsync();
             _itemTypes = await _context.ItemTypes.Where(i => !i.IsDeleted && i.ItemType == ItemType.Weapon).ToListAsync();
+            _calibers = await _context.Calibers.Where(c => !c.IsDeleted && c.ItemType == ItemType.Weapon).ToListAsync();
 
             // Build cache
             _cachedLookups["Units"] = BuildLookup(_units, x => x.NameEn, x => x.NameAr, x => x.Id);
+            _cachedLookups["Calibers"] = BuildLookup(_calibers, x => x.NameEn, x => x.NameAr, x => x.Id);
             _cachedLookups["Countries"] = BuildLookup(_countries, x => x.NameEn, x => x.NameAr, x => x.Id);
             _cachedLookups["Classifications"] = BuildLookup(_classifications, x => x.NameEn, x => x.NameAr, x => x.Id);
             _cachedLookups["ItemTypes"] = BuildLookup(_itemTypes, x => x.NameEn, x => x.NameAr, x => x.Id);
@@ -660,13 +669,12 @@ namespace Ettad.Inventory.Service.Weapons.Services
                 ReferenceNo = importDto.ReferenceNo,
                 UNNumber = importDto.UNNumber,
                 Notes = importDto.Notes,
-                Caliber = importDto.Caliber,
                 YearOfManufacture = importDto.YearOfManufacture,
                 Model = importDto.Model
             };
 
+            dto.CaliberId = FindLookupIdCached("Calibers", importDto.Caliber);
             dto.CaliberUnitId = FindLookupIdCached("Units", importDto.CaliberUnit);
-            dto.CountryOfManufactureId = FindLookupIdCached("Countries", importDto.CountryOfManufacture);
             dto.ClassificationId = FindLookupIdCached("Classifications", importDto.Classification);
             dto.TypeId = FindLookupIdCached("ItemTypes", importDto.Type);
             dto.CaliberCategory = WeaponCaliberCategory.Small;

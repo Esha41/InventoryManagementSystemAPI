@@ -1,3 +1,5 @@
+using Ettad.Data.Entities;
+using Ettad.Module.lookup.Dtos;
 using Ettad.Module.lookup.Interfaces;
 using Ettad.Module.lookup.Services;
 using FluentValidation;
@@ -22,6 +24,14 @@ namespace Ettad.Module.Logic.Extensions
             services.AddScoped<IDepotAccessService, DepotAccessService>();
             services.AddScoped<IUserDepotService, UserDepotService>();
             services.AddScoped(typeof(ILookupService<,>), typeof(LookupService<,>));
+
+            services.AddScoped<UnitLookupService>();
+            services.AddScoped<IUnitLookupService>(sp => sp.GetRequiredService<UnitLookupService>());
+            services.AddScoped<ILookupService<Ettad.Data.Entities.Unit, CreateUpdateUnitDto>>(sp => sp.GetRequiredService<UnitLookupService>());
+
+            services.AddScoped<CaliberLookupService>();
+            services.AddScoped<ICaliberLookupService>(sp => sp.GetRequiredService<CaliberLookupService>());
+            services.AddScoped<ILookupService<Caliber, CreateUpdateCaliberDto>>(sp => sp.GetRequiredService<CaliberLookupService>());
 
             // Register Validators
             services.AddValidatorsFromAssembly(Assembly.GetExecutingAssembly());

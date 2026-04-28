@@ -918,7 +918,6 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 {
                     Name = "M16A4 Assault Rifle",
                     ItemNo = "WPN-001",
-                    Caliber = "5.56x45mm NATO",
                     CaliberUnitId = 1,
                     YearOfManufacture = 1997,
                     Model = "M16A4",
@@ -934,7 +933,6 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 {
                     Name = "M4 Carbine",
                     ItemNo = "WPN-002",
-                    Caliber = "5.56x45mm NATO",
                     CaliberUnitId = 1,
                     YearOfManufacture = 1994,
                     Model = "M4",
@@ -950,7 +948,6 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 {
                     Name = "M249 Squad Automatic Weapon",
                     ItemNo = "WPN-003",
-                    Caliber = "5.56x45mm NATO",
                     CaliberUnitId = 1,
                     YearOfManufacture = 1984,
                     Model = "M249 SAW",
@@ -966,7 +963,6 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 {
                     Name = "M240B Machine Gun",
                     ItemNo = "WPN-004",
-                    Caliber = "7.62x51mm NATO",
                     CaliberUnitId = 1,
                     YearOfManufacture = 1977,
                     Model = "M240B",
@@ -982,7 +978,6 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 {
                     Name = "M9 Pistol",
                     ItemNo = "WPN-005",
-                    Caliber = "9x19mm Parabellum",
                     CaliberUnitId = 1,
                     YearOfManufacture = 1985,
                     Model = "M9",
@@ -998,7 +993,6 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 {
                     Name = "M24 Sniper Weapon System",
                     ItemNo = "WPN-006",
-                    Caliber = "7.62x51mm NATO",
                     CaliberUnitId = 1,
                     YearOfManufacture = 1988,
                     Model = "M24 SWS",
@@ -1014,7 +1008,6 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 {
                     Name = "M2 Browning Machine Gun",
                     ItemNo = "WPN-007",
-                    Caliber = ".50 BMG (12.7x99mm)",
                     CaliberUnitId = 1,
                     YearOfManufacture = 1933,
                     Model = "M2HB",
@@ -1030,7 +1023,6 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 {
                     Name = "M203 Grenade Launcher",
                     ItemNo = "WPN-008",
-                    Caliber = "40x46mm",
                     CaliberUnitId = 1,
                     YearOfManufacture = 1969,
                     Model = "M203",
@@ -1046,7 +1038,6 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 {
                     Name = "M110 Semi-Automatic Sniper System",
                     ItemNo = "WPN-009",
-                    Caliber = "7.62x51mm NATO",
                     CaliberUnitId = 1,
                     YearOfManufacture = 2007,
                     Model = "M110 SASS",
@@ -1062,7 +1053,6 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 {
                     Name = "Remington 870 Shotgun",
                     ItemNo = "WPN-010",
-                    Caliber = "12 Gauge",
                     CaliberUnitId = 1,
                     YearOfManufacture = 1951,
                     Model = "870",
@@ -1078,7 +1068,6 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 {
                     Name = "MP5 Submachine Gun",
                     ItemNo = "WPN-011",
-                    Caliber = "9x19mm Parabellum",
                     CaliberUnitId = 1,
                     YearOfManufacture = 1966,
                     Model = "MP5A3",

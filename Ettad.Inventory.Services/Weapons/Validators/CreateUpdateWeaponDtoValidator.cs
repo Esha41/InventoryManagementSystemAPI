@@ -22,9 +22,9 @@ namespace Ettad.Inventory.Service.Weapons.Validators
                 .NotEmpty().WithMessage("Item number is required")
                 .MaximumLength(100).WithMessage("Item number cannot exceed 100 characters");
 
-            RuleFor(x => x.Caliber)
-                .MaximumLength(100).When(x => !string.IsNullOrEmpty(x.Caliber))
-                .WithMessage("Caliber cannot exceed 100 characters");
+            RuleFor(x => x.CaliberId)
+                .GreaterThan(0).When(x => x.CaliberId.HasValue)
+                .WithMessage("Caliber must be valid when provided");
 
             RuleFor(x => x.CaliberUnitId)
                 .GreaterThan(0).When(x => x.CaliberUnitId.HasValue)

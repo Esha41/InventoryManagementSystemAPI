@@ -226,6 +226,8 @@ namespace Ettad.EntityFramework.DataBaseContext
                     "Permissions.Classifications.View",
                     "Permissions.ItemTypes.Page",
                     "Permissions.ItemTypes.View",
+                    "Permissions.Calibers.Page",
+                    "Permissions.Calibers.View",
                     "Permissions.RequestPurpose.Page",
                     "Permissions.RequestPurpose.View",
                     
