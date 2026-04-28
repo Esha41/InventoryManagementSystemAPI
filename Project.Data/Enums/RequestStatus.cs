@@ -13,7 +13,8 @@ namespace Ettad.Data.Enums
         Approved = 3,
         Rejected = 4,
         Cancelled = 5,
-        ReturnedForReview = 6
+        ReturnedForReview = 6,
+       AutoRejected = 7
     }
 }
 

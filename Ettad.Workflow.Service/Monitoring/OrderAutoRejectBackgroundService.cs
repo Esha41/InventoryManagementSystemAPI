@@ -186,7 +186,7 @@ public class OrderAutoRejectBackgroundService : IOrderAutoRejectBackgroundServic
             $"This order was rejected automatically because nobody completed the required approval in time. "
             + $"The allowed time was {CalendarDaysPhrase(policy.ThresholdDays)}, starting from when the previous approval in the process was completed.";
 
-        current.Status = RequestStatus.Rejected;
+        current.Status = RequestStatus.AutoRejected;
         current.IsCurrent = false;
         current.ApprovedDate = now;
         current.Comments =
@@ -206,7 +206,7 @@ public class OrderAutoRejectBackgroundService : IOrderAutoRejectBackgroundServic
             s.ModificationDate = now;
         }
 
-        baseRequest.Status = RequestStatus.Rejected;
+        baseRequest.Status = RequestStatus.AutoRejected;
         baseRequest.ModificationDate = now;
 
         var notifyUserIds = await ResolveRecipientUserIdsAsync(baseRequest.RequesterId, policy, cancellationToken);
