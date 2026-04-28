@@ -53,6 +53,7 @@ namespace Ettad.EntityFramework.DataBaseContext
         public DbSet<Rank> Ranks { get; set; }
         public DbSet<Classification> Classifications { get; set; }
         public DbSet<ItemTypeLookup> ItemTypes { get; set; }
+        public DbSet<Caliber> Calibers { get; set; }
         public DbSet<RequestPurpose> RequestPurposes { get; set; }
         public DbSet<BaseRequest> BaseRequests { get; set; }
         public DbSet<RequestItem> RequestItems { get; set; }

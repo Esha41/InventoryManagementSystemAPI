@@ -7,10 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using System.Threading.Tasks;
 using Ettad.Application.Common.Interfaces;
-using Ettad.EntityFramework.DataBaseContext;
-using Microsoft.EntityFrameworkCore;
 using Ettad.ResponseHandler.Models;
-using Ettad.ResponseHandler.Consts;
 using System.Collections.Generic;
 using Ettad.Module.lookup.Interfaces;
 
@@ -61,15 +58,14 @@ namespace Ettad.Lookups.Domain.API.Controllers
     )]
     public class UnitController : LookupController<Unit, CreateUpdateUnitDto>
     {
-        private readonly ApplicationDbContext _context;
+        private readonly IUnitLookupService _unitLookupService;
 
         public UnitController(
-            ILookupService<Unit, CreateUpdateUnitDto> iLookupService, 
-            ILogger<LookupController<Unit, CreateUpdateUnitDto>> logger,
-            ApplicationDbContext context)
-            : base(iLookupService, logger) 
+            IUnitLookupService unitLookupService,
+            ILogger<LookupController<Unit, CreateUpdateUnitDto>> logger)
+            : base(unitLookupService, logger)
         {
-            _context = context;
+            _unitLookupService = unitLookupService;
         }
 
         /// <summary>
@@ -79,33 +75,8 @@ namespace Ettad.Lookups.Domain.API.Controllers
         public async Task<IActionResult> GetByItemType([FromQuery] ItemType? itemType)
         {
             _logger?.LogInformation("HTTP GET request for Units filtered by ItemType {ItemType}", itemType);
-
-            try
-            {
-                var query = _context.Units.Where(u => !u.IsDeleted);
-                
-                if (itemType.HasValue)
-                {
-                    query = query.Where(u => u.ItemType == itemType.Value);
-                }
-
-                var units = await query.ToListAsync();
-                var dtos = units.Select(u => new UnitDto
-                {
-                    Id = u.Id,
-                    NameAr = u.NameAr,
-                    NameEn = u.NameEn,
-                    ItemType = u.ItemType,
-                    IsDeleted = u.IsDeleted
-                }).ToList();
-
-                return ProcessResponse(APIOperationResponse<List<UnitDto>>.Success(dtos));
-            }
-            catch (Exception ex)
-            {
-                _logger?.LogError(ex, "Error retrieving Units by ItemType {ItemType}", itemType);
-                return ProcessResponse(APIOperationResponse<List<UnitDto>>.Fail(ResponseType.InternalServerError, $"Error retrieving units: {ex.Message}"));
-            }
+            var result = await _unitLookupService.GetByItemTypeAsync(itemType);
+            return ProcessResponse(result);
         }
     }
 
@@ -453,6 +424,41 @@ namespace Ettad.Lookups.Domain.API.Controllers
     {
         public ItemTypeController(ILookupService<ItemTypeLookup, CreateUpdateItemTypeLookupDto> iLookupService, ILogger<LookupController<ItemTypeLookup, CreateUpdateItemTypeLookupDto>> logger)
             : base(iLookupService, logger) { }
+    }
+
+    #endregion
+
+    #region Caliber
+
+    [CheckAuthorize(
+        "Permissions.Calibers.Page",
+        "Permissions.Calibers.View",
+        "Permissions.Calibers.Create",
+        "Permissions.Calibers.Edit",
+        "Permissions.Calibers.Delete"
+    )]
+    public class CaliberController : LookupController<Caliber, CreateUpdateCaliberDto>
+    {
+        private readonly ICaliberLookupService _caliberLookupService;
+
+        public CaliberController(
+            ICaliberLookupService caliberLookupService,
+            ILogger<LookupController<Caliber, CreateUpdateCaliberDto>> logger)
+            : base(caliberLookupService, logger)
+        {
+            _caliberLookupService = caliberLookupService;
+        }
+
+        /// <summary>
+        /// Get calibers filtered by ItemType (Weapon vs Ammunition).
+        /// </summary>
+        [HttpGet("byItemType")]
+        public async Task<IActionResult> GetByItemType([FromQuery] ItemType? itemType)
+        {
+            _logger?.LogInformation("HTTP GET request for Calibers filtered by ItemType {ItemType}", itemType);
+            var result = await _caliberLookupService.GetByItemTypeAsync(itemType);
+            return ProcessResponse(result);
+        }
     }
 
     #endregion

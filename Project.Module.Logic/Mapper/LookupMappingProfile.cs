@@ -27,6 +27,7 @@ namespace Ettad.Module.lookup.Mapper
             CreateMap<CreateUpdateRankDto, Rank>();
             CreateMap<CreateUpdateClassificationDto, Classification>();
             CreateMap<CreateUpdateItemTypeLookupDto, ItemTypeLookup>();
+            CreateMap<CreateUpdateCaliberDto, Caliber>();
 
             // Entities to Read-Only DTOs
             CreateMap<CaseType, CaseTypeDto>();
@@ -46,6 +47,7 @@ namespace Ettad.Module.lookup.Mapper
             CreateMap<Rank, RankDto>();
             CreateMap<Classification, ClassificationDto>();
             CreateMap<ItemTypeLookup, ItemTypeLookupDto>();
+            CreateMap<Caliber, CaliberDto>();
         }
     }
 }

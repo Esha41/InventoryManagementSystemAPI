@@ -10,7 +10,7 @@ namespace Ettad.Inventory.Service.Ammunitions.Dtos
 
         public string? ArmNumber { get; set; }
 
-        public string? Caliber { get; set; }
+        public long? CaliberId { get; set; }
 
         public decimal? BulletDiameter { get; set; }
 

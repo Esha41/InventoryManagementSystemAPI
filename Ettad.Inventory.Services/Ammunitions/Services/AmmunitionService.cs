@@ -48,6 +48,7 @@ namespace Ettad.Inventory.Service.Ammunitions.Services
         private List<ProjectailMaterial> _projectileMaterials;
         private List<Classification> _classifications;
         private List<ItemTypeLookup> _itemTypes;
+        private List<Caliber> _calibers;
 
         // Optimization: Dictionary for fast O(1) lookups during import
         private Dictionary<string, Dictionary<string, long>> _cachedLookups = new Dictionary<string, Dictionary<string, long>>();
@@ -107,6 +108,7 @@ namespace Ettad.Inventory.Service.Ammunitions.Services
                     a => a.Id == id && (includeDeleted || !a.IsDeleted),
                     false,
                     nameof(Ammunition.BulletDiameterUnit),
+                    nameof(Ammunition.LookupCaliber),
                     nameof(Ammunition.NatureOption),
                     "BaseItemPrimaryPurposes.PrimaryPurpos",
                     nameof(Ammunition.ProjectileColor),
@@ -151,6 +153,7 @@ namespace Ettad.Inventory.Service.Ammunitions.Services
                     a => !a.IsDeleted && (assignedItemIds == null || assignedItemIds.Contains(a.Id)),
                     false,
                     nameof(Ammunition.BulletDiameterUnit),
+                    nameof(Ammunition.LookupCaliber),
                     nameof(Ammunition.NatureOption),
                     "BaseItemPrimaryPurposes.PrimaryPurpos",
                     nameof(Ammunition.ProjectileColor),
@@ -200,6 +203,7 @@ namespace Ettad.Inventory.Service.Ammunitions.Services
                     a => (showDeletedOnly ? a.IsDeleted : !a.IsDeleted) && (assignedItemIds == null || assignedItemIds.Contains(a.Id)),
                     false,
                     nameof(Ammunition.BulletDiameterUnit),
+                    nameof(Ammunition.LookupCaliber),
                     nameof(Ammunition.NatureOption),
                     "BaseItemPrimaryPurposes.PrimaryPurpos",
                     nameof(Ammunition.ProjectileColor),
@@ -261,6 +265,7 @@ namespace Ettad.Inventory.Service.Ammunitions.Services
                     a => !a.IsDeleted && a.AmmunitionType == ammunitionType,
                     false,
                     nameof(Ammunition.BulletDiameterUnit),
+                    nameof(Ammunition.LookupCaliber),
                     nameof(Ammunition.NatureOption),
                     "BaseItemPrimaryPurposes.PrimaryPurpos",
                     nameof(Ammunition.ProjectileColor),
@@ -629,6 +634,7 @@ namespace Ettad.Inventory.Service.Ammunitions.Services
                    };
 
             var firstAsset = await _context.Ammunitions
+                .Include(a => a.LookupCaliber)
                 .Include(a => a.BulletDiameterUnit)
                 .Include(a => a.CaseType)
                 .Include(a => a.Propellant)
@@ -673,7 +679,7 @@ namespace Ettad.Inventory.Service.Ammunitions.Services
                             : firstAsset.BaseItemPrimaryPurposes?.FirstOrDefault()?.PrimaryPurpos?.NameEn;
                         sheet.Cells[2, 19].Value = isAr ? firstAsset.ProjectileColor?.NameAr : firstAsset.ProjectileColor?.NameEn;
                         sheet.Cells[2, 20].Value = isAr ? firstAsset.ProjectailMaterial?.NameAr : firstAsset.ProjectailMaterial?.NameEn;
-                        sheet.Cells[2, 21].Value = firstAsset.Caliber;
+                        sheet.Cells[2, 21].Value = isAr ? firstAsset.LookupCaliber?.NameAr : firstAsset.LookupCaliber?.NameEn;
                         sheet.Cells[2, 22].Value = firstAsset.UNNumber;
                         sheet.Cells[2, 23].Value = firstAsset.Distribution;
                         sheet.Cells[2, 24].Value = firstAsset.ReferenceNo;
@@ -690,6 +696,7 @@ namespace Ettad.Inventory.Service.Ammunitions.Services
                 (package) =>
                 {
                     CreateLookupSheet(package, "Units", _units);
+                    CreateLookupSheet(package, "Calibers", _calibers);
                     CreateLookupSheet(package, "CaseTypes", _caseTypes);
                     CreateLookupSheet(package, "Propellants", _propellants);
                     CreateLookupSheet(package, "Compatibilities", _compatibilities);
@@ -713,6 +720,7 @@ namespace Ettad.Inventory.Service.Ammunitions.Services
                     AddDataValidation(sheet, 18, "PrimaryPurposes");
                     AddDataValidation(sheet, 19, "ProjectileColors");
                     AddDataValidation(sheet, 20, "ProjectileMaterials");
+                    AddDataValidation(sheet, 21, "Calibers");
                     AddDataValidation(sheet, 25, "Classifications");
                     AddDataValidation(sheet, 26, "ItemTypes");
                 }
@@ -733,9 +741,11 @@ namespace Ettad.Inventory.Service.Ammunitions.Services
             _projectileMaterials = await _context.ProjectailMaterials.Where(p => !p.IsDeleted).ToListAsync();
             _classifications = await _context.Classifications.Where(c => !c.IsDeleted).ToListAsync();
             _itemTypes = await _context.ItemTypes.Where(i => !i.IsDeleted && i.ItemType == ItemType.Ammunition).ToListAsync();
+            _calibers = await _context.Calibers.Where(c => !c.IsDeleted && c.ItemType == ItemType.Ammunition).ToListAsync();
 
             // Build cache
             _cachedLookups["Units"] = BuildLookup(_units, x => x.NameEn, x => x.NameAr, x => x.Id);
+            _cachedLookups["Calibers"] = BuildLookup(_calibers, x => x.NameEn, x => x.NameAr, x => x.Id);
             _cachedLookups["CaseTypes"] = BuildLookup(_caseTypes, x => x.NameEn, x => x.NameAr, x => x.Id);
             _cachedLookups["Propellants"] = BuildLookup(_propellants, x => x.NameEn, x => x.NameAr, x => x.Id);
             _cachedLookups["Compatibilities"] = BuildLookup(_compatibilities, x => x.NameEn, x => x.NameAr, x => x.Id);
@@ -786,13 +796,13 @@ namespace Ettad.Inventory.Service.Ammunitions.Services
                 UNNumber = importDto.UNNumber,
                 Notes = importDto.Notes,
                 ArmNumber = importDto.ArmNumber,
-                Caliber = importDto.Caliber,
                 BulletDiameter = importDto.BulletDiameter,
                 IsLinked = importDto.IsLinked,
                 Primer = importDto.Primer,
                 TotalWeight = importDto.TotalWeight
             };
 
+            dto.CaliberId = FindLookupIdCached("Calibers", importDto.Caliber);
             dto.BulletDiameterUnitId = FindLookupIdCached("Units", importDto.BulletDiameterUnit);
             dto.CaseTypeId = FindLookupIdCached("CaseTypes", importDto.CaseType);
             dto.PropellantId = FindLookupIdCached("Propellants", importDto.Propellant);

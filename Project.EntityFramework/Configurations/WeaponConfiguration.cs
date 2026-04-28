@@ -23,6 +23,14 @@ namespace Ettad.EntityFramework.Configurations
             // Single-column index on Weapon-specific property (in Weapons table)
             builder.HasIndex(x => x.CountryOfManufactureId);
 
+            builder.HasOne(x => x.LookupCaliber)
+                .WithMany()
+                .IsRequired(false)
+                .HasForeignKey(x => x.CaliberId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.HasIndex(x => x.CaliberId);
+
             // Seed data is handled in ApplicationDbInitializer (runtime seeding)
         }
     }

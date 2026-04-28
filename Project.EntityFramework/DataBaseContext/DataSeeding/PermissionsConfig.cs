@@ -40,6 +40,8 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
             "Permissions.Classifications.View",
             "Permissions.ItemTypes.Page",
             "Permissions.ItemTypes.View",
+            "Permissions.Calibers.Page",
+            "Permissions.Calibers.View",
         };
 
         public static List<string> WriteLookups = new()
@@ -98,6 +100,9 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
             "Permissions.ItemTypes.Create",
             "Permissions.ItemTypes.Edit",
             "Permissions.ItemTypes.Delete",
+            "Permissions.Calibers.Create",
+            "Permissions.Calibers.Edit",
+            "Permissions.Calibers.Delete",
         };
 
         /// <summary>Depots: Page = open depot admin module; View = read depot data (UserDepot-scoped); ViewAll = read all depots (no UserDepot filter).</summary>
@@ -131,6 +136,7 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
             "Permissions.Weapon.View",
             "Permissions.Explosive.Page",
             "Permissions.Explosive.View",
+            "Permissions.Calibers.View",
         };
 
         public static List<string> ReadItemsViewOnly = new()
@@ -138,6 +144,7 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
             "Permissions.Ammunition.View",
             "Permissions.Weapon.View",
             "Permissions.Explosive.View",
+            "Permissions.Calibers.View",
         };
 
         public static List<string> WriteItems = new()

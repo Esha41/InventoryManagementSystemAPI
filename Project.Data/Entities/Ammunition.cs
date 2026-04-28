@@ -12,7 +12,7 @@ namespace Ettad.Data.Entities
 
         public string? ArmNumber { get; set; }
 
-        public string? Caliber { get; set; }
+        public long? CaliberId { get; set; }
 
         public bool IsLinked { get; set; }
        
@@ -36,6 +36,7 @@ namespace Ettad.Data.Entities
 
         #region Navigation Properties
 
+        public Caliber LookupCaliber { get; set; }
         public Unit BulletDiameterUnit { get; set; }
         public NatureOption NatureOption { get; set; }
         public Color ProjectileColor { get; set; }

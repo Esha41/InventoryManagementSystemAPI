@@ -8,13 +8,14 @@ namespace Ettad.Inventory.Service.Weapons.Dtos
     {
         public WeaponCaliberCategory CaliberCategory { get; set; } = WeaponCaliberCategory.Small;
 
-        public string? Caliber { get; set; }
+        public long? CaliberId { get; set; }
         public long? CaliberUnitId { get; set; }
         public int? YearOfManufacture { get; set; }
         public long? CountryOfManufactureId { get; set; }
         public string? Model { get; set; }
 
         #region Navigation Properties
+        public CaliberDto Caliber { get; set; }
         public UnitDto CaliberUnit { get; set; }
         public CountryDto CountryOfManufacture { get; set; }
         #endregion

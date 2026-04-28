@@ -21,9 +21,13 @@ namespace Ettad.EntityFramework.Configurations
                 .IsRequired(false)
                 .HasMaxLength(200);
 
-            builder.Property(x => x.Caliber)
+            builder.HasOne(x => x.LookupCaliber)
+                .WithMany()
                 .IsRequired(false)
-                .HasMaxLength(100);
+                .HasForeignKey(x => x.CaliberId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.HasIndex(x => x.CaliberId);
 
             builder.HasOne(x => x.NatureOption)
                 .WithMany()

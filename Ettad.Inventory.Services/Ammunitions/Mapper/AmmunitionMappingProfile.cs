@@ -1,6 +1,7 @@
 using AutoMapper;
 using Ettad.Data.Entities;
 using Ettad.Inventory.Service.Ammunitions.Dtos;
+using Ettad.Module.lookup.Dtos;
 
 namespace Ettad.Inventory.Service.Ammunitions.Mapper
 {
@@ -8,7 +9,10 @@ namespace Ettad.Inventory.Service.Ammunitions.Mapper
     {
         public AmmunitionMappingProfile()
         {
+            CreateMap<Caliber, CaliberDto>();
+
             CreateMap<Ammunition, AmmunitionDto>()
+                .ForMember(dest => dest.Caliber, opt => opt.MapFrom(src => src.LookupCaliber))
                 .ForMember(dest => dest.PrimaryPurposes, opt => opt.MapFrom(src =>
                     src.BaseItemPrimaryPurposes != null
                         ? src.BaseItemPrimaryPurposes.Select(x => x.PrimaryPurpos).ToList()
@@ -16,6 +20,7 @@ namespace Ettad.Inventory.Service.Ammunitions.Mapper
 
             // CreateUpdate DTO to Entity
             CreateMap<CreateUpdateAmmunitionDto, Ammunition>()
+                .ForMember(dest => dest.LookupCaliber, opt => opt.Ignore())
                 .ForMember(dest => dest.Id, opt => opt.Ignore())
                 .ForMember(dest => dest.CreationDate, opt => opt.Ignore())
                 .ForMember(dest => dest.CreatedBy, opt => opt.Ignore())

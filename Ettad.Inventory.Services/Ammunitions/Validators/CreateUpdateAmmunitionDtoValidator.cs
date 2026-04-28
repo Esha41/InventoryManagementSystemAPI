@@ -41,9 +41,9 @@ namespace Ettad.Inventory.Service.Ammunitions.Validators
                 .MaximumLength(200).When(x => !string.IsNullOrEmpty(x.ArmNumber))
                 .WithMessage("Arm number cannot exceed 200 characters");
 
-            RuleFor(x => x.Caliber)
-                .MaximumLength(100).When(x => !string.IsNullOrEmpty(x.Caliber))
-                .WithMessage("Caliber cannot exceed 100 characters");
+            RuleFor(x => x.CaliberId)
+                .GreaterThan(0).When(x => x.CaliberId.HasValue)
+                .WithMessage("Caliber must be valid when provided");
 
             RuleFor(x => x.Primer)
                 .MaximumLength(100).When(x => !string.IsNullOrEmpty(x.Primer))
