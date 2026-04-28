@@ -41,6 +41,12 @@ public class OrderAutoRejectCountdownService : IOrderAutoRejectCountdownService
         if (!await CanViewCountdownAsync(requestId, cancellationToken))
             return (true, null);
 
+        var request = await _context.BaseRequests.AsNoTracking()
+            .FirstOrDefaultAsync(br => br.Id == requestId, cancellationToken);
+
+        if (request?.Status == RequestStatus.AutoRejected)
+            return (false, new OrderAutoRejectCountdownDto { RequestId = requestId, State = "none" });
+
         var policy = await OrderAutoRejectPolicyLoader.LoadAsync(_context, _configuration, _logger, cancellationToken);
         var steps = await LoadStepsForRequestAsync(requestId, cancellationToken);
         var dto = OrderAutoRejectCountdownHelper.Compute(requestId, steps, policy, _dateTimeProvider.Now);
@@ -57,6 +63,11 @@ public class OrderAutoRejectCountdownService : IOrderAutoRejectCountdownService
         if (allowed.Count == 0)
             return Array.Empty<OrderAutoRejectCountdownDto>();
 
+        var requestStatuses = await _context.BaseRequests
+            .AsNoTracking()
+            .Where(br => allowed.Contains(br.Id))
+            .ToDictionaryAsync(br => br.Id, br => br.Status, cancellationToken);
+
         var policy = await OrderAutoRejectPolicyLoader.LoadAsync(_context, _configuration, _logger, cancellationToken);
         var now = _dateTimeProvider.Now;
 
@@ -71,6 +82,12 @@ public class OrderAutoRejectCountdownService : IOrderAutoRejectCountdownService
         var result = new List<OrderAutoRejectCountdownDto>();
         foreach (var id in allowed)
         {
+            if (requestStatuses.TryGetValue(id, out var status) && status == RequestStatus.AutoRejected)
+            {
+                result.Add(new OrderAutoRejectCountdownDto { RequestId = id, State = "none" });
+                continue;
+            }
+
             byRequest.TryGetValue(id, out var steps);
             var dto = OrderAutoRejectCountdownHelper.Compute(id, steps ?? new List<WorkflowApprovalStep>(), policy, now);
             result.Add(dto);
