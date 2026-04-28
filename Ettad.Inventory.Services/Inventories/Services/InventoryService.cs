@@ -41,10 +41,11 @@ namespace Ettad.Inventory.Service.Inventories.Services
             $"{nameof(InventoryDetailEntity.Item)}.{nameof(Weapon.CaliberUnit)}";
 
         /// <summary>Maps weapon/ammunition caliber from <see cref="BaseItem"/> hierarchy.</summary>
-        private static void MapCaliberFromBaseItem(BaseItem item, out string caliber, out string caliberUnitName)
+        private static void MapCaliberFromBaseItem(BaseItem item, out string caliber, out string caliberUnitName, out long? caliberId)
         {
             caliber = null;
             caliberUnitName = null;
+            caliberId = null;
             if (item == null) return;
 
             switch (item)
@@ -53,6 +54,11 @@ namespace Ettad.Inventory.Service.Inventories.Services
                     if (ammunition.LookupCaliber != null)
                     {
                         caliber = ammunition.LookupCaliber.NameEn ?? ammunition.LookupCaliber.NameAr;
+                        caliberId = ammunition.LookupCaliber.Id;
+                    }
+                    else if (ammunition.CaliberId.HasValue)
+                    {
+                        caliberId = ammunition.CaliberId;
                     }
 
                     break;
@@ -60,6 +66,11 @@ namespace Ettad.Inventory.Service.Inventories.Services
                     if (weapon.LookupCaliber != null)
                     {
                         caliber = weapon.LookupCaliber.NameEn ?? weapon.LookupCaliber.NameAr;
+                        caliberId = weapon.LookupCaliber.Id;
+                    }
+                    else if (weapon.CaliberId.HasValue)
+                    {
+                        caliberId = weapon.CaliberId;
                     }
 
                     if (weapon.CaliberUnit != null)
@@ -1327,7 +1338,7 @@ namespace Ettad.Inventory.Service.Inventories.Services
                     var itemType = firstLotItem?.ItemType ?? default;
                     var nsn = firstLotItem?.Nsn ?? string.Empty;
                     var partNo = firstLotItem?.PartNo ?? string.Empty;
-                    MapCaliberFromBaseItem(firstLotItem, out var caliberValue, out var caliberUnitDisplay);
+                    MapCaliberFromBaseItem(firstLotItem, out var caliberValue, out var caliberUnitDisplay, out var caliberIdValue);
 
                     // Calculate total entered quantity (sum of Original Quantities in lots)
                     long totalQuantity = lots.Sum(l => l.ItemQuantity);
@@ -1360,6 +1371,7 @@ namespace Ettad.Inventory.Service.Inventories.Services
                         ItemType = itemType,
                         Nsn = nsn,
                         PartNo = partNo,
+                        CaliberId = caliberIdValue,
                         Caliber = caliberValue,
                         CaliberUnitName = caliberUnitDisplay,
                         TotalQuantity = totalQuantity,
@@ -1414,7 +1426,7 @@ namespace Ettad.Inventory.Service.Inventories.Services
 
                 var itemForCaliber = firstLotItem ?? await _context.Set<BaseItem>().AsNoTracking()
                     .FirstOrDefaultAsync(x => x.Id == itemId);
-                MapCaliberFromBaseItem(itemForCaliber, out var summaryCaliber, out var summaryCaliberUnit);
+                MapCaliberFromBaseItem(itemForCaliber, out var summaryCaliber, out var summaryCaliberUnit, out var summaryCaliberId);
 
                 if (lots.Count == 0)
                 {
@@ -1430,6 +1442,7 @@ namespace Ettad.Inventory.Service.Inventories.Services
                         ItemType = itemType,
                         Nsn = nsn,
                         PartNo = partNo,
+                        CaliberId = summaryCaliberId,
                         Caliber = summaryCaliber,
                         CaliberUnitName = summaryCaliberUnit,
                         TotalQuantity = 0,
@@ -1479,6 +1492,7 @@ namespace Ettad.Inventory.Service.Inventories.Services
                     ItemType = itemType,
                     Nsn = nsn,
                     PartNo = partNo,
+                    CaliberId = summaryCaliberId,
                     Caliber = summaryCaliber,
                     CaliberUnitName = summaryCaliberUnit,
                     TotalQuantity = totalQuantity,

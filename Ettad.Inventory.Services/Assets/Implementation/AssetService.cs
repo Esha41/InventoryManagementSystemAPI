@@ -100,8 +100,29 @@ namespace Ettad.Inventory.Service.Assets.Implementation
         private static bool WantsIntakeAssignment(CreateAssetDto dto) =>
             dto.AssignToEmployeeId.HasValue || dto.AssignToDepartmentId.HasValue;
 
+        /// <summary>
+        /// EF include paths for <see cref="Asset.Item"/> weapon/ammunition caliber data (same pattern as inventory summaries).
+        /// </summary>
+        private static readonly string AssetItemLookupCaliberInclude =
+            $"{nameof(Asset.Item)}.{nameof(Weapon.LookupCaliber)}";
 
-        // ... (existing fields)
+        private static readonly string AssetItemCaliberUnitInclude =
+            $"{nameof(Asset.Item)}.{nameof(Weapon.CaliberUnit)}";
+
+        /// <summary>Includes used when mapping <see cref="Asset"/> to <see cref="AssetDto"/> with catalog item details.</summary>
+        private static readonly string[] AssetReadMapIncludes =
+        {
+            nameof(Asset.Item),
+            AssetItemLookupCaliberInclude,
+            AssetItemCaliberUnitInclude,
+            nameof(Asset.Depot),
+            nameof(Asset.Batch),
+            nameof(Asset.Supplier),
+            nameof(Asset.Manufacturer),
+            nameof(Asset.PrimaryPurpos),
+            $"{nameof(Asset.CurrentAssignment)}.{nameof(AssetAssignment.Custodian)}",
+            $"{nameof(Asset.CurrentAssignment)}.{nameof(AssetAssignment.Department)}"
+        };
 
         public async Task<APIOperationResponse<PaginatedList<AssetDto>>> GetAssetsPaginatedAsync(long? depotId, PagedListRequest request)
         {
@@ -123,15 +144,7 @@ namespace Ettad.Inventory.Service.Assets.Implementation
                 var query = _assetRepository.Find(
                     a => !a.IsDeleted && (!depotId.HasValue || a.DepotId == depotId.Value),
                     false,
-                    nameof(Asset.Item),
-                    nameof(Asset.Depot),
-                    nameof(Asset.Batch),
-                    nameof(Asset.Supplier),
-                    nameof(Asset.Manufacturer),
-                    nameof(Asset.PrimaryPurpos),
-                    $"{nameof(Asset.CurrentAssignment)}.{nameof(AssetAssignment.Custodian)}",
-                    $"{nameof(Asset.CurrentAssignment)}.{nameof(AssetAssignment.Department)}"
-                );
+                    AssetReadMapIncludes);
 
                 var paginatedEntities = await PaginatedList<Asset>.CreateAsyncForTableBinding(query, request);
 
@@ -249,15 +262,7 @@ namespace Ettad.Inventory.Service.Assets.Implementation
                 var asset = await _assetRepository.FindOneAsync(
                     a => a.Id == id && !a.IsDeleted,
                     false,
-                    nameof(Asset.Item),
-                    nameof(Asset.Depot),
-                    nameof(Asset.Batch),
-                    nameof(Asset.Supplier),
-                    nameof(Asset.Manufacturer),
-                    nameof(Asset.PrimaryPurpos),
-                    $"{nameof(Asset.CurrentAssignment)}.{nameof(AssetAssignment.Custodian)}",
-                    $"{nameof(Asset.CurrentAssignment)}.{nameof(AssetAssignment.Department)}"
-                );
+                    AssetReadMapIncludes);
 
                 if (asset == null)
                     return APIOperationResponse<AssetDto>.Fail(ResponseType.NotFound, "Asset not found");
@@ -302,15 +307,7 @@ namespace Ettad.Inventory.Service.Assets.Implementation
                 var asset = await _assetRepository.FindOneAsync(
                     a => !a.IsDeleted && a.SerialNumber != null && a.SerialNumber == trimmedSerialNumber,
                     false,
-                    nameof(Asset.Item),
-                    nameof(Asset.Depot),
-                    nameof(Asset.Batch),
-                    nameof(Asset.Supplier),
-                    nameof(Asset.Manufacturer),
-                    nameof(Asset.PrimaryPurpos),
-                    $"{nameof(Asset.CurrentAssignment)}.{nameof(AssetAssignment.Custodian)}",
-                    $"{nameof(Asset.CurrentAssignment)}.{nameof(AssetAssignment.Department)}"
-                );
+                    AssetReadMapIncludes);
 
                 if (asset == null)
                 {
@@ -387,15 +384,7 @@ namespace Ettad.Inventory.Service.Assets.Implementation
                 var assets = await _assetRepository.FindAsync(
                     filter,
                     false,
-                    nameof(Asset.Item),
-                    nameof(Asset.Depot),
-                    nameof(Asset.Batch),
-                    nameof(Asset.Supplier),
-                    nameof(Asset.Manufacturer),
-                    nameof(Asset.PrimaryPurpos),
-                    $"{nameof(Asset.CurrentAssignment)}.{nameof(AssetAssignment.Custodian)}",
-                    $"{nameof(Asset.CurrentAssignment)}.{nameof(AssetAssignment.Department)}"
-                );
+                    AssetReadMapIncludes);
 
                 // Map assets individually to handle any mapping issues gracefully
                 var dtos = new List<AssetDto>();
@@ -466,15 +455,7 @@ namespace Ettad.Inventory.Service.Assets.Implementation
                 var assets = await _assetRepository.FindAsync(
                     a => !a.IsDeleted && a.ItemId == itemId && (!depotId.HasValue || depotId.Value <= 0 || a.DepotId == depotId.Value),
                     false,
-                    nameof(Asset.Item),
-                    nameof(Asset.Depot),
-                    nameof(Asset.Batch),
-                    nameof(Asset.Supplier),
-                    nameof(Asset.Manufacturer),
-                    nameof(Asset.PrimaryPurpos),
-                    $"{nameof(Asset.CurrentAssignment)}.{nameof(AssetAssignment.Custodian)}",
-                    $"{nameof(Asset.CurrentAssignment)}.{nameof(AssetAssignment.Department)}"
-                );
+                    AssetReadMapIncludes);
 
                 // Restrict to user's accessible depots
                 var userDepotIds = await _depotAccessService.GetUserAccessibleDepotIdsAsync();
