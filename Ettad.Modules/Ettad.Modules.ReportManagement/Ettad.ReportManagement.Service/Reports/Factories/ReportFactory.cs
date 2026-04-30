@@ -13,6 +13,7 @@ namespace Ettad.ReportManagement.Service.Reports.Factories
             {
                 ReportConstants.AllowanceItemsReportTemplate => new AllowanceItemsReportTemplate(),
                 ReportConstants.UserReportTemplate => new UsersReportTemplate(),
+                ReportConstants.AssetsReportTemplate => new AssetsReportTemplate(),
                 _ => new BaseReportTemplate()
             };
         }
