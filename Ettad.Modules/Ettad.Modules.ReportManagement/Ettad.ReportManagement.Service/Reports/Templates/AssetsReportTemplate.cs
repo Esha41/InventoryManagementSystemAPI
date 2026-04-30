@@ -5930,7 +5930,7 @@ namespace Ettad.ReportManagement.Service.Reports.Templates
             // Primary_Purpose
             // 
             this.Primary_Purpose.AllowNull = true;
-            this.Primary_Purpose.Description = "Select Primary Purpose";
+            this.Primary_Purpose.Description = "Primary Purpose";
             this.Primary_Purpose.MultiValue = true;
             this.Primary_Purpose.Name = "Primary_Purpose";
             this.Primary_Purpose.SelectAllValues = true;
@@ -5952,7 +5952,7 @@ namespace Ettad.ReportManagement.Service.Reports.Templates
             // Caliber_Category
             // 
             this.Caliber_Category.AllowNull = true;
-            this.Caliber_Category.Description = "Select Caliber Category";
+            this.Caliber_Category.Description = "Caliber Category";
             this.Caliber_Category.MultiValue = true;
             this.Caliber_Category.Name = "Caliber_Category";
             this.Caliber_Category.SelectAllValues = true;
@@ -5964,7 +5964,7 @@ namespace Ettad.ReportManagement.Service.Reports.Templates
             // 
             // Asset
             // 
-            this.Asset.Description = "Select Asset";
+            this.Asset.Description = "Asset";
             this.Asset.MultiValue = true;
             this.Asset.Name = "Asset";
             this.Asset.SelectAllValues = true;
