@@ -1,9 +1,10 @@
 using Cronos;
 using Ettad.Application.Common.Interfaces;
+using Ettad.CrossCutting.Comman.Idenitity;
 using Ettad.CrossCutting.Comman.Time;
+using Ettad.Data.Constants;
 using Ettad.Data.Entities.Settings;
-using SettingsEntity = Ettad.Data.Entities.Settings.Settings;
-using Ettad.EntityFramework.DataBaseContext;
+using Ettad.Data.Interfaces.Repositories;
 using Ettad.Workflows.Service.Monitoring;
 using Ettad.Workflows.Service.Settings.Dtos;
 using FluentValidation;
@@ -12,24 +13,51 @@ using Hangfire;
 using Hangfire.Common;
 using Hangfire.States;
 using Microsoft.EntityFrameworkCore;
-using Ettad.Data.Constants;
 
 namespace Ettad.Workflows.Service.Settings;
 
 public class OrderAutoRejectSettingsService : IOrderAutoRejectSettingsService
 {
-    private readonly ApplicationDbContext _context;
+    private static readonly string[] PolicyDetailIncludes =
+    {
+        nameof(OrderAutoRejectPolicy.NotifyRoles),
+        nameof(OrderAutoRejectPolicy.ReminderLeadDays),
+        nameof(OrderAutoRejectPolicy.TriggerRole),
+    };
+
+    private static readonly string[] PolicyEditIncludes =
+    {
+        nameof(OrderAutoRejectPolicy.NotifyRoles),
+        nameof(OrderAutoRejectPolicy.ReminderLeadDays),
+    };
+
+    private readonly ICrossCuttingRepository<OrderAutoRejectPolicy> _policyRepository;
+    private readonly ICrossCuttingRepository<OrderAutoRejectPolicyNotifyRole> _policyNotifyRoleRepository;
+    private readonly ICrossCuttingRepository<OrderAutoRejectPolicyReminderDay> _policyReminderDayRepository;
+    private readonly ICrossCuttingRepository<ApplicationRole> _roleRepository;
+    private readonly ICrossCuttingRepository<Ettad.Data.Entities.Settings.Settings> _settingsRepository;
+    private readonly ITransactionManager _transactionManager;
     private readonly ICurrentUserService _currentUserService;
     private readonly IDateTimeProvider _dateTimeProvider;
     private readonly IRecurringJobManager _recurringJobManager;
 
     public OrderAutoRejectSettingsService(
-        ApplicationDbContext context,
+        ICrossCuttingRepository<OrderAutoRejectPolicy> policyRepository,
+        ICrossCuttingRepository<OrderAutoRejectPolicyNotifyRole> policyNotifyRoleRepository,
+        ICrossCuttingRepository<OrderAutoRejectPolicyReminderDay> policyReminderDayRepository,
+        ICrossCuttingRepository<ApplicationRole> roleRepository,
+        ICrossCuttingRepository<Ettad.Data.Entities.Settings.Settings> settingsRepository,
+        ITransactionManager transactionManager,
         ICurrentUserService currentUserService,
         IDateTimeProvider dateTimeProvider,
         IRecurringJobManager recurringJobManager)
     {
-        _context = context;
+        _policyRepository = policyRepository;
+        _policyNotifyRoleRepository = policyNotifyRoleRepository;
+        _policyReminderDayRepository = policyReminderDayRepository;
+        _roleRepository = roleRepository;
+        _settingsRepository = settingsRepository;
+        _transactionManager = transactionManager;
         _currentUserService = currentUserService;
         _dateTimeProvider = dateTimeProvider;
         _recurringJobManager = recurringJobManager;
@@ -37,22 +65,12 @@ public class OrderAutoRejectSettingsService : IOrderAutoRejectSettingsService
 
     public async Task<OrderAutoRejectSettingsDto> GetAsync(CancellationToken cancellationToken = default)
     {
-        var policy = await _context.OrderAutoRejectPolicies
-            .AsNoTracking()
-            .Include(p => p.NotifyRoles)
-            .Include(p => p.ReminderLeadDays)
-            .Include(p => p.TriggerRole)
-            .FirstOrDefaultAsync(cancellationToken);
+        var policy = await LoadPolicyForDisplayAsync(cancellationToken);
 
         if (policy == null)
         {
             await TryMaterializePolicyFromLegacyAsync(cancellationToken);
-            policy = await _context.OrderAutoRejectPolicies
-                .AsNoTracking()
-                .Include(p => p.NotifyRoles)
-                .Include(p => p.ReminderLeadDays)
-                .Include(p => p.TriggerRole)
-                .FirstOrDefaultAsync(cancellationToken);
+            policy = await LoadPolicyForDisplayAsync(cancellationToken);
         }
 
         if (policy == null)
@@ -70,64 +88,111 @@ public class OrderAutoRejectSettingsService : IOrderAutoRejectSettingsService
         var now = _dateTimeProvider.Now;
         var userId = _currentUserService.UserId;
 
-        var policy = await _context.OrderAutoRejectPolicies
-            .Include(p => p.NotifyRoles)
-            .Include(p => p.ReminderLeadDays)
-            .FirstOrDefaultAsync(cancellationToken);
-
-        if (policy == null)
-        {
-            policy = new OrderAutoRejectPolicy
-            {
-                CreationDate = now,
-                CreatedBy = userId
-            };
-            _context.OrderAutoRejectPolicies.Add(policy);
-        }
-        else
-        {
-            _context.OrderAutoRejectPolicyNotifyRoles.RemoveRange(policy.NotifyRoles.ToList());
-            policy.NotifyRoles.Clear();
-            _context.OrderAutoRejectPolicyReminderDays.RemoveRange(policy.ReminderLeadDays.ToList());
-            policy.ReminderLeadDays.Clear();
-        }
-
-        policy.TriggerRoleId = dto.TriggerRoleId!.Trim();
-        policy.ThresholdDays = dto.ThresholdDays;
-        policy.ScanCron = cron;
-        policy.IsEnabled = dto.IsEnabled;
-        policy.NotifyRequester = dto.NotifyRequester;
-        policy.ModificationDate = now;
-        policy.ModifiedBy = userId;
-
         var distinctReminders = dto.ReminderLeadDays.Distinct().OrderByDescending(x => x).ToList();
-        foreach (var lead in distinctReminders)
-        {
-            policy.ReminderLeadDays.Add(new OrderAutoRejectPolicyReminderDay
-            {
-                LeadDays = lead,
-                CreationDate = now,
-                CreatedBy = userId
-            });
-        }
-
         var distinctNotifyRoles = dto.NotifyRoleIds
             .Where(id => !string.IsNullOrWhiteSpace(id))
             .Select(id => id.Trim())
             .Distinct(StringComparer.Ordinal)
             .ToList();
 
-        foreach (var roleId in distinctNotifyRoles)
+        await using var transaction = await _transactionManager.BeginAsync(cancellationToken);
+        try
         {
-            policy.NotifyRoles.Add(new OrderAutoRejectPolicyNotifyRole
+            var policy = await _policyRepository
+                .Find(_ => true, false, PolicyEditIncludes)
+                .OrderBy(p => p.Id)
+                .FirstOrDefaultAsync(cancellationToken);
+
+            if (policy == null)
             {
-                RoleId = roleId
-            });
+                policy = new OrderAutoRejectPolicy
+                {
+                    CreationDate = now,
+                    CreatedBy = userId,
+                    TriggerRoleId = dto.TriggerRoleId!.Trim(),
+                    ThresholdDays = dto.ThresholdDays,
+                    ScanCron = cron,
+                    IsEnabled = dto.IsEnabled,
+                    NotifyRequester = dto.NotifyRequester,
+                };
+
+                foreach (var lead in distinctReminders)
+                {
+                    policy.ReminderLeadDays.Add(new OrderAutoRejectPolicyReminderDay
+                    {
+                        LeadDays = lead,
+                        CreationDate = now,
+                        CreatedBy = userId
+                    });
+                }
+
+                foreach (var roleId in distinctNotifyRoles)
+                {
+                    policy.NotifyRoles.Add(new OrderAutoRejectPolicyNotifyRole { RoleId = roleId });
+                }
+
+                await _policyRepository.AddAsync(policy);
+            }
+            else
+            {
+                var pid = policy.Id;
+
+                foreach (var n in (await _policyNotifyRoleRepository.FindAsync(x => x.PolicyId == pid)).ToList())
+                    await _policyNotifyRoleRepository.DeleteAsync(n);
+                foreach (var r in (await _policyReminderDayRepository.FindAsync(x => x.PolicyId == pid)).ToList())
+                    await _policyReminderDayRepository.DeleteAsync(r);
+
+                policy.NotifyRoles.Clear();
+                policy.ReminderLeadDays.Clear();
+
+                policy.TriggerRoleId = dto.TriggerRoleId!.Trim();
+                policy.ThresholdDays = dto.ThresholdDays;
+                policy.ScanCron = cron;
+                policy.IsEnabled = dto.IsEnabled;
+                policy.NotifyRequester = dto.NotifyRequester;
+                policy.ModificationDate = now;
+                policy.ModifiedBy = userId;
+
+                await _policyRepository.UpdateAsync(policy);
+
+                foreach (var lead in distinctReminders)
+                {
+                    await _policyReminderDayRepository.AddAsync(new OrderAutoRejectPolicyReminderDay
+                    {
+                        PolicyId = pid,
+                        LeadDays = lead,
+                        CreationDate = now,
+                        CreatedBy = userId
+                    });
+                }
+
+                foreach (var roleId in distinctNotifyRoles)
+                {
+                    await _policyNotifyRoleRepository.AddAsync(new OrderAutoRejectPolicyNotifyRole
+                    {
+                        PolicyId = pid,
+                        RoleId = roleId
+                    });
+                }
+            }
+
+            await _transactionManager.CommitAsync(cancellationToken);
+        }
+        catch
+        {
+            await _transactionManager.RollbackAsync(cancellationToken);
+            throw;
         }
 
-        await _context.SaveChangesAsync(cancellationToken);
-
         SyncRecurringJob(cron, dto.IsEnabled);
+    }
+
+    private async Task<OrderAutoRejectPolicy?> LoadPolicyForDisplayAsync(CancellationToken cancellationToken)
+    {
+        return await _policyRepository
+            .Find(_ => true, false, PolicyDetailIncludes)
+            .OrderBy(p => p.Id)
+            .FirstOrDefaultAsync(cancellationToken);
     }
 
     private async Task ValidateUpdateAsync(UpdateOrderAutoRejectSettingsDto dto, CancellationToken cancellationToken)
@@ -136,7 +201,7 @@ public class OrderAutoRejectSettingsService : IOrderAutoRejectSettingsService
 
         if (string.IsNullOrWhiteSpace(dto.TriggerRoleId))
             failures.Add(new ValidationFailure(nameof(dto.TriggerRoleId), "A trigger role must be selected."));
-        else if (!await _context.Roles.AnyAsync(r => r.Id == dto.TriggerRoleId.Trim(), cancellationToken))
+        else if (!await _roleRepository.Find(r => r.Id == dto.TriggerRoleId.Trim()).AnyAsync(cancellationToken))
             failures.Add(new ValidationFailure(nameof(dto.TriggerRoleId), "Unknown trigger role id."));
 
         if (dto.ThresholdDays < 1 || dto.ThresholdDays > 365)
@@ -159,7 +224,7 @@ public class OrderAutoRejectSettingsService : IOrderAutoRejectSettingsService
 
         foreach (var roleId in notifyIds)
         {
-            if (!await _context.Roles.AnyAsync(r => r.Id == roleId, cancellationToken))
+            if (!await _roleRepository.Find(r => r.Id == roleId).AnyAsync(cancellationToken))
                 failures.Add(new ValidationFailure(nameof(dto.NotifyRoleIds), $"Unknown notify role id: {roleId}."));
         }
 
@@ -185,8 +250,8 @@ public class OrderAutoRejectSettingsService : IOrderAutoRejectSettingsService
     private async Task<OrderAutoRejectSettingsDto> MapToDtoAsync(OrderAutoRejectPolicy policy, CancellationToken cancellationToken)
     {
         var notifyRoleIds = policy.NotifyRoles.Select(n => n.RoleId).ToList();
-        var nameByRoleId = await _context.Roles.AsNoTracking()
-            .Where(r => notifyRoleIds.Contains(r.Id))
+        var nameByRoleId = await _roleRepository
+            .Find(r => notifyRoleIds.Contains(r.Id))
             .ToDictionaryAsync(r => r.Id, r => r.Name, cancellationToken);
 
         return new OrderAutoRejectSettingsDto
@@ -217,7 +282,7 @@ public class OrderAutoRejectSettingsService : IOrderAutoRejectSettingsService
 
         var roleName = string.IsNullOrEmpty(triggerId)
             ? null
-            : (await _context.Roles.AsNoTracking().FirstOrDefaultAsync(r => r.Id == triggerId, cancellationToken))?.Name;
+            : await _roleRepository.Find(r => r.Id == triggerId).Select(r => r.Name).FirstOrDefaultAsync(cancellationToken);
 
         return new OrderAutoRejectSettingsDto
         {
@@ -242,10 +307,10 @@ public class OrderAutoRejectSettingsService : IOrderAutoRejectSettingsService
         if (string.IsNullOrEmpty(triggerId))
             return;
 
-        if (!await _context.Roles.AnyAsync(r => r.Id == triggerId, cancellationToken))
+        if (!await _roleRepository.Find(r => r.Id == triggerId).AnyAsync(cancellationToken))
             return;
 
-        if (await _context.OrderAutoRejectPolicies.AnyAsync(cancellationToken))
+        if (await _policyRepository.Find(_ => true).AnyAsync(cancellationToken))
             return;
 
         var thresholdStr = await GetStoredValueAsync(OrderAutoRejectConstants.ThresholdDaysKey, cancellationToken);
@@ -278,16 +343,13 @@ public class OrderAutoRejectSettingsService : IOrderAutoRejectSettingsService
             });
         }
 
-        _context.OrderAutoRejectPolicies.Add(policy);
-        await _context.SaveChangesAsync(cancellationToken);
+        await _policyRepository.AddAsync(policy);
     }
 
-    private async Task<string?> GetStoredValueAsync(string key, CancellationToken cancellationToken)
+    private async Task<string?> GetStoredValueAsync(string key, CancellationToken _)
     {
-        var row = await _context.Settings.AsNoTracking()
-            .FirstOrDefaultAsync(
-                s => s.Key == key && s.Group == OrderAutoRejectConstants.Group,
-                cancellationToken);
+        var row = await _settingsRepository.FindOneAsync(
+            s => s.Key == key && s.Group == OrderAutoRejectConstants.Group);
         return row?.Value;
     }
 

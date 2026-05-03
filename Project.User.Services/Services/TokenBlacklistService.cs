@@ -1,12 +1,13 @@
+using Ettad.CrossCutting.Comman.Time;
 using Ettad.Data.Entities;
-using Ettad.EntityFramework.DataBaseContext;
+using Ettad.Data.Interfaces.Repositories;
 using Ettad.User.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using System;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Ettad.CrossCutting.Comman.Time;
 
 namespace Ettad.User.Services.Services
 {
@@ -15,16 +16,16 @@ namespace Ettad.User.Services.Services
     /// </summary>
     public class TokenBlacklistService : ITokenBlacklistService
     {
-        private readonly ApplicationDbContext _context;
+        private readonly ICrossCuttingRepository<BlacklistedToken> _blacklistedTokenRepository;
         private readonly ILogger<TokenBlacklistService> _logger;
         private readonly IDateTimeProvider _dateTimeProvider;
 
         public TokenBlacklistService(
-            ApplicationDbContext context,
+            ICrossCuttingRepository<BlacklistedToken> blacklistedTokenRepository,
             ILogger<TokenBlacklistService> logger,
             IDateTimeProvider dateTimeProvider)
         {
-            _context = context ?? throw new ArgumentNullException(nameof(context));
+            _blacklistedTokenRepository = blacklistedTokenRepository ?? throw new ArgumentNullException(nameof(blacklistedTokenRepository));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _dateTimeProvider = dateTimeProvider ?? throw new ArgumentNullException(nameof(dateTimeProvider));
         }
@@ -33,23 +34,21 @@ namespace Ettad.User.Services.Services
         /// Adds a token to the blacklist
         /// </summary>
         public async Task BlacklistTokenAsync(
-            string tokenId, 
-            string userId, 
-            DateTime expiresAt, 
-            string reason = "User logout", 
+            string tokenId,
+            string userId,
+            DateTime expiresAt,
+            string reason = "User logout",
             CancellationToken cancellationToken = default)
         {
             if (string.IsNullOrWhiteSpace(tokenId))
                 throw new ArgumentException("Token ID cannot be null or empty", nameof(tokenId));
-            
+
             if (string.IsNullOrWhiteSpace(userId))
                 throw new ArgumentException("User ID cannot be null or empty", nameof(userId));
 
             try
             {
-                // Check if token is already blacklisted
-                var existingToken = await _context.BlacklistedTokens
-                    .FirstOrDefaultAsync(bt => bt.TokenId == tokenId, cancellationToken);
+                var existingToken = await _blacklistedTokenRepository.FindOneAsync(bt => bt.TokenId == tokenId);
 
                 if (existingToken != null)
                 {
@@ -66,17 +65,16 @@ namespace Ettad.User.Services.Services
                     Reason = reason
                 };
 
-                _context.BlacklistedTokens.Add(blacklistedToken);
-                await _context.SaveChangesAsync(cancellationToken);
+                await _blacklistedTokenRepository.AddAsync(blacklistedToken);
 
                 _logger.LogInformation(
-                    "Token blacklisted successfully. TokenId: {TokenId}, UserId: {UserId}, Reason: {Reason}", 
+                    "Token blacklisted successfully. TokenId: {TokenId}, UserId: {UserId}, Reason: {Reason}",
                     tokenId, userId, reason);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, 
-                    "Error blacklisting token. TokenId: {TokenId}, UserId: {UserId}", 
+                _logger.LogError(ex,
+                    "Error blacklisting token. TokenId: {TokenId}, UserId: {UserId}",
                     tokenId, userId);
                 throw;
             }
@@ -92,8 +90,10 @@ namespace Ettad.User.Services.Services
 
             try
             {
-                var isBlacklisted = await _context.BlacklistedTokens
-                    .AnyAsync(bt => bt.TokenId == tokenId && bt.ExpiresAt > _dateTimeProvider.Now, cancellationToken);
+                var now = _dateTimeProvider.Now;
+                var isBlacklisted = await _blacklistedTokenRepository
+                    .Find(bt => bt.TokenId == tokenId && bt.ExpiresAt > now)
+                    .AnyAsync(cancellationToken);
 
                 if (isBlacklisted)
                 {
@@ -105,8 +105,6 @@ namespace Ettad.User.Services.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error checking if token is blacklisted. TokenId: {TokenId}", tokenId);
-                // In case of error, allow the token (fail open) - better than blocking all users
-                // The token will still be validated by standard JWT validation
                 return false;
             }
         }
@@ -120,17 +118,19 @@ namespace Ettad.User.Services.Services
             try
             {
                 var now = _dateTimeProvider.Now;
-                var expiredTokens = await _context.BlacklistedTokens
-                    .Where(bt => bt.ExpiresAt <= now)
+                var expiredTokens = await _blacklistedTokenRepository
+                    .Find(bt => bt.ExpiresAt <= now)
                     .ToListAsync(cancellationToken);
 
                 if (expiredTokens.Any())
                 {
-                    _context.BlacklistedTokens.RemoveRange(expiredTokens);
-                    await _context.SaveChangesAsync(cancellationToken);
+                    foreach (var token in expiredTokens)
+                    {
+                        await _blacklistedTokenRepository.DeleteAsync(token);
+                    }
 
                     _logger.LogInformation(
-                        "Cleaned up {Count} expired blacklisted tokens", 
+                        "Cleaned up {Count} expired blacklisted tokens",
                         expiredTokens.Count);
                 }
             }
@@ -142,4 +142,3 @@ namespace Ettad.User.Services.Services
         }
     }
 }
-

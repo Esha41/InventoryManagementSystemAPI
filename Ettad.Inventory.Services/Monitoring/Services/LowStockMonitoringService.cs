@@ -5,7 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Ettad.Data.Entities;
 using Ettad.Data.Enums;
-using Ettad.EntityFramework.DataBaseContext;
+using Ettad.Data.Interfaces.Repositories;
 using Ettad.Inventory.Service.Monitoring.Dtos;
 using Ettad.ResponseHandler.Consts;
 using Ettad.ResponseHandler.Models;
@@ -17,19 +17,25 @@ namespace Ettad.Inventory.Service.Monitoring.Services
 {
     public class LowStockMonitoringService : ILowStockMonitoringService
     {
-        private readonly ApplicationDbContext _context;
         private readonly ILogger<LowStockMonitoringService> _logger;
+        private readonly ICrossCuttingRepository<BaseItem> _baseItemRepository;
+        private readonly ICrossCuttingRepository<InventoryDetail> _inventoryDetailsRepository;
+        private readonly ICrossCuttingRepository<SupplyDetail> _supplyDetailsRepository;
         private readonly ICurrentUserService _currentUserService;
         private readonly IDepotAccessService _depotAccessService;
 
         public LowStockMonitoringService(
-            ApplicationDbContext context,
             ILogger<LowStockMonitoringService> logger,
+            ICrossCuttingRepository<BaseItem> baseItemRepository,
+            ICrossCuttingRepository<InventoryDetail> inventoryDetailsRepository,
+            ICrossCuttingRepository<SupplyDetail> supplyDetailsRepository,
             ICurrentUserService currentUserService,
             IDepotAccessService depotAccessService)
         {
-            _context = context;
             _logger = logger;
+            _baseItemRepository = baseItemRepository;
+            _inventoryDetailsRepository = inventoryDetailsRepository;
+            _supplyDetailsRepository = supplyDetailsRepository;
             _currentUserService = currentUserService;
             _depotAccessService = depotAccessService;
         }
@@ -63,9 +69,8 @@ namespace Ettad.Inventory.Service.Monitoring.Services
 
                 IReadOnlyList<long>? depotFilter = distinct.Count > 0 ? distinct : null;
 
-                var itemsToCheck = await _context.BaseItems
-                    .Where(i => i.MinimumQuantity.HasValue && i.MinimumQuantity.Value > 0 && !i.IsDeleted)
-                    .AsNoTracking()
+                var itemsToCheck = await _baseItemRepository
+                    .Find(i => i.MinimumQuantity.HasValue && i.MinimumQuantity.Value > 0 && !i.IsDeleted)
                     .ToListAsync();
 
                 _logger.LogInformation($"Found {itemsToCheck.Count} items with minimum quantity configured.");
@@ -95,9 +100,8 @@ namespace Ettad.Inventory.Service.Monitoring.Services
 
             try
             {
-                var itemsToCheck = await _context.BaseItems
-                    .Where(i => i.MinimumQuantity.HasValue && i.MinimumQuantity.Value > 0 && !i.IsDeleted)
-                    .AsNoTracking()
+                var itemsToCheck = await _baseItemRepository
+                    .Find(i => i.MinimumQuantity.HasValue && i.MinimumQuantity.Value > 0 && !i.IsDeleted)
                     .ToListAsync();
 
                 _logger.LogInformation($"Found {itemsToCheck.Count} items with minimum quantity configured.");
@@ -136,17 +140,21 @@ namespace Ettad.Inventory.Service.Monitoring.Services
 
         private async Task<LowStockItemInfo?> CheckItemStockAsync(BaseItem item, IReadOnlyList<long>? effectiveDepotIds)
         {
-            var inventoryQuery = _context.InventoryDetails
-                .Where(id => id.ItemId == item.Id && !id.Inventory.IsDeleted);
+            var inventoryQuery = _inventoryDetailsRepository.Find(
+                id => id.ItemId == item.Id && !id.Inventory.IsDeleted,
+                false,
+                nameof(InventoryDetail.Inventory));
 
             if (effectiveDepotIds != null && effectiveDepotIds.Count > 0)
                 inventoryQuery = inventoryQuery.Where(id => effectiveDepotIds.Contains(id.Inventory.DepoId));
 
             var totalStock = await inventoryQuery.SumAsync(id => id.ItemQuantity);
 
-            var supplyDetails = await _context.SupplyDetails
-                .Include(sd => sd.Supply)
-                .Where(sd => sd.ItemId == item.Id && !sd.IsDeleted && !sd.Supply.IsDeleted)
+            var supplyDetails = await _supplyDetailsRepository
+                .Find(
+                    sd => sd.ItemId == item.Id && !sd.IsDeleted && !sd.Supply.IsDeleted,
+                    false,
+                    nameof(SupplyDetail.Supply))
                 .Select(sd => new { sd.Quantity, sd.Supply.SubmissionStatus })
                 .ToListAsync();
 

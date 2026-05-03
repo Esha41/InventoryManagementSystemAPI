@@ -20,6 +20,9 @@ namespace Ettad.Repository.Repositories
         }
         #endregion
 
+        public Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+            => _context.SaveChangesAsync(cancellationToken);
+
         #region Add entity async
         public async Task<T> AddAsync(T entity)
         {

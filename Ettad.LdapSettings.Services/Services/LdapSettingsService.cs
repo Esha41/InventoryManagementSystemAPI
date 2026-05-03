@@ -1,5 +1,5 @@
 using Ettad.Application.Common.Interfaces;
-using Ettad.EntityFramework.DataBaseContext;
+using Ettad.Data.Interfaces.Repositories;
 using Ettad.LdapSettings.Services.Interfaces;
 using Ettad.ResponseHandler.Consts;
 using Ettad.ResponseHandler.Models;
@@ -17,18 +17,18 @@ namespace Ettad.LdapSettings.Services.Services
     /// </summary>
     public class LdapSettingsService : ILdapSettingsService
     {
-        private readonly ApplicationDbContext _dbContext;
+        private readonly ICrossCuttingRepository<SettingsEntity> _settingsRepository;
         private readonly LdapOptions _fallbackLdapOptions;
         private readonly ICurrentUserService _currentUserService;
         private readonly IDateTimeProvider _dateTimeProvider;
 
         public LdapSettingsService(
-            ApplicationDbContext dbContext,
+            ICrossCuttingRepository<SettingsEntity> settingsRepository,
             ICurrentUserService currentUserService,
             IDateTimeProvider dateTimeProvider,
             IOptions<LdapOptions>? fallbackOptions = null)
         {
-            _dbContext = dbContext ?? throw new ArgumentNullException(nameof(dbContext));
+            _settingsRepository = settingsRepository ?? throw new ArgumentNullException(nameof(settingsRepository));
             _currentUserService = currentUserService ?? throw new ArgumentNullException(nameof(currentUserService));
             _dateTimeProvider = dateTimeProvider ?? throw new ArgumentNullException(nameof(dateTimeProvider));
             _fallbackLdapOptions = fallbackOptions?.Value ?? new LdapOptions();
@@ -40,8 +40,8 @@ namespace Ettad.LdapSettings.Services.Services
             {
                 var userId = _currentUserService.UserId ?? "System";
 
-                var existingSettings = await _dbContext.Settings
-                    .Where(s => s.Group == General.Group)
+                var existingSettings = await _settingsRepository
+                    .Find(s => s.Group == General.Group)
                     .ToListAsync(cancellationToken);
 
                 var settingsToUpdate = new Dictionary<string, SettingsEntity>(StringComparer.OrdinalIgnoreCase);
@@ -72,7 +72,7 @@ namespace Ettad.LdapSettings.Services.Services
                         existingSetting.Value = value;
                         existingSetting.ModificationDate = _dateTimeProvider.Now;
                         existingSetting.ModifiedBy = userId;
-                        _dbContext.Settings.Update(existingSetting);
+                        await _settingsRepository.UpdateAsync(existingSetting);
                     }
                     else
                     {
@@ -83,11 +83,10 @@ namespace Ettad.LdapSettings.Services.Services
                             Group = General.Group,
                             CreatedBy = userId
                         };
-                        await _dbContext.Settings.AddAsync(newSetting, cancellationToken);
+                        await _settingsRepository.AddAsync(newSetting);
                     }
                 }
 
-                await _dbContext.SaveChangesAsync(cancellationToken);
                 return APIOperationResponse<bool>.Success(true);
             }
             catch (Exception ex)
@@ -102,8 +101,8 @@ namespace Ettad.LdapSettings.Services.Services
         {
             try
             {
-                var ldapSettings = await _dbContext.Settings
-                    .Where(s => s.Group == General.Group)
+                var ldapSettings = await _settingsRepository
+                    .Find(s => s.Group == General.Group)
                     .ToListAsync(cancellationToken);
 
                 if (ldapSettings.Count == 0)
@@ -111,8 +110,9 @@ namespace Ettad.LdapSettings.Services.Services
                     return APIOperationResponse<bool>.Success(true);
                 }
 
-                _dbContext.Settings.RemoveRange(ldapSettings);
-                await _dbContext.SaveChangesAsync(cancellationToken);
+                foreach (var setting in ldapSettings)
+                    await _settingsRepository.DeleteAsync(setting);
+
                 return APIOperationResponse<bool>.Success(true);
             }
             catch (Exception ex)
@@ -127,9 +127,8 @@ namespace Ettad.LdapSettings.Services.Services
         {
             try
             {
-                var settings = await _dbContext.Settings
-                    .AsNoTracking()
-                    .Where(s => s.Group != null && s.Group == General.Group)
+                var settings = await _settingsRepository
+                    .Find(s => s.Group != null && s.Group == General.Group)
                     .ToListAsync(cancellationToken);
 
                 LdapOptions ldapOptions;
