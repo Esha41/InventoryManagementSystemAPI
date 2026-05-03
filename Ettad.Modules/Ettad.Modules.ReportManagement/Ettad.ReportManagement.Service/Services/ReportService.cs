@@ -528,6 +528,12 @@ namespace Ettad.ReportManagement.Service.Services
                         Url = ReportConstants.UserReportTemplate,
                         Name = "Users Report",
                         Description = "Template for Managed Users"
+                    },
+                    new ReportTemplateDto
+                    {
+                        Url = ReportConstants.AssetsReportTemplate,
+                        Name = "Assets Report",
+                        Description = "Template for all Assets"
                     }
                 };
 
