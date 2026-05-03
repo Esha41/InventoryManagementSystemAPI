@@ -1,20 +1,65 @@
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.AspNetCore.Hosting;
-using Microsoft.Extensions.Hosting;
-using System;
-using System.Linq;
-using System.Threading.Tasks;
-using Ettad.EntityFramework.DataBaseContext;
 using Ettad.Data.Entities;
 using Ettad.Data.Enums;
-using System.Collections.Generic;
+using Ettad.EntityFramework.DataBaseContext;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Serilog;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
 {
     public static class ApplicationDbInitializer
     {
+        /// <summary>
+        /// Ensures the log database exists before the application starts writing to it.
+        /// </summary>
+        public static void EnsureLogDatabaseExists(IConfiguration configuration)
+        {
+            try
+            {
+                var logConnectionString = configuration.GetConnectionString("LogConnection");
+                if (string.IsNullOrEmpty(logConnectionString))
+                {
+                    Log.Warning("LogConnection string not found. Skipping log database creation.");
+                    return;
+                }
+
+                var builder = new Microsoft.Data.SqlClient.SqlConnectionStringBuilder(logConnectionString);
+                var databaseName = builder.InitialCatalog;
+                var masterConnectionString = logConnectionString.Replace(databaseName, "master");
+
+                using var connection = new Microsoft.Data.SqlClient.SqlConnection(masterConnectionString);
+                connection.Open();
+
+                var checkDbCommand = connection.CreateCommand();
+                checkDbCommand.CommandText = $"SELECT database_id FROM sys.databases WHERE Name = '{databaseName}'";
+                var exists = checkDbCommand.ExecuteScalar();
+
+                if (exists == null)
+                {
+                    var createDbCommand = connection.CreateCommand();
+                    createDbCommand.CommandText = $"CREATE DATABASE [{databaseName}]";
+                    createDbCommand.ExecuteNonQuery();
+
+                    Log.Information("Log database '{DatabaseName}' created automatically", databaseName);
+                }
+                else
+                {
+                    Log.Information("Log database '{DatabaseName}' already exists", databaseName);
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "Failed to create log database automatically. It may need to be created manually.");
+            }
+        }
+
         /// <summary>
         /// Checks for pending migrations and applies them if any exist
         /// </summary>
@@ -23,7 +68,7 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
             try
             {
                 var context = services.GetRequiredService<ApplicationDbContext>();
-                
+
                 if (!context.Database.IsSqlServer())
                 {
                     Log.Information("Database is not SQL Server. Skipping migration check.");
@@ -36,13 +81,13 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
 
                 if (pendingMigrationsList.Any())
                 {
-                    Log.Information("Found {Count} pending migration(s): {Migrations}", 
-                        pendingMigrationsList.Count, 
+                    Log.Information("Found {Count} pending migration(s): {Migrations}",
+                        pendingMigrationsList.Count,
                         string.Join(", ", pendingMigrationsList));
-                    
+
                     // Apply pending migrations
                     await context.Database.MigrateAsync();
-                    
+
                     Log.Information("Successfully applied {Count} pending migration(s)", pendingMigrationsList.Count);
                 }
                 else
@@ -62,49 +107,49 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
             try
             {
                 var context = services.GetRequiredService<ApplicationDbContext>();
-                
+
                 // Get environment to check if we're in development
                 var environment = services.GetService<IWebHostEnvironment>();
                 var isDevelopment = environment?.IsDevelopment() ?? false;
-                
+
                 Console.WriteLine("=== Starting Database Seeding ===");
                 Console.WriteLine($"Environment: {(isDevelopment ? "Development" : "Production")}");
-                
+
                 // Seed countries data
                 await SeedCountriesDataAsync(context);
                 Console.WriteLine("✓ Countries seeded");
-                
+
                 // Seed suppliers data
                 await SeedSuppliersDataAsync(context);
                 Console.WriteLine("✓ Suppliers seeded");
-                
+
                 // Seed manufacturers data
                 await SeedManufacturersDataAsync(context);
                 Console.WriteLine("✓ Manufacturers seeded");
-                
+
                 // Seed item type lookup data
                 await SeedItemTypeLookupDataAsync(context);
                 Console.WriteLine("✓ Item Types seeded");
-                
+
                 // Only seed items, inventory, and allowance data in Development environment
                 if (isDevelopment)
                 {
                     // Seed ammunition data
                     await SeedAmmunitionDataAsync(context);
                     Console.WriteLine("✓ Ammunition seeded");
-                    
+
                     // Seed weapon data
                     await SeedWeaponDataAsync(context);
                     Console.WriteLine("✓ Weapons seeded");
-                    
+
                     // Seed explosive data
                     await SeedExplosiveDataAsync(context);
                     Console.WriteLine("✓ Explosives seeded");
-                    
+
                     // Seed inventory data based on seeded depots and ammunitions
                     await SeedInventoryDataAsync(context);
                     Console.WriteLine("✓ Inventory seeded");
-                    
+
                     // Seed allowance data for all departments and all items
                     await SeedAllowanceDataAsync(context);
                     Console.WriteLine("✓ Allowances seeded");
@@ -113,7 +158,7 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 {
                     Console.WriteLine("⚠ Skipping items, inventory, and allowance seeding (not in Development environment)");
                 }
-                
+
                 Console.WriteLine("=== Database Seeding Completed Successfully ===");
             }
             catch (Exception ex)
@@ -1519,8 +1564,8 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 foreach (var ammunition in ammunitions)
                 {
                     // Get quantity from dictionary, default to 100 if not found
-                    var quantity = ammunitionQuantities.TryGetValue(ammunition.ItemNo, out int qty) 
-                        ? qty 
+                    var quantity = ammunitionQuantities.TryGetValue(ammunition.ItemNo, out int qty)
+                        ? qty
                         : 100;
 
                     allowanceItems.Add(new AllowanceItem
@@ -1538,8 +1583,8 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 foreach (var weapon in weapons)
                 {
                     // Get quantity from dictionary, default to 10 if not found
-                    var quantity = weaponQuantities.TryGetValue(weapon.ItemNo, out int qty) 
-                        ? qty 
+                    var quantity = weaponQuantities.TryGetValue(weapon.ItemNo, out int qty)
+                        ? qty
                         : 10;
 
                     allowanceItems.Add(new AllowanceItem
@@ -1557,8 +1602,8 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 foreach (var explosive in explosives)
                 {
                     // Get quantity from dictionary, default to 50 if not found
-                    var quantity = explosiveQuantities.TryGetValue(explosive.ItemNo, out int qty) 
-                        ? qty 
+                    var quantity = explosiveQuantities.TryGetValue(explosive.ItemNo, out int qty)
+                        ? qty
                         : 50;
 
                     allowanceItems.Add(new AllowanceItem

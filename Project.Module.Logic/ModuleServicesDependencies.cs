@@ -1,18 +1,17 @@
 using Ettad.Data.Entities;
 using Ettad.Module.lookup.Dtos;
 using Ettad.Module.lookup.Interfaces;
+using Ettad.Module.lookup.Mapper;
 using Ettad.Module.lookup.Services;
 using FluentValidation;
-using MediatR;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Win32;
 using System.Reflection;
 
 namespace Ettad.Module.Logic.Extensions
 {
-    public static class ModuleServicesDependences
+    public static class ModuleServicesDependencies
     {
-        public static IServiceCollection AddModuleLogicServices(this IServiceCollection services)
+        public static IServiceCollection AddLookUpervices(this IServiceCollection services)
         {
             // Register MediatR
             services.AddMediatR(cfg => {
@@ -35,6 +34,9 @@ namespace Ettad.Module.Logic.Extensions
 
             // Register Validators
             services.AddValidatorsFromAssembly(Assembly.GetExecutingAssembly());
+
+            // Register Mapper
+            services.AddAutoMapper(typeof(LookupMappingProfile));
 
             return services;
         }

@@ -9,9 +9,9 @@ using Ettad.User.Services.Helpers;
 
 namespace Ettad.User.Services
 {
-    public static class ModuleServicesDependences
+    public static class ModuleServicesDependencies
     {
-        public static IServiceCollection AddReposetoriesServices(this IServiceCollection service)
+        public static IServiceCollection AddUserServices(this IServiceCollection service)
         {
             service.AddAutoMapper(typeof(MappingProfile));
             service.AddTransient<IHelpureService, HelpureService>();

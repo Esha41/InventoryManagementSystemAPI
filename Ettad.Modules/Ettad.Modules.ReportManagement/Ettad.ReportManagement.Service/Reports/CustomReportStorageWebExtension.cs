@@ -129,7 +129,6 @@ namespace Ettad.ReportManagement.Service.Reports
                 }
 
                 urls[ReportConstants.BaseReportTemplate] = "Base Report Template";
-                urls[ReportConstants.AllowanceItemsReportTemplate] = "Allowance Items Report";
                 urls[ReportConstants.UserReportTemplate] = "Users Report";
                 urls[ReportConstants.AssetsReportTemplate] = "Assets Template";
                 return urls;
