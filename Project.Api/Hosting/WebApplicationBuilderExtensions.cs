@@ -32,6 +32,7 @@ public static class WebApplicationBuilderExtensions
 
         return services;
     }
+
     public static IServiceCollection AddEttadReporting(
         this IServiceCollection services,
         IConfiguration configuration,
