@@ -10,9 +10,6 @@ namespace Ettad.Repository.Repositories
         {
         }
 
-        /// <summary>
-        /// Same <see cref="DatabaseFacade"/> as all repositories sharing this DbContext instance (for scoped transactions).
-        /// </summary>
-        public DatabaseFacade Database => _context.Database;
+        
     }
 }
