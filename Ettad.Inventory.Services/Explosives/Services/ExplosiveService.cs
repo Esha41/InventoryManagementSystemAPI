@@ -11,7 +11,6 @@ using Ettad.Application.Common.Interfaces;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using OfficeOpenXml;
-using Ettad.EntityFramework.DataBaseContext;
 using Ettad.CrossCutting.Comman.Time;
 using Ettad.CrossCutting.Comman.Models;
 using Ettad.Data.Interfaces.Repositories;
@@ -23,13 +22,36 @@ namespace Ettad.Inventory.Service.Explosives.Services
 {
     public class ExplosiveService : IExplosiveService
     {
+        private static readonly string[] ExplosiveTemplateSampleIncludes =
+        {
+            nameof(Explosive.Compatibility),
+            nameof(Explosive.HazardDivision),
+            nameof(Explosive.Classification),
+            nameof(Explosive.Type),
+            nameof(Explosive.Unit),
+            nameof(Explosive.BaseItemPrimaryPurposes),
+            $"{nameof(Explosive.BaseItemPrimaryPurposes)}.{nameof(BaseItemPrimaryPurpos.PrimaryPurpos)}"
+        };
+
         private readonly ICrossCuttingRepository<Explosive> _explosiveRepository;
+        private readonly ICrossCuttingRepository<BaseItemPrimaryPurpos> _baseItemPrimaryPurposRepository;
+        private readonly ICrossCuttingRepository<ItemDepartmentAssignment> _itemDepartmentAssignmentRepository;
+        private readonly ICrossCuttingRepository<InventoryDetail> _inventoryDetailRepository;
+        private readonly ICrossCuttingRepository<RequestItem> _requestItemRepository;
+        private readonly ICrossCuttingRepository<SupplyDetail> _supplyDetailRepository;
+        private readonly ICrossCuttingRepository<AllowanceItem> _allowanceItemRepository;
+        private readonly ICrossCuttingRepository<AssetSupplyDetail> _assetSupplyDetailRepository;
+        private readonly ICrossCuttingRepository<Asset> _assetRepository;
+        private readonly ICrossCuttingRepository<Compatibility> _compatibilityRepository;
+        private readonly ICrossCuttingRepository<HazardDivision> _hazardDivisionRepository;
+        private readonly ICrossCuttingRepository<Classification> _classificationRepository;
+        private readonly ICrossCuttingRepository<ItemTypeLookup> _itemTypeLookupRepository;
+        private readonly ICrossCuttingRepository<Unit> _unitRepository;
         private readonly IMapper _mapper;
         private readonly IValidator<CreateUpdateExplosiveDto> _validator;
         private readonly ICurrentUserService _currentUserService;
         private readonly ILogger<ExplosiveService> _logger;
         private readonly IFileUploadService _fileUploadService;
-        private readonly ApplicationDbContext _context;
         private readonly ITransactionManager _transactionManager;
         private readonly IDateTimeProvider _dateTimeProvider;
         private readonly AssetImportManager<CreateUpdateExplosiveDto, ExplosiveImportDto> _importManager;
@@ -53,24 +75,48 @@ namespace Ettad.Inventory.Service.Explosives.Services
 
         public ExplosiveService(
             ICrossCuttingRepository<Explosive> explosiveRepository,
+            ICrossCuttingRepository<BaseItemPrimaryPurpos> baseItemPrimaryPurposRepository,
+            ICrossCuttingRepository<ItemDepartmentAssignment> itemDepartmentAssignmentRepository,
+            ICrossCuttingRepository<InventoryDetail> inventoryDetailRepository,
+            ICrossCuttingRepository<RequestItem> requestItemRepository,
+            ICrossCuttingRepository<SupplyDetail> supplyDetailRepository,
+            ICrossCuttingRepository<AllowanceItem> allowanceItemRepository,
+            ICrossCuttingRepository<AssetSupplyDetail> assetSupplyDetailRepository,
+            ICrossCuttingRepository<Asset> assetRepository,
+            ICrossCuttingRepository<Compatibility> compatibilityRepository,
+            ICrossCuttingRepository<HazardDivision> hazardDivisionRepository,
+            ICrossCuttingRepository<Classification> classificationRepository,
+            ICrossCuttingRepository<ItemTypeLookup> itemTypeLookupRepository,
+            ICrossCuttingRepository<Unit> unitRepository,
             IMapper mapper,
             IValidator<CreateUpdateExplosiveDto> validator,
             ICurrentUserService currentUserService,
             ILogger<ExplosiveService> logger,
             IFileUploadService fileUploadService,
             IExcelImportService excelImportService,
-            ApplicationDbContext context,
             ITransactionManager transactionManager,
             IDateTimeProvider dateTimeProvider,
             IItemDepartmentAssignmentService itemDepartmentAssignmentService)
         {
             _explosiveRepository = explosiveRepository;
+            _baseItemPrimaryPurposRepository = baseItemPrimaryPurposRepository;
+            _itemDepartmentAssignmentRepository = itemDepartmentAssignmentRepository;
+            _inventoryDetailRepository = inventoryDetailRepository;
+            _requestItemRepository = requestItemRepository;
+            _supplyDetailRepository = supplyDetailRepository;
+            _allowanceItemRepository = allowanceItemRepository;
+            _assetSupplyDetailRepository = assetSupplyDetailRepository;
+            _assetRepository = assetRepository;
+            _compatibilityRepository = compatibilityRepository;
+            _hazardDivisionRepository = hazardDivisionRepository;
+            _classificationRepository = classificationRepository;
+            _itemTypeLookupRepository = itemTypeLookupRepository;
+            _unitRepository = unitRepository;
             _mapper = mapper;
             _validator = validator;
             _currentUserService = currentUserService;
             _logger = logger;
             _fileUploadService = fileUploadService;
-            _context = context;
             _transactionManager = transactionManager;
             _dateTimeProvider = dateTimeProvider;
             _itemDepartmentAssignmentService = itemDepartmentAssignmentService;
@@ -99,7 +145,7 @@ namespace Ettad.Inventory.Service.Explosives.Services
                     nameof(Explosive.Classification),
                     nameof(Explosive.Type),
                     nameof(Explosive.Unit),
-                    "BaseItemPrimaryPurposes.PrimaryPurpos"
+                    $"{nameof(Explosive.BaseItemPrimaryPurposes)}.{nameof(BaseItemPrimaryPurpos.PrimaryPurpos)}"
                 );
 
                 if (explosive == null)
@@ -134,7 +180,7 @@ namespace Ettad.Inventory.Service.Explosives.Services
                     nameof(Explosive.Classification),
                     nameof(Explosive.Type),
                     nameof(Explosive.Unit),
-                    "BaseItemPrimaryPurposes.PrimaryPurpos"
+                    $"{nameof(Explosive.BaseItemPrimaryPurposes)}.{nameof(BaseItemPrimaryPurpos.PrimaryPurpos)}"
                 );
 
                 var dtos = _mapper.Map<List<ExplosiveDto>>(explosives);
@@ -174,7 +220,7 @@ namespace Ettad.Inventory.Service.Explosives.Services
                     nameof(Explosive.Classification),
                     nameof(Explosive.Type),
                     nameof(Explosive.Unit),
-                    "BaseItemPrimaryPurposes.PrimaryPurpos"
+                    $"{nameof(Explosive.BaseItemPrimaryPurposes)}.{nameof(BaseItemPrimaryPurpos.PrimaryPurpos)}"
                 );
 
                 var paginatedEntities = await PaginatedList<Explosive>.CreateAsyncForTableBinding(query, request);
@@ -257,10 +303,10 @@ namespace Ettad.Inventory.Service.Explosives.Services
 
                 if (inputDto.PrimaryPurposIds != null && inputDto.PrimaryPurposIds.Any())
                 {
-                    createdExplosive.BaseItemPrimaryPurposes = inputDto.PrimaryPurposIds
-                        .Select(id => new BaseItemPrimaryPurpos { BaseItemId = createdExplosive.Id, PrimaryPurposId = id })
+                    var purposeRows = inputDto.PrimaryPurposIds
+                        .Select(pid => new BaseItemPrimaryPurpos { BaseItemId = createdExplosive.Id, PrimaryPurposId = pid })
                         .ToList();
-                    await _context.SaveChangesAsync();
+                    await _baseItemPrimaryPurposRepository.AddRangeAsync(purposeRows);
                 }
 
                 if (files != null && files.Any())
@@ -314,19 +360,17 @@ namespace Ettad.Inventory.Service.Explosives.Services
 
                 await _explosiveRepository.UpdateAsync(existingExplosive);
 
-                var existingPurposes = await _context.BaseItemPrimaryPurposes
-                    .Where(x => x.BaseItemId == id)
-                    .ToListAsync();
-                _context.BaseItemPrimaryPurposes.RemoveRange(existingPurposes);
+                var existingPurposes = (await _baseItemPrimaryPurposRepository.FindAsync(x => x.BaseItemId == id)).ToList();
+                foreach (var p in existingPurposes)
+                    await _baseItemPrimaryPurposRepository.DeleteAsync(p);
 
                 if (inputDto.PrimaryPurposIds != null && inputDto.PrimaryPurposIds.Any())
                 {
                     var newPurposes = inputDto.PrimaryPurposIds
                         .Select(pid => new BaseItemPrimaryPurpos { BaseItemId = id, PrimaryPurposId = pid })
                         .ToList();
-                    await _context.BaseItemPrimaryPurposes.AddRangeAsync(newPurposes);
+                    await _baseItemPrimaryPurposRepository.AddRangeAsync(newPurposes);
                 }
-                await _context.SaveChangesAsync();
 
                 return APIOperationResponse<bool>.Success(true, "Explosive updated successfully");
             }
@@ -408,26 +452,11 @@ namespace Ettad.Inventory.Service.Explosives.Services
                 await using var transaction = await _transactionManager.BeginAsync();
                 try
                 {
-                    await _context.Database.ExecuteSqlRawAsync(
-                        "DELETE FROM BaseItemPrimaryPurposes WHERE BaseItemId = {0}", id);
+                    var purposes = (await _baseItemPrimaryPurposRepository.FindAsync(x => x.BaseItemId == id)).ToList();
+                    foreach (var p in purposes)
+                        await _baseItemPrimaryPurposRepository.DeleteAsync(p);
 
-                    var explosiveDeleted = await _context.Database.ExecuteSqlRawAsync(
-                        "DELETE FROM Explosives WHERE Id = {0}", id);
-
-                    if (explosiveDeleted == 0)
-                    {
-                        await _transactionManager.RollbackAsync();
-                        return APIOperationResponse<bool>.Fail(ResponseType.NotFound, "Explosive not found");
-                    }
-
-                    var baseDeleted = await _context.Database.ExecuteSqlRawAsync(
-                        "DELETE FROM BaseItems WHERE Id = {0}", id);
-
-                    if (baseDeleted == 0)
-                    {
-                        await _transactionManager.RollbackAsync();
-                        return APIOperationResponse<bool>.Fail(ResponseType.InternalServerError, "Failed to remove base item record");
-                    }
+                    await _explosiveRepository.DeleteAsync(explosive);
 
                     await _transactionManager.CommitAsync();
                     return APIOperationResponse<bool>.Success(true, "Explosive permanently deleted");
@@ -454,32 +483,39 @@ namespace Ettad.Inventory.Service.Explosives.Services
         /// </summary>
         private async Task<bool> ItemHasReferencesAsync(long itemId)
         {
-            var hasDeptAssignment = await _context.ItemDepartmentAssignments
-                .AnyAsync(x => x.ItemId == itemId);
+            var hasDeptAssignment = await _itemDepartmentAssignmentRepository
+                .Find(x => x.ItemId == itemId)
+                .AnyAsync();
             if (hasDeptAssignment) return true;
 
-            var hasInventory = await _context.InventoryDetails
-                .AnyAsync(x => x.ItemId == itemId);
+            var hasInventory = await _inventoryDetailRepository
+                .Find(x => x.ItemId == itemId)
+                .AnyAsync();
             if (hasInventory) return true;
 
-            var hasRequestItem = await _context.RequestItems
-                .AnyAsync(x => x.ItemId == itemId && !x.IsDeleted);
+            var hasRequestItem = await _requestItemRepository
+                .Find(x => x.ItemId == itemId && !x.IsDeleted)
+                .AnyAsync();
             if (hasRequestItem) return true;
 
-            var hasSupplyDetail = await _context.SupplyDetails
-                .AnyAsync(x => x.ItemId == itemId && !x.IsDeleted);
+            var hasSupplyDetail = await _supplyDetailRepository
+                .Find(x => x.ItemId == itemId && !x.IsDeleted)
+                .AnyAsync();
             if (hasSupplyDetail) return true;
 
-            var hasAllowance = await _context.AllowanceItems
-                .AnyAsync(x => x.ItemId == itemId && !x.IsDeleted);
+            var hasAllowance = await _allowanceItemRepository
+                .Find(x => x.ItemId == itemId && !x.IsDeleted)
+                .AnyAsync();
             if (hasAllowance) return true;
 
-            var hasAssetSupply = await _context.AssetSupplyDetails
-                .AnyAsync(x => x.ItemId == itemId && !x.IsDeleted);
+            var hasAssetSupply = await _assetSupplyDetailRepository
+                .Find(x => x.ItemId == itemId && !x.IsDeleted)
+                .AnyAsync();
             if (hasAssetSupply) return true;
 
-            var hasAsset = await _context.Assets
-                .AnyAsync(x => x.ItemId == itemId && !x.IsDeleted);
+            var hasAsset = await _assetRepository
+                .Find(x => x.ItemId == itemId && !x.IsDeleted)
+                .AnyAsync();
             if (hasAsset) return true;
 
             return false;
@@ -541,14 +577,10 @@ namespace Ettad.Inventory.Service.Explosives.Services
                         "Distribution", "Reference No", "Compatibility", "Hazard Division", "Classification", "Type", "Notes"
                     };
 
-            var firstAsset = await _context.Explosives
-                .Include(e => e.Compatibility)
-                .Include(e => e.HazardDivision)
-                .Include(e => e.Classification)
-                .Include(e => e.Type)
-                .Include(e => e.Unit)
-                .Include(e => e.BaseItemPrimaryPurposes).ThenInclude(bp => bp.PrimaryPurpos)
-                .FirstOrDefaultAsync(e => !e.IsDeleted);
+            var firstAsset = await _explosiveRepository.FindOneAsync(
+                e => !e.IsDeleted,
+                false,
+                ExplosiveTemplateSampleIncludes);
 
             return await _importManager.GenerateTemplateAsync(
                 language,
@@ -606,11 +638,11 @@ namespace Ettad.Inventory.Service.Explosives.Services
 
         private async Task LoadLookupsAsync(List<ExplosiveImportDto> importItems = null)
         {
-             _compatibilities = await _context.Compatibilities.Where(c => !c.IsDeleted).ToListAsync();
-             _hazardDivisions = await _context.HazardDivisions.Where(h => !h.IsDeleted).ToListAsync();
-             _classifications = await _context.Classifications.Where(c => !c.IsDeleted).ToListAsync();
-             _itemTypes = await _context.ItemTypes.Where(i => !i.IsDeleted && i.ItemType == ItemType.Explosive).ToListAsync();
-             _units = await _context.Units.Where(u => !u.IsDeleted && u.ItemType == ItemType.Explosive).ToListAsync();
+             _compatibilities = await _compatibilityRepository.Find(c => !c.IsDeleted).ToListAsync();
+             _hazardDivisions = await _hazardDivisionRepository.Find(h => !h.IsDeleted).ToListAsync();
+             _classifications = await _classificationRepository.Find(c => !c.IsDeleted).ToListAsync();
+             _itemTypes = await _itemTypeLookupRepository.Find(i => !i.IsDeleted && i.ItemType == ItemType.Explosive).ToListAsync();
+             _units = await _unitRepository.Find(u => !u.IsDeleted && u.ItemType == ItemType.Explosive).ToListAsync();
  
              // Build cache
              _cachedLookups["Compatibilities"] = BuildLookup(_compatibilities, x => x.NameEn, x => x.NameAr, x => x.Id);
@@ -630,8 +662,8 @@ namespace Ettad.Inventory.Service.Explosives.Services
                 var itemNos = importItems.Select(x => x.ItemNo).Where(x => !string.IsNullOrEmpty(x)).Distinct().ToList();
                 var nsns = importItems.Select(x => x.Nsn).Where(x => !string.IsNullOrEmpty(x)).Distinct().ToList();
 
-                var existingRecords = await _context.Explosives
-                    .Where(e => !e.IsDeleted && (itemNos.Contains(e.ItemNo) || e.Nsn != null && nsns.Contains(e.Nsn)))
+                var existingRecords = await _explosiveRepository
+                    .Find(e => !e.IsDeleted && (itemNos.Contains(e.ItemNo) || (e.Nsn != null && nsns.Contains(e.Nsn))))
                     .Select(e => new { e.ItemNo, e.Nsn })
                     .ToListAsync();
 

@@ -1,6 +1,5 @@
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using Ettad.EntityFramework.DataBaseContext;
+using Ettad.Data.Entities;
 using Ettad.Data.Entities.Settings;
 using System.Text.Json;
 using Microsoft.AspNetCore.Identity;
@@ -14,7 +13,7 @@ namespace Ettad.Inventory.Service.Monitoring.Services
 {
     public class LowStockMonitorBackgroundService : ILowStockMonitorBackgroundService
     {
-        private readonly ApplicationDbContext _context;
+        private readonly ICrossCuttingRepository<BaseItem> _baseItemRepository;
         private readonly INotificationHelperService _notificationHelperService;
         private readonly ILogger<LowStockMonitorBackgroundService> _logger;
         private readonly ICrossCuttingRepository<Settings> _settingsRepository;
@@ -23,7 +22,7 @@ namespace Ettad.Inventory.Service.Monitoring.Services
         private readonly ILowStockMonitoringService _lowStockMonitoringService;
 
         public LowStockMonitorBackgroundService(
-            ApplicationDbContext context,
+            ICrossCuttingRepository<BaseItem> baseItemRepository,
             INotificationHelperService notificationHelperService,
             ILogger<LowStockMonitorBackgroundService> logger,
             ICrossCuttingRepository<Settings> settingsRepository,
@@ -31,7 +30,7 @@ namespace Ettad.Inventory.Service.Monitoring.Services
             LowStockEmailTemplateService emailTemplateService,
             ILowStockMonitoringService lowStockMonitoringService)
         {
-            _context = context;
+            _baseItemRepository = baseItemRepository;
             _notificationHelperService = notificationHelperService;
             _logger = logger;
             _settingsRepository = settingsRepository;
@@ -39,7 +38,6 @@ namespace Ettad.Inventory.Service.Monitoring.Services
             _emailTemplateService = emailTemplateService;
             _lowStockMonitoringService = lowStockMonitoringService;
         }
-
         public async Task CheckAndNotifyAsync()
         {
             _logger.LogInformation("Starting Low Stock Check...");
@@ -67,9 +65,7 @@ namespace Ettad.Inventory.Service.Monitoring.Services
                 var lowStockItems = new List<LowStockItemInfo>();
                 foreach (var dto in lowStockItemDtos)
                 {
-                    var item = await _context.BaseItems
-                        .FirstOrDefaultAsync(i => i.Id == dto.ItemId && !i.IsDeleted);
-                    
+                    var item = await _baseItemRepository.FindOneAsync(i => i.Id == dto.ItemId && !i.IsDeleted);                    
                     if (item != null)
                     {
                         lowStockItems.Add(new LowStockItemInfo

@@ -1,7 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Ettad.Data.Entities;
-using Ettad.EntityFramework.DataBaseContext;
 using Ettad.Inventory.Service.Monitoring.Dtos;
 using Ettad.ResponseHandler.Consts;
 using Ettad.ResponseHandler.Models;
@@ -18,29 +17,38 @@ namespace Ettad.Inventory.Service.Monitoring.Services
 {
     public class ExpiringLotMonitoringService : IExpiringLotMonitoringService
     {
-        private readonly ApplicationDbContext _context;
+        private static readonly string[] ExpiringLotInventoryDetailIncludes =
+        [
+            nameof(InventoryDetail.Inventory),
+            $"{nameof(InventoryDetail.Inventory)}.{nameof(Ettad.Data.Entities.Inventory.Depo)}",
+            nameof(InventoryDetail.Item),
+            nameof(InventoryDetail.Supplier),
+            nameof(InventoryDetail.Manufacturer),
+        ];
+
         private readonly ILogger<ExpiringLotMonitoringService> _logger;
         private readonly IDateTimeProvider _dateTimeProvider;
         private readonly IMapper _mapper;
+        private readonly ICrossCuttingRepository<InventoryDetail> _inventoryDetailsRepository;
         private readonly ICrossCuttingRepository<SupplyDetail> _supplyDetailsRepository;
         private readonly ICrossCuttingRepository<Supply> _supplyRepository;
         private readonly ICurrentUserService _currentUserService;
         private readonly IDepotAccessService _depotAccessService;
 
         public ExpiringLotMonitoringService(
-            ApplicationDbContext context,
             ILogger<ExpiringLotMonitoringService> logger,
             IDateTimeProvider dateTimeProvider,
             IMapper mapper,
+            ICrossCuttingRepository<InventoryDetail> inventoryDetailsRepository,
             ICrossCuttingRepository<SupplyDetail> supplyDetailsRepository,
             ICrossCuttingRepository<Supply> supplyRepository,
             ICurrentUserService currentUserService,
             IDepotAccessService depotAccessService)
         {
-            _context = context;
             _logger = logger;
             _dateTimeProvider = dateTimeProvider;
             _mapper = mapper;
+            _inventoryDetailsRepository = inventoryDetailsRepository;
             _supplyDetailsRepository = supplyDetailsRepository;
             _supplyRepository = supplyRepository;
             _currentUserService = currentUserService;
@@ -77,22 +85,19 @@ namespace Ettad.Inventory.Service.Monitoring.Services
                 var today = _dateTimeProvider.Now.Date;
                 var thirtyDaysFromNow = today.AddDays(30);
 
-                var query = _context.InventoryDetails
-                    .Include(id => id.Inventory)
-                        .ThenInclude(inv => inv.Depo)
-                    .Include(id => id.Item)
-                    .Include(id => id.Supplier)
-                    .Include(id => id.Manufacturer)
-                    .Where(id =>
+                var query = _inventoryDetailsRepository.Find(
+                    id =>
                         id.ExpiryDate.HasValue &&
                         id.ExpiryDate.Value.Date >= today &&
                         id.ExpiryDate.Value.Date <= thirtyDaysFromNow &&
-                        !id.Inventory.IsDeleted);
+                        !id.Inventory.IsDeleted,
+                    false,
+                    ExpiringLotInventoryDetailIncludes);
 
                 if (distinct.Any())
                     query = query.Where(id => distinct.Contains(id.Inventory.DepoId));
 
-                var expiringLots = await query.AsNoTracking().ToListAsync();
+                var expiringLots = await query.ToListAsync();
 
                 // Filter out empty lots by calculating remaining quantity
                 var expiringLotsWithQuantity = new List<InventoryDetail>();
@@ -126,18 +131,15 @@ namespace Ettad.Inventory.Service.Monitoring.Services
                 var today = _dateTimeProvider.Now.Date;
                 var thirtyDaysFromNow = today.AddDays(30);
 
-                var expiringLots = await _context.InventoryDetails
-                    .Include(id => id.Inventory)
-                        .ThenInclude(inv => inv.Depo)
-                    .Include(id => id.Item)
-                    .Include(id => id.Supplier)
-                    .Include(id => id.Manufacturer)
-                    .Where(id => 
-                        id.ExpiryDate.HasValue &&
-                        id.ExpiryDate.Value.Date >= today &&
-                        id.ExpiryDate.Value.Date <= thirtyDaysFromNow &&
-                        !id.Inventory.IsDeleted)
-                    .AsNoTracking()
+                var expiringLots = await _inventoryDetailsRepository
+                    .Find(
+                        id =>
+                            id.ExpiryDate.HasValue &&
+                            id.ExpiryDate.Value.Date >= today &&
+                            id.ExpiryDate.Value.Date <= thirtyDaysFromNow &&
+                            !id.Inventory.IsDeleted,
+                        false,
+                        ExpiringLotInventoryDetailIncludes)
                     .ToListAsync();
 
                 _logger.LogInformation($"Found {expiringLots.Count} lots with expiry dates in the next 30 days.");

@@ -1,9 +1,8 @@
-using Microsoft.AspNetCore.Identity;
-using Microsoft.EntityFrameworkCore;
-using Newtonsoft.Json;
 using Ettad.Application.Common.Models;
 using Ettad.Comman.Idenitity;
-using Ettad.EntityFramework.DataBaseContext;
+using Ettad.Data.Interfaces.Repositories;
+using Microsoft.AspNetCore.Identity;
+using Newtonsoft.Json;
 using System.Security.Claims;
 
 namespace Ettad.Services.Helpers
@@ -12,14 +11,16 @@ namespace Ettad.Services.Helpers
     {
         #region fields
         private readonly UserManager<ApplicationUser> _userManager;
-        private readonly ApplicationDbContext _context;
+        private readonly ICrossCuttingRepository<Ettad.Data.Entities.Settings.EmailConfiguration> _emailConfigurationRepository;
         #endregion
 
         #region ctor
-        public HelpureService(UserManager<ApplicationUser> userManager ,ApplicationDbContext applicationDbContext )
+        public HelpureService(
+            UserManager<ApplicationUser> userManager,
+            ICrossCuttingRepository<Ettad.Data.Entities.Settings.EmailConfiguration> emailConfigurationRepository)
         {
             _userManager = userManager;
-            _context = applicationDbContext;
+            _emailConfigurationRepository = emailConfigurationRepository;
         }
         #endregion
 
@@ -38,8 +39,8 @@ namespace Ettad.Services.Helpers
         #region GetEmailConfigration
         public async Task<EmailConfiguration?> GetEmailConfigrationAsync(int organizationId)
         {
-            var emailEntity = _context.EmailConfigurations
-                .FirstOrDefault(a => a.OrganizationId == organizationId && a.Key == "EmailConfiguration");
+            var emailEntity = await _emailConfigurationRepository.FindOneAsync(
+                a => a.OrganizationId == organizationId && a.Key == "EmailConfiguration");
 
             if (emailEntity == null || string.IsNullOrEmpty(emailEntity.Value))
                 return null;

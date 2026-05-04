@@ -1,28 +1,62 @@
+using Ettad.Comman.Idenitity;
 using Ettad.Data.Entities;
 using Ettad.Data.Enums;
-using Ettad.EntityFramework.DataBaseContext;
+using Ettad.Data.Interfaces.Repositories;
 using Ettad.ResponseHandler.Consts;
 using Ettad.ResponseHandler.Models;
 using Ettad.User.Services.DTO;
 using Ettad.User.Services.Interfaces;
+using Ettad.CrossCutting.Comman.Time;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using Ettad.CrossCutting.Comman.Time;
 
 namespace Ettad.User.Services.Services
 {
     public class AdminAnalyticsService : IAdminAnalyticsService
     {
-        private readonly ApplicationDbContext _context;
+        private readonly ICrossCuttingRepository<LoginAttempt> _loginAttemptRepository;
+        private readonly ICrossCuttingRepository<Order> _orderRepository;
+        private readonly ICrossCuttingRepository<Return> _returnRepository;
+        private readonly ICrossCuttingRepository<Discard> _discardRepository;
+        private readonly ICrossCuttingRepository<ApplicationUser> _userRepository;
+        private readonly ICrossCuttingRepository<Department> _departmentRepository;
+        private readonly ICrossCuttingRepository<BaseRequest> _baseRequestRepository;
+        private readonly ICrossCuttingRepository<Ammunition> _ammunitionRepository;
+        private readonly ICrossCuttingRepository<Weapon> _weaponRepository;
+        private readonly ICrossCuttingRepository<Explosive> _explosiveRepository;
+        private readonly ICrossCuttingRepository<RequestItem> _requestItemRepository;
+        private readonly ICrossCuttingRepository<BaseItem> _baseItemRepository;
         private readonly ILogger<AdminAnalyticsService> _logger;
         private readonly IDateTimeProvider _dateTimeProvider;
 
         public AdminAnalyticsService(
-            ApplicationDbContext context,
+            ICrossCuttingRepository<LoginAttempt> loginAttemptRepository,
+            ICrossCuttingRepository<Order> orderRepository,
+            ICrossCuttingRepository<Return> returnRepository,
+            ICrossCuttingRepository<Discard> discardRepository,
+            ICrossCuttingRepository<ApplicationUser> userRepository,
+            ICrossCuttingRepository<Department> departmentRepository,
+            ICrossCuttingRepository<BaseRequest> baseRequestRepository,
+            ICrossCuttingRepository<Ammunition> ammunitionRepository,
+            ICrossCuttingRepository<Weapon> weaponRepository,
+            ICrossCuttingRepository<Explosive> explosiveRepository,
+            ICrossCuttingRepository<RequestItem> requestItemRepository,
+            ICrossCuttingRepository<BaseItem> baseItemRepository,
             ILogger<AdminAnalyticsService> logger,
             IDateTimeProvider dateTimeProvider)
         {
-            _context = context ?? throw new ArgumentNullException(nameof(context));
+            _loginAttemptRepository = loginAttemptRepository ?? throw new ArgumentNullException(nameof(loginAttemptRepository));
+            _orderRepository = orderRepository ?? throw new ArgumentNullException(nameof(orderRepository));
+            _returnRepository = returnRepository ?? throw new ArgumentNullException(nameof(returnRepository));
+            _discardRepository = discardRepository ?? throw new ArgumentNullException(nameof(discardRepository));
+            _userRepository = userRepository ?? throw new ArgumentNullException(nameof(userRepository));
+            _departmentRepository = departmentRepository ?? throw new ArgumentNullException(nameof(departmentRepository));
+            _baseRequestRepository = baseRequestRepository ?? throw new ArgumentNullException(nameof(baseRequestRepository));
+            _ammunitionRepository = ammunitionRepository ?? throw new ArgumentNullException(nameof(ammunitionRepository));
+            _weaponRepository = weaponRepository ?? throw new ArgumentNullException(nameof(weaponRepository));
+            _explosiveRepository = explosiveRepository ?? throw new ArgumentNullException(nameof(explosiveRepository));
+            _requestItemRepository = requestItemRepository ?? throw new ArgumentNullException(nameof(requestItemRepository));
+            _baseItemRepository = baseItemRepository ?? throw new ArgumentNullException(nameof(baseItemRepository));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _dateTimeProvider = dateTimeProvider ?? throw new ArgumentNullException(nameof(dateTimeProvider));
         }
@@ -33,49 +67,42 @@ namespace Ettad.User.Services.Services
             {
                 _logger.LogInformation("Fetching system health metrics");
 
-                // Get active users count (users who logged in within last 24 hours)
                 var last24Hours = _dateTimeProvider.Now.AddHours(-24);
-                var activeUsers = await _context.LoginAttempts
-                    .AsNoTracking()
-                    .Where(la => la.IsSuccessful && la.AttemptDate >= last24Hours)
+                var activeUsers = await _loginAttemptRepository
+                    .Find(la => la.IsSuccessful && la.AttemptDate >= last24Hours)
                     .Select(la => la.UserId)
                     .Distinct()
                     .CountAsync();
 
-                // Get current active requests count
-                var activeRequests = await _context.Orders
-                    .Where(o => o.Status == RequestStatus.New || o.Status == RequestStatus.UnderProcess)
+                var activeRequests = await _orderRepository
+                    .Find(o => o.Status == RequestStatus.New || o.Status == RequestStatus.UnderProcess)
                     .CountAsync();
 
-                activeRequests += await _context.Returns
-                    .Where(r => r.Status == RequestStatus.New || r.Status == RequestStatus.UnderProcess)
+                activeRequests += await _returnRepository
+                    .Find(r => r.Status == RequestStatus.New || r.Status == RequestStatus.UnderProcess)
                     .CountAsync();
 
-                activeRequests += await _context.Discards
-                    .Where(d => d.Status == RequestStatus.New || d.Status == RequestStatus.UnderProcess)
+                activeRequests += await _discardRepository
+                    .Find(d => d.Status == RequestStatus.New || d.Status == RequestStatus.UnderProcess)
                     .CountAsync();
 
-                // Calculate error rate (failed logins in last hour)
                 var lastHour = _dateTimeProvider.Now.AddHours(-1);
-                var totalLoginAttempts = await _context.LoginAttempts
-                    .Where(la => la.AttemptDate >= lastHour)
+                var totalLoginAttempts = await _loginAttemptRepository
+                    .Find(la => la.AttemptDate >= lastHour)
                     .CountAsync();
 
-                var failedLoginAttempts = await _context.LoginAttempts
-                    .Where(la => la.AttemptDate >= lastHour && !la.IsSuccessful)
+                var failedLoginAttempts = await _loginAttemptRepository
+                    .Find(la => la.AttemptDate >= lastHour && !la.IsSuccessful)
                     .CountAsync();
 
                 var errorRate = totalLoginAttempts > 0
                     ? (double)failedLoginAttempts / totalLoginAttempts * 100
                     : 0;
 
-                // Calculate average response time (mock - would need actual performance monitoring)
-                var avgResponseTime = 150.0; // Placeholder
+                var avgResponseTime = 150.0;
 
-                // Calculate system uptime (mock - would need actual server uptime tracking)
                 var systemUptime = 99.9;
 
-                // Determine system status
                 var status = "healthy";
                 if (errorRate > 10 || activeRequests > 100)
                 {
@@ -116,8 +143,6 @@ namespace Ettad.User.Services.Services
             {
                 _logger.LogInformation("Fetching performance metrics");
 
-                // These would typically come from actual system monitoring
-                // For now, providing reasonable mock values
                 var metrics = new PerformanceMetricsDto
                 {
                     CpuUsage = 45.5,
@@ -147,41 +172,34 @@ namespace Ettad.User.Services.Services
             {
                 _logger.LogInformation("Fetching user activity metrics");
 
-                // Get total users (excluding deleted)
-                var totalUsers = await _context.Users
-                    .Where(u => !u.IsDeleted)
+                var totalUsers = await _userRepository
+                    .Find(u => !u.IsDeleted)
                     .CountAsync();
 
-                // Get daily active users (logged in today)
                 var today = _dateTimeProvider.Now.Date;
-                var dailyActiveUsers = await _context.LoginAttempts
-                    .Where(la => la.IsSuccessful && la.AttemptDate >= today)
+                var dailyActiveUsers = await _loginAttemptRepository
+                    .Find(la => la.IsSuccessful && la.AttemptDate >= today)
                     .Select(la => la.UserId)
                     .Distinct()
                     .CountAsync();
 
-                // Get new users today - ApplicationUser doesn't have CreationDate
-                // We'll count users created today by checking if they exist in the system
-                var newUsersToday = 0; // Placeholder - would need to track user creation separately
+                var newUsersToday = 0;
 
-                // Get top departments by DAILY ACTIVE USER count (not total user count)
-                // First, get all users who logged in today
-                var activeUserIds = await _context.LoginAttempts
-                    .Where(la => la.IsSuccessful && la.AttemptDate >= today)
+                var activeUserIds = await _loginAttemptRepository
+                    .Find(la => la.IsSuccessful && la.AttemptDate >= today)
                     .Select(la => la.UserId)
                     .Distinct()
                     .ToListAsync();
 
-                // Then group active users by department
-                var topDepartments = await _context.Users
-                    .Where(u => !u.IsDeleted && 
-                           u.DepartmentId != null && 
+                var topDepartments = await _userRepository
+                    .Find(u => !u.IsDeleted &&
+                           u.DepartmentId != null &&
                            activeUserIds.Contains(u.Id))
                     .GroupBy(u => u.DepartmentId)
                     .Select(g => new
                     {
                         DepartmentId = g.Key,
-                        ActiveUserCount = g.Count() // Daily active users per department
+                        ActiveUserCount = g.Count()
                     })
                     .OrderByDescending(x => x.ActiveUserCount)
                     .Take(5)
@@ -191,22 +209,23 @@ namespace Ettad.User.Services.Services
                 foreach (var dept in topDepartments)
                 {
                     string departmentName;
-                    
+
                     if (dept.DepartmentId == null)
                     {
                         departmentName = "No Department Assigned";
                     }
                     else
                     {
-                        var department = await _context.Departments
-                            .FirstOrDefaultAsync(d => d.Id == dept.DepartmentId);
+                        var department = await _departmentRepository
+                            .Find(d => d.Id == dept.DepartmentId)
+                            .FirstOrDefaultAsync();
                         departmentName = department?.NameEn ?? department?.NameAr ?? "Unknown";
                     }
 
                     departmentStats.Add(new DepartmentStatDto
                     {
                         Name = departmentName,
-                        UserCount = dept.ActiveUserCount // Daily active users for this department
+                        UserCount = dept.ActiveUserCount
                     });
                 }
 
@@ -238,48 +257,39 @@ namespace Ettad.User.Services.Services
             {
                 _logger.LogInformation("Fetching request metrics");
 
-                // Get pending orders count
-                var pendingOrders = await _context.Orders
-                    .Where(o => !o.IsDeleted && (o.Status == RequestStatus.New || o.Status == RequestStatus.UnderProcess))
+                var pendingOrders = await _orderRepository
+                    .Find(o => !o.IsDeleted && (o.Status == RequestStatus.New || o.Status == RequestStatus.UnderProcess))
                     .CountAsync();
 
-                // Get pending returns count
-                var pendingReturns = await _context.Returns
-                    .Where(r => !r.IsDeleted && (r.Status == RequestStatus.New || r.Status == RequestStatus.UnderProcess))
+                var pendingReturns = await _returnRepository
+                    .Find(r => !r.IsDeleted && (r.Status == RequestStatus.New || r.Status == RequestStatus.UnderProcess))
                     .CountAsync();
 
-                // Get pending discards count
-                var pendingDiscards = await _context.Discards
-                    .Where(d => !d.IsDeleted && (d.Status == RequestStatus.New || d.Status == RequestStatus.UnderProcess))
+                var pendingDiscards = await _discardRepository
+                    .Find(d => !d.IsDeleted && (d.Status == RequestStatus.New || d.Status == RequestStatus.UnderProcess))
                     .CountAsync();
 
                 var totalPending = pendingOrders + pendingReturns + pendingDiscards;
 
-                // Get new requests count (status = New only)
-                var newRequests = await _context.Orders.Where(o => !o.IsDeleted && o.Status == RequestStatus.New).CountAsync();
-                newRequests += await _context.Returns.Where(r => !r.IsDeleted && r.Status == RequestStatus.New).CountAsync();
-                newRequests += await _context.Discards.Where(d => !d.IsDeleted && d.Status == RequestStatus.New).CountAsync();
+                var newRequests = await _orderRepository.Find(o => !o.IsDeleted && o.Status == RequestStatus.New).CountAsync();
+                newRequests += await _returnRepository.Find(r => !r.IsDeleted && r.Status == RequestStatus.New).CountAsync();
+                newRequests += await _discardRepository.Find(d => !d.IsDeleted && d.Status == RequestStatus.New).CountAsync();
 
-                // Get in-progress requests count (status = UnderProcess)
-                var inProgressRequests = await _context.Orders.Where(o => !o.IsDeleted && o.Status == RequestStatus.UnderProcess).CountAsync();
-                inProgressRequests += await _context.Returns.Where(r => !r.IsDeleted && r.Status == RequestStatus.UnderProcess).CountAsync();
-                inProgressRequests += await _context.Discards.Where(d => !d.IsDeleted && d.Status == RequestStatus.UnderProcess).CountAsync();
+                var inProgressRequests = await _orderRepository.Find(o => !o.IsDeleted && o.Status == RequestStatus.UnderProcess).CountAsync();
+                inProgressRequests += await _returnRepository.Find(r => !r.IsDeleted && r.Status == RequestStatus.UnderProcess).CountAsync();
+                inProgressRequests += await _discardRepository.Find(d => !d.IsDeleted && d.Status == RequestStatus.UnderProcess).CountAsync();
 
-                // Get completed requests count (status = Approved or Completed)
-                var completedRequests = await _context.Orders.Where(o => !o.IsDeleted && o.Status == RequestStatus.Approved).CountAsync();
-                completedRequests += await _context.Returns.Where(r => !r.IsDeleted && r.Status == RequestStatus.Approved).CountAsync();
-                completedRequests += await _context.Discards.Where(d => !d.IsDeleted && d.Status == RequestStatus.Approved).CountAsync();
+                var completedRequests = await _orderRepository.Find(o => !o.IsDeleted && o.Status == RequestStatus.Approved).CountAsync();
+                completedRequests += await _returnRepository.Find(r => !r.IsDeleted && r.Status == RequestStatus.Approved).CountAsync();
+                completedRequests += await _discardRepository.Find(d => !d.IsDeleted && d.Status == RequestStatus.Approved).CountAsync();
 
-                // Get rejected requests count (status = Rejected)
-                var rejectedRequests = await _context.Orders.Where(o => !o.IsDeleted && o.Status == RequestStatus.Rejected).CountAsync();
-                rejectedRequests += await _context.Returns.Where(r => !r.IsDeleted && r.Status == RequestStatus.Rejected).CountAsync();
-                rejectedRequests += await _context.Discards.Where(d => !d.IsDeleted && d.Status == RequestStatus.Rejected).CountAsync();
+                var rejectedRequests = await _orderRepository.Find(o => !o.IsDeleted && o.Status == RequestStatus.Rejected).CountAsync();
+                rejectedRequests += await _returnRepository.Find(r => !r.IsDeleted && r.Status == RequestStatus.Rejected).CountAsync();
+                rejectedRequests += await _discardRepository.Find(d => !d.IsDeleted && d.Status == RequestStatus.Rejected).CountAsync();
 
-                // TODO: Calculate average approval time from request history
-                var avgApprovalTime = 0.0; // Placeholder
+                var avgApprovalTime = 0.0;
 
-                // TODO: Calculate SLA compliance from request timestamps
-                var slaCompliance = 0.0; // Placeholder
+                var slaCompliance = 0.0;
 
                 var metrics = new RequestMetricsDto
                 {
@@ -322,11 +332,9 @@ namespace Ettad.User.Services.Services
 
                 if (period.ToLower() == "yearly")
                 {
-                    // Aggregation for the last 12 months
                     var startDate = _dateTimeProvider.Now.Date.AddMonths(-11).AddDays(-(_dateTimeProvider.Now.Day - 1));
-                    var rawRequests = await _context.BaseRequests
-                        .AsNoTracking()
-                        .Where(r => r.CreationDate >= startDate && !r.IsDeleted)
+                    var rawRequests = await _baseRequestRepository
+                        .Find(r => r.CreationDate >= startDate && !r.IsDeleted)
                         .Select(r => new { r.CreationDate, r.RequestType })
                         .ToListAsync();
 
@@ -334,7 +342,7 @@ namespace Ettad.User.Services.Services
                     {
                         var monthDate = startDate.AddMonths(i);
                         dates.Add(monthDate.ToString("MMM yyyy"));
-                        
+
                         orders.Add(rawRequests.Count(x => x.CreationDate.Year == monthDate.Year && x.CreationDate.Month == monthDate.Month && x.RequestType == RequestType.Order));
                         returns.Add(rawRequests.Count(x => x.CreationDate.Year == monthDate.Year && x.CreationDate.Month == monthDate.Month && x.RequestType == RequestType.Return));
                         discards.Add(rawRequests.Count(x => x.CreationDate.Year == monthDate.Year && x.CreationDate.Month == monthDate.Month && x.RequestType == RequestType.Discard));
@@ -346,14 +354,13 @@ namespace Ettad.User.Services.Services
                     {
                         "weekly" => 7,
                         "monthly" => 30,
-                        _ => 7 
+                        _ => 7
                     };
 
                     var startDate = _dateTimeProvider.Now.Date.AddDays(-(days - 1));
 
-                    var rawTrends = await _context.BaseRequests
-                        .AsNoTracking()
-                        .Where(r => r.CreationDate >= startDate && !r.IsDeleted)
+                    var rawTrends = await _baseRequestRepository
+                        .Find(r => r.CreationDate >= startDate && !r.IsDeleted)
                         .GroupBy(r => new { r.CreationDate.Date, r.RequestType })
                         .Select(g => new
                         {
@@ -367,7 +374,7 @@ namespace Ettad.User.Services.Services
                     {
                         var date = _dateTimeProvider.Now.Date.AddDays(-i);
                         dates.Add(date.ToString("MMM dd"));
-                        
+
                         orders.Add(rawTrends.FirstOrDefault(x => x.Date == date && x.Type == RequestType.Order)?.Count ?? 0);
                         returns.Add(rawTrends.FirstOrDefault(x => x.Date == date && x.Type == RequestType.Return)?.Count ?? 0);
                         discards.Add(rawTrends.FirstOrDefault(x => x.Date == date && x.Type == RequestType.Discard)?.Count ?? 0);
@@ -402,20 +409,16 @@ namespace Ettad.User.Services.Services
             {
                 _logger.LogInformation("Fetching inventory distribution");
 
-                // Get counts by category
-                var ammunitionCount = await _context.Ammunitions
-                    .AsNoTracking()
-                    .Where(a => !a.IsDeleted)
+                var ammunitionCount = await _ammunitionRepository
+                    .Find(a => !a.IsDeleted)
                     .CountAsync();
 
-                var weaponCount = await _context.Weapons
-                    .AsNoTracking()
-                    .Where(w => !w.IsDeleted)
+                var weaponCount = await _weaponRepository
+                    .Find(w => !w.IsDeleted)
                     .CountAsync();
 
-                var explosiveCount = await _context.Explosives
-                    .AsNoTracking()
-                    .Where(e => !e.IsDeleted)
+                var explosiveCount = await _explosiveRepository
+                    .Find(e => !e.IsDeleted)
                     .CountAsync();
 
                 var totalItems = ammunitionCount + weaponCount + explosiveCount;
@@ -479,8 +482,8 @@ namespace Ettad.User.Services.Services
             {
                 _logger.LogInformation("Fetching top {Limit} requested items", limit);
 
-                // Get most requested items by counting RequestItems grouped by ItemId
-                var topItemIds = await _context.RequestItems
+                var topItemIds = await _requestItemRepository
+                    .Find(ri => true)
                     .GroupBy(ri => ri.ItemId)
                     .Select(g => new
                     {
@@ -495,17 +498,16 @@ namespace Ettad.User.Services.Services
 
                 foreach (var item in topItemIds)
                 {
-                    // Get the item details from BaseItems
-                    var baseItem = await _context.BaseItems
-                        .FirstOrDefaultAsync(bi => bi.Id == item.ItemId);
+                    var baseItem = await _baseItemRepository
+                        .Find(bi => bi.Id == item.ItemId)
+                        .FirstOrDefaultAsync();
 
                     if (baseItem != null)
                     {
-                        // Determine category based on discriminator or type
                         var category = "Item";
-                        var ammunition = await _context.Ammunitions.FirstOrDefaultAsync(a => a.Id == item.ItemId);
-                        var weapon = await _context.Weapons.FirstOrDefaultAsync(w => w.Id == item.ItemId);
-                        var explosive = await _context.Explosives.FirstOrDefaultAsync(e => e.Id == item.ItemId);
+                        var ammunition = await _ammunitionRepository.FindOneAsync(a => a.Id == item.ItemId);
+                        var weapon = await _weaponRepository.FindOneAsync(w => w.Id == item.ItemId);
+                        var explosive = await _explosiveRepository.FindOneAsync(e => e.Id == item.ItemId);
 
                         if (ammunition != null)
                         {

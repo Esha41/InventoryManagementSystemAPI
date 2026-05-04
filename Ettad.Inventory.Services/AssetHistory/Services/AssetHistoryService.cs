@@ -3,7 +3,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Ettad.Application.Common.Interfaces;
 using Ettad.Data.Enums;
-using Ettad.EntityFramework.DataBaseContext;
 using Ettad.Inventory.Service.AssetHistory.Dtos;
 using Ettad.ResponseHandler.Consts;
 using Ettad.ResponseHandler.Models;
@@ -11,11 +10,22 @@ using Ettad.CrossCutting.Comman.Time;
 using Ettad.Data.Interfaces.Repositories;
 using Ettad.Inventory.Service.AssetHistory.Interfaces;
 
+using AssetHistoryEntity = Ettad.Data.Entities.AssetHistory;
+
 namespace Ettad.Inventory.Service.AssetHistory.Services
 {
     public class AssetHistoryService : IAssetHistoryService
     {
-        private readonly ApplicationDbContext _context;
+        private static readonly string[] HistoryIncludes =
+        {
+            nameof(AssetHistoryEntity.Asset),
+            nameof(AssetHistoryEntity.Order),
+            nameof(AssetHistoryEntity.PreviousDepartment),
+            nameof(AssetHistoryEntity.NewDepartment),
+            nameof(AssetHistoryEntity.PreviousCustodian),
+            nameof(AssetHistoryEntity.NewCustodian)
+        };
+
         private readonly ICrossCuttingRepository<Data.Entities.AssetHistory> _historyRepository;
         private readonly IMapper _mapper;
         private readonly ICurrentUserService _currentUserService;
@@ -23,21 +33,18 @@ namespace Ettad.Inventory.Service.AssetHistory.Services
         private readonly IDateTimeProvider _dateTimeProvider;
 
         public AssetHistoryService(
-            ApplicationDbContext context,
             ICrossCuttingRepository<Data.Entities.AssetHistory> historyRepository,
             IMapper mapper,
             ICurrentUserService currentUserService,
             ILogger<AssetHistoryService> logger,
             IDateTimeProvider dateTimeProvider)
         {
-            _context = context;
             _historyRepository = historyRepository;
             _mapper = mapper;
             _currentUserService = currentUserService;
             _logger = logger;
             _dateTimeProvider = dateTimeProvider;
         }
-
         public async Task RecordHistoryAsync(long assetId, AssetHistoryActionType actionType, AssetHistoryContext context)
         {
             try
@@ -87,14 +94,8 @@ namespace Ettad.Inventory.Service.AssetHistory.Services
 
             try
             {
-                var history = await _context.AssetHistory
-                    .Include(h => h.Asset)
-                    .Include(h => h.Order)
-                    .Include(h => h.PreviousDepartment)
-                    .Include(h => h.NewDepartment)
-                    .Include(h => h.PreviousCustodian)
-                    .Include(h => h.NewCustodian)
-                    .Where(h => h.AssetId == assetId && !h.IsDeleted)
+                var history = await _historyRepository
+                    .Find(h => h.AssetId == assetId && !h.IsDeleted, false, HistoryIncludes)
                     .OrderByDescending(h => h.ActionDate)
                     .ToListAsync();
 
@@ -117,14 +118,8 @@ namespace Ettad.Inventory.Service.AssetHistory.Services
 
             try
             {
-                var history = await _context.AssetHistory
-                    .Include(h => h.Asset)
-                    .Include(h => h.Order)
-                    .Include(h => h.PreviousDepartment)
-                    .Include(h => h.NewDepartment)
-                    .Include(h => h.PreviousCustodian)
-                    .Include(h => h.NewCustodian)
-                    .Where(h => h.OrderId == orderId && !h.IsDeleted)
+                var history = await _historyRepository
+                    .Find(h => h.OrderId == orderId && !h.IsDeleted, false, HistoryIncludes)
                     .OrderByDescending(h => h.ActionDate)
                     .ToListAsync();
 
@@ -147,14 +142,8 @@ namespace Ettad.Inventory.Service.AssetHistory.Services
 
             try
             {
-                var history = await _context.AssetHistory
-                    .Include(h => h.Asset)
-                    .Include(h => h.Order)
-                    .Include(h => h.PreviousDepartment)
-                    .Include(h => h.NewDepartment)
-                    .Include(h => h.PreviousCustodian)
-                    .Include(h => h.NewCustodian)
-                    .Where(h => h.AssetSupplyId == supplyId && !h.IsDeleted)
+                var history = await _historyRepository
+                    .Find(h => h.AssetSupplyId == supplyId && !h.IsDeleted, false, HistoryIncludes)
                     .OrderByDescending(h => h.ActionDate)
                     .ToListAsync();
 
@@ -178,14 +167,8 @@ namespace Ettad.Inventory.Service.AssetHistory.Services
 
             try
             {
-                var query = _context.AssetHistory
-                    .Include(h => h.Asset)
-                    .Include(h => h.Order)
-                    .Include(h => h.PreviousDepartment)
-                    .Include(h => h.NewDepartment)
-                    .Include(h => h.PreviousCustodian)
-                    .Include(h => h.NewCustodian)
-                    .Where(h => h.ActionType == actionType && !h.IsDeleted);
+                var query = _historyRepository
+                    .Find(h => h.ActionType == actionType && !h.IsDeleted, false, HistoryIncludes);
 
                 if (fromDate.HasValue)
                 {

@@ -1,5 +1,6 @@
 using AutoMapper;
 using FluentValidation;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Ettad.Data.Entities;
 using Ettad.Data.Enums;
@@ -7,8 +8,6 @@ using Ettad.Inventory.Service.Inventories.Dtos;
 using Ettad.ResponseHandler.Consts;
 using Ettad.ResponseHandler.Models;
 using Ettad.Application.Common.Interfaces;
-using Ettad.EntityFramework.DataBaseContext;
-using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using System;
 using Ettad.CrossCutting.Comman.Models;
@@ -85,7 +84,6 @@ namespace Ettad.Inventory.Service.Inventories.Services
         /// <summary>Frontend i18n key sent in API error <c>Message</c> (see <c>inventory.json</c>).</summary>
         private const string LotLinkedToSupplyOrderErrorKey = "warehouseInventory.errors.lotLinkedToSupplyOrder";
 
-        private readonly ApplicationDbContext _context;
         private readonly ICrossCuttingRepository<InventoryEntity> _inventoryRepository;
         private readonly ICrossCuttingRepository<InventoryDetailEntity> _inventoryDetailRepository;
         private readonly ICrossCuttingRepository<Order> _orderRepository;
@@ -95,6 +93,12 @@ namespace Ettad.Inventory.Service.Inventories.Services
         private readonly ICrossCuttingRepository<BaseItem> _baseItemRepository;
         private readonly ICrossCuttingRepository<Weapon> _weaponRepository;
         private readonly ICrossCuttingRepository<Ammunition> _ammunitionRepository;
+        private readonly ICrossCuttingRepository<Explosive> _explosiveRepository;
+        private readonly ICrossCuttingRepository<Supplier> _supplierRepository;
+        private readonly ICrossCuttingRepository<Manufacturer> _manufacturerRepository;
+        private readonly ICrossCuttingRepository<Country> _countryRepository;
+        private readonly ICrossCuttingRepository<PrimaryPurpos> _primaryPurposRepository;
+        private readonly ICrossCuttingRepository<BaseItemPrimaryPurpos> _baseItemPrimaryPurposRepository;
         private readonly IMapper _mapper;
         private readonly IValidator<CreateInventoryDto> _createValidator;
         private readonly IValidator<UpdateInventoryDto> _updateValidator;
@@ -108,7 +112,6 @@ namespace Ettad.Inventory.Service.Inventories.Services
         private readonly ITransactionManager _transactionManager;
 
         public InventoryService(
-            ApplicationDbContext context,
             ICrossCuttingRepository<InventoryEntity> inventoryRepository,
             ICrossCuttingRepository<InventoryDetailEntity> inventoryDetailRepository,
             ICrossCuttingRepository<Order> orderRepository,
@@ -118,6 +121,12 @@ namespace Ettad.Inventory.Service.Inventories.Services
             ICrossCuttingRepository<BaseItem> baseItemRepository,
             ICrossCuttingRepository<Weapon> weaponRepository,
             ICrossCuttingRepository<Ammunition> ammunitionRepository,
+            ICrossCuttingRepository<Explosive> explosiveRepository,
+            ICrossCuttingRepository<Supplier> supplierRepository,
+            ICrossCuttingRepository<Manufacturer> manufacturerRepository,
+            ICrossCuttingRepository<Country> countryRepository,
+            ICrossCuttingRepository<PrimaryPurpos> primaryPurposRepository,
+            ICrossCuttingRepository<BaseItemPrimaryPurpos> baseItemPrimaryPurposRepository,
             IMapper mapper,
             IValidator<CreateInventoryDto> createValidator,
             IValidator<UpdateInventoryDto> updateValidator,
@@ -130,7 +139,6 @@ namespace Ettad.Inventory.Service.Inventories.Services
             IFileUploadService fileUploadService,
             ITransactionManager transactionManager)
         {
-            _context = context;
             _inventoryRepository = inventoryRepository;
             _inventoryDetailRepository = inventoryDetailRepository;
             _orderRepository = orderRepository;
@@ -140,6 +148,12 @@ namespace Ettad.Inventory.Service.Inventories.Services
             _baseItemRepository = baseItemRepository;
             _weaponRepository = weaponRepository;
             _ammunitionRepository = ammunitionRepository;
+            _explosiveRepository = explosiveRepository;
+            _supplierRepository = supplierRepository;
+            _manufacturerRepository = manufacturerRepository;
+            _countryRepository = countryRepository;
+            _primaryPurposRepository = primaryPurposRepository;
+            _baseItemPrimaryPurposRepository = baseItemPrimaryPurposRepository;
             _mapper = mapper;
             _createValidator = createValidator;
             _updateValidator = updateValidator;
@@ -332,8 +346,9 @@ namespace Ettad.Inventory.Service.Inventories.Services
                         foreach (var itemId in detailItemIds)
                         {
                             // Resolve item type by probing weapons/ammunitions/explosives tables; default to Ammunition if not explosive
-                            var itemType = _context.BaseItems.Where(e => e.Id == itemId && !e.IsDeleted).Select(e => e.ItemType)
-                                                             .FirstOrDefault();
+                            var itemType = await _baseItemRepository.Find(e => e.Id == itemId && !e.IsDeleted)
+                                .Select(e => e.ItemType)
+                                .FirstOrDefaultAsync();
 
                             var entityType = itemType == ItemType.Explosive? FileEntityType.Explosive : FileEntityType.Ammunition;
                             var uploadResult = await _fileUploadService.UploadFilesForEntityAsync(files, entityType, createdInventory.Id);
@@ -471,8 +486,9 @@ namespace Ettad.Inventory.Service.Inventories.Services
                         if (targetDetail != null)
                         {
                             // Resolve item type by probing weapons/ammunitions/explosives tables; default to Ammunition if not explosive
-                            var itemType = _context.BaseItems.Where(e => e.Id == targetDetail.ItemId && !e.IsDeleted).Select(e => e.ItemType)
-                                                             .FirstOrDefault();
+                            var itemType = await _baseItemRepository.Find(e => e.Id == targetDetail.ItemId && !e.IsDeleted)
+                                .Select(e => e.ItemType)
+                                .FirstOrDefaultAsync();
 
                             var entityType = itemType == ItemType.Explosive ? FileEntityType.Explosive : FileEntityType.Ammunition;
 
@@ -1424,8 +1440,7 @@ namespace Ettad.Inventory.Service.Inventories.Services
                 var nsn = firstLotItem?.Nsn ?? string.Empty;
                 var partNo = firstLotItem?.PartNo ?? string.Empty;
 
-                var itemForCaliber = firstLotItem ?? await _context.Set<BaseItem>().AsNoTracking()
-                    .FirstOrDefaultAsync(x => x.Id == itemId);
+                var itemForCaliber = firstLotItem ?? await _baseItemRepository.Find(x => x.Id == itemId).FirstOrDefaultAsync();
                 MapCaliberFromBaseItem(itemForCaliber, out var summaryCaliber, out var summaryCaliberUnit, out var summaryCaliberId);
 
                 if (lots.Count == 0)
@@ -1676,11 +1691,11 @@ namespace Ettad.Inventory.Service.Inventories.Services
                 var allItems = await LoadAllItemsAsync();
 
                 // Load lookup tables for name-to-ID resolution
-                var suppliers = await _context.Suppliers.Where(s => !s.IsDeleted).ToListAsync();
-                var manufacturers = await _context.Manufacturers.Where(m => !m.IsDeleted).ToListAsync();
-                var countries = await _context.Countries.Where(c => !c.IsDeleted).ToListAsync();
-                var primaryPurposes = await _context.PrimaryPurposes.Where(p => !p.IsDeleted).ToListAsync();
-                var itemPrimaryPurposes = await _context.BaseItemPrimaryPurposes.ToListAsync();
+                var suppliers = await _supplierRepository.Find(s => !s.IsDeleted).ToListAsync();
+                var manufacturers = await _manufacturerRepository.Find(m => !m.IsDeleted).ToListAsync();
+                var countries = await _countryRepository.Find(c => !c.IsDeleted).ToListAsync();
+                var primaryPurposes = await _primaryPurposRepository.Find(p => !p.IsDeleted).ToListAsync();
+                var itemPrimaryPurposes = await _baseItemPrimaryPurposRepository.Find(_ => true).ToListAsync();
 
                 // Load existing inventory for duplicate checking
                 var existingInventoryDetails = await _inventoryDetailRepository.FindAsync(
@@ -2042,11 +2057,11 @@ namespace Ettad.Inventory.Service.Inventories.Services
                 var allItems = await LoadAllItemsAsync();
 
                 // Load lookup tables for name-to-ID resolution
-                var suppliers = await _context.Suppliers.Where(s => !s.IsDeleted).ToListAsync();
-                var manufacturers = await _context.Manufacturers.Where(m => !m.IsDeleted).ToListAsync();
-                var countries = await _context.Countries.Where(c => !c.IsDeleted).ToListAsync();
-                var primaryPurposes = await _context.PrimaryPurposes.Where(p => !p.IsDeleted).ToListAsync();
-                var itemPrimaryPurposes = await _context.BaseItemPrimaryPurposes.ToListAsync();
+                var suppliers = await _supplierRepository.Find(s => !s.IsDeleted).ToListAsync();
+                var manufacturers = await _manufacturerRepository.Find(m => !m.IsDeleted).ToListAsync();
+                var countries = await _countryRepository.Find(c => !c.IsDeleted).ToListAsync();
+                var primaryPurposes = await _primaryPurposRepository.Find(p => !p.IsDeleted).ToListAsync();
+                var itemPrimaryPurposes = await _baseItemPrimaryPurposRepository.Find(_ => true).ToListAsync();
 
                 // Load existing inventory for duplicate checking
                 var existingInventoryDetails = await _inventoryDetailRepository.FindAsync(
@@ -2291,17 +2306,11 @@ namespace Ettad.Inventory.Service.Inventories.Services
         {
             var items = new List<BaseItem>();
 
-            var ammunitions = await _context.Ammunitions
-                .Where(a => !a.IsDeleted)
-                .ToListAsync();
+            var ammunitions = await _ammunitionRepository.Find(a => !a.IsDeleted).ToListAsync();
 
-            var weapons = await _context.Weapons
-                .Where(w => !w.IsDeleted)
-                .ToListAsync();
+            var weapons = await _weaponRepository.Find(w => !w.IsDeleted).ToListAsync();
 
-            var explosives = await _context.Explosives
-                .Where(e => !e.IsDeleted)
-                .ToListAsync();
+            var explosives = await _explosiveRepository.Find(e => !e.IsDeleted).ToListAsync();
 
             items.AddRange(ammunitions.Cast<BaseItem>());
             items.AddRange(weapons.Cast<BaseItem>());
@@ -2374,23 +2383,23 @@ namespace Ettad.Inventory.Service.Inventories.Services
             {
                 var allItems = await LoadAllItemsForTemplate();
 
-                var suppliers = await _context.Suppliers
-                    .Where(s => !s.IsDeleted)
+                var suppliers = await _supplierRepository
+                    .Find(s => !s.IsDeleted)
                     .OrderBy(s => s.NameEn ?? s.NameAr)
                     .ToListAsync();
 
-                var manufacturers = await _context.Manufacturers
-                    .Where(m => !m.IsDeleted)
+                var manufacturers = await _manufacturerRepository
+                    .Find(m => !m.IsDeleted)
                     .OrderBy(m => m.NameEn ?? m.NameAr)
                     .ToListAsync();
 
-                var countries = await _context.Countries
-                    .Where(c => !c.IsDeleted)
+                var countries = await _countryRepository
+                    .Find(c => !c.IsDeleted)
                     .OrderBy(c => c.NameEn ?? c.NameAr)
                     .ToListAsync();
 
-                var primaryPurposes = await _context.PrimaryPurposes
-                    .Where(p => !p.IsDeleted)
+                var primaryPurposes = await _primaryPurposRepository
+                    .Find(p => !p.IsDeleted)
                     .OrderBy(p => p.NameEn ?? p.NameAr)
                     .ToListAsync();
 

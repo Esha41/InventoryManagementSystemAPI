@@ -3,7 +3,6 @@ using Ettad.Comman.Idenitity;
 using Ettad.CrossCutting.Comman.Time;
 using Ettad.Data.Entities;
 using Ettad.Data.Interfaces.Repositories;
-using Ettad.EntityFramework.DataBaseContext;
 using Ettad.HelpCenter.Service.Dtos;
 using Ettad.HelpCenter.Service.Interfaces;
 using Ettad.ResponseHandler.Consts;
@@ -17,23 +16,26 @@ namespace Ettad.HelpCenter.Service.Services
         private readonly ICrossCuttingRepository<HelpCenterArticle> _articleRepo;
         private readonly ICrossCuttingRepository<HelpCenterContactMessage> _contactRepo;
         private readonly ICrossCuttingRepository<HelpCenterTermsConditions> _termsRepo;
+        private readonly ICrossCuttingRepository<HelpCenterContactDisplaySettings> _contactDisplayRepo;
+        private readonly ICrossCuttingRepository<ApplicationUser> _userRepo;
         private readonly IDateTimeProvider _dateTime;
-        private readonly ApplicationDbContext _db;
         private readonly ITransactionManager _transactionManager;
 
         public HelpCenterService(
             ICrossCuttingRepository<HelpCenterArticle> articleRepo,
             ICrossCuttingRepository<HelpCenterContactMessage> contactRepo,
             ICrossCuttingRepository<HelpCenterTermsConditions> termsRepo,
+            ICrossCuttingRepository<HelpCenterContactDisplaySettings> contactDisplayRepo,
+            ICrossCuttingRepository<ApplicationUser> userRepo,
             IDateTimeProvider dateTime,
-            ApplicationDbContext db,
             ITransactionManager transactionManager)
         {
             _articleRepo = articleRepo;
             _contactRepo = contactRepo;
             _termsRepo = termsRepo;
+            _contactDisplayRepo = contactDisplayRepo;
+            _userRepo = userRepo;
             _dateTime = dateTime;
-            _db = db;
             _transactionManager = transactionManager;
         }
 
@@ -314,8 +316,8 @@ namespace Ettad.HelpCenter.Service.Services
         {
             try
             {
-                var row = await _db.HelpCenterContactDisplaySettings.AsNoTracking()
-                    .FirstOrDefaultAsync(x => x.Id == 1);
+                var row = await _contactDisplayRepo.Find(x => x.Id == 1)
+                    .FirstOrDefaultAsync();
                 if (row is null)
                 {
                     return APIOperationResponse<HelpCenterContactDisplayDto>.Success(
@@ -351,11 +353,11 @@ namespace Ettad.HelpCenter.Service.Services
                     return APIOperationResponse<HelpCenterContactDisplayDto>.Fail(
                         ResponseType.BadRequest, "Invalid support email format");
 
-                var row = await _db.HelpCenterContactDisplaySettings.FirstOrDefaultAsync(x => x.Id == 1);
+                var row = await _contactDisplayRepo.FindOneAsync(x => x.Id == 1);
                 if (row is null)
                 {
                     row = new HelpCenterContactDisplaySettings { Id = 1 };
-                    _db.HelpCenterContactDisplaySettings.Add(row);
+                    await _contactDisplayRepo.AddAsync(row);
                 }
 
                 row.SupportEmail = email;
@@ -363,7 +365,7 @@ namespace Ettad.HelpCenter.Service.Services
                 row.ModifiedAt = _dateTime.Now;
                 row.ModifiedBy = modifiedBy;
 
-                await _db.SaveChangesAsync();
+                await _contactDisplayRepo.UpdateAsync(row);
                 return APIOperationResponse<HelpCenterContactDisplayDto>.Success(MapContactDisplay(row));
             }
             catch (Exception ex)
@@ -445,16 +447,15 @@ namespace Ettad.HelpCenter.Service.Services
                         "Version must be 50 characters or fewer");
 
                 // DB has a unique index on Version (all rows, including soft-deleted). Reusing a label fails SaveChanges.
-                var versionTaken = await _db.HelpCenterTermsConditions
-                    .AnyAsync(t => t.Version == trimmedVersion);
+                var versionTaken = await _termsRepo.Find(t => t.Version == trimmedVersion)
+                    .AnyAsync();
                 if (versionTaken)
                     return APIOperationResponse<HelpCenterTermsDto>.Fail(ResponseType.BadRequest,
                         "This version label is already in use. Enter a new version (for example 1.1). Labels cannot be reused even after a version is deleted.");
 
                 await using var tx = await _transactionManager.BeginAsync();
 
-                var activeTerms = await _db.HelpCenterTermsConditions
-                    .Where(t => t.IsActive && !t.IsDeleted)
+                var activeTerms = await _termsRepo.Find(t => t.IsActive && !t.IsDeleted)
                     .ToListAsync();
 
                 foreach (var existing in activeTerms)
@@ -462,6 +463,7 @@ namespace Ettad.HelpCenter.Service.Services
                     existing.IsActive = false;
                     existing.ModificationDate = _dateTime.Now;
                     existing.ModifiedBy = createdBy;
+                    await _termsRepo.UpdateAsync(existing);
                 }
 
                 var newTerms = new HelpCenterTermsConditions
@@ -474,8 +476,7 @@ namespace Ettad.HelpCenter.Service.Services
                     CreatedBy = createdBy
                 };
 
-                _db.HelpCenterTermsConditions.Add(newTerms);
-                await _db.SaveChangesAsync();
+                await _termsRepo.AddAsync(newTerms);
                 await _transactionManager.CommitAsync();
 
                 return APIOperationResponse<HelpCenterTermsDto>.Success(
@@ -506,16 +507,14 @@ namespace Ettad.HelpCenter.Service.Services
             {
                 await using var tx = await _transactionManager.BeginAsync();
 
-                var target = await _db.HelpCenterTermsConditions
-                    .FirstOrDefaultAsync(t => t.Id == id && !t.IsDeleted);
+                var target = await _termsRepo.FindOneAsync(t => t.Id == id && !t.IsDeleted);
                 if (target is null)
                 {
                     await _transactionManager.RollbackAsync();
                     return APIOperationResponse<HelpCenterTermsDto>.Fail(ResponseType.NotFound, "Terms version not found");
                 }
 
-                var others = await _db.HelpCenterTermsConditions
-                    .Where(t => !t.IsDeleted && t.Id != id && t.IsActive)
+                var others = await _termsRepo.Find(t => !t.IsDeleted && t.Id != id && t.IsActive)
                     .ToListAsync();
 
                 foreach (var t in others)
@@ -523,13 +522,14 @@ namespace Ettad.HelpCenter.Service.Services
                     t.IsActive = false;
                     t.ModificationDate = _dateTime.Now;
                     t.ModifiedBy = modifiedBy;
+                    await _termsRepo.UpdateAsync(t);
                 }
 
                 target.IsActive = true;
                 target.ModificationDate = _dateTime.Now;
                 target.ModifiedBy = modifiedBy;
 
-                await _db.SaveChangesAsync();
+                await _termsRepo.UpdateAsync(target);
                 await _transactionManager.CommitAsync();
 
                 return APIOperationResponse<HelpCenterTermsDto>.Success(
@@ -545,16 +545,15 @@ namespace Ettad.HelpCenter.Service.Services
         {
             try
             {
-                var entity = await _db.HelpCenterTermsConditions
-                    .FirstOrDefaultAsync(t => t.Id == id && !t.IsDeleted);
+                var entity = await _termsRepo.FindOneAsync(t => t.Id == id && !t.IsDeleted);
                 if (entity is null)
                     return APIOperationResponse<bool>.Fail(ResponseType.NotFound, "Terms version not found");
 
                 if (!entity.IsActive)
                     return APIOperationResponse<bool>.Success(true);
 
-                var activeCount = await _db.HelpCenterTermsConditions
-                    .CountAsync(t => !t.IsDeleted && t.IsActive);
+                var activeCount = await _termsRepo.Find(t => !t.IsDeleted && t.IsActive)
+                    .CountAsync();
                 if (activeCount <= 1)
                     return APIOperationResponse<bool>.Fail(ResponseType.BadRequest,
                         "Cannot deactivate the only active version. Activate another version first.");
@@ -562,7 +561,7 @@ namespace Ettad.HelpCenter.Service.Services
                 entity.IsActive = false;
                 entity.ModificationDate = _dateTime.Now;
                 entity.ModifiedBy = modifiedBy;
-                await _db.SaveChangesAsync();
+                await _termsRepo.UpdateAsync(entity);
 
                 return APIOperationResponse<bool>.Success(true, "Terms version deactivated");
             }
@@ -581,8 +580,7 @@ namespace Ettad.HelpCenter.Service.Services
                     return APIOperationResponse<HelpCenterTermsDto>.Fail(ResponseType.BadRequest,
                         "At least one field must be provided");
 
-                var entity = await _db.HelpCenterTermsConditions
-                    .FirstOrDefaultAsync(t => t.Id == id && !t.IsDeleted);
+                var entity = await _termsRepo.FindOneAsync(t => t.Id == id && !t.IsDeleted);
                 if (entity is null)
                     return APIOperationResponse<HelpCenterTermsDto>.Fail(ResponseType.NotFound, "Terms version not found");
 
@@ -594,8 +592,8 @@ namespace Ettad.HelpCenter.Service.Services
                     if (trimmed.Length > 50)
                         return APIOperationResponse<HelpCenterTermsDto>.Fail(ResponseType.BadRequest, "Version must be 50 characters or fewer");
                     // Unique index applies to all rows (including soft-deleted).
-                    var versionTaken = await _db.HelpCenterTermsConditions
-                        .AnyAsync(t => t.Id != id && t.Version == trimmed);
+                    var versionTaken = await _termsRepo.Find(t => t.Id != id && t.Version == trimmed)
+                        .AnyAsync();
                     if (versionTaken)
                         return APIOperationResponse<HelpCenterTermsDto>.Fail(ResponseType.BadRequest,
                             "This version label is already in use. Labels cannot be reused even after a version is deleted.");
@@ -614,7 +612,7 @@ namespace Ettad.HelpCenter.Service.Services
 
                 entity.ModificationDate = _dateTime.Now;
                 entity.ModifiedBy = modifiedBy;
-                await _db.SaveChangesAsync();
+                await _termsRepo.UpdateAsync(entity);
 
                 return APIOperationResponse<HelpCenterTermsDto>.Success(
                     MapTermsToDto(entity), "Terms version updated");
@@ -629,8 +627,7 @@ namespace Ettad.HelpCenter.Service.Services
         {
             try
             {
-                var entity = await _db.HelpCenterTermsConditions
-                    .FirstOrDefaultAsync(t => t.Id == id && !t.IsDeleted);
+                var entity = await _termsRepo.FindOneAsync(t => t.Id == id && !t.IsDeleted);
                 if (entity is null)
                     return APIOperationResponse<bool>.Fail(ResponseType.NotFound, "Terms version not found");
 
@@ -641,7 +638,7 @@ namespace Ettad.HelpCenter.Service.Services
                 entity.IsDeleted = true;
                 entity.DeletionDate = _dateTime.Now;
                 entity.DeletedBy = deletedBy;
-                await _db.SaveChangesAsync();
+                await _termsRepo.UpdateAsync(entity);
 
                 return APIOperationResponse<bool>.Success(true, "Terms version deleted");
             }
@@ -665,7 +662,8 @@ namespace Ettad.HelpCenter.Service.Services
                         new TermsAcceptanceStatusDto { MustAccept = false, Terms = null });
                 }
 
-                var user = await _db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId);
+                var user = await _userRepo.Find(u => u.Id == userId)
+                    .FirstOrDefaultAsync();
                 if (user is null)
                     return APIOperationResponse<TermsAcceptanceStatusDto>.Fail(ResponseType.NotFound, "User not found");
 
@@ -694,12 +692,15 @@ namespace Ettad.HelpCenter.Service.Services
                 if (active is null)
                     return APIOperationResponse<bool>.Fail(ResponseType.NotFound, "No active terms found");
 
-                var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == userId);
-                if (user is null)
+                // ExecuteUpdate avoids loading/Attaching ApplicationUser. The same scoped DbContext may already
+                // track the current user (middleware, Identity, etc.); Attach in UpdateAsync would throw.
+                var rows = await _userRepo
+                    .Find(u => u.Id == userId)
+                    .ExecuteUpdateAsync(s => s.SetProperty(u => u.LastAcceptedTermsConditionsId, active.Id));
+
+                if (rows == 0)
                     return APIOperationResponse<bool>.Fail(ResponseType.NotFound, "User not found");
 
-                user.LastAcceptedTermsConditionsId = active.Id;
-                await _db.SaveChangesAsync();
                 return APIOperationResponse<bool>.Success(true);
             }
             catch (Exception ex)
