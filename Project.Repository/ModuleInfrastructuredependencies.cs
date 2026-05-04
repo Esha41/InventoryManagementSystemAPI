@@ -1,5 +1,4 @@
 using Ettad.Data.Interfaces.Repositories;
-using Ettad.EntityFramework.DataBaseContext.DataSeeding;
 using Ettad.Repository.Repositories;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
