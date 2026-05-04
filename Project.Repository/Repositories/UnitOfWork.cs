@@ -1,3 +1,4 @@
+using Ettad.EntityFramework.DataBaseContext;
 using Ettad.Comman.Idenitity;
 using Ettad.Data.Interfaces.Repositories;
 
@@ -5,24 +6,24 @@ namespace Ettad.Repository.Repositories
 {
     public class UnitOfWork : IUnitOfWork
     {
-        private readonly ICrossCuttingRepository<ApplicationUser> _usersRepository;
+        private readonly ApplicationDbContext _context;
 
-        public IGeneralRepository<ApplicationUser> Users => _usersRepository;
+        public IGeneralRepository<ApplicationUser> Users { get; private set; }
 
-        public UnitOfWork(ICrossCuttingRepository<ApplicationUser> usersRepository)
+        public UnitOfWork(ApplicationDbContext context)
         {
-            _usersRepository = usersRepository;
-        }
+            _context = context;
 
+            Users = new GeneralRepository<ApplicationUser>(_context);
+        }
         public async Task<bool> SaveAsync()
         {
-            int result = await _usersRepository.SaveChangesAsync();
+            int result = await _context.SaveChangesAsync();
             return result > 0;
         }
-
         public void Dispose()
         {
-            // DbContext is scoped and owned by DI; do not dispose here.
+            _context.Dispose();
         }
     }
 }

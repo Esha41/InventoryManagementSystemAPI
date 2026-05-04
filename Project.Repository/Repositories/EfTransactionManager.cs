@@ -1,18 +1,18 @@
-using Ettad.Data.Entities;
 using Ettad.Data.Interfaces.Repositories;
+using Ettad.EntityFramework.DataBaseContext;
 using Microsoft.EntityFrameworkCore.Storage;
 
 namespace Ettad.Repository.Repositories
 {
     public class EfTransactionManager : ITransactionManager
     {
-        private readonly CrossCuttingRepository<BaseItem> _repository;
+        private readonly ApplicationDbContext _context;
         private IDbContextTransaction _currentTransaction;
         public bool HasActiveTransaction => _currentTransaction != null;
 
-        public EfTransactionManager(CrossCuttingRepository<BaseItem> repository)
+        public EfTransactionManager(ApplicationDbContext context)
         {
-            _repository = repository;
+            _context = context;
         }
 
         public async Task<IAsyncDisposable> BeginAsync(CancellationToken cancellationToken = default)
@@ -20,7 +20,7 @@ namespace Ettad.Repository.Repositories
             if (_currentTransaction != null)
                 throw new InvalidOperationException("A transaction is already active for this scope.");
 
-            _currentTransaction = await _repository.Database.BeginTransactionAsync(cancellationToken);
+            _currentTransaction = await _context.Database.BeginTransactionAsync(cancellationToken);
             return _currentTransaction;
         }
 
