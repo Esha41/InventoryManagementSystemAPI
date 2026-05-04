@@ -1,5 +1,3 @@
-using Ettad.EntityFramework.DataBaseContext.DataSeeding;
-using Ettad.Notification.Service.Hubs;
 
 namespace Ettad.Api.Hosting;
 

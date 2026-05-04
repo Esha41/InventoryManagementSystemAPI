@@ -10,8 +10,6 @@ namespace Ettad.Repository
     {
         public static IServiceCollection AddInfrastructureServices(this IServiceCollection service, IConfiguration configuration)
         {
-            ApplicationDbInitializer.EnsureLogDatabaseExists(configuration);
-
             service.AddScoped<ITransactionManager, EfTransactionManager>();
 
             service.AddTransient<UnitOfWork>();

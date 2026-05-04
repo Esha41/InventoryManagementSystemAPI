@@ -13,14 +13,18 @@ Log.Information("Starting Ettad Backend API...");
 try
 {
     var builder = WebApplication.CreateBuilder(args);
+    var configuration = builder.Configuration;
 
+    // Ensure Log Database exists before Serilog starts
+    ApplicationDbInitializer.EnsureLogDatabaseExists(configuration);
+
+    // Add Serilog to the application
     builder.Host.UseSerilog((context, services, configuration) => configuration
         .ReadFrom.Configuration(context.Configuration)
         .ReadFrom.Services(services)
         .Enrich.FromLogContext()
         .WithUserEnricher(services));
 
-    var configuration = builder.Configuration;
 
     builder.Services
         .AddEttadCoreInfrastructure(configuration)

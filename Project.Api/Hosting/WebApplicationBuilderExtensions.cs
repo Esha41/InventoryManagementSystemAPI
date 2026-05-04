@@ -1,3 +1,4 @@
+
 namespace Ettad.Api.Hosting;
 
 public static class WebApplicationBuilderExtensions
@@ -38,8 +39,6 @@ public static class WebApplicationBuilderExtensions
         IConfiguration configuration,
         IWebHostEnvironment environment)
     {
-        services.AddDevExpressControls();
-
         services.ConfigureReportingServices(configurator =>
         {
             if (environment.IsDevelopment())
@@ -67,6 +66,7 @@ public static class WebApplicationBuilderExtensions
         services.AddHttpContextAccessor();
         services.AddAuthentication(IISDefaults.AuthenticationScheme);
         services.AddMemoryCache();
+        services.AddDevExpressControls();
         services.AddEndpointsApiExplorer();
 
         services.AddInfrastructureServices(configuration);
