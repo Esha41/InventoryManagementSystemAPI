@@ -692,12 +692,15 @@ namespace Ettad.HelpCenter.Service.Services
                 if (active is null)
                     return APIOperationResponse<bool>.Fail(ResponseType.NotFound, "No active terms found");
 
-                var user = await _userRepo.FindOneAsync(u => u.Id == userId);
-                if (user is null)
+                // ExecuteUpdate avoids loading/Attaching ApplicationUser. The same scoped DbContext may already
+                // track the current user (middleware, Identity, etc.); Attach in UpdateAsync would throw.
+                var rows = await _userRepo
+                    .Find(u => u.Id == userId)
+                    .ExecuteUpdateAsync(s => s.SetProperty(u => u.LastAcceptedTermsConditionsId, active.Id));
+
+                if (rows == 0)
                     return APIOperationResponse<bool>.Fail(ResponseType.NotFound, "User not found");
 
-                user.LastAcceptedTermsConditionsId = active.Id;
-                await _userRepo.UpdateAsync(user);
                 return APIOperationResponse<bool>.Success(true);
             }
             catch (Exception ex)
