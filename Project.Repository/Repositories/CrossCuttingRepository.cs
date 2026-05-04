@@ -9,7 +9,7 @@ namespace Ettad.Repository.Repositories
         public CrossCuttingRepository(ApplicationDbContext context) : base(context)
         {
         }
-
+         
         
     }
 }
