@@ -9,6 +9,7 @@ using SettingsEntity = Ettad.Data.Entities.Settings.Settings;
 using Ettad.CrossCutting.Comman.Time;
 using Ettad.Data.Constants;
 using Ettad.LdapSettings.Services.Dtos;
+using FluentValidation;
 
 namespace Ettad.LdapSettings.Services.Services
 {
@@ -21,16 +22,19 @@ namespace Ettad.LdapSettings.Services.Services
         private readonly LdapOptions _fallbackLdapOptions;
         private readonly ICurrentUserService _currentUserService;
         private readonly IDateTimeProvider _dateTimeProvider;
+        private readonly IValidator<LdapOptions> _ldapOptionsValidator;
 
         public LdapSettingsService(
             ApplicationDbContext dbContext,
             ICurrentUserService currentUserService,
             IDateTimeProvider dateTimeProvider,
+            IValidator<LdapOptions> ldapOptionsValidator,
             IOptions<LdapOptions>? fallbackOptions = null)
         {
             _dbContext = dbContext ?? throw new ArgumentNullException(nameof(dbContext));
             _currentUserService = currentUserService ?? throw new ArgumentNullException(nameof(currentUserService));
             _dateTimeProvider = dateTimeProvider ?? throw new ArgumentNullException(nameof(dateTimeProvider));
+            _ldapOptionsValidator = ldapOptionsValidator ?? throw new ArgumentNullException(nameof(ldapOptionsValidator));
             _fallbackLdapOptions = fallbackOptions?.Value ?? new LdapOptions();
         }
 
@@ -38,6 +42,13 @@ namespace Ettad.LdapSettings.Services.Services
         {
             try
             {
+                var validationResult = await _ldapOptionsValidator.ValidateAsync(ldapSettings, cancellationToken);
+                if (!validationResult.IsValid)
+                {
+                    var errors = string.Join(", ", validationResult.Errors.Select(e => e.ErrorMessage));
+                    return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, errors);
+                }
+
                 var userId = _currentUserService.UserId ?? "System";
 
                 var existingSettings = await _dbContext.Settings

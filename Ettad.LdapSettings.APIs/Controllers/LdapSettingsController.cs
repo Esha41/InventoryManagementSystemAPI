@@ -1,7 +1,6 @@
 using Ettad.LdapSettings.Services.Interfaces;
 using Ettad.ResponseHandler.Models;
 using Ettad.CrossCutting.Common.Security;
-using FluentValidation;
 using Microsoft.AspNetCore.Mvc;
 using System.Net;
 using Ettad.LdapSettings.Services.Dtos;
@@ -14,14 +13,10 @@ namespace Ettad.LdapSettings.APIs.Controllers
     public class LdapSettingsController : ApiControllerBase
     {
         private readonly ILdapSettingsService _ldapSettingsService;
-        private readonly IValidator<LdapOptions> _validator;
 
-        public LdapSettingsController(
-            ILdapSettingsService ldapSettingsService,
-            IValidator<LdapOptions> validator)
+        public LdapSettingsController(ILdapSettingsService ldapSettingsService)
         {
             _ldapSettingsService = ldapSettingsService ?? throw new ArgumentNullException(nameof(ldapSettingsService));
-            _validator = validator ?? throw new ArgumentNullException(nameof(validator));
         }
 
         /// <summary>
@@ -35,15 +30,6 @@ namespace Ettad.LdapSettings.APIs.Controllers
         [ProducesResponseType((int)HttpStatusCode.BadRequest)]
         public async Task<IActionResult> CreateLdapSettings([FromBody] LdapOptions ldapSettings)
         {
-            var validationResult = await _validator.ValidateAsync(ldapSettings);
-            if (!validationResult.IsValid)
-            {
-                var errors = string.Join(", ", validationResult.Errors.Select(e => e.ErrorMessage));
-                return ProcessResponse<bool>(APIOperationResponse<bool>.Fail(
-                    Ettad.ResponseHandler.Consts.ResponseType.BadRequest,
-                    errors));
-            }
-
             var result = await _ldapSettingsService.SaveLdapSettings(ldapSettings);
             return ProcessResponse<bool>(result);
         }
@@ -59,15 +45,6 @@ namespace Ettad.LdapSettings.APIs.Controllers
         [ProducesResponseType((int)HttpStatusCode.BadRequest)]
         public async Task<IActionResult> UpdateLdapSettings([FromBody] LdapOptions ldapSettings)
         {
-            var validationResult = await _validator.ValidateAsync(ldapSettings);
-            if (!validationResult.IsValid)
-            {
-                var errors = string.Join(", ", validationResult.Errors.Select(e => e.ErrorMessage));
-                return ProcessResponse<bool>(APIOperationResponse<bool>.Fail(
-                    Ettad.ResponseHandler.Consts.ResponseType.BadRequest,
-                    errors));
-            }
-
             var result = await _ldapSettingsService.SaveLdapSettings(ldapSettings);
             return ProcessResponse<bool>(result);
         }
