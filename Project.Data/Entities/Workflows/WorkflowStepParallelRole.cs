@@ -9,9 +9,9 @@ namespace Ettad.Data.Entities.Workflows
     /// <summary>
     /// Additional roles that may approve the same workflow step in parallel (any-of) with <see cref="WorkflowStep.ApplicationRoleId"/>.
     /// </summary>
-    public class WorkflowStepParallelRole : AuditEntity<int>
+    public class WorkflowStepParallelRole : AuditEntity<long>
     {
-        public int WorkflowStepId { get; set; }
+        public long WorkflowStepId { get; set; }
         public string RoleId { get; set; } = null!;
 
         public virtual WorkflowStep WorkflowStep { get; set; } = null!;

@@ -13,9 +13,9 @@ namespace Ettad.Workflows.Service.Command.DeleteWorkflow
 {
     public class DeleteWorkflowCommand : IRequest<APIOperationResponse<bool>>
     {
-        public int Id { get; }
+        public long Id { get; }
 
-        public DeleteWorkflowCommand(int id)
+        public DeleteWorkflowCommand(long id)
         {
             Id = id;
         }

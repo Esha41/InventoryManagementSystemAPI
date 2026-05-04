@@ -10,7 +10,7 @@ using Ettad.CrossCutting.Comman.Base;
 
 namespace Ettad.Data.Entities.Workflows
 {
-    public class Workflow : AuditEntity<int>
+    public class Workflow : AuditEntity<long>
     {
      
         [Required]

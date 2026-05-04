@@ -91,7 +91,7 @@ namespace Ettad.Workflows.Service.Services
                 }).ToListAsync();
         }
 
-        public async Task<WorkflowApprovalStepDto> GetByIdAsync(int id)
+        public async Task<WorkflowApprovalStepDto> GetByIdAsync(long id)
         {
             var entity = await _context.WorkflowApprovalSteps.FindAsync(id);
             if (entity == null) return null;
@@ -150,7 +150,7 @@ namespace Ettad.Workflows.Service.Services
             };
         }
 
-        public async Task<WorkflowApprovalStepDto> UpdateAsync(int id, UpdateWorkflowApprovalStepDto dto)
+        public async Task<WorkflowApprovalStepDto> UpdateAsync(long id, UpdateWorkflowApprovalStepDto dto)
         {
             var entity = await _context.WorkflowApprovalSteps.FindAsync(id);
             if (entity == null) return null;
@@ -187,7 +187,7 @@ namespace Ettad.Workflows.Service.Services
             };
         }
 
-        public async Task<bool> DeleteAsync(int id)
+        public async Task<bool> DeleteAsync(long id)
         {
             var entity = await _context.WorkflowApprovalSteps.FindAsync(id);
             if (entity == null) return false;
@@ -596,7 +596,7 @@ namespace Ettad.Workflows.Service.Services
             //  Determine the next step
             // If this step was returned for review, we need to progress sequentially back to the original step
             WorkflowStep nextStep = null;
-            int? nextReturnToStepId = null;
+            long? nextReturnToStepId = null;
 
             if (step.ReturnToStepId.HasValue)
             {
@@ -1033,7 +1033,7 @@ namespace Ettad.Workflows.Service.Services
         }
 
         // Helper: log step action
-        private async Task LogStepActionAsync(int stepId, int? workflowStepId, RequestStatus oldStatus, RequestStatus newStatus, string comments, string changedByUserId, string? changedByRoleId)
+        private async Task LogStepActionAsync(long stepId, long? workflowStepId, RequestStatus oldStatus, RequestStatus newStatus, string comments, string changedByUserId, string? changedByRoleId)
         {
             _context.WorkflowStepApprovalLog.Add(new WorkflowStepApprovalLog
             {
@@ -1093,7 +1093,7 @@ namespace Ettad.Workflows.Service.Services
         /// <summary>
         /// Send notifications to all configured notifiers for a workflow step when an action is taken
         /// </summary>
-        private async Task SendNotificationsToStepNotifiersAsync(int workflowStepId, ApproveRejectWorkflowApprovalDto model)
+        private async Task SendNotificationsToStepNotifiersAsync(long workflowStepId, ApproveRejectWorkflowApprovalDto model)
         {
             try
             {
@@ -1170,7 +1170,7 @@ namespace Ettad.Workflows.Service.Services
         /// <summary>
         /// Send notifications to step notifiers when a workflow starts (first step becomes active)
         /// </summary>
-        private async Task SendNotificationsToStepNotifiersOnWorkflowStartAsync(int workflowStepId, long requestId)
+        private async Task SendNotificationsToStepNotifiersOnWorkflowStartAsync(long workflowStepId, long requestId)
         {
             try
             {
@@ -1582,7 +1582,7 @@ namespace Ettad.Workflows.Service.Services
                 .ToListAsync();
 
             // Collect all workflow approval step IDs (from all steps, history, and pending steps)
-            var allApprovalStepIds = new HashSet<int>();
+            var allApprovalStepIds = new HashSet<long>();
             
             // Add all workflow approval step IDs
             foreach (var step in allWorkflowApprovalSteps)
@@ -1612,7 +1612,7 @@ namespace Ettad.Workflows.Service.Services
             }
 
             // Get files for all approval steps
-            var filesByStepId = new Dictionary<int, List<FileUploadDto>>();
+            var filesByStepId = new Dictionary<long, List<FileUploadDto>>();
             foreach (var stepId in allApprovalStepIds)
             {
                 var filesResult = await _fileUploadService.GetByEntityAsync(FileEntityType.WorkflowApproval, (long)stepId);
@@ -1713,7 +1713,7 @@ namespace Ettad.Workflows.Service.Services
                         var allWorkflowSteps = workflow.WorkflowSteps.OrderBy(ws => ws.StepOrder).ToList();
 
                         // Create a set of workflow step IDs that have been completed or are pending
-                        var completedOrPendingStepIds = new HashSet<int>();
+                        var completedOrPendingStepIds = new HashSet<long>();
                         foreach (var h in combinedHistory)
                         {
                             if (h.WorkflowStepId.HasValue)
@@ -2158,7 +2158,7 @@ namespace Ettad.Workflows.Service.Services
                 .ToList();
 
             // Load transitions for all workflow steps in the approval history
-            var workflowStepsWithTransitions = new Dictionary<int, List<WorkflowStepTransitionDto>>();
+            var workflowStepsWithTransitions = new Dictionary<long, List<WorkflowStepTransitionDto>>();
             if (workflowStepIds.Any())
             {
                 var workflowSteps = await _context.WorkflowSteps
@@ -2242,7 +2242,7 @@ namespace Ettad.Workflows.Service.Services
                 .ToListAsync();
 
             // Collect all workflow approval step IDs
-            var allApprovalStepIds = new HashSet<int>();
+            var allApprovalStepIds = new HashSet<long>();
             
             foreach (var step in allWorkflowApprovalSteps)
             {
@@ -2269,7 +2269,7 @@ namespace Ettad.Workflows.Service.Services
             }
 
             // Get files for all approval steps
-            var filesByStepId = new Dictionary<int, List<FileUploadDto>>();
+            var filesByStepId = new Dictionary<long, List<FileUploadDto>>();
             foreach (var stepId in allApprovalStepIds)
             {
                 var filesResult = await _fileUploadService.GetByEntityAsync(FileEntityType.WorkflowApproval, stepId);
@@ -2360,7 +2360,7 @@ namespace Ettad.Workflows.Service.Services
                     var allWorkflowSteps = workflow.WorkflowSteps.OrderBy(ws => ws.StepOrder).ToList();
 
                     // Create a set of workflow step IDs that have been completed or are pending
-                    var completedOrPendingStepIds = new HashSet<int>();
+                    var completedOrPendingStepIds = new HashSet<long>();
                     foreach (var h in combinedHistory)
                     {
                         if (h.WorkflowStepId.HasValue)
@@ -2784,10 +2784,10 @@ namespace Ettad.Workflows.Service.Services
             return roles.Count == 1 ? roles[0] : null;
         }
 
-        private async Task<Dictionary<int, List<WorkflowStepParallelRoleDto>>> BuildParallelRolesByStepIdsAsync(List<int> stepIds)
+        private async Task<Dictionary<long, List<WorkflowStepParallelRoleDto>>> BuildParallelRolesByStepIdsAsync(List<long> stepIds)
         {
             if (stepIds == null || stepIds.Count == 0)
-                return new Dictionary<int, List<WorkflowStepParallelRoleDto>>();
+                return new Dictionary<long, List<WorkflowStepParallelRoleDto>>();
             var distinctIds = stepIds.Distinct().ToList();
             var rows = await _context.WorkflowStepParallelRoles
                 .Where(pr => distinctIds.Contains(pr.WorkflowStepId))
@@ -2805,10 +2805,10 @@ namespace Ettad.Workflows.Service.Services
                 .ToDictionary(g => g.Key, g => g.ToList());
         }
 
-        private async Task<Dictionary<int, List<string>>> BuildParallelRoleIdsByStepIdsAsync(List<int> stepIds)
+        private async Task<Dictionary<long, List<string>>> BuildParallelRoleIdsByStepIdsAsync(List<long> stepIds)
         {
             if (stepIds == null || stepIds.Count == 0)
-                return new Dictionary<int, List<string>>();
+                return new Dictionary<long, List<string>>();
             var distinctIds = stepIds.Distinct().ToList();
             return await _context.WorkflowStepParallelRoles
                 .Where(pr => distinctIds.Contains(pr.WorkflowStepId))

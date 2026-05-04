@@ -8,10 +8,10 @@ namespace Ettad.Data.Entities.Workflows;
 /// <summary>
 /// Tracks which reminder tier (lead-days) was already sent for a pending approval step.
 /// </summary>
-public class WorkflowApprovalStepReminder : AuditEntity<int>
+public class WorkflowApprovalStepReminder : AuditEntity<long>
 {
     [Required]
-    public int WorkflowApprovalStepId { get; set; }
+    public long WorkflowApprovalStepId { get; set; }
 
     public virtual WorkflowApprovalStep WorkflowApprovalStep { get; set; }
 

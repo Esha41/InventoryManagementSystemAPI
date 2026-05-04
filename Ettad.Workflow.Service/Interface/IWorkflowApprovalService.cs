@@ -14,10 +14,10 @@ namespace Ettad.Workflows.Service.Interface
     public interface IWorkflowApprovalService
     {
         Task<IEnumerable<WorkflowApprovalStepDto>> GetAllAsync();
-        Task<WorkflowApprovalStepDto> GetByIdAsync(int id);
+        Task<WorkflowApprovalStepDto> GetByIdAsync(long id);
         Task<WorkflowApprovalStepDto> CreateAsync(CreateWorkflowApprovalStepDto dto);
-        Task<WorkflowApprovalStepDto> UpdateAsync(int id, UpdateWorkflowApprovalStepDto dto);
-        Task<bool> DeleteAsync(int id);
+        Task<WorkflowApprovalStepDto> UpdateAsync(long id, UpdateWorkflowApprovalStepDto dto);
+        Task<bool> DeleteAsync(long id);
         Task<IEnumerable<WorkflowApprovalWithOrderDto>> GetOrdersWithApprovalStepsAsync();
         Task<WorkflowApprovalStepDto> ApproveAsync(ApproveRejectWorkflowApprovalDto dto);
         Task<WorkflowApprovalStepDto> RejectAsync(ApproveRejectWorkflowApprovalDto dto);

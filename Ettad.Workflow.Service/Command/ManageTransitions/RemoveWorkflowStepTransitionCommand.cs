@@ -13,8 +13,8 @@ namespace Ettad.Workflows.Service.Command.ManageTransitions
 {
     public class RemoveWorkflowStepTransitionCommand : IRequest<APIOperationResponse<bool>>
     {
-        public int SourceStepId { get; set; }
-        public int TargetStepId { get; set; }
+        public long SourceStepId { get; set; }
+        public long TargetStepId { get; set; }
     }
 
     public class RemoveWorkflowStepTransitionCommandHandler : IRequestHandler<RemoveWorkflowStepTransitionCommand, APIOperationResponse<bool>>

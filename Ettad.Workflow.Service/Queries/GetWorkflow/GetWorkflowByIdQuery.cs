@@ -11,9 +11,9 @@ namespace Ettad.Workflows.Service.Queries.GetWorkflowById
 {
     public class GetWorkflowByIdQuery : IRequest<APIOperationResponse<WorkflowDto>>
     {
-        public int Id { get; }
+        public long Id { get; }
 
-        public GetWorkflowByIdQuery(int id)
+        public GetWorkflowByIdQuery(long id)
         {
             Id = id;
         }

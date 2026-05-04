@@ -19,7 +19,7 @@ namespace Ettad.Workflows.Service.Command.UpdateWorkflow
 {
     public class UpdateWorkflowCommand : IRequest<APIOperationResponse<WorkflowDto>>
     {
-        public int Id { get; set; }
+        public long Id { get; set; }
         public string WorkflowName { get; set; }
         public WorkflowType WorkflowType { get; set; }      
         public bool IsActive { get; set; } = true;

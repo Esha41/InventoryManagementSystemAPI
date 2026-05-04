@@ -80,12 +80,12 @@ namespace Ettad.Data.Entities
         /// <summary>
         /// The workflow approval step that was active when modification occurred (for step approvals)
         /// </summary>
-        public int? WorkflowApprovalStepId { get; set; }
+        public long? WorkflowApprovalStepId { get; set; }
 
         /// <summary>
         /// The workflow step definition ID (for reference)
         /// </summary>
-        public int? WorkflowStepId { get; set; }
+        public long? WorkflowStepId { get; set; }
 
         /// <summary>
         /// Human-readable description of what happened

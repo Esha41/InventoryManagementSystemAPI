@@ -151,7 +151,7 @@ namespace Ettad.Workflows.Service.Command.CreateWorkflow
 
 
         // Adds workflow steps to the created workflow
-        private async Task<bool> AddWorkflowSteps(List<WorkflowStepCreateDto> workflowSteps, int workflowId, CancellationToken cancellationToken)
+        private async Task<bool> AddWorkflowSteps(List<WorkflowStepCreateDto> workflowSteps, long workflowId, CancellationToken cancellationToken)
         {
             try
             {

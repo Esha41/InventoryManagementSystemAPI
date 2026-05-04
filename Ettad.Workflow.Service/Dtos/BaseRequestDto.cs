@@ -61,9 +61,9 @@ namespace Ettad.Workflows.Service.Dtos
 
     public class ApprovalHistoryDto
     {
-        public int Id { get; set; }
-        public int WorkflowApprovalStepId { get; set; }
-        public int? WorkflowStepId { get; set; }
+        public long Id { get; set; }
+        public long WorkflowApprovalStepId { get; set; }
+        public long? WorkflowStepId { get; set; }
         public RequestStatus OldRequestStatus { get; set; }
         public RequestStatus NewRequestStatus { get; set; }
         public string? Comments { get; set; }

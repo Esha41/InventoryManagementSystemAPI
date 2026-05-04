@@ -30,7 +30,7 @@ namespace Ettad.Workflows.API.Controllers
 
         [HttpGet("{id}")]
         [CheckAuthorize("Permissions.RequestReciever.Page", "Permissions.RequestReciever.View")]
-        public async Task<IActionResult> Get(int id)
+        public async Task<IActionResult> Get(long id)
         {
             var result = await _service.GetByIdAsync(id);
             if (result == null) return NotFound();
@@ -46,7 +46,7 @@ namespace Ettad.Workflows.API.Controllers
 
         [HttpPut("{id}")]
         [CheckAuthorize("Permissions.RequestReciever.Edit")]
-        public async Task<IActionResult> Update(int id, [FromBody] UpdateWorkflowApprovalStepDto dto)
+        public async Task<IActionResult> Update(long id, [FromBody] UpdateWorkflowApprovalStepDto dto)
         {
             var result = await _service.UpdateAsync(id, dto);
             if (result == null) return NotFound();
@@ -55,7 +55,7 @@ namespace Ettad.Workflows.API.Controllers
 
         [HttpDelete("{id}")]
         [CheckAuthorize("Permissions.RequestReciever.Delete")]
-        public async Task<IActionResult> Delete(int id)
+        public async Task<IActionResult> Delete(long id)
         {
             var deleted = await _service.DeleteAsync(id);
             if (!deleted) return NotFound();
