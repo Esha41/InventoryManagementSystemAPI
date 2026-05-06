@@ -19,7 +19,6 @@ global using Ettad.User.Services.DTO;
 global using Ettad.User.Services.Helpers;
 global using Ettad.User.Services.Interfaces;
 global using Ettad.Workflow.Service;
-global using Ettad.Workflows.Service.Interface;
 global using Ettad.Workflows.Service.Monitoring;
 global using Hangfire;
 global using Microsoft.AspNetCore.Authentication.JwtBearer;

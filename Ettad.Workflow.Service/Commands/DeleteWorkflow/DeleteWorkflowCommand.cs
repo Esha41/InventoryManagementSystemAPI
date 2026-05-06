@@ -9,7 +9,7 @@ using Ettad.CrossCutting.Comman.Time;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Ettad.Workflows.Service.Command.DeleteWorkflow
+namespace Ettad.Workflows.Service.Commands.DeleteWorkflow
 {
     public class DeleteWorkflowCommand : IRequest<APIOperationResponse<bool>>
     {

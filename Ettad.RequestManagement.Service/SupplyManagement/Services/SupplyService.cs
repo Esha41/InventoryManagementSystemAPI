@@ -15,13 +15,14 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Ettad.CrossCutting.Comman.Time;
-using Ettad.Workflows.Service.Interface;
 using Ettad.Data.Interfaces.Services;
 using Ettad.Data.Interfaces.Repositories;
 using Ettad.Inventory.Service.Inventories.Interfaces;
 using Ettad.Notification.Service.Interfaces;
 using Ettad.RequestManagement.Service.SupplyManagement.Interfaces;
+using Ettad.Workflows.Service.Commands.WorkflowApproval.ProcessWorkflowAction;
 using Ettad.Workflows.Service.Dtos;
+using MediatR;
 
 namespace Ettad.RequestManagement.Service.SupplyManagement.Services
 {
@@ -49,8 +50,8 @@ namespace Ettad.RequestManagement.Service.SupplyManagement.Services
 		private readonly IFileUploadService _fileUploadService;
 		private readonly IDateTimeProvider _dateTimeProvider;
 		private readonly IOrderItemTrackingService _orderItemTrackingService;
-		private readonly IWorkflowApprovalService _workflowApprovalService;
 		private readonly ITransactionManager _transactionManager;
+		private readonly IMediator _mediator;
 
 	public SupplyService(
 			ApplicationDbContext context,
@@ -75,8 +76,8 @@ namespace Ettad.RequestManagement.Service.SupplyManagement.Services
 			IFileUploadService fileUploadService,
 			IDateTimeProvider dateTimeProvider,
 			IOrderItemTrackingService orderItemTrackingService,
-			IWorkflowApprovalService workflowApprovalService,
-			ITransactionManager transactionManager)
+			ITransactionManager transactionManager,
+			IMediator mediator)
 		{
 			_context = context;
 			_inventoryService = inventoryService;
@@ -100,8 +101,8 @@ namespace Ettad.RequestManagement.Service.SupplyManagement.Services
 			_fileUploadService = fileUploadService;
 			_dateTimeProvider = dateTimeProvider;
 			_orderItemTrackingService = orderItemTrackingService;
-			_workflowApprovalService = workflowApprovalService;
 			_transactionManager = transactionManager;
+			_mediator = mediator;
 		}
 
 		public async Task<APIOperationResponse<OrderSupplySuggestionDto>> GetSupplySuggestionAsync(long orderId, List<long>? depotIds = null)
@@ -1339,7 +1340,7 @@ namespace Ettad.RequestManagement.Service.SupplyManagement.Services
 							SendToHigherApproval = false
 						};
 
-						var approveResult = await _workflowApprovalService.ProcessActionAsync(approveDto);
+						var approveResult = await _mediator.Send(new ProcessWorkflowActionCommand(approveDto, null));
 						if (!approveResult.Succeeded)
 						{
 							await _transactionManager.RollbackAsync();

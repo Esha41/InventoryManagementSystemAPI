@@ -1,9 +1,13 @@
 using Ettad.CrossCutting.Common.Security;
-using Ettad.Data.Enums;
-using Ettad.ResponseHandler.Consts;
 using Ettad.ResponseHandler.Models;
+using Ettad.Workflows.Service.Commands.WorkflowApproval.ProcessWorkflowAction;
 using Ettad.Workflows.Service.Dtos;
-using Ettad.Workflows.Service.Interface;
+using Ettad.Workflows.Service.Queries.WorkflowApproval.GetAllBaseRequests;
+using Ettad.Workflows.Service.Queries.WorkflowApproval.GetBaseRequestById;
+using Ettad.Workflows.Service.Queries.WorkflowApproval.GetOrdersWithApprovalSteps;
+using Ettad.Workflows.Service.Queries.WorkflowApproval.GetPreviousStepsForReturn;
+using Ettad.Workflows.Service.Queries.WorkflowApproval.GetWorkflowApprovalStepById;
+using Ettad.Workflows.Service.Queries.WorkflowApproval.GetWorkflowApprovalSteps;
 using MediatR;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -14,153 +18,56 @@ namespace Ettad.Workflows.API.Controllers
     [Route("api/[controller]")]
     public class WorkflowApprovalController : ApiControllerBase
     {
-        private readonly IWorkflowApprovalService _service;
+        private readonly IMediator _mediator;
 
-        public WorkflowApprovalController(IWorkflowApprovalService service)
+        public WorkflowApprovalController(IMediator mediator)
         {
-            _service = service;
+            _mediator = mediator;
         }
 
         [HttpGet]
         [CheckAuthorize("Permissions.RequestReciever.Page", "Permissions.RequestReciever.View")]
         public async Task<IActionResult> GetAll()
-        {
-            return Ok(await _service.GetAllAsync());
-        }
+            => ProcessResponse(await _mediator.Send(new GetWorkflowApprovalStepsQuery()));
 
         [HttpGet("{id}")]
         [CheckAuthorize("Permissions.RequestReciever.Page", "Permissions.RequestReciever.View")]
         public async Task<IActionResult> Get(long id)
-        {
-            var result = await _service.GetByIdAsync(id);
-            if (result == null) return NotFound();
-            return Ok(result);
-        }
-
-        [HttpPost]
-        [CheckAuthorize("Permissions.RequestReciever.Create")]
-        public async Task<IActionResult> Create([FromBody] CreateWorkflowApprovalStepDto dto)
-        {
-            return Ok(await _service.CreateAsync(dto));
-        }
-
-        [HttpPut("{id}")]
-        [CheckAuthorize("Permissions.RequestReciever.Edit")]
-        public async Task<IActionResult> Update(long id, [FromBody] UpdateWorkflowApprovalStepDto dto)
-        {
-            var result = await _service.UpdateAsync(id, dto);
-            if (result == null) return NotFound();
-            return Ok(result);
-        }
-
-        [HttpDelete("{id}")]
-        [CheckAuthorize("Permissions.RequestReciever.Delete")]
-        public async Task<IActionResult> Delete(long id)
-        {
-            var deleted = await _service.DeleteAsync(id);
-            if (!deleted) return NotFound();
-            return Ok();
-        }
+            => ProcessResponse(await _mediator.Send(new GetWorkflowApprovalStepByIdQuery(id)));
 
         //[HttpGet("AllOrders")]
         //[CheckAuthorize("Permissions.RequestReciever.Page", "Permissions.RequestReciever.View")]
         //public async Task<IActionResult> GetOrdersWithApprovalSteps()
-        //{
-        //    var result = await _service.GetOrdersWithApprovalStepsAsync();
-        //    return Ok(result);
-        //}
+        //    => ProcessResponse(await _mediator.Send(new GetOrdersWithApprovalStepsQuery()));
 
         [HttpGet("AllBaseRequests")]
         [CheckAuthorize("Permissions.RequestReciever.Page", "Permissions.RequestReciever.View")]
         public async Task<IActionResult> GetAllBaseRequests()
         {
-            var result = await _service.GetAllBaseRequestsAsync();
-            return Ok(result);
+            var result = await _mediator.Send(new GetAllBaseRequestsQuery());
+            return ProcessResponse(result);
         }
 
         [HttpGet("BaseRequest/{requestId}")]
         [CheckAuthorize("Permissions.RequestReciever.Page", "Permissions.RequestReciever.View")]
         public async Task<IActionResult> GetBaseRequestById(long requestId)
         {
-            var result = await _service.GetBaseRequestByIdAsync(requestId);
-            if (result == null) return NotFound();
-            return Ok(result);
+            var result = await _mediator.Send(new GetBaseRequestByIdQuery(requestId));
+            return ProcessResponse(result);
         }
 
-        [HttpPost("approve-reject")]
+        [HttpPost("process-action")]
         [Consumes("multipart/form-data", "application/json")]
         [CheckAuthorize("Permissions.RequestReciever.Create", "Permissions.RequestReciever.Edit")]
-        public async Task<IActionResult> ApproveOrReject(
+        public async Task<IActionResult> ProcessAction(
             [FromForm] ApproveRejectWorkflowApprovalDto dto,
-            [FromForm] List<IFormFile> files = null)
-        {
-            try
-            {
-                var result = files != null && files.Count > 0
-                    ? await _service.ApproveOrReject(dto, files)
-                    : await _service.ApproveOrReject(dto);
-
-                // Determine success message based on action
-                string successMessage = dto.Action == RequestStatus.Approved
-                    ? "Request approved successfully."
-                    : dto.Action == RequestStatus.Rejected
-                    ? "Request rejected successfully."
-                    : dto.Action == RequestStatus.ReturnedForReview
-                    ? "Request returned for review successfully."
-                    : "Workflow step processed successfully.";
-
-                // Wrap into API Response
-                var response = new APIOperationResponse<WorkflowApprovalStepDto>
-                {
-                    Succeeded = true,
-                    StatusCode = (int)ResponseType.Success,
-                    Data = result,
-                    Message = successMessage
-                };
-
-                return ProcessResponse(response);
-            }
-            catch (KeyNotFoundException ex)
-            {
-                return ProcessResponse(new APIOperationResponse<string>
-                {
-                    StatusCode = (int)ResponseType.NotFound,
-                    Message = ex.Message
-                });
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                return ProcessResponse(new APIOperationResponse<string>
-                {
-                    StatusCode = (int)ResponseType.Unauthorized,
-                    Message = ex.Message
-                });
-            }
-            catch (InvalidOperationException ex)
-            {
-                return ProcessResponse(new APIOperationResponse<string>
-                {
-                    StatusCode = (int)ResponseType.BadRequest,
-                    Message = ex.Message
-                });
-            }
-            catch (Exception ex)
-            {
-                return ProcessResponse(new APIOperationResponse<string>
-                {
-                    StatusCode = (int)ResponseType.InternalServerError,
-                    Message = $"An unexpected error occurred: {ex.Message}"
-                });
-            }
-        }
+            [FromForm] List<IFormFile>? files = null)
+            => ProcessResponse(await _mediator.Send(new ProcessWorkflowActionCommand(dto, files)));
 
         [HttpGet("previous-steps/{requestId}")]
         [CheckAuthorize("Permissions.RequestReciever.Page", "Permissions.RequestReciever.View")]
-        public async Task<IActionResult> GetPreviousWorkflowStepsForReturn(int requestId)
-        {
-            var result = await _service.GetPreviousWorkflowStepsForReturn(requestId);
-            return Ok(result);
-        }
+        public async Task<IActionResult> GetPreviousWorkflowStepsForReturn(long requestId)
+            => ProcessResponse(await _mediator.Send(new GetPreviousStepsForReturnQuery(requestId)));
 
     }
 }

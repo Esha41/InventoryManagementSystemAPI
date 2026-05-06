@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 using Ettad.ResponseHandler.Consts;
 using Ettad.CrossCutting.Comman.Time;
 
-namespace Ettad.Workflows.Service.Command.ManageTransitions
+namespace Ettad.Workflows.Service.Commands.ManageTransitions
 {
     public class RemoveWorkflowStepTransitionCommand : IRequest<APIOperationResponse<bool>>
     {

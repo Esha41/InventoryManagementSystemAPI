@@ -8,8 +8,10 @@ using Ettad.RequestManagement.Service.Common;
 using Ettad.RequestManagement.Service.Orders.Dto;
 using Ettad.ResponseHandler.Consts;
 using Ettad.ResponseHandler.Models;
-using Ettad.Workflows.Service.Interface;
+using Ettad.Workflows.Service.Commands.WorkflowApproval.StartWorkflow;
+using Ettad.Workflows.Service.Queries.WorkflowApproval.GetCurrentApprovalStepByRequestId;
 using FluentValidation;
+using MediatR;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Logging;
@@ -32,7 +34,6 @@ namespace Ettad.RequestManagement.Service.Orders
         private readonly ICrossCuttingRepository<SupplyDetail> _supplyDetailRepository;
         private readonly ICrossCuttingRepository<FileUplodDetails> _fileDetailsRepository;
         private readonly ICrossCuttingRepository<BaseItem> _baseItemRepository;
-        private readonly IWorkflowApprovalService _workflowApprovalService;
         private readonly IMapper _mapper;
         private readonly IValidator<CreateOrderDto> _createValidator;
         private readonly ICurrentUserService _currentUserService;
@@ -43,6 +44,7 @@ namespace Ettad.RequestManagement.Service.Orders
         private readonly IFileUploadService _fileUploadService;
         private readonly IDateTimeProvider _dateTimeProvider;
         private readonly IOrderItemTrackingService _orderItemTrackingService;
+        private readonly IMediator _mediator;
 
         public OrderService(
             ICrossCuttingRepository<Order> orderRepository,
@@ -53,7 +55,6 @@ namespace Ettad.RequestManagement.Service.Orders
             ICrossCuttingRepository<SupplyDetail> supplyDetailRepository,
             ICrossCuttingRepository<FileUplodDetails> fileDetailsRepository,
             ICrossCuttingRepository<BaseItem> baseItemRepository,
-            IWorkflowApprovalService workflowApprovalService,
             IMapper mapper,
             IValidator<CreateOrderDto> createValidator,
             ICurrentUserService currentUserService,
@@ -63,7 +64,8 @@ namespace Ettad.RequestManagement.Service.Orders
             ILogger<OrderService> logger,
             IFileUploadService fileUploadService,
             IDateTimeProvider dateTimeProvider,
-            IOrderItemTrackingService orderItemTrackingService)
+            IOrderItemTrackingService orderItemTrackingService,
+            IMediator mediator)
         {
             _orderRepository = orderRepository;
             _requestItemRepository = requestItemRepository;
@@ -73,7 +75,6 @@ namespace Ettad.RequestManagement.Service.Orders
             _supplyDetailRepository = supplyDetailRepository;
             _fileDetailsRepository = fileDetailsRepository;
             _baseItemRepository = baseItemRepository;
-            _workflowApprovalService = workflowApprovalService;
             _mapper = mapper;
             _createValidator = createValidator;
             _currentUserService = currentUserService;
@@ -84,6 +85,7 @@ namespace Ettad.RequestManagement.Service.Orders
             _fileUploadService = fileUploadService;
             _dateTimeProvider = dateTimeProvider;
             _orderItemTrackingService = orderItemTrackingService;
+            _mediator = mediator;
         }
 
         // ... existing methods omitted for brevity until SetSupplyDateAsync ...
@@ -437,7 +439,8 @@ namespace Ettad.RequestManagement.Service.Orders
                 }
 
                 // Start workflow for the order
-                var workflowStarted = await _workflowApprovalService.StartWorkflowAsync(createdOrder.Id, workflowType);
+                var startResult = await _mediator.Send(new StartWorkflowCommand(createdOrder.Id, workflowType));
+                var workflowStarted = startResult.Succeeded && startResult.Data == true;
 
                 if (workflowStarted)
                 {
@@ -660,7 +663,7 @@ namespace Ettad.RequestManagement.Service.Orders
                 // Record history
                 try
                 {
-                    var currentStep = await _workflowApprovalService.GetCurrentApprovalStepByRequestIdAsync((int)orderId);
+                    var currentStep = await _mediator.Send(new GetCurrentApprovalStepByRequestIdQuery(orderId));
                     var departmentId = _currentUserService.DepartmentId ?? order.DepartmentId;
                     var userName = _currentUserService.UserName ?? "System";
 
@@ -752,7 +755,7 @@ namespace Ettad.RequestManagement.Service.Orders
                 // Record history
                 try
                 {
-                    var currentStep = await _workflowApprovalService.GetCurrentApprovalStepByRequestIdAsync((int)orderId);
+                    var currentStep = await _mediator.Send(new GetCurrentApprovalStepByRequestIdQuery(orderId));
                     var departmentId = _currentUserService.DepartmentId ?? order.DepartmentId;
                     var userName = _currentUserService.UserName ?? "System";
                     var stepName = currentStep?.WorkflowStep?.ApplicationRole?.Name ?? "Unknown";
@@ -841,7 +844,7 @@ namespace Ettad.RequestManagement.Service.Orders
                 // Record history before deletion
                 try
                 {
-                    var currentStep = await _workflowApprovalService.GetCurrentApprovalStepByRequestIdAsync((int)orderId);
+                    var currentStep = await _mediator.Send(new GetCurrentApprovalStepByRequestIdQuery(orderId));
                     var departmentId = _currentUserService.DepartmentId ?? order.DepartmentId;
                     var userName = _currentUserService.UserName ?? "System";
 

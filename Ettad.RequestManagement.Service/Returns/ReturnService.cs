@@ -12,12 +12,15 @@ using Ettad.Application.Common.Interfaces;
 using Microsoft.AspNetCore.Identity;
 using Ettad.Comman.Idenitity;
 using Microsoft.Extensions.Logging;
-using Ettad.Workflows.Service.Interface;
+using Ettad.Workflows.Service.Commands.WorkflowApproval.ProcessWorkflowAction;
+using Ettad.Workflows.Service.Commands.WorkflowApproval.StartWorkflow;
+using Ettad.Workflows.Service.Queries.WorkflowApproval.GetCurrentApprovalStepByRequestId;
 using Ettad.Workflows.Service.Dtos;
 using Microsoft.AspNetCore.Http;
 using Ettad.CrossCutting.Comman.Time;
 using Ettad.Data.Interfaces.Repositories;
 using Ettad.Notification.Service.Interfaces;
+using MediatR;
 
 namespace Ettad.RequestManagement.Service.Returns
 {
@@ -26,7 +29,6 @@ namespace Ettad.RequestManagement.Service.Returns
         private readonly ICrossCuttingRepository<Return> _returnRepository;
         private readonly ICrossCuttingRepository<RequestItem> _requestItemRepository;
         private readonly ICrossCuttingRepository<RequestPurpose> _requestPurposeRepository;
-        private readonly IWorkflowApprovalService _workflowApprovalService;
         private readonly IMapper _mapper;
         private readonly IValidator<CreateReturnDto> _createValidator;
         private readonly ICurrentUserService _currentUserService;
@@ -44,12 +46,12 @@ namespace Ettad.RequestManagement.Service.Returns
         private readonly ICrossCuttingRepository<Depot> _depotRepository;
         private readonly ICrossCuttingRepository<BaseItem> _baseItemRepository;
         private readonly ICrossCuttingRepository<ReturnTrackingLine> _returnTrackingLineRepository;
+        private readonly IMediator _mediator;
 
         public ReturnService(
             ICrossCuttingRepository<Return> returnRepository,
             ICrossCuttingRepository<RequestItem> requestItemRepository,
             ICrossCuttingRepository<RequestPurpose> requestPurposeRepository,
-            IWorkflowApprovalService workflowApprovalService,
             IMapper mapper,
             IValidator<CreateReturnDto> createValidator,
             ICurrentUserService currentUserService,
@@ -66,12 +68,12 @@ namespace Ettad.RequestManagement.Service.Returns
             ICrossCuttingRepository<Batch> batchRepository,
             ICrossCuttingRepository<Depot> depotRepository,
             ICrossCuttingRepository<BaseItem> baseItemRepository,
-            ICrossCuttingRepository<ReturnTrackingLine> returnTrackingLineRepository)
+            ICrossCuttingRepository<ReturnTrackingLine> returnTrackingLineRepository,
+            IMediator mediator)
         {
             _returnRepository = returnRepository;
             _requestItemRepository = requestItemRepository;
             _requestPurposeRepository = requestPurposeRepository;
-            _workflowApprovalService = workflowApprovalService;
             _mapper = mapper;
             _createValidator = createValidator;
             _currentUserService = currentUserService;
@@ -89,6 +91,7 @@ namespace Ettad.RequestManagement.Service.Returns
             _depotRepository = depotRepository;
             _baseItemRepository = baseItemRepository;
             _returnTrackingLineRepository = returnTrackingLineRepository;
+            _mediator = mediator;
         }
 
         public async Task<APIOperationResponse<ReturnDto>> GetByIdAsync(long id)
@@ -327,9 +330,9 @@ namespace Ettad.RequestManagement.Service.Returns
                 }
 
                 // Start workflow for the return (Return vs Return_Weapon based on line item types)
-                var workflowStarted = await _workflowApprovalService.StartWorkflowAsync(
-                    createdReturn.Id,
-                    returnWorkflowType);
+                var startResult = await _mediator.Send(
+                    new StartWorkflowCommand(createdReturn.Id, returnWorkflowType));
+                var workflowStarted = startResult.Succeeded && startResult.Data == true;
 
                 if (workflowStarted)
                 {
@@ -786,7 +789,7 @@ namespace Ettad.RequestManagement.Service.Returns
                     line = await _returnTrackingLineRepository.AddAsync(line);
                 }
 
-                var currentStep = await _workflowApprovalService.GetCurrentApprovalStepByRequestIdAsync(returnEntity.Id);
+                var currentStep = await _mediator.Send(new GetCurrentApprovalStepByRequestIdQuery(returnEntity.Id));
                 if (currentStep == null)
                 {
                     return APIOperationResponse<bool>.Fail(ResponseType.BadRequest,
@@ -822,7 +825,7 @@ namespace Ettad.RequestManagement.Service.Returns
                         SendToHigherApproval = false
                     };
 
-                    var approveResult = await _workflowApprovalService.ProcessActionAsync(approveDto);
+                    var approveResult = await _mediator.Send(new ProcessWorkflowActionCommand(approveDto, null));
                     if (!approveResult.Succeeded)
                     {
                         _logger.LogWarning("Failed to approve workflow step for return. ReturnId: {ReturnId}, Error: {Error}",

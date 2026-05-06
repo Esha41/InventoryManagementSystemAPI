@@ -11,12 +11,13 @@ using Ettad.Application.Common.Interfaces;
 using Microsoft.AspNetCore.Identity;
 using Ettad.Comman.Idenitity;
 using Microsoft.Extensions.Logging;
-using Ettad.Workflows.Service.Interface;
-using Microsoft.AspNetCore.Http;
 using Ettad.CrossCutting.Comman.FileUpload;
 using Ettad.CrossCutting.Comman.Time;
 using Ettad.Data.Interfaces.Repositories;
 using Ettad.Notification.Service.Interfaces;
+using Ettad.Workflows.Service.Commands.WorkflowApproval.StartWorkflow;
+using MediatR;
+using Microsoft.AspNetCore.Http;
 
 namespace Ettad.RequestManagement.Service.Discards
 {
@@ -25,7 +26,6 @@ namespace Ettad.RequestManagement.Service.Discards
         private readonly ICrossCuttingRepository<Discard> _discardRepository;
         private readonly ICrossCuttingRepository<RequestItem> _requestItemRepository;
         private readonly ICrossCuttingRepository<RequestPurpose> _requestPurposeRepository;
-        private readonly IWorkflowApprovalService _workflowApprovalService;
         private readonly IMapper _mapper;
         private readonly IValidator<CreateDiscardDto> _createValidator;
         private readonly ICurrentUserService _currentUserService;
@@ -36,12 +36,12 @@ namespace Ettad.RequestManagement.Service.Discards
         private readonly IFileUploadService _fileUploadService;
         private readonly ICrossCuttingRepository<FileUplodDetails> _fileDetailsRepository;
         private readonly IDateTimeProvider _dateTimeProvider;
+        private readonly IMediator _mediator;
 
         public DiscardService(
             ICrossCuttingRepository<Discard> discardRepository,
             ICrossCuttingRepository<RequestItem> requestItemRepository,
             ICrossCuttingRepository<RequestPurpose> requestPurposeRepository,
-            IWorkflowApprovalService workflowApprovalService,
             IMapper mapper,
             IValidator<CreateDiscardDto> createValidator,
             ICurrentUserService currentUserService,
@@ -51,12 +51,12 @@ namespace Ettad.RequestManagement.Service.Discards
             ILogger<DiscardService> logger,
             IFileUploadService fileUploadService,
             ICrossCuttingRepository<FileUplodDetails> fileDetailsRepository,
-            IDateTimeProvider dateTimeProvider)
+            IDateTimeProvider dateTimeProvider,
+            IMediator mediator)
         {
             _discardRepository = discardRepository;
             _requestItemRepository = requestItemRepository;
             _requestPurposeRepository = requestPurposeRepository;
-            _workflowApprovalService = workflowApprovalService;
             _mapper = mapper;
             _createValidator = createValidator;
             _currentUserService = currentUserService;
@@ -67,6 +67,7 @@ namespace Ettad.RequestManagement.Service.Discards
             _fileUploadService = fileUploadService;
             _fileDetailsRepository = fileDetailsRepository;
             _dateTimeProvider = dateTimeProvider;
+            _mediator = mediator;
         }
 
         public async Task<APIOperationResponse<DiscardDto>> GetByIdAsync(long id)
@@ -269,9 +270,9 @@ namespace Ettad.RequestManagement.Service.Discards
                 }
 
                 // Start workflow for the discard
-                var workflowStarted = await _workflowApprovalService.StartWorkflowAsync(
-                    createdDiscard.Id,
-                    WorkflowType.Discard);
+                var startResult = await _mediator.Send(
+                    new StartWorkflowCommand(createdDiscard.Id, WorkflowType.Discard));
+                var workflowStarted = startResult.Succeeded && startResult.Data == true;
 
                 if (workflowStarted)
                 {
