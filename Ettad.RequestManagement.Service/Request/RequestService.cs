@@ -10,6 +10,7 @@ using Ettad.ResponseHandler.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity;
 using Ettad.User.Services.Interfaces;
+using System;
 using System.Linq;
 using Ettad.CrossCutting.Comman.Models;
 using Ettad.Data.Constants;
@@ -62,10 +63,46 @@ namespace Ettad.RequestManagement.Service.Request
             // Note: PaginatedList.CreateAsyncForTableBinding will apply the client-side sort via ToFilterView
             if (filter == null || string.IsNullOrEmpty(filter.sortField))
             {
-                query = query.OrderByDescending(r => r.CreationDate);
+                query = query
+                    .OrderByDescending(r => r.Priority)
+                    .ThenByDescending(r => r.CreationDate);
             }
 
             return query.AsNoTracking();
+        }
+
+        private static IQueryable<BaseRequest> ApplyUserActionsCompositeSort(
+            IQueryable<BaseRequest> query,
+            FilterData filter)
+        {
+            if (string.IsNullOrEmpty(filter.sortField))
+            {
+                return query;
+            }
+
+            // Match FilterProvider: sortDirection == 1 → ascending
+            bool descending = filter.sortDirection != 1;
+            var field = filter.sortField;
+
+            if (string.Equals(field, "Priority", StringComparison.OrdinalIgnoreCase))
+            {
+                filter.sortField = null;
+                filter.sortDirection = 0;
+                return descending
+                    ? query.OrderByDescending(r => r.Priority).ThenByDescending(r => r.CreationDate)
+                    : query.OrderBy(r => r.Priority).ThenByDescending(r => r.CreationDate);
+            }
+
+            if (string.Equals(field, "CreationDate", StringComparison.OrdinalIgnoreCase))
+            {
+                filter.sortField = null;
+                filter.sortDirection = 0;
+                return descending
+                    ? query.OrderByDescending(r => r.CreationDate).ThenByDescending(r => r.Priority)
+                    : query.OrderBy(r => r.CreationDate).ThenByDescending(r => r.Priority);
+            }
+
+            return query;
         }
 
         public async Task<APIOperationResponse<List<BaseRequestDto>>> GetAllRequestsAsync(RequestStatus? status = null, RequestType? requestType = null)
@@ -397,6 +434,11 @@ namespace Ettad.RequestManagement.Service.Request
 
             // Apply base query behavior (Includes, Search, and Sorting)
             query = PrepareBaseQuery(query, request.Filter);
+
+            if (request.Filter != null)
+            {
+                query = ApplyUserActionsCompositeSort(query, request.Filter);
+            }
 
             var paginatedRequests = await PaginatedList<BaseRequest>.CreateAsyncForTableBinding(query, request);
             var dtos = _mapper.Map<List<BaseRequestDto>>(paginatedRequests.Items);

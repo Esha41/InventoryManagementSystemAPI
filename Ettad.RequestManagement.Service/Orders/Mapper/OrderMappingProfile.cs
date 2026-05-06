@@ -38,7 +38,8 @@ namespace Ettad.RequestManagement.Service.Orders.Mapper
                 .ForMember(dest => dest.Department, opt => opt.Ignore())
                 .ForMember(dest => dest.Requester, opt => opt.Ignore())
                 .ForMember(dest => dest.RequestPurpose, opt => opt.Ignore())
-                .ForMember(dest => dest.RequestItems, opt => opt.Ignore());
+                .ForMember(dest => dest.RequestItems, opt => opt.Ignore())
+                .ForMember(dest => dest.Priority, opt => opt.Ignore());
         }
     }
 }
