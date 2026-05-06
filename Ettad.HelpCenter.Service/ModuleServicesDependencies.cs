@@ -4,7 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Ettad.HelpCenter.Service
 {
-    public static class ModuleServicesDependences
+    public static class ModuleServicesDependencies
     {
         public static IServiceCollection AddHelpCenterServices(this IServiceCollection services)
         {

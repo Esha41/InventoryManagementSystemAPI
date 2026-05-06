@@ -10,7 +10,7 @@ using System.Reflection;
 
 namespace Ettad.Workflow.Service
 {
-    public static class ModuleServicesDependences
+    public static class ModuleServicesDependencies
     {
         public static IServiceCollection AddWorkflowServices(this IServiceCollection service)
         {

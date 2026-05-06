@@ -14,7 +14,7 @@ using Ettad.RequestManagement.Service.SupplyManagement.Services;
 
 namespace Ettad.RequestManagement.Service
 {
-    public static class ModuleServicesDependences
+    public static class ModuleServicesDependencies
     {
         public static IServiceCollection AddRequestServices(this IServiceCollection services)
         {

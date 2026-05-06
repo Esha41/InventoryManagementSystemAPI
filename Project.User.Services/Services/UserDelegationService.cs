@@ -2,7 +2,7 @@ using Ettad.Application.Common.Interfaces;
 using Ettad.Data.Entities;
 using Ettad.Data.Enums;
 using Ettad.Comman.Idenitity;
-using Ettad.EntityFramework.DataBaseContext;
+using Ettad.Data.Interfaces.Repositories;
 using Ettad.ResponseHandler.Consts;
 using Ettad.ResponseHandler.Models;
 using Ettad.User.Services.DTO;
@@ -17,12 +17,14 @@ using System.Threading.Tasks;
 using MediatR;
 using Ettad.User.Services.Events;
 using Ettad.CrossCutting.Comman.Time;
+using SettingsEntity = Ettad.Data.Entities.Settings.Settings;
 
 namespace Ettad.User.Services.Services
 {
     public class UserDelegationService : IUserDelegationService, IDelegationAuthorizationService
     {
-        private readonly ApplicationDbContext _context;
+        private readonly ICrossCuttingRepository<UserDelegation> _userDelegationRepository;
+        private readonly ICrossCuttingRepository<SettingsEntity> _settingsRepository;
         private readonly ICurrentUserService _currentUserService;
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly ILogger<UserDelegationService> _logger;
@@ -30,14 +32,16 @@ namespace Ettad.User.Services.Services
         private readonly IDateTimeProvider _dateTimeProvider;
 
         public UserDelegationService(
-            ApplicationDbContext context,
+            ICrossCuttingRepository<UserDelegation> userDelegationRepository,
+            ICrossCuttingRepository<SettingsEntity> settingsRepository,
             ICurrentUserService currentUserService,
             UserManager<ApplicationUser> userManager,
             ILogger<UserDelegationService> logger,
             IMediator mediator,
             IDateTimeProvider dateTimeProvider)
         {
-            _context = context;
+            _userDelegationRepository = userDelegationRepository;
+            _settingsRepository = settingsRepository;
             _currentUserService = currentUserService;
             _userManager = userManager;
             _logger = logger;
@@ -47,9 +51,6 @@ namespace Ettad.User.Services.Services
 
         #region Scope Conversion Helpers
 
-        /// <summary>
-        /// Converts a list of DelegationScope enum values to a bitwise long for database storage.
-        /// </summary>
         private static long ConvertScopesToLong(List<DelegationScope> scopes)
         {
             if (scopes == null || !scopes.Any())
@@ -58,9 +59,6 @@ namespace Ettad.User.Services.Services
             return scopes.Aggregate(0L, (current, scope) => current | (long)scope);
         }
 
-        /// <summary>
-        /// Converts a bitwise long from database to a list of DelegationScope enum values.
-        /// </summary>
         private static List<DelegationScope> ConvertLongToScopes(long scopesLong)
         {
             var scopesList = new List<DelegationScope>();
@@ -79,26 +77,22 @@ namespace Ettad.User.Services.Services
         public async Task<APIOperationResponse<bool>> CreateDelegationAsync(CreateUserDelegationDto dto)
         {
             var currentUserId = _currentUserService.UserId;
-            
-            // Adjust EndDate to be the end of the day (Inclusive)
+
             dto.EndDate = dto.EndDate.Date.AddDays(1).AddTicks(-1);
 
-            // Validate delegation scopes - at least one must be selected
             if (dto.DelegationScopes == null || !dto.DelegationScopes.Any())
             {
                 return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, "At least one delegation scope must be selected.");
             }
 
-            // 1. Validation Logic
             var validationResult = await ValidateDelegationAsync(dto, currentUserId);
             if (!validationResult.Succeeded)
             {
                 return APIOperationResponse<bool>.Fail(
-                    (ResponseType)validationResult.StatusCode, 
+                    (ResponseType)validationResult.StatusCode,
                     validationResult.Message);
             }
 
-            // 2. Creation Logic
             var entity = new UserDelegation
             {
                 DelegatorUserId = currentUserId,
@@ -107,16 +101,14 @@ namespace Ettad.User.Services.Services
                 EndDate = dto.EndDate,
                 Reason = dto.Reason,
                 IsActive = true,
-                DelegationStatus = 0, // Pending approval
+                DelegationStatus = 0,
                 DelegationScopes = ConvertScopesToLong(dto.DelegationScopes),
                 CreatedBy = currentUserId,
-                CreationDate = _dateTimeProvider.Now 
+                CreationDate = _dateTimeProvider.Now
             };
 
-            _context.UserDelegations.Add(entity);
-            await _context.SaveChangesAsync();
+            await _userDelegationRepository.AddAsync(entity);
 
-            // Publish event for notification handling
             await _mediator.Publish(new DelegationCreatedEvent
             {
                 DelegationId = entity.Id,
@@ -132,7 +124,6 @@ namespace Ettad.User.Services.Services
 
         private async Task<APIOperationResponse<bool>> ValidateDelegationAsync(CreateUserDelegationDto dto, string currentUserId)
         {
-            // Use local time for business logic validations
             var now = _dateTimeProvider.Now;
 
             if (dto.StartDate > dto.EndDate)
@@ -142,7 +133,6 @@ namespace Ettad.User.Services.Services
 
             if (dto.StartDate.Date < now.Date)
             {
-                // Allow same day start, but warn if date is strictly in the past
                 if (dto.EndDate < now)
                     return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, "End date must be in the future.");
             }
@@ -152,19 +142,18 @@ namespace Ettad.User.Services.Services
                 return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, "You cannot delegate to yourself.");
             }
 
-            // check if delegatee exists
             var delegatee = await _userManager.FindByIdAsync(dto.DelegateeUserId);
             if (delegatee == null)
             {
                 return APIOperationResponse<bool>.Fail(ResponseType.NotFound, "Delegatee user not found.");
             }
 
-            // Check overlap
-            var hasOverlap = await _context.UserDelegations
-                .AnyAsync(d => d.DelegatorUserId == currentUserId &&
-                               d.IsActive && !d.IsDeleted &&
-                               d.StartDate < dto.EndDate &&
-                               dto.StartDate < d.EndDate);
+            var hasOverlap = await _userDelegationRepository
+                .Find(d => d.DelegatorUserId == currentUserId &&
+                           d.IsActive && !d.IsDeleted &&
+                           d.StartDate < dto.EndDate &&
+                           dto.StartDate < d.EndDate)
+                .AnyAsync();
 
             if (hasOverlap)
             {
@@ -176,17 +165,15 @@ namespace Ettad.User.Services.Services
 
         public async Task<List<string>> GetActiveDelegatorsForUserAsync(string delegateeUserId, DelegationScope? scope = null)
         {
-            // Use local time for checking active status
             var now = _dateTimeProvider.Now;
-            
-            var query = _context.UserDelegations
-                .Where(d => d.DelegateeUserId == delegateeUserId &&
+
+            var query = _userDelegationRepository
+                .Find(d => d.DelegateeUserId == delegateeUserId &&
                             d.IsActive && !d.IsDeleted &&
-                            d.DelegationStatus == 1 && // Only approved delegations
+                            d.DelegationStatus == 1 &&
                             d.StartDate <= now &&
                             d.EndDate >= now);
 
-            // Filter by scope if provided
             if (scope.HasValue)
             {
                 var scopeLong = (long)scope.Value;
@@ -202,15 +189,11 @@ namespace Ettad.User.Services.Services
         {
             var currentUserId = _currentUserService.UserId;
 
-            // Fetch delegations where I am the delegator (outgoing) 
-            // OR where I am the delegatee (incoming) AND it's already approved/rejected
-            var delegations = await _context.UserDelegations
-                .Include(d => d.DelegateeUser)
-                .Include(d => d.DelegatorUser)
-                .Where(d => !d.IsDeleted && (
-                    d.DelegatorUserId == currentUserId || 
+            var delegations = await _userDelegationRepository
+                .Find(d => !d.IsDeleted && (
+                    d.DelegatorUserId == currentUserId ||
                     d.DelegateeUserId == currentUserId && d.DelegationStatus != 0
-                ))
+                ), false, "DelegateeUser", "DelegatorUser")
                 .OrderByDescending(d => d.StartDate)
                 .ToListAsync();
 
@@ -218,13 +201,10 @@ namespace Ettad.User.Services.Services
             return APIOperationResponse<List<UserDelegationDto>>.Success(dtos);
         }
 
-    public async Task<APIOperationResponse<List<UserDelegationDto>>> GetDelegationHistoryAsync()
+        public async Task<APIOperationResponse<List<UserDelegationDto>>> GetDelegationHistoryAsync()
         {
-            // Get all delegations including inactive/expired ones
-            var delegations = await _context.UserDelegations
-                .Include(d => d.DelegatorUser)
-                .Include(d => d.DelegateeUser)
-                .Where(d => !d.IsDeleted)
+            var delegations = await _userDelegationRepository
+                .Find(d => !d.IsDeleted, false, "DelegatorUser", "DelegateeUser")
                 .OrderByDescending(d => d.CreationDate)
                 .ToListAsync();
 
@@ -234,87 +214,89 @@ namespace Ettad.User.Services.Services
 
         public async Task<APIOperationResponse<bool>> GetAllowCrossDepartmentDelegationAsync()
         {
-            var setting = await _context.Settings
-                .FirstOrDefaultAsync(s => s.Key == "Delegation.AllowCrossDepartment");
+            var setting = await _settingsRepository
+                .Find(s => s.Key == "Delegation.AllowCrossDepartment")
+                .FirstOrDefaultAsync();
 
             bool allow = true;
             if (setting != null && bool.TryParse(setting.Value, out bool val))
             {
                 allow = val;
             }
-            
+
             return APIOperationResponse<bool>.Success(allow);
         }
 
         public async Task<APIOperationResponse<bool>> UpdateAllowCrossDepartmentDelegationAsync(bool allow)
         {
             var currentUserId = _currentUserService.UserId;
-            var setting = await _context.Settings
-                .FirstOrDefaultAsync(s => s.Key == "Delegation.AllowCrossDepartment");
+            var setting = await _settingsRepository
+                .Find(s => s.Key == "Delegation.AllowCrossDepartment")
+                .FirstOrDefaultAsync();
 
             if (setting == null)
             {
-                setting = new Data.Entities.Settings.Settings
+                await _settingsRepository.AddAsync(new SettingsEntity
                 {
                     Key = "Delegation.AllowCrossDepartment",
                     Value = allow.ToString(),
                     Group = "Delegation",
                     CreatedBy = currentUserId,
                     CreationDate = _dateTimeProvider.Now
-                };
-                _context.Settings.Add(setting);
+                });
             }
             else
             {
                 setting.Value = allow.ToString();
                 setting.ModifiedBy = currentUserId;
                 setting.ModificationDate = _dateTimeProvider.Now;
+                await _settingsRepository.UpdateAsync(setting);
             }
 
-            await _context.SaveChangesAsync();
             return APIOperationResponse<bool>.Success(true, "Delegation settings updated successfully.");
         }
 
         public async Task<APIOperationResponse<bool>> GetAllowDelegatorActionAsync()
         {
-            var setting = await _context.Settings
-                .FirstOrDefaultAsync(s => s.Key == "Delegation.AllowDelegatorAction");
-            
-            bool allow = true; // Default to true
+            var setting = await _settingsRepository
+                .Find(s => s.Key == "Delegation.AllowDelegatorAction")
+                .FirstOrDefaultAsync();
+
+            bool allow = true;
             if (setting != null && bool.TryParse(setting.Value, out bool val))
             {
                 allow = val;
             }
-            
+
             return APIOperationResponse<bool>.Success(allow);
         }
 
         public async Task<APIOperationResponse<bool>> UpdateAllowDelegatorActionAsync(bool allow)
         {
             var currentUserId = _currentUserService.UserId;
-            var setting = await _context.Settings
-                .FirstOrDefaultAsync(s => s.Key == "Delegation.AllowDelegatorAction");
+            var setting = await _settingsRepository
+                .Find(s => s.Key == "Delegation.AllowDelegatorAction")
+                .FirstOrDefaultAsync();
 
             if (setting == null)
             {
-                setting = new Data.Entities.Settings.Settings
+                await _settingsRepository.AddAsync(new SettingsEntity
                 {
                     Key = "Delegation.AllowDelegatorAction",
                     Value = allow.ToString(),
                     Group = "Delegation",
                     CreatedBy = currentUserId,
                     CreationDate = _dateTimeProvider.Now
-                };
-                _context.Settings.Add(setting);
+                });
             }
             else
             {
                 setting.Value = allow.ToString();
                 setting.ModifiedBy = currentUserId;
                 setting.ModificationDate = _dateTimeProvider.Now;
+                await _settingsRepository.UpdateAsync(setting);
             }
 
-            await _context.SaveChangesAsync();
             return APIOperationResponse<bool>.Success(true, "Delegation settings updated successfully.");
         }
 
@@ -322,13 +304,11 @@ namespace Ettad.User.Services.Services
         {
             var currentUserId = _currentUserService.UserId;
 
-            // 1. Check Setting
             var allowCrossDepartment = (await GetAllowCrossDepartmentDelegationAsync()).Data;
 
             var query = _userManager.Users
                 .Where(u => u.Id != currentUserId && u.IsActive && !u.IsDeleted);
 
-            // 2. Filter if restricted
             if (!allowCrossDepartment)
             {
                 var currentUser = await _userManager.FindByIdAsync(currentUserId);
@@ -355,12 +335,12 @@ namespace Ettad.User.Services.Services
 
             return APIOperationResponse<List<UserDto>>.Success(users);
         }
+
         public async Task<APIOperationResponse<bool>> RevokeDelegationAsync(int delegationId)
         {
             var currentUserId = _currentUserService.UserId;
 
-            var delegation = await _context.UserDelegations
-                .FirstOrDefaultAsync(d => d.Id == delegationId && !d.IsDeleted);
+            var delegation = await _userDelegationRepository.FindOneAsync(d => d.Id == delegationId && !d.IsDeleted);
             if (delegation == null)
             {
                 return APIOperationResponse<bool>.Fail(ResponseType.NotFound, "Delegation not found.");
@@ -378,7 +358,7 @@ namespace Ettad.User.Services.Services
             delegation.ModifiedBy = currentUserId;
             delegation.ModificationDate = _dateTimeProvider.Now;
 
-            await _context.SaveChangesAsync();
+            await _userDelegationRepository.UpdateAsync(delegation);
             return APIOperationResponse<bool>.Success(true, "Delegation revoked successfully.");
         }
 
@@ -386,9 +366,7 @@ namespace Ettad.User.Services.Services
         {
             var currentUserId = _currentUserService.UserId;
 
-            var delegation = await _context.UserDelegations
-                .Include(d => d.DelegatorUser)
-                .FirstOrDefaultAsync(d => d.Id == delegationId && !d.IsDeleted);
+            var delegation = await _userDelegationRepository.FindOneAsync(d => d.Id == delegationId && !d.IsDeleted);
 
             if (delegation == null)
                 return APIOperationResponse<bool>.Fail(ResponseType.NotFound, "Delegation not found.");
@@ -402,13 +380,12 @@ namespace Ettad.User.Services.Services
             if (!delegation.IsActive)
                 return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, "This delegation has been revoked or is no longer active.");
 
-            delegation.DelegationStatus = 1; // Approved
+            delegation.DelegationStatus = 1;
             delegation.ModifiedBy = currentUserId;
             delegation.ModificationDate = _dateTimeProvider.Now;
 
-            await _context.SaveChangesAsync();
+            await _userDelegationRepository.UpdateAsync(delegation);
 
-            // Publish event for notification handling
             var delegatee = await _userManager.FindByIdAsync(currentUserId);
             var delegateeName = delegatee?.FullNameEN ?? delegatee?.FullNameAR ?? delegatee?.UserName ?? "Unknown";
 
@@ -427,9 +404,7 @@ namespace Ettad.User.Services.Services
         {
             var currentUserId = _currentUserService.UserId;
 
-            var delegation = await _context.UserDelegations
-                .Include(d => d.DelegatorUser)
-                .FirstOrDefaultAsync(d => d.Id == delegationId && !d.IsDeleted);
+            var delegation = await _userDelegationRepository.FindOneAsync(d => d.Id == delegationId && !d.IsDeleted);
 
             if (delegation == null)
                 return APIOperationResponse<bool>.Fail(ResponseType.NotFound, "Delegation not found.");
@@ -443,14 +418,13 @@ namespace Ettad.User.Services.Services
             if (!delegation.IsActive)
                 return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, "This delegation has been revoked or is no longer active.");
 
-            delegation.DelegationStatus = 2; // Rejected
+            delegation.DelegationStatus = 2;
             delegation.IsActive = false;
             delegation.ModifiedBy = currentUserId;
             delegation.ModificationDate = _dateTimeProvider.Now;
 
-            await _context.SaveChangesAsync();
+            await _userDelegationRepository.UpdateAsync(delegation);
 
-            // Publish event for notification handling
             var delegatee = await _userManager.FindByIdAsync(currentUserId);
             var delegateeName = delegatee?.FullNameEN ?? delegatee?.FullNameAR ?? delegatee?.UserName ?? "Unknown";
 
@@ -469,13 +443,14 @@ namespace Ettad.User.Services.Services
         {
             var currentUserId = _currentUserService.UserId;
 
-            var delegations = await _context.UserDelegations
-                .Include(d => d.DelegateeUser)
-                .Include(d => d.DelegatorUser)
-                .Where(d => d.DelegateeUserId == currentUserId && 
-                            !d.IsDeleted && 
-                            d.IsActive && 
-                            d.DelegationStatus == 0) // Pending only
+            var delegations = await _userDelegationRepository
+                .Find(d => d.DelegateeUserId == currentUserId &&
+                            !d.IsDeleted &&
+                            d.IsActive &&
+                            d.DelegationStatus == 0,
+                    false,
+                    "DelegateeUser",
+                    "DelegatorUser")
                 .OrderByDescending(d => d.CreationDate)
                 .ToListAsync();
 
@@ -490,7 +465,6 @@ namespace Ettad.User.Services.Services
 
         private UserDelegationDto MapToDto(UserDelegation entity, string currentUserId)
         {
-            // Map status based on local time
             var now = _dateTimeProvider.Now;
             string status = "Expired";
             if (entity.IsActive)
@@ -522,10 +496,8 @@ namespace Ettad.User.Services.Services
 
         public async Task<APIOperationResponse<List<UserDelegationDto>>> GetAllDelegationsAsync()
         {
-            var delegations = await _context.UserDelegations
-                .Include(d => d.DelegatorUser)
-                .Include(d => d.DelegateeUser)
-                .Where(d => !d.IsDeleted)
+            var delegations = await _userDelegationRepository
+                .Find(d => !d.IsDeleted, false, "DelegatorUser", "DelegateeUser")
                 .OrderByDescending(d => d.CreationDate)
                 .ToListAsync();
 
@@ -535,24 +507,22 @@ namespace Ettad.User.Services.Services
 
         public async Task<bool> IsUserRestrictedByDelegationAsync(string userId)
         {
-            // 1. Check Global Setting
             var settingResponse = await GetAllowDelegatorActionAsync();
             if (settingResponse.Succeeded && settingResponse.Data)
             {
-                // If delegator action is ALLOWED, then they are NOT restricted.
                 return false;
             }
 
-            // 2. Check for Active Outgoing Delegations
             var now = _dateTimeProvider.Now;
-            
-            var hasActiveDelegation = await _context.UserDelegations
-                .AnyAsync(d => d.DelegatorUserId == userId &&
-                               !d.IsDeleted &&
-                               d.IsActive &&
-                               d.DelegationStatus == 1 && // Approved
-                               d.StartDate <= now &&
-                               d.EndDate >= now);
+
+            var hasActiveDelegation = await _userDelegationRepository
+                .Find(d => d.DelegatorUserId == userId &&
+                           !d.IsDeleted &&
+                           d.IsActive &&
+                           d.DelegationStatus == 1 &&
+                           d.StartDate <= now &&
+                           d.EndDate >= now)
+                .AnyAsync();
 
             return hasActiveDelegation;
         }

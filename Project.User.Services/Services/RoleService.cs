@@ -1,12 +1,11 @@
 using AutoMapper;
-using AutoMapper.QueryableExtensions;
 using Ettad.Application.Common.Interfaces;
 using Ettad.Comman.Idenitity;
 using Ettad.CrossCutting.Comman.Idenitity;
 using Ettad.CrossCutting.Comman.Models;
 using Ettad.CrossCutting.Comman.Models.Identity;
 using Ettad.Data.Entities;
-using Ettad.EntityFramework.DataBaseContext;
+using Ettad.Data.Interfaces.Repositories;
 using Ettad.ResponseHandler.Models;
 using Ettad.User.Services.DTO;
 using Ettad.User.Services.Interfaces;
@@ -24,7 +23,8 @@ namespace Ettad.User.Services.Services
         private readonly RoleManager<ApplicationRole> _roleManager;
         private readonly UserManager<ApplicationUser> _userManager;        
         private readonly IMapper _mapper;
-        private readonly ApplicationDbContext _context;
+        private readonly ICrossCuttingRepository<RoleApplicationEntity> _roleApplicationEntityRepository;
+        private readonly ICrossCuttingRepository<ApplicationEntity> _applicationEntityRepository;
         private readonly ICurrentUserService _currentUserService;
         private readonly IMemoryCache _cache;
         private readonly IDateTimeProvider _dateTimeProvider;
@@ -117,13 +117,22 @@ namespace Ettad.User.Services.Services
             "Permissions.LookupTables.Delete"
         };
 
-        public RoleService(RoleManager<ApplicationRole> roleManager, UserManager<ApplicationUser> userManager, ICurrentUserService currentUserService, IMapper mapper , ApplicationDbContext context, IMemoryCache cache, IDateTimeProvider dateTimeProvider)
+        public RoleService(
+            RoleManager<ApplicationRole> roleManager,
+            UserManager<ApplicationUser> userManager,
+            ICurrentUserService currentUserService,
+            IMapper mapper,
+            ICrossCuttingRepository<RoleApplicationEntity> roleApplicationEntityRepository,
+            ICrossCuttingRepository<ApplicationEntity> applicationEntityRepository,
+            IMemoryCache cache,
+            IDateTimeProvider dateTimeProvider)
         {
             _roleManager = roleManager;
             _userManager = userManager;
             _currentUserService = currentUserService;
             _mapper = mapper;
-            _context = context;
+            _roleApplicationEntityRepository = roleApplicationEntityRepository;
+            _applicationEntityRepository = applicationEntityRepository;
             _cache = cache;
             _dateTimeProvider = dateTimeProvider;
         }
@@ -154,8 +163,8 @@ namespace Ettad.User.Services.Services
             var roleDto = _mapper.Map<RoleDto>(role);
 
             // 3️⃣ Get assigned application entity IDs
-            var entityIds = await _context.RoleApplicationEntities
-                .Where(x => x.RoleId == role.Id)
+            var entityIds = await _roleApplicationEntityRepository
+                .Find(x => x.RoleId == role.Id)
                 .Select(x => x.ApplicationEntityId)
                 .ToListAsync();
 
@@ -224,8 +233,8 @@ namespace Ettad.User.Services.Services
             // 4️⃣ Fetch assigned ApplicationEntityIds for each role
             var roleIds = paginatedRoles.Items.Select(r => r.Id).ToList();
 
-            var roleEntities = await _context.RoleApplicationEntities
-                .Where(x => roleIds.Contains(x.RoleId))
+            var roleEntities = await _roleApplicationEntityRepository
+                .Find(x => roleIds.Contains(x.RoleId))
                 .GroupBy(x => x.RoleId)
                 .ToDictionaryAsync(g => g.Key, g => g.Select(e => e.ApplicationEntityId).ToList());
 
@@ -280,23 +289,21 @@ namespace Ettad.User.Services.Services
             {
                 foreach (var entityId in createRoleDto.ApplicationEntityIds)
                 {
-                    // Avoid duplicates
-                    var exists = await _context.RoleApplicationEntities
-                        .AnyAsync(x => x.RoleId == newRole.Id && x.ApplicationEntityId == entityId);
+                    var exists = await _roleApplicationEntityRepository
+                        .Find(x => x.RoleId == newRole.Id && x.ApplicationEntityId == entityId)
+                        .AnyAsync();
 
                     if (!exists)
                     {
-                        _context.RoleApplicationEntities.Add(new RoleApplicationEntity
+                        await _roleApplicationEntityRepository.AddAsync(new RoleApplicationEntity
                         {
                             RoleId = newRole.Id,
                             ApplicationEntityId = entityId,
-                            CreatedBy = "system", // replace with current user if available
+                            CreatedBy = "system",
                             CreationDate = _dateTimeProvider.Now
                         });
                     }
                 }
-
-                await _context.SaveChangesAsync();
             }
 
             // 7️⃣ Assign System Admin Permissions if IsAdmin is true
@@ -366,23 +373,29 @@ namespace Ettad.User.Services.Services
             // 4️⃣ Update mapped application entities if provided
             if (updateRoleDto.ApplicationEntityIds != null)
             {
-                // Remove existing mappings
-                var existingMappings = _context.RoleApplicationEntities
-                    .Where(x => x.RoleId == role.Id);
-                _context.RoleApplicationEntities.RemoveRange(existingMappings);
+                var existingMappings = await _roleApplicationEntityRepository
+                    .Find(x => x.RoleId == role.Id)
+                    .ToListAsync();
 
-                // Add new mappings
-                foreach (var entityId in updateRoleDto.ApplicationEntityIds)
+                foreach (var mapping in existingMappings)
                 {
-                    _context.RoleApplicationEntities.Add(new RoleApplicationEntity
+                    await _roleApplicationEntityRepository.DeleteAsync(mapping);
+                }
+
+                var toAdd = updateRoleDto.ApplicationEntityIds
+                    .Select(entityId => new RoleApplicationEntity
                     {
                         RoleId = role.Id,
                         ApplicationEntityId = entityId,
-                        CreatedBy = "system", // replace with current user if available
+                        CreatedBy = "system",
                         CreationDate = _dateTimeProvider.Now
-                    });
-                }
+                    })
+                    .ToList();
 
+                if (toAdd.Count > 0)
+                {
+                    await _roleApplicationEntityRepository.AddRangeAsync(toAdd);
+                }
             }
 
             // 6️⃣ Assign System Admin Permissions if IsAdmin is true
@@ -631,8 +644,9 @@ namespace Ettad.User.Services.Services
         }
         public async Task<APIOperationResponse<List<ApplicationEntityDto>>> GetAllApplicationEntitiesAsync()
         {
-            var entities = await _context.ApplicationEntities
-                .OrderBy(e => e.Id) // optional, ensures consistent ordering
+            var entities = await _applicationEntityRepository
+                .Find(e => true, includeSoftDeleted: true)
+                .OrderBy(e => e.Id)
                 .Select(e => new ApplicationEntityDto
                 {
                     Id = e.Id,
@@ -651,8 +665,8 @@ namespace Ettad.User.Services.Services
         }
         public async Task<List<RoleApplicationEntityDto>> GetApplicationEntitiesByRoleAsync(string roleId)
         {
-            return await _context.RoleApplicationEntities
-                .Where(r => r.RoleId == roleId)
+            return await _roleApplicationEntityRepository
+                .Find(r => r.RoleId == roleId)
                 .Select(r => new RoleApplicationEntityDto
                 {
                     RoleId = r.RoleId,

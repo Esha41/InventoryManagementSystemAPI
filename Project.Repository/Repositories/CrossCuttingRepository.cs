@@ -1,5 +1,6 @@
 using Ettad.Data.Interfaces.Repositories;
 using Ettad.EntityFramework.DataBaseContext;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 
 namespace Ettad.Repository.Repositories
 {
@@ -8,5 +9,7 @@ namespace Ettad.Repository.Repositories
         public CrossCuttingRepository(ApplicationDbContext context) : base(context)
         {
         }
+         
+        
     }
 }

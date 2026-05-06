@@ -1,5 +1,4 @@
 ﻿using DevExpress.DataAccess.ObjectBinding;
-using Ettad.ReportManagement.Service.Reports.DataSources;
 using System.ComponentModel;
 using Microsoft.Extensions.DependencyInjection;
 

@@ -8,7 +8,7 @@ using Ettad.LdapSettings.Services.Dtos;
 
 namespace Ettad.LdapSettings.Services
 {
-    public static class ModuleServicesDependences
+    public static class ModuleServicesDependencies
     {
         public static IServiceCollection AddLdapSettingsServices(this IServiceCollection services)
         {

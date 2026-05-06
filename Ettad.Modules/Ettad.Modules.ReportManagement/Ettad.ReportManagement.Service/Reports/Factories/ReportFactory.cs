@@ -11,7 +11,6 @@ namespace Ettad.ReportManagement.Service.Reports.Factories
         {
             return reportName switch 
             {
-                ReportConstants.AllowanceItemsReportTemplate => new AllowanceItemsReportTemplate(),
                 ReportConstants.UserReportTemplate => new UsersReportTemplate(),
                 ReportConstants.AssetsReportTemplate => new AssetsReportTemplate(),
                 _ => new BaseReportTemplate()
