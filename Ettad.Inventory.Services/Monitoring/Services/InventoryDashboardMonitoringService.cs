@@ -9,6 +9,9 @@ using Microsoft.Extensions.Logging;
 using Ettad.Data.Interfaces.Repositories;
 using Ettad.Module.lookup.Interfaces;
 using Ettad.Inventory.Service.Monitoring.Interfaces;
+using Ettad.Inventory.Service.Inventories.Dtos;
+using Ettad.Inventory.Service.Inventories.Interfaces;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Ettad.Inventory.Service.Monitoring.Services
 {
@@ -37,6 +40,7 @@ namespace Ettad.Inventory.Service.Monitoring.Services
         private readonly IDepotAccessService _depotAccessService;
         private readonly ICurrentUserService _currentUserService;
         private readonly ILogger<InventoryDashboardMonitoringService> _logger;
+        private readonly IServiceScopeFactory _scopeFactory;
 
         public InventoryDashboardMonitoringService(
             ICrossCuttingRepository<Asset> assetRepository,
@@ -50,7 +54,8 @@ namespace Ettad.Inventory.Service.Monitoring.Services
             ICrossCuttingRepository<RequestItem> requestItemRepository,
             IDepotAccessService depotAccessService,
             ICurrentUserService currentUserService,
-            ILogger<InventoryDashboardMonitoringService> logger)
+            ILogger<InventoryDashboardMonitoringService> logger,
+            IServiceScopeFactory scopeFactory)
         {
             _assetRepository = assetRepository;
             _baseItemRepository = baseItemRepository;
@@ -70,6 +75,7 @@ namespace Ettad.Inventory.Service.Monitoring.Services
             _depotAccessService = depotAccessService;
             _currentUserService = currentUserService;
             _logger = logger;
+            _scopeFactory = scopeFactory;
         }
 
         public async Task<APIOperationResponse<InventoryDashboardSummaryDto>> GetInventoryDashboardSummaryAsync(
@@ -218,6 +224,116 @@ namespace Ettad.Inventory.Service.Monitoring.Services
                 _logger.LogError(ex, "Orders awaiting fulfillment list failed");
                 return APIOperationResponse<List<OrderAwaitingFulfillmentListItemDto>>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
             }
+        }
+
+        public async Task<APIOperationResponse<InventoryHeadlineMetricsDto>> GetInventoryHeadlineMetricsAsync(
+            long? depotId = null,
+            List<long>? depotIds = null)
+        {
+            _logger.LogInformation("Inventory headline metrics. User: {UserId}", _currentUserService.UserId);
+
+            try
+            {
+                var scope = await BuildDepotScopeAsync(depotId, depotIds);
+                if (scope == null)
+                    return APIOperationResponse<InventoryHeadlineMetricsDto>.Fail(ResponseType.Forbidden,
+                        "You do not have access to one or more of the requested depots.");
+
+                APIOperationResponse<List<ItemInventorySummaryDto>> invResult;
+                using (var invScope = _scopeFactory.CreateScope())
+                {
+                    var invSvc = invScope.ServiceProvider.GetRequiredService<IInventoryService>();
+                    invResult = await invSvc.GetInventorySummaryForAllItemsAsync(depotId, depotIds).ConfigureAwait(false);
+                }
+
+                if (!invResult.Succeeded || invResult.Data == null)
+                    return APIOperationResponse<InventoryHeadlineMetricsDto>.Fail((ResponseType)invResult.StatusCode,
+                        invResult.Message ?? "Inventory summary failed.");
+
+                APIOperationResponse<int> lowResult;
+                using (var lowScope = _scopeFactory.CreateScope())
+                {
+                    var lowSvc = lowScope.ServiceProvider.GetRequiredService<ILowStockMonitoringService>();
+                    lowResult = await lowSvc.GetLowStockItemsCountAsync(depotId, depotIds).ConfigureAwait(false);
+                }
+
+                if (!lowResult.Succeeded)
+                    return APIOperationResponse<InventoryHeadlineMetricsDto>.Fail((ResponseType)lowResult.StatusCode,
+                        lowResult.Message ?? "Low stock count failed.");
+
+                APIOperationResponse<int> expResult;
+                using (var expScope = _scopeFactory.CreateScope())
+                {
+                    var expSvc = expScope.ServiceProvider.GetRequiredService<IExpiringLotMonitoringService>();
+                    expResult = await expSvc.GetExpiringLotsCountAsync(depotId, depotIds).ConfigureAwait(false);
+                }
+
+                if (!expResult.Succeeded)
+                    return APIOperationResponse<InventoryHeadlineMetricsDto>.Fail((ResponseType)expResult.StatusCode,
+                        expResult.Message ?? "Expiring lots count failed.");
+
+                var weaponRows = await QueryWeaponAggRowsInNewScopeAsync(scope).ConfigureAwait(false);
+
+                var nonWeapon = invResult.Data.Where(s => s.ItemType != ItemType.Weapon).ToList();
+                long invRemainingSum = nonWeapon.Sum(s => s.RemainingQuantity);
+                long invLotsSum = nonWeapon.Sum(s => (long)s.TotalLots);
+                var ammoCount = nonWeapon.Count(s => s.ItemType == ItemType.Ammunition);
+                var explosiveCount = nonWeapon.Count(s => s.ItemType == ItemType.Explosive);
+                var accessoryCount = nonWeapon.Count(s => s.ItemType == ItemType.Accessory);
+
+                long weaponLotsSum = 0;
+                long weaponReadySum = 0;
+                var weaponGroupCount = 0;
+                foreach (var grp in weaponRows.GroupBy(r => r.ItemId))
+                {
+                    weaponGroupCount++;
+                    weaponLotsSum += grp.Count();
+                    weaponReadySum += grp.Count(r => r.Status == AssetStatus.ReadyToIssue);
+                }
+
+                return APIOperationResponse<InventoryHeadlineMetricsDto>.Success(new InventoryHeadlineMetricsDto
+                {
+                    LowStockCount = lowResult.Data,
+                    ExpiringSoonCount = expResult.Data,
+                    TotalDistinctItems = nonWeapon.Count + weaponGroupCount,
+                    TotalRemainingQuantity = invRemainingSum + weaponReadySum,
+                    TotalLots = invLotsSum + weaponLotsSum,
+                    AmmunitionItemCount = ammoCount,
+                    ExplosiveItemCount = explosiveCount,
+                    AccessoryItemCount = accessoryCount,
+                    WeaponItemGroupsCount = weaponGroupCount
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Inventory headline metrics failed");
+                return APIOperationResponse<InventoryHeadlineMetricsDto>.Fail(ResponseType.InternalServerError,
+                    $"An error occurred: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Runs weapon rows query on its own DbContext scope so it never overlaps with other headline sub-queries.
+        /// </summary>
+        private async Task<List<(long ItemId, AssetStatus? Status)>> QueryWeaponAggRowsInNewScopeAsync(DepotScope depotScope)
+        {
+            using var scope = _scopeFactory.CreateScope();
+            var assetRepo = scope.ServiceProvider.GetRequiredService<ICrossCuttingRepository<Asset>>();
+            var baseItemRepo = scope.ServiceProvider.GetRequiredService<ICrossCuttingRepository<BaseItem>>();
+            var q =
+                from a in assetRepo.Find(a => true)
+                join i in baseItemRepo.Find(i => true) on a.ItemId equals i.Id
+                where !a.IsDeleted && i.ItemType == ItemType.Weapon
+                select a;
+
+            if (depotScope.UserDepotIds != null)
+                q = q.Where(a => depotScope.UserDepotIds.Contains(a.DepotId));
+
+            if (depotScope.EffectiveDepotIds.Any())
+                q = q.Where(a => depotScope.EffectiveDepotIds.Contains(a.DepotId));
+
+            var rows = await q.Select(a => new { a.ItemId, a.Status }).ToListAsync().ConfigureAwait(false);
+            return rows.ConvertAll(r => (r.ItemId, r.Status));
         }
 
         private IQueryable<Asset> BaseWeaponAssetQuery(DepotScope scope)

@@ -1,5 +1,8 @@
+using System.Collections.Generic;
+using System.Linq;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Ettad.CrossCutting.Comman.Models;
 using Ettad.Data.Entities;
 using Ettad.Inventory.Service.Monitoring.Dtos;
 using Ettad.ResponseHandler.Consts;
@@ -122,76 +125,132 @@ namespace Ettad.Inventory.Service.Monitoring.Services
             }
         }
 
-        public async Task<APIOperationResponse<List<ExpiringLotDto>>> GetExpiringLotsAsync()
+        public async Task<APIOperationResponse<PaginatedList<ExpiringLotDto>>> GetExpiringLotsPaginatedAsync(
+            PagedListRequest request,
+            long? depotId = null,
+            List<long>? depotIds = null)
         {
-            _logger.LogInformation("Getting expiring lots with details (next 30 days)");
+            request ??= new PagedListRequest();
+
+            const int defaultPageSize = 10;
+            const int maxPageSize = 1000;
+            var page = request.Page < 1 ? 1 : request.Page;
+            var pageSize = request.PageSize <= 0 ? defaultPageSize : request.PageSize;
+            if (pageSize > maxPageSize)
+                pageSize = maxPageSize;
+
+            var effective = new List<long>();
+            if (depotIds != null) foreach (var d in depotIds) if (d > 0) effective.Add(d);
+            if (depotId.HasValue && depotId.Value > 0) effective.Add(depotId.Value);
+            var distinctDepots = effective.Distinct().ToList();
+
+            _logger.LogInformation(
+                "Getting expiring lots (paged, next 30 days). Page={Page}, PageSize={PageSize}, DepotFilterCount={DepotCount}",
+                page,
+                pageSize,
+                distinctDepots.Count > 0 ? distinctDepots.Count : (int?)null);
 
             try
             {
-                var today = _dateTimeProvider.Now.Date;
-                var thirtyDaysFromNow = today.AddDays(30);
-
-                var expiringLots = await _inventoryDetailsRepository
-                    .Find(
-                        id =>
-                            id.ExpiryDate.HasValue &&
-                            id.ExpiryDate.Value.Date >= today &&
-                            id.ExpiryDate.Value.Date <= thirtyDaysFromNow &&
-                            !id.Inventory.IsDeleted,
-                        false,
-                        ExpiringLotInventoryDetailIncludes)
-                    .ToListAsync();
-
-                _logger.LogInformation($"Found {expiringLots.Count} lots with expiry dates in the next 30 days.");
-
-                var expiringLotDtos = new List<ExpiringLotDto>();
-
-                foreach (var lot in expiringLots)
+                if (distinctDepots.Any())
                 {
-                    var remainingQuantity = await CalculateRemainingQuantityAsync(lot);
-                    
-                    // Only include lots with remaining quantity > 0
-                    if (remainingQuantity > 0)
+                    var userId = _currentUserService.UserId;
+                    if (!string.IsNullOrEmpty(userId))
                     {
-                        var daysUntilExpiry = lot.ExpiryDate.HasValue
-                            ? (int)(lot.ExpiryDate.Value.Date - today).TotalDays
-                            : (int?)null;
-
-                        var lotDetail = _mapper.Map<LotDetailDto>(lot);
-                        
-                        expiringLotDtos.Add(new ExpiringLotDto
+                        foreach (var dId in distinctDepots)
                         {
-                            InventoryDetailId = lot.Id,
-                            ItemId = lot.ItemId,
-                            ItemName = lot.Item?.Name ?? string.Empty,
-                            ItemNo = lot.Item?.ItemNo,
-                            Lot = lot.Lot,
-                            BatchNo = lot.BatchNo,
-                            ExpiryDate = lot.ExpiryDate,
-                            DaysUntilExpiry = daysUntilExpiry,
-                            RemainingQuantity = remainingQuantity,
-                            Depot = lotDetail.Depot,
-                            Supplier = lotDetail.Supplier,
-                            Manufacturer = lotDetail.Manufacturer
-                        });
+                            if (!await _depotAccessService.HasDepotAccessAsync(userId, dId))
+                            {
+                                _logger.LogWarning("User {UserId} attempted paged expiring lots for unauthorized depot {DepotId}", userId, dId);
+                                return APIOperationResponse<PaginatedList<ExpiringLotDto>>.Fail(
+                                    ResponseType.Forbidden,
+                                    "You do not have access to one or more of the requested depots.");
+                            }
+                        }
                     }
                 }
 
-                // Sort by expiry date (earliest first)
-                expiringLotDtos = expiringLotDtos
-                    .OrderBy(l => l.ExpiryDate)
-                    .ThenBy(l => l.Lot)
+                HashSet<long>? depotFilter = distinctDepots.Count > 0 ? distinctDepots.ToHashSet() : null;
+
+                var expiringLotDtos = await BuildSortedExpiringLotDtosAsync(depotFilter).ConfigureAwait(false);
+                var totalCount = expiringLotDtos.Count;
+
+                var pageItems = expiringLotDtos
+                    .Skip((page - 1) * pageSize)
+                    .Take(pageSize)
                     .ToList();
 
-                _logger.LogInformation($"Found {expiringLotDtos.Count} lots expiring in the next 30 days with remaining quantity.");
+                var paginated = new PaginatedList<ExpiringLotDto>(pageItems, totalCount, page, pageSize);
 
-                return APIOperationResponse<List<ExpiringLotDto>>.Success(expiringLotDtos);
+                _logger.LogInformation("Paged expiring lots: total {TotalCount}, returning {Returned} rows", totalCount, pageItems.Count);
+
+                return APIOperationResponse<PaginatedList<ExpiringLotDto>>.Success(paginated);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error occurred while getting expiring lots.");
-                return APIOperationResponse<List<ExpiringLotDto>>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
+                _logger.LogError(ex, "Error occurred while getting paged expiring lots.");
+                return APIOperationResponse<PaginatedList<ExpiringLotDto>>.Fail(
+                    ResponseType.InternalServerError,
+                    $"An error occurred: {ex.Message}");
             }
+        }
+
+        private async Task<List<ExpiringLotDto>> BuildSortedExpiringLotDtosAsync(HashSet<long>? depotDepoIdsFilter)
+        {
+            var today = _dateTimeProvider.Now.Date;
+            var thirtyDaysFromNow = today.AddDays(30);
+
+            var query = _inventoryDetailsRepository.Find(
+                id =>
+                    id.ExpiryDate.HasValue &&
+                    id.ExpiryDate.Value.Date >= today &&
+                    id.ExpiryDate.Value.Date <= thirtyDaysFromNow &&
+                    !id.Inventory.IsDeleted,
+                false,
+                ExpiringLotInventoryDetailIncludes);
+
+            if (depotDepoIdsFilter != null && depotDepoIdsFilter.Count > 0)
+                query = query.Where(id => depotDepoIdsFilter.Contains(id.Inventory.DepoId));
+
+            var expiringLots = await query.ToListAsync().ConfigureAwait(false);
+
+            var expiringLotDtos = new List<ExpiringLotDto>();
+
+            foreach (var lot in expiringLots)
+            {
+                var remainingQuantity = await CalculateRemainingQuantityAsync(lot).ConfigureAwait(false);
+
+                if (remainingQuantity <= 0)
+                    continue;
+
+                var daysUntilExpiry = lot.ExpiryDate.HasValue
+                    ? (int)(lot.ExpiryDate.Value.Date - today).TotalDays
+                    : (int?)null;
+
+                var lotDetail = _mapper.Map<LotDetailDto>(lot);
+
+                expiringLotDtos.Add(new ExpiringLotDto
+                {
+                    InventoryDetailId = lot.Id,
+                    ItemId = lot.ItemId,
+                    ItemName = lot.Item?.Name ?? string.Empty,
+                    ItemNo = lot.Item?.ItemNo,
+                    Lot = lot.Lot,
+                    BatchNo = lot.BatchNo,
+                    ExpiryDate = lot.ExpiryDate,
+                    DaysUntilExpiry = daysUntilExpiry,
+                    RemainingQuantity = remainingQuantity,
+                    Depot = lotDetail.Depot,
+                    Supplier = lotDetail.Supplier,
+                    Manufacturer = lotDetail.Manufacturer
+                });
+            }
+
+            return expiringLotDtos
+                .OrderBy(l => l.ExpiryDate)
+                .ThenBy(l => l.Lot)
+                .ThenBy(l => l.InventoryDetailId)
+                .ToList();
         }
 
         private async Task<long> CalculateRemainingQuantityAsync(InventoryDetail lot)

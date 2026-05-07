@@ -3,6 +3,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Ettad.CrossCutting.Comman.Models;
 using Ettad.Data.Entities;
 using Ettad.Data.Enums;
 using Ettad.Data.Interfaces.Repositories;
@@ -102,6 +103,8 @@ namespace Ettad.Inventory.Service.Monitoring.Services
             {
                 var itemsToCheck = await _baseItemRepository
                     .Find(i => i.MinimumQuantity.HasValue && i.MinimumQuantity.Value > 0 && !i.IsDeleted)
+                    .OrderBy(i => i.Name)
+                    .ThenBy(i => i.Id)
                     .ToListAsync();
 
                 _logger.LogInformation($"Found {itemsToCheck.Count} items with minimum quantity configured.");
@@ -135,6 +138,102 @@ namespace Ettad.Inventory.Service.Monitoring.Services
             {
                 _logger.LogError(ex, "Error occurred while getting low stock items.");
                 return APIOperationResponse<List<LowStockItemDto>>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
+            }
+        }
+
+        public async Task<APIOperationResponse<PaginatedList<LowStockItemDto>>> GetLowStockItemsPaginatedAsync(
+            PagedListRequest request,
+            long? depotId = null,
+            List<long>? depotIds = null)
+        {
+            request ??= new PagedListRequest();
+
+            const int defaultPageSize = 10;
+            const int maxPageSize = 1000;
+            var page = request.Page < 1 ? 1 : request.Page;
+            var pageSize = request.PageSize <= 0 ? defaultPageSize : request.PageSize;
+            if (pageSize > maxPageSize)
+                pageSize = maxPageSize;
+
+            var effective = new List<long>();
+            if (depotIds != null) foreach (var d in depotIds) if (d > 0) effective.Add(d);
+            if (depotId.HasValue && depotId.Value > 0) effective.Add(depotId.Value);
+            var distinctDepots = effective.Distinct().ToList();
+
+            _logger.LogInformation(
+                "Getting low stock items (paged). Page={Page}, PageSize={PageSize}, DepotFilterCount={DepotCount}",
+                page,
+                pageSize,
+                distinctDepots.Count > 0 ? distinctDepots.Count : (int?)null);
+
+            try
+            {
+                if (distinctDepots.Any())
+                {
+                    var userId = _currentUserService.UserId;
+                    if (!string.IsNullOrEmpty(userId))
+                    {
+                        foreach (var dId in distinctDepots)
+                        {
+                            if (!await _depotAccessService.HasDepotAccessAsync(userId, dId))
+                            {
+                                _logger.LogWarning("User {UserId} attempted paged low-stock for unauthorized depot {DepotId}", userId, dId);
+                                return APIOperationResponse<PaginatedList<LowStockItemDto>>.Fail(
+                                    ResponseType.Forbidden,
+                                    "You do not have access to one or more of the requested depots.");
+                            }
+                        }
+                    }
+                }
+
+                IReadOnlyList<long>? depotFilter = distinctDepots.Count > 0 ? distinctDepots : null;
+
+                var itemsToCheck = await _baseItemRepository
+                    .Find(i => i.MinimumQuantity.HasValue && i.MinimumQuantity.Value > 0 && !i.IsDeleted)
+                    .OrderBy(i => i.Name)
+                    .ThenBy(i => i.Id)
+                    .ToListAsync();
+
+                var lowStockItems = new List<LowStockItemDto>();
+
+                foreach (var item in itemsToCheck)
+                {
+                    var lowStockInfo = await CheckItemStockAsync(item, depotFilter).ConfigureAwait(false);
+                    if (lowStockInfo != null)
+                    {
+                        lowStockItems.Add(new LowStockItemDto
+                        {
+                            ItemId = item.Id,
+                            ItemName = item.Name ?? string.Empty,
+                            ItemNo = item.ItemNo,
+                            Nsn = item.Nsn,
+                            MinimumQuantity = item.MinimumQuantity,
+                            TotalStock = lowStockInfo.TotalStock,
+                            HoldQuantity = lowStockInfo.HoldQuantity,
+                            SuppliedQuantity = lowStockInfo.SuppliedQuantity,
+                            Remaining = lowStockInfo.Remaining
+                        });
+                    }
+                }
+
+                var totalCount = lowStockItems.Count;
+
+                var pageItems = lowStockItems
+                    .Skip((page - 1) * pageSize)
+                    .Take(pageSize)
+                    .ToList();
+
+                var paginated = new PaginatedList<LowStockItemDto>(pageItems, totalCount, page, pageSize);
+
+                _logger.LogInformation("Paged low-stock: total {TotalCount}, returning {Returned} rows", totalCount, pageItems.Count);
+                return APIOperationResponse<PaginatedList<LowStockItemDto>>.Success(paginated);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error occurred while getting paged low stock items.");
+                return APIOperationResponse<PaginatedList<LowStockItemDto>>.Fail(
+                    ResponseType.InternalServerError,
+                    $"An error occurred: {ex.Message}");
             }
         }
 
