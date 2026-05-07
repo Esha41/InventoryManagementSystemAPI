@@ -18,7 +18,8 @@ namespace Ettad.Inventory.Service.Monitoring.Interfaces
         Task<APIOperationResponse<List<LowStockItemDto>>> GetLowStockItemsAsync();
 
         /// <summary>
-        /// Low-stock table rows with server-side paging, optionally filtered by depot (same rules as count).
+        /// Low-stock table rows with server-side paging (<see cref="PaginatedList{T}"/>).
+        /// Request shape matches <c>PagedListRequest</c> used by Ammunition/Weapon Paginated APIs; optional depot filter like count.
         /// </summary>
         Task<APIOperationResponse<PaginatedList<LowStockItemDto>>> GetLowStockItemsPaginatedAsync(
             PagedListRequest request,

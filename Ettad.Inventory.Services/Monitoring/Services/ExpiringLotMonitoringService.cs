@@ -131,13 +131,7 @@ namespace Ettad.Inventory.Service.Monitoring.Services
             List<long>? depotIds = null)
         {
             request ??= new PagedListRequest();
-
-            const int defaultPageSize = 10;
-            const int maxPageSize = 1000;
-            var page = request.Page < 1 ? 1 : request.Page;
-            var pageSize = request.PageSize <= 0 ? defaultPageSize : request.PageSize;
-            if (pageSize > maxPageSize)
-                pageSize = maxPageSize;
+            PagedListRequestNormalizer.Normalize(request);
 
             var effective = new List<long>();
             if (depotIds != null) foreach (var d in depotIds) if (d > 0) effective.Add(d);
@@ -146,8 +140,8 @@ namespace Ettad.Inventory.Service.Monitoring.Services
 
             _logger.LogInformation(
                 "Getting expiring lots (paged, next 30 days). Page={Page}, PageSize={PageSize}, DepotFilterCount={DepotCount}",
-                page,
-                pageSize,
+                request.Page,
+                request.PageSize,
                 distinctDepots.Count > 0 ? distinctDepots.Count : (int?)null);
 
             try
@@ -176,11 +170,11 @@ namespace Ettad.Inventory.Service.Monitoring.Services
                 var totalCount = expiringLotDtos.Count;
 
                 var pageItems = expiringLotDtos
-                    .Skip((page - 1) * pageSize)
-                    .Take(pageSize)
+                    .Skip((request.Page - 1) * request.PageSize)
+                    .Take(request.PageSize)
                     .ToList();
 
-                var paginated = new PaginatedList<ExpiringLotDto>(pageItems, totalCount, page, pageSize);
+                var paginated = new PaginatedList<ExpiringLotDto>(pageItems, totalCount, request.Page, request.PageSize);
 
                 _logger.LogInformation("Paged expiring lots: total {TotalCount}, returning {Returned} rows", totalCount, pageItems.Count);
 

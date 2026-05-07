@@ -42,18 +42,18 @@ namespace Ettad.Inventory.API.Controllers
         }
 
         /// <summary>
-        /// Low-stock items with server-side paging (defaults: page = 1, pageSize = 10). Optionally filter by depot like <c>low-stock/count</c>.
+        /// Low-stock items with server-side paging (same contract as <c>api/Ammunition/Paginated</c>).
+        /// Body: <see cref="PagedListRequest"/> (page, pageSize, optional filter). Depot query matches <c>low-stock/count</c>.
         /// </summary>
-        [HttpGet("low-stock")]
+        [HttpPost("low-stock/Paginated")]
         [ProducesResponseType(typeof(APIOperationResponse<PaginatedList<LowStockItemDto>>), (int)HttpStatusCode.OK)]
         [CheckAuthorize("Permissions.Inventory.View", "Permissions.Inventory.Page")]
-        public async Task<IActionResult> GetLowStockItems(
-            [FromQuery] int page = 1,
-            [FromQuery] int pageSize = 10,
+        public async Task<IActionResult> GetLowStockItemsPaginated(
+            [FromBody] PagedListRequest? request,
             [FromQuery] long? depotId = null,
             [FromQuery] List<long>? depotIds = null)
         {
-            var request = new PagedListRequest { Page = page, PageSize = pageSize };
+            request ??= new PagedListRequest();
             var result = await _lowStockMonitoringService.GetLowStockItemsPaginatedAsync(request, depotId, depotIds);
             return ProcessResponse(result);
         }
@@ -71,18 +71,18 @@ namespace Ettad.Inventory.API.Controllers
         }
 
         /// <summary>
-        /// Expiring lots (next 30 days) with server-side paging (defaults: page = 1, pageSize = 10). Optionally filter by depot like <c>expiring-lots/count</c>.
+        /// Expiring lots (next 30 days) with server-side paging (same contract as <c>api/Ammunition/Paginated</c>).
+        /// Body: <see cref="PagedListRequest"/>. Depot query matches <c>expiring-lots/count</c>.
         /// </summary>
-        [HttpGet("expiring-lots")]
+        [HttpPost("expiring-lots/Paginated")]
         [ProducesResponseType(typeof(APIOperationResponse<PaginatedList<ExpiringLotDto>>), (int)HttpStatusCode.OK)]
         [CheckAuthorize("Permissions.Inventory.View", "Permissions.Inventory.Page")]
-        public async Task<IActionResult> GetExpiringLots(
-            [FromQuery] int page = 1,
-            [FromQuery] int pageSize = 10,
+        public async Task<IActionResult> GetExpiringLotsPaginated(
+            [FromBody] PagedListRequest? request,
             [FromQuery] long? depotId = null,
             [FromQuery] List<long>? depotIds = null)
         {
-            var request = new PagedListRequest { Page = page, PageSize = pageSize };
+            request ??= new PagedListRequest();
             var result = await _expiringLotMonitoringService.GetExpiringLotsPaginatedAsync(request, depotId, depotIds);
             return ProcessResponse(result);
         }
