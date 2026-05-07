@@ -1,4 +1,5 @@
 using Ettad.Inventory.Service.Monitoring.Dtos;
+using Ettad.CrossCutting.Comman.Models;
 using Ettad.ResponseHandler.Models;
 using System.Collections.Generic;
 
@@ -12,8 +13,12 @@ namespace Ettad.Inventory.Service.Monitoring.Interfaces
         Task<APIOperationResponse<int>> GetExpiringLotsCountAsync(long? depotId = null, List<long>? depotIds = null);
 
         /// <summary>
-        /// Gets the list of lots that are about to expire in the next 30 days with their details
+        /// Expiring-lot rows (next 30 days) with server-side paging (<see cref="PaginatedList{T}"/>).
+        /// Request shape matches <c>PagedListRequest</c> used by Ammunition Paginated APIs; optional depot filter like count.
         /// </summary>
-        Task<APIOperationResponse<List<ExpiringLotDto>>> GetExpiringLotsAsync();
+        Task<APIOperationResponse<PaginatedList<ExpiringLotDto>>> GetExpiringLotsPaginatedAsync(
+            PagedListRequest request,
+            long? depotId = null,
+            List<long>? depotIds = null);
     }
 }

@@ -9,6 +9,9 @@ using Microsoft.Extensions.Logging;
 using Ettad.Data.Interfaces.Repositories;
 using Ettad.Module.lookup.Interfaces;
 using Ettad.Inventory.Service.Monitoring.Interfaces;
+using Ettad.Inventory.Service.Inventories.Dtos;
+using Ettad.Inventory.Service.Inventories.Interfaces;
+
 
 namespace Ettad.Inventory.Service.Monitoring.Services
 {
@@ -36,6 +39,9 @@ namespace Ettad.Inventory.Service.Monitoring.Services
 
         private readonly IDepotAccessService _depotAccessService;
         private readonly ICurrentUserService _currentUserService;
+        private readonly IInventoryService _inventoryService;
+        private readonly ILowStockMonitoringService _lowStockMonitoringService;
+        private readonly IExpiringLotMonitoringService _expiringLotMonitoringService;
         private readonly ILogger<InventoryDashboardMonitoringService> _logger;
 
         public InventoryDashboardMonitoringService(
@@ -50,6 +56,9 @@ namespace Ettad.Inventory.Service.Monitoring.Services
             ICrossCuttingRepository<RequestItem> requestItemRepository,
             IDepotAccessService depotAccessService,
             ICurrentUserService currentUserService,
+            IInventoryService inventoryService,
+            ILowStockMonitoringService lowStockMonitoringService,
+            IExpiringLotMonitoringService expiringLotMonitoringService,
             ILogger<InventoryDashboardMonitoringService> logger)
         {
             _assetRepository = assetRepository;
@@ -62,13 +71,16 @@ namespace Ettad.Inventory.Service.Monitoring.Services
             _weaponSupplySelectionRepository = weaponSupplySelectionRepository;
             _requestItemRepository = requestItemRepository;
 
-            _supplyDetailsAll = _supplyDetailRepository.Find(x => true);
+            _supplyDetailsAll = _supplyDetailRepository.Find(sd => !sd.IsDeleted);
             _inventoryDetailsAll = _inventoryDetailRepository.Find(x => true);
             _weaponSupplySelectionsAll = _weaponSupplySelectionRepository.Find(x => true);
-            _suppliesAll = _supplyRepository.Find(x => true);
+            _suppliesAll = _supplyRepository.Find(s => !s.IsDeleted);
 
             _depotAccessService = depotAccessService;
             _currentUserService = currentUserService;
+            _inventoryService = inventoryService;
+            _lowStockMonitoringService = lowStockMonitoringService;
+            _expiringLotMonitoringService = expiringLotMonitoringService;
             _logger = logger;
         }
 
@@ -220,12 +232,101 @@ namespace Ettad.Inventory.Service.Monitoring.Services
             }
         }
 
+        public async Task<APIOperationResponse<InventoryHeadlineMetricsDto>> GetInventoryHeadlineMetricsAsync(
+            long? depotId = null,
+            List<long>? depotIds = null)
+        {
+            _logger.LogInformation("Inventory headline metrics. User: {UserId}", _currentUserService.UserId);
+
+            try
+            {
+                var scope = await BuildDepotScopeAsync(depotId, depotIds);
+                if (scope == null)
+                    return APIOperationResponse<InventoryHeadlineMetricsDto>.Fail(ResponseType.Forbidden,
+                        "You do not have access to one or more of the requested depots.");
+
+                var invResult = await _inventoryService
+                    .GetInventorySummaryForAllItemsAsync(depotId, depotIds)
+                    .ConfigureAwait(false);
+
+                if (!invResult.Succeeded || invResult.Data == null)
+                    return APIOperationResponse<InventoryHeadlineMetricsDto>.Fail((ResponseType)invResult.StatusCode,
+                        invResult.Message ?? "Inventory summary failed.");
+
+                var lowResult = await _lowStockMonitoringService
+                    .GetLowStockItemsCountAsync(depotId, depotIds)
+                    .ConfigureAwait(false);
+
+                if (!lowResult.Succeeded)
+                    return APIOperationResponse<InventoryHeadlineMetricsDto>.Fail((ResponseType)lowResult.StatusCode,
+                        lowResult.Message ?? "Low stock count failed.");
+
+                var expResult = await _expiringLotMonitoringService
+                    .GetExpiringLotsCountAsync(depotId, depotIds)
+                    .ConfigureAwait(false);
+
+                if (!expResult.Succeeded)
+                    return APIOperationResponse<InventoryHeadlineMetricsDto>.Fail((ResponseType)expResult.StatusCode,
+                        expResult.Message ?? "Expiring lots count failed.");
+
+                var weaponRows = await QueryWeaponAggRowsAsync(scope).ConfigureAwait(false);
+
+                var nonWeapon = invResult.Data.Where(s => s.ItemType != ItemType.Weapon).ToList();
+                long invRemainingSum = nonWeapon.Sum(s => s.RemainingQuantity);
+                long invLotsSum = nonWeapon.Sum(s => (long)s.TotalLots);
+                var ammoCount = nonWeapon.Count(s => s.ItemType == ItemType.Ammunition);
+                var explosiveCount = nonWeapon.Count(s => s.ItemType == ItemType.Explosive);
+                var accessoryCount = nonWeapon.Count(s => s.ItemType == ItemType.Accessory);
+
+                long weaponLotsSum = 0;
+                long weaponReadySum = 0;
+                var weaponGroupCount = 0;
+                foreach (var grp in weaponRows.GroupBy(r => r.ItemId))
+                {
+                    weaponGroupCount++;
+                    weaponLotsSum += grp.Count();
+                    weaponReadySum += grp.Count(r => r.Status == AssetStatus.ReadyToIssue);
+                }
+
+                return APIOperationResponse<InventoryHeadlineMetricsDto>.Success(new InventoryHeadlineMetricsDto
+                {
+                    LowStockCount = lowResult.Data,
+                    ExpiringSoonCount = expResult.Data,
+                    TotalDistinctItems = nonWeapon.Count + weaponGroupCount,
+                    TotalRemainingQuantity = invRemainingSum + weaponReadySum,
+                    TotalLots = invLotsSum + weaponLotsSum,
+                    AmmunitionItemCount = ammoCount,
+                    ExplosiveItemCount = explosiveCount,
+                    AccessoryItemCount = accessoryCount,
+                    WeaponItemGroupsCount = weaponGroupCount
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Inventory headline metrics failed");
+                return APIOperationResponse<InventoryHeadlineMetricsDto>.Fail(ResponseType.InternalServerError,
+                    $"An error occurred: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Weapon (ItemId, Status) pairs for headline aggregation — same depot filter as <see cref="BaseWeaponAssetQuery"/>.
+        /// </summary>
+        private async Task<List<(long ItemId, AssetStatus? Status)>> QueryWeaponAggRowsAsync(DepotScope depotScope)
+        {
+            var rows = await BaseWeaponAssetQuery(depotScope)
+                .Select(a => new { a.ItemId, a.Status })
+                .ToListAsync()
+                .ConfigureAwait(false);
+            return rows.ConvertAll(r => (r.ItemId, r.Status));
+        }
+
         private IQueryable<Asset> BaseWeaponAssetQuery(DepotScope scope)
         {
             var q =
-                from a in _assetRepository.Find(a => true)
-                join i in _baseItemRepository.Find(i => true) on a.ItemId equals i.Id
-                where !a.IsDeleted && i.ItemType == ItemType.Weapon
+                from a in _assetRepository.Find(a => !a.IsDeleted)
+                join i in _baseItemRepository.Find(i => !i.IsDeleted) on a.ItemId equals i.Id
+                where i.ItemType == ItemType.Weapon
                 select a;
 
             if (scope.UserDepotIds != null)
@@ -247,10 +348,9 @@ namespace Ettad.Inventory.Service.Monitoring.Services
         private IQueryable<Supply> SupplyDraftBaseQueryable(DepotScope scope)
         {
             var q =
-                from s in _supplyRepository.Find(s => true)
-                join o in _orderRepository.Find(o => true) on s.OrderId equals o.Id
-                where !s.IsDeleted && !o.IsDeleted
-                      && s.SubmissionStatus == SupplySubmissionStatus.Draft
+                from s in _supplyRepository.Find(s => !s.IsDeleted)
+                join o in _orderRepository.Find(o => !o.IsDeleted) on s.OrderId equals o.Id
+                where s.SubmissionStatus == SupplySubmissionStatus.Draft
                       && o.RequestType == RequestType.Order
                 select s;
 
@@ -260,10 +360,9 @@ namespace Ettad.Inventory.Service.Monitoring.Services
         private IQueryable<Data.Entities.AssetSupply> AssetSupplyDraftBaseQueryable(DepotScope scope)
         {
             var q =
-                from a in _assetSupplyRepository.Find(a => true)
-                join o in _orderRepository.Find(o => true) on a.OrderId equals o.Id
-                where !a.IsDeleted && !o.IsDeleted
-                      && a.SubmissionStatus == SupplySubmissionStatus.Draft
+                from a in _assetSupplyRepository.Find(a => !a.IsDeleted)
+                join o in _orderRepository.Find(o => !o.IsDeleted) on a.OrderId equals o.Id
+                where a.SubmissionStatus == SupplySubmissionStatus.Draft
                       && o.RequestType == RequestType.Order
                 select a;
 
@@ -284,7 +383,7 @@ namespace Ettad.Inventory.Service.Monitoring.Services
         {
             return await SupplyDraftBaseQueryable(scope)
                 .Join(
-                    _orderRepository.Find(o => true),
+                    _orderRepository.Find(o => !o.IsDeleted),
                     s => s.OrderId,
                     o => o.Id,
                     (s, o) => new DraftSupplyListItemDto
@@ -304,7 +403,7 @@ namespace Ettad.Inventory.Service.Monitoring.Services
         {
             return await AssetSupplyDraftBaseQueryable(scope)
                 .Join(
-                    _orderRepository.Find(o => true),
+                    _orderRepository.Find(o => !o.IsDeleted),
                     a => a.OrderId,
                     o => o.Id,
                     (a, o) => new DraftSupplyListItemDto
@@ -330,7 +429,7 @@ namespace Ettad.Inventory.Service.Monitoring.Services
             var depots = scope.PipelineDepotIds;
             return q.Where(s =>
                 _supplyDetailsAll.Any(sd =>
-                    sd.SupplyId == s.Id && !sd.IsDeleted &&
+                    sd.SupplyId == s.Id &&
                     _inventoryDetailsAll.Any(id =>
                         id.ItemId == sd.ItemId && id.ItemQuantity > 0 &&
                         !id.Inventory.IsDeleted &&
@@ -353,9 +452,8 @@ namespace Ettad.Inventory.Service.Monitoring.Services
         private IQueryable<Order> ApprovedOrdersForPipelineQueryable(DepotScope scope)
         {
             var approvedOrders =
-                from o in _orderRepository.Find(o => true)
-                where !o.IsDeleted
-                      && o.Status == RequestStatus.Approved
+                from o in _orderRepository.Find(o => !o.IsDeleted)
+                where o.Status == RequestStatus.Approved
                       && o.RequestType == RequestType.Order
                 select o;
 
@@ -379,19 +477,19 @@ namespace Ettad.Inventory.Service.Monitoring.Services
             if (orderIds.Count == 0)
                 return new List<OrderAwaitingFulfillmentListItemDto>();
 
-            var requestItems = await _requestItemRepository.Find(ri => true)
-                .Where(ri => orderIds.Contains(ri.RequestId) && !ri.IsDeleted)
-                .Join(_baseItemRepository.Find(i => true), ri => ri.ItemId, i => i.Id, (ri, i) => new { ri.RequestId, i.ItemType })
+            var requestItems = await _requestItemRepository.Find(ri => !ri.IsDeleted)
+                .Where(ri => orderIds.Contains(ri.RequestId))
+                .Join(_baseItemRepository.Find(i => !i.IsDeleted), ri => ri.ItemId, i => i.Id, (ri, i) => new { ri.RequestId, i.ItemType })
                 .ToListAsync();
 
             var itemsByOrder = requestItems.GroupBy(x => x.RequestId).ToDictionary(g => g.Key, g => g.Select(x => x.ItemType).ToList());
 
-            var supplyByOrder = await _supplyRepository.Find(s => true)
-                .Where(s => orderIds.Contains(s.OrderId) && !s.IsDeleted)
+            var supplyByOrder = await _supplyRepository.Find(s => !s.IsDeleted)
+                .Where(s => orderIds.Contains(s.OrderId))
                 .ToListAsync();
 
-            var assetSupplyByOrder = await _assetSupplyRepository.Find(s => true)
-                .Where(s => orderIds.Contains(s.OrderId) && !s.IsDeleted)
+            var assetSupplyByOrder = await _assetSupplyRepository.Find(s => !s.IsDeleted)
+                .Where(s => orderIds.Contains(s.OrderId))
                 .ToListAsync();
 
             var result = new List<OrderAwaitingFulfillmentListItemDto>();
@@ -450,8 +548,8 @@ namespace Ettad.Inventory.Service.Monitoring.Services
             var depots = scope.PipelineDepotIds;
             return q.Where(o =>
                 _weaponSupplySelectionsAll.Any(ws => ws.OrderId == o.Id && depots.Contains(ws.DepotId))
-                || _suppliesAll.Any(s => s.OrderId == o.Id && !s.IsDeleted &&
-                    _supplyDetailsAll.Any(sd => sd.SupplyId == s.Id && !sd.IsDeleted &&
+                || _suppliesAll.Any(s => s.OrderId == o.Id &&
+                    _supplyDetailsAll.Any(sd => sd.SupplyId == s.Id &&
                         _inventoryDetailsAll.Any(id => id.ItemId == sd.ItemId && id.ItemQuantity > 0 &&
                             !id.Inventory.IsDeleted && depots.Contains(id.Inventory.DepoId)))));
         }
