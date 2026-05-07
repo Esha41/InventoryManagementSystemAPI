@@ -8,6 +8,7 @@ using Ettad.RequestManagement.Service.Common;
 using Ettad.RequestManagement.Service.Orders.Dto;
 using Ettad.ResponseHandler.Consts;
 using Ettad.ResponseHandler.Models;
+using Ettad.Workflow.Service.Interface;
 using Ettad.Workflows.Service.Commands.WorkflowApproval.StartWorkflow;
 using Ettad.Workflows.Service.Queries.WorkflowApproval.GetCurrentApprovalStepByRequestId;
 using FluentValidation;
@@ -45,6 +46,8 @@ namespace Ettad.RequestManagement.Service.Orders
         private readonly IDateTimeProvider _dateTimeProvider;
         private readonly IOrderItemTrackingService _orderItemTrackingService;
         private readonly IMediator _mediator;
+        private readonly ITransactionManager _transactionManager;
+        private readonly IWorkflowStartNotificationService _workflowStartNotificationService;
 
         public OrderService(
             ICrossCuttingRepository<Order> orderRepository,
@@ -65,7 +68,9 @@ namespace Ettad.RequestManagement.Service.Orders
             IFileUploadService fileUploadService,
             IDateTimeProvider dateTimeProvider,
             IOrderItemTrackingService orderItemTrackingService,
-            IMediator mediator)
+            IMediator mediator,
+            ITransactionManager transactionManager,
+            IWorkflowStartNotificationService workflowStartNotificationService)
         {
             _orderRepository = orderRepository;
             _requestItemRepository = requestItemRepository;
@@ -86,6 +91,8 @@ namespace Ettad.RequestManagement.Service.Orders
             _dateTimeProvider = dateTimeProvider;
             _orderItemTrackingService = orderItemTrackingService;
             _mediator = mediator;
+            _transactionManager = transactionManager;
+            _workflowStartNotificationService = workflowStartNotificationService;
         }
 
         // ... existing methods omitted for brevity until SetSupplyDateAsync ...
@@ -302,83 +309,85 @@ namespace Ettad.RequestManagement.Service.Orders
                     }
                 }
 
-                // Step 2: Map DTO to entity (exclude RequestItems for now)
-                var order = _mapper.Map<Order>(inputDto);
-                order.RequestType = RequestType.Order; // Always set request type to Order
-                order.Status = RequestStatus.New; // Always set initial status to New
-                order.CreationDate = _dateTimeProvider.Now;
-                order.CreatedBy = currentUserId;
-                order.DepartmentId = departmentId.Value;
-                order.RequesterId = currentUserId;
+                await _transactionManager.BeginAsync();
 
-                // Generate request number
-                order.RequestNo = await _requestNoGeneratorService.GenerateRequestNoAsync(RequestType.Order, departmentId.Value);
-                
-                // Initialize RequestItems collection if null
-                if (order.RequestItems == null)
+                Order createdOrder;
+                try
                 {
-                    order.RequestItems = new List<RequestItem>();
-                }
+                    // Step 2: Map DTO to entity (exclude RequestItems for now)
+                    var order = _mapper.Map<Order>(inputDto);
+                    order.RequestType = RequestType.Order; // Always set request type to Order
+                    order.Status = RequestStatus.New; // Always set initial status to New
+                    order.CreationDate = _dateTimeProvider.Now;
+                    order.CreatedBy = currentUserId;
+                    order.DepartmentId = departmentId.Value;
+                    order.RequesterId = currentUserId;
 
-                // Set audit fields for request items and establish relationship
-                if (inputDto.RequestItems != null && inputDto.RequestItems.Any())
-                {
-                    var requestItems = _mapper.Map<List<RequestItem>>(inputDto.RequestItems);
-                    _logger.LogInformation("Adding {ItemCount} request items to order.",
-                        requestItems.Count);
-                    
-                    foreach (var item in requestItems)
+                    // Generate request number
+                    order.RequestNo = await _requestNoGeneratorService.GenerateRequestNoAsync(RequestType.Order, departmentId.Value);
+
+                    // Initialize RequestItems collection if null
+                    if (order.RequestItems == null)
                     {
-                        item.CreationDate = _dateTimeProvider.Now;
-                        item.CreatedBy = _currentUserService.UserId;
-                        order.RequestItems.Add(item);
+                        order.RequestItems = new List<RequestItem>();
                     }
-                }
 
-                // Step 3: Add to repository (this will cascade save RequestItems)
-                var createdOrder = await _orderRepository.AddAsync(order);
-
-                // Record history for initial items
-                if (createdOrder.RequestItems != null && createdOrder.RequestItems.Any())
-                {
-                    try
+                    // Set audit fields for request items and establish relationship
+                    if (inputDto.RequestItems != null && inputDto.RequestItems.Any())
                     {
-                        var departmentIdForHistory = _currentUserService.DepartmentId ?? createdOrder.DepartmentId;
-                        var userName = _currentUserService.UserName ?? "System";
+                        var requestItems = _mapper.Map<List<RequestItem>>(inputDto.RequestItems);
+                        _logger.LogInformation("Adding {ItemCount} request items to order.",
+                            requestItems.Count);
 
-                        foreach (var item in createdOrder.RequestItems.Where(ri => !ri.IsDeleted))
+                        foreach (var item in requestItems)
                         {
-                            var historyContext = new OrderItemHistoryContext
-                            {
-                                OrderId = createdOrder.Id,
-                                RequestItemId = item.Id,
-                                ItemId = item.ItemId,
-                                ActionType = OrderItemActionType.Added,
-                                OrderStatus = createdOrder.Status,
-                                NewQuantity = item.Quantity,
-                                DepartmentId = departmentIdForHistory,
-                                ModifiedByUserId = _currentUserService.UserId,
-                                ModifiedByUserName = userName,
-                                WorkflowApprovalStepId = null, // No workflow step yet for new orders
-                                WorkflowStepId = null,
-                                Description = $"Item added to order (Order Status: {createdOrder.Status})"
-                            };
-
-                            await _orderItemTrackingService.RecordHistoryAsync(historyContext);
+                            item.CreationDate = _dateTimeProvider.Now;
+                            item.CreatedBy = _currentUserService.UserId;
+                            order.RequestItems.Add(item);
                         }
                     }
-                    catch (Exception ex)
-                    {
-                        _logger.LogWarning(ex, "Failed to record history for order creation. OrderId: {OrderId}", 
-                            createdOrder.Id);
-                    }
-                }
 
-                // Step 4: Link files to the order (create FileUplodDetails records) if files were saved
-                // When files were selected: if linking fails, delete the order and do not succeed.
-                if (savedFileMasterIds != null && savedFileMasterIds.Count > 0)
-                {
-                    try
+                    // Step 3: Add to repository (this will cascade save RequestItems)
+                    createdOrder = await _orderRepository.AddAsync(order);
+
+                    // Record history for initial items
+                    if (createdOrder.RequestItems != null && createdOrder.RequestItems.Any())
+                    {
+                        try
+                        {
+                            var departmentIdForHistory = _currentUserService.DepartmentId ?? createdOrder.DepartmentId;
+                            var userName = _currentUserService.UserName ?? "System";
+
+                            foreach (var item in createdOrder.RequestItems.Where(ri => !ri.IsDeleted))
+                            {
+                                var historyContext = new OrderItemHistoryContext
+                                {
+                                    OrderId = createdOrder.Id,
+                                    RequestItemId = item.Id,
+                                    ItemId = item.ItemId,
+                                    ActionType = OrderItemActionType.Added,
+                                    OrderStatus = createdOrder.Status,
+                                    NewQuantity = item.Quantity,
+                                    DepartmentId = departmentIdForHistory,
+                                    ModifiedByUserId = _currentUserService.UserId,
+                                    ModifiedByUserName = userName,
+                                    WorkflowApprovalStepId = null, // No workflow step yet for new orders
+                                    WorkflowStepId = null,
+                                    Description = $"Item added to order (Order Status: {createdOrder.Status})"
+                                };
+
+                                await _orderItemTrackingService.RecordHistoryAsync(historyContext);
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogWarning(ex, "Failed to record history for order creation. OrderId: {OrderId}",
+                                createdOrder.Id);
+                        }
+                    }
+
+                    // Step 4: Link files to the order (create FileUplodDetails records) if files were saved
+                    if (savedFileMasterIds != null && savedFileMasterIds.Count > 0)
                     {
                         foreach (var masterId in savedFileMasterIds)
                         {
@@ -395,77 +404,91 @@ namespace Ettad.RequestManagement.Service.Orders
                         _logger.LogInformation("Files linked successfully to order. OrderId: {OrderId}, FileCount: {FileCount}, User: {UserId}",
                             createdOrder.Id, savedFileMasterIds.Count, currentUserId);
                     }
-                    catch (Exception ex)
+
+                    // Determine which workflow to start for the created order.
+                    // Priority and rules:
+                    // 1) If the order was created from an allowance (reserved items), always use
+                    //    `WorkflowType.OrderFromAllowance` (or `OrderFromAllowance_Weapon` for weapons) because allowance-based orders follow a different approval path.
+                    // 2) Otherwise, if the request purpose represents a "Training Order" (TrainingOrderRequestPurposeId),
+                    //    use `WorkflowType.NormalOrderForTrainingPurpose` (or `NormalOrderForTrainingPurpose_Weapon` for weapons) - training orders have a specific workflow.
+                    // 3) For all other non-allowance orders, use the default `WorkflowType.NormalOrder` (or `NormalOrder_Weapon` for weapons).
+                    //
+                    // Note: Training Order is not valid for weapon orders (rejected earlier in validation). This branch is only reached for non-weapon orders.
+                    // - The allowance check takes precedence: if an order is both "from allowance" and a training purpose,
+                    //   it will use the allowance workflow.
+                    // - Weapon orders use weapon-specific workflows: if all items are weapons, use weapon workflow variants.
+
+                    WorkflowType workflowType;
+                    if (createdOrder.IsFromAllowance)
                     {
-                        _logger.LogError(ex, "Exception occurred while linking files to order. OrderId: {OrderId}, User: {UserId}. Rolling back order creation.",
-                            createdOrder.Id, currentUserId);
-                        await _orderRepository.DeleteAsync(createdOrder);
-                        return APIOperationResponse<long>.Fail(ResponseType.BadRequest,
-                            $"File upload failed: {ex.Message}. Order was not created.");
+                        workflowType = isWeaponOrder
+                            ? WorkflowType.OrderFromAllowance_Weapon
+                            : WorkflowType.OrderFromAllowance;
                     }
-                }
+                    else if (createdOrder.RequestPurposeId == TrainingOrderRequestPurposeId)
+                    {
+                        workflowType = isWeaponOrder
+                            ? WorkflowType.NormalOrderForTrainingPurpose_Weapon
+                            : WorkflowType.NormalOrderForTrainingPurpose;
+                    }
+                    else
+                    {
+                        workflowType = isWeaponOrder
+                            ? WorkflowType.NormalOrder_Weapon
+                            : WorkflowType.NormalOrder;
+                    }
 
-                // Determine which workflow to start for the created order.
-                // Priority and rules:
-                // 1) If the order was created from an allowance (reserved items), always use
-                //    `WorkflowType.OrderFromAllowance` (or `OrderFromAllowance_Weapon` for weapons) because allowance-based orders follow a different approval path.
-                // 2) Otherwise, if the request purpose represents a "Training Order" (TrainingOrderRequestPurposeId),
-                //    use `WorkflowType.NormalOrderForTrainingPurpose` (or `NormalOrderForTrainingPurpose_Weapon` for weapons) - training orders have a specific workflow.
-                // 3) For all other non-allowance orders, use the default `WorkflowType.NormalOrder` (or `NormalOrder_Weapon` for weapons).
-                //
-                // Note: Training Order is not valid for weapon orders (rejected earlier in validation). This branch is only reached for non-weapon orders.
-                // - The allowance check takes precedence: if an order is both "from allowance" and a training purpose,
-                //   it will use the allowance workflow.
-                // - Weapon orders use weapon-specific workflows: if all items are weapons, use weapon workflow variants.
-                
-                WorkflowType workflowType;
-                if (createdOrder.IsFromAllowance)
-                {
-                    workflowType = isWeaponOrder 
-                        ? WorkflowType.OrderFromAllowance_Weapon 
-                        : WorkflowType.OrderFromAllowance;
-                }
-                else if (createdOrder.RequestPurposeId == TrainingOrderRequestPurposeId)
-                {
-                    workflowType = isWeaponOrder 
-                        ? WorkflowType.NormalOrderForTrainingPurpose_Weapon 
-                        : WorkflowType.NormalOrderForTrainingPurpose;
-                }
-                else
-                {
-                    workflowType = isWeaponOrder 
-                        ? WorkflowType.NormalOrder_Weapon 
-                        : WorkflowType.NormalOrder;
-                }
+                    var startResult = await _mediator.Send(new StartWorkflowCommand(createdOrder.Id, workflowType));
+                    var workflowStarted = startResult.Succeeded && startResult.Data?.Started == true;
 
-                // Start workflow for the order
-                var startResult = await _mediator.Send(new StartWorkflowCommand(createdOrder.Id, workflowType));
-                var workflowStarted = startResult.Succeeded && startResult.Data == true;
+                    if (!workflowStarted)
+                    {
+                        await _transactionManager.RollbackAsync();
+                        if (!startResult.Succeeded)
+                        {
+                            _logger.LogWarning("Error starting workflow for order; transaction rolled back. WorkflowType: {WorkflowType}, User: {UserId}, Message: {Message}",
+                                workflowType, currentUserId, startResult.Message);
+                            return APIOperationResponse<long>.Fail((ResponseType)startResult.StatusCode,
+                                startResult.Message ?? "An error occurred while starting the approval workflow.");
+                        }
 
-                if (workflowStarted)
-                {
+                        _logger.LogWarning("Failed to start workflow for order; transaction rolled back. WorkflowType: {WorkflowType}, User: {UserId}",
+                            workflowType, currentUserId);
+                        return APIOperationResponse<long>.Fail(ResponseType.BadRequest,
+                            "Order could not be created because the approval workflow could not be started.");
+                    }
+
+                    await _transactionManager.CommitAsync();
+
+                    if (startResult.Data!.NotificationWorkflowStepId is long stepId)
+                        await _workflowStartNotificationService.SendAsync(createdOrder.Id, stepId);
+
                     _logger.LogInformation("Workflow started successfully for order. OrderId: {OrderId}, WorkflowType: {WorkflowType}, IsFromAllowance: {IsFromAllowance}, IsWeaponOrder: {IsWeaponOrder}, User: {UserId}",
                         createdOrder.Id, workflowType, createdOrder.IsFromAllowance, isWeaponOrder, currentUserId);
+
+                    await NotifyOrderAsync(
+                        "Order Created",
+                        $"Order request {createdOrder.RequestNo} has been created{(createdOrder.IsFromAllowance ? " from allowance" : "")}.",
+                        createdOrder.Id);
+
+                    _logger.LogInformation("Order created successfully. OrderId: {OrderId}, OrderNo: {OrderNo}, ItemCount: {ItemCount}, IsFromAllowance: {IsFromAllowance}, User: {UserId}",
+                        createdOrder.Id, createdOrder.RequestNo, createdOrder.RequestItems?.Count ?? 0, createdOrder.IsFromAllowance, currentUserId);
+
+                    return APIOperationResponse<long>.Success(createdOrder.Id, "Order created successfully");
                 }
-                else
+                catch (Exception ex) when (ex is not OperationCanceledException)
                 {
-                    _logger.LogWarning("Failed to start workflow for order. OrderId: {OrderId}, WorkflowType: {WorkflowType}, IsFromAllowance: {IsFromAllowance}, IsWeaponOrder: {IsWeaponOrder}, User: {UserId}",
-                        createdOrder.Id, workflowType, createdOrder.IsFromAllowance, isWeaponOrder, currentUserId);
+                    await _transactionManager.RollbackAsync();
+                    _logger.LogError(ex, "Exception during order creation transaction. User: {UserId}", currentUserId);
+                    return APIOperationResponse<long>.Fail(ResponseType.BadRequest,
+                        $"Order was not created: {ex.Message}");
                 }
-
-                // Send notification
-                await NotifyOrderAsync(
-                    "Order Created",
-                    $"Order request {createdOrder.RequestNo} has been created{(createdOrder.IsFromAllowance ? " from allowance" : "")}.",
-                    createdOrder.Id);
-
-                _logger.LogInformation("Order created successfully. OrderId: {OrderId}, OrderNo: {OrderNo}, ItemCount: {ItemCount}, IsFromAllowance: {IsFromAllowance}, User: {UserId}", 
-                    createdOrder.Id, createdOrder.RequestNo, createdOrder.RequestItems?.Count ?? 0, createdOrder.IsFromAllowance, currentUserId);
-                
-                return APIOperationResponse<long>.Success(createdOrder.Id, "Order created successfully");
             }
             catch (Exception ex)
             {
+                if (_transactionManager.HasActiveTransaction)
+                    await _transactionManager.RollbackAsync();
+
                 _logger.LogError(ex, "Error creating order. User: {UserId}",
                     currentUserId);
                 

@@ -18,6 +18,7 @@ namespace Ettad.Workflow.Service
             
             // Register WorkflowStepNotifierService
             service.AddScoped<IWorkflowStepNotifierService, WorkflowStepNotifierService>();
+            service.AddScoped<IWorkflowStartNotificationService, WorkflowStartNotificationService>();
             service.AddScoped<IOrderAutoRejectBackgroundService, OrderAutoRejectBackgroundService>();
             service.AddScoped<IOrderAutoRejectSettingsService, OrderAutoRejectSettingsService>();
             service.AddScoped<IOrderAutoRejectCountdownService, OrderAutoRejectCountdownService>();
