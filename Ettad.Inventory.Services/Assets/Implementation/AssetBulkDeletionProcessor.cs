@@ -8,7 +8,6 @@ using Ettad.CrossCutting.Comman.FileUpload;
 using Ettad.CrossCutting.Comman.Time;
 using Ettad.Data.Entities;
 using Ettad.Data.Interfaces.Repositories;
-using Ettad.EntityFramework.DataBaseContext;
 using Ettad.Inventory.Service.Assets.Dtos;
 using Ettad.Inventory.Service.Assets.Interfaces;
 using Microsoft.EntityFrameworkCore;
@@ -18,7 +17,7 @@ namespace Ettad.Inventory.Service.Assets.Implementation
 {
     public class AssetBulkDeletionProcessor : IAssetBulkDeletionProcessor
     {
-        private readonly ApplicationDbContext _context;
+        private readonly IAssetBulkDeletionPersistence _persistence;
         private readonly ICrossCuttingRepository<Batch> _batchRepository;
         private readonly IFileUploadService _fileUploadService;
         private readonly IDateTimeProvider _dateTimeProvider;
@@ -26,14 +25,14 @@ namespace Ettad.Inventory.Service.Assets.Implementation
         private readonly ILogger<AssetBulkDeletionProcessor> _logger;
 
         public AssetBulkDeletionProcessor(
-            ApplicationDbContext context,
+            IAssetBulkDeletionPersistence persistence,
             ICrossCuttingRepository<Batch> batchRepository,
             IFileUploadService fileUploadService,
             IDateTimeProvider dateTimeProvider,
             ITransactionManager transactionManager,
             ILogger<AssetBulkDeletionProcessor> logger)
         {
-            _context = context;
+            _persistence = persistence;
             _batchRepository = batchRepository;
             _fileUploadService = fileUploadService;
             _dateTimeProvider = dateTimeProvider;
@@ -43,11 +42,9 @@ namespace Ettad.Inventory.Service.Assets.Implementation
 
         public async Task ExecuteAsync(Guid jobId, CancellationToken cancellationToken = default)
         {
-            _context.Database.SetCommandTimeout(TimeSpan.FromMinutes(30));
+            _persistence.SetBulkCommandTimeout(TimeSpan.FromMinutes(30));
 
-            var job = await _context.AssetBulkDeletionJobs
-                .AsTracking()
-                .FirstOrDefaultAsync(j => j.Id == jobId, cancellationToken).ConfigureAwait(false);
+            var job = await _persistence.GetTrackedJobAsync(jobId, cancellationToken).ConfigureAwait(false);
 
             if (job == null)
             {
@@ -63,23 +60,23 @@ namespace Ettad.Inventory.Service.Assets.Implementation
                 if (job.JobStatus == BulkDeleteAssetsDtos.JobStatus.Pending)
                 {
                     job.JobStatus = BulkDeleteAssetsDtos.JobStatus.Running;
-                    job.StartedUtc = _dateTimeProvider.Now.ToUniversalTime();
-                    await _context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+                    job.StartedUtc = _dateTimeProvider.Now;
+                    await _persistence.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
                 }
 
                 await RunDeletionAsync(job, cancellationToken).ConfigureAwait(false);
 
                 job.JobStatus = BulkDeleteAssetsDtos.JobStatus.Completed;
-                job.CompletedUtc = _dateTimeProvider.Now.ToUniversalTime();
-                await _context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+                job.CompletedUtc = _dateTimeProvider.Now;
+                await _persistence.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Bulk asset deletion failed. JobId={JobId}", jobId);
                 job.JobStatus = BulkDeleteAssetsDtos.JobStatus.Failed;
                 job.Message = $"{ex.GetType().Name}: {ex.Message}";
-                job.CompletedUtc = _dateTimeProvider.Now.ToUniversalTime();
-                await _context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+                job.CompletedUtc = _dateTimeProvider.Now;
+                await _persistence.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
             }
         }
 
@@ -176,7 +173,7 @@ namespace Ettad.Inventory.Service.Assets.Implementation
             {
                 cancellationToken.ThrowIfCancellationRequested();
 
-                var chunkQuery = filterAssets(_context.Assets)
+                var chunkQuery = filterAssets(_persistence.Assets)
                     .OrderBy(a => a.Id)
                     .Take(BulkDeleteAssetsDtos.UpdateChunkSize);
 
@@ -218,7 +215,7 @@ namespace Ettad.Inventory.Service.Assets.Implementation
                 {
                     cancellationToken.ThrowIfCancellationRequested();
 
-                    var chunkQuery = _context.Assets
+                    var chunkQuery = _persistence.Assets
                         .Where(a => slice.Contains(a.Id) && !a.IsDeleted)
                         .OrderBy(a => a.Id)
                         .Take(BulkDeleteAssetsDtos.UpdateChunkSize);
@@ -249,14 +246,14 @@ namespace Ettad.Inventory.Service.Assets.Implementation
 
             try
             {
-                var utcNow = _dateTimeProvider.Now.ToUniversalTime();
+                var now = _dateTimeProvider.Now;
 
                 delta = await chunkQuery
                     .ExecuteUpdateAsync(s => s
                             .SetProperty(a => a.IsDeleted, true)
-                            .SetProperty(a => a.DeletionDate, utcNow)
+                            .SetProperty(a => a.DeletionDate, now)
                             .SetProperty(a => a.DeletedBy, deletedBy)
-                            .SetProperty(a => a.ModificationDate, utcNow)
+                            .SetProperty(a => a.ModificationDate, now)
                             .SetProperty(a => a.ModifiedBy, deletedBy),
                         cancellationToken)
                     .ConfigureAwait(false);
@@ -283,6 +280,6 @@ namespace Ettad.Inventory.Service.Assets.Implementation
         }
 
         private Task PersistJobProgress(AssetBulkDeletionJob job, CancellationToken ct)
-            => _context.SaveChangesAsync(ct);
+            => _persistence.SaveChangesAsync(ct);
     }
 }

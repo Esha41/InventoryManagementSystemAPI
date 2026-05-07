@@ -21,6 +21,8 @@ namespace Ettad.Repository
 
             service.AddScoped<IAssetBulkSqlRepository, AssetBulkSqlRepository>();
 
+            service.AddScoped<IAssetBulkDeletionPersistence, AssetBulkDeletionPersistence>();
+
             return service;
         }
     }
