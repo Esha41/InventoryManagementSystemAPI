@@ -7,7 +7,6 @@ using Ettad.CrossCutting.Comman.Utilities;
 using Ettad.Data.Entities;
 using Ettad.Data.Entities.Workflows;
 using Ettad.Data.Interfaces.Repositories;
-using Ettad.EntityFramework.DataBaseContext;
 using Ettad.LdapSettings.Services.Interfaces;
 using Ettad.Module.lookup.Dtos;
 using Ettad.ResponseHandler.Consts;
@@ -41,11 +40,11 @@ public class UserService : IUserService
     private readonly ICrossCuttingRepository<BlacklistedToken> _blacklistedTokenRepository;
     private readonly ITransactionManager _transactionManager;
 
-    private readonly ApplicationDbContext _context;
+    private readonly ICrossCuttingRepository<IdentityUserRole<string>> _userRoleRepository;
     private readonly IPermissionService _permissionService;
 
     public UserService(UserManager<ApplicationUser> userManager, RoleManager<ApplicationRole> roleManager
-         , ICurrentUserService currentUserService, ILogger<UserService> logger, ApplicationDbContext context,
+         , ICurrentUserService currentUserService, ILogger<UserService> logger,
          IPermissionService permissionService,
          IDateTimeProvider dateTimeProvider, ILdapSettingsService ldapSettingsService, ICrossCuttingRepository<BaseRequest> baserequest,
          ICrossCuttingRepository<WorkflowStepApprovalLog> approvalLogRepository, ICrossCuttingRepository<OrderItemHistory> orderItemHistoryRepository,
@@ -53,12 +52,13 @@ public class UserService : IUserService
          ICrossCuttingRepository<NotificationReceiver> notificationReceiverRepository, ICrossCuttingRepository<AnnouncementDismissal> announcementDismissalRepository,
          ICrossCuttingRepository<LoginAttempt> loginAttemptRepository, ICrossCuttingRepository<UserDelegation> userDelegationRepository,
          ICrossCuttingRepository<WorkflowStepNotifier> workflowStepNotifierRepository, ICrossCuttingRepository<BlacklistedToken> blacklistedTokenRepository,
-         ITransactionManager transactionManager)
+         ITransactionManager transactionManager,
+         ICrossCuttingRepository<IdentityUserRole<string>> userRoleRepository)
 
     {
         _userManager = userManager;
         _roleManager = roleManager;
-        _context = context;
+        _userRoleRepository = userRoleRepository;
         // _employeeRepository = employeeRepository;
         _currentUserService = currentUserService;
         _logger = logger;
@@ -145,11 +145,11 @@ public class UserService : IUserService
         // Filter out superadmin users if the requesting user is not a superadmin
         if (!_currentUserService.IsSuperAdmin)
         {
-            var superAdminRoleIds = _context.Roles
+            var superAdminRoleIds = _roleManager.Roles
                 .Where(r => r.IsSuperAdmin)
                 .Select(r => r.Id);
 
-            var userRoles = _context.UserRoles; // Provided by IdentityDbContext
+            var userRoles = _userRoleRepository.Find(ur => true);
             query = query.Where(u => !userRoles.Any(ur => ur.UserId == u.Id && superAdminRoleIds.Contains(ur.RoleId)));
         }
 
@@ -162,7 +162,8 @@ public class UserService : IUserService
 
         if (roleIds.Any())
         {
-            query = query.Where(u => _context.UserRoles
+            var userRolesForFilter = _userRoleRepository.Find(ur => true);
+            query = query.Where(u => userRolesForFilter
                 .Any(ur => ur.UserId == u.Id && roleIds.Contains(ur.RoleId)));
         }
 
@@ -324,9 +325,9 @@ public class UserService : IUserService
         var userIds = users.Select(u => u.Id).ToList();
 
         // Batch fetch all roles for these users in one query
-        var userRolesMapping = await _context.UserRoles
-            .Where(ur => userIds.Contains(ur.UserId))
-            .Join(_context.Roles, ur => ur.RoleId, r => r.Id, (ur, r) => new { ur.UserId, Role = r })
+        var userRolesMapping = await _userRoleRepository
+            .Find(ur => userIds.Contains(ur.UserId))
+            .Join(_roleManager.Roles, ur => ur.RoleId, r => r.Id, (ur, r) => new { ur.UserId, Role = r })
             .ToListAsync();
 
         var allRoles = await _roleManager.Roles.AsNoTracking().ToListAsync();
@@ -1322,11 +1323,11 @@ public class UserService : IUserService
         // Filter out superadmin users if the requesting user is not a superadmin
         if (!_currentUserService.IsSuperAdmin)
         {
-            var superAdminRoleIds = _context.Roles
+            var superAdminRoleIds = _roleManager.Roles
                 .Where(r => r.IsSuperAdmin)
                 .Select(r => r.Id);
 
-            var userRoles = _context.UserRoles;
+            var userRoles = _userRoleRepository.Find(ur => true);
             query = query.Where(u => !userRoles.Any(ur => ur.UserId == u.Id && superAdminRoleIds.Contains(ur.RoleId)));
         }
 

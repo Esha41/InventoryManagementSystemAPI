@@ -1,5 +1,6 @@
 using Ettad.Data.Constants;
-using Ettad.EntityFramework.DataBaseContext;
+using Ettad.Data.Entities.Settings;
+using Ettad.Data.Interfaces.Repositories;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -9,17 +10,17 @@ namespace Ettad.Workflows.Service.Monitoring;
 public static class OrderAutoRejectPolicyLoader
 {
     public static async Task<OrderAutoRejectEffectivePolicy?> LoadAsync(
-        ApplicationDbContext context,
+        ICrossCuttingRepository<OrderAutoRejectPolicy> policyRepository,
+        ICrossCuttingRepository<Ettad.Data.Entities.Settings.Settings> settingsRepository,
         IConfiguration configuration,
         ILogger? logger,
         CancellationToken cancellationToken = default)
     {
         try
         {
-            var policy = await context.OrderAutoRejectPolicies
-                .AsNoTracking()
-                .Include(p => p.NotifyRoles)
-                .Include(p => p.ReminderLeadDays)
+            var policy = await policyRepository
+                .Find(_ => true, false, nameof(OrderAutoRejectPolicy.NotifyRoles), nameof(OrderAutoRejectPolicy.ReminderLeadDays))
+                .OrderBy(p => p.Id)
                 .FirstOrDefaultAsync(cancellationToken);
 
             if (policy != null)
@@ -40,11 +41,11 @@ public static class OrderAutoRejectPolicyLoader
             logger?.LogWarning(ex, "Reading OrderAutoRejectPolicies failed; falling back to legacy Settings.");
         }
 
-        var triggerRoleId = await GetLegacyTriggerRoleIdAsync(context, cancellationToken);
+        var triggerRoleId = await GetLegacyTriggerRoleIdAsync(settingsRepository);
         if (string.IsNullOrEmpty(triggerRoleId))
             return null;
 
-        var threshold = await GetLegacyThresholdDaysAsync(context, configuration, cancellationToken);
+        var threshold = await GetLegacyThresholdDaysAsync(settingsRepository, configuration);
         var defaultLead = Math.Min(7, Math.Max(0, threshold - 1));
         var leadsFallback = defaultLead >= 1 ? new List<int> { defaultLead } : new List<int>();
 
@@ -58,14 +59,11 @@ public static class OrderAutoRejectPolicyLoader
     }
 
     private static async Task<int> GetLegacyThresholdDaysAsync(
-        ApplicationDbContext context,
-        IConfiguration configuration,
-        CancellationToken cancellationToken)
+        ICrossCuttingRepository<Ettad.Data.Entities.Settings.Settings> settingsRepository,
+        IConfiguration configuration)
     {
-        var row = await context.Settings.AsNoTracking()
-            .FirstOrDefaultAsync(
-                s => s.Key == OrderAutoRejectConstants.ThresholdDaysKey && s.Group == OrderAutoRejectConstants.Group,
-                cancellationToken);
+        var row = await settingsRepository.FindOneAsync(
+            s => s.Key == OrderAutoRejectConstants.ThresholdDaysKey && s.Group == OrderAutoRejectConstants.Group);
 
         if (row != null && int.TryParse(row.Value, out var parsed) && parsed > 0)
             return parsed;
@@ -77,12 +75,11 @@ public static class OrderAutoRejectPolicyLoader
         return OrderAutoRejectConstants.DefaultThresholdDays;
     }
 
-    private static async Task<string?> GetLegacyTriggerRoleIdAsync(ApplicationDbContext context, CancellationToken cancellationToken)
+    private static async Task<string?> GetLegacyTriggerRoleIdAsync(
+        ICrossCuttingRepository<Ettad.Data.Entities.Settings.Settings> settingsRepository)
     {
-        var row = await context.Settings.AsNoTracking()
-            .FirstOrDefaultAsync(
-                s => s.Key == OrderAutoRejectConstants.TriggerRoleIdKey && s.Group == OrderAutoRejectConstants.Group,
-                cancellationToken);
+        var row = await settingsRepository.FindOneAsync(
+            s => s.Key == OrderAutoRejectConstants.TriggerRoleIdKey && s.Group == OrderAutoRejectConstants.Group);
 
         if (string.IsNullOrWhiteSpace(row?.Value))
             return null;

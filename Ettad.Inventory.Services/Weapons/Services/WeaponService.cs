@@ -11,7 +11,6 @@ using Ettad.Application.Common.Interfaces;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using OfficeOpenXml;
-using Ettad.EntityFramework.DataBaseContext;
 using Ettad.CrossCutting.Comman.Time;
 using Ettad.CrossCutting.Comman.Models;
 using System;
@@ -24,13 +23,36 @@ namespace Ettad.Inventory.Service.Weapons.Services
 {
     public class WeaponService : IWeaponService
     {
+        private static readonly string[] WeaponTemplateSampleIncludes =
+        {
+            nameof(Weapon.LookupCaliber),
+            nameof(Weapon.CaliberUnit),
+            nameof(Weapon.CountryOfManufacture),
+            nameof(Weapon.Classification),
+            nameof(Weapon.Type),
+            "BaseItemPrimaryPurposes.PrimaryPurpos"
+        };
+
         private readonly ICrossCuttingRepository<Weapon> _weaponRepository;
+        private readonly ICrossCuttingRepository<BaseItemPrimaryPurpos> _baseItemPrimaryPurposRepository;
+        private readonly ICrossCuttingRepository<ItemDepartmentAssignment> _itemDepartmentAssignmentRepository;
+        private readonly ICrossCuttingRepository<InventoryDetail> _inventoryDetailRepository;
+        private readonly ICrossCuttingRepository<RequestItem> _requestItemRepository;
+        private readonly ICrossCuttingRepository<SupplyDetail> _supplyDetailRepository;
+        private readonly ICrossCuttingRepository<AllowanceItem> _allowanceItemRepository;
+        private readonly ICrossCuttingRepository<AssetSupplyDetail> _assetSupplyDetailRepository;
+        private readonly ICrossCuttingRepository<Asset> _assetRepository;
+        private readonly ICrossCuttingRepository<BaseItem> _baseItemRepository;
+        private readonly ICrossCuttingRepository<Unit> _unitRepository;
+        private readonly ICrossCuttingRepository<Country> _countryRepository;
+        private readonly ICrossCuttingRepository<Classification> _classificationRepository;
+        private readonly ICrossCuttingRepository<ItemTypeLookup> _itemTypeLookupRepository;
+        private readonly ICrossCuttingRepository<Caliber> _caliberRepository;
         private readonly IMapper _mapper;
         private readonly IValidator<CreateUpdateWeaponDto> _validator;
         private readonly ICurrentUserService _currentUserService;
         private readonly ILogger<WeaponService> _logger;
         private readonly IFileUploadService _fileUploadService;
-        private readonly ApplicationDbContext _context;
         private readonly ITransactionManager _transactionManager;
         private readonly IDateTimeProvider _dateTimeProvider;
         private readonly AssetImportManager<CreateUpdateWeaponDto, WeaponImportDto> _importManager;
@@ -54,24 +76,50 @@ namespace Ettad.Inventory.Service.Weapons.Services
 
         public WeaponService(
             ICrossCuttingRepository<Weapon> weaponRepository,
+            ICrossCuttingRepository<BaseItemPrimaryPurpos> baseItemPrimaryPurposRepository,
+            ICrossCuttingRepository<ItemDepartmentAssignment> itemDepartmentAssignmentRepository,
+            ICrossCuttingRepository<InventoryDetail> inventoryDetailRepository,
+            ICrossCuttingRepository<RequestItem> requestItemRepository,
+            ICrossCuttingRepository<SupplyDetail> supplyDetailRepository,
+            ICrossCuttingRepository<AllowanceItem> allowanceItemRepository,
+            ICrossCuttingRepository<AssetSupplyDetail> assetSupplyDetailRepository,
+            ICrossCuttingRepository<Asset> assetRepository,
+            ICrossCuttingRepository<BaseItem> baseItemRepository,
+            ICrossCuttingRepository<Unit> unitRepository,
+            ICrossCuttingRepository<Country> countryRepository,
+            ICrossCuttingRepository<Classification> classificationRepository,
+            ICrossCuttingRepository<ItemTypeLookup> itemTypeLookupRepository,
+            ICrossCuttingRepository<Caliber> caliberRepository,
             IMapper mapper,
             IValidator<CreateUpdateWeaponDto> validator,
             ICurrentUserService currentUserService,
             ILogger<WeaponService> logger,
             IFileUploadService fileUploadService,
             IExcelImportService excelImportService,
-            ApplicationDbContext context,
             ITransactionManager transactionManager,
             IDateTimeProvider dateTimeProvider,
             IItemDepartmentAssignmentService itemDepartmentAssignmentService)
         {
             _weaponRepository = weaponRepository;
+            _baseItemPrimaryPurposRepository = baseItemPrimaryPurposRepository;
+            _itemDepartmentAssignmentRepository = itemDepartmentAssignmentRepository;
+            _inventoryDetailRepository = inventoryDetailRepository;
+            _requestItemRepository = requestItemRepository;
+            _supplyDetailRepository = supplyDetailRepository;
+            _allowanceItemRepository = allowanceItemRepository;
+            _assetSupplyDetailRepository = assetSupplyDetailRepository;
+            _assetRepository = assetRepository;
+            _baseItemRepository = baseItemRepository;
+            _unitRepository = unitRepository;
+            _countryRepository = countryRepository;
+            _classificationRepository = classificationRepository;
+            _itemTypeLookupRepository = itemTypeLookupRepository;
+            _caliberRepository = caliberRepository;
             _mapper = mapper;
             _validator = validator;
             _currentUserService = currentUserService;
             _logger = logger;
             _fileUploadService = fileUploadService;
-            _context = context;
             _transactionManager = transactionManager;
             _dateTimeProvider = dateTimeProvider;
             _itemDepartmentAssignmentService = itemDepartmentAssignmentService;
@@ -268,10 +316,10 @@ namespace Ettad.Inventory.Service.Weapons.Services
 
                 if (inputDto.PrimaryPurposIds != null && inputDto.PrimaryPurposIds.Any())
                 {
-                    createdWeapon.BaseItemPrimaryPurposes = inputDto.PrimaryPurposIds
-                        .Select(id => new BaseItemPrimaryPurpos { BaseItemId = createdWeapon.Id, PrimaryPurposId = id })
+                    var purposeRows = inputDto.PrimaryPurposIds
+                        .Select(pid => new BaseItemPrimaryPurpos { BaseItemId = createdWeapon.Id, PrimaryPurposId = pid })
                         .ToList();
-                    await _context.SaveChangesAsync();
+                    await _baseItemPrimaryPurposRepository.AddRangeAsync(purposeRows);
                 }
 
                 if (files != null && files.Any())
@@ -324,19 +372,17 @@ namespace Ettad.Inventory.Service.Weapons.Services
 
                 await _weaponRepository.UpdateAsync(existingWeapon);
 
-                var existingPurposes = await _context.BaseItemPrimaryPurposes
-                    .Where(x => x.BaseItemId == id)
-                    .ToListAsync();
-                _context.BaseItemPrimaryPurposes.RemoveRange(existingPurposes);
+                var existingPurposes = (await _baseItemPrimaryPurposRepository.FindAsync(x => x.BaseItemId == id)).ToList();
+                foreach (var p in existingPurposes)
+                    await _baseItemPrimaryPurposRepository.DeleteAsync(p);
 
                 if (inputDto.PrimaryPurposIds != null && inputDto.PrimaryPurposIds.Any())
                 {
                     var newPurposes = inputDto.PrimaryPurposIds
                         .Select(pid => new BaseItemPrimaryPurpos { BaseItemId = id, PrimaryPurposId = pid })
                         .ToList();
-                    await _context.BaseItemPrimaryPurposes.AddRangeAsync(newPurposes);
+                    await _baseItemPrimaryPurposRepository.AddRangeAsync(newPurposes);
                 }
-                await _context.SaveChangesAsync();
 
                 return APIOperationResponse<bool>.Success(true, "Weapon updated successfully");
             }
@@ -419,26 +465,20 @@ namespace Ettad.Inventory.Service.Weapons.Services
                 await using var transaction = await _transactionManager.BeginAsync();
                 try
                 {
-                    await _context.Database.ExecuteSqlRawAsync(
-                        "DELETE FROM BaseItemPrimaryPurposes WHERE BaseItemId = {0}", id);
+                    var purposes = (await _baseItemPrimaryPurposRepository.FindAsync(x => x.BaseItemId == id)).ToList();
+                    foreach (var p in purposes)
+                        await _baseItemPrimaryPurposRepository.DeleteAsync(p);
 
-                    var weaponDeleted = await _context.Database.ExecuteSqlRawAsync(
-                        "DELETE FROM Weapons WHERE Id = {0}", id);
+                    await _weaponRepository.DeleteAsync(weapon);
 
-                    if (weaponDeleted == 0)
-                    {
-                        await _transactionManager.RollbackAsync();
-                        return APIOperationResponse<bool>.Fail(ResponseType.NotFound, "Weapon not found");
-                    }
-
-                    var baseDeleted = await _context.Database.ExecuteSqlRawAsync(
-                        "DELETE FROM BaseItems WHERE Id = {0}", id);
-
-                    if (baseDeleted == 0)
+                    var baseItem = await _baseItemRepository.GetByIdAsync(id);
+                    if (baseItem == null)
                     {
                         await _transactionManager.RollbackAsync();
                         return APIOperationResponse<bool>.Fail(ResponseType.InternalServerError, "Failed to remove base item record");
                     }
+
+                    await _baseItemRepository.DeleteAsync(baseItem);
 
                     await _transactionManager.CommitAsync();
                     return APIOperationResponse<bool>.Success(true, "Weapon permanently deleted");
@@ -467,32 +507,39 @@ namespace Ettad.Inventory.Service.Weapons.Services
         /// </summary>
         private async Task<bool> ItemHasReferencesAsync(long itemId)
         {
-            var hasDeptAssignment = await _context.ItemDepartmentAssignments
-                .AnyAsync(x => x.ItemId == itemId);
+            var hasDeptAssignment = await _itemDepartmentAssignmentRepository
+                .Find(x => x.ItemId == itemId)
+                .AnyAsync();
             if (hasDeptAssignment) return true;
 
-            var hasInventory = await _context.InventoryDetails
-                .AnyAsync(x => x.ItemId == itemId);
+            var hasInventory = await _inventoryDetailRepository
+                .Find(x => x.ItemId == itemId)
+                .AnyAsync();
             if (hasInventory) return true;
 
-            var hasRequestItem = await _context.RequestItems
-                .AnyAsync(x => x.ItemId == itemId && !x.IsDeleted);
+            var hasRequestItem = await _requestItemRepository
+                .Find(x => x.ItemId == itemId && !x.IsDeleted)
+                .AnyAsync();
             if (hasRequestItem) return true;
 
-            var hasSupplyDetail = await _context.SupplyDetails
-                .AnyAsync(x => x.ItemId == itemId && !x.IsDeleted);
+            var hasSupplyDetail = await _supplyDetailRepository
+                .Find(x => x.ItemId == itemId && !x.IsDeleted)
+                .AnyAsync();
             if (hasSupplyDetail) return true;
 
-            var hasAllowance = await _context.AllowanceItems
-                .AnyAsync(x => x.ItemId == itemId && !x.IsDeleted);
+            var hasAllowance = await _allowanceItemRepository
+                .Find(x => x.ItemId == itemId && !x.IsDeleted)
+                .AnyAsync();
             if (hasAllowance) return true;
 
-            var hasAssetSupply = await _context.AssetSupplyDetails
-                .AnyAsync(x => x.ItemId == itemId && !x.IsDeleted);
+            var hasAssetSupply = await _assetSupplyDetailRepository
+                .Find(x => x.ItemId == itemId && !x.IsDeleted)
+                .AnyAsync();
             if (hasAssetSupply) return true;
 
-            var hasAsset = await _context.Assets
-                .AnyAsync(x => x.ItemId == itemId && !x.IsDeleted);
+            var hasAsset = await _assetRepository
+                .Find(x => x.ItemId == itemId && !x.IsDeleted)
+                .AnyAsync();
             if (hasAsset) return true;
 
             return false;
@@ -554,14 +601,10 @@ namespace Ettad.Inventory.Service.Weapons.Services
                         "UN Number", "Distribution", "Reference No", "Classification", "Type", "Notes"
                    };
 
-            var firstAsset = await _context.Weapons
-                .Include(w => w.LookupCaliber)
-                .Include(w => w.CaliberUnit)
-                .Include(w => w.CountryOfManufacture)
-                .Include(w => w.Classification)
-                .Include(w => w.Type)
-                .Include(w => w.BaseItemPrimaryPurposes).ThenInclude(bp => bp.PrimaryPurpos)
-                .FirstOrDefaultAsync(w => !w.IsDeleted);
+            var firstAsset = await _weaponRepository.FindOneAsync(
+                w => !w.IsDeleted,
+                false,
+                WeaponTemplateSampleIncludes);
 
             return await _importManager.GenerateTemplateAsync(
                 language,
@@ -618,11 +661,11 @@ namespace Ettad.Inventory.Service.Weapons.Services
         // Helpers
         private async Task LoadLookupsAsync(List<WeaponImportDto> importItems = null)
         {
-            _units = await _context.Units.Where(u => !u.IsDeleted && u.ItemType == ItemType.Weapon).ToListAsync();
-            _countries = await _context.Countries.Where(c => !c.IsDeleted).ToListAsync();
-            _classifications = await _context.Classifications.Where(c => !c.IsDeleted).ToListAsync();
-            _itemTypes = await _context.ItemTypes.Where(i => !i.IsDeleted && i.ItemType == ItemType.Weapon).ToListAsync();
-            _calibers = await _context.Calibers.Where(c => !c.IsDeleted && c.ItemType == ItemType.Weapon).ToListAsync();
+            _units = await _unitRepository.Find(u => !u.IsDeleted && u.ItemType == ItemType.Weapon).ToListAsync();
+            _countries = await _countryRepository.Find(c => !c.IsDeleted).ToListAsync();
+            _classifications = await _classificationRepository.Find(c => !c.IsDeleted).ToListAsync();
+            _itemTypes = await _itemTypeLookupRepository.Find(i => !i.IsDeleted && i.ItemType == ItemType.Weapon).ToListAsync();
+            _calibers = await _caliberRepository.Find(c => !c.IsDeleted && c.ItemType == ItemType.Weapon).ToListAsync();
 
             // Build cache
             _cachedLookups["Units"] = BuildLookup(_units, x => x.NameEn, x => x.NameAr, x => x.Id);
@@ -642,8 +685,8 @@ namespace Ettad.Inventory.Service.Weapons.Services
                 var itemNos = importItems.Select(x => x.ItemNo).Where(x => !string.IsNullOrEmpty(x)).Distinct().ToList();
                 var nsns = importItems.Select(x => x.Nsn).Where(x => !string.IsNullOrEmpty(x)).Distinct().ToList();
 
-                var existingRecords = await _context.Weapons
-                    .Where(w => !w.IsDeleted && (itemNos.Contains(w.ItemNo) || w.Nsn != null && nsns.Contains(w.Nsn)))
+                var existingRecords = await _weaponRepository
+                    .Find(w => !w.IsDeleted && (itemNos.Contains(w.ItemNo) || w.Nsn != null && nsns.Contains(w.Nsn)))
                     .Select(w => new { w.ItemNo, w.Nsn })
                     .ToListAsync();
 

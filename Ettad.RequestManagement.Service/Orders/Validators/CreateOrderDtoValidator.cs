@@ -1,6 +1,5 @@
 using FluentValidation;
 using Ettad.CrossCutting.Comman.Time;
-using Ettad.Data.Enums;
 using Ettad.RequestManagement.Service.Orders.Dto;
 
 namespace Ettad.RequestManagement.Service.Orders.Validators
@@ -16,9 +15,6 @@ namespace Ettad.RequestManagement.Service.Orders.Validators
             RuleFor(x => x.Reason)
                 .MaximumLength(500).WithMessage("Reason cannot exceed 500 characters")
                 .When(x => !string.IsNullOrEmpty(x.Reason));
-
-            RuleFor(x => x.Priority)
-                .IsInEnum().WithMessage("Invalid priority");
 
             RuleFor(x => x.RequestPurposeId)
                 .GreaterThan(0).WithMessage("Request purpose is required");

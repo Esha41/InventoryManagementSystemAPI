@@ -1,16 +1,21 @@
+using Ettad.Comman.Idenitity;
 using Ettad.Data.Interfaces.Repositories;
-using Ettad.EntityFramework.DataBaseContext;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
 namespace Ettad.Repository.Repositories;
 
 public class EffectiveRoleRepository : IEffectiveRoleRepository
 {
-    private readonly ApplicationDbContext _context;
+    private readonly ICrossCuttingRepository<ApplicationUser> _userRepository;
+    private readonly ICrossCuttingRepository<IdentityUserRole<string>> _userRoleRepository;
 
-    public EffectiveRoleRepository(ApplicationDbContext context)
+    public EffectiveRoleRepository(
+        ICrossCuttingRepository<ApplicationUser> userRepository,
+        ICrossCuttingRepository<IdentityUserRole<string>> userRoleRepository)
     {
-        _context = context ?? throw new ArgumentNullException(nameof(context));
+        _userRepository = userRepository ?? throw new ArgumentNullException(nameof(userRepository));
+        _userRoleRepository = userRoleRepository ?? throw new ArgumentNullException(nameof(userRoleRepository));
     }
 
     public async Task<IReadOnlyList<string>> GetEffectiveRoleIdsAsync(string userId, CancellationToken cancellationToken = default)
@@ -18,13 +23,14 @@ public class EffectiveRoleRepository : IEffectiveRoleRepository
         if (string.IsNullOrEmpty(userId))
             return Array.Empty<string>();
 
-        var user = await _context.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId, cancellationToken);
+        var user = await _userRepository
+            .Find(u => u.Id == userId)
+            .FirstOrDefaultAsync(cancellationToken);
         if (user == null)
             return Array.Empty<string>();
 
-        var assigned = await _context.UserRoles
-            .AsNoTracking()
-            .Where(ur => ur.UserId == userId)
+        var assigned = await _userRoleRepository
+            .Find(ur => ur.UserId == userId)
             .Select(ur => ur.RoleId)
             .ToListAsync(cancellationToken);
 

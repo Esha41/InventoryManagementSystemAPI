@@ -49,7 +49,7 @@ using Ettad.Inventory.Service.Employees.Implementation;
 
 namespace Ettad.Inventory.Service
 {
-    public static class ModuleServicesDependences
+    public static class ModuleServicesDependencies
     {
         public static IServiceCollection AddInventoryServices(this IServiceCollection services)
         {
@@ -74,7 +74,6 @@ namespace Ettad.Inventory.Service
             services.AddAutoMapper(typeof(ExplosiveMappingProfile));
 
             services.AddScoped<IAllowanceItemService, AllowanceItemService>();
-            services.AddScoped<IAllowanceItemQueryService, AllowanceItemQueryService>();
             services.AddScoped<IItemDepartmentAssignmentService, ItemDepartmentAssignmentService>();
             services.AddAutoMapper(typeof(ItemDepartmentAssignmentMappingProfile));
             services.AddScoped<IInventoryService, InventoryService>();

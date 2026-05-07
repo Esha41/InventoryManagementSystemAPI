@@ -3,8 +3,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Ettad.Application.Common.Interfaces;
 using Ettad.Data.Entities;
+using Ettad.Data.Entities.Workflows;
 using Ettad.Data.Enums;
-using Ettad.EntityFramework.DataBaseContext;
 using Ettad.ResponseHandler.Consts;
 using Ettad.ResponseHandler.Models;
 using Ettad.CrossCutting.Comman.Time;
@@ -15,7 +15,23 @@ namespace Ettad.RequestManagement.Service.OrderItemTracking
 {
     public class OrderItemTrackingService : IOrderItemTrackingService
     {
-        private readonly ApplicationDbContext _context;
+        private static readonly string[] OrderWithRequestItemsInclude =
+        [
+            nameof(Order.RequestItems),
+        ];
+
+        private static readonly string[] OrderItemHistoryDetailIncludes =
+        [
+            nameof(OrderItemHistory.Order),
+            nameof(OrderItemHistory.Item),
+            nameof(OrderItemHistory.Department),
+            nameof(OrderItemHistory.ModifiedByUser),
+            nameof(OrderItemHistory.WorkflowStep),
+            $"{nameof(OrderItemHistory.WorkflowStep)}.{nameof(WorkflowStep.ApplicationRole)}",
+        ];
+
+        private readonly ICrossCuttingRepository<Order> _orderRepository;
+        private readonly ICrossCuttingRepository<WorkflowApprovalStep> _workflowApprovalStepRepository;
         private readonly ICrossCuttingRepository<OrderItemHistory> _historyRepository;
         private readonly IMapper _mapper;
         private readonly ICurrentUserService _currentUserService;
@@ -23,14 +39,16 @@ namespace Ettad.RequestManagement.Service.OrderItemTracking
         private readonly IDateTimeProvider _dateTimeProvider;
 
         public OrderItemTrackingService(
-            ApplicationDbContext context,
+            ICrossCuttingRepository<Order> orderRepository,
+            ICrossCuttingRepository<WorkflowApprovalStep> workflowApprovalStepRepository,
             ICrossCuttingRepository<OrderItemHistory> historyRepository,
             IMapper mapper,
             ICurrentUserService currentUserService,
             ILogger<OrderItemTrackingService> logger,
             IDateTimeProvider dateTimeProvider)
         {
-            _context = context;
+            _orderRepository = orderRepository;
+            _workflowApprovalStepRepository = workflowApprovalStepRepository;
             _historyRepository = historyRepository;
             _mapper = mapper;
             _currentUserService = currentUserService;
@@ -87,9 +105,10 @@ namespace Ettad.RequestManagement.Service.OrderItemTracking
             try
             {
                 // Get the order with its request items
-                var order = await _context.Orders
-                    .Include(o => o.RequestItems)
-                    .FirstOrDefaultAsync(o => o.Id == orderId && !o.IsDeleted);
+                var order = await _orderRepository.FindOneAsync(
+                    o => o.Id == orderId && !o.IsDeleted,
+                    false,
+                    OrderWithRequestItemsInclude);
 
                 if (order == null)
                 {
@@ -98,9 +117,10 @@ namespace Ettad.RequestManagement.Service.OrderItemTracking
                 }
 
                 // Get the workflow approval step to get WorkflowStepId
-                var workflowApprovalStep = await _context.WorkflowApprovalSteps
-                    .Include(was => was.WorkflowStep)
-                    .FirstOrDefaultAsync(was => was.Id == workflowApprovalStepId);
+                var workflowApprovalStep = await _workflowApprovalStepRepository.FindOneAsync(
+                    was => was.Id == workflowApprovalStepId,
+                    false,
+                    nameof(WorkflowApprovalStep.WorkflowStep));
 
                 if (workflowApprovalStep == null)
                 {
@@ -160,8 +180,8 @@ namespace Ettad.RequestManagement.Service.OrderItemTracking
                 }
                 else if (!string.IsNullOrWhiteSpace(requestNo))
                 {
-                    var order = await _context.Orders
-                        .FirstOrDefaultAsync(o => o.RequestNo == requestNo && !o.IsDeleted);
+                    var order = await _orderRepository.FindOneAsync(
+                        o => o.RequestNo == requestNo && !o.IsDeleted);
                     
                     if (order == null)
                     {
@@ -179,13 +199,8 @@ namespace Ettad.RequestManagement.Service.OrderItemTracking
                         ResponseType.BadRequest, "Either orderId or requestNo must be provided");
                 }
 
-                var history = await _context.OrderItemHistory
-                    .Include(h => h.Order)
-                    .Include(h => h.Item)
-                    .Include(h => h.Department)
-                    .Include(h => h.ModifiedByUser)
-                    .Include(h => h.WorkflowStep)
-                    .Where(h => h.OrderId == resolvedOrderId && !h.IsDeleted)
+                var history = await _historyRepository
+                    .Find(h => h.OrderId == resolvedOrderId && !h.IsDeleted, false, OrderItemHistoryDetailIncludes)
                     .OrderByDescending(h => h.ActionDate)
                     .ToListAsync();
 
@@ -226,13 +241,8 @@ namespace Ettad.RequestManagement.Service.OrderItemTracking
 
             try
             {
-                var history = await _context.OrderItemHistory
-                    .Include(h => h.Order)
-                    .Include(h => h.Item)
-                    .Include(h => h.Department)
-                    .Include(h => h.ModifiedByUser)
-                    .Include(h => h.WorkflowStep)
-                    .Where(h => h.OrderId == orderId && h.ItemId == itemId && !h.IsDeleted)
+                var history = await _historyRepository
+                    .Find(h => h.OrderId == orderId && h.ItemId == itemId && !h.IsDeleted, false, OrderItemHistoryDetailIncludes)
                     .OrderByDescending(h => h.ActionDate)
                     .ToListAsync();
 
@@ -280,8 +290,8 @@ namespace Ettad.RequestManagement.Service.OrderItemTracking
                 }
                 else if (!string.IsNullOrWhiteSpace(requestNo))
                 {
-                    var order = await _context.Orders
-                        .FirstOrDefaultAsync(o => o.RequestNo == requestNo && !o.IsDeleted);
+                    var order = await _orderRepository.FindOneAsync(
+                        o => o.RequestNo == requestNo && !o.IsDeleted);
                     
                     if (order == null)
                     {
@@ -299,15 +309,10 @@ namespace Ettad.RequestManagement.Service.OrderItemTracking
                         ResponseType.BadRequest, "Either orderId or requestNo must be provided");
                 }
 
-                var history = await _context.OrderItemHistory
-                    .Include(h => h.Order)
-                    .Include(h => h.Item)
-                    .Include(h => h.Department)
-                    .Include(h => h.ModifiedByUser)
-                    .Include(h => h.WorkflowStep)
-                    .Where(h => h.OrderId == resolvedOrderId 
-                        && h.ActionType == OrderItemActionType.FinalApproved 
-                        && !h.IsDeleted)
+                var history = await _historyRepository
+                    .Find(h => h.OrderId == resolvedOrderId
+                        && h.ActionType == OrderItemActionType.FinalApproved
+                        && !h.IsDeleted, false, OrderItemHistoryDetailIncludes)
                     .OrderByDescending(h => h.ActionDate)
                     .ToListAsync();
 

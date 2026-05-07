@@ -11,7 +11,6 @@ using Ettad.Inventory.Service.Batches.Dtos;
 using Ettad.ResponseHandler.Consts;
 using Ettad.ResponseHandler.Models;
 using Ettad.Application.Common.Interfaces;
-using Ettad.EntityFramework.DataBaseContext;
 using Ettad.CrossCutting.Comman.Time;
 using Ettad.CrossCutting.Comman.Models;
 using Ettad.Inventory.Service.AssetHistory.Dtos;
@@ -28,13 +27,39 @@ namespace Ettad.Inventory.Service.Batches.Services
 {
     public class BatchService : IBatchService
     {
+        private static readonly string[] BatchAssetGridIncludes =
+        {
+            nameof(Asset.Item),
+            $"{nameof(Asset.Item)}.{nameof(BaseItem.BaseItemPrimaryPurposes)}.{nameof(BaseItemPrimaryPurpos.PrimaryPurpos)}",
+            nameof(Asset.Depot),
+            nameof(Asset.Supplier),
+            nameof(Asset.Manufacturer),
+            nameof(Asset.PrimaryPurpos),
+            $"{nameof(Asset.CurrentAssignment)}.{nameof(AssetAssignment.Department)}",
+            $"{nameof(Asset.CurrentAssignment)}.{nameof(AssetAssignment.Custodian)}"
+        };
+
+        private static readonly string[] BatchAssetExportIncludes =
+        {
+            nameof(Asset.Item),
+            $"{nameof(Asset.CurrentAssignment)}.{nameof(AssetAssignment.Department)}",
+            $"{nameof(Asset.CurrentAssignment)}.{nameof(AssetAssignment.Custodian)}"
+        };
+
         private readonly ICrossCuttingRepository<Batch> _batchRepository;
         private readonly ICrossCuttingRepository<Asset> _assetRepository;
+        private readonly ICrossCuttingRepository<AssetSupplyDetail> _assetSupplyDetailRepository;
+        private readonly ICrossCuttingRepository<BaseItemPrimaryPurpos> _baseItemPrimaryPurposRepository;
+        private readonly ICrossCuttingRepository<Supplier> _supplierRepository;
+        private readonly ICrossCuttingRepository<Manufacturer> _manufacturerRepository;
+        private readonly ICrossCuttingRepository<AssetAssignment> _assignmentRepository;
+        private readonly ICrossCuttingRepository<Employee> _employeeRepository;
+        private readonly ICrossCuttingRepository<Department> _departmentRepository;
+        private readonly ICrossCuttingRepository<Weapon> _weaponRepository;
         private readonly IMapper _mapper;
         private readonly ICurrentUserService _currentUserService;
         private readonly ILogger<BatchService> _logger;
         private readonly IFileUploadService _fileUploadService;
-        private readonly ApplicationDbContext _context;
         private readonly IDateTimeProvider _dateTimeProvider;
         private readonly IDepotAccessService _depotAccessService;
         private readonly IValidator<BulkUpdateBatchAssetsDto> _bulkUpdateValidator;
@@ -47,11 +72,18 @@ namespace Ettad.Inventory.Service.Batches.Services
         public BatchService(
             ICrossCuttingRepository<Batch> batchRepository,
             ICrossCuttingRepository<Asset> assetRepository,
+            ICrossCuttingRepository<AssetSupplyDetail> assetSupplyDetailRepository,
+            ICrossCuttingRepository<BaseItemPrimaryPurpos> baseItemPrimaryPurposRepository,
+            ICrossCuttingRepository<Supplier> supplierRepository,
+            ICrossCuttingRepository<Manufacturer> manufacturerRepository,
+            ICrossCuttingRepository<AssetAssignment> assignmentRepository,
+            ICrossCuttingRepository<Employee> employeeRepository,
+            ICrossCuttingRepository<Department> departmentRepository,
+            ICrossCuttingRepository<Weapon> weaponRepository,
             IMapper mapper,
             ICurrentUserService currentUserService,
             ILogger<BatchService> logger,
             IFileUploadService fileUploadService,
-            ApplicationDbContext context,
             IDateTimeProvider dateTimeProvider,
             IDepotAccessService depotAccessService,
             IValidator<BulkUpdateBatchAssetsDto> bulkUpdateValidator,
@@ -63,11 +95,18 @@ namespace Ettad.Inventory.Service.Batches.Services
         {
             _batchRepository = batchRepository;
             _assetRepository = assetRepository;
+            _assetSupplyDetailRepository = assetSupplyDetailRepository;
+            _baseItemPrimaryPurposRepository = baseItemPrimaryPurposRepository;
+            _supplierRepository = supplierRepository;
+            _manufacturerRepository = manufacturerRepository;
+            _assignmentRepository = assignmentRepository;
+            _employeeRepository = employeeRepository;
+            _departmentRepository = departmentRepository;
+            _weaponRepository = weaponRepository;
             _mapper = mapper;
             _currentUserService = currentUserService;
             _logger = logger;
             _fileUploadService = fileUploadService;
-            _context = context;
             _dateTimeProvider = dateTimeProvider;
             _depotAccessService = depotAccessService;
             _bulkUpdateValidator = bulkUpdateValidator;
@@ -128,18 +167,10 @@ namespace Ettad.Inventory.Service.Batches.Services
 
                 var dto = _mapper.Map<BatchDto>(batch);
 
-                var assetQuery = _context.Assets
-                    .AsNoTracking()
-                    .Where(a => !a.IsDeleted && a.BatchId == id)
-                    .Include(nameof(Asset.Item))
-                    .Include($"{nameof(Asset.Item)}.{nameof(BaseItem.BaseItemPrimaryPurposes)}.{nameof(BaseItemPrimaryPurpos.PrimaryPurpos)}")
-                    .Include(nameof(Asset.Depot))
-                    .Include(nameof(Asset.Supplier))
-                    .Include(nameof(Asset.Manufacturer))
-                    .Include(nameof(Asset.PrimaryPurpos))
-                    .Include($"{nameof(Asset.CurrentAssignment)}.{nameof(AssetAssignment.Department)}")
-                    .Include($"{nameof(Asset.CurrentAssignment)}.{nameof(AssetAssignment.Custodian)}")
-                    .AsSplitQuery();
+                var assetQuery = _assetRepository.Find(
+                    a => !a.IsDeleted && a.BatchId == id,
+                    false,
+                    BatchAssetGridIncludes);
 
                 assetQuery = ApplyAssetFilters(assetQuery, filters);
 
@@ -248,13 +279,9 @@ namespace Ettad.Inventory.Service.Batches.Services
                 if (userDepotIds != null && userDepotIds.Count == 0)
                     return APIOperationResponse<List<BatchDto>>.Success(new List<BatchDto>());
 
-                var matchesQuery = _context.Batches
-                    .AsNoTracking()
-                    .Where(b => !b.IsDeleted && b.BatchNumber == trimmedBatchNumber);
-                if (userDepotIds != null)
-                    matchesQuery = matchesQuery.Where(b => userDepotIds.Contains(b.DepotId));
-
-                var matches = await matchesQuery
+                var matches = await _batchRepository
+                    .Find(b => !b.IsDeleted && b.BatchNumber == trimmedBatchNumber
+                        && (userDepotIds == null || userDepotIds.Contains(b.DepotId)))
                     .OrderBy(b => b.DepotId)
                     .Select(b => b.Id)
                     .ToListAsync();
@@ -315,8 +342,8 @@ namespace Ettad.Inventory.Service.Batches.Services
                 var batchIds = dtos.Select(d => d.Id).ToList();
                 if (batchIds.Any())
                 {
-                    var assetCounts = await _context.Assets
-                        .Where(a => !a.IsDeleted && batchIds.Contains(a.BatchId))
+                    var assetCounts = await _assetRepository
+                        .Find(a => !a.IsDeleted && batchIds.Contains(a.BatchId))
                         .GroupBy(a => a.BatchId)
                         .Select(g => new { BatchId = g.Key, Count = g.Count() })
                         .ToListAsync();
@@ -357,8 +384,7 @@ namespace Ettad.Inventory.Service.Batches.Services
                 Dictionary<long, int> countDict = new();
                 if (batchIds.Any())
                 {
-                    var assetQuery = _context.Assets
-                        .Where(a => !a.IsDeleted && batchIds.Contains(a.BatchId));
+                    var assetQuery = _assetRepository.Find(a => !a.IsDeleted && batchIds.Contains(a.BatchId));
 
                     assetQuery = ApplyAssetFilters(assetQuery, filters);
 
@@ -421,8 +447,8 @@ namespace Ettad.Inventory.Service.Batches.Services
                 var batchIds = dtos.Select(d => d.Id).ToList();
                 if (batchIds.Any())
                 {
-                    var assetCounts = await _context.Assets
-                        .Where(a => !a.IsDeleted && batchIds.Contains(a.BatchId))
+                    var assetCounts = await _assetRepository
+                        .Find(a => !a.IsDeleted && batchIds.Contains(a.BatchId))
                         .GroupBy(a => a.BatchId)
                         .Select(g => new { BatchId = g.Key, Count = g.Count() })
                         .ToListAsync();
@@ -464,19 +490,19 @@ namespace Ettad.Inventory.Service.Batches.Services
                 if (!string.IsNullOrEmpty(userId) && !await _depotAccessService.HasDepotAccessAsync(userId, batch.DepotId))
                     return APIOperationResponse<bool>.Fail(ResponseType.Forbidden, "You do not have access to this depot.");
 
-                var assetIdsInBatch = await _context.Assets
-                    .Where(a => !a.IsDeleted && a.BatchId == id)
+                var assetIdsInBatch = await _assetRepository
+                    .Find(a => !a.IsDeleted && a.BatchId == id)
                     .Select(a => a.Id)
                     .ToListAsync();
 
                 if (assetIdsInBatch.Count > 0)
                 {
-                    var assignedCount = await _context.Assets
-                        .Where(a => assetIdsInBatch.Contains(a.Id) && a.IsAssigned)
+                    var assignedCount = await _assetRepository
+                        .Find(a => assetIdsInBatch.Contains(a.Id) && a.IsAssigned)
                         .CountAsync();
 
-                    var inSupplyCount = await _context.AssetSupplyDetails
-                        .Where(sd => !sd.IsDeleted && assetIdsInBatch.Contains(sd.AssetId))
+                    var inSupplyCount = await _assetSupplyDetailRepository
+                        .Find(sd => !sd.IsDeleted && assetIdsInBatch.Contains(sd.AssetId))
                         .CountAsync();
 
                     if (assignedCount > 0 || inSupplyCount > 0)
@@ -770,8 +796,8 @@ namespace Ettad.Inventory.Service.Batches.Services
                 var serialValues = serialsToCheck.Select(s => s.Serial).ToList();
                 var assetIdsInRequest = serialsToCheck.Select(s => s.AssetId).ToList();
 
-                var existingDuplicates = await _context.Assets
-                    .Where(a => !a.IsDeleted && !assetIdsInRequest.Contains(a.Id) && serialValues.Contains(a.SerialNumber))
+                var existingDuplicates = await _assetRepository
+                    .Find(a => !a.IsDeleted && !assetIdsInRequest.Contains(a.Id) && serialValues.Contains(a.SerialNumber))
                     .Select(a => a.SerialNumber)
                     .ToListAsync();
 
@@ -826,8 +852,9 @@ namespace Ettad.Inventory.Service.Batches.Services
             if (!primaryPurposId.HasValue)
                 return null;
 
-            var ok = await _context.BaseItemPrimaryPurposes
-                .AnyAsync(x => x.BaseItemId == itemId && x.PrimaryPurposId == primaryPurposId.Value);
+            var ok = await _baseItemPrimaryPurposRepository
+                .Find(x => x.BaseItemId == itemId && x.PrimaryPurposId == primaryPurposId.Value)
+                .AnyAsync();
             return ok ? null : "Primary purpose is not configured for this catalog item.";
         }
 
@@ -836,14 +863,14 @@ namespace Ettad.Inventory.Service.Batches.Services
         {
             if (supplierId.HasValue)
             {
-                var okSupplier = await _context.Suppliers.AnyAsync(s => s.Id == supplierId.Value && !s.IsDeleted);
+                var okSupplier = await _supplierRepository.Find(s => s.Id == supplierId.Value && !s.IsDeleted).AnyAsync();
                 if (!okSupplier)
                     return "Supplier is invalid or deleted.";
             }
 
             if (manufacturerId.HasValue)
             {
-                var okManufacturer = await _context.Manufacturers.AnyAsync(m => m.Id == manufacturerId.Value && !m.IsDeleted);
+                var okManufacturer = await _manufacturerRepository.Find(m => m.Id == manufacturerId.Value && !m.IsDeleted).AnyAsync();
                 if (!okManufacturer)
                     return "Manufacturer is invalid or deleted.";
             }
@@ -856,7 +883,9 @@ namespace Ettad.Inventory.Service.Batches.Services
             if (!item.UpdateAssignment)
                 return (true, null);
 
-            var inSupply = await _context.AssetSupplyDetails.AnyAsync(sd => !sd.IsDeleted && sd.AssetId == asset.Id);
+            var inSupply = await _assetSupplyDetailRepository
+                .Find(sd => !sd.IsDeleted && sd.AssetId == asset.Id)
+                .AnyAsync();
             if (inSupply)
                 return (false, $"Cannot change assignment for asset {asset.Id} while it is included in a supply order.");
 
@@ -867,8 +896,8 @@ namespace Ettad.Inventory.Service.Batches.Services
                 if (!asset.IsAssigned || !asset.CurrentAssignmentId.HasValue)
                     return (true, null);
 
-                var assignment = await _context.AssetAssignments
-                    .FirstOrDefaultAsync(a => a.Id == asset.CurrentAssignmentId.Value && !a.IsDeleted);
+                var assignment = await _assignmentRepository.FindOneAsync(
+                    a => a.Id == asset.CurrentAssignmentId!.Value && !a.IsDeleted);
                 if (assignment == null || assignment.Status != AssetAssignmentStatus.Active)
                 {
                     asset.IsAssigned = false;
@@ -886,7 +915,7 @@ namespace Ettad.Inventory.Service.Batches.Services
                 asset.IsAssigned = false;
                 asset.CurrentAssignmentId = null;
 
-                await _context.SaveChangesAsync();
+                await _assignmentRepository.UpdateAsync(assignment);
                 await _historyService.RecordHistoryAsync(asset.Id, AssetHistoryActionType.Returned, new AssetHistoryContext
                 {
                     Description = "Assignment removed from batch edit",
@@ -902,8 +931,7 @@ namespace Ettad.Inventory.Service.Batches.Services
             long? departmentId = null;
             if (item.AssignToEmployeeId.HasValue)
             {
-                var emp = await _context.Employees
-                    .FirstOrDefaultAsync(e => e.Id == item.AssignToEmployeeId.Value && !e.IsDeleted);
+                var emp = await _employeeRepository.FindOneAsync(e => e.Id == item.AssignToEmployeeId.Value && !e.IsDeleted);
                 if (emp == null)
                     return (false, $"Employee not found: {item.AssignToEmployeeId.Value}");
                 custodianId = emp.Id;
@@ -919,14 +947,14 @@ namespace Ettad.Inventory.Service.Batches.Services
             if (!departmentId.HasValue || departmentId.Value <= 0)
                 return (false, "A valid department is required when assigning from batch edit.");
 
-            var deptExists = await _context.Departments.AnyAsync(d => d.Id == departmentId.Value && !d.IsDeleted);
+            var deptExists = await _departmentRepository.Find(d => d.Id == departmentId.Value && !d.IsDeleted).AnyAsync();
             if (!deptExists)
                 return (false, $"Department not found: {departmentId.Value}");
 
             if (asset.CurrentAssignmentId.HasValue)
             {
-                var existing = await _context.AssetAssignments
-                    .FirstOrDefaultAsync(a => a.Id == asset.CurrentAssignmentId.Value && !a.IsDeleted);
+                var existing = await _assignmentRepository.FindOneAsync(
+                    a => a.Id == asset.CurrentAssignmentId.Value && !a.IsDeleted);
                 if (existing != null && existing.Status == AssetAssignmentStatus.Active
                     && existing.DepartmentId == departmentId
                     && existing.CustodianId == custodianId)
@@ -936,7 +964,7 @@ namespace Ettad.Inventory.Service.Batches.Services
                         existing.Notes = string.IsNullOrEmpty(existing.Notes) ? notes : $"{existing.Notes}\n{notes}";
                         existing.ModificationDate = _dateTimeProvider.Now;
                         existing.ModifiedBy = _currentUserService.UserId;
-                        await _context.SaveChangesAsync();
+                        await _assignmentRepository.UpdateAsync(existing);
                     }
 
                     return (true, null);
@@ -945,8 +973,8 @@ namespace Ettad.Inventory.Service.Batches.Services
 
             if (asset.CurrentAssignmentId.HasValue)
             {
-                var old = await _context.AssetAssignments
-                    .FirstOrDefaultAsync(a => a.Id == asset.CurrentAssignmentId.Value && !a.IsDeleted);
+                var old = await _assignmentRepository.FindOneAsync(
+                    a => a.Id == asset.CurrentAssignmentId.Value && !a.IsDeleted);
                 if (old != null && old.Status == AssetAssignmentStatus.Active)
                 {
                     var prevDept = old.DepartmentId;
@@ -955,7 +983,7 @@ namespace Ettad.Inventory.Service.Batches.Services
                     old.ActualReturnDate = _dateTimeProvider.Now;
                     old.ModificationDate = _dateTimeProvider.Now;
                     old.ModifiedBy = _currentUserService.UserId;
-                    await _context.SaveChangesAsync();
+                    await _assignmentRepository.UpdateAsync(old);
                     await _historyService.RecordHistoryAsync(asset.Id, AssetHistoryActionType.Returned, new AssetHistoryContext
                     {
                         Description = "Previous assignment ended before batch-edit reassignment",
@@ -983,8 +1011,7 @@ namespace Ettad.Inventory.Service.Batches.Services
                 CreatedBy = _currentUserService.UserId
             };
 
-            _context.AssetAssignments.Add(newAssignment);
-            await _context.SaveChangesAsync();
+            await _assignmentRepository.AddAsync(newAssignment);
 
             asset.IsAssigned = true;
             asset.CurrentAssignmentId = newAssignment.Id;
@@ -1023,8 +1050,9 @@ namespace Ettad.Inventory.Service.Batches.Services
                 if (asset.IsAssigned)
                     return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, "Cannot remove assigned asset. Unassign it first.");
 
-                var inSupply = await _context.AssetSupplyDetails
-                    .AnyAsync(sd => !sd.IsDeleted && sd.AssetId == assetId);
+                var inSupply = await _assetSupplyDetailRepository
+                    .Find(sd => !sd.IsDeleted && sd.AssetId == assetId)
+                    .AnyAsync();
                 if (inSupply)
                     return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, "Cannot remove asset that is in a supply order.");
 
@@ -1061,19 +1089,12 @@ namespace Ettad.Inventory.Service.Batches.Services
                     ? BatchAssetExcelColumnMappings.ExportHeaderOrderAr
                     : BatchAssetExcelColumnMappings.ExportHeaderOrderEn;
 
-                var assets = await _context.Assets.AsNoTracking()
-                    .Where(a => !a.IsDeleted && a.BatchId == batchId)
-                    .Include(a => a.Item)
-                    .Include(a => a.CurrentAssignment!)
-                        .ThenInclude(ca => ca.Department)
-                    .Include(a => a.CurrentAssignment!)
-                        .ThenInclude(ca => ca.Custodian)
+                var assets = await _assetRepository
+                    .Find(a => !a.IsDeleted && a.BatchId == batchId, false, BatchAssetExportIncludes)
                     .OrderBy(a => a.Id)
                     .ToListAsync();
 
-                var weapons = await _context.Weapons.AsNoTracking()
-                    .Where(w => !w.IsDeleted)
-                    .ToListAsync();
+                var weapons = (await _weaponRepository.FindAsync(w => !w.IsDeleted)).ToList();
                 var itemNames = weapons.Cast<BaseItem>()
                     .Where(i => !string.IsNullOrWhiteSpace(i.Name) && !string.IsNullOrWhiteSpace(i.ItemNo))
                     .Select(i => $"{i.Name!.Trim()} ({i.ItemNo!.Trim()})")
@@ -1082,10 +1103,9 @@ namespace Ettad.Inventory.Service.Batches.Services
 
                 var statusLabels = BatchAssetExcelStatusLabels.GetLabelsForLanguage(language).ToList();
 
-                var departments = await _context.Departments.AsNoTracking()
-                    .Where(d => !d.IsDeleted)
+                var departments = (await _departmentRepository.FindAsync(d => !d.IsDeleted))
                     .OrderBy(d => d.Id)
-                    .ToListAsync();
+                    .ToList();
                 var departmentLabels = departments
                     .Select(d => isAr
                         ? !string.IsNullOrWhiteSpace(d.NameAr) ? d.NameAr.Trim() : (d.NameEn ?? "").Trim()
@@ -1096,10 +1116,9 @@ namespace Ettad.Inventory.Service.Batches.Services
                     .OrderBy(s => s)
                     .ToList();
 
-                var employees = await _context.Employees.AsNoTracking()
-                    .Where(e => !e.IsDeleted)
+                var employees = (await _employeeRepository.FindAsync(e => !e.IsDeleted))
                     .OrderBy(e => e.Id)
-                    .ToListAsync();
+                    .ToList();
                 var employeeLabels = employees
                     .Select(e => FormatBatchEmployeeDisplayForLanguage(e, language))
                     .Where(s => !string.IsNullOrWhiteSpace(s))
@@ -1368,9 +1387,8 @@ namespace Ettad.Inventory.Service.Batches.Services
 
         private async Task<Dictionary<long, Asset>> LoadBatchAssetsForImportAsync(long batchId)
         {
-            var list = await _context.Assets
-                .AsNoTracking()
-                .Where(a => !a.IsDeleted && a.BatchId == batchId)
+            var list = await _assetRepository
+                .Find(a => !a.IsDeleted && a.BatchId == batchId)
                 .ToListAsync();
             return list.ToDictionary(a => a.Id);
         }
@@ -1471,12 +1489,9 @@ namespace Ettad.Inventory.Service.Batches.Services
             Dictionary<long, Asset> assetDict,
             Batch batch)
         {
-            var weaponItems = (await _context.Weapons.AsNoTracking()
-                .Where(w => !w.IsDeleted).ToListAsync()).Cast<BaseItem>().ToList();
-            var departments = await _context.Departments.AsNoTracking()
-                .Where(d => !d.IsDeleted).ToListAsync();
-            var employees = await _context.Employees.AsNoTracking()
-                .Where(e => !e.IsDeleted).ToListAsync();
+            var weaponItems = (await _weaponRepository.FindAsync(w => !w.IsDeleted)).Cast<BaseItem>().ToList();
+            var departments = (await _departmentRepository.FindAsync(d => !d.IsDeleted)).ToList();
+            var employees = (await _employeeRepository.FindAsync(e => !e.IsDeleted)).ToList();
 
             var isAr = string.Equals(language, "ar", StringComparison.OrdinalIgnoreCase);
 
@@ -1725,8 +1740,8 @@ namespace Ettad.Inventory.Service.Batches.Services
                 var assetIdsInRequest = serialsToCheck
                     .Where(s => s.AssetId > 0).Select(s => s.AssetId).Distinct().ToList();
 
-                var existingSerials = (await _context.Assets
-                    .Where(a => !a.IsDeleted && !assetIdsInRequest.Contains(a.Id) && a.SerialNumber != null && serialValues.Contains(a.SerialNumber))
+                var existingSerials = (await _assetRepository
+                    .Find(a => !a.IsDeleted && !assetIdsInRequest.Contains(a.Id) && a.SerialNumber != null && serialValues.Contains(a.SerialNumber))
                     .Select(a => a.SerialNumber).ToListAsync())
                     .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
@@ -1751,8 +1766,8 @@ namespace Ettad.Inventory.Service.Batches.Services
                 var assetIdsForRfid = rfidsToCheck
                     .Where(s => s.AssetId > 0).Select(s => s.AssetId).Distinct().ToList();
 
-                var existingRfids = (await _context.Assets
-                    .Where(a => !a.IsDeleted && a.RFID != null && rfidValues.Contains(a.RFID) && !assetIdsForRfid.Contains(a.Id))
+                var existingRfids = (await _assetRepository
+                    .Find(a => !a.IsDeleted && a.RFID != null && rfidValues.Contains(a.RFID) && !assetIdsForRfid.Contains(a.Id))
                     .Select(a => a.RFID).ToListAsync())
                     .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
@@ -1871,8 +1886,7 @@ namespace Ettad.Inventory.Service.Batches.Services
 
             if (dto.AssignToEmployeeId.HasValue)
             {
-                var emp = await _context.Employees
-                    .FirstOrDefaultAsync(e => e.Id == dto.AssignToEmployeeId.Value && !e.IsDeleted);
+                var emp = await _employeeRepository.FindOneAsync(e => e.Id == dto.AssignToEmployeeId.Value && !e.IsDeleted);
                 if (emp == null)
                     return (false, $"Employee not found: {dto.AssignToEmployeeId.Value}");
                 custodianId = emp.Id;
@@ -1888,7 +1902,7 @@ namespace Ettad.Inventory.Service.Batches.Services
             if (!departmentId.HasValue || departmentId.Value <= 0)
                 return (false, "A valid department is required for intake assignment.");
 
-            var deptExists = await _context.Departments.AnyAsync(d => d.Id == departmentId.Value && !d.IsDeleted);
+            var deptExists = await _departmentRepository.Find(d => d.Id == departmentId.Value && !d.IsDeleted).AnyAsync();
             if (!deptExists)
                 return (false, $"Department not found: {departmentId.Value}");
 
@@ -1906,14 +1920,13 @@ namespace Ettad.Inventory.Service.Batches.Services
                 CreatedBy = _currentUserService.UserId
             };
 
-            _context.AssetAssignments.Add(assignment);
-            await _context.SaveChangesAsync();
+            await _assignmentRepository.AddAsync(assignment);
 
             asset.IsAssigned = true;
             asset.CurrentAssignmentId = assignment.Id;
             asset.ModificationDate = now;
             asset.ModifiedBy = _currentUserService.UserId;
-            await _context.SaveChangesAsync();
+            await _assetRepository.UpdateAsync(asset);
 
             await _historyService.RecordHistoryAsync(asset.Id, AssetHistoryActionType.Assigned, new AssetHistoryContext
             {

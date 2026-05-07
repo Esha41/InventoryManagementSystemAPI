@@ -10,7 +10,7 @@ using Ettad.Notification.Service.Services;
 
 namespace Ettad.Notification.Service
 {
-    public static class ModuleServicesDependences
+    public static class ModuleServicesDependencies
     {
         public static IServiceCollection AddNotificationServices(this IServiceCollection services)
         {

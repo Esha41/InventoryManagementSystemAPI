@@ -1,10 +1,13 @@
+using Ettad.Comman.Idenitity;
 using Ettad.CrossCutting.Comman.Time;
 using Ettad.Data.Constants;
 using Ettad.Data.Entities;
+using Ettad.Data.Entities.Settings;
 using Ettad.Data.Entities.Workflows;
 using Ettad.Data.Enums;
-using Ettad.EntityFramework.DataBaseContext;
+using Ettad.Data.Interfaces.Repositories;
 using Ettad.Notification.Service.Interfaces;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -13,20 +16,41 @@ namespace Ettad.Workflows.Service.Monitoring;
 
 public class OrderAutoRejectBackgroundService : IOrderAutoRejectBackgroundService
 {
-    private readonly ApplicationDbContext _context;
+    private readonly ICrossCuttingRepository<BaseRequest> _baseRequestRepository;
+    private readonly ICrossCuttingRepository<OrderAutoRejectPolicy> _orderAutoRejectPolicyRepository;
+    private readonly ICrossCuttingRepository<Ettad.Data.Entities.Settings.Settings> _settingsRepository;
+    private readonly ICrossCuttingRepository<WorkflowApprovalStep> _workflowApprovalStepRepository;
+    private readonly ICrossCuttingRepository<WorkflowApprovalStepReminder> _workflowApprovalStepReminderRepository;
+    private readonly ICrossCuttingRepository<IdentityUserRole<string>> _userRoleRepository;
+    private readonly ICrossCuttingRepository<ApplicationUser> _userRepository;
+    private readonly ITransactionManager _transactionManager;
     private readonly IDateTimeProvider _dateTimeProvider;
     private readonly INotificationHelperService _notificationHelperService;
     private readonly IConfiguration _configuration;
     private readonly ILogger<OrderAutoRejectBackgroundService> _logger;
 
     public OrderAutoRejectBackgroundService(
-        ApplicationDbContext context,
+        ICrossCuttingRepository<BaseRequest> baseRequestRepository,
+        ICrossCuttingRepository<OrderAutoRejectPolicy> orderAutoRejectPolicyRepository,
+        ICrossCuttingRepository<Ettad.Data.Entities.Settings.Settings> settingsRepository,
+        ICrossCuttingRepository<WorkflowApprovalStep> workflowApprovalStepRepository,
+        ICrossCuttingRepository<WorkflowApprovalStepReminder> workflowApprovalStepReminderRepository,
+        ICrossCuttingRepository<IdentityUserRole<string>> userRoleRepository,
+        ICrossCuttingRepository<ApplicationUser> userRepository,
+        ITransactionManager transactionManager,
         IDateTimeProvider dateTimeProvider,
         INotificationHelperService notificationHelperService,
         IConfiguration configuration,
         ILogger<OrderAutoRejectBackgroundService> logger)
     {
-        _context = context;
+        _baseRequestRepository = baseRequestRepository;
+        _orderAutoRejectPolicyRepository = orderAutoRejectPolicyRepository;
+        _settingsRepository = settingsRepository;
+        _workflowApprovalStepRepository = workflowApprovalStepRepository;
+        _workflowApprovalStepReminderRepository = workflowApprovalStepReminderRepository;
+        _userRoleRepository = userRoleRepository;
+        _userRepository = userRepository;
+        _transactionManager = transactionManager;
         _dateTimeProvider = dateTimeProvider;
         _notificationHelperService = notificationHelperService;
         _configuration = configuration;
@@ -35,7 +59,12 @@ public class OrderAutoRejectBackgroundService : IOrderAutoRejectBackgroundServic
 
     public async Task ScanAsync(CancellationToken cancellationToken = default)
     {
-        var effective = await OrderAutoRejectPolicyLoader.LoadAsync(_context, _configuration, _logger, cancellationToken);
+        var effective = await OrderAutoRejectPolicyLoader.LoadAsync(
+            _orderAutoRejectPolicyRepository,
+            _settingsRepository,
+            _configuration,
+            _logger,
+            cancellationToken);
         if (effective == null || !effective.IsEnabled || string.IsNullOrEmpty(effective.TriggerRoleId))
         {
             _logger.LogDebug("Order auto-reject skipped (no policy, disabled, or no trigger role).");
@@ -44,20 +73,21 @@ public class OrderAutoRejectBackgroundService : IOrderAutoRejectBackgroundServic
 
         var now = _dateTimeProvider.Now;
 
-        var orderRequestIds = await _context.BaseRequests
-            .AsNoTracking()
-            .Where(br => br.RequestType == RequestType.Order && br.Status == RequestStatus.UnderProcess)
+        var orderRequestIds = await _baseRequestRepository
+            .Find(br => br.RequestType == RequestType.Order && br.Status == RequestStatus.UnderProcess)
             .Select(br => br.Id)
             .ToListAsync(cancellationToken);
 
         if (orderRequestIds.Count == 0)
             return;
 
-        var allSteps = await _context.WorkflowApprovalSteps
-            .Include(s => s.WorkflowStep)
-            .Include(s => s.Reminders)
-            .Where(s => orderRequestIds.Contains(s.TargetRequestId)
-                     && OrderAutoRejectConstants.OrderWorkflowTypes.Contains(s.RequestType))
+        var allSteps = await _workflowApprovalStepRepository
+            .Find(
+                s => orderRequestIds.Contains(s.TargetRequestId)
+                     && OrderAutoRejectConstants.OrderWorkflowTypes.Contains(s.RequestType),
+                false,
+                nameof(WorkflowApprovalStep.WorkflowStep),
+                nameof(WorkflowApprovalStep.Reminders))
             .ToListAsync(cancellationToken);
 
         var stepsByRequestId = allSteps
@@ -69,14 +99,22 @@ public class OrderAutoRejectBackgroundService : IOrderAutoRejectBackgroundServic
             cancellationToken.ThrowIfCancellationRequested();
             try
             {
-                stepsByRequestId.TryGetValue(requestId, out var steps);
-                await ProcessOrderAsync(requestId, steps ?? new List<WorkflowApprovalStep>(), effective, now, cancellationToken);
-                await _context.SaveChangesAsync(cancellationToken);
+                await using var transaction = await _transactionManager.BeginAsync(cancellationToken);
+                try
+                {
+                    stepsByRequestId.TryGetValue(requestId, out var steps);
+                    await ProcessOrderAsync(requestId, steps ?? new List<WorkflowApprovalStep>(), effective, now, cancellationToken);
+                    await _transactionManager.CommitAsync(cancellationToken);
+                }
+                catch
+                {
+                    await _transactionManager.RollbackAsync(cancellationToken);
+                    throw;
+                }
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Order auto-reject scan failed for request {RequestId}", requestId);
-                _context.ChangeTracker.Clear();
             }
         }
     }
@@ -90,13 +128,6 @@ public class OrderAutoRejectBackgroundService : IOrderAutoRejectBackgroundServic
     {
         if (steps.Count == 0)
             return;
-
-
-        foreach (var step in steps)
-        {
-            if (_context.Entry(step).State == Microsoft.EntityFrameworkCore.EntityState.Detached)
-                _context.Attach(step);
-        }
 
         var triggerApproval = steps
             .Where(s =>
@@ -143,16 +174,13 @@ public class OrderAutoRejectBackgroundService : IOrderAutoRejectBackgroundServic
             CreationDate = now,
             CreatedBy = null
         };
-        _context.WorkflowApprovalStepReminders.Add(reminder);
         current.ExpirationWarningSentAt = now;
         current.ModificationDate = now;
 
-        var baseRequest = await _context.BaseRequests.AsNoTracking()
-            .FirstOrDefaultAsync(br => br.Id == requestId, cancellationToken);
+        var baseRequest = await _baseRequestRepository.FindOneAsync(br => br.Id == requestId);
 
         var recipientIds = await ResolveRecipientUserIdsAsync(baseRequest?.RequesterId, policy, cancellationToken);
 
-        // Always include the pending approver — they are the person who needs to act.
         if (!string.IsNullOrEmpty(current.ApproverUserId))
         {
             var set = new HashSet<string>(recipientIds ?? Enumerable.Empty<string>(), StringComparer.Ordinal);
@@ -169,6 +197,9 @@ public class OrderAutoRejectBackgroundService : IOrderAutoRejectBackgroundServic
             requestId,
             recipientIds,
             null);
+
+        await _workflowApprovalStepReminderRepository.AddAsync(reminder);
+        await _workflowApprovalStepRepository.UpdateAsync(current);
     }
 
     private async Task AutoRejectAsync(
@@ -178,7 +209,7 @@ public class OrderAutoRejectBackgroundService : IOrderAutoRejectBackgroundServic
         DateTime now,
         CancellationToken cancellationToken)
     {
-        var baseRequest = await _context.BaseRequests.FirstOrDefaultAsync(br => br.Id == requestId, cancellationToken);
+        var baseRequest = await _baseRequestRepository.FindOneAsync(br => br.Id == requestId);
         if (baseRequest == null || baseRequest.Status != RequestStatus.UnderProcess)
             return;
 
@@ -193,8 +224,8 @@ public class OrderAutoRejectBackgroundService : IOrderAutoRejectBackgroundServic
             $"Auto-rejected: required approval not received within {CalendarDaysPhrase(policy.ThresholdDays)} after the previous approval step.";
         current.ModificationDate = now;
 
-        var others = await _context.WorkflowApprovalSteps
-            .Where(x => x.TargetRequestId == requestId
+        var others = await _workflowApprovalStepRepository
+            .Find(x => x.TargetRequestId == requestId
                         && x.IsCurrent
                         && x.Id != current.Id
                         && (x.Status == RequestStatus.New || x.Status == RequestStatus.UnderProcess))
@@ -218,6 +249,11 @@ public class OrderAutoRejectBackgroundService : IOrderAutoRejectBackgroundServic
             baseRequest.Id,
             notifyUserIds,
             null);
+
+        await _workflowApprovalStepRepository.UpdateAsync(current);
+        foreach (var s in others)
+            await _workflowApprovalStepRepository.UpdateAsync(s);
+        await _baseRequestRepository.UpdateAsync(baseRequest);
     }
 
     private async Task<List<string>?> ResolveRecipientUserIdsAsync(
@@ -234,9 +270,8 @@ public class OrderAutoRejectBackgroundService : IOrderAutoRejectBackgroundServic
 
         var roleIds = policy.NotifyRoleIds.ToList();
         var userIds = await (
-            from ur in _context.UserRoles.AsNoTracking()
-            join u in _context.Users.AsNoTracking() on ur.UserId equals u.Id
-            where roleIds.Contains(ur.RoleId) && u.IsActive && !u.IsDeleted
+            from ur in _userRoleRepository.Find(ur => roleIds.Contains(ur.RoleId))
+            join u in _userRepository.Find(u => u.IsActive && !u.IsDeleted) on ur.UserId equals u.Id
             select ur.UserId
         ).Distinct().ToListAsync(cancellationToken);
 

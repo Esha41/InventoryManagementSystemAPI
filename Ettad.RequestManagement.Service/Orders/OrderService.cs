@@ -309,6 +309,7 @@ namespace Ettad.RequestManagement.Service.Orders
                     // Map DTO to entity (exclude RequestItems for now)
                     var order = _mapper.Map<Order>(inputDto);
                     order.RequestType = RequestType.Order; // Always set request type to Order
+                    order.Priority = ResolvePriorityFromUsageDateFrom(inputDto.UsageDateFrom, _dateTimeProvider.Now);
                     order.Status = RequestStatus.New; // Always set initial status to New
                     order.CreationDate = _dateTimeProvider.Now;
                     order.CreatedBy = currentUserId;
@@ -1065,6 +1066,39 @@ namespace Ettad.RequestManagement.Service.Orders
             }
 
             return verification;
+        }
+
+        /// <summary>
+        /// Order priority from usage start date (local calendar days; API may send UTC).
+        /// ≤7 days from <paramref name="now"/> → <see cref="RequestPriority.VeryUrgent"/>;
+        /// ≤14 → <see cref="RequestPriority.Urgent"/>; else <see cref="RequestPriority.Normal"/>.
+        /// Past usage dates → Normal (create validator normally blocks those).
+        /// </summary>
+        private static RequestPriority ResolvePriorityFromUsageDateFrom(DateTime usageDateFrom, DateTime now)
+        {
+            var usageLocalDate = usageDateFrom.Kind == DateTimeKind.Utc
+                ? usageDateFrom.ToLocalTime().Date
+                : usageDateFrom.Date;
+
+            var today = now.Date;
+            var days = (usageLocalDate - today).TotalDays;
+
+            if (days < 0)
+            {
+                return RequestPriority.Normal;
+            }
+
+            if (days <= 7)
+            {
+                return RequestPriority.VeryUrgent;
+            }
+
+            if (days <= 14)
+            {
+                return RequestPriority.Urgent;
+            }
+
+            return RequestPriority.Normal;
         }
     }
 }

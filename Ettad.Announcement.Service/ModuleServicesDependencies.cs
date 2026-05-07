@@ -8,7 +8,7 @@ using Ettad.Announcement.Service.Services;
 
 namespace Ettad.Announcement.Service
 {
-    public static class ModuleServicesDependences
+    public static class ModuleServicesDependencies
     {
         public static IServiceCollection AddAnnouncementServices(this IServiceCollection services)
         {
@@ -22,7 +22,7 @@ namespace Ettad.Announcement.Service
             services.AddValidatorsFromAssemblyContaining<CreateAnnouncementDtoValidator>();
 
             // Register AutoMapper
-            services.AddAutoMapper(typeof(ModuleServicesDependences).Assembly);
+            services.AddAutoMapper(typeof(ModuleServicesDependencies).Assembly);
 
             return services;
         }

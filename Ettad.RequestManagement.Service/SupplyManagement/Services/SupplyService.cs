@@ -5,14 +5,12 @@ using Ettad.Comman.Idenitity;
 using Ettad.CrossCutting.Comman.FileUpload;
 using Ettad.Data.Entities;
 using Ettad.Data.Enums;
-using Ettad.EntityFramework.DataBaseContext;
 using Ettad.Inventory.Service.Inventories.Dtos;
 using Ettad.RequestManagement.Service.SupplyManagement.Dtos;
 using Ettad.ResponseHandler.Consts;
 using Ettad.ResponseHandler.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Ettad.CrossCutting.Comman.Time;
 using Ettad.Data.Interfaces.Services;
@@ -28,13 +26,13 @@ namespace Ettad.RequestManagement.Service.SupplyManagement.Services
 {
 	public class SupplyService : ISupplyService
 	{
-		private readonly ApplicationDbContext _context;
 		private readonly IInventoryService _inventoryService;
 		private readonly ICrossCuttingRepository<Supply> _supplyRepository;
 		private readonly ICrossCuttingRepository<SupplyDetail> _supplyDetailRepository;
 		private readonly ICrossCuttingRepository<Order> _orderRepository;
 		private readonly ICrossCuttingRepository<RequestItem> _requestItemRepository;
 		private readonly ICrossCuttingRepository<InventoryDetail> _inventoryDetailRepository;
+		private readonly ICrossCuttingRepository<Employee> _employeeRepository;
 		private readonly ICurrentUserService _currentUserService;
 		private readonly IMapper _mapper;
 		private readonly IValidator<CreateSupplyDto> _createValidator;
@@ -54,13 +52,13 @@ namespace Ettad.RequestManagement.Service.SupplyManagement.Services
 		private readonly IMediator _mediator;
 
 	public SupplyService(
-			ApplicationDbContext context,
 			IInventoryService inventoryService,
 			ICrossCuttingRepository<Supply> supplyRepository,
 			ICrossCuttingRepository<SupplyDetail> supplyDetailRepository,
 			ICrossCuttingRepository<Order> orderRepository,
 			ICrossCuttingRepository<RequestItem> requestItemRepository,
 			ICrossCuttingRepository<InventoryDetail> inventoryDetailRepository,
+			ICrossCuttingRepository<Employee> employeeRepository,
 			ICurrentUserService currentUserService,
 			IMapper mapper,
 			IValidator<CreateSupplyDto> createValidator,
@@ -79,13 +77,13 @@ namespace Ettad.RequestManagement.Service.SupplyManagement.Services
 			ITransactionManager transactionManager,
 			IMediator mediator)
 		{
-			_context = context;
 			_inventoryService = inventoryService;
 			_supplyRepository = supplyRepository;
 			_supplyDetailRepository = supplyDetailRepository;
 			_orderRepository = orderRepository;
 			_requestItemRepository = requestItemRepository;
 			_inventoryDetailRepository = inventoryDetailRepository;
+			_employeeRepository = employeeRepository;
 			_currentUserService = currentUserService;
 			_mapper = mapper;
 			_createValidator = createValidator;
@@ -916,31 +914,20 @@ namespace Ettad.RequestManagement.Service.SupplyManagement.Services
 						"Cannot delete the last detail from a supply. A supply must have at least one detail.");
 				}
 
-			// Verify the detail exists before attempting to delete
-			var detailExists = await _supplyDetailRepository.FindOneAsync(
+			var detailToDelete = await _supplyDetailRepository.FindOneAsync(
 				sd => sd.Id == detailId && sd.SupplyId == supplyId && !sd.IsDeleted);
 			
-			if (detailExists == null)
+			if (detailToDelete == null)
 			{
 				_logger.LogWarning("Supply detail not found. SupplyId: {SupplyId}, DetailId: {DetailId}, User: {UserId}", 
 					supplyId, detailId, _currentUserService.UserId);
 				return APIOperationResponse<bool>.Fail(ResponseType.NotFound, "Supply detail not found");
 			}
 
-			// Soft delete the detail using direct context access to avoid tracking conflicts
-			// This approach is similar to ReplaceSupplyDetailsAsync and prevents EF tracking issues
-			var detailEntity = new SupplyDetail { Id = detailId };
-			_context.Attach(detailEntity);
-			detailEntity.IsDeleted = true;
-			detailEntity.DeletionDate = _dateTimeProvider.Now;
-			detailEntity.DeletedBy = _currentUserService.UserId;
-			_context.Entry(detailEntity).Property(x => x.IsDeleted).IsModified = true;
-			_context.Entry(detailEntity).Property(x => x.DeletionDate).IsModified = true;
-			_context.Entry(detailEntity).Property(x => x.DeletedBy).IsModified = true;
-			await _context.SaveChangesAsync();
-
-			// Detach the entity to avoid tracking conflicts before reloading
-			_context.Entry(detailEntity).State = EntityState.Detached;
+			detailToDelete.IsDeleted = true;
+			detailToDelete.DeletionDate = _dateTimeProvider.Now;
+			detailToDelete.DeletedBy = _currentUserService.UserId;
+			await _supplyDetailRepository.UpdateAsync(detailToDelete);
 
 			// Reload the supply to get updated state
 			var updatedSupply = await _supplyRepository.FindOneAsync(
@@ -1103,23 +1090,17 @@ namespace Ettad.RequestManagement.Service.SupplyManagement.Services
 					.Select(sd => sd.Id)
 					.ToList() ?? new List<long>();
 
-				// Soft delete existing details by attaching stub entities
+				// Soft delete existing details
 				foreach (var detailId in existingDetailIds)
 				{
-					var detailEntity = new SupplyDetail { Id = detailId };
-					_context.Attach(detailEntity);
+					var detailEntity = await _supplyDetailRepository.FindOneAsync(sd => sd.Id == detailId && !sd.IsDeleted);
+					if (detailEntity == null)
+						continue;
 					detailEntity.IsDeleted = true;
 					detailEntity.DeletionDate = _dateTimeProvider.Now;
 					detailEntity.DeletedBy = _currentUserService.UserId;
-					_context.Entry(detailEntity).Property(x => x.IsDeleted).IsModified = true;
-					_context.Entry(detailEntity).Property(x => x.DeletionDate).IsModified = true;
-					_context.Entry(detailEntity).Property(x => x.DeletedBy).IsModified = true;
+					await _supplyDetailRepository.UpdateAsync(detailEntity);
 				}
-
-				// REMOVED: Detach loop was causing the soft-delete updates to be ignored 
-				// because it detached the entities before SaveChangesAsync was called.
-				// Since we are using stubs and the repository returns NoTracking entities,
-				// there is no tracking conflict to resolve here.
 
 				// Add new details
 				var createdDetails = new List<SupplyDetail>();
@@ -1129,8 +1110,8 @@ namespace Ettad.RequestManagement.Service.SupplyManagement.Services
 					newDetail.SupplyId = supplyId;
 					newDetail.CreationDate = _dateTimeProvider.Now;
 					newDetail.CreatedBy = _currentUserService.UserId;
-					_context.Set<SupplyDetail>().Add(newDetail);
-					createdDetails.Add(newDetail);
+					var added = await _supplyDetailRepository.AddAsync(newDetail);
+					createdDetails.Add(added);
 				}
 
 				// Calculate fulfillment status using cached data
@@ -1141,17 +1122,18 @@ namespace Ettad.RequestManagement.Service.SupplyManagement.Services
 				);
 
 				// Update supply properties
-				var supplyToUpdate = new Supply { Id = supplyId };
-				_context.Attach(supplyToUpdate);
+				var supplyToUpdate = await _supplyRepository.FindOneAsync(s => s.Id == supplyId && !s.IsDeleted);
+				if (supplyToUpdate == null)
+				{
+					await _transactionManager.RollbackAsync();
+					return APIOperationResponse<bool>.Fail(ResponseType.NotFound, "Supply not found");
+				}
+
 				supplyToUpdate.FulfillmentStatus = fulfillmentStatus;
 				supplyToUpdate.ModificationDate = _dateTimeProvider.Now;
 				supplyToUpdate.ModifiedBy = _currentUserService.UserId;
-				_context.Entry(supplyToUpdate).Property(x => x.FulfillmentStatus).IsModified = true;
-				_context.Entry(supplyToUpdate).Property(x => x.ModificationDate).IsModified = true;
-				_context.Entry(supplyToUpdate).Property(x => x.ModifiedBy).IsModified = true;
+				await _supplyRepository.UpdateAsync(supplyToUpdate);
 
-				// Save all changes in single transaction
-				await _context.SaveChangesAsync();
 				await _transactionManager.CommitAsync();
 
 				_logger.LogInformation("Supply details replaced successfully. SupplyId: {SupplyId}, OldCount: {OldCount}, NewCount: {NewCount}, User: {UserId}", 
@@ -1219,12 +1201,10 @@ namespace Ettad.RequestManagement.Service.SupplyManagement.Services
 				var orderId = supply.OrderId;
 				var orderDepartmentId = supply.Order?.DepartmentId;
 
-				// Detach and clear Order navigation property to avoid tracking conflicts
-				// This is necessary because UpdateAsync uses Attach which tries to attach the entire entity graph
+				// Clear Order navigation before UpdateAsync (entities from FindOneAsync are not tracked; avoids attaching the graph)
 				if (supply.Order != null)
 				{
-					_context.Entry(supply.Order).State = EntityState.Detached;
-					supply.Order = null; // Clear navigation property to prevent Attach from trying to attach it
+					supply.Order = null;
 				}
 
 				await using var transaction = await _transactionManager.BeginAsync();
@@ -1247,9 +1227,8 @@ namespace Ettad.RequestManagement.Service.SupplyManagement.Services
 					}
 
 					// Update receiver information and submission metadata
-					var receiverEmployee = await _context.Employees
-						.AsNoTracking()
-						.FirstOrDefaultAsync(e => e.Id == inputDto.ReceiverEmployeeId && !e.IsDeleted);
+					var receiverEmployee = await _employeeRepository.FindOneAsync(
+						e => e.Id == inputDto.ReceiverEmployeeId && !e.IsDeleted);
 					if (receiverEmployee == null)
 					{
 						await _transactionManager.RollbackAsync();
@@ -1610,11 +1589,9 @@ namespace Ettad.RequestManagement.Service.SupplyManagement.Services
 			var requesterId = supply.Order?.RequesterId;
 			var requestNo = supply.Order?.RequestNo;
 
-			// Detach Order navigation property to avoid tracking conflicts when updating supply
 			if (supply.Order != null)
 			{
-				_context.Entry(supply.Order).State = EntityState.Detached;
-				supply.Order = null; // Clear navigation property
+				supply.Order = null;
 			}
 
 			// Update only the SupplyDate field
@@ -1624,16 +1601,16 @@ namespace Ettad.RequestManagement.Service.SupplyManagement.Services
 
 			await _supplyRepository.UpdateAsync(supply);
 
-			// Update the order's SupplyDate (PickupDate) using direct context access to avoid tracking conflicts
-			var orderToUpdate = new Order { Id = orderIdForUpdate };
-			_context.Attach(orderToUpdate);
+			var orderToUpdate = await _orderRepository.FindOneAsync(o => o.Id == orderIdForUpdate && !o.IsDeleted);
+			if (orderToUpdate == null)
+			{
+				return APIOperationResponse<bool>.Fail(ResponseType.NotFound, "Order not found");
+			}
+
 			orderToUpdate.SupplyDate = inputDto.SupplyDate;
 			orderToUpdate.ModificationDate = _dateTimeProvider.Now;
 			orderToUpdate.ModifiedBy = _currentUserService.UserId;
-			_context.Entry(orderToUpdate).Property(x => x.SupplyDate).IsModified = true;
-			_context.Entry(orderToUpdate).Property(x => x.ModificationDate).IsModified = true;
-			_context.Entry(orderToUpdate).Property(x => x.ModifiedBy).IsModified = true;
-			await _context.SaveChangesAsync();
+			await _orderRepository.UpdateAsync(orderToUpdate);
 
 			// Notify the order requester
 			if (requesterId != null)
@@ -1713,11 +1690,9 @@ namespace Ettad.RequestManagement.Service.SupplyManagement.Services
 			var requesterId = supply.Order?.RequesterId;
 			var requestNo = supply.Order?.RequestNo;
 
-			// Detach Order navigation property to avoid tracking conflicts when updating supply
 			if (supply.Order != null)
 			{
-				_context.Entry(supply.Order).State = EntityState.Detached;
-				supply.Order = null; // Clear navigation property
+				supply.Order = null;
 			}
 
 			// Update only the SupplyDate field
@@ -1727,16 +1702,16 @@ namespace Ettad.RequestManagement.Service.SupplyManagement.Services
 
 			await _supplyRepository.UpdateAsync(supply);
 
-			// Update the order's SupplyDate (PickupDate) using direct context access to avoid tracking conflicts
-			var orderToUpdate = new Order { Id = orderIdForUpdate };
-			_context.Attach(orderToUpdate);
+			var orderToUpdate = await _orderRepository.FindOneAsync(o => o.Id == orderIdForUpdate && !o.IsDeleted);
+			if (orderToUpdate == null)
+			{
+				return APIOperationResponse<bool>.Fail(ResponseType.NotFound, "Order not found");
+			}
+
 			orderToUpdate.SupplyDate = inputDto.SupplyDate;
 			orderToUpdate.ModificationDate = _dateTimeProvider.Now;
 			orderToUpdate.ModifiedBy = _currentUserService.UserId;
-			_context.Entry(orderToUpdate).Property(x => x.SupplyDate).IsModified = true;
-			_context.Entry(orderToUpdate).Property(x => x.ModificationDate).IsModified = true;
-			_context.Entry(orderToUpdate).Property(x => x.ModifiedBy).IsModified = true;
-			await _context.SaveChangesAsync();
+			await _orderRepository.UpdateAsync(orderToUpdate);
 
 			// Notify the order requester
 			if (requesterId != null)

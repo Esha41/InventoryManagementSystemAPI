@@ -9,7 +9,6 @@ using Ettad.ResponseHandler.Models;
 using Ettad.Application.Common.Interfaces;
 using Microsoft.Extensions.Logging;
 using Ettad.CrossCutting.Comman.Time;
-using Ettad.EntityFramework.DataBaseContext;
 using OfficeOpenXml;
 using OfficeOpenXml.Style;
 using Ettad.Data.Interfaces.Repositories;
@@ -21,33 +20,36 @@ namespace Ettad.Inventory.Service.Employees.Implementation
     public class EmployeeService : IEmployeeService
     {
         private readonly ICrossCuttingRepository<Employee> _employeeRepository;
+        private readonly ICrossCuttingRepository<Department> _departmentRepository;
+        private readonly ICrossCuttingRepository<Rank> _rankRepository;
         private readonly IMapper _mapper;
         private readonly IValidator<CreateUpdateEmployeeDto> _validator;
         private readonly ICurrentUserService _currentUserService;
         private readonly ILogger<EmployeeService> _logger;
         private readonly IDateTimeProvider _dateTimeProvider;
-        private readonly ApplicationDbContext _context;
         private readonly ITransactionManager _transactionManager;
         private readonly IExcelImportService _excelImportService;
 
         public EmployeeService(
             ICrossCuttingRepository<Employee> employeeRepository,
+            ICrossCuttingRepository<Department> departmentRepository,
+            ICrossCuttingRepository<Rank> rankRepository,
             IMapper mapper,
             IValidator<CreateUpdateEmployeeDto> validator,
             ICurrentUserService currentUserService,
             ILogger<EmployeeService> logger,
             IDateTimeProvider dateTimeProvider,
-            ApplicationDbContext context,
             ITransactionManager transactionManager,
             IExcelImportService excelImportService)
         {
             _employeeRepository = employeeRepository;
+            _departmentRepository = departmentRepository;
+            _rankRepository = rankRepository;
             _mapper = mapper;
             _validator = validator;
             _currentUserService = currentUserService;
             _logger = logger;
             _dateTimeProvider = dateTimeProvider;
-            _context = context;
             _transactionManager = transactionManager;
             _excelImportService = excelImportService;
         }
@@ -229,7 +231,9 @@ namespace Ettad.Inventory.Service.Employees.Implementation
                 var isAr = string.Equals(language, "ar", StringComparison.OrdinalIgnoreCase);
                 var headers = EmployeeExcelColumnMappings.GetTemplateHeaders(language);
 
-                var departments = await _context.Departments.AsNoTracking().Where(d => !d.IsDeleted).OrderBy(d => d.Id).ToListAsync();
+                var departments = (await _departmentRepository.FindAsync(d => !d.IsDeleted))
+                    .OrderBy(d => d.Id)
+                    .ToList();
                 var departmentLabels = departments
                     .Select(d => isAr
                         ? !string.IsNullOrWhiteSpace(d.NameAr) ? d.NameAr.Trim() : (d.NameEn ?? "").Trim()
@@ -238,7 +242,9 @@ namespace Ettad.Inventory.Service.Employees.Implementation
                     .GroupBy(s => s, StringComparer.OrdinalIgnoreCase).Select(g => g.First())
                     .OrderBy(s => s).ToList();
 
-                var ranks = await _context.Ranks.AsNoTracking().Where(r => !r.IsDeleted).OrderBy(r => r.Id).ToListAsync();
+                var ranks = (await _rankRepository.FindAsync(r => !r.IsDeleted))
+                    .OrderBy(r => r.Id)
+                    .ToList();
                 var rankLabels = ranks
                     .Select(r => isAr
                         ? !string.IsNullOrWhiteSpace(r.NameAr) ? r.NameAr.Trim() : (r.NameEn ?? "").Trim()
@@ -324,10 +330,8 @@ namespace Ettad.Inventory.Service.Employees.Implementation
                 var isAr = string.Equals(language, "ar", StringComparison.OrdinalIgnoreCase);
                 var headers = EmployeeExcelColumnMappings.GetExportHeaders(language);
 
-                var employees = await _context.Employees.AsNoTracking()
-                    .Where(e => !e.IsDeleted)
-                    .Include(e => e.Department)
-                    .Include(e => e.Rank)
+                var employees = await _employeeRepository
+                    .Find(e => !e.IsDeleted, false, nameof(Employee.Department), nameof(Employee.Rank))
                     .OrderBy(e => e.Id)
                     .ToListAsync();
 
@@ -474,8 +478,8 @@ namespace Ettad.Inventory.Service.Employees.Implementation
         private async Task EnrichAndValidateImportAsync(ImportResult<EmployeeExcelImportRowDto> importResult, string language)
         {
             var isAr = string.Equals(language, "ar", StringComparison.OrdinalIgnoreCase);
-            var departments = await _context.Departments.AsNoTracking().Where(d => !d.IsDeleted).ToListAsync();
-            var ranks = await _context.Ranks.AsNoTracking().Where(r => !r.IsDeleted).ToListAsync();
+            var departments = (await _departmentRepository.FindAsync(d => !d.IsDeleted)).ToList();
+            var ranks = (await _rankRepository.FindAsync(r => !r.IsDeleted)).ToList();
 
             // Pass 1: resolve lookups + per-row validation
             var invalidRows = new List<(EmployeeExcelImportRowDto row, string error)>();
@@ -561,8 +565,8 @@ namespace Ettad.Inventory.Service.Employees.Implementation
                 var milValues = milIdsToCheck.Select(r => r.MilitaryId!.Trim()).ToList();
                 var roundTripIds = milIdsToCheck.Where(r => r.EmployeeId > 0).Select(r => r.EmployeeId).Distinct().ToList();
 
-                var existingDups = (await _context.Employees
-                    .Where(e => !e.IsDeleted && e.MilitaryId != null && milValues.Contains(e.MilitaryId) && !roundTripIds.Contains(e.Id))
+                var existingDups = (await _employeeRepository
+                    .Find(e => !e.IsDeleted && e.MilitaryId != null && milValues.Contains(e.MilitaryId) && !roundTripIds.Contains(e.Id))
                     .Select(e => e.MilitaryId)
                     .ToListAsync())
                     .ToHashSet(StringComparer.OrdinalIgnoreCase);

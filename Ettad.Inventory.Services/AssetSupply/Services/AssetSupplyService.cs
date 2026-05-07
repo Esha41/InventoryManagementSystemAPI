@@ -5,7 +5,6 @@ using Microsoft.Extensions.Logging;
 using Ettad.Application.Common.Interfaces;
 using Ettad.Data.Entities;
 using Ettad.Data.Enums;
-using Ettad.EntityFramework.DataBaseContext;
 using Ettad.Inventory.Service.AssetSupply.Dtos;
 using Ettad.Inventory.Service.AssetHistory.Dtos;
 using Ettad.ResponseHandler.Consts;
@@ -24,16 +23,49 @@ using Ettad.Inventory.Service.AssetHistory.Interfaces;
 using Ettad.Inventory.Service.AssetSupply.Interfaces;
 using MediatR;
 
+using AssetSupplyEntity = Ettad.Data.Entities.AssetSupply;
+
 namespace Ettad.Inventory.Service.AssetSupply.Services
 {
     public class AssetSupplyService : IAssetSupplyService
     {
-        private readonly ApplicationDbContext _context;
+        private static readonly string[] AssetSupplyDetailIncludes =
+        {
+            nameof(AssetSupplyEntity.Department),
+            nameof(AssetSupplyEntity.Custodian),
+            nameof(AssetSupplyEntity.ReceiverEmployee),
+            $"{nameof(AssetSupplyEntity.ReceiverEmployee)}.{nameof(Employee.Rank)}",
+            nameof(AssetSupplyEntity.SupplyDetails),
+            $"{nameof(AssetSupplyEntity.SupplyDetails)}.{nameof(AssetSupplyDetail.Asset)}",
+            $"{nameof(AssetSupplyEntity.SupplyDetails)}.{nameof(AssetSupplyDetail.Item)}"
+        };
+
+        private static readonly string[] AssetSupplyListIncludes =
+        {
+            nameof(AssetSupplyEntity.Department),
+            nameof(AssetSupplyEntity.Custodian),
+            nameof(AssetSupplyEntity.ReceiverEmployee),
+            $"{nameof(AssetSupplyEntity.ReceiverEmployee)}.{nameof(Employee.Rank)}",
+            nameof(AssetSupplyEntity.SupplyDetails)
+        };
+
+        private static readonly string[] AssetSupplyCancelIncludes =
+        {
+            nameof(AssetSupplyEntity.SupplyDetails),
+            $"{nameof(AssetSupplyEntity.SupplyDetails)}.{nameof(AssetSupplyDetail.Asset)}"
+        };
+
+        private const string AssetPreviewAssignmentDepartmentInclude =
+            $"{nameof(Asset.CurrentAssignment)}.{nameof(AssetAssignment.Department)}";
+
         private readonly ICrossCuttingRepository<Data.Entities.AssetSupply> _assetSupplyRepository;
         private readonly ICrossCuttingRepository<AssetSupplyDetail> _assetSupplyDetailRepository;
         private readonly ICrossCuttingRepository<Asset> _assetRepository;
         private readonly ICrossCuttingRepository<AssetAssignment> _assignmentRepository;
         private readonly ICrossCuttingRepository<Order> _orderRepository;
+        private readonly ICrossCuttingRepository<Batch> _batchRepository;
+        private readonly ICrossCuttingRepository<Employee> _employeeRepository;
+        private readonly ICrossCuttingRepository<WeaponSupplySelection> _weaponSupplySelectionRepository;
         private readonly IAssetHistoryService _historyService;
         private readonly IMapper _mapper;
         private readonly IValidator<CreateAssetSupplyDto> _createValidator;
@@ -48,12 +80,14 @@ namespace Ettad.Inventory.Service.AssetSupply.Services
         private readonly IMediator _mediator;
 
         public AssetSupplyService(
-            ApplicationDbContext context,
             ICrossCuttingRepository<Data.Entities.AssetSupply> assetSupplyRepository,
             ICrossCuttingRepository<AssetSupplyDetail> assetSupplyDetailRepository,
             ICrossCuttingRepository<Asset> assetRepository,
             ICrossCuttingRepository<AssetAssignment> assignmentRepository,
             ICrossCuttingRepository<Order> orderRepository,
+            ICrossCuttingRepository<Batch> batchRepository,
+            ICrossCuttingRepository<Employee> employeeRepository,
+            ICrossCuttingRepository<WeaponSupplySelection> weaponSupplySelectionRepository,
             IAssetHistoryService historyService,
             IMapper mapper,
             IValidator<CreateAssetSupplyDto> createValidator,
@@ -67,12 +101,14 @@ namespace Ettad.Inventory.Service.AssetSupply.Services
             ITransactionManager transactionManager,
             IMediator mediator)
         {
-            _context = context;
             _assetSupplyRepository = assetSupplyRepository;
             _assetSupplyDetailRepository = assetSupplyDetailRepository;
             _assetRepository = assetRepository;
             _assignmentRepository = assignmentRepository;
             _orderRepository = orderRepository;
+            _batchRepository = batchRepository;
+            _employeeRepository = employeeRepository;
+            _weaponSupplySelectionRepository = weaponSupplySelectionRepository;
             _historyService = historyService;
             _mapper = mapper;
             _createValidator = createValidator;
@@ -94,10 +130,11 @@ namespace Ettad.Inventory.Service.AssetSupply.Services
 
             try
             {
-                var order = await _context.Orders
-                    .Include(o => o.RequestItems)
-                        .ThenInclude(ri => ri.Item)
-                    .FirstOrDefaultAsync(o => o.Id == orderId && !o.IsDeleted);
+                var order = await _orderRepository.FindOneAsync(
+                    o => o.Id == orderId && !o.IsDeleted,
+                    false,
+                    nameof(Order.RequestItems),
+                    $"{nameof(Order.RequestItems)}.{nameof(RequestItem.Item)}");
 
                 if (order == null)
                     return APIOperationResponse<List<BatchForOrderDepotDto>>.Fail(ResponseType.NotFound, "Order not found");
@@ -112,14 +149,13 @@ namespace Ettad.Inventory.Service.AssetSupply.Services
                     return APIOperationResponse<List<BatchForOrderDepotDto>>.Fail(ResponseType.BadRequest, "Order has no request items");
 
                 // Batches in selected depots that have available assets matching requested items
-                var batchIdsWithMatchingAssets = await _context.Assets
-                    .Where(a => !a.IsDeleted
-                        && depotIds.Contains(a.DepotId)
-                        && requestedItemIds.Contains(a.ItemId)
-                        //&& !string.IsNullOrEmpty(a.SerialNumber)
-                        && !a.IsAssigned
-                        && a.Status == AssetStatus.ReadyToIssue)
-
+                var batchIdsWithMatchingAssets = await _assetRepository
+                    .Find(
+                        a => !a.IsDeleted
+                            && depotIds.Contains(a.DepotId)
+                            && requestedItemIds.Contains(a.ItemId)
+                            && !a.IsAssigned
+                            && a.Status == AssetStatus.ReadyToIssue)
                     .Select(a => a.BatchId)
                     .Distinct()
                     .ToListAsync();
@@ -127,17 +163,19 @@ namespace Ettad.Inventory.Service.AssetSupply.Services
                 if (!batchIdsWithMatchingAssets.Any())
                     return APIOperationResponse<List<BatchForOrderDepotDto>>.Success(new List<BatchForOrderDepotDto>());
 
-                var batches = await _context.Batches
-                    .Include(b => b.Depot)
-                    .Where(b => !b.IsDeleted && batchIdsWithMatchingAssets.Contains(b.Id) && depotIds.Contains(b.DepotId))
+                var batches = await _batchRepository
+                    .Find(
+                        b => !b.IsDeleted && batchIdsWithMatchingAssets.Contains(b.Id) && depotIds.Contains(b.DepotId),
+                        false,
+                        nameof(Batch.Depot))
                     .ToListAsync();
 
-                var assetCounts = await _context.Assets
-                    .Where(a => !a.IsDeleted && batchIdsWithMatchingAssets.Contains(a.BatchId)
-                        && requestedItemIds.Contains(a.ItemId)
-                        //&& !string.IsNullOrEmpty(a.SerialNumber)
-                        && !a.IsAssigned
-                        && a.Status == AssetStatus.ReadyToIssue)
+                var assetCounts = await _assetRepository
+                    .Find(
+                        a => !a.IsDeleted && batchIdsWithMatchingAssets.Contains(a.BatchId)
+                            && requestedItemIds.Contains(a.ItemId)
+                            && !a.IsAssigned
+                            && a.Status == AssetStatus.ReadyToIssue)
                     .GroupBy(a => new { a.BatchId, a.ItemId })
                     .Select(g => new { g.Key.BatchId, g.Key.ItemId, Count = g.Count() })
                     .ToListAsync();
@@ -203,11 +241,12 @@ namespace Ettad.Inventory.Service.AssetSupply.Services
             try
             {
                 // Get order with request items
-                var order = await _context.Orders
-                    .Include(o => o.RequestItems)
-                        .ThenInclude(ri => ri.Item)
-                    .Include(o => o.Department)
-                    .FirstOrDefaultAsync(o => o.Id == orderId && !o.IsDeleted);
+                var order = await _orderRepository.FindOneAsync(
+                    o => o.Id == orderId && !o.IsDeleted,
+                    false,
+                    nameof(Order.RequestItems),
+                    $"{nameof(Order.RequestItems)}.{nameof(RequestItem.Item)}",
+                    nameof(Order.Department));
 
                 if (order == null)
                 {
@@ -248,13 +287,14 @@ namespace Ettad.Inventory.Service.AssetSupply.Services
                 {
                     // Query available assets for this item type
                     // Criteria: has serial number, not assigned, not deleted, ordered by purchase date (FIFO)
-                    var assetsQuery = _context.Assets
-                        .Include(a => a.Depot)
-                        .Where(a => a.ItemId == requestItem.ItemId
-                            && !string.IsNullOrEmpty(a.SerialNumber)
-                            && !a.IsAssigned
-                            && !a.IsDeleted
-                            && a.Status == AssetStatus.ReadyToIssue);
+                    var assetsQuery = _assetRepository.Find(
+                            a => a.ItemId == requestItem.ItemId
+                                && !string.IsNullOrEmpty(a.SerialNumber)
+                                && !a.IsAssigned
+                                && !a.IsDeleted
+                                && a.Status == AssetStatus.ReadyToIssue,
+                            false,
+                            nameof(Asset.Depot));
 
                     // Filter by depot IDs if provided
                     if (depotIds != null && depotIds.Any())
@@ -315,16 +355,10 @@ namespace Ettad.Inventory.Service.AssetSupply.Services
 
             try
             {
-                var supply = await _context.AssetSupplies
-                    .Include(s => s.Department)
-                    .Include(s => s.Custodian)
-                    .Include(s => s.ReceiverEmployee)
-                        .ThenInclude(e => e!.Rank)
-                    .Include(s => s.SupplyDetails)
-                        .ThenInclude(d => d.Asset)
-                    .Include(s => s.SupplyDetails)
-                        .ThenInclude(d => d.Item)
-                    .FirstOrDefaultAsync(s => s.Id == id && !s.IsDeleted);
+                var supply = await _assetSupplyRepository.FindOneAsync(
+                    s => s.Id == id && !s.IsDeleted,
+                    false,
+                    AssetSupplyDetailIncludes);
 
                 if (supply == null)
                 {
@@ -362,16 +396,10 @@ namespace Ettad.Inventory.Service.AssetSupply.Services
         {
             try
             {
-                var supply = await _context.AssetSupplies
-                    .Include(s => s.Department)
-                    .Include(s => s.Custodian)
-                    .Include(s => s.ReceiverEmployee)
-                        .ThenInclude(e => e!.Rank)
-                    .Include(s => s.SupplyDetails)
-                        .ThenInclude(d => d.Asset)
-                    .Include(s => s.SupplyDetails)
-                        .ThenInclude(d => d.Item)
-                    .FirstOrDefaultAsync(s => s.OrderId == orderId && !s.IsDeleted);
+                var supply = await _assetSupplyRepository.FindOneAsync(
+                    s => s.OrderId == orderId && !s.IsDeleted,
+                    false,
+                    AssetSupplyDetailIncludes);
 
                 if (supply == null)
                 {
@@ -403,13 +431,8 @@ namespace Ettad.Inventory.Service.AssetSupply.Services
         {
             try
             {
-                var supplies = await _context.AssetSupplies
-                    .Include(s => s.Department)
-                    .Include(s => s.Custodian)
-                    .Include(s => s.ReceiverEmployee)
-                        .ThenInclude(e => e!.Rank)
-                    .Include(s => s.SupplyDetails)
-                    .Where(s => !s.IsDeleted)
+                var supplies = await _assetSupplyRepository
+                    .Find(s => !s.IsDeleted, false, AssetSupplyListIncludes)
                     .OrderByDescending(s => s.CreationDate)
                     .ToListAsync();
 
@@ -486,8 +509,7 @@ namespace Ettad.Inventory.Service.AssetSupply.Services
                 }
 
                 // Check for existing supply
-                var existingSupply = await _context.AssetSupplies
-                    .FirstOrDefaultAsync(s => s.OrderId == dto.OrderId && !s.IsDeleted);
+                var existingSupply = await _assetSupplyRepository.FindOneAsync(s => s.OrderId == dto.OrderId && !s.IsDeleted);
 
                 if (existingSupply != null)
                 {
@@ -495,15 +517,13 @@ namespace Ettad.Inventory.Service.AssetSupply.Services
                         $"A supply already exists for this order. Supply ID: {existingSupply.Id}");
                 }
 
-                var receiverEmployee = await _context.Employees
-                    .AsNoTracking()
-                    .FirstOrDefaultAsync(e => e.Id == dto.ReceiverEmployeeId && !e.IsDeleted);
+                var receiverEmployee = await _employeeRepository.FindOneAsync(e => e.Id == dto.ReceiverEmployeeId && !e.IsDeleted);
                 if (receiverEmployee == null)
                 {
                     return APIOperationResponse<long>.Fail(ResponseType.BadRequest, "Receiver employee not found.");
                 }
 
-                // Store order data before detaching to avoid tracking conflicts
+                // Store order data (order was loaded with no tracking via repository)
                 var orderId = order.Id;
                 var orderDepartmentId = order.DepartmentId;
                 var requesterUserId = order.RequesterId;
@@ -512,9 +532,6 @@ namespace Ettad.Inventory.Service.AssetSupply.Services
                 var orderUsagePurpose = order.UsagePurpose;
                 var orderRequestItems = order.RequestItems?
                     .Where(ri => !ri.IsDeleted).ToList() ?? new List<RequestItem>();
-
-                // Detach Order entity to avoid tracking conflicts when workflow approval loads it
-                _context.Entry(order).State = EntityState.Detached;
 
                 // Pre-validate that the workflow step can be approved (actual approval deferred until after supply creation)
                 var currentWorkflowStep = await _mediator.Send(new GetCurrentApprovalStepByRequestIdQuery(orderId));
@@ -551,8 +568,8 @@ namespace Ettad.Inventory.Service.AssetSupply.Services
                             $"Duplicate asset IDs found: {string.Join(", ", duplicateAssetIds)}");
                     }
 
-                    var assets = await _context.Assets
-                        .Where(a => assetIds.Contains(a.Id) && !a.IsDeleted)
+                    var assets = await _assetRepository
+                        .Find(a => assetIds.Contains(a.Id) && !a.IsDeleted)
                         .ToListAsync();
 
                     // Check all assets exist
@@ -691,8 +708,7 @@ namespace Ettad.Inventory.Service.AssetSupply.Services
                             CreatedBy = _currentUserService.UserId
                         };
 
-                        _context.AssetAssignments.Add(assignment);
-                        await _context.SaveChangesAsync();
+                        await _assignmentRepository.AddAsync(assignment);
 
                         asset.IsAssigned = true;
                         asset.CurrentAssignmentId = assignment.Id;
@@ -713,8 +729,10 @@ namespace Ettad.Inventory.Service.AssetSupply.Services
                         });
                     }
 
-                    // Persist final asset updates (IsAssigned, CurrentAssignmentId from last iteration)
-                    await _context.SaveChangesAsync();
+                    foreach (var asset in assets)
+                    {
+                        await _assetRepository.UpdateAsync(asset);
+                    }
 
                     var validFiles = files.Where(f => f != null && f.Length > 0).ToList();
                     var uploadResult = await _fileUploadService.UploadFilesForEntityAsync(
@@ -837,10 +855,10 @@ namespace Ettad.Inventory.Service.AssetSupply.Services
 
             try
             {
-                var supply = await _context.AssetSupplies
-                    .Include(s => s.SupplyDetails)
-                        .ThenInclude(d => d.Asset)
-                    .FirstOrDefaultAsync(s => s.Id == id && !s.IsDeleted);
+                var supply = await _assetSupplyRepository.FindOneAsync(
+                    s => s.Id == id && !s.IsDeleted,
+                    false,
+                    AssetSupplyCancelIncludes);
 
                 if (supply == null)
                 {
@@ -928,15 +946,13 @@ namespace Ettad.Inventory.Service.AssetSupply.Services
                 AssetAssignment? assignment;
                 if (dto.AssignmentId.HasValue)
                 {
-                    assignment = await _context.AssetAssignments
-                        .FirstOrDefaultAsync(a => a.Id == dto.AssignmentId.Value
-                            && a.AssetId == dto.AssetId
-                            && !a.IsDeleted);
+                    assignment = await _assignmentRepository.FindOneAsync(a => a.Id == dto.AssignmentId.Value
+                        && a.AssetId == dto.AssetId
+                        && !a.IsDeleted);
                 }
                 else
                 {
-                    assignment = await _context.AssetAssignments
-                        .FirstOrDefaultAsync(a => a.Id == asset.CurrentAssignmentId && !a.IsDeleted);
+                    assignment = await _assignmentRepository.FindOneAsync(a => a.Id == asset.CurrentAssignmentId && !a.IsDeleted);
                 }
 
                 if (assignment == null)
@@ -972,7 +988,8 @@ namespace Ettad.Inventory.Service.AssetSupply.Services
                 asset.ModificationDate = _dateTimeProvider.Now;
                 asset.ModifiedBy = _currentUserService.UserId;
 
-                await _context.SaveChangesAsync();
+                await _assignmentRepository.UpdateAsync(assignment);
+                await _assetRepository.UpdateAsync(asset);
 
                 // Record history
                 await _historyService.RecordHistoryAsync(asset.Id, AssetHistoryActionType.Returned, new AssetHistoryContext
@@ -1071,9 +1088,10 @@ namespace Ettad.Inventory.Service.AssetSupply.Services
                 if (dto?.Selections == null || !dto.Selections.Any())
                     return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, "At least one depot selection is required");
 
-                var order = await _context.Orders
-                    .Include(o => o.RequestItems)
-                    .FirstOrDefaultAsync(o => o.Id == dto.OrderId && !o.IsDeleted);
+                var order = await _orderRepository.FindOneAsync(
+                    o => o.Id == dto.OrderId && !o.IsDeleted,
+                    false,
+                    nameof(Order.RequestItems));
                 if (order == null)
                     return APIOperationResponse<bool>.Fail(ResponseType.NotFound, "Order not found");
 
@@ -1090,18 +1108,16 @@ namespace Ettad.Inventory.Service.AssetSupply.Services
                     return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, selectionError!);
 
                 // Remove existing selections for this order
-                var existing = await _context.WeaponSupplySelections
-                    .Where(s => s.OrderId == dto.OrderId)
-                    .ToListAsync();
-                _context.WeaponSupplySelections.RemoveRange(existing);
-                await _context.SaveChangesAsync();
+                var existing = (await _weaponSupplySelectionRepository.FindAsync(s => s.OrderId == dto.OrderId)).ToList();
+                foreach (var row in existing)
+                    await _weaponSupplySelectionRepository.DeleteAsync(row);
 
                 // Add new selections
                 var now = _dateTimeProvider.Now;
                 var userId = _currentUserService.UserId;
-                foreach (var sel in dto.Selections.DistinctBy(s => (s.DepotId, s.BatchId, s.ItemId)))
-                {
-                    var entity = new WeaponSupplySelection
+                var toAdd = dto.Selections
+                    .DistinctBy(s => (s.DepotId, s.BatchId, s.ItemId))
+                    .Select(sel => new WeaponSupplySelection
                     {
                         OrderId = dto.OrderId,
                         DepotId = sel.DepotId,
@@ -1110,10 +1126,10 @@ namespace Ettad.Inventory.Service.AssetSupply.Services
                         Quantity = sel.Quantity,
                         CreationDate = now,
                         CreatedBy = userId
-                    };
-                    _context.WeaponSupplySelections.Add(entity);
-                }
-                await _context.SaveChangesAsync();
+                    })
+                    .ToList();
+                if (toAdd.Any())
+                    await _weaponSupplySelectionRepository.AddRangeAsync(toAdd);
 
                 return APIOperationResponse<bool>.Success(true, "Selection saved successfully");
             }
@@ -1130,10 +1146,9 @@ namespace Ettad.Inventory.Service.AssetSupply.Services
         {
             try
             {
-                var selections = await _context.WeaponSupplySelections
-                    .Where(s => s.OrderId == orderId)
+                var selections = (await _weaponSupplySelectionRepository.FindAsync(s => s.OrderId == orderId))
                     .Select(s => new DepotBatchSelectionDto { DepotId = s.DepotId, BatchId = s.BatchId, ItemId = s.ItemId, Quantity = s.Quantity })
-                    .ToListAsync();
+                    .ToList();
                 return APIOperationResponse<List<DepotBatchSelectionDto>>.Success(selections);
             }
             catch (Exception ex)
@@ -1152,19 +1167,15 @@ namespace Ettad.Inventory.Service.AssetSupply.Services
 
             try
             {
-                var selections = await _context.WeaponSupplySelections
-                    .Where(s => s.OrderId == orderId)
-                    .ToListAsync();
+                var selections = (await _weaponSupplySelectionRepository.FindAsync(s => s.OrderId == orderId)).ToList();
 
                 if (!selections.Any())
                     return APIOperationResponse<List<BatchDto>>.Success(new List<BatchDto>());
 
                 var batchIds = selections.Select(s => s.BatchId).Distinct().ToList();
 
-                var batches = await _context.Batches
-                    .AsNoTracking()
-                    .Include(b => b.Depot)
-                    .Where(b => !b.IsDeleted && batchIds.Contains(b.Id))
+                var batches = await _batchRepository
+                    .Find(b => !b.IsDeleted && batchIds.Contains(b.Id), false, nameof(Batch.Depot))
                     .ToListAsync();
 
                 var selectionsByBatch = selections.GroupBy(s => s.BatchId);
@@ -1182,17 +1193,17 @@ namespace Ettad.Inventory.Service.AssetSupply.Services
 
                     foreach (var sel in group)
                     {
-                        var withSerial = await _context.Assets
-                            .AsNoTracking()
-                            .Where(a => a.BatchId == sel.BatchId && a.ItemId == sel.ItemId
-                                && !a.IsDeleted && !a.IsAssigned && a.Status == AssetStatus.ReadyToIssue
-                                && !string.IsNullOrEmpty(a.SerialNumber))
-                            .Include(nameof(Asset.Item))
-                            .Include(nameof(Asset.Depot))
-                            .Include($"{nameof(Asset.CurrentAssignment)}.{nameof(AssetAssignment.Department)}")
+                        var withSerial = await _assetRepository
+                            .Find(
+                                a => a.BatchId == sel.BatchId && a.ItemId == sel.ItemId
+                                    && !a.IsDeleted && !a.IsAssigned && a.Status == AssetStatus.ReadyToIssue
+                                    && !string.IsNullOrEmpty(a.SerialNumber),
+                                false,
+                                nameof(Asset.Item),
+                                nameof(Asset.Depot),
+                                AssetPreviewAssignmentDepartmentInclude)
                             .OrderBy(a => a.PurchaseDate ?? DateTime.MaxValue).ThenBy(a => a.Id)
                             .Take(sel.Quantity)
-                            .AsSplitQuery()
                             .ToListAsync();
 
                         allAssets.AddRange(withSerial);
@@ -1200,17 +1211,17 @@ namespace Ettad.Inventory.Service.AssetSupply.Services
                         var remaining = sel.Quantity - withSerial.Count;
                         if (remaining > 0)
                         {
-                            var withoutSerial = await _context.Assets
-                                .AsNoTracking()
-                                .Where(a => a.BatchId == sel.BatchId && a.ItemId == sel.ItemId
-                                    && !a.IsDeleted && !a.IsAssigned && a.Status == AssetStatus.ReadyToIssue
-                                    && string.IsNullOrEmpty(a.SerialNumber))
-                                .Include(nameof(Asset.Item))
-                                .Include(nameof(Asset.Depot))
-                                .Include($"{nameof(Asset.CurrentAssignment)}.{nameof(AssetAssignment.Department)}")
+                            var withoutSerial = await _assetRepository
+                                .Find(
+                                    a => a.BatchId == sel.BatchId && a.ItemId == sel.ItemId
+                                        && !a.IsDeleted && !a.IsAssigned && a.Status == AssetStatus.ReadyToIssue
+                                        && string.IsNullOrEmpty(a.SerialNumber),
+                                    false,
+                                    nameof(Asset.Item),
+                                    nameof(Asset.Depot),
+                                    AssetPreviewAssignmentDepartmentInclude)
                                 .OrderBy(a => a.PurchaseDate ?? DateTime.MaxValue).ThenBy(a => a.Id)
                                 .Take(remaining)
-                                .AsSplitQuery()
                                 .ToListAsync();
 
                             allAssets.AddRange(withoutSerial);

@@ -1,12 +1,9 @@
-using Ettad.Data.Enums;
-
 namespace Ettad.RequestManagement.Service.Orders.Dto
 {
     public class CreateOrderDto
     {
         #region BaseRequest Properties
         public string? Reason { get; set; }
-        public RequestPriority Priority { get; set; }
         public string? Notes { get; set; }
         public string RequestPurposeNotes { get; set; } = string.Empty;
         public long RequestPurposeId { get; set; }

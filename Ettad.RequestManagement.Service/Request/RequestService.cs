@@ -1,15 +1,17 @@
 using AutoMapper;
-using AutoMapper.QueryableExtensions;
 using Ettad.Application.Common.Interfaces;
+using Ettad.Comman.Idenitity;
+using Ettad.CrossCutting.Comman.Idenitity;
 using Ettad.Data.Entities;
 using Ettad.Data.Entities.Workflows;
 using Ettad.Data.Enums;
-using Ettad.EntityFramework.DataBaseContext;
+using Ettad.Data.Interfaces.Repositories;
 using Ettad.RequestManagement.Service.Common.Dtos;
 using Ettad.ResponseHandler.Models;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using Ettad.User.Services.Interfaces;
+using System;
 using System.Linq;
 using Ettad.CrossCutting.Comman.Models;
 using Ettad.Data.Constants;
@@ -18,42 +20,79 @@ namespace Ettad.RequestManagement.Service.Request
 {
     public class RequestService : IRequestService
     {
-        private readonly ApplicationDbContext _context;
+        private static readonly string[] BaseRequestListIncludes =
+        [
+            nameof(BaseRequest.Department),
+            nameof(BaseRequest.Requester),
+            $"{nameof(BaseRequest.Requester)}.{nameof(ApplicationUser.Rank)}",
+            nameof(BaseRequest.RequestPurpose),
+            nameof(BaseRequest.RequestItems),
+            $"{nameof(BaseRequest.RequestItems)}.{nameof(RequestItem.Item)}",
+        ];
+
+        private static readonly string[] WorkflowApprovalStepVisibilityIncludes =
+        [
+            nameof(WorkflowApprovalStep.WorkflowStep),
+            $"{nameof(WorkflowApprovalStep.WorkflowStep)}.{nameof(WorkflowStep.ApplicationRole)}",
+            $"{nameof(WorkflowApprovalStep.WorkflowStep)}.{nameof(WorkflowStep.HigherApprovalRole)}",
+            $"{nameof(WorkflowApprovalStep.WorkflowStep)}.{nameof(WorkflowStep.ParallelRoles)}",
+            $"{nameof(WorkflowApprovalStep.WorkflowStep)}.{nameof(WorkflowStep.ParallelRoles)}.{nameof(WorkflowStepParallelRole.Role)}",
+        ];
+
+        private readonly ICrossCuttingRepository<BaseRequest> _baseRequestRepository;
+        private readonly ICrossCuttingRepository<WorkflowApprovalStep> _workflowApprovalStepRepository;
+        private readonly ICrossCuttingRepository<IdentityUserRole<string>> _userRoleRepository;
+        private readonly ICrossCuttingRepository<ApplicationRole> _roleRepository;
         private readonly ICurrentUserService _currentUserService;
         private readonly IUserDelegationService _userDelegationService;
         private readonly IMapper _mapper;
 
         public RequestService(
-            ApplicationDbContext context,
+            ICrossCuttingRepository<BaseRequest> baseRequestRepository,
+            ICrossCuttingRepository<WorkflowApprovalStep> workflowApprovalStepRepository,
+            ICrossCuttingRepository<IdentityUserRole<string>> userRoleRepository,
+            ICrossCuttingRepository<ApplicationRole> roleRepository,
             ICurrentUserService currentUserService,
             IUserDelegationService userDelegationService,
             IMapper mapper)
         {
-            _context = context;
+            _baseRequestRepository = baseRequestRepository;
+            _workflowApprovalStepRepository = workflowApprovalStepRepository;
+            _userRoleRepository = userRoleRepository;
+            _roleRepository = roleRepository;
             _currentUserService = currentUserService;
             _userDelegationService = userDelegationService;
             _mapper = mapper;
         }
 
+        private IQueryable<WorkflowApprovalStep> WorkflowStepsWithNavigations() =>
+            _workflowApprovalStepRepository.Find(_ => true, includeSoftDeleted: false, WorkflowApprovalStepVisibilityIncludes);
+
+        private async Task<List<string>> GetDelegatorRoleNamesAsync(IReadOnlyCollection<string> activeDelegatorIds)
+        {
+            if (activeDelegatorIds == null || activeDelegatorIds.Count == 0)
+                return new List<string>();
+
+            return await _userRoleRepository
+                .Find(ur => activeDelegatorIds.Contains(ur.UserId))
+                .Join(_roleRepository.Find(_ => true), ur => ur.RoleId, r => r.Id, (ur, r) => r.Name)
+                .Where(n => n != null)
+                .Select(n => n!)
+                .Distinct()
+                .ToListAsync();
+        }
+
         private IQueryable<BaseRequest> PrepareBaseQuery(IQueryable<BaseRequest> query, FilterData filter)
         {
-            query = query
-                .Include(r => r.Department)
-                .Include(r => r.Requester)
-                    .ThenInclude(u => u.Rank)
-                .Include(r => r.RequestPurpose)
-                .Include(r => r.RequestItems)
-                    .ThenInclude(ri => ri.Item);
-
             if (filter != null)
             {
                 // Global Search logic (when Field and Filters are empty)
                 if (!string.IsNullOrEmpty(filter.Value) && string.IsNullOrEmpty(filter.Field) && (filter.Filters == null || !filter.Filters.Any()))
                 {
                     var searchTerm = filter.Value.ToLower();
-                    query = query.Where(r => 
-                        (r.RequestNo != null && r.RequestNo.Contains(searchTerm)) || 
-                        (r.Requester != null && (r.Requester.UserName.Contains(searchTerm) || r.Requester.FullNameEN.Contains(searchTerm) || r.Requester.FullNameAR.Contains(searchTerm))) || 
+                    query = query.Where(r =>
+                        (r.RequestNo != null && r.RequestNo.Contains(searchTerm)) ||
+                        (r.Requester != null && (r.Requester.UserName.Contains(searchTerm) || r.Requester.FullNameEN.Contains(searchTerm) || r.Requester.FullNameAR.Contains(searchTerm))) ||
                         (r.Department != null && (r.Department.NameAr.Contains(searchTerm) || r.Department.NameEn.Contains(searchTerm))));
                 }
             }
@@ -62,33 +101,57 @@ namespace Ettad.RequestManagement.Service.Request
             // Note: PaginatedList.CreateAsyncForTableBinding will apply the client-side sort via ToFilterView
             if (filter == null || string.IsNullOrEmpty(filter.sortField))
             {
-                query = query.OrderByDescending(r => r.CreationDate);
+                query = query
+                    .OrderByDescending(r => r.Priority)
+                    .ThenByDescending(r => r.CreationDate);
             }
 
-            return query.AsNoTracking();
+            return query;
+        }
+
+        private static IQueryable<BaseRequest> ApplyUserActionsCompositeSort(
+            IQueryable<BaseRequest> query,
+            FilterData filter)
+        {
+            if (string.IsNullOrEmpty(filter.sortField))
+            {
+                return query;
+            }
+
+            // Match FilterProvider: sortDirection == 1 → ascending
+            bool descending = filter.sortDirection != 1;
+            var field = filter.sortField;
+
+            if (string.Equals(field, "Priority", StringComparison.OrdinalIgnoreCase))
+            {
+                filter.sortField = null;
+                filter.sortDirection = 0;
+                return descending
+                    ? query.OrderByDescending(r => r.Priority).ThenByDescending(r => r.CreationDate)
+                    : query.OrderBy(r => r.Priority).ThenByDescending(r => r.CreationDate);
+            }
+
+            if (string.Equals(field, "CreationDate", StringComparison.OrdinalIgnoreCase))
+            {
+                filter.sortField = null;
+                filter.sortDirection = 0;
+                return descending
+                    ? query.OrderByDescending(r => r.CreationDate).ThenByDescending(r => r.Priority)
+                    : query.OrderBy(r => r.CreationDate).ThenByDescending(r => r.Priority);
+            }
+
+            return query;
         }
 
         public async Task<APIOperationResponse<List<BaseRequestDto>>> GetAllRequestsAsync(RequestStatus? status = null, RequestType? requestType = null)
         {
-            var query = _context.BaseRequests.AsQueryable();
-
-            if (status.HasValue)
-            {
-                query = query.Where(r => r.Status == status.Value);
-            }
-
-            if (requestType.HasValue)
-            {
-                query = query.Where(r => r.RequestType == requestType.Value);
-            }
-
-            var requests = await query
-                .Include(r => r.Department)
-                .Include(r => r.Requester)
-                    .ThenInclude(u => u.Rank)
-                .Include(r => r.RequestPurpose)
-                .Include(r => r.RequestItems)
-                    .ThenInclude(ri => ri.Item)
+            var requests = await _baseRequestRepository
+                .Find(
+                    r =>
+                        (!status.HasValue || r.Status == status.Value) &&
+                        (!requestType.HasValue || r.RequestType == requestType.Value),
+                    false,
+                    BaseRequestListIncludes)
                 .ToListAsync();
 
             var requestDtos = _mapper.Map<List<BaseRequestDto>>(requests);
@@ -98,26 +161,14 @@ namespace Ettad.RequestManagement.Service.Request
 
         public async Task<APIOperationResponse<List<BaseRequestDto>>> GetRequestsByDepartmentAsync(long departmentId, RequestStatus? status = null, RequestType? requestType = null)
         {
-            var query = _context.BaseRequests
-                .Where(r => r.DepartmentId == departmentId);
-
-            if (status.HasValue)
-            {
-                query = query.Where(r => r.Status == status.Value);
-            }
-
-            if (requestType.HasValue)
-            {
-                query = query.Where(r => r.RequestType == requestType.Value);
-            }
-
-            var requests = await query
-                .Include(r => r.Department)
-                .Include(r => r.Requester)
-                    .ThenInclude(u => u.Rank)
-                .Include(r => r.RequestPurpose)
-                .Include(r => r.RequestItems)
-                    .ThenInclude(ri => ri.Item)
+            var requests = await _baseRequestRepository
+                .Find(
+                    r =>
+                        r.DepartmentId == departmentId &&
+                        (!status.HasValue || r.Status == status.Value) &&
+                        (!requestType.HasValue || r.RequestType == requestType.Value),
+                    false,
+                    BaseRequestListIncludes)
                 .ToListAsync();
 
             var requestDtos = _mapper.Map<List<BaseRequestDto>>(requests);
@@ -127,26 +178,14 @@ namespace Ettad.RequestManagement.Service.Request
 
         public async Task<APIOperationResponse<List<BaseRequestDto>>> GetRequestsByRequesterAsync(string requesterId, RequestStatus? status = null, RequestType? requestType = null)
         {
-            var query = _context.BaseRequests
-                .Where(r => r.RequesterId == requesterId);
-
-            if (status.HasValue)
-            {
-                query = query.Where(r => r.Status == status.Value);
-            }
-
-            if (requestType.HasValue)
-            {
-                query = query.Where(r => r.RequestType == requestType.Value);
-            }
-
-            var requests = await query
-                .Include(r => r.Department)
-                .Include(r => r.Requester)
-                    .ThenInclude(u => u.Rank)
-                .Include(r => r.RequestPurpose)
-                .Include(r => r.RequestItems)
-                    .ThenInclude(ri => ri.Item)
+            var requests = await _baseRequestRepository
+                .Find(
+                    r =>
+                        r.RequesterId == requesterId &&
+                        (!status.HasValue || r.Status == status.Value) &&
+                        (!requestType.HasValue || r.RequestType == requestType.Value),
+                    false,
+                    BaseRequestListIncludes)
                 .ToListAsync();
 
             var requestDtos = _mapper.Map<List<BaseRequestDto>>(requests);
@@ -156,25 +195,13 @@ namespace Ettad.RequestManagement.Service.Request
 
         public async Task<APIOperationResponse<List<BaseRequestDto>>> GetRequestsByStatusAndTypeAsync(RequestStatus? status, RequestType? requestType)
         {
-            var query = _context.BaseRequests.AsQueryable();
-
-            if (status.HasValue)
-            {
-                query = query.Where(r => r.Status == status.Value);
-            }
-
-            if (requestType.HasValue)
-            {
-                query = query.Where(r => r.RequestType == requestType.Value);
-            }
-
-            var requests = await query
-                .Include(r => r.Department)
-                .Include(r => r.Requester)
-                    .ThenInclude(u => u.Rank)
-                .Include(r => r.RequestPurpose)
-                .Include(r => r.RequestItems)
-                    .ThenInclude(ri => ri.Item)
+            var requests = await _baseRequestRepository
+                .Find(
+                    r =>
+                        (!status.HasValue || r.Status == status.Value) &&
+                        (!requestType.HasValue || r.RequestType == requestType.Value),
+                    false,
+                    BaseRequestListIncludes)
                 .ToListAsync();
 
             var requestDtos = _mapper.Map<List<BaseRequestDto>>(requests);
@@ -192,30 +219,18 @@ namespace Ettad.RequestManagement.Service.Request
             if (_currentUserService.IsSuperAdmin)
                 return await GetAllRequestsAsync(status, requestType);
 
-            var query = _context.BaseRequests.AsQueryable();
-
-            if (status.HasValue)
-            {
-                query = query.Where(r => r.Status == status.Value);
-            }
-
-            if (requestType.HasValue)
-            {
-                query = query.Where(r => r.RequestType == requestType.Value);
-            }
+            var query = _baseRequestRepository.Find(
+                r =>
+                    (!status.HasValue || r.Status == status.Value) &&
+                    (!requestType.HasValue || r.RequestType == requestType.Value),
+                false,
+                BaseRequestListIncludes);
 
             // Check if user has "Order Requester" role - if so, return ONLY their requests
             if (userRoles.Contains(WorkflowRoleNames.OrderRequester))
             {
-                query = query.Where(r => r.RequesterId == userId);
-                
                 var requesterRequests = await query
-                    .Include(r => r.Department)
-                    .Include(r => r.Requester)
-                        .ThenInclude(u => u.Rank)
-                    .Include(r => r.RequestPurpose)
-                    .Include(r => r.RequestItems)
-                        .ThenInclude(ri => ri.Item)
+                    .Where(r => r.RequesterId == userId)
                     .ToListAsync();
 
                 var requestDtos = _mapper.Map<List<BaseRequestDto>>(requesterRequests);
@@ -238,16 +253,10 @@ namespace Ettad.RequestManagement.Service.Request
             }
 
             var activeDelegatorIds = await _userDelegationService.GetActiveDelegatorsForUserAsync(userId, DelegationScope.WorkflowApproval);
-            var delegatorRoleNames = new List<string>();
-            if (activeDelegatorIds.Any())
-            {
-                delegatorRoleNames = await _context.Set<IdentityUserRole<string>>()
-                    .Where(ur => activeDelegatorIds.Contains(ur.UserId))
-                    .Join(_context.Roles, ur => ur.RoleId, r => r.Id, (ur, r) => r.Name)
-                    .ToListAsync();
-            }
+            var delegatorRoleNames = await GetDelegatorRoleNamesAsync(activeDelegatorIds);
 
-            query = query.Where(r => _context.WorkflowApprovalSteps.Any(was =>
+            var stepsQuery = WorkflowStepsWithNavigations();
+            query = query.Where(r => stepsQuery.Any(was =>
                 was.TargetRequestId == r.Id && (
                     (was.ApproverUserId == userId || activeDelegatorIds.Contains(was.ApproverUserId)) ||
                     (userRoles.Contains(was.WorkflowStep.ApplicationRole.Name) || delegatorRoleNames.Contains(was.WorkflowStep.ApplicationRole.Name)) ||
@@ -256,19 +265,12 @@ namespace Ettad.RequestManagement.Service.Request
                 )
             ));
 
-            var requests = await query
-                .Include(r => r.Department)
-                .Include(r => r.Requester)
-                    .ThenInclude(u => u.Rank)
-                .Include(r => r.RequestPurpose)
-                .Include(r => r.RequestItems)
-                    .ThenInclude(ri => ri.Item)
-                .ToListAsync();
+            var requests = await query.ToListAsync();
 
             // Fetch IsMyTurn status only for the requested IDs to optimize database traffic
             var fetchedRequestIds = requests.Select(r => r.Id).ToList();
 
-            var myTurnSet = (await _context.WorkflowApprovalSteps
+            var myTurnSet = (await WorkflowStepsWithNavigations()
                 .Where(was => was.IsCurrent && fetchedRequestIds.Contains(was.TargetRequestId) && (
                     (was.ApproverUserId == userId || activeDelegatorIds.Contains(was.ApproverUserId)) ||
                     (was.ApproverUserId == null && (
@@ -293,12 +295,12 @@ namespace Ettad.RequestManagement.Service.Request
 
         public async Task<APIOperationResponse<PaginatedList<BaseRequestDto>>> GetAllPaginatedAsync(PagedListRequest request)
         {
-            var query = _context.BaseRequests.AsQueryable();
+            var query = _baseRequestRepository.Find(_ => true, false, BaseRequestListIncludes);
             query = PrepareBaseQuery(query, request.Filter);
-            
+
             var paginatedRequests = await PaginatedList<BaseRequest>.CreateAsyncForTableBinding(query, request);
             var dtos = _mapper.Map<List<BaseRequestDto>>(paginatedRequests.Items);
-            
+
             var result = new PaginatedList<BaseRequestDto>(dtos, paginatedRequests.TotalCount, paginatedRequests.PageIndex, request.PageSize);
             return APIOperationResponse<PaginatedList<BaseRequestDto>>.Success(result);
         }
@@ -309,7 +311,7 @@ namespace Ettad.RequestManagement.Service.Request
             var userRoles = _currentUserService.Roles ?? new List<string>();
             var userDepartmentId = _currentUserService.DepartmentId;
 
-            IQueryable<BaseRequest> query = _context.BaseRequests.AsQueryable();
+            IQueryable<BaseRequest> query = _baseRequestRepository.Find(_ => true, false, BaseRequestListIncludes);
 
             // if current user is super admin return all
             if (!_currentUserService.IsSuperAdmin)
@@ -336,14 +338,7 @@ namespace Ettad.RequestManagement.Service.Request
                     }
 
                     var activeDelegatorIds = await _userDelegationService.GetActiveDelegatorsForUserAsync(userId, DelegationScope.WorkflowApproval);
-                    var delegatorRoleNames = new List<string>();
-                    if (activeDelegatorIds.Any())
-                    {
-                        delegatorRoleNames = await _context.Set<IdentityUserRole<string>>()
-                            .Where(ur => activeDelegatorIds.Contains(ur.UserId))
-                            .Join(_context.Roles, ur => ur.RoleId, r => r.Id, (ur, r) => r.Name)
-                            .ToListAsync();
-                    }
+                    var delegatorRoleNames = await GetDelegatorRoleNamesAsync(activeDelegatorIds);
 
                     bool filterByMyTurn = false;
                     if (request.Filter != null)
@@ -368,9 +363,10 @@ namespace Ettad.RequestManagement.Service.Request
                         }
                     }
 
+                    var stepsQuery = WorkflowStepsWithNavigations();
                     if (filterByMyTurn)
                     {
-                        query = query.Where(r => _context.WorkflowApprovalSteps.Any(was =>
+                        query = query.Where(r => stepsQuery.Any(was =>
                             was.TargetRequestId == r.Id && was.IsCurrent && (
                                 (was.ApproverUserId == userId || activeDelegatorIds.Contains(was.ApproverUserId)) ||
                                 (was.ApproverUserId == null && (
@@ -383,7 +379,7 @@ namespace Ettad.RequestManagement.Service.Request
                     }
                     else
                     {
-                        query = query.Where(r => _context.WorkflowApprovalSteps.Any(was =>
+                        query = query.Where(r => stepsQuery.Any(was =>
                             was.TargetRequestId == r.Id && (
                                 (was.ApproverUserId == userId || activeDelegatorIds.Contains(was.ApproverUserId)) ||
                                 (userRoles.Contains(was.WorkflowStep.ApplicationRole.Name) || delegatorRoleNames.Contains(was.WorkflowStep.ApplicationRole.Name)) ||
@@ -395,8 +391,13 @@ namespace Ettad.RequestManagement.Service.Request
                 }
             }
 
-            // Apply base query behavior (Includes, Search, and Sorting)
+            // Apply base query behavior (search and sorting)
             query = PrepareBaseQuery(query, request.Filter);
+
+            if (request.Filter != null)
+            {
+                query = ApplyUserActionsCompositeSort(query, request.Filter);
+            }
 
             var paginatedRequests = await PaginatedList<BaseRequest>.CreateAsyncForTableBinding(query, request);
             var dtos = _mapper.Map<List<BaseRequestDto>>(paginatedRequests.Items);
@@ -405,21 +406,14 @@ namespace Ettad.RequestManagement.Service.Request
             if (dtos.Any())
             {
                 var activeDelegatorIds = await _userDelegationService.GetActiveDelegatorsForUserAsync(userId, DelegationScope.WorkflowApproval);
-                var delegatorRoleNames = new List<string>();
-                if (activeDelegatorIds.Any())
-                {
-                    delegatorRoleNames = await _context.Set<IdentityUserRole<string>>()
-                        .Where(ur => activeDelegatorIds.Contains(ur.UserId))
-                        .Join(_context.Roles, ur => ur.RoleId, r => r.Id, (ur, r) => r.Name)
-                        .ToListAsync();
-                }
+                var delegatorRoleNames = await GetDelegatorRoleNamesAsync(activeDelegatorIds);
 
                 var fetchedRequestIds = dtos.Select(r => r.Id).ToList();
-                var myTurnSet = (await _context.WorkflowApprovalSteps
+                var myTurnSet = (await WorkflowStepsWithNavigations()
                     .Where(was => was.IsCurrent && fetchedRequestIds.Contains(was.TargetRequestId) && (
-                        (was.ApproverUserId == userId || activeDelegatorIds.Contains(was.ApproverUserId)) || 
+                        (was.ApproverUserId == userId || activeDelegatorIds.Contains(was.ApproverUserId)) ||
                         (was.ApproverUserId == null && (
-                            (userRoles.Contains(was.WorkflowStep.ApplicationRole.Name) || delegatorRoleNames.Contains(was.WorkflowStep.ApplicationRole.Name)) || 
+                            (userRoles.Contains(was.WorkflowStep.ApplicationRole.Name) || delegatorRoleNames.Contains(was.WorkflowStep.ApplicationRole.Name)) ||
                             (was.WorkflowStep.HigherApprovalRole != null && (userRoles.Contains(was.WorkflowStep.HigherApprovalRole.Name) || delegatorRoleNames.Contains(was.WorkflowStep.HigherApprovalRole.Name))) ||
                             was.WorkflowStep.ParallelRoles.Any(pr => userRoles.Contains(pr.Role.Name) || delegatorRoleNames.Contains(pr.Role.Name))
                         ))

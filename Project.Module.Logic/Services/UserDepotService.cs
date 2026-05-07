@@ -1,13 +1,13 @@
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
 using Ettad.Application.Common.Interfaces;
+using Ettad.Comman.Idenitity;
 using Ettad.Data.Entities;
-using Ettad.EntityFramework.DataBaseContext;
+using Ettad.Data.Interfaces.Repositories;
 using Ettad.Module.lookup.Dtos;
+using Ettad.Module.lookup.Interfaces;
 using Ettad.ResponseHandler.Consts;
 using Ettad.ResponseHandler.Models;
-using Ettad.Data.Interfaces.Repositories;
-using Ettad.Module.lookup.Interfaces;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace Ettad.Module.lookup.Services
 {
@@ -16,20 +16,23 @@ namespace Ettad.Module.lookup.Services
     /// </summary>
     public class UserDepotService : IUserDepotService
     {
-        private readonly ApplicationDbContext _context;
+        private readonly ICrossCuttingRepository<Depot> _depotRepository;
+        private readonly ICrossCuttingRepository<ApplicationUser> _userRepository;
         private readonly ICrossCuttingRepository<UserDepot> _userDepotRepository;
         private readonly ICurrentUserService _currentUserService;
         private readonly ILogger<UserDepotService> _logger;
         private readonly ITransactionManager _transactionManager;
 
         public UserDepotService(
-            ApplicationDbContext context,
+            ICrossCuttingRepository<Depot> depotRepository,
+            ICrossCuttingRepository<ApplicationUser> userRepository,
             ICrossCuttingRepository<UserDepot> userDepotRepository,
             ICurrentUserService currentUserService,
             ILogger<UserDepotService> logger,
             ITransactionManager transactionManager)
         {
-            _context = context;
+            _depotRepository = depotRepository;
+            _userRepository = userRepository;
             _userDepotRepository = userDepotRepository;
             _currentUserService = currentUserService;
             _logger = logger;
@@ -40,25 +43,22 @@ namespace Ettad.Module.lookup.Services
         {
             try
             {
-                var depotExists = await _context.Depots.AnyAsync(d => d.Id == depotId && !d.IsDeleted, cancellationToken);
+                var depotExists = await _depotRepository.Find(d => d.Id == depotId && !d.IsDeleted).AnyAsync(cancellationToken);
                 if (!depotExists)
                 {
                     _logger.LogWarning("Depot {DepotId} not found or deleted", depotId);
                     return APIOperationResponse<List<DepotUserDto>>.Fail(ResponseType.NotFound, "Depot not found.");
                 }
 
-                var userDepots = await _context.UserDepots
-                    .Where(ud => ud.DepotId == depotId)
-                    .Join(_context.Users,
-                        ud => ud.UserId,
-                        u => u.Id,
-                        (ud, u) => new DepotUserDto
-                        {
-                            Id = u.Id,
-                            UserName = u.UserName ?? "",
-                            FullNameEn = u.FullNameEN,
-                            FullNameAr = u.FullNameAR
-                        })
+                var userDepots = await _userDepotRepository
+                    .Find(ud => ud.DepotId == depotId, false, "User")
+                    .Select(ud => new DepotUserDto
+                    {
+                        Id = ud.User.Id,
+                        UserName = ud.User.UserName ?? "",
+                        FullNameEn = ud.User.FullNameEN,
+                        FullNameAr = ud.User.FullNameAR
+                    })
                     .ToListAsync(cancellationToken);
 
                 _logger.LogInformation("Retrieved {Count} users for depot {DepotId}", userDepots.Count, depotId);
@@ -78,7 +78,7 @@ namespace Ettad.Module.lookup.Services
         {
             try
             {
-                var depotExists = await _context.Depots.AnyAsync(d => d.Id == depotId && !d.IsDeleted, cancellationToken);
+                var depotExists = await _depotRepository.Find(d => d.Id == depotId && !d.IsDeleted).AnyAsync(cancellationToken);
                 if (!depotExists)
                 {
                     _logger.LogWarning("Depot {DepotId} not found or deleted", depotId);
@@ -88,8 +88,8 @@ namespace Ettad.Module.lookup.Services
                 var userIdList = userIds?.Where(id => !string.IsNullOrWhiteSpace(id)).Distinct().ToList() ?? new List<string>();
                 if (userIdList.Any())
                 {
-                    var validUserIds = await _context.Users
-                        .Where(u => userIdList.Contains(u.Id) && !u.IsDeleted)
+                    var validUserIds = await _userRepository
+                        .Find(u => userIdList.Contains(u.Id) && !u.IsDeleted)
                         .Select(u => u.Id)
                         .ToListAsync(cancellationToken);
 
@@ -104,15 +104,18 @@ namespace Ettad.Module.lookup.Services
                 await using var transaction = await _transactionManager.BeginAsync(cancellationToken);
                 try
                 {
-                    var existing = await _context.UserDepots.Where(ud => ud.DepotId == depotId).ToListAsync(cancellationToken);
-                    _context.UserDepots.RemoveRange(existing);
-
-                    foreach (var userId in userIdList)
+                    var existing = await _userDepotRepository.Find(ud => ud.DepotId == depotId).ToListAsync(cancellationToken);
+                    foreach (var row in existing)
                     {
-                        _context.UserDepots.Add(new UserDepot { UserId = userId, DepotId = depotId });
+                        await _userDepotRepository.DeleteAsync(row);
                     }
 
-                    await _context.SaveChangesAsync(cancellationToken);
+                    if (userIdList.Count > 0)
+                    {
+                        var toAdd = userIdList.Select(userId => new UserDepot { UserId = userId, DepotId = depotId }).ToList();
+                        await _userDepotRepository.AddRangeAsync(toAdd);
+                    }
+
                     await _transactionManager.CommitAsync(cancellationToken);
 
                     _logger.LogInformation("User {UserName} updated depot {DepotId} assignments. Assigned {Count} users.",
