@@ -95,7 +95,9 @@ namespace Ettad.EntityFramework.DataBaseContext
         public DbSet<HelpCenterTermsConditions> HelpCenterTermsConditions { get; set; }
         public DbSet<HelpCenterContactDisplaySettings> HelpCenterContactDisplaySettings { get; set; }
         public DbSet<WeaponSupplySelection> WeaponSupplySelections { get; set; }
-       
+
+        public DbSet<AssetBulkDeletionJob> AssetBulkDeletionJobs { get; set; }
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             modelBuilder.ApplyConfigurationsFromAssembly(typeof(ApplicationDbContext).Assembly);
