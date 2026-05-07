@@ -11,11 +11,11 @@ using System.Threading.Tasks;
 
 namespace Ettad.Data.Entities.Workflows
 {
-    public class WorkflowApprovalStep: AuditEntity<int>    
+    public class WorkflowApprovalStep: AuditEntity<long>    
     {
         [Required]
         [ForeignKey("WorkflowStep")]
-        public int WorkflowStepId { get; set; }
+        public long WorkflowStepId { get; set; }
 
         [Required]
         public long TargetRequestId { get; set; }
@@ -45,7 +45,7 @@ namespace Ettad.Data.Entities.Workflows
         public DateTime? ExpirationWarningSentAt { get; set; }
 
         // When a step is returned for review, this tracks which step to return to after approval
-        public int? ReturnToStepId { get; set; }
+        public long? ReturnToStepId { get; set; }
 
         // Navigation properties
         public virtual WorkflowStep WorkflowStep { get; set; }

@@ -3062,11 +3062,11 @@ namespace Ettad.EntityFramework.Migrations
                     b.Property<long?>("SupplyId")
                         .HasColumnType("bigint");
 
-                    b.Property<int?>("WorkflowApprovalStepId")
-                        .HasColumnType("int");
+                    b.Property<long?>("WorkflowApprovalStepId")
+                        .HasColumnType("bigint");
 
-                    b.Property<int?>("WorkflowStepId")
-                        .HasColumnType("int");
+                    b.Property<long?>("WorkflowStepId")
+                        .HasColumnType("bigint");
 
                     b.HasKey("Id");
 
@@ -4867,11 +4867,11 @@ namespace Ettad.EntityFramework.Migrations
 
             modelBuilder.Entity("Ettad.Data.Entities.Workflows.Workflow", b =>
                 {
-                    b.Property<int>("Id")
+                    b.Property<long>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
+                        .HasColumnType("bigint");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
 
                     b.Property<string>("CreatedBy")
                         .HasColumnType("nvarchar(max)");
@@ -4915,11 +4915,11 @@ namespace Ettad.EntityFramework.Migrations
 
             modelBuilder.Entity("Ettad.Data.Entities.Workflows.WorkflowApprovalStep", b =>
                 {
-                    b.Property<int>("Id")
+                    b.Property<long>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
+                        .HasColumnType("bigint");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
 
                     b.Property<DateTime?>("ApprovedDate")
                         .HasColumnType("datetime2");
@@ -4962,8 +4962,8 @@ namespace Ettad.EntityFramework.Migrations
                     b.Property<int>("RequestType")
                         .HasColumnType("int");
 
-                    b.Property<int?>("ReturnToStepId")
-                        .HasColumnType("int");
+                    b.Property<long?>("ReturnToStepId")
+                        .HasColumnType("bigint");
 
                     b.Property<int>("Status")
                         .HasColumnType("int");
@@ -4971,8 +4971,8 @@ namespace Ettad.EntityFramework.Migrations
                     b.Property<long>("TargetRequestId")
                         .HasColumnType("bigint");
 
-                    b.Property<int>("WorkflowStepId")
-                        .HasColumnType("int");
+                    b.Property<long>("WorkflowStepId")
+                        .HasColumnType("bigint");
 
                     b.HasKey("Id");
 
@@ -4985,11 +4985,11 @@ namespace Ettad.EntityFramework.Migrations
 
             modelBuilder.Entity("Ettad.Data.Entities.Workflows.WorkflowApprovalStepReminder", b =>
                 {
-                    b.Property<int>("Id")
+                    b.Property<long>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
+                        .HasColumnType("bigint");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
 
                     b.Property<string>("CreatedBy")
                         .HasColumnType("nvarchar(max)");
@@ -5009,8 +5009,8 @@ namespace Ettad.EntityFramework.Migrations
                     b.Property<DateTime>("SentAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<int>("WorkflowApprovalStepId")
-                        .HasColumnType("int");
+                    b.Property<long>("WorkflowApprovalStepId")
+                        .HasColumnType("bigint");
 
                     b.HasKey("Id");
 
@@ -5022,11 +5022,11 @@ namespace Ettad.EntityFramework.Migrations
 
             modelBuilder.Entity("Ettad.Data.Entities.Workflows.WorkflowStep", b =>
                 {
-                    b.Property<int>("Id")
+                    b.Property<long>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
+                        .HasColumnType("bigint");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
 
                     b.Property<long>("ApplicationEntityId")
                         .HasColumnType("bigint");
@@ -5077,8 +5077,8 @@ namespace Ettad.EntityFramework.Migrations
                     b.Property<int>("StepOrder")
                         .HasColumnType("int");
 
-                    b.Property<int>("WorkflowId")
-                        .HasColumnType("int");
+                    b.Property<long>("WorkflowId")
+                        .HasColumnType("bigint");
 
                     b.HasKey("Id");
 
@@ -5095,11 +5095,11 @@ namespace Ettad.EntityFramework.Migrations
 
             modelBuilder.Entity("Ettad.Data.Entities.Workflows.WorkflowStepApprovalLog", b =>
                 {
-                    b.Property<int>("Id")
+                    b.Property<long>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
+                        .HasColumnType("bigint");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
 
                     b.Property<DateTime>("ChangedAt")
                         .ValueGeneratedOnAdd()
@@ -5135,11 +5135,11 @@ namespace Ettad.EntityFramework.Migrations
                     b.Property<int>("OldRequestStatus")
                         .HasColumnType("int");
 
-                    b.Property<int>("WorkflowApprovalStepId")
-                        .HasColumnType("int");
+                    b.Property<long>("WorkflowApprovalStepId")
+                        .HasColumnType("bigint");
 
-                    b.Property<int?>("WorkflowStepId")
-                        .HasColumnType("int");
+                    b.Property<long?>("WorkflowStepId")
+                        .HasColumnType("bigint");
 
                     b.HasKey("Id");
 
@@ -5150,11 +5150,11 @@ namespace Ettad.EntityFramework.Migrations
 
             modelBuilder.Entity("Ettad.Data.Entities.Workflows.WorkflowStepNotifier", b =>
                 {
-                    b.Property<int>("Id")
+                    b.Property<long>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
+                        .HasColumnType("bigint");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
 
                     b.Property<string>("CreatedBy")
                         .HasColumnType("nvarchar(max)");
@@ -5174,8 +5174,8 @@ namespace Ettad.EntityFramework.Migrations
                     b.Property<string>("UserId")
                         .HasColumnType("nvarchar(450)");
 
-                    b.Property<int>("WorkflowStepId")
-                        .HasColumnType("int");
+                    b.Property<long>("WorkflowStepId")
+                        .HasColumnType("bigint");
 
                     b.HasKey("Id");
 
@@ -5190,11 +5190,11 @@ namespace Ettad.EntityFramework.Migrations
 
             modelBuilder.Entity("Ettad.Data.Entities.Workflows.WorkflowStepParallelRole", b =>
                 {
-                    b.Property<int>("Id")
+                    b.Property<long>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
+                        .HasColumnType("bigint");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
 
                     b.Property<string>("CreatedBy")
                         .HasColumnType("nvarchar(max)");
@@ -5212,8 +5212,8 @@ namespace Ettad.EntityFramework.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(450)");
 
-                    b.Property<int>("WorkflowStepId")
-                        .HasColumnType("int");
+                    b.Property<long>("WorkflowStepId")
+                        .HasColumnType("bigint");
 
                     b.HasKey("Id");
 
@@ -5229,11 +5229,11 @@ namespace Ettad.EntityFramework.Migrations
 
             modelBuilder.Entity("Ettad.Data.Entities.Workflows.WorkflowStepTransition", b =>
                 {
-                    b.Property<int>("Id")
+                    b.Property<long>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
+                        .HasColumnType("bigint");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
 
                     b.Property<string>("CreatedBy")
                         .HasColumnType("nvarchar(max)");
@@ -5247,11 +5247,11 @@ namespace Ettad.EntityFramework.Migrations
                     b.Property<string>("ModifiedBy")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<int>("SourceWorkflowStepId")
-                        .HasColumnType("int");
+                    b.Property<long>("SourceWorkflowStepId")
+                        .HasColumnType("bigint");
 
-                    b.Property<int>("TargetWorkflowStepId")
-                        .HasColumnType("int");
+                    b.Property<long>("TargetWorkflowStepId")
+                        .HasColumnType("bigint");
 
                     b.HasKey("Id");
 

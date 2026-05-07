@@ -12,12 +12,12 @@ using System.Threading.Tasks;
 using Ettad.ResponseHandler.Consts;
 using Ettad.CrossCutting.Comman.Time;
 
-namespace Ettad.Workflows.Service.Command.ManageTransitions
+namespace Ettad.Workflows.Service.Commands.ManageTransitions
 {
     public class SetWorkflowStepTransitionsCommand : IRequest<APIOperationResponse<bool>>
     {
-        public int SourceStepId { get; set; }
-        public List<int> TargetStepIds { get; set; } = new List<int>();
+        public long SourceStepId { get; set; }
+        public List<long> TargetStepIds { get; set; } = new List<long>();
     }
 
     public class SetWorkflowStepTransitionsCommandHandler : IRequestHandler<SetWorkflowStepTransitionsCommand, APIOperationResponse<bool>>
@@ -38,7 +38,7 @@ namespace Ettad.Workflows.Service.Command.ManageTransitions
             // Allow empty list to remove all transitions
             if (request.TargetStepIds == null)
             {
-                request.TargetStepIds = new List<int>();
+                request.TargetStepIds = new List<long>();
             }
 
             // Get source step

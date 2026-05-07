@@ -5,8 +5,8 @@ namespace Ettad.Workflows.Service.Dtos
     /// </summary>
     public class WorkflowStepNotifierDto
     {
-        public int Id { get; set; }
-        public int WorkflowStepId { get; set; }
+        public long Id { get; set; }
+        public long WorkflowStepId { get; set; }
         public string? UserId { get; set; }
         public string? RoleId { get; set; }
         
@@ -23,7 +23,7 @@ namespace Ettad.Workflows.Service.Dtos
     /// </summary>
     public class UpdateWorkflowStepNotifiersDto
     {
-        public int WorkflowStepId { get; set; }
+        public long WorkflowStepId { get; set; }
         public List<string>? UserIds { get; set; }
         public List<string>? RoleIds { get; set; }
     }
@@ -33,7 +33,7 @@ namespace Ettad.Workflows.Service.Dtos
     /// </summary>
     public class CreateWorkflowStepNotifierDto
     {
-        public int WorkflowStepId { get; set; }
+        public long WorkflowStepId { get; set; }
         public List<string>? UserIds { get; set; }
         public List<string>? RoleIds { get; set; }
     }

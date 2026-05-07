@@ -13,7 +13,7 @@ namespace Ettad.Workflow.Service.Interface
         /// <summary>
         /// Get all notifiers for a specific workflow step
         /// </summary>
-        Task<APIOperationResponse<List<WorkflowStepNotifierDto>>> GetNotifiersByStepIdAsync(int workflowStepId);
+        Task<APIOperationResponse<List<WorkflowStepNotifierDto>>> GetNotifiersByStepIdAsync(long workflowStepId);
 
         /// <summary>
         /// Update notifiers for a workflow step (replaces existing notifiers)
@@ -28,12 +28,12 @@ namespace Ettad.Workflow.Service.Interface
         /// <summary>
         /// Remove a notifier from a workflow step
         /// </summary>
-        Task<APIOperationResponse<bool>> RemoveNotifierAsync(int notifierId);
+        Task<APIOperationResponse<bool>> RemoveNotifierAsync(long notifierId);
 
         /// <summary>
         /// Get all user IDs and role IDs that should be notified for a workflow step
         /// </summary>
-        Task<APIOperationResponse<(List<string> UserIds, List<string> RoleIds)>> GetNotifierIdsByStepIdAsync(int workflowStepId);
+        Task<APIOperationResponse<(List<string> UserIds, List<string> RoleIds)>> GetNotifierIdsByStepIdAsync(long workflowStepId);
     }
 }
 

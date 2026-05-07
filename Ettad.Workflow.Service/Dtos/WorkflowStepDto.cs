@@ -10,9 +10,9 @@ namespace Ettad.Workflows.Service.Dtos
 {
     public class WorkflowStepDto
     {
-        public int Id { get; set; }
+        public long Id { get; set; }
 
-        public int WorkflowId { get; set; }
+        public long WorkflowId { get; set; }
 
         public int StepOrder { get; set; }
 
@@ -44,8 +44,8 @@ namespace Ettad.Workflows.Service.Dtos
 
     public class WorkflowStepParallelRoleDto
     {
-        public int Id { get; set; }
-        public int WorkflowStepId { get; set; }
+        public long Id { get; set; }
+        public long WorkflowStepId { get; set; }
         public string RoleId { get; set; } = null!;
         public string? RoleName { get; set; }
         public string? RoleNameAr { get; set; }
@@ -53,9 +53,9 @@ namespace Ettad.Workflows.Service.Dtos
 
     public class WorkflowStepTransitionDto
     {
-        public int Id { get; set; }
-        public int SourceWorkflowStepId { get; set; }
-        public int TargetWorkflowStepId { get; set; }
+        public long Id { get; set; }
+        public long SourceWorkflowStepId { get; set; }
+        public long TargetWorkflowStepId { get; set; }
         
         // Target step details
         public TargetStepDetailsDto TargetStep { get; set; }
@@ -63,8 +63,8 @@ namespace Ettad.Workflows.Service.Dtos
 
     public class TargetStepDetailsDto
     {
-        public int Id { get; set; }
-        public int WorkflowId { get; set; }
+        public long Id { get; set; }
+        public long WorkflowId { get; set; }
         public int StepOrder { get; set; }
         
         // Role information
@@ -84,9 +84,9 @@ namespace Ettad.Workflows.Service.Dtos
 
     public class WorkflowStepCreateDto
     {
-        public int Id { get; set; }
+        public long Id { get; set; }
 
-        public int WorkflowId { get; set; }
+        public long WorkflowId { get; set; }
 
         public int StepOrder { get; set; }
 

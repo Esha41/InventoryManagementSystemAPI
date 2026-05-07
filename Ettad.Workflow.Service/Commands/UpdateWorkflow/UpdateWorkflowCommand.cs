@@ -15,11 +15,11 @@ using System.Threading.Tasks;
 using Ettad.CrossCutting.Comman.Time;
 using Ettad.Workflows.Service.Dtos;
 
-namespace Ettad.Workflows.Service.Command.UpdateWorkflow
+namespace Ettad.Workflows.Service.Commands.UpdateWorkflow
 {
     public class UpdateWorkflowCommand : IRequest<APIOperationResponse<WorkflowDto>>
     {
-        public int Id { get; set; }
+        public long Id { get; set; }
         public string WorkflowName { get; set; }
         public WorkflowType WorkflowType { get; set; }      
         public bool IsActive { get; set; } = true;
@@ -132,7 +132,7 @@ namespace Ettad.Workflows.Service.Command.UpdateWorkflow
  
 
         // Update workflow steps
-        private async Task UpdateWorkflowSteps(Ettad.Data.Entities.Workflows.Workflow workflow, List<WorkflowStepCreateDto> incomingSteps, CancellationToken cancellationToken)
+        private async Task UpdateWorkflowSteps(Data.Entities.Workflows.Workflow workflow, List<WorkflowStepCreateDto> incomingSteps, CancellationToken cancellationToken)
         {
             var existingSteps = workflow.WorkflowSteps.ToList();
 

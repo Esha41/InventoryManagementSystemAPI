@@ -11,7 +11,8 @@ using Ettad.ResponseHandler.Consts;
 using Ettad.ResponseHandler.Models;
 using Ettad.CrossCutting.Comman.Time;
 using Ettad.CrossCutting.Comman.FileUpload;
-using Ettad.Workflows.Service.Interface;
+using Ettad.Workflows.Service.Commands.WorkflowApproval.ProcessWorkflowAction;
+using Ettad.Workflows.Service.Queries.WorkflowApproval.GetCurrentApprovalStepByRequestId;
 using Ettad.Workflows.Service.Dtos;
 using Ettad.Inventory.Service.Batches.Dtos;
 using Ettad.Inventory.Service.Assets.Dtos;
@@ -20,6 +21,7 @@ using Ettad.Data.Interfaces.Services;
 using Ettad.Data.Interfaces.Repositories;
 using Ettad.Inventory.Service.AssetHistory.Interfaces;
 using Ettad.Inventory.Service.AssetSupply.Interfaces;
+using MediatR;
 
 using AssetSupplyEntity = Ettad.Data.Entities.AssetSupply;
 
@@ -73,9 +75,9 @@ namespace Ettad.Inventory.Service.AssetSupply.Services
         private readonly ILogger<AssetSupplyService> _logger;
         private readonly IDateTimeProvider _dateTimeProvider;
         private readonly IOrderItemTrackingService _orderItemTrackingService;
-        private readonly IWorkflowApprovalService _workflowApprovalService;
         private readonly IFileUploadService _fileUploadService;
         private readonly ITransactionManager _transactionManager;
+        private readonly IMediator _mediator;
 
         public AssetSupplyService(
             ICrossCuttingRepository<Data.Entities.AssetSupply> assetSupplyRepository,
@@ -95,9 +97,9 @@ namespace Ettad.Inventory.Service.AssetSupply.Services
             ILogger<AssetSupplyService> logger,
             IDateTimeProvider dateTimeProvider,
             IOrderItemTrackingService orderItemTrackingService,
-            IWorkflowApprovalService workflowApprovalService,
             IFileUploadService fileUploadService,
-            ITransactionManager transactionManager)
+            ITransactionManager transactionManager,
+            IMediator mediator)
         {
             _assetSupplyRepository = assetSupplyRepository;
             _assetSupplyDetailRepository = assetSupplyDetailRepository;
@@ -116,9 +118,9 @@ namespace Ettad.Inventory.Service.AssetSupply.Services
             _logger = logger;
             _dateTimeProvider = dateTimeProvider;
             _orderItemTrackingService = orderItemTrackingService;
-            _workflowApprovalService = workflowApprovalService;
             _fileUploadService = fileUploadService;
             _transactionManager = transactionManager;
+            _mediator = mediator;
         }
 
         public async Task<APIOperationResponse<List<BatchForOrderDepotDto>>> GetBatchesForOrderDepotsAsync(long orderId, List<long> depotIds)
@@ -532,7 +534,7 @@ namespace Ettad.Inventory.Service.AssetSupply.Services
                     .Where(ri => !ri.IsDeleted).ToList() ?? new List<RequestItem>();
 
                 // Pre-validate that the workflow step can be approved (actual approval deferred until after supply creation)
-                var currentWorkflowStep = await _workflowApprovalService.GetCurrentApprovalStepByRequestIdAsync(orderId);
+                var currentWorkflowStep = await _mediator.Send(new GetCurrentApprovalStepByRequestIdQuery(orderId));
                 if (currentWorkflowStep == null)
                 {
                     return APIOperationResponse<long>.Fail(ResponseType.BadRequest,
@@ -811,7 +813,7 @@ namespace Ettad.Inventory.Service.AssetSupply.Services
                         Comments = dto.Notes,
                         SendToHigherApproval = false
                     };
-                    var approveResult = await _workflowApprovalService.ProcessActionAsync(approveDto);
+                    var approveResult = await _mediator.Send(new ProcessWorkflowActionCommand(approveDto, null));
                     if (!approveResult.Succeeded)
                     {
                         await _transactionManager.RollbackAsync();

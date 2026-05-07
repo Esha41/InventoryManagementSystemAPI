@@ -11,12 +11,14 @@ using Ettad.Application.Common.Interfaces;
 using Microsoft.AspNetCore.Identity;
 using Ettad.Comman.Idenitity;
 using Microsoft.Extensions.Logging;
-using Ettad.Workflows.Service.Interface;
-using Microsoft.AspNetCore.Http;
 using Ettad.CrossCutting.Comman.FileUpload;
 using Ettad.CrossCutting.Comman.Time;
 using Ettad.Data.Interfaces.Repositories;
 using Ettad.Notification.Service.Interfaces;
+using Ettad.Workflow.Service.Interface;
+using Ettad.Workflows.Service.Commands.WorkflowApproval.StartWorkflow;
+using MediatR;
+using Microsoft.AspNetCore.Http;
 
 namespace Ettad.RequestManagement.Service.Discards
 {
@@ -25,7 +27,6 @@ namespace Ettad.RequestManagement.Service.Discards
         private readonly ICrossCuttingRepository<Discard> _discardRepository;
         private readonly ICrossCuttingRepository<RequestItem> _requestItemRepository;
         private readonly ICrossCuttingRepository<RequestPurpose> _requestPurposeRepository;
-        private readonly IWorkflowApprovalService _workflowApprovalService;
         private readonly IMapper _mapper;
         private readonly IValidator<CreateDiscardDto> _createValidator;
         private readonly ICurrentUserService _currentUserService;
@@ -36,12 +37,14 @@ namespace Ettad.RequestManagement.Service.Discards
         private readonly IFileUploadService _fileUploadService;
         private readonly ICrossCuttingRepository<FileUplodDetails> _fileDetailsRepository;
         private readonly IDateTimeProvider _dateTimeProvider;
+        private readonly IMediator _mediator;
+        private readonly ITransactionManager _transactionManager;
+        private readonly IWorkflowStartNotificationService _workflowStartNotificationService;
 
         public DiscardService(
             ICrossCuttingRepository<Discard> discardRepository,
             ICrossCuttingRepository<RequestItem> requestItemRepository,
             ICrossCuttingRepository<RequestPurpose> requestPurposeRepository,
-            IWorkflowApprovalService workflowApprovalService,
             IMapper mapper,
             IValidator<CreateDiscardDto> createValidator,
             ICurrentUserService currentUserService,
@@ -51,12 +54,14 @@ namespace Ettad.RequestManagement.Service.Discards
             ILogger<DiscardService> logger,
             IFileUploadService fileUploadService,
             ICrossCuttingRepository<FileUplodDetails> fileDetailsRepository,
-            IDateTimeProvider dateTimeProvider)
+            IDateTimeProvider dateTimeProvider,
+            IMediator mediator,
+            ITransactionManager transactionManager,
+            IWorkflowStartNotificationService workflowStartNotificationService)
         {
             _discardRepository = discardRepository;
             _requestItemRepository = requestItemRepository;
             _requestPurposeRepository = requestPurposeRepository;
-            _workflowApprovalService = workflowApprovalService;
             _mapper = mapper;
             _createValidator = createValidator;
             _currentUserService = currentUserService;
@@ -67,6 +72,9 @@ namespace Ettad.RequestManagement.Service.Discards
             _fileUploadService = fileUploadService;
             _fileDetailsRepository = fileDetailsRepository;
             _dateTimeProvider = dateTimeProvider;
+            _mediator = mediator;
+            _transactionManager = transactionManager;
+            _workflowStartNotificationService = workflowStartNotificationService;
         }
 
         public async Task<APIOperationResponse<DiscardDto>> GetByIdAsync(long id)
@@ -179,69 +187,63 @@ namespace Ettad.RequestManagement.Service.Discards
                     return APIOperationResponse<long>.Fail(ResponseType.BadRequest, "Request purpose must be of type Discard");
                 }
 
-                // Step 1: Save files first (before creating discard) to create FileUplodMaster records
-                // When files are selected: if file upload fails or throws an exception, do not create the discard.
-                List<long> savedFileMasterIds = null;
-                if (files != null && files.Count > 0)
+                await _transactionManager.BeginAsync();
+
+                Discard createdDiscard;
+                try
                 {
-                    try
+                    // Save files inside the same DB transaction as discard + workflow so FileUplodMaster rows roll back on failure.
+                    List<long> savedFileMasterIds = null;
+                    if (files != null && files.Count > 0)
                     {
                         // Use FileEntityType.Order for discard files (no Discard FileEntityType exists)
                         var saveFilesResult = await _fileUploadService.SaveFilesAsync(files, FileEntityType.Order);
                         if (!saveFilesResult.Succeeded || saveFilesResult.Data == null)
                         {
-                            _logger.LogWarning("Failed to save files before creating discard. Error: {Error}, User: {UserId}",
+                            await _transactionManager.RollbackAsync();
+                            _logger.LogWarning("Failed to save files during discard creation. Error: {Error}, User: {UserId}",
                                 saveFilesResult.Message ?? "Unknown error", currentUserId);
                             return APIOperationResponse<long>.Fail(ResponseType.BadRequest,
                                 saveFilesResult.Message ?? "File upload failed. Discard was not created.");
                         }
+
                         savedFileMasterIds = saveFilesResult.Data;
-                        _logger.LogInformation("Files saved successfully before discard creation. FileCount: {FileCount}, MasterIds: {MasterIds}, User: {UserId}",
+                        _logger.LogInformation("Files saved during discard transaction. FileCount: {FileCount}, MasterIds: {MasterIds}, User: {UserId}",
                             files.Count, string.Join(", ", savedFileMasterIds), currentUserId);
                     }
-                    catch (Exception ex)
-                    {
-                        _logger.LogError(ex, "Exception during file upload before discard creation. User: {UserId}", currentUserId);
-                        return APIOperationResponse<long>.Fail(ResponseType.BadRequest,
-                            $"File upload failed: {ex.Message}. Discard was not created.");
-                    }
-                }
 
-                // Step 2: Map DTO to entity
-                var discard = _mapper.Map<Discard>(inputDto);
-                discard.DepartmentId = departmentId.Value;
-                
-                // Generate RequestNo
-                discard.RequestNo = await _requestNoGeneratorService.GenerateRequestNoAsync(RequestType.Discard, departmentId.Value);
-                
-                _logger.LogInformation("Generated RequestNo: {RequestNo} for discard", discard.RequestNo);
-                
-                discard.RequestType = RequestType.Discard;
-                discard.Status = RequestStatus.New; // Always set to New when creating
-                discard.CreationDate = _dateTimeProvider.Now;
-                discard.CreatedBy = currentUserId;
-                discard.RequesterId = currentUserId;
+                    // Map DTO to entity
+                    var discard = _mapper.Map<Discard>(inputDto);
+                    discard.DepartmentId = departmentId.Value;
 
-                // Map discard items
-                discard.RequestItems = inputDto.DiscardItems
-                    .Select(item =>
-                    {
-                        var requestItem = _mapper.Map<RequestItem>(item);
-                        return requestItem;
-                    })
-                    .ToList();
+                    // Generate RequestNo
+                    discard.RequestNo = await _requestNoGeneratorService.GenerateRequestNoAsync(RequestType.Discard, departmentId.Value);
 
-                _logger.LogInformation("Adding {ItemCount} discard items to discard. RequestNo: {RequestNo}", 
-                    discard.RequestItems.Count, discard.RequestNo);
+                    _logger.LogInformation("Generated RequestNo: {RequestNo} for discard", discard.RequestNo);
 
-                // Step 3: Add to repository
-                var createdDiscard = await _discardRepository.AddAsync(discard);
+                    discard.RequestType = RequestType.Discard;
+                    discard.Status = RequestStatus.New; // Always set to New when creating
+                    discard.CreationDate = _dateTimeProvider.Now;
+                    discard.CreatedBy = currentUserId;
+                    discard.RequesterId = currentUserId;
 
-                // Step 4: Link files to the discard (create FileUplodDetails records) if files were saved
-                // When files were selected: if linking fails, delete the discard and do not succeed.
-                if (savedFileMasterIds != null && savedFileMasterIds.Count > 0)
-                {
-                    try
+                    // Map discard items
+                    discard.RequestItems = inputDto.DiscardItems
+                        .Select(item =>
+                        {
+                            var requestItem = _mapper.Map<RequestItem>(item);
+                            return requestItem;
+                        })
+                        .ToList();
+
+                    _logger.LogInformation("Adding {ItemCount} discard items to discard. RequestNo: {RequestNo}",
+                        discard.RequestItems.Count, discard.RequestNo);
+
+                    // Step 3: Add to repository
+                    createdDiscard = await _discardRepository.AddAsync(discard);
+
+                    // Step 4: Link files to the discard (create FileUplodDetails records) if files were saved
+                    if (savedFileMasterIds != null && savedFileMasterIds.Count > 0)
                     {
                         foreach (var masterId in savedFileMasterIds)
                         {
@@ -258,45 +260,60 @@ namespace Ettad.RequestManagement.Service.Discards
                         _logger.LogInformation("Files linked successfully to discard. DiscardId: {DiscardId}, FileCount: {FileCount}, User: {UserId}",
                             createdDiscard.Id, savedFileMasterIds.Count, currentUserId);
                     }
-                    catch (Exception ex)
+
+                    var startResult = await _mediator.Send(
+                        new StartWorkflowCommand(createdDiscard.Id, WorkflowType.Discard));
+                    var workflowStarted = startResult.Succeeded && startResult.Data?.Started == true;
+
+                    if (!workflowStarted)
                     {
-                        _logger.LogError(ex, "Exception occurred while linking files to discard. DiscardId: {DiscardId}, User: {UserId}. Rolling back discard creation.",
-                            createdDiscard.Id, currentUserId);
-                        await _discardRepository.DeleteAsync(createdDiscard);
+                        await _transactionManager.RollbackAsync();
+                        if (!startResult.Succeeded)
+                        {
+                            _logger.LogWarning("Error starting workflow for discard; transaction rolled back. User: {UserId}, Message: {Message}",
+                                currentUserId, startResult.Message);
+                            return APIOperationResponse<long>.Fail((ResponseType)startResult.StatusCode,
+                                startResult.Message ?? "An error occurred while starting the approval workflow.");
+                        }
+
+                        _logger.LogWarning("Failed to start workflow for discard; transaction rolled back. User: {UserId}",
+                            currentUserId);
                         return APIOperationResponse<long>.Fail(ResponseType.BadRequest,
-                            $"File upload failed: {ex.Message}. Discard was not created.");
+                            "Discard could not be created because the approval workflow could not be started.");
                     }
-                }
 
-                // Start workflow for the discard
-                var workflowStarted = await _workflowApprovalService.StartWorkflowAsync(
-                    createdDiscard.Id,
-                    WorkflowType.Discard);
+                    await _transactionManager.CommitAsync();
 
-                if (workflowStarted)
-                {
+                    if (startResult.Data!.NotificationWorkflowStepId is long stepId)
+                        await _workflowStartNotificationService.SendAsync(createdDiscard.Id, stepId);
+
                     _logger.LogInformation("Workflow started successfully for discard. DiscardId: {DiscardId}, User: {UserId}",
                         createdDiscard.Id, currentUserId);
+
+                    await NotifyDiscardAsync(
+                        "Discard Created",
+                        $"Discard request {createdDiscard.RequestNo} has been created.",
+                        createdDiscard.Id);
+
+                    _logger.LogInformation("Discard created successfully. DiscardId: {DiscardId}, RequestNo: {RequestNo}, ItemCount: {ItemCount}, User: {UserId}",
+                        createdDiscard.Id, createdDiscard.RequestNo, createdDiscard.RequestItems?.Count ?? 0, currentUserId);
+
+                    return APIOperationResponse<long>.Success(createdDiscard.Id, "Discard created successfully");
                 }
-                else
+                catch (Exception ex) when (ex is not OperationCanceledException)
                 {
-                    _logger.LogWarning("Failed to start workflow for discard. DiscardId: {DiscardId}, User: {UserId}",
-                        createdDiscard.Id, currentUserId);
+                    await _transactionManager.RollbackAsync();
+                    _logger.LogError(ex, "Exception during discard creation transaction. User: {UserId}", currentUserId);
+                    return APIOperationResponse<long>.Fail(ResponseType.BadRequest,
+                        $"Discard was not created: {ex.Message}");
                 }
-
-                await NotifyDiscardAsync(
-                    "Discard Created",
-                    $"Discard request {createdDiscard.RequestNo} has been created.",
-                    createdDiscard.Id);
-
-                _logger.LogInformation("Discard created successfully. DiscardId: {DiscardId}, RequestNo: {RequestNo}, ItemCount: {ItemCount}, User: {UserId}", 
-                    createdDiscard.Id, createdDiscard.RequestNo, createdDiscard.RequestItems?.Count ?? 0, currentUserId);
-                
-                return APIOperationResponse<long>.Success(createdDiscard.Id, "Discard created successfully");
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error creating discard. DepartmentId: {DepartmentId}, User: {UserId}", 
+                if (_transactionManager.HasActiveTransaction)
+                    await _transactionManager.RollbackAsync();
+
+                _logger.LogError(ex, "Error creating discard. DepartmentId: {DepartmentId}, User: {UserId}",
                     departmentId.Value, currentUserId);
                 return APIOperationResponse<long>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
             }

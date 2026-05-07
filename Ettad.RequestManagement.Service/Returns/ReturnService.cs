@@ -12,12 +12,16 @@ using Ettad.Application.Common.Interfaces;
 using Microsoft.AspNetCore.Identity;
 using Ettad.Comman.Idenitity;
 using Microsoft.Extensions.Logging;
-using Ettad.Workflows.Service.Interface;
+using Ettad.Workflows.Service.Commands.WorkflowApproval.ProcessWorkflowAction;
+using Ettad.Workflows.Service.Commands.WorkflowApproval.StartWorkflow;
+using Ettad.Workflows.Service.Queries.WorkflowApproval.GetCurrentApprovalStepByRequestId;
 using Ettad.Workflows.Service.Dtos;
 using Microsoft.AspNetCore.Http;
 using Ettad.CrossCutting.Comman.Time;
 using Ettad.Data.Interfaces.Repositories;
 using Ettad.Notification.Service.Interfaces;
+using Ettad.Workflow.Service.Interface;
+using MediatR;
 
 namespace Ettad.RequestManagement.Service.Returns
 {
@@ -26,7 +30,6 @@ namespace Ettad.RequestManagement.Service.Returns
         private readonly ICrossCuttingRepository<Return> _returnRepository;
         private readonly ICrossCuttingRepository<RequestItem> _requestItemRepository;
         private readonly ICrossCuttingRepository<RequestPurpose> _requestPurposeRepository;
-        private readonly IWorkflowApprovalService _workflowApprovalService;
         private readonly IMapper _mapper;
         private readonly IValidator<CreateReturnDto> _createValidator;
         private readonly ICurrentUserService _currentUserService;
@@ -44,12 +47,14 @@ namespace Ettad.RequestManagement.Service.Returns
         private readonly ICrossCuttingRepository<Depot> _depotRepository;
         private readonly ICrossCuttingRepository<BaseItem> _baseItemRepository;
         private readonly ICrossCuttingRepository<ReturnTrackingLine> _returnTrackingLineRepository;
+        private readonly IMediator _mediator;
+        private readonly ITransactionManager _transactionManager;
+        private readonly IWorkflowStartNotificationService _workflowStartNotificationService;
 
         public ReturnService(
             ICrossCuttingRepository<Return> returnRepository,
             ICrossCuttingRepository<RequestItem> requestItemRepository,
             ICrossCuttingRepository<RequestPurpose> requestPurposeRepository,
-            IWorkflowApprovalService workflowApprovalService,
             IMapper mapper,
             IValidator<CreateReturnDto> createValidator,
             ICurrentUserService currentUserService,
@@ -66,12 +71,14 @@ namespace Ettad.RequestManagement.Service.Returns
             ICrossCuttingRepository<Batch> batchRepository,
             ICrossCuttingRepository<Depot> depotRepository,
             ICrossCuttingRepository<BaseItem> baseItemRepository,
-            ICrossCuttingRepository<ReturnTrackingLine> returnTrackingLineRepository)
+            ICrossCuttingRepository<ReturnTrackingLine> returnTrackingLineRepository,
+            IMediator mediator,
+            ITransactionManager transactionManager,
+            IWorkflowStartNotificationService workflowStartNotificationService)
         {
             _returnRepository = returnRepository;
             _requestItemRepository = requestItemRepository;
             _requestPurposeRepository = requestPurposeRepository;
-            _workflowApprovalService = workflowApprovalService;
             _mapper = mapper;
             _createValidator = createValidator;
             _currentUserService = currentUserService;
@@ -89,6 +96,9 @@ namespace Ettad.RequestManagement.Service.Returns
             _depotRepository = depotRepository;
             _baseItemRepository = baseItemRepository;
             _returnTrackingLineRepository = returnTrackingLineRepository;
+            _mediator = mediator;
+            _transactionManager = transactionManager;
+            _workflowStartNotificationService = workflowStartNotificationService;
         }
 
         public async Task<APIOperationResponse<ReturnDto>> GetByIdAsync(long id)
@@ -238,68 +248,62 @@ namespace Ettad.RequestManagement.Service.Returns
                     returnWorkflowType = hasAmmoOrExplosive ? WorkflowType.Return : WorkflowType.Return_Weapon;
                 }
 
-                // Step 1: Save files first (before creating return) to create FileUplodMaster records
-                // When files are selected: if file upload fails or throws an exception, do not create the return.
-                List<long> savedFileMasterIds = null;
-                if (files != null && files.Count > 0)
+                await _transactionManager.BeginAsync();
+
+                Return createdReturn;
+                try
                 {
-                    try
+                    // Save files inside the same DB transaction as return + workflow so FileUplodMaster rows roll back on failure.
+                    List<long> savedFileMasterIds = null;
+                    if (files != null && files.Count > 0)
                     {
                         var saveFilesResult = await _fileUploadService.SaveFilesAsync(files, FileEntityType.Return);
                         if (!saveFilesResult.Succeeded || saveFilesResult.Data == null)
                         {
-                            _logger.LogWarning("Failed to save files before creating return. Error: {Error}, User: {UserId}",
+                            await _transactionManager.RollbackAsync();
+                            _logger.LogWarning("Failed to save files during return creation. Error: {Error}, User: {UserId}",
                                 saveFilesResult.Message ?? "Unknown error", currentUserId);
                             return APIOperationResponse<long>.Fail(ResponseType.BadRequest,
                                 saveFilesResult.Message ?? "File upload failed. Return was not created.");
                         }
+
                         savedFileMasterIds = saveFilesResult.Data;
-                        _logger.LogInformation("Files saved successfully before return creation. FileCount: {FileCount}, MasterIds: {MasterIds}, User: {UserId}",
+                        _logger.LogInformation("Files saved during return transaction. FileCount: {FileCount}, MasterIds: {MasterIds}, User: {UserId}",
                             files.Count, string.Join(", ", savedFileMasterIds), currentUserId);
                     }
-                    catch (Exception ex)
-                    {
-                        _logger.LogError(ex, "Exception during file upload before return creation. User: {UserId}", currentUserId);
-                        return APIOperationResponse<long>.Fail(ResponseType.BadRequest,
-                            $"File upload failed: {ex.Message}. Return was not created.");
-                    }
-                }
 
-                // Step 2: Map DTO to entity
-                var returnEntity = _mapper.Map<Return>(inputDto);
-                returnEntity.DepartmentId = departmentId.Value;
-                
-                // Generate RequestNo
-                returnEntity.RequestNo = await _requestNoGeneratorService.GenerateRequestNoAsync(RequestType.Return, departmentId.Value);
-                
-                _logger.LogInformation("Generated RequestNo: {RequestNo} for return", returnEntity.RequestNo);
-                
-                returnEntity.RequestType = RequestType.Return;
-                returnEntity.Status = RequestStatus.New; // Always set to New when creating
-                returnEntity.CreationDate = _dateTimeProvider.Now;
-                returnEntity.CreatedBy = currentUserId;
-                returnEntity.RequesterId = currentUserId;
+                    // Map DTO to entity
+                    var returnEntity = _mapper.Map<Return>(inputDto);
+                    returnEntity.DepartmentId = departmentId.Value;
 
-                // Map return items
-                returnEntity.RequestItems = inputDto.ReturnItems
-                    .Select(item =>
-                    {
-                        var requestItem = _mapper.Map<RequestItem>(item);
-                        return requestItem;
-                    })
-                    .ToList();
+                    // Generate RequestNo
+                    returnEntity.RequestNo = await _requestNoGeneratorService.GenerateRequestNoAsync(RequestType.Return, departmentId.Value);
 
-                _logger.LogInformation("Adding {ItemCount} return items to return. RequestNo: {RequestNo}", 
-                    returnEntity.RequestItems.Count, returnEntity.RequestNo);
+                    _logger.LogInformation("Generated RequestNo: {RequestNo} for return", returnEntity.RequestNo);
 
-                // Step 3: Add to repository
-                var createdReturn = await _returnRepository.AddAsync(returnEntity);
+                    returnEntity.RequestType = RequestType.Return;
+                    returnEntity.Status = RequestStatus.New; // Always set to New when creating
+                    returnEntity.CreationDate = _dateTimeProvider.Now;
+                    returnEntity.CreatedBy = currentUserId;
+                    returnEntity.RequesterId = currentUserId;
 
-                // Step 4: Link files to the return (create FileUplodDetails records) if files were saved
-                // When files were selected: if linking fails, delete the return and do not succeed.
-                if (savedFileMasterIds != null && savedFileMasterIds.Count > 0)
-                {
-                    try
+                    // Map return items
+                    returnEntity.RequestItems = inputDto.ReturnItems
+                        .Select(item =>
+                        {
+                            var requestItem = _mapper.Map<RequestItem>(item);
+                            return requestItem;
+                        })
+                        .ToList();
+
+                    _logger.LogInformation("Adding {ItemCount} return items to return. RequestNo: {RequestNo}",
+                        returnEntity.RequestItems.Count, returnEntity.RequestNo);
+
+                    // Step 3: Add to repository
+                    createdReturn = await _returnRepository.AddAsync(returnEntity);
+
+                    // Step 4: Link files to the return (create FileUplodDetails records) if files were saved
+                    if (savedFileMasterIds != null && savedFileMasterIds.Count > 0)
                     {
                         foreach (var masterId in savedFileMasterIds)
                         {
@@ -316,45 +320,60 @@ namespace Ettad.RequestManagement.Service.Returns
                         _logger.LogInformation("Files linked successfully to return. ReturnId: {ReturnId}, FileCount: {FileCount}, User: {UserId}",
                             createdReturn.Id, savedFileMasterIds.Count, currentUserId);
                     }
-                    catch (Exception ex)
+
+                    var startResult = await _mediator.Send(
+                        new StartWorkflowCommand(createdReturn.Id, returnWorkflowType));
+                    var workflowStarted = startResult.Succeeded && startResult.Data?.Started == true;
+
+                    if (!workflowStarted)
                     {
-                        _logger.LogError(ex, "Exception occurred while linking files to return. ReturnId: {ReturnId}, User: {UserId}. Rolling back return creation.",
-                            createdReturn.Id, currentUserId);
-                        await _returnRepository.DeleteAsync(createdReturn);
+                        await _transactionManager.RollbackAsync();
+                        if (!startResult.Succeeded)
+                        {
+                            _logger.LogWarning("Error starting workflow for return; transaction rolled back. WorkflowType: {WorkflowType}, User: {UserId}, Message: {Message}",
+                                returnWorkflowType, currentUserId, startResult.Message);
+                            return APIOperationResponse<long>.Fail((ResponseType)startResult.StatusCode,
+                                startResult.Message ?? "An error occurred while starting the approval workflow.");
+                        }
+
+                        _logger.LogWarning("Failed to start workflow for return; transaction rolled back. WorkflowType: {WorkflowType}, User: {UserId}",
+                            returnWorkflowType, currentUserId);
                         return APIOperationResponse<long>.Fail(ResponseType.BadRequest,
-                            $"File upload failed: {ex.Message}. Return was not created.");
+                            "Return could not be created because the approval workflow could not be started.");
                     }
-                }
 
-                // Start workflow for the return (Return vs Return_Weapon based on line item types)
-                var workflowStarted = await _workflowApprovalService.StartWorkflowAsync(
-                    createdReturn.Id,
-                    returnWorkflowType);
+                    await _transactionManager.CommitAsync();
 
-                if (workflowStarted)
-                {
+                    if (startResult.Data!.NotificationWorkflowStepId is long stepId)
+                        await _workflowStartNotificationService.SendAsync(createdReturn.Id, stepId);
+
                     _logger.LogInformation("Workflow started successfully for return. ReturnId: {ReturnId}, WorkflowType: {WorkflowType}, User: {UserId}",
                         createdReturn.Id, returnWorkflowType, currentUserId);
+
+                    await NotifyReturnAsync(
+                        "Return Created",
+                        $"Return request {createdReturn.RequestNo} has been created.",
+                        createdReturn.Id);
+
+                    _logger.LogInformation("Return created successfully. ReturnId: {ReturnId}, RequestNo: {RequestNo}, ItemCount: {ItemCount}, User: {UserId}",
+                        createdReturn.Id, createdReturn.RequestNo, createdReturn.RequestItems?.Count ?? 0, currentUserId);
+
+                    return APIOperationResponse<long>.Success(createdReturn.Id, "Return created successfully");
                 }
-                else
+                catch (Exception ex) when (ex is not OperationCanceledException)
                 {
-                    _logger.LogWarning("Failed to start workflow for return. ReturnId: {ReturnId}, WorkflowType: {WorkflowType}, User: {UserId}",
-                        createdReturn.Id, returnWorkflowType, currentUserId);
+                    await _transactionManager.RollbackAsync();
+                    _logger.LogError(ex, "Exception during return creation transaction. User: {UserId}", currentUserId);
+                    return APIOperationResponse<long>.Fail(ResponseType.BadRequest,
+                        $"Return was not created: {ex.Message}");
                 }
-
-                await NotifyReturnAsync(
-                    "Return Created",
-                    $"Return request {createdReturn.RequestNo} has been created.",
-                    createdReturn.Id);
-
-                _logger.LogInformation("Return created successfully. ReturnId: {ReturnId}, RequestNo: {RequestNo}, ItemCount: {ItemCount}, User: {UserId}", 
-                    createdReturn.Id, createdReturn.RequestNo, createdReturn.RequestItems?.Count ?? 0, currentUserId);
-                
-                return APIOperationResponse<long>.Success(createdReturn.Id, "Return created successfully");
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error creating return. DepartmentId: {DepartmentId}, User: {UserId}", 
+                if (_transactionManager.HasActiveTransaction)
+                    await _transactionManager.RollbackAsync();
+
+                _logger.LogError(ex, "Error creating return. DepartmentId: {DepartmentId}, User: {UserId}",
                     departmentId.Value, currentUserId);
                 return APIOperationResponse<long>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
             }
@@ -786,7 +805,7 @@ namespace Ettad.RequestManagement.Service.Returns
                     line = await _returnTrackingLineRepository.AddAsync(line);
                 }
 
-                var currentStep = await _workflowApprovalService.GetCurrentApprovalStepByRequestIdAsync(returnEntity.Id);
+                var currentStep = await _mediator.Send(new GetCurrentApprovalStepByRequestIdQuery(returnEntity.Id));
                 if (currentStep == null)
                 {
                     return APIOperationResponse<bool>.Fail(ResponseType.BadRequest,
@@ -822,7 +841,7 @@ namespace Ettad.RequestManagement.Service.Returns
                         SendToHigherApproval = false
                     };
 
-                    var approveResult = await _workflowApprovalService.ProcessActionAsync(approveDto);
+                    var approveResult = await _mediator.Send(new ProcessWorkflowActionCommand(approveDto, null));
                     if (!approveResult.Succeeded)
                     {
                         _logger.LogWarning("Failed to approve workflow step for return. ReturnId: {ReturnId}, Error: {Error}",

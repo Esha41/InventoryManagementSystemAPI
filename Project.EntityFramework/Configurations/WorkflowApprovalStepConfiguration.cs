@@ -15,7 +15,7 @@ namespace Ettad.EntityFramework.Configurations
         {
             builder.ToTable("WorkflowApprovalSteps");
 
-            // Primary Key inherited from AuditEntity<int>
+            // Primary Key inherited from AuditEntity<long>
             builder.HasKey(x => x.Id);
 
             // Required properties

@@ -1,7 +1,6 @@
 using Ettad.Services.Helpers;
 using Ettad.Services.Mapper;
 using Ettad.Workflow.Service.Interface;
-using Ettad.Workflows.Service.Interface;
 using Ettad.Workflows.Service.Monitoring;
 using Ettad.Workflows.Service.Services;
 using Ettad.Workflows.Service.Settings;
@@ -19,7 +18,7 @@ namespace Ettad.Workflow.Service
             
             // Register WorkflowStepNotifierService
             service.AddScoped<IWorkflowStepNotifierService, WorkflowStepNotifierService>();
-            service.AddScoped<IWorkflowApprovalService, WorkflowApprovalService>();
+            service.AddScoped<IWorkflowStartNotificationService, WorkflowStartNotificationService>();
             service.AddScoped<IOrderAutoRejectBackgroundService, OrderAutoRejectBackgroundService>();
             service.AddScoped<IOrderAutoRejectSettingsService, OrderAutoRejectSettingsService>();
             service.AddScoped<IOrderAutoRejectCountdownService, OrderAutoRejectCountdownService>();

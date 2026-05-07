@@ -9,10 +9,10 @@ namespace Ettad.Workflows.Service.Dtos
 {
     public class WorkflowApprovalHistoryDto
     {
-        public int Id { get; set; }
+        public long Id { get; set; }
 
         // Reference to parent workflow step
-        public int WorkflowStepId { get; set; }
+        public long WorkflowStepId { get; set; }
 
         public RequestStatus OldRequestStatus { get; set; }
 

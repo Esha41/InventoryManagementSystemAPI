@@ -10,7 +10,7 @@ namespace Ettad.Workflows.Service.Dtos
 {
     public class WorkflowDto
     {
-        public int Id { get; set; }
+        public long Id { get; set; }
 
         public string WorkflowName { get; set; }
 

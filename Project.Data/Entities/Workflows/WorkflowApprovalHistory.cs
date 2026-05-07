@@ -10,13 +10,13 @@ using Ettad.CrossCutting.Comman.Base;
 
 namespace Ettad.Data.Entities.Workflows
 {
-    public class WorkflowApprovalHistory : AuditEntity<int>
+    public class WorkflowApprovalHistory : AuditEntity<long>
     {
        
 
         [Required]
         [ForeignKey("WorkflowStep")]
-        public int WorkflowStepId { get; set; }
+        public long WorkflowStepId { get; set; }
 
         [Required]
         public long TargetRequestId { get; set; }

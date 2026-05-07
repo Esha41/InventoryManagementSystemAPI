@@ -7,9 +7,9 @@ namespace Ettad.Data.Entities.Workflows
     /// <summary>
     /// Represents a user or role that should be notified when an action is taken on a workflow step
     /// </summary>
-    public class WorkflowStepNotifier : AuditEntity<int>
+    public class WorkflowStepNotifier : AuditEntity<long>
     {
-        public int WorkflowStepId { get; set; }
+        public long WorkflowStepId { get; set; }
         public string? UserId { get; set; }
         public string? RoleId { get; set; }
 

@@ -100,7 +100,7 @@ namespace Ettad.RequestManagement.Service.OrderItemTracking
             }
         }
 
-        public async Task RecordFinalApprovalHistoryAsync(long orderId, int workflowApprovalStepId)
+        public async Task RecordFinalApprovalHistoryAsync(long orderId, long workflowApprovalStepId)
         {
             try
             {

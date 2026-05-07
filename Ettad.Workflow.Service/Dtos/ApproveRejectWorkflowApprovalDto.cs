@@ -14,8 +14,8 @@ namespace Ettad.Workflows.Service.Dtos
         public string? Comments { get; set; }
         public bool SendToHigherApproval { get; set; }
         public RequestStatus Action { get; set; }
-        public int? NextStepId { get; set; }
-        public int? ReturnToWorkflowStepId { get; set; }
+        public long? NextStepId { get; set; }
+        public long? ReturnToWorkflowStepId { get; set; }
     }
 }
 

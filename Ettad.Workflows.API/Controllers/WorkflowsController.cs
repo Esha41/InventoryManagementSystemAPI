@@ -3,10 +3,10 @@ using Ettad.CrossCutting.Comman.Models;
 using Ettad.CrossCutting.Common.Security;
 using Ettad.Data.Enums;
 using Ettad.ResponseHandler.Models;
-using Ettad.Workflows.Service.Command.CreateWorkflow;
-using Ettad.Workflows.Service.Command.DeleteWorkflow;
-using Ettad.Workflows.Service.Command.ManageTransitions;
-using Ettad.Workflows.Service.Command.UpdateWorkflow;
+using Ettad.Workflows.Service.Commands.DeleteWorkflow;
+using Ettad.Workflows.Service.Commands.CreateWorkflow;
+using Ettad.Workflows.Service.Commands.ManageTransitions;
+using Ettad.Workflows.Service.Commands.UpdateWorkflow;
 using Ettad.Workflows.Service.Queries.GetNextSteps;
 using Ettad.Workflows.Service.Queries.GetWorkflow;
 using Ettad.Workflows.Service.Queries.GetWorkflowById;
@@ -32,7 +32,7 @@ namespace Ettad.Workflows.API.Controllers
 
         [HttpGet("step/{stepId}/next-steps")]
         [CheckAuthorize("Permissions.Workflow.View", "Permissions.Workflow.Page")]
-        public async Task<IActionResult> GetNextStepsForWorkflowStep(int stepId)
+        public async Task<IActionResult> GetNextStepsForWorkflowStep(long stepId)
         {
             var query = new GetNextStepsForWorkflowStepQuery(stepId);
             var result = await _mediator.Send(query);
@@ -57,7 +57,7 @@ namespace Ettad.Workflows.API.Controllers
 
         [HttpGet("{id}")]
         [CheckAuthorize("Permissions.Workflow.View", "Permissions.Workflow.Page")]
-        public async Task<IActionResult> GetWorkflowById(int id)
+        public async Task<IActionResult> GetWorkflowById(long id)
         {
             var query = new GetWorkflowByIdQuery(id);
             var result = await _mediator.Send(query);
@@ -121,7 +121,7 @@ namespace Ettad.Workflows.API.Controllers
 
         [HttpDelete("{id}")]
         [CheckAuthorize("Permissions.Workflow.Delete")]
-        public async Task<IActionResult> DeleteWorkflow(int id)
+        public async Task<IActionResult> DeleteWorkflow(long id)
         {
             // Restrict workflow deletion to SuperAdmin only
             if (!_currentUserService.IsSuperAdmin)

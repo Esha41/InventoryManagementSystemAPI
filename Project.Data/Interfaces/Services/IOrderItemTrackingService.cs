@@ -13,7 +13,7 @@ namespace Ettad.Data.Interfaces.Services
         /// <summary>
         /// Record final approval history when order status becomes Approved
         /// </summary>
-        Task RecordFinalApprovalHistoryAsync(long orderId, int workflowApprovalStepId);
+        Task RecordFinalApprovalHistoryAsync(long orderId, long workflowApprovalStepId);
 
         /// <summary>
         /// Get all history for an order (by orderId or RequestNo)
@@ -48,8 +48,8 @@ namespace Ettad.Data.Interfaces.Services
         public long DepartmentId { get; set; }
         public string ModifiedByUserId { get; set; }
         public string ModifiedByUserName { get; set; }
-        public int? WorkflowApprovalStepId { get; set; }
-        public int? WorkflowStepId { get; set; }
+        public long? WorkflowApprovalStepId { get; set; }
+        public long? WorkflowStepId { get; set; }
         public string Description { get; set; } = string.Empty;
         public string Notes { get; set; }
         public long? SupplyId { get; set; }
@@ -88,8 +88,8 @@ namespace Ettad.Data.Interfaces.Services
         public string ModifiedByUserNameEn { get; set; }
         public string ModifiedByUserNameAr { get; set; }
 
-        public int? WorkflowApprovalStepId { get; set; }
-        public int? WorkflowStepId { get; set; }
+        public long? WorkflowApprovalStepId { get; set; }
+        public long? WorkflowStepId { get; set; }
         public string WorkflowStepName { get; set; }
 
         public string Description { get; set; } = string.Empty;

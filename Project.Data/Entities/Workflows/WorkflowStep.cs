@@ -11,11 +11,11 @@ using System.Threading.Tasks;
 
 namespace Ettad.Data.Entities.Workflows
 {
-    public class WorkflowStep : AuditEntity<int>
+    public class WorkflowStep : AuditEntity<long>
     {
         [Required]
         [ForeignKey("Workflow")]
-        public int WorkflowId { get; set; }
+        public long WorkflowId { get; set; }
 
         [Required]
         public int StepOrder { get; set; }

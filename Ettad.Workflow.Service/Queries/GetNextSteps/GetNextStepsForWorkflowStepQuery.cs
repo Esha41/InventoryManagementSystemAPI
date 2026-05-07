@@ -14,9 +14,9 @@ namespace Ettad.Workflows.Service.Queries.GetNextSteps
 {
     public class GetNextStepsForWorkflowStepQuery : IRequest<APIOperationResponse<List<WorkflowStepDto>>>
     {
-        public int WorkflowStepId { get; }
+        public long WorkflowStepId { get; }
 
-        public GetNextStepsForWorkflowStepQuery(int workflowStepId)
+        public GetNextStepsForWorkflowStepQuery(long workflowStepId)
         {
             WorkflowStepId = workflowStepId;
         }

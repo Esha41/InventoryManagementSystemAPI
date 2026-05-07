@@ -15,7 +15,7 @@ using Ettad.Data.Entities.Workflows;
 using Ettad.CrossCutting.Comman.Time;
 using Ettad.Workflows.Service.Dtos;
 
-namespace Ettad.Workflows.Service.Command.CreateWorkflow
+namespace Ettad.Workflows.Service.Commands.CreateWorkflow
 {
     public class CreateWorkflowCommand : IRequest<APIOperationResponse<WorkflowDto>>
     {
@@ -58,7 +58,7 @@ namespace Ettad.Workflows.Service.Command.CreateWorkflow
                     return APIOperationResponse<WorkflowDto>.ServerError("Failed to deactivate duplicate workflows.");
                 }
 
-                var workflow = new Ettad.Data.Entities.Workflows.Workflow
+                var workflow = new Data.Entities.Workflows.Workflow
                 {
                     WorkflowName = request.WorkflowName,
                     WorkflowType = request.WorkflowType,
@@ -151,7 +151,7 @@ namespace Ettad.Workflows.Service.Command.CreateWorkflow
 
 
         // Adds workflow steps to the created workflow
-        private async Task<bool> AddWorkflowSteps(List<WorkflowStepCreateDto> workflowSteps, int workflowId, CancellationToken cancellationToken)
+        private async Task<bool> AddWorkflowSteps(List<WorkflowStepCreateDto> workflowSteps, long workflowId, CancellationToken cancellationToken)
         {
             try
             {
@@ -211,7 +211,7 @@ namespace Ettad.Workflows.Service.Command.CreateWorkflow
 
 
         // Manual mapping from Workflow entity to WorkflowDto
-        private WorkflowDto MapToWorkflowDto(Ettad.Data.Entities.Workflows.Workflow workflow)
+        private WorkflowDto MapToWorkflowDto(Data.Entities.Workflows.Workflow workflow)
         {
             if (workflow == null) return null;
 

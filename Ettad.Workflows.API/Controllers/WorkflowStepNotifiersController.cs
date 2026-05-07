@@ -34,7 +34,7 @@ namespace Ettad.Workflows.API.Controllers
         [ProducesResponseType(typeof(APIOperationResponse<List<WorkflowStepNotifierDto>>), (int)HttpStatusCode.OK)]
         [ProducesResponseType((int)HttpStatusCode.NotFound)]
         [CheckAuthorize("Permissions.Workflow.View", "Permissions.Workflow.Page")]
-        public async Task<IActionResult> GetNotifiersByStepId(int stepId)
+        public async Task<IActionResult> GetNotifiersByStepId(long stepId)
         {
             var result = await _notifierService.GetNotifiersByStepIdAsync(stepId);
             return ProcessResponse(result);
@@ -49,7 +49,7 @@ namespace Ettad.Workflows.API.Controllers
         [ProducesResponseType(typeof(APIOperationResponse<(List<string> UserIds, List<string> RoleIds)>), (int)HttpStatusCode.OK)]
         [ProducesResponseType((int)HttpStatusCode.NotFound)]
         [CheckAuthorize("Permissions.Workflow.View", "Permissions.Workflow.Page")]
-        public async Task<IActionResult> GetNotifierIdsByStepId(int stepId)
+        public async Task<IActionResult> GetNotifierIdsByStepId(long stepId)
         {
             var result = await _notifierService.GetNotifierIdsByStepIdAsync(stepId);
             return ProcessResponse(result);
@@ -66,7 +66,7 @@ namespace Ettad.Workflows.API.Controllers
         [ProducesResponseType((int)HttpStatusCode.BadRequest)]
         [ProducesResponseType((int)HttpStatusCode.NotFound)]
         [CheckAuthorize("Permissions.Workflow.Edit")]
-        public async Task<IActionResult> UpdateStepNotifiers(int stepId, [FromBody] UpdateWorkflowStepNotifiersDto dto)
+        public async Task<IActionResult> UpdateStepNotifiers(long stepId, [FromBody] UpdateWorkflowStepNotifiersDto dto)
         {
             // Ensure the stepId in the DTO matches the route parameter
             dto.WorkflowStepId = stepId;
@@ -145,7 +145,7 @@ namespace Ettad.Workflows.API.Controllers
         [ProducesResponseType(typeof(APIOperationResponse<bool>), (int)HttpStatusCode.OK)]
         [ProducesResponseType((int)HttpStatusCode.NotFound)]
         [CheckAuthorize("Permissions.Workflow.Edit")]
-        public async Task<IActionResult> RemoveNotifier(int id)
+        public async Task<IActionResult> RemoveNotifier(long id)
         {
             var result = await _notifierService.RemoveNotifierAsync(id);
             return ProcessResponse(result);

@@ -6,7 +6,7 @@ namespace Ettad.Workflows.Service.Dtos
     public class WorkflowApprovalWithOrderDto
     {
         // WorkflowStep properties (wfs)
-        public int WorkflowId { get; set; }
+        public long WorkflowId { get; set; }
         public int StepOrder { get; set; }
         public string ApplicationRoleId { get; set; }
         public long ApplicationEntityId { get; set; }
@@ -16,7 +16,7 @@ namespace Ettad.Workflows.Service.Dtos
         public bool ReserveQty { get; set; }
 
         // WorkflowApprovalStep properties (ws)
-        public int WorkflowStepId { get; set; }
+        public long WorkflowStepId { get; set; }
         public long TargetRequestId { get; set; }
         public WorkflowType RequestType { get; set; }
         public DateTime? ApprovedDate { get; set; }

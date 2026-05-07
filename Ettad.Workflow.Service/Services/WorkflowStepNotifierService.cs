@@ -37,7 +37,7 @@ namespace Ettad.Workflows.Service.Services
             _dateTimeProvider = dateTimeProvider;
         }
 
-        public async Task<APIOperationResponse<List<WorkflowStepNotifierDto>>> GetNotifiersByStepIdAsync(int workflowStepId)
+        public async Task<APIOperationResponse<List<WorkflowStepNotifierDto>>> GetNotifiersByStepIdAsync(long workflowStepId)
         {
             try
             {
@@ -342,7 +342,7 @@ namespace Ettad.Workflows.Service.Services
             }
         }
 
-        public async Task<APIOperationResponse<bool>> RemoveNotifierAsync(int notifierId)
+        public async Task<APIOperationResponse<bool>> RemoveNotifierAsync(long notifierId)
         {
             try
             {
@@ -376,7 +376,7 @@ namespace Ettad.Workflows.Service.Services
             }
         }
 
-        public async Task<APIOperationResponse<(List<string> UserIds, List<string> RoleIds)>> GetNotifierIdsByStepIdAsync(int workflowStepId)
+        public async Task<APIOperationResponse<(List<string> UserIds, List<string> RoleIds)>> GetNotifierIdsByStepIdAsync(long workflowStepId)
         {
             try
             {
