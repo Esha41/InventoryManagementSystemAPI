@@ -22,6 +22,7 @@ namespace Ettad.Inventory.Service.Assets.Interfaces
         Task<APIOperationResponse<ImportResult<AssetImportDto>>> ImportPreviewAsync(IFormFile file, long depotId, string language = "en");
         Task<APIOperationResponse<byte[]>> GenerateImportTemplateAsync(long depotId, string language = "en");
         Task<APIOperationResponse<PaginatedList<AssetDto>>> GetAssetsPaginatedAsync(long? depotId, PagedListRequest request);
+        Task<APIOperationResponse<PaginatedList<AssetDto>>> GetAssetsPagedAsync(long? depotId, List<long>? depotIds, PagedListRequest request);
         Task<APIOperationResponse<List<AssetDto>>> GetAssetsByItemIdAsync(long itemId, long? depotId = null);
     }
 }

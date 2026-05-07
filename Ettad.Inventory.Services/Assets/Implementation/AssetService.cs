@@ -187,6 +187,87 @@ namespace Ettad.Inventory.Service.Assets.Implementation
             }
         }
 
+        public async Task<APIOperationResponse<PaginatedList<AssetDto>>> GetAssetsPagedAsync(long? depotId, List<long>? depotIds, PagedListRequest request)
+        {
+            var effective = new HashSet<long>();
+            if (depotIds != null) foreach (var d in depotIds) if (d > 0) effective.Add(d);
+            if (depotId.HasValue && depotId.Value > 0) effective.Add(depotId.Value);
+
+            _logger.LogInformation("Getting assets paged (multi-depot). DepotId: {DepotId}, DepotCount: {DepotCount}, Page: {Page}, PageSize: {PageSize}, User: {UserId}",
+                depotId, effective.Count, request.Page, request.PageSize, _currentUserService.UserId);
+
+            try
+            {
+                if (effective.Count > 0)
+                {
+                    var userId = _currentUserService.UserId;
+                    if (!string.IsNullOrEmpty(userId))
+                    {
+                        foreach (var dId in effective)
+                        {
+                            if (!await _depotAccessService.HasDepotAccessAsync(userId, dId))
+                            {
+                                _logger.LogWarning("User {UserId} attempted to access assets for unauthorized depot {DepotId}", userId, dId);
+                                return APIOperationResponse<PaginatedList<AssetDto>>.Fail(ResponseType.Forbidden, "You do not have access to one or more of the requested depots.");
+                            }
+                        }
+                    }
+                }
+
+                Expression<Func<Asset, bool>> depotFilter;
+                if (effective.Count == 0)
+                    depotFilter = a => !a.IsDeleted;
+                else if (effective.Count == 1)
+                {
+                    var one = effective.First();
+                    depotFilter = a => !a.IsDeleted && a.DepotId == one;
+                }
+                else
+                {
+                    var set = effective.ToArray();
+                    depotFilter = a => !a.IsDeleted && set.Contains(a.DepotId);
+                }
+
+                var query = _assetRepository.Find(depotFilter, false, AssetReadMapIncludes);
+
+                var paginatedEntities = await PaginatedList<Asset>.CreateAsyncForTableBinding(query, request);
+
+                var dtos = new List<AssetDto>();
+                if (paginatedEntities.Items.Any())
+                {
+                    dtos = _mapper.Map<List<AssetDto>>(paginatedEntities.Items);
+
+                    var entityIds = dtos.Select(d => d.Id).ToList();
+                    var imagesResult = await _fileUploadService.GetByEntitiesAsync(FileEntityType.Asset, entityIds);
+
+                    if (imagesResult.Succeeded && imagesResult.Data != null)
+                    {
+                        foreach (var dto in dtos)
+                        {
+                            if (imagesResult.Data.ContainsKey(dto.Id))
+                            {
+                                dto.Images = imagesResult.Data[dto.Id];
+                            }
+                        }
+                    }
+                }
+
+                var result = new PaginatedList<AssetDto>(
+                    dtos,
+                    paginatedEntities.TotalCount,
+                    paginatedEntities.PageIndex,
+                    request.PageSize);
+
+                return APIOperationResponse<PaginatedList<AssetDto>>.Success(result);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting assets paged by depots. DepotId: {DepotId}, User: {UserId}",
+                    depotId, _currentUserService.UserId);
+                return APIOperationResponse<PaginatedList<AssetDto>>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
+            }
+        }
+
         private async Task<(bool Ok, string? Error)> TryApplyIntakeAssignmentAsync(Asset asset, CreateAssetDto dto)
         {
             if (!WantsIntakeAssignment(dto))

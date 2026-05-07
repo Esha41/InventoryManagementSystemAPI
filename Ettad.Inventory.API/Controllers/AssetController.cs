@@ -78,6 +78,21 @@ namespace Ettad.Inventory.API.Controllers
             return ProcessResponse(result);
         }
 
+        /// <summary>
+        /// Paginated assets filtered by optional <paramref name="depotId"/> and/or <paramref name="depotIds"/> (same depot rules as GET /api/Asset).
+        /// </summary>
+        [HttpPost("paged")]
+        [ProducesResponseType((int)HttpStatusCode.OK)]
+        [CheckAuthorize("Permissions.Asset.View", "Permissions.Asset.Page")]
+        public async Task<IActionResult> GetAssetsPaged(
+            [FromBody] PagedListRequest request,
+            [FromQuery] long? depotId = null,
+            [FromQuery] List<long>? depotIds = null)
+        {
+            var result = await _assetService.GetAssetsPagedAsync(depotId, depotIds, request);
+            return ProcessResponse(result);
+        }
+
         [HttpPost]
         [ProducesResponseType((int)HttpStatusCode.Created)]
         [CheckAuthorize("Permissions.Asset.Create")]
