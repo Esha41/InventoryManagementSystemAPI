@@ -9,7 +9,7 @@ using Ettad.CrossCutting.Comman.Time;
 using Ettad.Data.Entities;
 using Ettad.Data.Interfaces.Repositories;
 using Ettad.EntityFramework.DataBaseContext;
-using Ettad.Inventory.Service.Assets;
+using Ettad.Inventory.Service.Assets.Dtos;
 using Ettad.Inventory.Service.Assets.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -22,6 +22,7 @@ namespace Ettad.Inventory.Service.Assets.Implementation
         private readonly ICrossCuttingRepository<Batch> _batchRepository;
         private readonly IFileUploadService _fileUploadService;
         private readonly IDateTimeProvider _dateTimeProvider;
+        private readonly ITransactionManager _transactionManager;
         private readonly ILogger<AssetBulkDeletionProcessor> _logger;
 
         public AssetBulkDeletionProcessor(
@@ -29,12 +30,14 @@ namespace Ettad.Inventory.Service.Assets.Implementation
             ICrossCuttingRepository<Batch> batchRepository,
             IFileUploadService fileUploadService,
             IDateTimeProvider dateTimeProvider,
+            ITransactionManager transactionManager,
             ILogger<AssetBulkDeletionProcessor> logger)
         {
             _context = context;
             _batchRepository = batchRepository;
             _fileUploadService = fileUploadService;
             _dateTimeProvider = dateTimeProvider;
+            _transactionManager = transactionManager;
             _logger = logger;
         }
 
@@ -52,28 +55,28 @@ namespace Ettad.Inventory.Service.Assets.Implementation
                 return;
             }
 
-            if (job.JobStatus == AssetBulkDeletionConstants.JobStatus.Completed)
+            if (job.JobStatus == BulkDeleteAssetsDtos.JobStatus.Completed)
                 return;
 
             try
             {
-                if (job.JobStatus == AssetBulkDeletionConstants.JobStatus.Pending)
+                if (job.JobStatus == BulkDeleteAssetsDtos.JobStatus.Pending)
                 {
-                    job.JobStatus = AssetBulkDeletionConstants.JobStatus.Running;
+                    job.JobStatus = BulkDeleteAssetsDtos.JobStatus.Running;
                     job.StartedUtc = _dateTimeProvider.Now.ToUniversalTime();
                     await _context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
                 }
 
                 await RunDeletionAsync(job, cancellationToken).ConfigureAwait(false);
 
-                job.JobStatus = AssetBulkDeletionConstants.JobStatus.Completed;
+                job.JobStatus = BulkDeleteAssetsDtos.JobStatus.Completed;
                 job.CompletedUtc = _dateTimeProvider.Now.ToUniversalTime();
                 await _context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Bulk asset deletion failed. JobId={JobId}", jobId);
-                job.JobStatus = AssetBulkDeletionConstants.JobStatus.Failed;
+                job.JobStatus = BulkDeleteAssetsDtos.JobStatus.Failed;
                 job.Message = $"{ex.GetType().Name}: {ex.Message}";
                 job.CompletedUtc = _dateTimeProvider.Now.ToUniversalTime();
                 await _context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
@@ -86,7 +89,7 @@ namespace Ettad.Inventory.Service.Assets.Implementation
 
             switch (job.Scope)
             {
-                case AssetBulkDeletionConstants.Scope.Batch:
+                case BulkDeleteAssetsDtos.Scope.Batch:
                     await CleanupBatchUploadedFiles(job.BatchId!.Value).ConfigureAwait(false);
                     await DeleteAssetsInRepeatedChunks(job, q => q.Where(a =>
                         !a.IsDeleted && a.BatchId == job.BatchId!.Value), deletedBy,
@@ -94,13 +97,13 @@ namespace Ettad.Inventory.Service.Assets.Implementation
                     await SoftDeleteBatch(job.BatchId.Value, deletedBy).ConfigureAwait(false);
                     break;
 
-                case AssetBulkDeletionConstants.Scope.Depot:
+                case BulkDeleteAssetsDtos.Scope.Depot:
                     await DeleteAssetsInRepeatedChunks(job, q =>
                         q.Where(a => !a.IsDeleted && a.DepotId == job.DepotId!.Value),
                         deletedBy, cancellationToken).ConfigureAwait(false);
                     break;
 
-                case AssetBulkDeletionConstants.Scope.ExplicitIds:
+                case BulkDeleteAssetsDtos.Scope.ExplicitIds:
                     await DeleteExplicitListedAssetsAsync(job, deletedBy, cancellationToken).ConfigureAwait(false);
                     break;
 
@@ -169,23 +172,19 @@ namespace Ettad.Inventory.Service.Assets.Implementation
             string deletedBy,
             CancellationToken cancellationToken)
         {
-            var baseQuery = _context.Assets.AsNoTracking();
-
             while (true)
             {
                 cancellationToken.ThrowIfCancellationRequested();
 
-                var ids = await filterAssets(baseQuery)
+                var chunkQuery = filterAssets(_context.Assets)
                     .OrderBy(a => a.Id)
-                    .Take(AssetBulkDeletionConstants.UpdateChunkSize)
-                    .Select(a => a.Id)
-                    .ToListAsync(cancellationToken).ConfigureAwait(false);
+                    .Take(BulkDeleteAssetsDtos.UpdateChunkSize);
 
-                if (ids.Count == 0)
-                    break;
-
-                await ApplySoftDeleteChunk(ids, deletedBy, job, cancellationToken)
+                var updated = await ApplySoftDeleteChunkFromQuery(chunkQuery, deletedBy, job, cancellationToken)
                     .ConfigureAwait(false);
+
+                if (updated == 0)
+                    break;
             }
         }
 
@@ -206,56 +205,53 @@ namespace Ettad.Inventory.Service.Assets.Implementation
 
             var orderedDistinct = allIds.Where(id => id > 0).Distinct().OrderBy(id => id).ToList();
 
-            for (var i = 0; i < orderedDistinct.Count; i += AssetBulkDeletionConstants.ExplicitSliceSize)
+            for (var i = 0; i < orderedDistinct.Count; i += BulkDeleteAssetsDtos.ExplicitSliceSize)
             {
                 cancellationToken.ThrowIfCancellationRequested();
 
                 var slice = orderedDistinct
                     .Skip(i)
-                    .Take(AssetBulkDeletionConstants.ExplicitSliceSize)
+                    .Take(BulkDeleteAssetsDtos.ExplicitSliceSize)
                     .ToList();
 
                 while (true)
                 {
-                    var ids = await _context.Assets.AsNoTracking()
+                    cancellationToken.ThrowIfCancellationRequested();
+
+                    var chunkQuery = _context.Assets
                         .Where(a => slice.Contains(a.Id) && !a.IsDeleted)
                         .OrderBy(a => a.Id)
-                        .Take(AssetBulkDeletionConstants.UpdateChunkSize)
-                        .Select(a => a.Id)
-                        .ToListAsync(cancellationToken).ConfigureAwait(false);
+                        .Take(BulkDeleteAssetsDtos.UpdateChunkSize);
 
-                    if (ids.Count == 0)
-                        break;
-
-                    await ApplySoftDeleteChunk(ids, deletedBy, job, cancellationToken)
+                    var updated = await ApplySoftDeleteChunkFromQuery(chunkQuery, deletedBy, job, cancellationToken)
                         .ConfigureAwait(false);
+
+                    if (updated == 0)
+                        break;
                 }
             }
         }
 
         /// <summary>
-        /// Soft-deletes one chunk of assets and persists job counters in a single transaction so either
-        /// both commit or both roll back.
+        /// Runs one server-side UPDATE for the filtered ordered chunk (TOP N) and persists job counters
+        /// in the same transaction. Avoids SELECT ids + batched IN lists; batch/depot scope uses BatchId/DepotId predicates only.
         /// </summary>
-        private async Task ApplySoftDeleteChunk(
-            List<long> ids,
+        private async Task<int> ApplySoftDeleteChunkFromQuery(
+            IQueryable<Asset> chunkQuery,
             string deletedBy,
             AssetBulkDeletionJob job,
             CancellationToken cancellationToken)
         {
-            await using var transaction =
-                await _context.Database.BeginTransactionAsync(cancellationToken).ConfigureAwait(false);
+            await using var _ = await _transactionManager.BeginAsync(cancellationToken).ConfigureAwait(false);
 
-            var processedDelta = 0;
-            var deletedDelta = 0;
+            var delta = 0;
             var countersApplied = false;
 
             try
             {
                 var utcNow = _dateTimeProvider.Now.ToUniversalTime();
 
-                var updated = await _context.Assets
-                    .Where(a => ids.Contains(a.Id) && !a.IsDeleted)
+                delta = await chunkQuery
                     .ExecuteUpdateAsync(s => s
                             .SetProperty(a => a.IsDeleted, true)
                             .SetProperty(a => a.DeletionDate, utcNow)
@@ -265,23 +261,21 @@ namespace Ettad.Inventory.Service.Assets.Implementation
                         cancellationToken)
                     .ConfigureAwait(false);
 
-                processedDelta = ids.Count;
-                deletedDelta = updated;
-
-                job.ProcessedCount += processedDelta;
-                job.DeletedCount += deletedDelta;
+                job.ProcessedCount += delta;
+                job.DeletedCount += delta;
                 countersApplied = true;
 
                 await PersistJobProgress(job, cancellationToken).ConfigureAwait(false);
-                await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
+                await _transactionManager.CommitAsync(cancellationToken).ConfigureAwait(false);
+                return delta;
             }
             catch
             {
-                await transaction.RollbackAsync(cancellationToken).ConfigureAwait(false);
+                await _transactionManager.RollbackAsync(cancellationToken).ConfigureAwait(false);
                 if (countersApplied)
                 {
-                    job.ProcessedCount -= processedDelta;
-                    job.DeletedCount -= deletedDelta;
+                    job.ProcessedCount -= delta;
+                    job.DeletedCount -= delta;
                 }
 
                 throw;

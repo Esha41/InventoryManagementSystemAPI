@@ -3,8 +3,6 @@ using FluentValidation;
 using System;
 using System.Linq;
 using System.Linq.Expressions;
-using System.Data;
-using Microsoft.Data.SqlClient;
 using Ettad.CrossCutting.Comman.FileUpload;
 using Ettad.Data.Enums;
 using Ettad.Inventory.Service.Assets.Dtos;
@@ -27,9 +25,7 @@ using Ettad.Inventory.Service.Common.Interfaces;
 using Ettad.Inventory.Service.Assets.Interfaces;
 using Ettad.Data.Entities;
 using System.Collections.Generic;
-using Ettad.EntityFramework.DataBaseContext;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Storage;
 
 namespace Ettad.Inventory.Service.Assets.Implementation
 {
@@ -56,7 +52,8 @@ namespace Ettad.Inventory.Service.Assets.Implementation
         private readonly ICrossCuttingRepository<BaseItemPrimaryPurpos> _baseItemPrimaryPurposRepository;
         private readonly ICrossCuttingRepository<Supplier> _supplierRepository;
         private readonly ICrossCuttingRepository<Manufacturer> _manufacturerRepository;
-        private readonly ApplicationDbContext _context;
+        private readonly IAssetBulkSqlRepository _assetBulkSqlRepository;
+        private readonly ICrossCuttingRepository<AssetSupplyDetail> _assetSupplyDetailRepository;
 
         public AssetService(
             ICrossCuttingRepository<Asset> assetRepository,
@@ -80,7 +77,8 @@ namespace Ettad.Inventory.Service.Assets.Implementation
             ICrossCuttingRepository<BaseItemPrimaryPurpos> baseItemPrimaryPurposRepository,
             ICrossCuttingRepository<Supplier> supplierRepository,
             ICrossCuttingRepository<Manufacturer> manufacturerRepository,
-            ApplicationDbContext context)
+            IAssetBulkSqlRepository assetBulkSqlRepository,
+            ICrossCuttingRepository<AssetSupplyDetail> assetSupplyDetailRepository)
         {
             _assetRepository = assetRepository;
             _mapper = mapper;
@@ -103,7 +101,8 @@ namespace Ettad.Inventory.Service.Assets.Implementation
             _baseItemPrimaryPurposRepository = baseItemPrimaryPurposRepository;
             _supplierRepository = supplierRepository;
             _manufacturerRepository = manufacturerRepository;
-            _context = context;
+            _assetBulkSqlRepository = assetBulkSqlRepository;
+            _assetSupplyDetailRepository = assetSupplyDetailRepository;
         }
 
         private static bool WantsIntakeAssignment(CreateAssetDto dto) =>
@@ -790,7 +789,21 @@ namespace Ettad.Inventory.Service.Assets.Implementation
 
                 var batch = await _batchService.GetOrCreateAsync(dto.BatchNumber.Trim(), dto.DepotId);
 
-                long? firstAssetId = await InsertBulkAssetsViaBulkCopyAsync(dto, batch.Id, userId);
+                var templateAsset = _mapper.Map<Asset>(dto);
+                templateAsset.ItemId = dto.ItemId;
+                templateAsset.SupplierId = dto.SupplierId;
+                templateAsset.ManufacturerId = dto.ManufacturerId;
+                templateAsset.PrimaryPurposId = dto.PrimaryPurposId;
+                templateAsset.DepotId = dto.DepotId;
+                templateAsset.BatchId = batch.Id;
+                templateAsset.CreationDate = _dateTimeProvider.Now;
+                templateAsset.CreatedBy = userId;
+                templateAsset.Status = AssetStatus.ReadyToIssue;
+                templateAsset.SerialNumber = null;
+                templateAsset.RFID = null;
+
+                long? firstAssetId = await _assetBulkSqlRepository.BulkInsertTemplateAssetsAsync(templateAsset, dto.Quantity)
+                    .ConfigureAwait(false);
                 await _transactionManager.CommitAsync();
 
                 if (files != null && files.Any())
@@ -831,130 +844,6 @@ namespace Ettad.Inventory.Service.Assets.Implementation
                 return APIOperationResponse<BulkCreateFromTemplateResultDto>.Fail(
                     ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
             }
-        }
-
-        private async Task<long> InsertBulkAssetsViaBulkCopyAsync(
-            CreateBulkAssetsFromTemplateDto dto,
-            long batchId,
-            string userId)
-        {
-            const int chunkSize = 50_000;
-            var creationDate = _dateTimeProvider.Now;
-            long firstAssetId = 0;
-
-            var templateAsset = _mapper.Map<Asset>(dto);
-            templateAsset.ItemId = dto.ItemId;
-            templateAsset.SupplierId = dto.SupplierId;
-            templateAsset.ManufacturerId = dto.ManufacturerId;
-            templateAsset.PrimaryPurposId = dto.PrimaryPurposId;
-            templateAsset.DepotId = dto.DepotId;
-            templateAsset.BatchId = batchId;
-            templateAsset.CreationDate = creationDate;
-            templateAsset.CreatedBy = userId;
-            templateAsset.Status = AssetStatus.ReadyToIssue;
-            templateAsset.SerialNumber = null;
-            templateAsset.RFID = null;
-
-            var dbConnection = _context.Database.GetDbConnection();
-            var shouldCloseConnection = dbConnection.State != ConnectionState.Open;
-            if (shouldCloseConnection)
-                await _context.Database.OpenConnectionAsync();
-            try
-            {
-                if (dbConnection is not SqlConnection sqlConnection)
-                    throw new InvalidOperationException("Bulk template insert requires a SQL Server connection.");
-
-                var sqlTransaction = _context.Database.CurrentTransaction?.GetDbTransaction() as SqlTransaction;
-
-                for (int i = 0; i < dto.Quantity; i += chunkSize)
-                {
-                    var take = Math.Min(chunkSize, dto.Quantity - i);
-                    var dataTable = GenerateAssetDataTable(templateAsset, take);
-
-                    using (var bulkCopy = new SqlBulkCopy(
-                        sqlConnection,
-                        SqlBulkCopyOptions.CheckConstraints | SqlBulkCopyOptions.TableLock,
-                        sqlTransaction))
-                    {
-                        bulkCopy.DestinationTableName = "dbo.Assets";
-                        bulkCopy.BatchSize = 10_000;
-                        bulkCopy.BulkCopyTimeout = 0;
-                        bulkCopy.EnableStreaming = true;
-                        bulkCopy.ColumnMappings.Add("ItemId", "ItemId");
-                        bulkCopy.ColumnMappings.Add("SupplierId", "SupplierId");
-                        bulkCopy.ColumnMappings.Add("ManufacturerId", "ManufacturerId");
-                        bulkCopy.ColumnMappings.Add("PrimaryPurposId", "PrimaryPurposId");
-                        bulkCopy.ColumnMappings.Add("DepotId", "DepotId");
-                        bulkCopy.ColumnMappings.Add("BatchId", "BatchId");
-                        bulkCopy.ColumnMappings.Add("CreationDate", "CreationDate");
-                        bulkCopy.ColumnMappings.Add("CreatedBy", "CreatedBy");
-                        bulkCopy.ColumnMappings.Add("Status", "Status");
-                        bulkCopy.ColumnMappings.Add("IsAssigned", "IsAssigned");
-                        bulkCopy.ColumnMappings.Add("PurchasePrice", "PurchasePrice");
-                        bulkCopy.ColumnMappings.Add("IsDeleted", "IsDeleted");
-
-                        await bulkCopy.WriteToServerAsync(dataTable);
-                    }
-
-                    if (i == 0)
-                    {
-                        firstAssetId = await _assetRepository
-                            .Find(a => a.BatchId == batchId && !a.IsDeleted)
-                            .OrderBy(a => a.Id)
-                            .Select(a => a.Id)
-                            .FirstAsync();
-                    }
-
-                    _logger.LogInformation("SqlBulkCopy partition completed. Records: {Current}/{Total}",
-                        Math.Min(i + chunkSize, dto.Quantity), dto.Quantity);
-                }
-            }
-            finally
-            {
-                if (shouldCloseConnection)
-                    await _context.Database.CloseConnectionAsync();
-            }
-
-            return firstAssetId;
-        }
-
-        private DataTable GenerateAssetDataTable(Asset template, int quantity)
-        {
-            var dt = new DataTable("Assets");
-
-            dt.Columns.Add("ItemId", typeof(long));
-            dt.Columns.Add("SupplierId", typeof(long));
-            dt.Columns.Add("ManufacturerId", typeof(long));
-            dt.Columns.Add("PrimaryPurposId", typeof(long));
-            dt.Columns.Add("DepotId", typeof(long));
-            dt.Columns.Add("BatchId", typeof(long));
-            dt.Columns.Add("CreationDate", typeof(DateTime));
-            dt.Columns.Add("CreatedBy", typeof(string));
-            dt.Columns.Add("Status", typeof(int));
-            dt.Columns.Add("IsAssigned", typeof(bool));
-            dt.Columns.Add("PurchasePrice", typeof(decimal));
-            dt.Columns.Add("IsDeleted", typeof(bool));
-
-            for (int i = 0; i < quantity; i++)
-            {
-                var row = dt.NewRow();
-                row["ItemId"] = template.ItemId;
-                row["SupplierId"] = template.SupplierId ?? (object)DBNull.Value;
-                row["ManufacturerId"] = template.ManufacturerId ?? (object)DBNull.Value;
-                row["PrimaryPurposId"] = template.PrimaryPurposId ?? (object)DBNull.Value;
-                row["DepotId"] = template.DepotId;
-                row["BatchId"] = template.BatchId;
-                row["CreationDate"] = template.CreationDate;
-                row["CreatedBy"] = template.CreatedBy ?? (object)DBNull.Value;
-                row["Status"] = (int)(template.Status ?? AssetStatus.ReadyToIssue);
-                row["IsAssigned"] = false;
-                row["PurchasePrice"] = template.PurchasePrice ?? (object)DBNull.Value;
-                row["IsDeleted"] = false;
-
-                dt.Rows.Add(row);
-            }
-
-            return dt;
         }
 
         public async Task<APIOperationResponse<bool>> UpdateAsync(long id, UpdateAssetDto inputDto, List<IFormFile>? files = null)
@@ -1113,8 +1002,9 @@ namespace Ettad.Inventory.Service.Assets.Implementation
                     return APIOperationResponse<bool>.Fail(ResponseType.BadRequest,
                         "Cannot delete assigned asset. Unassign it first.");
 
-                var inSupply = await _context.AssetSupplyDetails.AsNoTracking()
-                    .AnyAsync(sd => !sd.IsDeleted && sd.AssetId == id);
+                var inSupply = await _assetSupplyDetailRepository
+                    .Find(sd => !sd.IsDeleted && sd.AssetId == id)
+                    .AnyAsync();
 
                 if (inSupply)
                     return APIOperationResponse<bool>.Fail(ResponseType.BadRequest,

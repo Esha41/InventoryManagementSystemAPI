@@ -19,6 +19,8 @@ namespace Ettad.Repository
 
             service.AddScoped<IEffectiveRoleRepository, EffectiveRoleRepository>();
 
+            service.AddScoped<IAssetBulkSqlRepository, AssetBulkSqlRepository>();
+
             return service;
         }
     }
