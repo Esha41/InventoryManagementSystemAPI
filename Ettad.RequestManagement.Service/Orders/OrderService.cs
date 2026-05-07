@@ -282,39 +282,31 @@ namespace Ettad.RequestManagement.Service.Orders
                         "Training Order is not valid for weapon orders. Please select a different use purpose.");
                 }
 
-                // Step 1: Save files first (before creating order) to create FileUplodMaster records
-                // When files are selected: if file upload fails or throws an exception, do not create the order.
-                List<long> savedFileMasterIds = null;
-                if (files != null && files.Count > 0)
-                {
-                    try
-                    {
-                        var saveFilesResult = await _fileUploadService.SaveFilesAsync(files, FileEntityType.Order);
-                        if (!saveFilesResult.Succeeded || saveFilesResult.Data == null)
-                        {
-                            _logger.LogWarning("Failed to save files before creating order. Error: {Error}, User: {UserId}",
-                                saveFilesResult.Message ?? "Unknown error", currentUserId);
-                            return APIOperationResponse<long>.Fail(ResponseType.BadRequest,
-                                saveFilesResult.Message ?? "File upload failed. Order was not created.");
-                        }
-                        savedFileMasterIds = saveFilesResult.Data;
-                        _logger.LogInformation("Files saved successfully before order creation. FileCount: {FileCount}, MasterIds: {MasterIds}, User: {UserId}",
-                            files.Count, string.Join(", ", savedFileMasterIds), currentUserId);
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogError(ex, "Exception during file upload before order creation. User: {UserId}", currentUserId);
-                        return APIOperationResponse<long>.Fail(ResponseType.BadRequest,
-                            $"File upload failed: {ex.Message}. Order was not created.");
-                    }
-                }
-
                 await _transactionManager.BeginAsync();
 
                 Order createdOrder;
                 try
                 {
-                    // Step 2: Map DTO to entity (exclude RequestItems for now)
+                    // Save files inside the same DB transaction as order + workflow so FileUplodMaster rows roll back on failure.
+                    List<long> savedFileMasterIds = null;
+                    if (files != null && files.Count > 0)
+                    {
+                        var saveFilesResult = await _fileUploadService.SaveFilesAsync(files, FileEntityType.Order);
+                        if (!saveFilesResult.Succeeded || saveFilesResult.Data == null)
+                        {
+                            await _transactionManager.RollbackAsync();
+                            _logger.LogWarning("Failed to save files during order creation. Error: {Error}, User: {UserId}",
+                                saveFilesResult.Message ?? "Unknown error", currentUserId);
+                            return APIOperationResponse<long>.Fail(ResponseType.BadRequest,
+                                saveFilesResult.Message ?? "File upload failed. Order was not created.");
+                        }
+
+                        savedFileMasterIds = saveFilesResult.Data;
+                        _logger.LogInformation("Files saved during order transaction. FileCount: {FileCount}, MasterIds: {MasterIds}, User: {UserId}",
+                            files.Count, string.Join(", ", savedFileMasterIds), currentUserId);
+                    }
+
+                    // Map DTO to entity (exclude RequestItems for now)
                     var order = _mapper.Map<Order>(inputDto);
                     order.RequestType = RequestType.Order; // Always set request type to Order
                     order.Status = RequestStatus.New; // Always set initial status to New

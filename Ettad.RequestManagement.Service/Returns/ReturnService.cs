@@ -248,39 +248,31 @@ namespace Ettad.RequestManagement.Service.Returns
                     returnWorkflowType = hasAmmoOrExplosive ? WorkflowType.Return : WorkflowType.Return_Weapon;
                 }
 
-                // Step 1: Save files first (before creating return) to create FileUplodMaster records
-                // When files are selected: if file upload fails or throws an exception, do not create the return.
-                List<long> savedFileMasterIds = null;
-                if (files != null && files.Count > 0)
-                {
-                    try
-                    {
-                        var saveFilesResult = await _fileUploadService.SaveFilesAsync(files, FileEntityType.Return);
-                        if (!saveFilesResult.Succeeded || saveFilesResult.Data == null)
-                        {
-                            _logger.LogWarning("Failed to save files before creating return. Error: {Error}, User: {UserId}",
-                                saveFilesResult.Message ?? "Unknown error", currentUserId);
-                            return APIOperationResponse<long>.Fail(ResponseType.BadRequest,
-                                saveFilesResult.Message ?? "File upload failed. Return was not created.");
-                        }
-                        savedFileMasterIds = saveFilesResult.Data;
-                        _logger.LogInformation("Files saved successfully before return creation. FileCount: {FileCount}, MasterIds: {MasterIds}, User: {UserId}",
-                            files.Count, string.Join(", ", savedFileMasterIds), currentUserId);
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogError(ex, "Exception during file upload before return creation. User: {UserId}", currentUserId);
-                        return APIOperationResponse<long>.Fail(ResponseType.BadRequest,
-                            $"File upload failed: {ex.Message}. Return was not created.");
-                    }
-                }
-
                 await _transactionManager.BeginAsync();
 
                 Return createdReturn;
                 try
                 {
-                    // Step 2: Map DTO to entity
+                    // Save files inside the same DB transaction as return + workflow so FileUplodMaster rows roll back on failure.
+                    List<long> savedFileMasterIds = null;
+                    if (files != null && files.Count > 0)
+                    {
+                        var saveFilesResult = await _fileUploadService.SaveFilesAsync(files, FileEntityType.Return);
+                        if (!saveFilesResult.Succeeded || saveFilesResult.Data == null)
+                        {
+                            await _transactionManager.RollbackAsync();
+                            _logger.LogWarning("Failed to save files during return creation. Error: {Error}, User: {UserId}",
+                                saveFilesResult.Message ?? "Unknown error", currentUserId);
+                            return APIOperationResponse<long>.Fail(ResponseType.BadRequest,
+                                saveFilesResult.Message ?? "File upload failed. Return was not created.");
+                        }
+
+                        savedFileMasterIds = saveFilesResult.Data;
+                        _logger.LogInformation("Files saved during return transaction. FileCount: {FileCount}, MasterIds: {MasterIds}, User: {UserId}",
+                            files.Count, string.Join(", ", savedFileMasterIds), currentUserId);
+                    }
+
+                    // Map DTO to entity
                     var returnEntity = _mapper.Map<Return>(inputDto);
                     returnEntity.DepartmentId = departmentId.Value;
 

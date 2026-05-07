@@ -187,40 +187,32 @@ namespace Ettad.RequestManagement.Service.Discards
                     return APIOperationResponse<long>.Fail(ResponseType.BadRequest, "Request purpose must be of type Discard");
                 }
 
-                // Step 1: Save files first (before creating discard) to create FileUplodMaster records
-                // When files are selected: if file upload fails or throws an exception, do not create the discard.
-                List<long> savedFileMasterIds = null;
-                if (files != null && files.Count > 0)
-                {
-                    try
-                    {
-                        // Use FileEntityType.Order for discard files (no Discard FileEntityType exists)
-                        var saveFilesResult = await _fileUploadService.SaveFilesAsync(files, FileEntityType.Order);
-                        if (!saveFilesResult.Succeeded || saveFilesResult.Data == null)
-                        {
-                            _logger.LogWarning("Failed to save files before creating discard. Error: {Error}, User: {UserId}",
-                                saveFilesResult.Message ?? "Unknown error", currentUserId);
-                            return APIOperationResponse<long>.Fail(ResponseType.BadRequest,
-                                saveFilesResult.Message ?? "File upload failed. Discard was not created.");
-                        }
-                        savedFileMasterIds = saveFilesResult.Data;
-                        _logger.LogInformation("Files saved successfully before discard creation. FileCount: {FileCount}, MasterIds: {MasterIds}, User: {UserId}",
-                            files.Count, string.Join(", ", savedFileMasterIds), currentUserId);
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogError(ex, "Exception during file upload before discard creation. User: {UserId}", currentUserId);
-                        return APIOperationResponse<long>.Fail(ResponseType.BadRequest,
-                            $"File upload failed: {ex.Message}. Discard was not created.");
-                    }
-                }
-
                 await _transactionManager.BeginAsync();
 
                 Discard createdDiscard;
                 try
                 {
-                    // Step 2: Map DTO to entity
+                    // Save files inside the same DB transaction as discard + workflow so FileUplodMaster rows roll back on failure.
+                    List<long> savedFileMasterIds = null;
+                    if (files != null && files.Count > 0)
+                    {
+                        // Use FileEntityType.Order for discard files (no Discard FileEntityType exists)
+                        var saveFilesResult = await _fileUploadService.SaveFilesAsync(files, FileEntityType.Order);
+                        if (!saveFilesResult.Succeeded || saveFilesResult.Data == null)
+                        {
+                            await _transactionManager.RollbackAsync();
+                            _logger.LogWarning("Failed to save files during discard creation. Error: {Error}, User: {UserId}",
+                                saveFilesResult.Message ?? "Unknown error", currentUserId);
+                            return APIOperationResponse<long>.Fail(ResponseType.BadRequest,
+                                saveFilesResult.Message ?? "File upload failed. Discard was not created.");
+                        }
+
+                        savedFileMasterIds = saveFilesResult.Data;
+                        _logger.LogInformation("Files saved during discard transaction. FileCount: {FileCount}, MasterIds: {MasterIds}, User: {UserId}",
+                            files.Count, string.Join(", ", savedFileMasterIds), currentUserId);
+                    }
+
+                    // Map DTO to entity
                     var discard = _mapper.Map<Discard>(inputDto);
                     discard.DepartmentId = departmentId.Value;
 
