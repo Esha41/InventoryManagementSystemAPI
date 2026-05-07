@@ -31,6 +31,28 @@ namespace Ettad.CrossCutting.Comman.Models
         public bool? DeletedOnly { get; set; }
     }
 
+    /// <summary>
+    /// Shared bounds for <see cref="PagedListRequest"/> (same rules as <see cref="PaginatedList{T}.CreateAsyncForTableBinding"/>).
+    /// </summary>
+    public static class PagedListRequestNormalizer
+    {
+        public const int DefaultPageSize = 10;
+        public const int MaxPageSize = 1000;
+
+        /// <summary>
+        /// Mutates <paramref name="request"/>: forces <c>Page &gt;= 1</c> and clamps <c>PageSize</c> to the default or max.
+        /// </summary>
+        public static void Normalize(PagedListRequest request)
+        {
+            ArgumentNullException.ThrowIfNull(request);
+            if (request.Page < 1)
+                request.Page = 1;
+            if (request.PageSize <= 0)
+                request.PageSize = DefaultPageSize;
+            else if (request.PageSize > MaxPageSize)
+                request.PageSize = MaxPageSize;
+        }
+    }
 
     // =======================================================================
     // THE PAGINATED LIST IMPLEMENTATION
@@ -55,6 +77,9 @@ namespace Ettad.CrossCutting.Comman.Models
 
         public static async Task<PaginatedList<T>> CreateAsyncForTableBinding(IQueryable<T> source, PagedListRequest request)
         {
+            ArgumentNullException.ThrowIfNull(request);
+            PagedListRequestNormalizer.Normalize(request);
+
             // This line calls the ToFilterView method from FilterProvider.cs
             if (request.Filter != null)
             {
@@ -64,19 +89,6 @@ namespace Ettad.CrossCutting.Comman.Models
             // Count query - optimized by filtered indexes on IsDeleted and composite indexes
             // Filtered indexes (WHERE IsDeleted = 0) significantly improve count performance
             var count = await source.CountAsync();
-
-            // Cap the PageSize to prevent performance issues
-            const int DefaultPageSize = 10;
-            const int MaxPageSize = 1000; // Adjust strictness as needed
-
-            if (request.PageSize <= 0)
-            {
-                request.PageSize = DefaultPageSize;
-            }
-            else if (request.PageSize > MaxPageSize)
-            {
-                request.PageSize = MaxPageSize;
-            }
 
             var items = await source
                 .AsNoTracking() // Performance optimization for read-only lists
