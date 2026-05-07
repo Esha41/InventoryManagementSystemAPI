@@ -106,7 +106,7 @@ namespace Ettad.Inventory.Service.Monitoring.Services
             {
                 try
                 {
-                    var config = JsonSerializer.Deserialize<Dtos.LowStockNotificationSettingsDto>(setting.Value);
+                    var config = JsonSerializer.Deserialize<Dtos.ItemNotificationSettingsDto>(setting.Value);
                     if (config != null)
                     {
                         userIds = config.Users ?? new List<string>();
