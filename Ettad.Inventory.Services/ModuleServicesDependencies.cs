@@ -43,6 +43,7 @@ using Ettad.Inventory.Service.Assets.Mapper;
 using Ettad.Inventory.Service.AssetSupply.Mapper;
 using Ettad.Inventory.Service.AssetHistory.Mapper;
 using Ettad.Inventory.Service.Assets.Implementation;
+using Ettad.Inventory.Service.Assets.Background;
 using Ettad.Inventory.Service.Assets.Interfaces;
 using Ettad.Inventory.Service.Employees.Interfaces;
 using Ettad.Inventory.Service.Employees.Implementation;
@@ -123,6 +124,11 @@ namespace Ettad.Inventory.Service
             services.AddScoped<IExcelExportService, ExcelExportService>();
 
             // Asset History Services
+            services.AddScoped<IAssetBulkDeletionProcessor, AssetBulkDeletionProcessor>();
+            services.AddScoped<IAssetBulkDeleteJobScheduler, HangfireAssetBulkDeleteJobScheduler>();
+            services.AddScoped<Ettad.Inventory.Service.Assets.Background.AssetBulkDeleteHangfireJob>();
+            services.AddScoped<IBulkAssetDeleteService, BulkAssetDeleteService>();
+
             services.AddScoped<IAssetHistoryService, AssetHistoryService>();
             services.AddAutoMapper(typeof(AssetHistoryMappingProfile));
 
@@ -130,3 +136,4 @@ namespace Ettad.Inventory.Service
         }
     }
 }
+

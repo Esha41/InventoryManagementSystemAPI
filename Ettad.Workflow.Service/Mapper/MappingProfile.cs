@@ -1,11 +1,6 @@
 using AutoMapper;
 
 using Ettad.Data.Entities.Workflows;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using Ettad.Workflows.Service.Dtos;
 
 namespace Ettad.Workflows.Service.Mapper
@@ -14,9 +9,11 @@ namespace Ettad.Workflows.Service.Mapper
     {
         public MappingProfile()
         {
-            // Workflow
-            CreateMap<Ettad.Data.Entities.Workflows.Workflow, WorkflowDto>();
-            CreateMap<WorkflowDto, Ettad.Data.Entities.Workflows.Workflow>();
+            CreateMap<Ettad.Data.Entities.Workflows.Workflow, WorkflowDto>()
+                .AfterMap((src, dest, _) => WorkflowAutoRejectTriggerMapper.MapToWorkflowDto(dest, src.AutoRejectTrigger));
+
+            CreateMap<WorkflowDto, Ettad.Data.Entities.Workflows.Workflow>()
+                .ForMember(d => d.AutoRejectTrigger, opt => opt.Ignore());
 
             // WorkflowStep
             CreateMap<WorkflowStepCreateDto, WorkflowStep>().ReverseMap();
@@ -27,7 +24,7 @@ namespace Ettad.Workflows.Service.Mapper
             CreateMap<WorkflowStepParallelRole, WorkflowStepParallelRoleDto>()
                 .ForMember(d => d.RoleName, o => o.MapFrom(s => s.Role != null ? s.Role.Name : null))
                 .ForMember(d => d.RoleNameAr, o => o.MapFrom(s => s.Role != null ? s.Role.NameAr : null));
-            
+
             // WorkflowStepTransition
             CreateMap<WorkflowStepTransition, WorkflowStepTransitionDto>()
                 .ForMember(dest => dest.TargetStep, opt => opt.Ignore()); // Complex mapping handled manually

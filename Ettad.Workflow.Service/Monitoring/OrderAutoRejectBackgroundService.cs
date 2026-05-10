@@ -7,6 +7,7 @@ using Ettad.Data.Entities.Workflows;
 using Ettad.Data.Enums;
 using Ettad.Data.Interfaces.Repositories;
 using Ettad.Notification.Service.Interfaces;
+using Ettad.Workflows.Service.Dtos;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -28,6 +29,7 @@ public class OrderAutoRejectBackgroundService : IOrderAutoRejectBackgroundServic
     private readonly INotificationHelperService _notificationHelperService;
     private readonly IConfiguration _configuration;
     private readonly ILogger<OrderAutoRejectBackgroundService> _logger;
+    private readonly IWorkflowAutoRejectConfigCache _workflowAutoRejectConfigCache;
 
     public OrderAutoRejectBackgroundService(
         ICrossCuttingRepository<BaseRequest> baseRequestRepository,
@@ -41,6 +43,7 @@ public class OrderAutoRejectBackgroundService : IOrderAutoRejectBackgroundServic
         IDateTimeProvider dateTimeProvider,
         INotificationHelperService notificationHelperService,
         IConfiguration configuration,
+        IWorkflowAutoRejectConfigCache workflowAutoRejectConfigCache,
         ILogger<OrderAutoRejectBackgroundService> logger)
     {
         _baseRequestRepository = baseRequestRepository;
@@ -54,6 +57,7 @@ public class OrderAutoRejectBackgroundService : IOrderAutoRejectBackgroundServic
         _dateTimeProvider = dateTimeProvider;
         _notificationHelperService = notificationHelperService;
         _configuration = configuration;
+        _workflowAutoRejectConfigCache = workflowAutoRejectConfigCache;
         _logger = logger;
     }
 
@@ -65,9 +69,9 @@ public class OrderAutoRejectBackgroundService : IOrderAutoRejectBackgroundServic
             _configuration,
             _logger,
             cancellationToken);
-        if (effective == null || !effective.IsEnabled || string.IsNullOrEmpty(effective.TriggerRoleId))
+        if (effective == null || !effective.IsEnabled)
         {
-            _logger.LogDebug("Order auto-reject skipped (no policy, disabled, or no trigger role).");
+            _logger.LogDebug("Order auto-reject skipped (no policy or disabled).");
             return;
         }
 
@@ -87,6 +91,7 @@ public class OrderAutoRejectBackgroundService : IOrderAutoRejectBackgroundServic
                      && OrderAutoRejectConstants.OrderWorkflowTypes.Contains(s.RequestType),
                 false,
                 nameof(WorkflowApprovalStep.WorkflowStep),
+                $"{nameof(WorkflowApprovalStep.WorkflowStep)}.{nameof(WorkflowStep.ParallelRoles)}",
                 nameof(WorkflowApprovalStep.Reminders))
             .ToListAsync(cancellationToken);
 
@@ -129,19 +134,21 @@ public class OrderAutoRejectBackgroundService : IOrderAutoRejectBackgroundServic
         if (steps.Count == 0)
             return;
 
-        var triggerApproval = steps
-            .Where(s =>
-                s.WorkflowStep != null
-                && s.WorkflowStep.ApplicationRoleId == policy.TriggerRoleId
-                && s.Status == RequestStatus.Approved
-                && s.ApprovedDate != null)
-            .OrderByDescending(s => s.ApprovedDate)
-            .FirstOrDefault();
+        var filtered = steps.Where(s => OrderAutoRejectConstants.OrderWorkflowTypes.Contains(s.RequestType)).ToList();
+        if (filtered.Count == 0)
+            return;
+
+        long? workflowId = filtered.FirstOrDefault()?.WorkflowStep?.WorkflowId;
+        var workflowConfig = workflowId.HasValue
+            ? await _workflowAutoRejectConfigCache.GetConfigAsync(workflowId.Value, cancellationToken)
+            : WorkflowAutoRejectTriggerConfig.Disabled;
+
+        var triggerApproval = RequestAutoRejectCountdownHelper.SelectTriggerApproval(filtered, policy, workflowConfig);
 
         if (triggerApproval?.WorkflowStep == null)
             return;
 
-        var current = steps.FirstOrDefault(s => s.IsCurrent && IsAwaitingApproval(s.Status));
+        var current = filtered.FirstOrDefault(s => s.IsCurrent && IsAwaitingApproval(s.Status));
         if (current?.WorkflowStep == null)
             return;
 

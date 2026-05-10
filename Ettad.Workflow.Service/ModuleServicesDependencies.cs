@@ -21,7 +21,10 @@ namespace Ettad.Workflow.Service
             service.AddScoped<IWorkflowStartNotificationService, WorkflowStartNotificationService>();
             service.AddScoped<IOrderAutoRejectBackgroundService, OrderAutoRejectBackgroundService>();
             service.AddScoped<IOrderAutoRejectSettingsService, OrderAutoRejectSettingsService>();
-            service.AddScoped<IOrderAutoRejectCountdownService, OrderAutoRejectCountdownService>();
+            service.AddScoped<RequestAutoRejectCountdownService>();
+            service.AddScoped<IRequestAutoRejectCountdownService>(sp => sp.GetRequiredService<RequestAutoRejectCountdownService>());
+            service.AddScoped<IOrderAutoRejectCountdownService>(sp => sp.GetRequiredService<RequestAutoRejectCountdownService>());
+            service.AddSingleton<IWorkflowAutoRejectConfigCache, WorkflowAutoRejectConfigCache>();
             service.AddScoped<OrderAutoRejectHangfireJob>();
 
             // Register MediatR from multiple assemblies
@@ -30,8 +33,6 @@ namespace Ettad.Workflow.Service
                 cfg.RegisterServicesFromAssembly(Assembly.GetExecutingAssembly()); // Current assembly
                 cfg.RegisterServicesFromAssembly(typeof(Ettad.Workflows.Service.Queries.GetWorkflowById.GetWorkflowByIdQueryHandler).Assembly); // Workflows assembly
             });
-
-            service.AddAutoMapper(Assembly.GetExecutingAssembly());
 
             return service;
         }

@@ -1,6 +1,9 @@
-using Ettad.CrossCutting.Common.Security;
-using Ettad.Inventory.Service.Monitoring.Dtos;
 using System.Collections.Generic;
+using System.Net;
+using Ettad.CrossCutting.Common.Security;
+using Ettad.CrossCutting.Comman.Models;
+using Ettad.Inventory.Service.Monitoring.Dtos;
+using Ettad.Inventory.Service.Monitoring.Interfaces;
 using Ettad.ResponseHandler.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -44,14 +47,19 @@ namespace Ettad.Inventory.API.Controllers
         }
 
         /// <summary>
-        /// Get the list of items that are below minimum stock level with their details
+        /// Low-stock items with server-side paging (same contract as <c>api/Ammunition/Paginated</c>).
+        /// Body: <see cref="PagedListRequest"/> (page, pageSize, optional filter). Depot query matches <c>low-stock/count</c>.
         /// </summary>
-        [HttpGet("low-stock")]
-        [ProducesResponseType(typeof(APIOperationResponse<List<LowStockItemDto>>), (int)HttpStatusCode.OK)]
+        [HttpPost("low-stock/Paginated")]
+        [ProducesResponseType(typeof(APIOperationResponse<PaginatedList<LowStockItemDto>>), (int)HttpStatusCode.OK)]
         [CheckAuthorize("Permissions.Inventory.View", "Permissions.Inventory.Page")]
-        public async Task<IActionResult> GetLowStockItems()
+        public async Task<IActionResult> GetLowStockItemsPaginated(
+            [FromBody] PagedListRequest? request,
+            [FromQuery] long? depotId = null,
+            [FromQuery] List<long>? depotIds = null)
         {
-            var result = await _lowStockMonitoringService.GetLowStockItemsAsync();
+            request ??= new PagedListRequest();
+            var result = await _lowStockMonitoringService.GetLowStockItemsPaginatedAsync(request, depotId, depotIds);
             return ProcessResponse(result);
         }
 
@@ -92,14 +100,19 @@ namespace Ettad.Inventory.API.Controllers
         }
 
         /// <summary>
-        /// Get the list of lots that are about to expire in the next 30 days with their details (item and depot information)
+        /// Expiring lots (next 30 days) with server-side paging (same contract as <c>api/Ammunition/Paginated</c>).
+        /// Body: <see cref="PagedListRequest"/>. Depot query matches <c>expiring-lots/count</c>.
         /// </summary>
-        [HttpGet("expiring-lots")]
-        [ProducesResponseType(typeof(APIOperationResponse<List<ExpiringLotDto>>), (int)HttpStatusCode.OK)]
+        [HttpPost("expiring-lots/Paginated")]
+        [ProducesResponseType(typeof(APIOperationResponse<PaginatedList<ExpiringLotDto>>), (int)HttpStatusCode.OK)]
         [CheckAuthorize("Permissions.Inventory.View", "Permissions.Inventory.Page")]
-        public async Task<IActionResult> GetExpiringLots()
+        public async Task<IActionResult> GetExpiringLotsPaginated(
+            [FromBody] PagedListRequest? request,
+            [FromQuery] long? depotId = null,
+            [FromQuery] List<long>? depotIds = null)
         {
-            var result = await _expiringLotMonitoringService.GetExpiringLotsAsync();
+            request ??= new PagedListRequest();
+            var result = await _expiringLotMonitoringService.GetExpiringLotsPaginatedAsync(request, depotId, depotIds);
             return ProcessResponse(result);
         }
 
@@ -124,6 +137,18 @@ namespace Ettad.Inventory.API.Controllers
         public async Task<IActionResult> GetPipelineDashboard([FromQuery] long? depotId = null, [FromQuery] List<long>? depotIds = null)
         {
             var result = await _inventoryDashboardMonitoringService.GetPipelineDashboardAsync(depotId, depotIds);
+            return ProcessResponse(result);
+        }
+
+        /// <summary>
+        /// Headline counts for inventory dashboard stat cards (alerts, totals, items-by-type).
+        /// </summary>
+        [HttpGet("dashboard/inventory-headline-metrics")]
+        [ProducesResponseType(typeof(APIOperationResponse<InventoryHeadlineMetricsDto>), (int)HttpStatusCode.OK)]
+        [CheckAuthorize("Permissions.Inventory.View", "Permissions.Inventory.Page")]
+        public async Task<IActionResult> GetInventoryHeadlineMetrics([FromQuery] long? depotId = null, [FromQuery] List<long>? depotIds = null)
+        {
+            var result = await _inventoryDashboardMonitoringService.GetInventoryHeadlineMetricsAsync(depotId, depotIds);
             return ProcessResponse(result);
         }
 

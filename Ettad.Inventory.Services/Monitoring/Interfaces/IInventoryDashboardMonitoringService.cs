@@ -14,5 +14,7 @@ namespace Ettad.Inventory.Service.Monitoring.Interfaces
         Task<APIOperationResponse<List<DraftSupplyListItemDto>>> GetDraftSuppliesListAsync(long? depotId = null, List<long>? depotIds = null);
 
         Task<APIOperationResponse<List<OrderAwaitingFulfillmentListItemDto>>> GetOrdersAwaitingFulfillmentListAsync(long? depotId = null, List<long>? depotIds = null);
+
+        Task<APIOperationResponse<InventoryHeadlineMetricsDto>> GetInventoryHeadlineMetricsAsync(long? depotId = null, List<long>? depotIds = null);
     }
 }

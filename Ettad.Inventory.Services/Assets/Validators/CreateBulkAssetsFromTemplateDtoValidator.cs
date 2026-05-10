@@ -10,8 +10,8 @@ namespace Ettad.Inventory.Service.Assets.Validators
             Include(new CreateAssetDtoValidator());
 
             RuleFor(x => x.Quantity)
-                .InclusiveBetween(1, 50_000)
-                .WithMessage("Quantity must be between 1 and 50,000.");
+                .InclusiveBetween(1, 1_000_000)
+                .WithMessage("Quantity must be between 1 and 1,000,000.");
 
             RuleFor(x => x)
                 .Must(x => x.Quantity <= 1
