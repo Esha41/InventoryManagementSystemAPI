@@ -1410,6 +1410,43 @@ namespace Ettad.Inventory.Service.Inventories.Services
             }
         }
 
+        /// <summary>
+        /// Same data as <see cref="GetInventorySummaryForAllItemsAsync"/> but paged. Optional <paramref name="itemType"/>
+        /// restricts rows before paging (e.g. Ammunition-only for dashboard tabs). When null, all item types are included.
+        /// </summary>
+        public async Task<APIOperationResponse<PaginatedList<ItemInventorySummaryDto>>> GetInventorySummaryForAllItemsPaginatedAsync(
+            PagedListRequest request,
+            long? depotId = null,
+            List<long>? depotIds = null,
+            ItemType? itemType = null)
+        {
+            request ??= new PagedListRequest();
+            PagedListRequestNormalizer.Normalize(request);
+
+            var fullResult = await GetInventorySummaryForAllItemsAsync(depotId, depotIds).ConfigureAwait(false);
+            if (!fullResult.Succeeded || fullResult.Data == null)
+            {
+                return APIOperationResponse<PaginatedList<ItemInventorySummaryDto>>.Fail(
+                    (ResponseType)fullResult.StatusCode,
+                    fullResult.Message ?? "Inventory summary failed.");
+            }
+
+            var list = fullResult.Data;
+            if (itemType.HasValue)
+            {
+                list = list.Where(x => x.ItemType == itemType.Value).ToList();
+            }
+
+            var totalCount = list.Count;
+            var pageItems = list
+                .Skip((request.Page - 1) * request.PageSize)
+                .Take(request.PageSize)
+                .ToList();
+
+            var page = new PaginatedList<ItemInventorySummaryDto>(pageItems, totalCount, request.Page, request.PageSize);
+            return APIOperationResponse<PaginatedList<ItemInventorySummaryDto>>.Success(page);
+        }
+
         public async Task<APIOperationResponse<ItemInventorySummaryDto>> GetItemInventorySummaryAsync(long itemId)
         {
             _logger.LogInformation("Getting item inventory summary. ItemId: {ItemId}, User: {UserId}",

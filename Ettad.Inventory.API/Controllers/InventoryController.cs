@@ -175,6 +175,22 @@ namespace Ettad.Inventory.API.Controllers
             return ProcessResponse(result);
         }
 
+        /// <summary>
+        /// Paginated item-level inventory summary (same depot filters as GET items/summary).
+        /// </summary>
+        [HttpPost("items/summary/paged")]
+        [ProducesResponseType((int)HttpStatusCode.OK)]
+        [CheckAuthorize("Permissions.Inventory.View", "Permissions.Inventory.Page")]
+        public async Task<IActionResult> GetInventorySummaryForAllItemsPaged(
+            [FromBody] PagedListRequest request,
+            [FromQuery] long? depotId = null,
+            [FromQuery] List<long>? depotIds = null,
+            [FromQuery] ItemType? itemType = null)
+        {
+            var result = await _inventoryService.GetInventorySummaryForAllItemsPaginatedAsync(request, depotId, depotIds, itemType);
+            return ProcessResponse(result);
+        }
+
         [HttpGet("item/{itemId}/summary")]
         [ProducesResponseType((int)HttpStatusCode.OK)]
         [ProducesResponseType((int)HttpStatusCode.NotFound)]

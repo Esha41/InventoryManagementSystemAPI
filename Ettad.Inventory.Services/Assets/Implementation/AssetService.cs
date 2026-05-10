@@ -24,6 +24,7 @@ using Ettad.Inventory.Service.Common.Interfaces;
 using Ettad.Inventory.Service.Assets.Interfaces;
 using Ettad.Data.Entities;
 using System.Collections.Generic;
+using Microsoft.EntityFrameworkCore;
 
 namespace Ettad.Inventory.Service.Assets.Implementation
 {
@@ -187,14 +188,23 @@ namespace Ettad.Inventory.Service.Assets.Implementation
             }
         }
 
-        public async Task<APIOperationResponse<PaginatedList<AssetDto>>> GetAssetsPagedAsync(long? depotId, List<long>? depotIds, PagedListRequest request)
+        /// <inheritdoc />
+        public async Task<APIOperationResponse<PaginatedList<AssetItemCatalogSummaryDto>>> GetAssetCatalogItemSummariesPagedAsync(
+            PagedListRequest request,
+            long? depotId = null,
+            List<long>? depotIds = null,
+            ItemType? itemType = null)
         {
+            request ??= new PagedListRequest();
+            PagedListRequestNormalizer.Normalize(request);
+
             var effective = new HashSet<long>();
             if (depotIds != null) foreach (var d in depotIds) if (d > 0) effective.Add(d);
             if (depotId.HasValue && depotId.Value > 0) effective.Add(depotId.Value);
 
-            _logger.LogInformation("Getting assets paged (multi-depot). DepotId: {DepotId}, DepotCount: {DepotCount}, Page: {Page}, PageSize: {PageSize}, User: {UserId}",
-                depotId, effective.Count, request.Page, request.PageSize, _currentUserService.UserId);
+            _logger.LogInformation(
+                "Getting asset catalog item summaries (paged). DepotId: {DepotId}, DepotCount: {DepotCount}, ItemType: {ItemType}, Page: {Page}, PageSize: {PageSize}, User: {UserId}",
+                depotId, effective.Count, itemType, request.Page, request.PageSize, _currentUserService.UserId);
 
             try
             {
@@ -207,8 +217,8 @@ namespace Ettad.Inventory.Service.Assets.Implementation
                         {
                             if (!await _depotAccessService.HasDepotAccessAsync(userId, dId))
                             {
-                                _logger.LogWarning("User {UserId} attempted to access assets for unauthorized depot {DepotId}", userId, dId);
-                                return APIOperationResponse<PaginatedList<AssetDto>>.Fail(ResponseType.Forbidden, "You do not have access to one or more of the requested depots.");
+                                _logger.LogWarning("User {UserId} attempted to access catalog summaries for unauthorized depot {DepotId}", userId, dId);
+                                return APIOperationResponse<PaginatedList<AssetItemCatalogSummaryDto>>.Fail(ResponseType.Forbidden, "You do not have access to one or more of the requested depots.");
                             }
                         }
                     }
@@ -224,47 +234,79 @@ namespace Ettad.Inventory.Service.Assets.Implementation
                 }
                 else
                 {
-                    var set = effective.ToArray();
-                    depotFilter = a => !a.IsDeleted && set.Contains(a.DepotId);
+                    var setDepots = effective.ToArray();
+                    depotFilter = a => !a.IsDeleted && setDepots.Contains(a.DepotId);
                 }
 
-                var query = _assetRepository.Find(depotFilter, false, AssetReadMapIncludes);
+                var assetQuery = _assetRepository
+                    .Find(depotFilter, false, nameof(Asset.Item))
+                    .Where(a => a.Item != null && !a.Item.IsDeleted);
 
-                var paginatedEntities = await PaginatedList<Asset>.CreateAsyncForTableBinding(query, request);
-
-                var dtos = new List<AssetDto>();
-                if (paginatedEntities.Items.Any())
+                if (itemType.HasValue)
                 {
-                    dtos = _mapper.Map<List<AssetDto>>(paginatedEntities.Items);
-
-                    var entityIds = dtos.Select(d => d.Id).ToList();
-                    var imagesResult = await _fileUploadService.GetByEntitiesAsync(FileEntityType.Asset, entityIds);
-
-                    if (imagesResult.Succeeded && imagesResult.Data != null)
-                    {
-                        foreach (var dto in dtos)
-                        {
-                            if (imagesResult.Data.ContainsKey(dto.Id))
-                            {
-                                dto.Images = imagesResult.Data[dto.Id];
-                            }
-                        }
-                    }
+                    var it = itemType.Value;
+                    assetQuery = assetQuery.Where(a => a.Item.ItemType == it);
                 }
 
-                var result = new PaginatedList<AssetDto>(
-                    dtos,
-                    paginatedEntities.TotalCount,
-                    paginatedEntities.PageIndex,
-                    request.PageSize);
+                var distinctItemIdsQuery = assetQuery.Select(a => a.ItemId).Distinct();
+                var totalCount = await distinctItemIdsQuery.CountAsync();
 
-                return APIOperationResponse<PaginatedList<AssetDto>>.Success(result);
+                var pageItemIds = await distinctItemIdsQuery
+                    .OrderBy(id => id)
+                    .Skip((request.Page - 1) * request.PageSize)
+                    .Take(request.PageSize)
+                    .ToListAsync();
+
+                if (pageItemIds.Count == 0)
+                {
+                    var empty = new PaginatedList<AssetItemCatalogSummaryDto>(
+                        new List<AssetItemCatalogSummaryDto>(),
+                        totalCount,
+                        request.Page,
+                        request.PageSize);
+                    return APIOperationResponse<PaginatedList<AssetItemCatalogSummaryDto>>.Success(empty);
+                }
+
+                var grouped = await assetQuery
+                    .Where(a => pageItemIds.Contains(a.ItemId))
+                    .GroupBy(a => a.ItemId)
+                    .Select(g => new
+                    {
+                        ItemId = g.Key,
+                        TotalAssets = g.Count(),
+                        ItemName = g.Select(x => x.Item.Name).FirstOrDefault(),
+                        ItemNo = g.Select(x => x.Item.ItemNo).FirstOrDefault(),
+                        Nsn = g.Select(x => x.Item.Nsn).FirstOrDefault(),
+                        PartNo = g.Select(x => x.Item.PartNo).FirstOrDefault(),
+                        ItemType = g.Select(x => x.Item.ItemType).FirstOrDefault()
+                    })
+                    .ToListAsync();
+
+                var rowById = grouped.ToDictionary(x => x.ItemId);
+                var items = new List<AssetItemCatalogSummaryDto>();
+                foreach (var id in pageItemIds)
+                {
+                    if (!rowById.TryGetValue(id, out var row))
+                        continue;
+                    items.Add(new AssetItemCatalogSummaryDto
+                    {
+                        ItemId = row.ItemId,
+                        ItemName = row.ItemName ?? string.Empty,
+                        ItemNo = row.ItemNo ?? string.Empty,
+                        Nsn = row.Nsn ?? string.Empty,
+                        PartNo = row.PartNo ?? string.Empty,
+                        ItemType = row.ItemType,
+                        TotalAssets = row.TotalAssets
+                    });
+                }
+
+                var page = new PaginatedList<AssetItemCatalogSummaryDto>(items, totalCount, request.Page, request.PageSize);
+                return APIOperationResponse<PaginatedList<AssetItemCatalogSummaryDto>>.Success(page);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting assets paged by depots. DepotId: {DepotId}, User: {UserId}",
-                    depotId, _currentUserService.UserId);
-                return APIOperationResponse<PaginatedList<AssetDto>>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
+                _logger.LogError(ex, "Error getting asset catalog item summaries paged. User: {UserId}", _currentUserService.UserId);
+                return APIOperationResponse<PaginatedList<AssetItemCatalogSummaryDto>>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
             }
         }
 
@@ -554,6 +596,86 @@ namespace Ettad.Inventory.Service.Assets.Implementation
             {
                 _logger.LogError(ex, "Error getting assets by itemId. ItemId: {ItemId}, User: {UserId}", itemId, _currentUserService.UserId);
                 return APIOperationResponse<List<AssetDto>>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
+            }
+        }
+
+        /// <inheritdoc />
+        public async Task<APIOperationResponse<PaginatedList<AssetDto>>> GetAssetsByItemIdPagedAsync(
+            long itemId,
+            PagedListRequest request,
+            long? depotId = null)
+        {
+            request ??= new PagedListRequest();
+            PagedListRequestNormalizer.Normalize(request);
+
+            _logger.LogInformation(
+                "Getting assets by itemId (paged). ItemId: {ItemId}, DepotId: {DepotId}, Page: {Page}, PageSize: {PageSize}, User: {UserId}",
+                itemId,
+                depotId?.ToString() ?? "All",
+                request.Page,
+                request.PageSize,
+                _currentUserService.UserId);
+
+            try
+            {
+                if (depotId.HasValue && depotId.Value > 0)
+                {
+                    var userId = _currentUserService.UserId;
+                    if (!string.IsNullOrEmpty(userId) && !await _depotAccessService.HasDepotAccessAsync(userId, depotId.Value))
+                    {
+                        _logger.LogWarning("User {UserId} attempted to access assets for unauthorized depot {DepotId}", userId, depotId);
+                        return APIOperationResponse<PaginatedList<AssetDto>>.Fail(ResponseType.Forbidden, "You do not have access to this depot.");
+                    }
+                }
+
+                var userDepotIds = await _depotAccessService.GetUserAccessibleDepotIdsAsync();
+                if (userDepotIds != null && userDepotIds.Count == 0)
+                {
+                    var empty = new PaginatedList<AssetDto>(new List<AssetDto>(), 0, request.Page, request.PageSize);
+                    return APIOperationResponse<PaginatedList<AssetDto>>.Success(empty);
+                }
+
+                var query = _assetRepository.Find(
+                    a => !a.IsDeleted
+                        && a.ItemId == itemId
+                        && (!depotId.HasValue || depotId.Value <= 0 || a.DepotId == depotId.Value),
+                    false,
+                    AssetReadMapIncludes);
+
+                if (userDepotIds != null)
+                    query = query.Where(a => userDepotIds.Contains(a.DepotId));
+
+                var paginatedEntities = await PaginatedList<Asset>.CreateAsyncForTableBinding(query, request);
+
+                var dtos = new List<AssetDto>();
+                if (paginatedEntities.Items.Count > 0)
+                {
+                    dtos = _mapper.Map<List<AssetDto>>(paginatedEntities.Items);
+
+                    var entityIds = dtos.Select(d => d.Id).ToList();
+                    var imagesResult = await _fileUploadService.GetByEntitiesAsync(FileEntityType.Asset, entityIds);
+                    if (imagesResult.Succeeded && imagesResult.Data != null)
+                    {
+                        foreach (var dto in dtos)
+                        {
+                            if (imagesResult.Data.ContainsKey(dto.Id))
+                                dto.Images = imagesResult.Data[dto.Id];
+                        }
+                    }
+                }
+
+                var result = new PaginatedList<AssetDto>(
+                    dtos,
+                    paginatedEntities.TotalCount,
+                    paginatedEntities.PageIndex,
+                    request.PageSize);
+
+                return APIOperationResponse<PaginatedList<AssetDto>>.Success(result);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting assets by itemId (paged). ItemId: {ItemId}, User: {UserId}", itemId, _currentUserService.UserId);
+                return APIOperationResponse<PaginatedList<AssetDto>>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
             }
         }
 
