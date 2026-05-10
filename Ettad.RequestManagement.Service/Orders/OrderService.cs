@@ -213,17 +213,6 @@ namespace Ettad.RequestManagement.Service.Orders
                     return APIOperationResponse<long>.Fail(ResponseType.BadRequest, "At least one file attachment is required.");
                 }
 
-                // Additional validation for orders from allowance
-                if (inputDto.IsFromAllowance)
-                {
-                    var allowanceValidationResult = await ValidateAllowanceForOrderAsync(inputDto.RequestItems, departmentId.Value);
-                    if (!allowanceValidationResult.IsValid)
-                    {
-                        var errorMessage = string.Join("; ", allowanceValidationResult.Errors);
-                        return APIOperationResponse<long>.Fail(ResponseType.BadRequest, errorMessage);
-                    }
-                }
-
                 // Ensure request purpose is for orders
                 var requestPurpose = await _requestPurposeRepository.FindOneAsync(
                     rp => rp.Id == inputDto.RequestPurposeId && rp.RequestType == RequestType.Order && !rp.IsDeleted);
@@ -653,21 +642,6 @@ namespace Ettad.RequestManagement.Service.Orders
                         "Item already exists in this order. Use update quantity instead.");
                 }
 
-                // Validation for orders from allowance
-                if (order.IsFromAllowance)
-                {
-                    var allowanceValidationResult = await ValidateAllowanceForOrderAsync(
-                        new List<CreateUpdateRequestItemDto> { itemDto }, 
-                        order.DepartmentId
-                    );
-
-                    if (!allowanceValidationResult.IsValid)
-                    {
-                        var errorMessage = string.Join("; ", allowanceValidationResult.Errors);
-                        return APIOperationResponse<long>.Fail(ResponseType.BadRequest, errorMessage);
-                    }
-                }
-
                 // Create new request item
                 var newItem = _mapper.Map<RequestItem>(itemDto);
                 newItem.RequestId = orderId;
@@ -926,46 +900,6 @@ namespace Ettad.RequestManagement.Service.Orders
                 _logger.LogError(ex, "Error verifying item allowance. ItemId: {ItemId}", itemId);
                 return APIOperationResponse<AllowanceVerificationDto>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
             }
-        }
-
-        /// <summary>
-        /// Validates allowance for all items in an order
-        /// </summary>
-        private async Task<(bool IsValid, List<string> Errors)> ValidateAllowanceForOrderAsync(
-            List<CreateUpdateRequestItemDto> requestItems, 
-            long departmentId)
-        {
-            var errors = new List<string>();
-            var currentYear = _dateTimeProvider.Now.Year;
-
-            if (requestItems == null || !requestItems.Any())
-            {
-                errors.Add("Order must have at least one item");
-                return (false, errors);
-            }
-
-            // Get all unique item IDs
-            var itemIds = requestItems.Select(ri => ri.ItemId).Distinct().ToList();
-
-            // Get all allowance items for this department and year in one query
-            var allowanceItems = await _allowanceItemRepository.FindAsync(
-                ai => ai.DepartmentId == departmentId && 
-                      ai.Year == currentYear && 
-                      !ai.IsDeleted
-            );
-
-            var allowanceByItemId = allowanceItems.ToDictionary(ai => ai.ItemId, ai => ai.Quantity);
-
-            // Validate each item (must exist in allowance; quantity may exceed remaining — negative balance allowed)
-            foreach (var requestItem in requestItems)
-            {
-                if (!allowanceByItemId.ContainsKey(requestItem.ItemId))
-                {
-                    errors.Add($"This item is not found in the department's allowance for year {currentYear}");
-                }
-            }
-
-            return (errors.Count == 0, errors);
         }
 
         /// <summary>
