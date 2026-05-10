@@ -3,7 +3,7 @@ using Ettad.Data.Entities.Workflows;
 using Ettad.Data.Enums;
 using Ettad.Workflows.Service.Monitoring;
 
-namespace Ettad.Workflows.Service.Dtos;
+namespace Ettad.Workflows.Service.Mapper;
 
 /// <summary>Maps <see cref="WorkflowAutoRejectTrigger"/> onto serialized workflow DTO trigger fields.</summary>
 public static class WorkflowAutoRejectTriggerMapper

@@ -1,6 +1,6 @@
 using Ettad.Data.Enums;
 
-namespace Ettad.Workflows.API.Contracts;
+namespace Ettad.Workflows.Service.Dtos;
 
 public sealed class UpdateWorkflowAutoRejectTriggersDto
 {
