@@ -1,14 +1,16 @@
 using AutoMapper;
-using AutoMapper.QueryableExtensions;
 using MediatR;
+using Microsoft.EntityFrameworkCore;
 using Ettad.Application.Common.Interfaces;
 using Ettad.CrossCutting.Comman.Models;
+using Ettad.Data.Entities.Workflows;
 using Ettad.EntityFramework.DataBaseContext;
 using Ettad.ResponseHandler.Models;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Ettad.Workflows.Service.Dtos;
+using WorkflowEntity = global::Ettad.Data.Entities.Workflows.Workflow;
 
 namespace Ettad.Workflows.Service.Queries.GetWorkflow
 {
@@ -41,21 +43,49 @@ namespace Ettad.Workflows.Service.Queries.GetWorkflow
         public async Task<APIOperationResponse<PaginatedList<WorkflowDto>>> Handle(GetWorkflowsWithPaginationQuery request, CancellationToken cancellationToken)
         {
             var workflowsQueryable = _context.Workflows
+                .AsNoTracking()
                 .Where(w => !w.IsDeleted)
+                .Include(w => w.AutoRejectTrigger)
+                    .ThenInclude(t => t!.TriggerRoles)
+                .Include(w => w.AutoRejectTrigger)
+                    .ThenInclude(t => t!.TriggerSteps)
+                .Include(w => w.WorkflowSteps)
+                    .ThenInclude(step => step.Transitions)
+                        .ThenInclude(t => t.TargetWorkflowStep)
+                            .ThenInclude(target => target.ApplicationRole)
+                .Include(w => w.WorkflowSteps)
+                    .ThenInclude(step => step.Transitions)
+                        .ThenInclude(t => t.TargetWorkflowStep)
+                            .ThenInclude(target => target.HigherApprovalRole)
+                .Include(w => w.WorkflowSteps)
+                    .ThenInclude(step => step.ApplicationRole)
+                .Include(w => w.WorkflowSteps)
+                    .ThenInclude(step => step.ParallelRoles)
+                        .ThenInclude(pr => pr.Role)
                 .AsQueryable();
 
-            // Filter the query based on the current user's role and OrganizationId
             if (!_currentUserService.IsSuperAdmin)
             {
                 workflowsQueryable = workflowsQueryable;
             }
 
-            var projectedQueryable = workflowsQueryable.ProjectTo<WorkflowDto>(_mapper.ConfigurationProvider);
+            PagedListRequestNormalizer.Normalize(request.PagedListRequest);
 
-            var paginatedWorkflows = await PaginatedList<WorkflowDto>.CreateAsyncForTableBinding(
-                projectedQueryable,
-                request.PagedListRequest
-            );
+            var paginatedEntities = await PaginatedList<WorkflowEntity>.CreateAsyncForTableBinding(
+                workflowsQueryable,
+                request.PagedListRequest);
+
+            var dtoItems = paginatedEntities.Items.Select(w =>
+            {
+                var dto = _mapper.Map<WorkflowDto>(w);
+                return dto;
+            }).ToList();
+
+            var paginatedWorkflows = new PaginatedList<WorkflowDto>(
+                dtoItems,
+                paginatedEntities.TotalCount,
+                paginatedEntities.PageIndex,
+                request.PagedListRequest.PageSize);
 
             return APIOperationResponse<PaginatedList<WorkflowDto>>.Success(paginatedWorkflows);
         }

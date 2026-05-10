@@ -9,6 +9,8 @@ using Ettad.CrossCutting.Comman.Time;
 using System.Threading;
 using System.Threading.Tasks;
 
+using Ettad.Workflows.Service.Monitoring;
+
 namespace Ettad.Workflows.Service.Commands.DeleteWorkflow
 {
     public class DeleteWorkflowCommand : IRequest<APIOperationResponse<bool>>
@@ -27,17 +29,20 @@ namespace Ettad.Workflows.Service.Commands.DeleteWorkflow
         private readonly ICurrentUserService _currentUserService;
         private readonly ILogger<DeleteWorkflowCommandHandler> _logger;
         private readonly IDateTimeProvider _dateTimeProvider;
+        private readonly IWorkflowAutoRejectConfigCache _workflowAutoRejectConfigCache;
 
         public DeleteWorkflowCommandHandler(
             ApplicationDbContext context,
             ICurrentUserService currentUserService,
             ILogger<DeleteWorkflowCommandHandler> logger,
-            IDateTimeProvider dateTimeProvider)
+            IDateTimeProvider dateTimeProvider,
+            IWorkflowAutoRejectConfigCache workflowAutoRejectConfigCache)
         {
             _context = context;
             _currentUserService = currentUserService;
             _logger = logger;
             _dateTimeProvider = dateTimeProvider;
+            _workflowAutoRejectConfigCache = workflowAutoRejectConfigCache;
         }
 
         public async Task<APIOperationResponse<bool>> Handle(DeleteWorkflowCommand request, CancellationToken cancellationToken)
@@ -62,6 +67,7 @@ namespace Ettad.Workflows.Service.Commands.DeleteWorkflow
                 await _context.SaveChangesAsync(cancellationToken);
 
                 _logger.LogInformation("Workflow soft deletion completed successfully. Workflow ID: {WorkflowId}", request.Id);
+                _workflowAutoRejectConfigCache.InvalidateConfig(request.Id);
                 return APIOperationResponse<bool>.Success(true, "Workflow deleted successfully.");
             }
             catch (Exception e)

@@ -24,6 +24,18 @@ namespace Ettad.Workflows.Service.Dtos
 
         public bool IsSpecialOrReserved { get; set; }
 
+        [JsonPropertyName("autoRejectTriggerMode")]
+        public string? AutoRejectTriggerMode { get; set; }
+
+        [JsonPropertyName("autoRejectTriggerRoleIds")]
+        public List<string> AutoRejectTriggerRoleIds { get; set; } = new();
+
+        [JsonPropertyName("autoRejectTriggerStepIds")]
+        public List<long> AutoRejectTriggerStepIds { get; set; } = new();
+
+        [JsonPropertyName("autoRejectResetOnReApproval")]
+        public bool AutoRejectResetOnReApproval { get; set; } = true;
+
         // Steps in the workflow
         public List<WorkflowStepDto> WorkflowSteps { get; set; } = new();
     }

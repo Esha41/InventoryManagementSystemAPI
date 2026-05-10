@@ -15,6 +15,8 @@ using System.Threading.Tasks;
 using Ettad.CrossCutting.Comman.Time;
 using Ettad.Workflows.Service.Dtos;
 
+using WorkflowEntity = global::Ettad.Data.Entities.Workflows.Workflow;
+
 namespace Ettad.Workflows.Service.Commands.UpdateWorkflow
 {
     public class UpdateWorkflowCommand : IRequest<APIOperationResponse<WorkflowDto>>
@@ -100,7 +102,13 @@ namespace Ettad.Workflows.Service.Commands.UpdateWorkflow
 
                 await UpdateWorkflowSteps(workflow, request.WorkflowSteps, cancellationToken);
 
+                await _context.SaveChangesAsync(cancellationToken);
+
                 var freshWorkflow = await _context.Workflows
+                    .Include(w => w.AutoRejectTrigger)
+                        .ThenInclude(t => t!.TriggerRoles)
+                    .Include(w => w.AutoRejectTrigger)
+                        .ThenInclude(t => t!.TriggerSteps)
                     .Include(w => w.WorkflowSteps)
                         .ThenInclude(ws => ws.ApplicationRole)
                     .Include(w => w.WorkflowSteps)
@@ -128,11 +136,8 @@ namespace Ettad.Workflows.Service.Commands.UpdateWorkflow
             }
         }
 
-
- 
-
         // Update workflow steps
-        private async Task UpdateWorkflowSteps(Data.Entities.Workflows.Workflow workflow, List<WorkflowStepCreateDto> incomingSteps, CancellationToken cancellationToken)
+        private async Task UpdateWorkflowSteps(WorkflowEntity workflow, List<WorkflowStepCreateDto> incomingSteps, CancellationToken cancellationToken)
         {
             var existingSteps = workflow.WorkflowSteps.ToList();
 
