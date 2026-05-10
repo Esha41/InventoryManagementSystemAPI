@@ -7,6 +7,8 @@ using Ettad.Workflows.Service.Commands.DeleteWorkflow;
 using Ettad.Workflows.Service.Commands.CreateWorkflow;
 using Ettad.Workflows.Service.Commands.ManageTransitions;
 using Ettad.Workflows.Service.Commands.UpdateWorkflow;
+using Ettad.Workflows.Service.Commands.UpdateWorkflowAutoRejectTriggers;
+using Ettad.Workflows.Service.Dtos;
 using Ettad.Workflows.Service.Queries.GetNextSteps;
 using Ettad.Workflows.Service.Queries.GetWorkflow;
 using Ettad.Workflows.Service.Queries.GetWorkflowById;
@@ -117,6 +119,26 @@ namespace Ettad.Workflows.API.Controllers
 
             var result = await _mediator.Send(command);
             return Ok(result);
+        }
+
+        [HttpPut("{id}/auto-reject-triggers")]
+        [CheckAuthorize("Permissions.Workflow.Edit")]
+        public async Task<IActionResult> UpdateAutoRejectTriggers(
+            long id,
+            [FromBody] UpdateWorkflowAutoRejectTriggersDto dto,
+            CancellationToken cancellationToken)
+        {
+            var command = new UpdateWorkflowAutoRejectTriggersCommand
+            {
+                WorkflowId = id,
+                Mode = dto.Mode,
+                TriggerRoleIds = dto.TriggerRoleIds ?? [],
+                TriggerStepIds = dto.TriggerStepIds ?? [],
+                ResetOnReApproval = dto.ResetOnReApproval
+            };
+
+            var result = await _mediator.Send(command, cancellationToken);
+            return ProcessResponse(result);
         }
 
         [HttpDelete("{id}")]

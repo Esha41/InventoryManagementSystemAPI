@@ -15,6 +15,17 @@ public static class OrderAutoRejectConstants
         WorkflowType.NormalOrderForTrainingPurpose_Weapon,
     };
 
+    public static readonly WorkflowType[] ReturnWorkflowTypes =
+    {
+        WorkflowType.Return,
+        WorkflowType.Return_Weapon,
+    };
+
+    public static readonly WorkflowType[] DiscardWorkflowTypes =
+    {
+        WorkflowType.Discard,
+    };
+
     public const string Group = "BackgroundJobs";
 
     public const string TriggerRoleIdKey = "OrderAutoRejectTriggerRoleId";

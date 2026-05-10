@@ -16,6 +16,9 @@ namespace Ettad.EntityFramework.DataBaseContext
         public DbSet<ApplicationUser> Users { get; set; }
         public DbSet<ApplicationRole> Roles { get; set; }
         public DbSet<Workflow> Workflows { get; set; }
+        public DbSet<WorkflowAutoRejectTrigger> WorkflowAutoRejectTriggers { get; set; }
+        public DbSet<WorkflowAutoRejectTriggerRole> WorkflowAutoRejectTriggerRoles { get; set; }
+        public DbSet<WorkflowAutoRejectTriggerStep> WorkflowAutoRejectTriggerSteps { get; set; }
         public DbSet<WorkflowStepApprovalLog> WorkflowStepApprovalLog { get; set; }
         public DbSet<WorkflowStep> WorkflowSteps { get; set; }
         public DbSet<WorkflowApprovalStep> WorkflowApprovalSteps { get; set; }

@@ -47,6 +47,10 @@ namespace Ettad.Workflows.Service.Queries.GetWorkflow
             }
 
             var workflows = await workflowsQueryable
+                .Include(w => w.AutoRejectTrigger)
+                    .ThenInclude(t => t!.TriggerRoles)
+                .Include(w => w.AutoRejectTrigger)
+                    .ThenInclude(t => t!.TriggerSteps)
                 .Include(w => w.WorkflowSteps)
                     .ThenInclude(step => step.Transitions)
                         .ThenInclude(t => t.TargetWorkflowStep)
@@ -131,6 +135,13 @@ namespace Ettad.Workflows.Service.Queries.GetWorkflow
                     }).ToList()
                 }).ToList()
             }).ToList();
+
+            var workflowDict = workflows.ToDictionary(w => w.Id);
+            foreach (var dto in workflowDtos)
+            {
+                if (workflowDict.TryGetValue(dto.Id, out var wf))
+                    WorkflowAutoRejectTriggerMapper.MapToWorkflowDto(dto, wf.AutoRejectTrigger);
+            }
 
             return APIOperationResponse<List<WorkflowDto>>.Success(workflowDtos);
         }
