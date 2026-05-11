@@ -54,6 +54,7 @@ namespace Ettad.Inventory.Service.Explosives.Services
         private readonly IFileUploadService _fileUploadService;
         private readonly ITransactionManager _transactionManager;
         private readonly IDateTimeProvider _dateTimeProvider;
+        private readonly IInventoryPermanentDeleteExecutor _inventoryPermanentDeleteExecutor;
         private readonly AssetImportManager<CreateUpdateExplosiveDto, ExplosiveImportDto> _importManager;
         private readonly IItemDepartmentAssignmentService _itemDepartmentAssignmentService;
 
@@ -96,6 +97,7 @@ namespace Ettad.Inventory.Service.Explosives.Services
             IExcelImportService excelImportService,
             ITransactionManager transactionManager,
             IDateTimeProvider dateTimeProvider,
+            IInventoryPermanentDeleteExecutor inventoryPermanentDeleteExecutor,
             IItemDepartmentAssignmentService itemDepartmentAssignmentService)
         {
             _explosiveRepository = explosiveRepository;
@@ -119,6 +121,7 @@ namespace Ettad.Inventory.Service.Explosives.Services
             _fileUploadService = fileUploadService;
             _transactionManager = transactionManager;
             _dateTimeProvider = dateTimeProvider;
+            _inventoryPermanentDeleteExecutor = inventoryPermanentDeleteExecutor;
             _itemDepartmentAssignmentService = itemDepartmentAssignmentService;
 
             _importManager = new AssetImportManager<CreateUpdateExplosiveDto, ExplosiveImportDto>(excelImportService,
@@ -452,16 +455,21 @@ namespace Ettad.Inventory.Service.Explosives.Services
                 await using var transaction = await _transactionManager.BeginAsync();
                 try
                 {
-                    var purposes = (await _baseItemPrimaryPurposRepository.FindAsync(x => x.BaseItemId == id)).ToList();
-                    foreach (var p in purposes)
-                        await _baseItemPrimaryPurposRepository.DeleteAsync(p);
+                    var (explosiveRows, baseRows) = await _inventoryPermanentDeleteExecutor.ExecuteAsync(
+                        InventoryPermanentDeleteKind.Explosive,
+                        id);
 
-                    await _explosiveRepository.DeleteAsync(explosive);
+                    if (explosiveRows == 0 || baseRows == 0)
+                    {
+                        await _transactionManager.RollbackAsync();
+                        return APIOperationResponse<bool>.Fail(ResponseType.InternalServerError,
+                            "Failed to permanently delete explosive rows from the database.");
+                    }
 
                     await _transactionManager.CommitAsync();
                     return APIOperationResponse<bool>.Success(true, "Explosive permanently deleted");
                 }
-                catch (Exception ex)
+                catch (Exception)
                 {
                     await _transactionManager.RollbackAsync();
                     throw;
