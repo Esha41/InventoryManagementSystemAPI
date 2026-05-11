@@ -441,6 +441,12 @@ namespace Ettad.Inventory.Service.Explosives.Services
         {
             try
             {
+                if (!_currentUserService.IsSuperAdmin)
+                {
+                    return APIOperationResponse<bool>.Fail(ResponseType.Forbidden,
+                        "Only a super administrator can permanently delete explosives.");
+                }
+
                 var explosive = await _explosiveRepository.FindOneAsync(e => e.Id == id, includeSoftDeleted: true);
                 if (explosive == null)
                 {

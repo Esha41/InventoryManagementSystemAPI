@@ -556,6 +556,12 @@ namespace Ettad.Inventory.Service.Ammunitions.Services
         {
             try
             {
+                if (!_currentUserService.IsSuperAdmin)
+                {
+                    return APIOperationResponse<bool>.Fail(ResponseType.Forbidden,
+                        "Only a super administrator can permanently delete ammunition.");
+                }
+
                 var ammunition = await _ammunitionRepository.FindOneAsync(a => a.Id == id, includeSoftDeleted: true);
                 if (ammunition == null)
                 {

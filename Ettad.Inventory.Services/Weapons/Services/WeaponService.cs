@@ -451,6 +451,12 @@ namespace Ettad.Inventory.Service.Weapons.Services
         {
             try
             {
+                if (!_currentUserService.IsSuperAdmin)
+                {
+                    return APIOperationResponse<bool>.Fail(ResponseType.Forbidden,
+                        "Only a super administrator can permanently delete weapons.");
+                }
+
                 var weapon = await _weaponRepository.FindOneAsync(w => w.Id == id, includeSoftDeleted: true);
                 if (weapon == null)
                 {
