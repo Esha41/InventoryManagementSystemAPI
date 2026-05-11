@@ -6,6 +6,7 @@ namespace Ettad.Inventory.Service.Monitoring.Dtos
     public class InventoryHeadlineMetricsDto
     {
         public long LowStockCount { get; set; }
+        public long CriticalStockCount { get; set; }
         public long ExpiringSoonCount { get; set; }
         public long TotalDistinctItems { get; set; }
         public long TotalRemainingQuantity { get; set; }

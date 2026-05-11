@@ -1,4 +1,6 @@
 
+using Ettad.Inventory.Service.Monitoring.BackgroundJobs;
+
 namespace Ettad.Api.Hosting;
 
 public static class WebApplicationExtensions
@@ -111,9 +113,33 @@ public static class WebApplicationExtensions
         recurringJobManager.AddOrUpdate<LowStockMonitorJob>(
             LowStockMonitorConstants.JOB_ID,
             job => job.ExecuteAsync(),
-            lowStockCronExpression);
+            lowStockCronExpression,
+            new RecurringJobOptions { TimeZone = TimeZoneInfo.Local });
 
-        Log.Information("Low Stock Monitor job registered with schedule: {Schedule}", lowStockCronExpression);
+        Log.Information(
+            "Low Stock Monitor job registered: cron={Cron} hangfireTz={Tz}",
+            lowStockCronExpression,
+            TimeZoneInfo.Local.Id);
+
+        var criticalScheduleSetting = await context.Settings
+            .FirstOrDefaultAsync(s =>
+                s.Key == CriticalStockMonitorConstants.SCHEDULE_SETTINGS_KEY &&
+                s.Group == CriticalStockMonitorConstants.SCHEDULE_SETTINGS_GROUP);
+
+        var criticalStockCronExpression = criticalScheduleSetting?.Value
+            ?? app.Configuration.GetValue<string>("BackgroundJobs:CriticalStockMonitor:CronExpression")
+            ?? CriticalStockMonitorConstants.DEFAULT_CRON_EXPRESSION;
+
+        recurringJobManager.AddOrUpdate<CriticalStockMonitorJob>(
+            CriticalStockMonitorConstants.JOB_ID,
+            job => job.ExecuteAsync(),
+            criticalStockCronExpression,
+            new RecurringJobOptions { TimeZone = TimeZoneInfo.Local });
+
+        Log.Information(
+            "Critical Stock Monitor job registered: cron={Cron} hangfireTz={Tz}",
+            criticalStockCronExpression,
+            TimeZoneInfo.Local.Id);
 
         var orderAutoRejectCron = app.Configuration.GetValue<string>("BackgroundJobs:OrderAutoReject:CronExpression")
             ?? OrderAutoRejectConstants.DefaultCronExpression;

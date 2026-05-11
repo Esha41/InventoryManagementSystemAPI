@@ -4,7 +4,6 @@ using Ettad.ResponseHandler.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Net;
-using Hangfire;
 using Ettad.Inventory.Service.Monitoring.Interfaces;
 
 namespace Ettad.Inventory.API.Controllers
@@ -14,15 +13,15 @@ namespace Ettad.Inventory.API.Controllers
     [Authorize]
     public class ItemNotificationController : ApiControllerBase
     {
-        private readonly ILowStockMonitorSettingsService _settingsService;
-        private readonly IRecurringJobManager _recurringJobManager;
+        private readonly ILowStockMonitorSettingsService _lowStockMonitorSettingsService;
+        private readonly ICriticalStockMonitorSettingsService _criticalStockMonitorSettingsService;
 
         public ItemNotificationController(
-            ILowStockMonitorSettingsService settingsService,
-            IRecurringJobManager recurringJobManager)
+            ILowStockMonitorSettingsService lowStockMonitorSettingsService,
+            ICriticalStockMonitorSettingsService criticalStockMonitorSettingsService)
         {
-            _settingsService = settingsService;
-            _recurringJobManager = recurringJobManager;
+            _lowStockMonitorSettingsService = lowStockMonitorSettingsService;
+            _criticalStockMonitorSettingsService = criticalStockMonitorSettingsService;
         }
 
         /// <summary>
@@ -33,7 +32,7 @@ namespace Ettad.Inventory.API.Controllers
         [CheckAuthorize("StockNotificationSettingsPage")]
         public async Task<IActionResult> GetSettings()
         {
-            var result = await _settingsService.GetSettingsAsync();
+            var result = await _lowStockMonitorSettingsService.GetSettingsAsync();
             return ProcessResponse(result);
         }
 
@@ -43,9 +42,9 @@ namespace Ettad.Inventory.API.Controllers
         [HttpPut("settings")]
         [ProducesResponseType((int)HttpStatusCode.OK)]
         [CheckAuthorize("StockNotificationSettingsPage")]
-        public async Task<IActionResult> UpdateSettings([FromBody] LowStockNotificationSettingsDto dto)
+        public async Task<IActionResult> UpdateSettings([FromBody] ItemNotificationSettingsDto dto)
         {
-            var result = await _settingsService.UpdateSettingsAsync(dto);
+            var result = await _lowStockMonitorSettingsService.UpdateSettingsAsync(dto);
             return ProcessResponse(result);
         }
 
@@ -57,14 +56,13 @@ namespace Ettad.Inventory.API.Controllers
         [CheckAuthorize("StockNotificationSettingsPage")]
         public async Task<IActionResult> GetSchedule()
         {
-            var result = await _settingsService.GetScheduleAsync();
+            var result = await _lowStockMonitorSettingsService.GetScheduleAsync();
             return ProcessResponse(result);
         }
 
         /// <summary>
-        /// Update the schedule (time) for low stock monitoring
-        /// Accepts a DateTime and converts it to cron expression in the backend
-        /// Updates both the database settings and the Hangfire recurring job immediately
+        /// Update the schedule (time) for low stock monitoring.
+        /// Expects ISO-8601 with offset from the client; cron + Hangfire use server local time.
         /// </summary>
         [HttpPut("schedule")]
         [ProducesResponseType((int)HttpStatusCode.OK)]
@@ -72,13 +70,62 @@ namespace Ettad.Inventory.API.Controllers
         public async Task<IActionResult> UpdateSchedule([FromBody] UpdateScheduleDto dto)
         {
             // Service handles both database update and Hangfire job update
-            var result = await _settingsService.UpdateScheduleAsync(dto.ScheduleTime);
+            var result = await _lowStockMonitorSettingsService.UpdateScheduleAsync(dto.ScheduleTime);
+            return ProcessResponse(result);
+        }
+
+        /// <summary>
+        /// Get critical stock notification settings (roles and users)
+        /// </summary>
+        [HttpGet("critical-settings")]
+        [ProducesResponseType((int)HttpStatusCode.OK)]
+        [CheckAuthorize("StockNotificationSettingsPage")]
+        public async Task<IActionResult> GetCriticalSettings()
+        {
+            var result = await _criticalStockMonitorSettingsService.GetSettingsAsync();
+            return ProcessResponse(result);
+        }
+
+        /// <summary>
+        /// Update critical stock notification settings (roles and users)
+        /// </summary>
+        [HttpPut("critical-settings")]
+        [ProducesResponseType((int)HttpStatusCode.OK)]
+        [CheckAuthorize("StockNotificationSettingsPage")]
+        public async Task<IActionResult> UpdateCriticalSettings([FromBody] ItemNotificationSettingsDto dto)
+        {
+            var result = await _criticalStockMonitorSettingsService.UpdateSettingsAsync(dto);
+            return ProcessResponse(result);
+        }
+
+        /// <summary>
+        /// Get the current schedule (cron expression) for critical stock monitoring
+        /// </summary>
+        [HttpGet("critical-schedule")]
+        [ProducesResponseType((int)HttpStatusCode.OK)]
+        [CheckAuthorize("StockNotificationSettingsPage")]
+        public async Task<IActionResult> GetCriticalSchedule()
+        {
+            var result = await _criticalStockMonitorSettingsService.GetScheduleAsync();
+            return ProcessResponse(result);
+        }
+
+        /// <summary>
+        /// Update the schedule (time) for critical stock monitoring.
+        /// Expects ISO-8601 with offset from the client; cron + Hangfire use server local time.
+        /// </summary>
+        [HttpPut("critical-schedule")]
+        [ProducesResponseType((int)HttpStatusCode.OK)]
+        [CheckAuthorize("StockNotificationSettingsPage")]
+        public async Task<IActionResult> UpdateCriticalSchedule([FromBody] UpdateScheduleDto dto)
+        {
+            var result = await _criticalStockMonitorSettingsService.UpdateScheduleAsync(dto.ScheduleTime);
             return ProcessResponse(result);
         }
     }
 
     public class UpdateScheduleDto
     {
-        public DateTime ScheduleTime { get; set; }
+        public DateTimeOffset ScheduleTime { get; set; }
     }
 }

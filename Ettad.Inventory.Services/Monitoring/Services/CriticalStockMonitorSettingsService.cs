@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using System.Text.Json;
 using Hangfire;
 using Microsoft.Extensions.Logging;
@@ -14,20 +16,20 @@ using Ettad.Inventory.Service.Monitoring.BackgroundJobs;
 
 namespace Ettad.Inventory.Service.Monitoring.Services
 {
-    public class LowStockMonitorSettingsService : ILowStockMonitorSettingsService
+    public class CriticalStockMonitorSettingsService : ICriticalStockMonitorSettingsService
     {
         private readonly ICrossCuttingRepository<Settings> _settingsRepository;
         private readonly ICurrentUserService _currentUserService;
-        private readonly ILogger<LowStockMonitorSettingsService> _logger;
+        private readonly ILogger<CriticalStockMonitorSettingsService> _logger;
         private readonly IRecurringJobManager? _recurringJobManager;
         private readonly IDateTimeProvider _dateTimeProvider;
 
-        public LowStockMonitorSettingsService(
+        public CriticalStockMonitorSettingsService(
             ICrossCuttingRepository<Settings> settingsRepository,
             ICurrentUserService currentUserService,
-            ILogger<LowStockMonitorSettingsService> logger,
-            IRecurringJobManager? recurringJobManager = null,
-            IDateTimeProvider dateTimeProvider = null)
+            ILogger<CriticalStockMonitorSettingsService> logger,
+            IDateTimeProvider dateTimeProvider,
+            IRecurringJobManager? recurringJobManager = null)
         {
             _settingsRepository = settingsRepository;
             _currentUserService = currentUserService;
@@ -41,7 +43,7 @@ namespace Ettad.Inventory.Service.Monitoring.Services
             try
             {
                 var setting = await _settingsRepository.FindOneAsync(
-                    s => s.Key == LowStockMonitorConstants.SETTINGS_KEY && s.Group == LowStockMonitorConstants.SETTINGS_GROUP);
+                    s => s.Key == CriticalStockMonitorConstants.SETTINGS_KEY && s.Group == CriticalStockMonitorConstants.SETTINGS_GROUP);
 
                 if (setting == null)
                 {
@@ -54,7 +56,7 @@ namespace Ettad.Inventory.Service.Monitoring.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error retrieving notification settings.");
+                _logger.LogError(ex, "Error retrieving critical stock notification settings.");
                 return APIOperationResponse<ItemNotificationSettingsDto>.Fail(ResponseType.InternalServerError, ex.Message);
             }
         }
@@ -64,7 +66,7 @@ namespace Ettad.Inventory.Service.Monitoring.Services
             try
             {
                 var setting = await _settingsRepository.FindOneAsync(
-                    s => s.Key == LowStockMonitorConstants.SETTINGS_KEY && s.Group == LowStockMonitorConstants.SETTINGS_GROUP);
+                    s => s.Key == CriticalStockMonitorConstants.SETTINGS_KEY && s.Group == CriticalStockMonitorConstants.SETTINGS_GROUP);
 
                 var jsonValue = JsonSerializer.Serialize(dto);
 
@@ -72,8 +74,8 @@ namespace Ettad.Inventory.Service.Monitoring.Services
                 {
                     setting = new Settings
                     {
-                        Key = LowStockMonitorConstants.SETTINGS_KEY,
-                        Group = LowStockMonitorConstants.SETTINGS_GROUP,
+                        Key = CriticalStockMonitorConstants.SETTINGS_KEY,
+                        Group = CriticalStockMonitorConstants.SETTINGS_GROUP,
                         Value = jsonValue,
                         CreationDate = _dateTimeProvider.Now,
                         CreatedBy = _currentUserService.UserId
@@ -92,7 +94,7 @@ namespace Ettad.Inventory.Service.Monitoring.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error updating notification settings.");
+                _logger.LogError(ex, "Error updating critical stock notification settings.");
                 return APIOperationResponse<bool>.Fail(ResponseType.InternalServerError, ex.Message);
             }
         }
@@ -102,12 +104,10 @@ namespace Ettad.Inventory.Service.Monitoring.Services
             try
             {
                 var setting = await _settingsRepository.FindOneAsync(
-                    s => s.Key == LowStockMonitorConstants.SCHEDULE_SETTINGS_KEY && s.Group == LowStockMonitorConstants.SCHEDULE_SETTINGS_GROUP);
+                    s => s.Key == CriticalStockMonitorConstants.SCHEDULE_SETTINGS_KEY && s.Group == CriticalStockMonitorConstants.SCHEDULE_SETTINGS_GROUP);
 
-                var cronExpression = setting?.Value ?? LowStockMonitorConstants.DEFAULT_CRON_EXPRESSION;
-                
-                // Parse cron expression format: "minute hour * * *" to DateTime
-                // Use today's date with the time from cron expression
+                var cronExpression = setting?.Value ?? CriticalStockMonitorConstants.DEFAULT_CRON_EXPRESSION;
+
                 var parts = cronExpression.Split(' ', StringSplitOptions.RemoveEmptyEntries);
                 if (parts.Length >= 2 && int.TryParse(parts[0], out int minute) && int.TryParse(parts[1], out int hour))
                 {
@@ -117,14 +117,13 @@ namespace Ettad.Inventory.Service.Monitoring.Services
                         DateTimeKind.Local);
                     return APIOperationResponse<DateTime?>.Success(scheduleTime);
                 }
-                
-                // If parsing fails, return null
+
                 _logger.LogWarning("Failed to parse cron expression: {CronExpression}", cronExpression);
                 return APIOperationResponse<DateTime?>.Success(null);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error retrieving schedule.");
+                _logger.LogError(ex, "Error retrieving critical stock schedule.");
                 return APIOperationResponse<DateTime?>.Fail(ResponseType.InternalServerError, ex.Message);
             }
         }
@@ -133,20 +132,19 @@ namespace Ettad.Inventory.Service.Monitoring.Services
         {
             try
             {
-                // Cron stores minute/hour for server-local wall clock; Hangfire must use the same zone (defaults to UTC otherwise).
                 var onServerLocal = TimeZoneInfo.ConvertTime(scheduleTime, TimeZoneInfo.Local);
                 var cronExpression = $"{onServerLocal.Minute} {onServerLocal.Hour} * * *";
                 var hangfireLocalTz = new RecurringJobOptions { TimeZone = TimeZoneInfo.Local };
 
                 var setting = await _settingsRepository.FindOneAsync(
-                    s => s.Key == LowStockMonitorConstants.SCHEDULE_SETTINGS_KEY && s.Group == LowStockMonitorConstants.SCHEDULE_SETTINGS_GROUP);
+                    s => s.Key == CriticalStockMonitorConstants.SCHEDULE_SETTINGS_KEY && s.Group == CriticalStockMonitorConstants.SCHEDULE_SETTINGS_GROUP);
 
                 if (setting == null)
                 {
                     setting = new Settings
                     {
-                        Key = LowStockMonitorConstants.SCHEDULE_SETTINGS_KEY,
-                        Group = LowStockMonitorConstants.SCHEDULE_SETTINGS_GROUP,
+                        Key = CriticalStockMonitorConstants.SCHEDULE_SETTINGS_KEY,
+                        Group = CriticalStockMonitorConstants.SCHEDULE_SETTINGS_GROUP,
                         Value = cronExpression,
                         CreationDate = _dateTimeProvider.Now,
                         CreatedBy = _currentUserService.UserId
@@ -161,42 +159,37 @@ namespace Ettad.Inventory.Service.Monitoring.Services
                     await _settingsRepository.UpdateAsync(setting);
                 }
 
-                _logger.LogInformation("Low Stock Monitor schedule updated to: {ScheduleTime} (Cron: {CronExpression})", 
+                _logger.LogInformation("Critical Stock Monitor schedule updated to: {ScheduleTime} (Cron: {CronExpression})",
                     scheduleTime, cronExpression);
-                
-                // Update Hangfire recurring job immediately if available
+
                 if (_recurringJobManager != null)
                 {
                     try
                     {
-                        // Register recurring job - Hangfire resolves LowStockMonitorJob from DI at execution time
-                        _recurringJobManager.AddOrUpdate<LowStockMonitorJob>(
-                            LowStockMonitorConstants.JOB_ID,
+                        _recurringJobManager.AddOrUpdate<CriticalStockMonitorJob>(
+                            CriticalStockMonitorConstants.JOB_ID,
                             job => job.ExecuteAsync(),
                             cronExpression,
                             hangfireLocalTz);
-                        _logger.LogInformation("Hangfire recurring job '{JobId}' updated with new schedule: {CronExpression}", 
-                            LowStockMonitorConstants.JOB_ID, cronExpression);
+                        _logger.LogInformation("Hangfire recurring job '{JobId}' updated with new schedule: {CronExpression}",
+                            CriticalStockMonitorConstants.JOB_ID, cronExpression);
                         return APIOperationResponse<bool>.Success(true, "Schedule updated successfully. The recurring job has been updated immediately.");
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogWarning(ex, "Failed to update Hangfire recurring job. The schedule was saved to database but the job will use the new schedule on next application restart.");
+                        _logger.LogWarning(ex, "Failed to update Hangfire recurring job for critical stock. The schedule was saved to database but the job will use the new schedule on next application restart.");
                         return APIOperationResponse<bool>.Success(true, "Schedule saved successfully. Note: The recurring job will be updated on next application restart.");
                     }
                 }
-                else
-                {
-                    _logger.LogWarning("IRecurringJobManager not available. Schedule saved to database but job will use new schedule on next application restart.");
-                    return APIOperationResponse<bool>.Success(true, "Schedule saved successfully. Note: The recurring job will be updated on next application restart.");
-                }
+
+                _logger.LogWarning("IRecurringJobManager not available. Schedule saved to database but job will use new schedule on next application restart.");
+                return APIOperationResponse<bool>.Success(true, "Schedule saved successfully. Note: The recurring job will be updated on next application restart.");
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error updating schedule.");
+                _logger.LogError(ex, "Error updating critical stock schedule.");
                 return APIOperationResponse<bool>.Fail(ResponseType.InternalServerError, ex.Message);
             }
         }
     }
 }
-

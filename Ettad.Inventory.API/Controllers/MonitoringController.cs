@@ -7,6 +7,8 @@ using Ettad.Inventory.Service.Monitoring.Interfaces;
 using Ettad.ResponseHandler.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Net;
+using Ettad.Inventory.Service.Monitoring.Interfaces;
 
 namespace Ettad.Inventory.API.Controllers
 {
@@ -16,15 +18,18 @@ namespace Ettad.Inventory.API.Controllers
     public class MonitoringController : ApiControllerBase
     {
         private readonly ILowStockMonitoringService _lowStockMonitoringService;
+        private readonly ICriticalStockMonitoringService _criticalStockMonitoringService;
         private readonly IExpiringLotMonitoringService _expiringLotMonitoringService;
         private readonly IInventoryDashboardMonitoringService _inventoryDashboardMonitoringService;
 
         public MonitoringController(
             ILowStockMonitoringService lowStockMonitoringService,
+            ICriticalStockMonitoringService criticalStockMonitoringService,
             IExpiringLotMonitoringService expiringLotMonitoringService,
             IInventoryDashboardMonitoringService inventoryDashboardMonitoringService)
         {
             _lowStockMonitoringService = lowStockMonitoringService;
+            _criticalStockMonitoringService = criticalStockMonitoringService;
             _expiringLotMonitoringService = expiringLotMonitoringService;
             _inventoryDashboardMonitoringService = inventoryDashboardMonitoringService;
         }
@@ -55,6 +60,30 @@ namespace Ettad.Inventory.API.Controllers
         {
             request ??= new PagedListRequest();
             var result = await _lowStockMonitoringService.GetLowStockItemsPaginatedAsync(request, depotId, depotIds);
+            return ProcessResponse(result);
+        }
+
+        /// <summary>
+        /// Get the count of items at or below configured critical stock level, optionally filtered by depot.
+        /// </summary>
+        [HttpGet("critical-stock/count")]
+        [ProducesResponseType(typeof(APIOperationResponse<int>), (int)HttpStatusCode.OK)]
+        [CheckAuthorize("Permissions.Inventory.View", "Permissions.Inventory.Page")]
+        public async Task<IActionResult> GetCriticalStockItemsCount([FromQuery] long? depotId = null, [FromQuery] List<long>? depotIds = null)
+        {
+            var result = await _criticalStockMonitoringService.GetCriticalStockItemsCountAsync(depotId, depotIds);
+            return ProcessResponse(result);
+        }
+
+        /// <summary>
+        /// Get the list of items at or below configured critical stock level with their details.
+        /// </summary>
+        [HttpGet("critical-stock")]
+        [ProducesResponseType(typeof(APIOperationResponse<List<CriticalStockItemDto>>), (int)HttpStatusCode.OK)]
+        [CheckAuthorize("Permissions.Inventory.View", "Permissions.Inventory.Page")]
+        public async Task<IActionResult> GetCriticalStockItems()
+        {
+            var result = await _criticalStockMonitoringService.GetCriticalStockItemsAsync();
             return ProcessResponse(result);
         }
 

@@ -42,6 +42,9 @@ namespace Ettad.CrossCutting.Comman.Utilities
         LowStockReportPage,
 
         [Category(PlainPermissionsGenerator.Reports)]
+        CriticalStockReportPage,
+
+        [Category(PlainPermissionsGenerator.Reports)]
         ExpiringLotsReportPage,
 
         [Category(PlainPermissionsGenerator.Workflow)]
