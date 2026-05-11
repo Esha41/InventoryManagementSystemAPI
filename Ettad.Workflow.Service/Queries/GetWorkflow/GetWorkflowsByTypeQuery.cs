@@ -7,6 +7,7 @@ using Ettad.ResponseHandler.Models;
 using Ettad.Data.Enums;
 using Ettad.User.Services.DTO;
 using Ettad.Workflows.Service.Dtos;
+using Ettad.Workflows.Service.Mapper;
 
 namespace Ettad.Workflows.Service.Queries.GetWorkflow
 {

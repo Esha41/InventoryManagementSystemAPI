@@ -1,6 +1,7 @@
 using System.Linq;
 using Ettad.Data.Entities.Workflows;
 using Ettad.Data.Enums;
+using Ettad.Workflows.Service.Dtos;
 using Ettad.Workflows.Service.Monitoring;
 
 namespace Ettad.Workflows.Service.Mapper;
