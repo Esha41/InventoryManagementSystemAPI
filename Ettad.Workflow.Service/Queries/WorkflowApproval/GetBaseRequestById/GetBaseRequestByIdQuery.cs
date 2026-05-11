@@ -388,10 +388,10 @@ namespace Ettad.Workflows.Service.Queries.WorkflowApproval.GetBaseRequestById
                     .GroupBy(w => w.WorkflowType)
                     .ToDictionaryAsync(g => g.Key, g => g.FirstOrDefault(), cancellationToken);
 
-                // Get ALL workflow approval steps for this request
+                // Get ALL workflow approval steps for this request (extra fields for AutoRejected future-step ChangedAt)
                 var allWorkflowApprovalSteps = await _context.WorkflowApprovalSteps
                     .Where(was => was.TargetRequestId == requestId)
-                    .Select(was => new { was.Id, was.TargetRequestId })
+                    .Select(was => new { was.Id, was.TargetRequestId, was.WorkflowStepId, was.Status, was.CreationDate })
                     .ToListAsync(cancellationToken);
 
                 // Collect all workflow approval step IDs
@@ -656,6 +656,20 @@ namespace Ettad.Workflows.Service.Queries.WorkflowApproval.GetBaseRequestById
                             
                             if (nextWorkflowStep != null)
                             {
+                                // Auto-rejected: pending loader skips the stuck row (no longer Current); use persisted step CreationDate for "pending from".
+                                DateTime futureStepChangedAt = DateTime.MinValue;
+                                if (baseRequest.Status == RequestStatus.AutoRejected)
+                                {
+                                    var autoRejectedForStep = allWorkflowApprovalSteps
+                                        .Where(s => s.Status == RequestStatus.AutoRejected && s.WorkflowStepId == nextWorkflowStep.Id)
+                                        .OrderByDescending(s => s.Id)
+                                        .FirstOrDefault();
+                                    if (autoRejectedForStep != null && autoRejectedForStep.CreationDate > DateTime.MinValue)
+                                    {
+                                        futureStepChangedAt = autoRejectedForStep.CreationDate;
+                                    }
+                                }
+
                                 var futureStep = new ApprovalHistoryDto
                                 {
                                     Id = 0,
@@ -665,7 +679,7 @@ namespace Ettad.Workflows.Service.Queries.WorkflowApproval.GetBaseRequestById
                                     NewRequestStatus = RequestStatus.New,
                                     Comments = null,
                                     ChangedBy = null,
-                                    ChangedAt = DateTime.MinValue,
+                                    ChangedAt = futureStepChangedAt,
                                     StepOrder = nextWorkflowStep.StepOrder,
                                     ApplicationRoleId = nextWorkflowStep.ApplicationRoleId,
                                     ApplicationRoleName = nextWorkflowStep.ApplicationRole != null ? nextWorkflowStep.ApplicationRole.Name : null,
