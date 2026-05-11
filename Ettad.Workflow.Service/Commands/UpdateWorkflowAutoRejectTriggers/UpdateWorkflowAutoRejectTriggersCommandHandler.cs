@@ -140,7 +140,6 @@ public sealed class UpdateWorkflowAutoRejectTriggersCommandHandler
             if (triggerEntity != null)
             {
                 triggerEntity.Mode = mode;
-                triggerEntity.ResetOnReApproval = request.ResetOnReApproval;
                 triggerEntity.ModifiedBy = user;
                 triggerEntity.ModificationDate = now;
                 triggerEntity.TriggerRoles.Clear();
@@ -152,7 +151,6 @@ public sealed class UpdateWorkflowAutoRejectTriggersCommandHandler
                 {
                     WorkflowId = request.WorkflowId,
                     Mode = mode,
-                    ResetOnReApproval = request.ResetOnReApproval,
                     CreatedBy = user,
                     CreationDate = now,
                     ModifiedBy = user,
@@ -235,8 +233,7 @@ public sealed class UpdateWorkflowAutoRejectTriggersCommandHandler
                     WorkflowId = workflowId,
                     Mode = null,
                     TriggerRoleIds = [],
-                    TriggerStepIds = [],
-                    ResetOnReApproval = true
+                    TriggerStepIds = []
                 });
         }
         catch
@@ -278,7 +275,6 @@ public sealed class UpdateWorkflowAutoRejectTriggersCommandHandler
             TriggerStepIds = entity.TriggerSteps
                 .Select(ts => ts.WorkflowStepId)
                 .Where(s => s > 0)
-                .ToList(),
-            ResetOnReApproval = entity.ResetOnReApproval
+                .ToList()
         };
 }

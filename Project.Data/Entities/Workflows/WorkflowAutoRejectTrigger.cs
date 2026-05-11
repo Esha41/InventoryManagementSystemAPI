@@ -14,8 +14,6 @@ public class WorkflowAutoRejectTrigger : AuditEntity<long>
 
     public AutoRejectTriggerMode Mode { get; set; }
 
-    public bool ResetOnReApproval { get; set; } = true;
-
     public virtual Workflow Workflow { get; set; } = null!;
     public virtual ICollection<WorkflowAutoRejectTriggerRole> TriggerRoles { get; set; } = new List<WorkflowAutoRejectTriggerRole>();
     public virtual ICollection<WorkflowAutoRejectTriggerStep> TriggerSteps { get; set; } = new List<WorkflowAutoRejectTriggerStep>();

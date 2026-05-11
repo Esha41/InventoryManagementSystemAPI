@@ -14,5 +14,4 @@ public class UpdateWorkflowAutoRejectTriggersCommand : IRequest<APIOperationResp
 
     public List<string> TriggerRoleIds { get; set; } = [];
     public List<long> TriggerStepIds { get; set; } = [];
-    public bool ResetOnReApproval { get; set; } = true;
 }

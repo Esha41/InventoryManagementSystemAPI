@@ -152,10 +152,10 @@ public class OrderAutoRejectBackgroundService : IOrderAutoRejectBackgroundServic
         if (current?.WorkflowStep == null)
             return;
 
-        if (current.WorkflowStep.StepOrder <= triggerApproval.WorkflowStep.StepOrder)
+        if (current.WorkflowStep.StepOrder < triggerApproval.WorkflowStep.StepOrder)
             return;
 
-        var daysSince = (now.Date - triggerApproval.ApprovedDate!.Value.Date).Days;
+        var daysSince = (now.Date - triggerApproval.CreationDate.Date).Days;
         var daysRemaining = policy.ThresholdDays - daysSince;
 
         if (daysRemaining <= 0)

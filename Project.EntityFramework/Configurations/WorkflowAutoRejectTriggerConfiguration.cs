@@ -15,8 +15,10 @@ internal class WorkflowAutoRejectTriggerConfiguration : IEntityTypeConfiguration
         builder.Property(x => x.Mode)
             .IsRequired();
 
-        builder.Property(x => x.ResetOnReApproval)
-            .IsRequired();
+        builder.Property<bool>("ResetOnReApproval")
+            .HasColumnName("ResetOnReApproval")
+            .IsRequired()
+            .HasDefaultValue(true);
 
         builder.HasOne(x => x.Workflow)
             .WithOne(x => x.AutoRejectTrigger)

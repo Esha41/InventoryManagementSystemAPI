@@ -6,14 +6,12 @@ namespace Ettad.Workflows.Service.Dtos;
 public record WorkflowAutoRejectTriggerConfig(
     AutoRejectTriggerMode Mode,
     IReadOnlyList<string> RoleIds,
-    IReadOnlyList<long> StepIds,
-    bool ResetOnReApproval)
+    IReadOnlyList<long> StepIds)
 {
     public static WorkflowAutoRejectTriggerConfig Disabled => new(
         AutoRejectTriggerMode.None,
         Array.Empty<string>(),
-        Array.Empty<long>(),
-        true);
+        Array.Empty<long>());
 
     public bool IsDisabled => Mode == AutoRejectTriggerMode.None;
 

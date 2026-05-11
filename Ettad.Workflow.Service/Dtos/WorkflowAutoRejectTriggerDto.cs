@@ -13,6 +13,4 @@ public sealed record WorkflowAutoRejectTriggerDto
     public List<string> TriggerRoleIds { get; init; } = new();
 
     public List<long> TriggerStepIds { get; init; } = new();
-
-    public bool ResetOnReApproval { get; init; } = true;
 }

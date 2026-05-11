@@ -133,8 +133,7 @@ namespace Ettad.Workflows.API.Controllers
                 WorkflowId = id,
                 Mode = dto.Mode,
                 TriggerRoleIds = dto.TriggerRoleIds ?? [],
-                TriggerStepIds = dto.TriggerStepIds ?? [],
-                ResetOnReApproval = dto.ResetOnReApproval
+                TriggerStepIds = dto.TriggerStepIds ?? []
             };
 
             var result = await _mediator.Send(command, cancellationToken);
