@@ -10,6 +10,7 @@ using Ettad.CrossCutting.Comman.Models;
 using Ettad.Inventory.Service.Assets.Interfaces;
 using System;
 using System.Collections.Generic;
+using Ettad.Data.Enums;
 using System.Text.Json;
 using Ettad.ResponseHandler.Consts;
 
@@ -74,12 +75,40 @@ namespace Ettad.Inventory.API.Controllers
             return ProcessResponse(result);
         }
 
+        /// <summary>
+        /// Same as GET item/{itemId} but returns a paginated list (Kendo-style filter/sort in body).
+        /// </summary>
+        [HttpPost("item/{itemId}/paged")]
+        [ProducesResponseType((int)HttpStatusCode.OK)]
+        [CheckAuthorize("Permissions.Asset.View", "Permissions.Asset.Page")]
+        public async Task<IActionResult> GetAssetsByItemIdPaged(long itemId, [FromBody] PagedListRequest request, [FromQuery] long? depotId = null)
+        {
+            var result = await _assetService.GetAssetsByItemIdPagedAsync(itemId, request, depotId);
+            return ProcessResponse(result);
+        }
+
         [HttpPost("search")]
         [ProducesResponseType((int)HttpStatusCode.OK)]
         [CheckAuthorize("Permissions.Asset.View", "Permissions.Asset.Page")]
         public async Task<IActionResult> Search([FromQuery] long? depotId, [FromBody] PagedListRequest request)
         {
             var result = await _assetService.GetAssetsPaginatedAsync(depotId, request);
+            return ProcessResponse(result);
+        }
+
+        /// <summary>
+        /// Paginated catalog items with assets only: item id, name, no, type, and total asset count (optional item type filter).
+        /// </summary>
+        [HttpPost("catalog-items/paged")]
+        [ProducesResponseType((int)HttpStatusCode.OK)]
+        [CheckAuthorize("Permissions.Asset.View", "Permissions.Asset.Page")]
+        public async Task<IActionResult> GetAssetCatalogItemSummariesPaged(
+            [FromBody] PagedListRequest request,
+            [FromQuery] long? depotId = null,
+            [FromQuery] List<long>? depotIds = null,
+            [FromQuery] ItemType? itemType = null)
+        {
+            var result = await _assetService.GetAssetCatalogItemSummariesPagedAsync(request, depotId, depotIds, itemType);
             return ProcessResponse(result);
         }
 

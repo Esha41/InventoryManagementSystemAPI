@@ -1,3 +1,4 @@
+using Ettad.Data.Enums;
 using Ettad.Inventory.Service.Assets.Dtos;
 using Ettad.ResponseHandler.Models;
 using Ettad.CrossCutting.Comman.Models;
@@ -22,7 +23,19 @@ namespace Ettad.Inventory.Service.Assets.Interfaces
         Task<APIOperationResponse<ImportResult<AssetImportDto>>> ImportPreviewAsync(IFormFile file, long depotId, string language = "en");
         Task<APIOperationResponse<byte[]>> GenerateImportTemplateAsync(long depotId, string language = "en");
         Task<APIOperationResponse<PaginatedList<AssetDto>>> GetAssetsPaginatedAsync(long? depotId, PagedListRequest request);
+        /// <summary>
+        /// Paginated distinct catalog items that have assets; each row is item id, identity fields, and total asset count.
+        /// </summary>
+        Task<APIOperationResponse<PaginatedList<AssetItemCatalogSummaryDto>>> GetAssetCatalogItemSummariesPagedAsync(
+            PagedListRequest request,
+            long? depotId = null,
+            List<long>? depotIds = null,
+            ItemType? itemType = null);
         Task<APIOperationResponse<List<AssetDto>>> GetAssetsByItemIdAsync(long itemId, long? depotId = null);
+        /// <summary>
+        /// Same data as <see cref="GetAssetsByItemIdAsync"/> but paged (Kendo-style <see cref="PagedListRequest"/> body).
+        /// </summary>
+        Task<APIOperationResponse<PaginatedList<AssetDto>>> GetAssetsByItemIdPagedAsync(long itemId, PagedListRequest request, long? depotId = null);
     }
 }
 

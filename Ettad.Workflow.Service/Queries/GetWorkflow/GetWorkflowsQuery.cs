@@ -11,6 +11,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Ettad.Workflows.Service.Dtos;
+using Ettad.Workflows.Service.Mapper;
 
 namespace Ettad.Workflows.Service.Queries.GetWorkflow
 {
