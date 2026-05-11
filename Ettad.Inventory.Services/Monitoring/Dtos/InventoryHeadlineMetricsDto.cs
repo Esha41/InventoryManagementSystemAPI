@@ -5,14 +5,20 @@ namespace Ettad.Inventory.Service.Monitoring.Dtos
     /// </summary>
     public class InventoryHeadlineMetricsDto
     {
-        public int LowStockCount { get; set; }
-        public int ExpiringSoonCount { get; set; }
-        public int TotalDistinctItems { get; set; }
+        public long LowStockCount { get; set; }
+        public long ExpiringSoonCount { get; set; }
+        public long TotalDistinctItems { get; set; }
         public long TotalRemainingQuantity { get; set; }
         public long TotalLots { get; set; }
-        public int AmmunitionItemCount { get; set; }
-        public int ExplosiveItemCount { get; set; }
-        public int AccessoryItemCount { get; set; }
-        public int WeaponItemGroupsCount { get; set; }
+        public long AmmunitionItemCount { get; set; }
+        public long ExplosiveItemCount { get; set; }
+        public long AccessoryItemCount { get; set; }
+        public long WeaponItemGroupsCount { get; set; }
+
+        public long LotCount { get; set; }
+        public long WeaponCount { get; set; }
+
+        /// <summary>Weapon registry batches in scope (non-deleted <see cref="Batch"/> rows, depot-filtered like lots).</summary>
+        public long TotalBatches { get; set; }
     }
 }

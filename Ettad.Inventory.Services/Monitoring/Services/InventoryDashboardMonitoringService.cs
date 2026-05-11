@@ -30,6 +30,7 @@ namespace Ettad.Inventory.Service.Monitoring.Services
         private readonly ICrossCuttingRepository<InventoryDetail> _inventoryDetailRepository;
         private readonly ICrossCuttingRepository<WeaponSupplySelection> _weaponSupplySelectionRepository;
         private readonly ICrossCuttingRepository<RequestItem> _requestItemRepository;
+        private readonly ICrossCuttingRepository<Batch> _batchRepository;
 
         /// <summary>Base queryables for correlated subqueries (same DbContext as repositories; EF translates via captured IQueryable).</summary>
         private readonly IQueryable<SupplyDetail> _supplyDetailsAll;
@@ -54,6 +55,7 @@ namespace Ettad.Inventory.Service.Monitoring.Services
             ICrossCuttingRepository<InventoryDetail> inventoryDetailRepository,
             ICrossCuttingRepository<WeaponSupplySelection> weaponSupplySelectionRepository,
             ICrossCuttingRepository<RequestItem> requestItemRepository,
+            ICrossCuttingRepository<Batch> batchRepository,
             IDepotAccessService depotAccessService,
             ICurrentUserService currentUserService,
             IInventoryService inventoryService,
@@ -70,6 +72,7 @@ namespace Ettad.Inventory.Service.Monitoring.Services
             _inventoryDetailRepository = inventoryDetailRepository;
             _weaponSupplySelectionRepository = weaponSupplySelectionRepository;
             _requestItemRepository = requestItemRepository;
+            _batchRepository = batchRepository;
 
             _supplyDetailsAll = _supplyDetailRepository.Find(sd => !sd.IsDeleted);
             _inventoryDetailsAll = _inventoryDetailRepository.Find(x => true);
@@ -288,6 +291,8 @@ namespace Ettad.Inventory.Service.Monitoring.Services
                     weaponReadySum += grp.Count(r => r.Status == AssetStatus.ReadyToIssue);
                 }
 
+                var totalBatches = await CountBatchesForDepotScopeAsync(scope).ConfigureAwait(false);
+
                 return APIOperationResponse<InventoryHeadlineMetricsDto>.Success(new InventoryHeadlineMetricsDto
                 {
                     LowStockCount = lowResult.Data,
@@ -298,7 +303,10 @@ namespace Ettad.Inventory.Service.Monitoring.Services
                     AmmunitionItemCount = ammoCount,
                     ExplosiveItemCount = explosiveCount,
                     AccessoryItemCount = accessoryCount,
-                    WeaponItemGroupsCount = weaponGroupCount
+                    WeaponItemGroupsCount = weaponGroupCount,
+                    LotCount = invLotsSum,
+                    WeaponCount = weaponLotsSum,
+                    TotalBatches = totalBatches
                 });
             }
             catch (Exception ex)
@@ -307,6 +315,16 @@ namespace Ettad.Inventory.Service.Monitoring.Services
                 return APIOperationResponse<InventoryHeadlineMetricsDto>.Fail(ResponseType.InternalServerError,
                     $"An error occurred: {ex.Message}");
             }
+        }
+
+        private async Task<long> CountBatchesForDepotScopeAsync(DepotScope scope)
+        {
+            var q = _batchRepository.Find(b => !b.IsDeleted);
+            if (scope.UserDepotIds != null)
+                q = q.Where(b => scope.UserDepotIds.Contains(b.DepotId));
+            if (scope.EffectiveDepotIds.Any())
+                q = q.Where(b => scope.EffectiveDepotIds.Contains(b.DepotId));
+            return await q.LongCountAsync().ConfigureAwait(false);
         }
 
         /// <summary>
