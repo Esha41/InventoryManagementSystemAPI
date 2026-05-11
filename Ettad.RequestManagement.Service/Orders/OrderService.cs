@@ -21,6 +21,7 @@ using Ettad.CrossCutting.Comman.Time;
 using Ettad.Data.Interfaces.Services;
 using Ettad.Data.Interfaces.Repositories;
 using Ettad.Notification.Service.Interfaces;
+using Ettad.RequestManagement.Service.Orders.Services;
 
 namespace Ettad.RequestManagement.Service.Orders
 {
@@ -48,6 +49,7 @@ namespace Ettad.RequestManagement.Service.Orders
         private readonly IMediator _mediator;
         private readonly ITransactionManager _transactionManager;
         private readonly IWorkflowStartNotificationService _workflowStartNotificationService;
+        private readonly IOrderPriorityService _orderPriorityService;
 
         public OrderService(
             ICrossCuttingRepository<Order> orderRepository,
@@ -70,7 +72,8 @@ namespace Ettad.RequestManagement.Service.Orders
             IOrderItemTrackingService orderItemTrackingService,
             IMediator mediator,
             ITransactionManager transactionManager,
-            IWorkflowStartNotificationService workflowStartNotificationService)
+            IWorkflowStartNotificationService workflowStartNotificationService,
+            IOrderPriorityService orderPriorityService)
         {
             _orderRepository = orderRepository;
             _requestItemRepository = requestItemRepository;
@@ -93,13 +96,9 @@ namespace Ettad.RequestManagement.Service.Orders
             _mediator = mediator;
             _transactionManager = transactionManager;
             _workflowStartNotificationService = workflowStartNotificationService;
+            _orderPriorityService = orderPriorityService;
         }
 
-        // ... existing methods omitted for brevity until SetSupplyDateAsync ...
-        
-        // Include full file content implementation here...
-        // For brevity in this tool call, I will include the full implementation but focusing on adding the new method
-        
         public async Task<APIOperationResponse<OrderDto>> GetByIdAsync(long id)
         {
             _logger.LogInformation("Getting order by ID: {OrderId}. User: {UserId}", id, _currentUserService.UserId);
@@ -298,7 +297,7 @@ namespace Ettad.RequestManagement.Service.Orders
                     // Map DTO to entity (exclude RequestItems for now)
                     var order = _mapper.Map<Order>(inputDto);
                     order.RequestType = RequestType.Order; // Always set request type to Order
-                    order.Priority = ResolvePriorityFromUsageDateFrom(inputDto.UsageDateFrom, _dateTimeProvider.Now);
+                    order.Priority = _orderPriorityService.CalculatePriorityFromUsageDate(inputDto.UsageDateFrom);
                     order.Status = RequestStatus.New; // Always set initial status to New
                     order.CreationDate = _dateTimeProvider.Now;
                     order.CreatedBy = currentUserId;
@@ -1002,37 +1001,5 @@ namespace Ettad.RequestManagement.Service.Orders
             return verification;
         }
 
-        /// <summary>
-        /// Order priority from usage start date (local calendar days; API may send UTC).
-        /// ≤7 days from <paramref name="now"/> → <see cref="RequestPriority.VeryUrgent"/>;
-        /// ≤14 → <see cref="RequestPriority.Urgent"/>; else <see cref="RequestPriority.Normal"/>.
-        /// Past usage dates → Normal (create validator normally blocks those).
-        /// </summary>
-        private static RequestPriority ResolvePriorityFromUsageDateFrom(DateTime usageDateFrom, DateTime now)
-        {
-            var usageLocalDate = usageDateFrom.Kind == DateTimeKind.Utc
-                ? usageDateFrom.ToLocalTime().Date
-                : usageDateFrom.Date;
-
-            var today = now.Date;
-            var days = (usageLocalDate - today).TotalDays;
-
-            if (days < 0)
-            {
-                return RequestPriority.Normal;
-            }
-
-            if (days <= 7)
-            {
-                return RequestPriority.VeryUrgent;
-            }
-
-            if (days <= 14)
-            {
-                return RequestPriority.Urgent;
-            }
-
-            return RequestPriority.Normal;
-        }
     }
 }

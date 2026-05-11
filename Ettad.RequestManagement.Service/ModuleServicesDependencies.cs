@@ -6,6 +6,7 @@ using Ettad.RequestManagement.Service.Common;
 using Ettad.RequestManagement.Service.RequestPurposes;
 using Ettad.RequestManagement.Service.Returns;
 using Ettad.RequestManagement.Service.Orders;
+using Ettad.RequestManagement.Service.Orders.Services;
 using Ettad.RequestManagement.Service.OrderItemTracking;
 using Ettad.Data.Interfaces.Services;
 using Ettad.RequestManagement.Service.Request;
@@ -28,6 +29,7 @@ namespace Ettad.RequestManagement.Service
             services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(Assembly.GetExecutingAssembly()));
 
             // Register services
+            services.AddScoped<IOrderPriorityService, OrderPriorityService>();
             services.AddScoped<IRequestNoGeneratorService, RequestNoGeneratorService>();
             services.AddScoped<IRequestPurposeService, RequestPurposeService>();
             services.AddScoped<IDiscardService, DiscardService>();

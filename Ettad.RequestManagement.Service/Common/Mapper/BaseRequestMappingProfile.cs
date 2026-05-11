@@ -1,5 +1,6 @@
 ﻿using Ettad.Comman.Idenitity;
 using Ettad.Data.Entities;
+using Ettad.Data.Enums;
 using Ettad.RequestManagement.Service.Common.Dtos;
 using Ettad.RequestManagement.Service.Orders.Dto;
 using Ettad.RequestManagement.Service.Discards.Dtos;
@@ -15,7 +16,9 @@ namespace Ettad.RequestManagement.Service.Common.Mapper
             CreateMap<BaseRequest, BaseRequestDto>()
                 .Include<Order, OrderDto>()
                 .Include<Discard, DiscardDto>()
-                .Include<Return, ReturnDto>();
+                .Include<Return, ReturnDto>()
+                .ForMember(dest => dest.AutoRejectedAt, opt => opt.MapFrom(
+                    src => src.Status == RequestStatus.AutoRejected ? src.ModificationDate : (DateTime?)null));
 
             // RequestItem to RequestItemDto - navigation properties as names
             CreateMap<RequestItem, RequestItemDto>()
