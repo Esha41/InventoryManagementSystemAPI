@@ -1,3 +1,4 @@
+using Ettad.Data.Enums;
 using Ettad.Data.Interfaces.Repositories;
 using Ettad.EntityFramework.DataBaseContext;
 using Microsoft.EntityFrameworkCore;
