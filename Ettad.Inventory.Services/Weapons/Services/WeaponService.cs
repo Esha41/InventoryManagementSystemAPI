@@ -42,7 +42,6 @@ namespace Ettad.Inventory.Service.Weapons.Services
         private readonly ICrossCuttingRepository<AllowanceItem> _allowanceItemRepository;
         private readonly ICrossCuttingRepository<AssetSupplyDetail> _assetSupplyDetailRepository;
         private readonly ICrossCuttingRepository<Asset> _assetRepository;
-        private readonly ICrossCuttingRepository<BaseItem> _baseItemRepository;
         private readonly ICrossCuttingRepository<Unit> _unitRepository;
         private readonly ICrossCuttingRepository<Country> _countryRepository;
         private readonly ICrossCuttingRepository<Classification> _classificationRepository;
@@ -55,6 +54,7 @@ namespace Ettad.Inventory.Service.Weapons.Services
         private readonly IFileUploadService _fileUploadService;
         private readonly ITransactionManager _transactionManager;
         private readonly IDateTimeProvider _dateTimeProvider;
+        private readonly IInventoryPermanentDeleteExecutor _inventoryPermanentDeleteExecutor;
         private readonly AssetImportManager<CreateUpdateWeaponDto, WeaponImportDto> _importManager;
         private readonly IItemDepartmentAssignmentService _itemDepartmentAssignmentService;
 
@@ -84,7 +84,6 @@ namespace Ettad.Inventory.Service.Weapons.Services
             ICrossCuttingRepository<AllowanceItem> allowanceItemRepository,
             ICrossCuttingRepository<AssetSupplyDetail> assetSupplyDetailRepository,
             ICrossCuttingRepository<Asset> assetRepository,
-            ICrossCuttingRepository<BaseItem> baseItemRepository,
             ICrossCuttingRepository<Unit> unitRepository,
             ICrossCuttingRepository<Country> countryRepository,
             ICrossCuttingRepository<Classification> classificationRepository,
@@ -98,6 +97,7 @@ namespace Ettad.Inventory.Service.Weapons.Services
             IExcelImportService excelImportService,
             ITransactionManager transactionManager,
             IDateTimeProvider dateTimeProvider,
+            IInventoryPermanentDeleteExecutor inventoryPermanentDeleteExecutor,
             IItemDepartmentAssignmentService itemDepartmentAssignmentService)
         {
             _weaponRepository = weaponRepository;
@@ -109,7 +109,6 @@ namespace Ettad.Inventory.Service.Weapons.Services
             _allowanceItemRepository = allowanceItemRepository;
             _assetSupplyDetailRepository = assetSupplyDetailRepository;
             _assetRepository = assetRepository;
-            _baseItemRepository = baseItemRepository;
             _unitRepository = unitRepository;
             _countryRepository = countryRepository;
             _classificationRepository = classificationRepository;
@@ -122,6 +121,7 @@ namespace Ettad.Inventory.Service.Weapons.Services
             _fileUploadService = fileUploadService;
             _transactionManager = transactionManager;
             _dateTimeProvider = dateTimeProvider;
+            _inventoryPermanentDeleteExecutor = inventoryPermanentDeleteExecutor;
             _itemDepartmentAssignmentService = itemDepartmentAssignmentService;
 
             _importManager = new AssetImportManager<CreateUpdateWeaponDto, WeaponImportDto>(excelImportService,
@@ -465,25 +465,21 @@ namespace Ettad.Inventory.Service.Weapons.Services
                 await using var transaction = await _transactionManager.BeginAsync();
                 try
                 {
-                    var purposes = (await _baseItemPrimaryPurposRepository.FindAsync(x => x.BaseItemId == id)).ToList();
-                    foreach (var p in purposes)
-                        await _baseItemPrimaryPurposRepository.DeleteAsync(p);
+                    var (weaponRows, baseRows) = await _inventoryPermanentDeleteExecutor.ExecuteAsync(
+                        InventoryPermanentDeleteKind.Weapon,
+                        id);
 
-                    await _weaponRepository.DeleteAsync(weapon);
-
-                    var baseItem = await _baseItemRepository.GetByIdAsync(id);
-                    if (baseItem == null)
+                    if (weaponRows == 0 || baseRows == 0)
                     {
                         await _transactionManager.RollbackAsync();
-                        return APIOperationResponse<bool>.Fail(ResponseType.InternalServerError, "Failed to remove base item record");
+                        return APIOperationResponse<bool>.Fail(ResponseType.InternalServerError,
+                            "Failed to permanently delete weapon rows from the database.");
                     }
-
-                    await _baseItemRepository.DeleteAsync(baseItem);
 
                     await _transactionManager.CommitAsync();
                     return APIOperationResponse<bool>.Success(true, "Weapon permanently deleted");
                 }
-                catch (Exception ex)
+                catch (Exception)
                 {
                     await _transactionManager.RollbackAsync();
                     throw;

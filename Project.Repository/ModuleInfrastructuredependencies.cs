@@ -23,6 +23,8 @@ namespace Ettad.Repository
 
             service.AddScoped<IAssetBulkDeletionPersistence, AssetBulkDeletionPersistence>();
 
+            service.AddScoped<IInventoryPermanentDeleteExecutor, InventoryPermanentDeleteExecutor>();
+
             return service;
         }
     }
