@@ -606,6 +606,69 @@ namespace Ettad.EntityFramework.Migrations
                     b.ToTable("AssetAssignments", (string)null);
                 });
 
+            modelBuilder.Entity("Ettad.Data.Entities.AssetBulkDeletionJob", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<long?>("BatchId")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime?>("CompletedUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("CreatedUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("DeletedCount")
+                        .HasColumnType("int");
+
+                    b.Property<long?>("DepotId")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("ExplicitAssetIdsJson")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("HangfireJobId")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("InitiatedByUserId")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<byte>("JobStatus")
+                        .HasColumnType("tinyint");
+
+                    b.Property<string>("Message")
+                        .HasMaxLength(4000)
+                        .HasColumnType("nvarchar(4000)");
+
+                    b.Property<int>("ProcessedCount")
+                        .HasColumnType("int");
+
+                    b.Property<byte>("Scope")
+                        .HasColumnType("tinyint");
+
+                    b.Property<DateTime?>("StartedUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("TotalCandidates")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedUtc");
+
+                    b.HasIndex("InitiatedByUserId");
+
+                    b.HasIndex("JobStatus", "CreatedUtc");
+
+                    b.ToTable("AssetBulkDeletionJobs", (string)null);
+                });
+
             modelBuilder.Entity("Ettad.Data.Entities.AssetHistory", b =>
                 {
                     b.Property<long>("Id")
@@ -5020,6 +5083,117 @@ namespace Ettad.EntityFramework.Migrations
                     b.ToTable("WorkflowApprovalStepReminders", (string)null);
                 });
 
+            modelBuilder.Entity("Ettad.Data.Entities.Workflows.WorkflowAutoRejectTrigger", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("CreationDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("Mode")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("ModificationDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ModifiedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("ResetOnReApproval")
+                        .HasColumnType("bit");
+
+                    b.Property<long>("WorkflowId")
+                        .HasColumnType("bigint");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("WorkflowId")
+                        .IsUnique();
+
+                    b.ToTable("WorkflowAutoRejectTriggers", (string)null);
+                });
+
+            modelBuilder.Entity("Ettad.Data.Entities.Workflows.WorkflowAutoRejectTriggerRole", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("CreationDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("ModificationDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ModifiedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("RoleId")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<long>("WorkflowAutoRejectTriggerId")
+                        .HasColumnType("bigint");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RoleId");
+
+                    b.HasIndex("WorkflowAutoRejectTriggerId", "RoleId")
+                        .IsUnique();
+
+                    b.ToTable("WorkflowAutoRejectTriggerRoles", (string)null);
+                });
+
+            modelBuilder.Entity("Ettad.Data.Entities.Workflows.WorkflowAutoRejectTriggerStep", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("CreationDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("ModificationDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ModifiedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<long>("WorkflowAutoRejectTriggerId")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("WorkflowStepId")
+                        .HasColumnType("bigint");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("WorkflowStepId");
+
+                    b.HasIndex("WorkflowAutoRejectTriggerId", "WorkflowStepId")
+                        .IsUnique();
+
+                    b.ToTable("WorkflowAutoRejectTriggerSteps", (string)null);
+                });
+
             modelBuilder.Entity("Ettad.Data.Entities.Workflows.WorkflowStep", b =>
                 {
                     b.Property<long>("Id")
@@ -6454,6 +6628,55 @@ namespace Ettad.EntityFramework.Migrations
                     b.Navigation("WorkflowApprovalStep");
                 });
 
+            modelBuilder.Entity("Ettad.Data.Entities.Workflows.WorkflowAutoRejectTrigger", b =>
+                {
+                    b.HasOne("Ettad.Data.Entities.Workflows.Workflow", "Workflow")
+                        .WithOne("AutoRejectTrigger")
+                        .HasForeignKey("Ettad.Data.Entities.Workflows.WorkflowAutoRejectTrigger", "WorkflowId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Workflow");
+                });
+
+            modelBuilder.Entity("Ettad.Data.Entities.Workflows.WorkflowAutoRejectTriggerRole", b =>
+                {
+                    b.HasOne("Ettad.CrossCutting.Comman.Idenitity.ApplicationRole", "Role")
+                        .WithMany()
+                        .HasForeignKey("RoleId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Ettad.Data.Entities.Workflows.WorkflowAutoRejectTrigger", "Trigger")
+                        .WithMany("TriggerRoles")
+                        .HasForeignKey("WorkflowAutoRejectTriggerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Role");
+
+                    b.Navigation("Trigger");
+                });
+
+            modelBuilder.Entity("Ettad.Data.Entities.Workflows.WorkflowAutoRejectTriggerStep", b =>
+                {
+                    b.HasOne("Ettad.Data.Entities.Workflows.WorkflowAutoRejectTrigger", "Trigger")
+                        .WithMany("TriggerSteps")
+                        .HasForeignKey("WorkflowAutoRejectTriggerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Ettad.Data.Entities.Workflows.WorkflowStep", "WorkflowStep")
+                        .WithMany()
+                        .HasForeignKey("WorkflowStepId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Trigger");
+
+                    b.Navigation("WorkflowStep");
+                });
+
             modelBuilder.Entity("Ettad.Data.Entities.Workflows.WorkflowStep", b =>
                 {
                     b.HasOne("Ettad.CrossCutting.Comman.Idenitity.ApplicationRole", "ApplicationRole")
@@ -6845,12 +7068,21 @@ namespace Ettad.EntityFramework.Migrations
 
             modelBuilder.Entity("Ettad.Data.Entities.Workflows.Workflow", b =>
                 {
+                    b.Navigation("AutoRejectTrigger");
+
                     b.Navigation("WorkflowSteps");
                 });
 
             modelBuilder.Entity("Ettad.Data.Entities.Workflows.WorkflowApprovalStep", b =>
                 {
                     b.Navigation("Reminders");
+                });
+
+            modelBuilder.Entity("Ettad.Data.Entities.Workflows.WorkflowAutoRejectTrigger", b =>
+                {
+                    b.Navigation("TriggerRoles");
+
+                    b.Navigation("TriggerSteps");
                 });
 
             modelBuilder.Entity("Ettad.Data.Entities.Workflows.WorkflowStep", b =>

@@ -16,7 +16,7 @@ namespace Ettad.Inventory.Service.Assets.Interfaces
         Task<APIOperationResponse<long>> CreateAsync(CreateAssetDto inputDto, List<IFormFile>? files = null);
         Task<APIOperationResponse<List<long>>> CreateBulkAsync(string? dtosJson, List<IFormFile>? files = null);
         Task<APIOperationResponse<bool>> UpdateAsync(long id, UpdateAssetDto inputDto, List<IFormFile>? files = null);
-        Task<APIOperationResponse<BulkCreateFromTemplateResultDto>> CreateBulkFromTemplateAsync(CreateBulkAssetsFromTemplateDto dto);
+        Task<APIOperationResponse<BulkCreateFromTemplateResultDto>> CreateBulkFromTemplateAsync(CreateBulkAssetsFromTemplateDto dto, List<IFormFile>? files = null);
         Task<APIOperationResponse<bool>> UpdateSerialNumberAsync(long assetId, string? serialNumber);
         Task<APIOperationResponse<bool>> DeleteAsync(long id);
         Task<APIOperationResponse<ImportResult<CreateAssetDto>>> ImportAsync(IFormFile file, long depotId, string language = "en");

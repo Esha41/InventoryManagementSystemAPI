@@ -2,10 +2,6 @@ using Ettad.Data.Enums;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using Ettad.CrossCutting.Comman.Base;
 
 namespace Ettad.Data.Entities.Workflows
@@ -28,5 +24,6 @@ namespace Ettad.Data.Entities.Workflows
 
         // Navigation properties
         public virtual ICollection<WorkflowStep> WorkflowSteps { get; set; }
+        public virtual WorkflowAutoRejectTrigger? AutoRejectTrigger { get; set; }
     }
 }

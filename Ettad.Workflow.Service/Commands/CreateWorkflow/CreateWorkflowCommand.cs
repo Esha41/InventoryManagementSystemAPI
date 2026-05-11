@@ -14,6 +14,7 @@ using System.Threading.Tasks;
 using Ettad.Data.Entities.Workflows;
 using Ettad.CrossCutting.Comman.Time;
 using Ettad.Workflows.Service.Dtos;
+using Ettad.Workflows.Service.Mapper;
 
 namespace Ettad.Workflows.Service.Commands.CreateWorkflow
 {
@@ -82,6 +83,10 @@ namespace Ettad.Workflows.Service.Commands.CreateWorkflow
 
                 // Reload the workflow with steps to return complete data
                 var createdWorkflow = await _context.Workflows
+                    .Include(w => w.AutoRejectTrigger)
+                        .ThenInclude(t => t!.TriggerRoles)
+                    .Include(w => w.AutoRejectTrigger)
+                        .ThenInclude(t => t!.TriggerSteps)
                     .Include(w => w.WorkflowSteps)
                         .ThenInclude(ws => ws.ApplicationRole)
                     .Include(w => w.WorkflowSteps)
@@ -215,7 +220,7 @@ namespace Ettad.Workflows.Service.Commands.CreateWorkflow
         {
             if (workflow == null) return null;
 
-            return new WorkflowDto
+            var dto = new WorkflowDto
             {
                 Id = workflow.Id,
                 WorkflowName = workflow.WorkflowName,
@@ -286,6 +291,10 @@ namespace Ettad.Workflows.Service.Commands.CreateWorkflow
                     
                 }).ToList()
             };
+
+            WorkflowAutoRejectTriggerMapper.MapToWorkflowDto(dto, workflow.AutoRejectTrigger);
+
+            return dto;
         }
 
     }

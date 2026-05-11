@@ -6,6 +6,7 @@ using Ettad.EntityFramework.DataBaseContext;
 using Ettad.ResponseHandler.Models;
 using Ettad.User.Services.DTO;
 using Ettad.Workflows.Service.Dtos;
+using Ettad.Workflows.Service.Mapper;
 
 namespace Ettad.Workflows.Service.Queries.GetWorkflowById
 {
@@ -40,6 +41,10 @@ namespace Ettad.Workflows.Service.Queries.GetWorkflowById
             try
             {
                 var workflow = await _context.Workflows
+                    .Include(w => w.AutoRejectTrigger)
+                        .ThenInclude(t => t!.TriggerRoles)
+                    .Include(w => w.AutoRejectTrigger)
+                        .ThenInclude(t => t!.TriggerSteps)
                     .Include(w => w.WorkflowSteps)
                         .ThenInclude(step => step.Transitions)
                             .ThenInclude(t => t.TargetWorkflowStep)
@@ -129,6 +134,8 @@ namespace Ettad.Workflows.Service.Queries.GetWorkflowById
                         }).ToList()
                     }).ToList()
                 };
+
+                WorkflowAutoRejectTriggerMapper.MapToWorkflowDto(workflowDto, workflow.AutoRejectTrigger);
 
                 return APIOperationResponse<WorkflowDto>.Success(workflowDto);
             }

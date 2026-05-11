@@ -8,8 +8,11 @@ using OfficeOpenXml;
 using System.Net;
 using Ettad.CrossCutting.Comman.Models;
 using Ettad.Inventory.Service.Assets.Interfaces;
+using System;
 using System.Collections.Generic;
 using Ettad.Data.Enums;
+using System.Text.Json;
+using Ettad.ResponseHandler.Consts;
 
 namespace Ettad.Inventory.API.Controllers
 {
@@ -19,10 +22,12 @@ namespace Ettad.Inventory.API.Controllers
     public class AssetController : ApiControllerBase
     {
         private readonly IAssetService _assetService;
+        private readonly IBulkAssetDeleteService _bulkAssetDeleteService;
 
-        public AssetController(IAssetService assetService)
+        public AssetController(IAssetService assetService, IBulkAssetDeleteService bulkAssetDeleteService)
         {
             _assetService = assetService;
+            _bulkAssetDeleteService = bulkAssetDeleteService;
 
             ExcelPackage.License.SetNonCommercialPersonal("Ettad");
         }
@@ -126,12 +131,45 @@ namespace Ettad.Inventory.API.Controllers
             return ProcessResponse(result);
         }
 
+        //[HttpPost("bulk-template")]
+        //[Consumes("application/json")]
+        //[ProducesResponseType((int)HttpStatusCode.Created)]
+        //[CheckAuthorize("Permissions.Asset.Create")]
+        //public async Task<IActionResult> BulkCreateFromTemplate([FromBody] CreateBulkAssetsFromTemplateDto dto)
+        //{
+        //    var result = await _assetService.CreateBulkFromTemplateAsync(dto);
+        //    return ProcessResponse(result);
+        //}
+
         [HttpPost("bulk-template")]
+        [Consumes("multipart/form-data")]
         [ProducesResponseType((int)HttpStatusCode.Created)]
         [CheckAuthorize("Permissions.Asset.Create")]
-        public async Task<IActionResult> BulkCreateFromTemplate([FromBody] CreateBulkAssetsFromTemplateDto dto)
+        public async Task<IActionResult> BulkCreateFromTemplateWithFiles([FromForm] string dtoJson, [FromForm] List<IFormFile>? files = null)
         {
-            var result = await _assetService.CreateBulkFromTemplateAsync(dto);
+            CreateBulkAssetsFromTemplateDto? dto;
+            try
+            {
+                dto = JsonSerializer.Deserialize<CreateBulkAssetsFromTemplateDto>(dtoJson, new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true
+                });
+            }
+            catch (JsonException ex)
+            {
+                return ProcessResponse(APIOperationResponse<BulkCreateFromTemplateResultDto>.Fail(
+                    ResponseType.BadRequest,
+                    $"Invalid dtoJson payload: {ex.Message}"));
+            }
+
+            if (dto == null)
+            {
+                return ProcessResponse(APIOperationResponse<BulkCreateFromTemplateResultDto>.Fail(
+                    ResponseType.BadRequest,
+                    "dtoJson is required"));
+            }
+
+            var result = await _assetService.CreateBulkFromTemplateAsync(dto, files);
             return ProcessResponse(result);
         }
 
@@ -164,6 +202,30 @@ namespace Ettad.Inventory.API.Controllers
         public async Task<IActionResult> Delete(long id)
         {
             var result = await _assetService.DeleteAsync(id);
+            return ProcessResponse(result);
+        }
+
+        /// <summary>
+        /// Starts an async chunked soft-delete for large asset sets (Hangfire-backed).
+        /// </summary>
+        [HttpPost("bulk-delete")]
+        [ProducesResponseType((int)HttpStatusCode.Accepted)]
+        [CheckAuthorize("Permissions.Asset.Delete")]
+        public async Task<IActionResult> StartBulkDeleteAssets([FromBody] StartBulkDeleteAssetsDto dto)
+        {
+            var result = await _bulkAssetDeleteService.StartBulkDeleteAsync(dto);
+            return ProcessResponse(result);
+        }
+
+        /// <summary>
+        /// Poll bulk-delete progress (creator-only).
+        /// </summary>
+        [HttpGet("bulk-delete/{jobId:guid}/status")]
+        [ProducesResponseType((int)HttpStatusCode.OK)]
+        [CheckAuthorize("Permissions.Asset.Delete")]
+        public async Task<IActionResult> GetBulkDeleteAssetsStatus(Guid jobId)
+        {
+            var result = await _bulkAssetDeleteService.GetBulkDeleteStatusAsync(jobId);
             return ProcessResponse(result);
         }
 

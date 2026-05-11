@@ -1,5 +1,6 @@
 using AutoMapper;
 using FluentValidation;
+using System;
 using System.Linq;
 using System.Linq.Expressions;
 using Ettad.CrossCutting.Comman.FileUpload;
@@ -51,6 +52,8 @@ namespace Ettad.Inventory.Service.Assets.Implementation
         private readonly ICrossCuttingRepository<BaseItemPrimaryPurpos> _baseItemPrimaryPurposRepository;
         private readonly ICrossCuttingRepository<Supplier> _supplierRepository;
         private readonly ICrossCuttingRepository<Manufacturer> _manufacturerRepository;
+        private readonly IAssetBulkSqlRepository _assetBulkSqlRepository;
+        private readonly ICrossCuttingRepository<AssetSupplyDetail> _assetSupplyDetailRepository;
 
         public AssetService(
             ICrossCuttingRepository<Asset> assetRepository,
@@ -73,7 +76,9 @@ namespace Ettad.Inventory.Service.Assets.Implementation
             ICrossCuttingRepository<Weapon> weaponRepository,
             ICrossCuttingRepository<BaseItemPrimaryPurpos> baseItemPrimaryPurposRepository,
             ICrossCuttingRepository<Supplier> supplierRepository,
-            ICrossCuttingRepository<Manufacturer> manufacturerRepository)
+            ICrossCuttingRepository<Manufacturer> manufacturerRepository,
+            IAssetBulkSqlRepository assetBulkSqlRepository,
+            ICrossCuttingRepository<AssetSupplyDetail> assetSupplyDetailRepository)
         {
             _assetRepository = assetRepository;
             _mapper = mapper;
@@ -96,6 +101,8 @@ namespace Ettad.Inventory.Service.Assets.Implementation
             _baseItemPrimaryPurposRepository = baseItemPrimaryPurposRepository;
             _supplierRepository = supplierRepository;
             _manufacturerRepository = manufacturerRepository;
+            _assetBulkSqlRepository = assetBulkSqlRepository;
+            _assetSupplyDetailRepository = assetSupplyDetailRepository;
         }
 
         private static bool WantsIntakeAssignment(CreateAssetDto dto) =>
@@ -945,7 +952,7 @@ namespace Ettad.Inventory.Service.Assets.Implementation
             }
         }
 
-        public async Task<APIOperationResponse<BulkCreateFromTemplateResultDto>> CreateBulkFromTemplateAsync(CreateBulkAssetsFromTemplateDto dto)
+        public async Task<APIOperationResponse<BulkCreateFromTemplateResultDto>> CreateBulkFromTemplateAsync(CreateBulkAssetsFromTemplateDto dto, List<IFormFile>? files = null)
         {
             if (dto == null)
                 return APIOperationResponse<BulkCreateFromTemplateResultDto>.Fail(ResponseType.BadRequest, "Request body is required.");
@@ -953,12 +960,17 @@ namespace Ettad.Inventory.Service.Assets.Implementation
             _logger.LogInformation("Creating bulk assets from template. Quantity: {Quantity}, ItemId: {ItemId}, DepotId: {DepotId}, User: {UserId}",
                 dto.Quantity, dto.ItemId, dto.DepotId, _currentUserService.UserId);
 
+            var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+
             try
             {
+                await using var transaction = await _transactionManager.BeginAsync();
+
                 var validationResult = await _bulkTemplateValidator.ValidateAsync(dto);
                 if (!validationResult.IsValid)
                 {
                     var errors = string.Join(", ", validationResult.Errors.Select(e => e.ErrorMessage));
+                    await _transactionManager.RollbackAsync();
                     return APIOperationResponse<BulkCreateFromTemplateResultDto>.Fail(ResponseType.BadRequest, errors);
                 }
 
@@ -966,66 +978,71 @@ namespace Ettad.Inventory.Service.Assets.Implementation
                 if (!string.IsNullOrEmpty(userId) && !await _depotAccessService.HasDepotAccessAsync(userId, dto.DepotId))
                 {
                     _logger.LogWarning("User {UserId} attempted bulk template create in unauthorized depot {DepotId}", userId, dto.DepotId);
+                    await _transactionManager.RollbackAsync();
                     return APIOperationResponse<BulkCreateFromTemplateResultDto>.Fail(ResponseType.Forbidden, "You do not have access to this depot.");
                 }
 
                 var templateLookupErr = await ValidateAssetLookupIdsAsync(dto.ItemId, dto.SupplierId, dto.ManufacturerId, dto.PrimaryPurposId);
                 if (templateLookupErr != null)
-                    return APIOperationResponse<BulkCreateFromTemplateResultDto>.Fail(ResponseType.BadRequest, templateLookupErr);
-
-                var batch = await _batchService.GetOrCreateAsync(dto.BatchNumber.Trim(), dto.DepotId);
-                var now = _dateTimeProvider.Now;
-                long? firstAssetId = null;
-                const int chunkSize = 1000;
-
-                await using var transaction = await _transactionManager.BeginAsync();
-                try
-                {
-                    var remaining = dto.Quantity;
-                    while (remaining > 0)
-                    {
-                        var take = Math.Min(chunkSize, remaining);
-                        var chunk = new List<Asset>(take);
-
-                        for (var i = 0; i < take; i++)
-                        {
-                            var asset = _mapper.Map<Asset>(dto);
-                            asset.BatchId = batch.Id;
-                            asset.CreationDate = now;
-                            asset.CreatedBy = userId;
-                            asset.Status = AssetStatus.ReadyToIssue;
-                            asset.SerialNumber = null;
-                            asset.RFID = null;
-                            chunk.Add(asset);
-                        }
-
-                        var createdChunk = (await _assetRepository.AddRangeAsync(chunk)).ToList();
-                        firstAssetId ??= createdChunk.FirstOrDefault()?.Id;
-                        remaining -= take;
-                    }
-
-                    await _transactionManager.CommitAsync();
-
-                    _logger.LogInformation("Bulk template asset creation completed. Created: {Count}, FirstId: {FirstId}, User: {UserId}",
-                        dto.Quantity, firstAssetId, userId);
-
-                    return APIOperationResponse<BulkCreateFromTemplateResultDto>.Success(
-                        new BulkCreateFromTemplateResultDto
-                        {
-                            CreatedCount = dto.Quantity,
-                            FirstAssetId = firstAssetId
-                        },
-                        $"{dto.Quantity} assets created successfully.");
-                }
-                catch
                 {
                     await _transactionManager.RollbackAsync();
-                    throw;
+                    return APIOperationResponse<BulkCreateFromTemplateResultDto>.Fail(ResponseType.BadRequest, templateLookupErr);
                 }
+
+                var batch = await _batchService.GetOrCreateAsync(dto.BatchNumber.Trim(), dto.DepotId);
+
+                var templateAsset = _mapper.Map<Asset>(dto);
+                templateAsset.ItemId = dto.ItemId;
+                templateAsset.SupplierId = dto.SupplierId;
+                templateAsset.ManufacturerId = dto.ManufacturerId;
+                templateAsset.PrimaryPurposId = dto.PrimaryPurposId;
+                templateAsset.DepotId = dto.DepotId;
+                templateAsset.BatchId = batch.Id;
+                templateAsset.CreationDate = _dateTimeProvider.Now;
+                templateAsset.CreatedBy = userId;
+                templateAsset.Status = AssetStatus.ReadyToIssue;
+                templateAsset.SerialNumber = null;
+                templateAsset.RFID = null;
+
+                long? firstAssetId = await _assetBulkSqlRepository.BulkInsertTemplateAssetsAsync(templateAsset, dto.Quantity)
+                    .ConfigureAwait(false);
+                await _transactionManager.CommitAsync();
+
+                if (files != null && files.Any())
+                {
+                    var uploadFilesResult = await _fileUploadService.UploadFilesForEntityAsync(
+                        files,
+                        FileEntityType.Weapon,
+                        batch.Id);
+
+                    if (!uploadFilesResult.Succeeded)
+                    {
+                        _logger.LogWarning(
+                            "File upload failed after bulk template creation. BatchId: {BatchId}, Error: {Error}",
+                            batch.Id,
+                            uploadFilesResult.Message);
+                    }
+                }
+
+                stopwatch.Stop();
+
+                _logger.LogInformation("Bulk template asset creation completed. Created: {Count}, FirstId: {FirstId}, Duration: {DurationMs}ms, User: {UserId}",
+                    dto.Quantity, firstAssetId, stopwatch.ElapsedMilliseconds, userId);
+
+                return APIOperationResponse<BulkCreateFromTemplateResultDto>.Success(
+                    new BulkCreateFromTemplateResultDto
+                    {
+                        CreatedCount = dto.Quantity,
+                        FirstAssetId = firstAssetId
+                    },
+                    $"{dto.Quantity:N0} assets created successfully in {stopwatch.Elapsed.TotalSeconds:F2} seconds.");
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error in CreateBulkFromTemplateAsync. User: {UserId}", _currentUserService.UserId);
+                stopwatch.Stop();
+                if (_transactionManager.HasActiveTransaction)
+                    await _transactionManager.RollbackAsync();
+                _logger.LogError(ex, "Error in CreateBulkFromTemplateAsync. User: {UserId}, Duration: {DurationMs}ms", _currentUserService.UserId, stopwatch.ElapsedMilliseconds);
                 return APIOperationResponse<BulkCreateFromTemplateResultDto>.Fail(
                     ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
             }
@@ -1174,7 +1191,28 @@ namespace Ettad.Inventory.Service.Assets.Implementation
                     return APIOperationResponse<bool>.Fail(ResponseType.NotFound, "Asset not found");
                 }
 
-                // Soft delete - interceptor will handle IsDeleted, DeletionDate, and DeletedBy automatically
+                var userIdDel = _currentUserService.UserId;
+                if (!string.IsNullOrEmpty(userIdDel) &&
+                    !await _depotAccessService.HasDepotAccessAsync(userIdDel, asset.DepotId))
+                {
+                    _logger.LogWarning("User {UserId} attempted to delete asset {AssetId} in unauthorized depot {DepotId}",
+                        userIdDel, id, asset.DepotId);
+                    return APIOperationResponse<bool>.Fail(ResponseType.Forbidden, "You do not have access to this depot.");
+                }
+
+                if (asset.IsAssigned)
+                    return APIOperationResponse<bool>.Fail(ResponseType.BadRequest,
+                        "Cannot delete assigned asset. Unassign it first.");
+
+                var inSupply = await _assetSupplyDetailRepository
+                    .Find(sd => !sd.IsDeleted && sd.AssetId == id)
+                    .AnyAsync();
+
+                if (inSupply)
+                    return APIOperationResponse<bool>.Fail(ResponseType.BadRequest,
+                        "Cannot delete asset that is in a supply order.");
+
+                // Soft delete - interceptor applies IsDeleted, DeletionDate, DeletedBy
                 await _assetRepository.DeleteAsync(asset);
 
                 _logger.LogInformation("Asset deleted successfully. AssetId: {AssetId}, User: {UserId}", 
