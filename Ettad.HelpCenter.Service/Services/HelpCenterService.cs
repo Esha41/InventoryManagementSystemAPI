@@ -667,11 +667,13 @@ namespace Ettad.HelpCenter.Service.Services
                 if (user is null)
                     return APIOperationResponse<TermsAcceptanceStatusDto>.Fail(ResponseType.NotFound, "User not found");
 
-                var mustAccept = user.LastAcceptedTermsConditionsId != active.Id;
+                // Always gate the app while active terms exist (each login / main-layout load),
+                // not only the first time per published version. LastAcceptedTermsConditionsId is still
+                // updated on accept for audit.
                 var dto = new TermsAcceptanceStatusDto
                 {
-                    MustAccept = mustAccept,
-                    Terms = mustAccept ? MapTermsToDto(active) : null
+                    MustAccept = true,
+                    Terms = MapTermsToDto(active)
                 };
                 return APIOperationResponse<TermsAcceptanceStatusDto>.Success(dto);
             }
