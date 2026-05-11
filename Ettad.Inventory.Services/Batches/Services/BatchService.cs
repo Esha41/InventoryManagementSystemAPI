@@ -167,20 +167,35 @@ namespace Ettad.Inventory.Service.Batches.Services
 
                 var dto = _mapper.Map<BatchDto>(batch);
 
-                var assetQuery = _assetRepository.Find(
+                var assetQueryBase = _assetRepository.Find(
                     a => !a.IsDeleted && a.BatchId == id,
                     false,
                     BatchAssetGridIncludes);
 
-                assetQuery = ApplyAssetFilters(assetQuery, filters);
+                assetQueryBase = ApplyAssetFilters(assetQueryBase, filters);
 
                 if (serialNumberOnly == true)
-                    assetQuery = assetQuery.Where(a => !string.IsNullOrEmpty(a.SerialNumber));
+                    assetQueryBase = assetQueryBase.Where(a => !string.IsNullOrEmpty(a.SerialNumber));
 
                 if (filterByIsAssigned.HasValue)
-                    assetQuery = assetQuery.Where(a => a.IsAssigned == filterByIsAssigned.Value);
+                    assetQueryBase = assetQueryBase.Where(a => a.IsAssigned == filterByIsAssigned.Value);
 
-                var totalCount = await assetQuery.CountAsync();
+                var itemCounts = await assetQueryBase
+                    .GroupBy(a => new { a.ItemId, Name = a.Item.Name, ItemNo = a.Item.ItemNo, Nsn = a.Item.Nsn })
+                    .Select(g => new BatchAssetItemCountDto
+                    {
+                        ItemId = g.Key.ItemId,
+                        ItemName = g.Key.Name ?? string.Empty,
+                        ItemNo = g.Key.ItemNo,
+                        Nsn = g.Key.Nsn,
+                        Count = g.Count()
+                    })
+                    .OrderBy(x => x.ItemName)
+                    .ToListAsync();
+
+                dto.AssetItemCounts = itemCounts;
+
+                var totalCount = await assetQueryBase.CountAsync();
 
                 var effectivePageSize = NormalizeBatchAssetsPageSize(assetsPageSize);
                 int effectivePage;
@@ -197,7 +212,7 @@ namespace Ettad.Inventory.Service.Batches.Services
                     effectivePage = Math.Max(1, Math.Min(assetsPage < 1 ? 1 : assetsPage, totalPages));
                 }
 
-                IQueryable<Asset> orderedQuery = assetQuery.OrderBy(a => a.Id);
+                IQueryable<Asset> orderedQuery = assetQueryBase.OrderBy(a => a.Id);
 
                 List<Asset> assets;
                 if (includeAllAssets)
@@ -266,7 +281,7 @@ namespace Ettad.Inventory.Service.Batches.Services
                     if (batch == null)
                         return APIOperationResponse<List<BatchDto>>.Fail(ResponseType.NotFound, "Batch not found");
 
-                    var one = await GetByIdAsync(batch.Id, serialNumberOnly, filterByIsAssigned, assetsPage, assetsPageSize, includeAllAssets);
+                    var one = await GetByIdAsync(batch.Id, serialNumberOnly, filterByIsAssigned, assetsPage, assetsPageSize, includeAllAssets, null);
                     if (!one.Succeeded || one.Data == null)
                         return APIOperationResponse<List<BatchDto>>.Fail(
                             (ResponseType)one.StatusCode,
@@ -289,7 +304,7 @@ namespace Ettad.Inventory.Service.Batches.Services
                 var list = new List<BatchDto>();
                 foreach (var id in matches)
                 {
-                    var item = await GetByIdAsync(id, serialNumberOnly, filterByIsAssigned, assetsPage, assetsPageSize, includeAllAssets);
+                    var item = await GetByIdAsync(id, serialNumberOnly, filterByIsAssigned, assetsPage, assetsPageSize, includeAllAssets, null);
                     if (item.Succeeded && item.Data != null)
                         list.Add(item.Data);
                 }

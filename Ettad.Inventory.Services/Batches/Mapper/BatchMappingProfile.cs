@@ -11,7 +11,8 @@ namespace Ettad.Inventory.Service.Batches.Mapper
             CreateMap<Batch, BatchDto>()
                 .ForMember(dest => dest.Depot, opt => opt.MapFrom(src => src.Depot != null ? src.Depot : null))
                 .ForMember(dest => dest.Assets, opt => opt.Ignore())
-                .ForMember(dest => dest.AssetCount, opt => opt.Ignore());
+                .ForMember(dest => dest.AssetCount, opt => opt.Ignore())
+                .ForMember(dest => dest.AssetItemCounts, opt => opt.Ignore());
         }
     }
 }
