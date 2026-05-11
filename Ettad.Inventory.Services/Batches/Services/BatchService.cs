@@ -197,7 +197,8 @@ namespace Ettad.Inventory.Service.Batches.Services
 
                 var totalCount = await assetQueryBase.CountAsync();
 
-                var effectivePageSize = NormalizeBatchAssetsPageSize(assetsPageSize);
+                // Use query `assetsPageSize` as-is; only fall back when invalid to avoid divide-by-zero / Take(0).
+                var effectivePageSize = assetsPageSize > 0 ? assetsPageSize : 50;
                 int effectivePage;
                 int totalPages;
 
@@ -317,18 +318,6 @@ namespace Ettad.Inventory.Service.Batches.Services
                     trimmedBatchNumber, _currentUserService.UserId);
                 return APIOperationResponse<List<BatchDto>>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
             }
-        }
-
-        private static int NormalizeBatchAssetsPageSize(int requested)
-        {
-            return requested switch
-            {
-                50 => 50,
-                100 => 100,
-                200 => 200,
-                500 => 500,
-                _ => 50
-            };
         }
 
         public async Task<APIOperationResponse<List<BatchDto>>> GetAllAsync(long? depotId = null)
