@@ -31,6 +31,7 @@ namespace Ettad.RequestManagement.Service
 
             // Register services
             services.AddScoped<AmmunitionWeaponAssociationValidator>();
+            services.AddScoped<IRequestItemWeaponAssociationEnrichmentService, RequestItemWeaponAssociationEnrichmentService>();
             services.AddScoped<IOrderPriorityService, OrderPriorityService>();
             services.AddScoped<IRequestNoGeneratorService, RequestNoGeneratorService>();
             services.AddScoped<IRequestPurposeService, RequestPurposeService>();

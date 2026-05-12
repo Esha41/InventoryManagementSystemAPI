@@ -60,6 +60,7 @@ namespace Ettad.EntityFramework.DataBaseContext
         public DbSet<RequestPurpose> RequestPurposes { get; set; }
         public DbSet<BaseRequest> BaseRequests { get; set; }
         public DbSet<RequestItem> RequestItems { get; set; }
+        public DbSet<RequestItemWeaponAssociation> RequestItemWeaponAssociations { get; set; }
         public DbSet<Order> Orders { get; set; }
         public DbSet<Discard> Discards { get; set; }
         public DbSet<Return> Returns { get; set; }

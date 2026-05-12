@@ -53,6 +53,7 @@ namespace Ettad.RequestManagement.Service.Orders
         private readonly ITransactionManager _transactionManager;
         private readonly IWorkflowStartNotificationService _workflowStartNotificationService;
         private readonly IOrderPriorityService _orderPriorityService;
+        private readonly IRequestItemWeaponAssociationEnrichmentService _weaponAssociationEnrichmentService;
 
         public OrderService(
             ICrossCuttingRepository<Order> orderRepository,
@@ -78,7 +79,8 @@ namespace Ettad.RequestManagement.Service.Orders
             IMediator mediator,
             ITransactionManager transactionManager,
             IWorkflowStartNotificationService workflowStartNotificationService,
-            IOrderPriorityService orderPriorityService)
+            IOrderPriorityService orderPriorityService,
+            IRequestItemWeaponAssociationEnrichmentService weaponAssociationEnrichmentService)
         {
             _orderRepository = orderRepository;
             _requestItemRepository = requestItemRepository;
@@ -104,6 +106,7 @@ namespace Ettad.RequestManagement.Service.Orders
             _transactionManager = transactionManager;
             _workflowStartNotificationService = workflowStartNotificationService;
             _orderPriorityService = orderPriorityService;
+            _weaponAssociationEnrichmentService = weaponAssociationEnrichmentService;
         }
 
         public async Task<APIOperationResponse<OrderDto>> GetByIdAsync(long id)
@@ -135,6 +138,7 @@ namespace Ettad.RequestManagement.Service.Orders
                 }
 
                 var dto = _mapper.Map<OrderDto>(order);
+                await _weaponAssociationEnrichmentService.EnrichAsync(dto);
                 
                 _logger.LogInformation("Successfully retrieved order. OrderId: {OrderId}, OrderNo: {OrderNo}", id, order.RequestNo);
                 return APIOperationResponse<OrderDto>.Success(dto);
@@ -172,6 +176,7 @@ namespace Ettad.RequestManagement.Service.Orders
                 }
 
                 var dtos = _mapper.Map<List<OrderDto>>(orders);
+                await _weaponAssociationEnrichmentService.EnrichAsync(dtos);
                 
                 _logger.LogInformation("Successfully retrieved {OrderCount} orders. User: {UserId}", dtos.Count, _currentUserService.UserId);
                 return APIOperationResponse<List<OrderDto>>.Success(dtos);

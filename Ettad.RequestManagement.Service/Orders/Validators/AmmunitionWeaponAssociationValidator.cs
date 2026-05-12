@@ -33,14 +33,25 @@ namespace Ettad.RequestManagement.Service.Orders.Validators
                 return errors;
             }
 
+            var allCatalogIds = list
+                .Where(r => r.AssociatedWeaponItemId is > 0)
+                .Select(r => r.AssociatedWeaponItemId!.Value)
+                .Distinct()
+                .ToList();
+
+            var weaponMap = allCatalogIds.Count > 0
+                ? (await _weaponRepository.FindAsync(w => allCatalogIds.Contains(w.Id) && !w.IsDeleted))
+                    .ToDictionary(w => w.Id)
+                : new Dictionary<long, Weapon>();
+
             var catalogWeaponIdsSeen = new HashSet<long>();
             for (var i = 0; i < list.Count; i++)
             {
                 var row = list[i];
                 var prefix = $"Weapon association #{i + 1}: ";
                 var rowErrors = ammunitionCaliberId.HasValue
-                    ? await ValidateSingleAssociationWithAmmoCaliberAsync(row, ammunitionCaliberId.Value)
-                    : await ValidateSingleAssociationWithoutAmmoCaliberAsync(row);
+                    ? ValidateSingleAssociationWithAmmoCaliberAsync(row, ammunitionCaliberId.Value, weaponMap)
+                    : ValidateSingleAssociationWithoutAmmoCaliberAsync(row, weaponMap);
                 foreach (var e in rowErrors)
                     errors.Add(prefix + e);
 
@@ -51,8 +62,9 @@ namespace Ettad.RequestManagement.Service.Orders.Validators
             return errors;
         }
 
-        private async Task<List<string>> ValidateSingleAssociationWithoutAmmoCaliberAsync(
-            CreateRequestItemWeaponAssociationDto item)
+        private List<string> ValidateSingleAssociationWithoutAmmoCaliberAsync(
+            CreateRequestItemWeaponAssociationDto item,
+            IReadOnlyDictionary<long, Weapon> weaponMap)
         {
             var errors = new List<string>();
 
@@ -76,8 +88,7 @@ namespace Ettad.RequestManagement.Service.Orders.Validators
                 return errors;
             }
 
-            var weapon = await _weaponRepository.FindOneAsync(w =>
-                w.Id == item.AssociatedWeaponItemId!.Value && !w.IsDeleted);
+            weaponMap.TryGetValue(item.AssociatedWeaponItemId!.Value, out var weapon);
 
             if (weapon == null)
                 errors.Add("Associated weapon was not found or is not a valid catalog weapon.");
@@ -85,9 +96,10 @@ namespace Ettad.RequestManagement.Service.Orders.Validators
             return errors;
         }
 
-        private async Task<List<string>> ValidateSingleAssociationWithAmmoCaliberAsync(
+        private List<string> ValidateSingleAssociationWithAmmoCaliberAsync(
             CreateRequestItemWeaponAssociationDto item,
-            long ammunitionCaliberId)
+            long ammunitionCaliberId,
+            IReadOnlyDictionary<long, Weapon> weaponMap)
         {
             var errors = new List<string>();
 
@@ -123,8 +135,7 @@ namespace Ettad.RequestManagement.Service.Orders.Validators
                 return errors;
             }
 
-            var weapon = await _weaponRepository.FindOneAsync(w =>
-                w.Id == item.AssociatedWeaponItemId!.Value && !w.IsDeleted);
+            weaponMap.TryGetValue(item.AssociatedWeaponItemId!.Value, out var weapon);
 
             if (weapon == null)
             {
