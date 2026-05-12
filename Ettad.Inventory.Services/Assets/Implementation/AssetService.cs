@@ -565,32 +565,26 @@ namespace Ettad.Inventory.Service.Assets.Implementation
             }
         }
 
-        public async Task<APIOperationResponse<List<AssetDto>>> GetAssetsByItemIdAsync(long itemId, long? depotId = null)
+        public async Task<APIOperationResponse<List<AssetDto>>> GetAssetsByItemIdAsync(long itemId, long? depotId = null, List<long>? depotIds = null)
         {
-            _logger.LogInformation("Getting assets by itemId. ItemId: {ItemId}, DepotId: {DepotId}, User: {UserId}",
-                itemId, depotId?.ToString() ?? "All", _currentUserService.UserId);
+            _logger.LogInformation(
+                "Getting assets by itemId. ItemId: {ItemId}, DepotId: {DepotId}, DepotIdsCount: {DepotIdsCount}, User: {UserId}",
+                itemId,
+                depotId?.ToString() ?? "none",
+                depotIds?.Count ?? 0,
+                _currentUserService.UserId);
 
             try
             {
-                if (depotId.HasValue && depotId.Value > 0)
-                {
-                    var userId = _currentUserService.UserId;
-                    if (!string.IsNullOrEmpty(userId) && !await _depotAccessService.HasDepotAccessAsync(userId, depotId.Value))
-                    {
-                        _logger.LogWarning("User {UserId} attempted to access assets for unauthorized depot {DepotId}", userId, depotId);
-                        return APIOperationResponse<List<AssetDto>>.Fail(ResponseType.Forbidden, "You do not have access to this depot.");
-                    }
-                }
-
-                var assets = await _assetRepository.FindAsync(
-                    a => !a.IsDeleted && a.ItemId == itemId && (!depotId.HasValue || depotId.Value <= 0 || a.DepotId == depotId.Value),
-                    false,
-                    AssetReadMapIncludes);
-
-                // Restrict to user's accessible depots
                 var userDepotIds = await _depotAccessService.GetUserAccessibleDepotIdsAsync();
-                if (userDepotIds != null)
-                    assets = assets.Where(a => userDepotIds.Contains(a.DepotId)).ToList();
+                if (userDepotIds != null && userDepotIds.Count == 0)
+                    return APIOperationResponse<List<AssetDto>>.Success(new List<AssetDto>());
+
+                var query = QueryAssetsByItemIdWithDepotScope(itemId, depotId, depotIds, userDepotIds, out var emptyBecauseScope);
+                if (emptyBecauseScope)
+                    return APIOperationResponse<List<AssetDto>>.Success(new List<AssetDto>());
+
+                var assets = await query.ToListAsync();
 
                 var dtos = _mapper.Map<List<AssetDto>>(assets);
 
@@ -610,31 +604,23 @@ namespace Ettad.Inventory.Service.Assets.Implementation
         public async Task<APIOperationResponse<PaginatedList<AssetDto>>> GetAssetsByItemIdPagedAsync(
             long itemId,
             PagedListRequest request,
-            long? depotId = null)
+            long? depotId = null,
+            List<long>? depotIds = null)
         {
             request ??= new PagedListRequest();
             PagedListRequestNormalizer.Normalize(request);
 
             _logger.LogInformation(
-                "Getting assets by itemId (paged). ItemId: {ItemId}, DepotId: {DepotId}, Page: {Page}, PageSize: {PageSize}, User: {UserId}",
+                "Getting assets by itemId (paged). ItemId: {ItemId}, DepotId: {DepotId}, DepotIdsCount: {DepotIdsCount}, Page: {Page}, PageSize: {PageSize}, User: {UserId}",
                 itemId,
-                depotId?.ToString() ?? "All",
+                depotId?.ToString() ?? "none",
+                depotIds?.Count ?? 0,
                 request.Page,
                 request.PageSize,
                 _currentUserService.UserId);
 
             try
             {
-                if (depotId.HasValue && depotId.Value > 0)
-                {
-                    var userId = _currentUserService.UserId;
-                    if (!string.IsNullOrEmpty(userId) && !await _depotAccessService.HasDepotAccessAsync(userId, depotId.Value))
-                    {
-                        _logger.LogWarning("User {UserId} attempted to access assets for unauthorized depot {DepotId}", userId, depotId);
-                        return APIOperationResponse<PaginatedList<AssetDto>>.Fail(ResponseType.Forbidden, "You do not have access to this depot.");
-                    }
-                }
-
                 var userDepotIds = await _depotAccessService.GetUserAccessibleDepotIdsAsync();
                 if (userDepotIds != null && userDepotIds.Count == 0)
                 {
@@ -642,15 +628,12 @@ namespace Ettad.Inventory.Service.Assets.Implementation
                     return APIOperationResponse<PaginatedList<AssetDto>>.Success(empty);
                 }
 
-                var query = _assetRepository.Find(
-                    a => !a.IsDeleted
-                        && a.ItemId == itemId
-                        && (!depotId.HasValue || depotId.Value <= 0 || a.DepotId == depotId.Value),
-                    false,
-                    AssetReadMapIncludes);
-
-                if (userDepotIds != null)
-                    query = query.Where(a => userDepotIds.Contains(a.DepotId));
+                var query = QueryAssetsByItemIdWithDepotScope(itemId, depotId, depotIds, userDepotIds, out var emptyBecauseScope);
+                if (emptyBecauseScope)
+                {
+                    var empty = new PaginatedList<AssetDto>(new List<AssetDto>(), 0, request.Page, request.PageSize);
+                    return APIOperationResponse<PaginatedList<AssetDto>>.Success(empty);
+                }
 
                 var paginatedEntities = await PaginatedList<Asset>.CreateAsyncForTableBinding(query, request);
 
@@ -684,6 +667,48 @@ namespace Ettad.Inventory.Service.Assets.Implementation
                 _logger.LogError(ex, "Error getting assets by itemId (paged). ItemId: {ItemId}, User: {UserId}", itemId, _currentUserService.UserId);
                 return APIOperationResponse<PaginatedList<AssetDto>>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
             }
+        }
+
+        /// <summary>
+        /// Base query for assets of one catalog item, scoped by optional depot filter(s). When <paramref name="depotIds"/> is non-empty it wins over <paramref name="depotId"/>.
+        /// Intersects requested depots with <paramref name="userDepotIds"/> when that list is non-null.
+        /// </summary>
+        private IQueryable<Asset> QueryAssetsByItemIdWithDepotScope(
+            long itemId,
+            long? depotId,
+            List<long>? depotIds,
+            List<long>? userDepotIds,
+            out bool emptyBecauseScope)
+        {
+            emptyBecauseScope = false;
+            var query = _assetRepository.Find(
+                a => !a.IsDeleted && a.ItemId == itemId,
+                false,
+                AssetReadMapIncludes);
+
+            List<long>? scope = null;
+            if (depotIds != null && depotIds.Count > 0)
+                scope = depotIds.Where(x => x > 0).Distinct().ToList();
+            else if (depotId.HasValue && depotId.Value > 0)
+                scope = new List<long> { depotId.Value };
+
+            if (scope != null && scope.Count > 0)
+            {
+                if (userDepotIds != null)
+                    scope = scope.Where(id => userDepotIds.Contains(id)).ToList();
+                if (scope.Count == 0)
+                {
+                    emptyBecauseScope = true;
+                    return query.Where(_ => false);
+                }
+
+                return query.Where(a => scope.Contains(a.DepotId));
+            }
+
+            if (userDepotIds != null)
+                return query.Where(a => userDepotIds.Contains(a.DepotId));
+
+            return query;
         }
 
         public async Task<APIOperationResponse<long>> CreateAsync(CreateAssetDto inputDto, List<IFormFile>? files = null)

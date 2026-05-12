@@ -167,22 +167,38 @@ namespace Ettad.Inventory.Service.Batches.Services
 
                 var dto = _mapper.Map<BatchDto>(batch);
 
-                var assetQuery = _assetRepository.Find(
+                var assetQueryBase = _assetRepository.Find(
                     a => !a.IsDeleted && a.BatchId == id,
                     false,
                     BatchAssetGridIncludes);
 
-                assetQuery = ApplyAssetFilters(assetQuery, filters);
+                assetQueryBase = ApplyAssetFilters(assetQueryBase, filters);
 
                 if (serialNumberOnly == true)
-                    assetQuery = assetQuery.Where(a => !string.IsNullOrEmpty(a.SerialNumber));
+                    assetQueryBase = assetQueryBase.Where(a => !string.IsNullOrEmpty(a.SerialNumber));
 
                 if (filterByIsAssigned.HasValue)
-                    assetQuery = assetQuery.Where(a => a.IsAssigned == filterByIsAssigned.Value);
+                    assetQueryBase = assetQueryBase.Where(a => a.IsAssigned == filterByIsAssigned.Value);
 
-                var totalCount = await assetQuery.CountAsync();
+                var itemCounts = await assetQueryBase
+                    .GroupBy(a => new { a.ItemId, Name = a.Item.Name, ItemNo = a.Item.ItemNo, Nsn = a.Item.Nsn })
+                    .Select(g => new BatchAssetItemCountDto
+                    {
+                        ItemId = g.Key.ItemId,
+                        ItemName = g.Key.Name ?? string.Empty,
+                        ItemNo = g.Key.ItemNo,
+                        Nsn = g.Key.Nsn,
+                        Count = g.Count()
+                    })
+                    .OrderBy(x => x.ItemName)
+                    .ToListAsync();
 
-                var effectivePageSize = NormalizeBatchAssetsPageSize(assetsPageSize);
+                dto.AssetItemCounts = itemCounts;
+
+                var totalCount = await assetQueryBase.CountAsync();
+
+                // Use query `assetsPageSize` as-is; only fall back when invalid to avoid divide-by-zero / Take(0).
+                var effectivePageSize = assetsPageSize > 0 ? assetsPageSize : 50;
                 int effectivePage;
                 int totalPages;
 
@@ -197,7 +213,7 @@ namespace Ettad.Inventory.Service.Batches.Services
                     effectivePage = Math.Max(1, Math.Min(assetsPage < 1 ? 1 : assetsPage, totalPages));
                 }
 
-                IQueryable<Asset> orderedQuery = assetQuery.OrderBy(a => a.Id);
+                IQueryable<Asset> orderedQuery = assetQueryBase.OrderBy(a => a.Id);
 
                 List<Asset> assets;
                 if (includeAllAssets)
@@ -266,7 +282,7 @@ namespace Ettad.Inventory.Service.Batches.Services
                     if (batch == null)
                         return APIOperationResponse<List<BatchDto>>.Fail(ResponseType.NotFound, "Batch not found");
 
-                    var one = await GetByIdAsync(batch.Id, serialNumberOnly, filterByIsAssigned, assetsPage, assetsPageSize, includeAllAssets);
+                    var one = await GetByIdAsync(batch.Id, serialNumberOnly, filterByIsAssigned, assetsPage, assetsPageSize, includeAllAssets, null);
                     if (!one.Succeeded || one.Data == null)
                         return APIOperationResponse<List<BatchDto>>.Fail(
                             (ResponseType)one.StatusCode,
@@ -289,7 +305,7 @@ namespace Ettad.Inventory.Service.Batches.Services
                 var list = new List<BatchDto>();
                 foreach (var id in matches)
                 {
-                    var item = await GetByIdAsync(id, serialNumberOnly, filterByIsAssigned, assetsPage, assetsPageSize, includeAllAssets);
+                    var item = await GetByIdAsync(id, serialNumberOnly, filterByIsAssigned, assetsPage, assetsPageSize, includeAllAssets, null);
                     if (item.Succeeded && item.Data != null)
                         list.Add(item.Data);
                 }
@@ -302,18 +318,6 @@ namespace Ettad.Inventory.Service.Batches.Services
                     trimmedBatchNumber, _currentUserService.UserId);
                 return APIOperationResponse<List<BatchDto>>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
             }
-        }
-
-        private static int NormalizeBatchAssetsPageSize(int requested)
-        {
-            return requested switch
-            {
-                50 => 50,
-                100 => 100,
-                200 => 200,
-                500 => 500,
-                _ => 50
-            };
         }
 
         public async Task<APIOperationResponse<List<BatchDto>>> GetAllAsync(long? depotId = null)

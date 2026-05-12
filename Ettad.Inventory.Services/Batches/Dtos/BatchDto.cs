@@ -23,6 +23,12 @@ namespace Ettad.Inventory.Service.Batches.Dtos
         /// <summary>Total number of pages for assets given current filters and page size.</summary>
         public int AssetsTotalPages { get; set; }
 
+        /// <summary>
+        /// Asset counts grouped by catalog item for the batch (same filters as the batch asset list).
+        /// Empty when there are no matching assets.
+        /// </summary>
+        public List<BatchAssetItemCountDto> AssetItemCounts { get; set; } = new();
+
         public DepotDto Depot { get; set; }
 
         public List<AssetDto> Assets { get; set; } = new();

@@ -31,11 +31,12 @@ namespace Ettad.Inventory.Service.Assets.Interfaces
             long? depotId = null,
             List<long>? depotIds = null,
             ItemType? itemType = null);
-        Task<APIOperationResponse<List<AssetDto>>> GetAssetsByItemIdAsync(long itemId, long? depotId = null);
+        Task<APIOperationResponse<List<AssetDto>>> GetAssetsByItemIdAsync(long itemId, long? depotId = null, List<long>? depotIds = null);
         /// <summary>
         /// Same data as <see cref="GetAssetsByItemIdAsync"/> but paged (Kendo-style <see cref="PagedListRequest"/> body).
+        /// When <paramref name="depotIds"/> is non-empty it scopes to those depots (intersected with user access); otherwise <paramref name="depotId"/> when set.
         /// </summary>
-        Task<APIOperationResponse<PaginatedList<AssetDto>>> GetAssetsByItemIdPagedAsync(long itemId, PagedListRequest request, long? depotId = null);
+        Task<APIOperationResponse<PaginatedList<AssetDto>>> GetAssetsByItemIdPagedAsync(long itemId, PagedListRequest request, long? depotId = null, List<long>? depotIds = null);
     }
 }
 

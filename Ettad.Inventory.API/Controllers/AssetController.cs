@@ -69,9 +69,9 @@ namespace Ettad.Inventory.API.Controllers
         [HttpGet("item/{itemId}")]
         [ProducesResponseType((int)HttpStatusCode.OK)]
         [CheckAuthorize("Permissions.Asset.View", "Permissions.Asset.Page")]
-        public async Task<IActionResult> GetAssetsByItemId(long itemId, [FromQuery] long? depotId = null)
+        public async Task<IActionResult> GetAssetsByItemId(long itemId, [FromQuery] long? depotId = null, [FromQuery] List<long>? depotIds = null)
         {
-            var result = await _assetService.GetAssetsByItemIdAsync(itemId, depotId);
+            var result = await _assetService.GetAssetsByItemIdAsync(itemId, depotId, depotIds);
             return ProcessResponse(result);
         }
 
@@ -81,9 +81,9 @@ namespace Ettad.Inventory.API.Controllers
         [HttpPost("item/{itemId}/paged")]
         [ProducesResponseType((int)HttpStatusCode.OK)]
         [CheckAuthorize("Permissions.Asset.View", "Permissions.Asset.Page")]
-        public async Task<IActionResult> GetAssetsByItemIdPaged(long itemId, [FromBody] PagedListRequest request, [FromQuery] long? depotId = null)
+        public async Task<IActionResult> GetAssetsByItemIdPaged(long itemId, [FromBody] PagedListRequest request, [FromQuery] long? depotId = null, [FromQuery] List<long>? depotIds = null)
         {
-            var result = await _assetService.GetAssetsByItemIdPagedAsync(itemId, request, depotId);
+            var result = await _assetService.GetAssetsByItemIdPagedAsync(itemId, request, depotId, depotIds);
             return ProcessResponse(result);
         }
 
