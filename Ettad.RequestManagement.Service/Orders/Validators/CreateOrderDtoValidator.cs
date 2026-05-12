@@ -69,6 +69,7 @@ namespace Ettad.RequestManagement.Service.Orders.Validators
             RuleFor(x => x.RequestItems)
                 .NotEmpty().WithMessage("At least one request item is required");
 
+            // Ammunition–weapon association is validated in OrderService.CreateAsync after item types are resolved (DB).
             RuleForEach(x => x.RequestItems)
                 .SetValidator(new CreateUpdateRequestItemDtoValidator());
         }

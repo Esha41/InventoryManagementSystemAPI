@@ -9,6 +9,7 @@ namespace Ettad.Inventory.Service.Weapons.Interfaces
     public interface IWeaponService
     {
         Task<APIOperationResponse<List<WeaponDto>>> GetAllAsync();
+        Task<APIOperationResponse<List<WeaponAssociationGroupDto>>> GetForAmmunitionAssociationAsync(IReadOnlyList<long> ammunitionCaliberIds);
         Task<APIOperationResponse<PaginatedList<WeaponDto>>> GetAllPaginatedAsync(PagedListRequest request);
         Task<APIOperationResponse<WeaponDto>> GetByIdAsync(long id, bool includeDeleted = false);
 

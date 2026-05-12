@@ -1,4 +1,4 @@
-﻿using Ettad.Data.Enums;
+using Ettad.Data.Enums;
 
 namespace Ettad.RequestManagement.Service.Common.Dtos
 {
@@ -9,6 +9,8 @@ namespace Ettad.RequestManagement.Service.Common.Dtos
         public long Quantity { get; set; }
         public long RequestId { get; set; }
         public string? Notes { get; set; }
+
+        public List<RequestItemWeaponAssociationDto> WeaponAssociations { get; set; } = new();
 
         #region Navigation Properties (Simplified)
         public string ItemName { get; set; }

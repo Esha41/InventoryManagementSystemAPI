@@ -12,6 +12,7 @@ using Ettad.Data.Interfaces.Services;
 using Ettad.RequestManagement.Service.Request;
 using Ettad.RequestManagement.Service.SupplyManagement.Interfaces;
 using Ettad.RequestManagement.Service.SupplyManagement.Services;
+using Ettad.RequestManagement.Service.Orders.Validators;
 
 namespace Ettad.RequestManagement.Service
 {
@@ -29,6 +30,7 @@ namespace Ettad.RequestManagement.Service
             services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(Assembly.GetExecutingAssembly()));
 
             // Register services
+            services.AddScoped<AmmunitionWeaponAssociationValidator>();
             services.AddScoped<IOrderPriorityService, OrderPriorityService>();
             services.AddScoped<IRequestNoGeneratorService, RequestNoGeneratorService>();
             services.AddScoped<IRequestPurposeService, RequestPurposeService>();
