@@ -21,11 +21,11 @@ using Ettad.Data.Interfaces.Repositories;
 using Ettad.Module.lookup.Interfaces;
 using Ettad.Inventory.Service.AssetHistory.Interfaces;
 using Ettad.Inventory.Service.Batches.Interfaces;
-using Ettad.Inventory.Service.Common.Interfaces;
 using Ettad.Inventory.Service.Assets.Interfaces;
 using Ettad.Data.Entities;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
+using Ettad.Inventory.Service.Common.Services;
 
 namespace Ettad.Inventory.Service.Assets.Implementation
 {

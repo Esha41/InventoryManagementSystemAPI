@@ -34,6 +34,18 @@ namespace Ettad.Inventory.API.Controllers
             return ProcessResponse(result);
         }
 
+        /// <summary>
+        /// Weapons compatible with one or more ammunition caliber ids (issue request association step).
+        /// </summary>
+        [HttpGet("for-ammunition-association")]
+        [ProducesResponseType((int)HttpStatusCode.OK)]
+        [CheckAuthorize("Permissions.Weapon.View", "Permissions.Weapon.Page")]
+        public async Task<IActionResult> GetForAmmunitionAssociation([FromQuery] List<long> ammunitionCaliberIds)
+        {
+            var result = await _weaponService.GetForAmmunitionAssociationAsync(ammunitionCaliberIds ?? new List<long>());
+            return ProcessResponse(result);
+        }
+
         [HttpPost("Paginated")]
         [ProducesResponseType(typeof(APIOperationResponse<PaginatedList<WeaponDto>>), (int)HttpStatusCode.OK)]
         [CheckAuthorize("Permissions.Weapon.View", "Permissions.Weapon.Page")]

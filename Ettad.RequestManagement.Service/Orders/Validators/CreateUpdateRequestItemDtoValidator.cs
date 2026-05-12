@@ -7,6 +7,9 @@ namespace Ettad.RequestManagement.Service.Orders.Validators
     {
         public CreateUpdateRequestItemDtoValidator()
         {
+            // Ammunition weapon association (XOR catalog vs other name, caliber checks) requires DB access
+            // and is validated in AmmunitionWeaponAssociationValidator from OrderService.CreateAsync.
+
             RuleFor(x => x.ItemId)
                 .GreaterThan(0).WithMessage("Item ID is required and must be greater than 0");
 

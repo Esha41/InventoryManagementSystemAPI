@@ -3,7 +3,7 @@ using Ettad.Inventory.Service.Inventories.Dtos;
 using Ettad.ResponseHandler.Models;
 using Ettad.CrossCutting.Comman.Models;
 using Microsoft.AspNetCore.Http;
-using Ettad.Inventory.Service.Common.Interfaces;
+using Ettad.Inventory.Service.Common.Services;
 
 namespace Ettad.Inventory.Service.Inventories.Interfaces
 {

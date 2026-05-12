@@ -33,6 +33,7 @@ using Ettad.Inventory.Service.Explosives.Services;
 using Ettad.Inventory.Service.Inventories.Services;
 using Ettad.Inventory.Service.ItemDepartmentAssignments.Services;
 using Ettad.Inventory.Service.Monitoring.Services;
+using Ettad.Inventory.Service.Common.Services;
 using Ettad.Inventory.Service.Weapons.Services;
 using Ettad.Inventory.Service.Weapons.Mapper;
 using Ettad.Inventory.Service.Ammunitions.Mapper;
@@ -64,6 +65,8 @@ namespace Ettad.Inventory.Service
             services.AddScoped<IAmmunitionService, AmmunitionService>();
             services.AddScoped<IValidator<CreateUpdateAmmunitionDto>, CreateUpdateAmmunitionDtoValidator>();
             services.AddAutoMapper(typeof(AmmunitionMappingProfile));
+
+            services.AddScoped<ICaliberCompatibilityService, CaliberCompatibilityService>();
 
             // Weapon Services
             services.AddScoped<IWeaponService, WeaponService>();

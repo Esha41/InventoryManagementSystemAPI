@@ -2,7 +2,7 @@ using OfficeOpenXml;
 using OfficeOpenXml.Style;
 using System.Drawing;
 
-namespace Ettad.Inventory.Service.Common.Interfaces
+namespace Ettad.Inventory.Service.Common.Services
 {
     public interface IExcelExportService
     {

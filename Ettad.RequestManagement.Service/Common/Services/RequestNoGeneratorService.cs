@@ -3,8 +3,9 @@ using Ettad.Data.Enums;
 using Microsoft.EntityFrameworkCore;
 using Ettad.CrossCutting.Comman.Time;
 using Ettad.Data.Interfaces.Repositories;
+using Ettad.RequestManagement.Service.Common.Interfaces;
 
-namespace Ettad.RequestManagement.Service.Common
+namespace Ettad.RequestManagement.Service.Common.Services
 {
     public class RequestNoGeneratorService : IRequestNoGeneratorService
     {

@@ -14,9 +14,9 @@ using OfficeOpenXml;
 using Ettad.CrossCutting.Comman.Time;
 using Ettad.CrossCutting.Comman.Models;
 using Ettad.Data.Interfaces.Repositories;
-using Ettad.Inventory.Service.Common.Interfaces;
 using Ettad.Inventory.Service.ItemDepartmentAssignments.Interfaces;
 using Ettad.Inventory.Service.Ammunitions.Interfaces;
+using Ettad.Inventory.Service.Common.Services;
 
 namespace Ettad.Inventory.Service.Ammunitions.Services
 {

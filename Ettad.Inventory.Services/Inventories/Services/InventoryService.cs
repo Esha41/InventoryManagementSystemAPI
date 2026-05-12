@@ -19,8 +19,8 @@ using InventoryEntity = Ettad.Data.Entities.Inventory;
 using InventoryDetailEntity = Ettad.Data.Entities.InventoryDetail;
 using Ettad.Data.Interfaces.Repositories;
 using Ettad.Module.lookup.Interfaces;
-using Ettad.Inventory.Service.Common.Interfaces;
 using Ettad.Inventory.Service.Inventories.Interfaces;
+using Ettad.Inventory.Service.Common.Services;
 
 namespace Ettad.Inventory.Service.Inventories.Services
 {

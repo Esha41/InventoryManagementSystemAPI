@@ -4,7 +4,6 @@ using Ettad.Comman.Idenitity;
 using Ettad.CrossCutting.Comman.FileUpload;
 using Ettad.Data.Entities;
 using Ettad.Data.Enums;
-using Ettad.RequestManagement.Service.Common;
 using Ettad.RequestManagement.Service.Orders.Dto;
 using Ettad.ResponseHandler.Consts;
 using Ettad.ResponseHandler.Models;
@@ -22,6 +21,8 @@ using Ettad.Data.Interfaces.Services;
 using Ettad.Data.Interfaces.Repositories;
 using Ettad.Notification.Service.Interfaces;
 using Ettad.RequestManagement.Service.Orders.Services;
+using Ettad.RequestManagement.Service.Orders.Validators;
+using Ettad.RequestManagement.Service.Common.Interfaces;
 
 namespace Ettad.RequestManagement.Service.Orders
 {
@@ -36,6 +37,8 @@ namespace Ettad.RequestManagement.Service.Orders
         private readonly ICrossCuttingRepository<SupplyDetail> _supplyDetailRepository;
         private readonly ICrossCuttingRepository<FileUplodDetails> _fileDetailsRepository;
         private readonly ICrossCuttingRepository<BaseItem> _baseItemRepository;
+        private readonly ICrossCuttingRepository<Ammunition> _ammunitionRepository;
+        private readonly AmmunitionWeaponAssociationValidator _ammunitionWeaponAssociationValidator;
         private readonly IMapper _mapper;
         private readonly IValidator<CreateOrderDto> _createValidator;
         private readonly ICurrentUserService _currentUserService;
@@ -50,6 +53,7 @@ namespace Ettad.RequestManagement.Service.Orders
         private readonly ITransactionManager _transactionManager;
         private readonly IWorkflowStartNotificationService _workflowStartNotificationService;
         private readonly IOrderPriorityService _orderPriorityService;
+        private readonly IRequestItemWeaponAssociationEnrichmentService _weaponAssociationEnrichmentService;
 
         public OrderService(
             ICrossCuttingRepository<Order> orderRepository,
@@ -60,6 +64,8 @@ namespace Ettad.RequestManagement.Service.Orders
             ICrossCuttingRepository<SupplyDetail> supplyDetailRepository,
             ICrossCuttingRepository<FileUplodDetails> fileDetailsRepository,
             ICrossCuttingRepository<BaseItem> baseItemRepository,
+            ICrossCuttingRepository<Ammunition> ammunitionRepository,
+            AmmunitionWeaponAssociationValidator ammunitionWeaponAssociationValidator,
             IMapper mapper,
             IValidator<CreateOrderDto> createValidator,
             ICurrentUserService currentUserService,
@@ -73,7 +79,8 @@ namespace Ettad.RequestManagement.Service.Orders
             IMediator mediator,
             ITransactionManager transactionManager,
             IWorkflowStartNotificationService workflowStartNotificationService,
-            IOrderPriorityService orderPriorityService)
+            IOrderPriorityService orderPriorityService,
+            IRequestItemWeaponAssociationEnrichmentService weaponAssociationEnrichmentService)
         {
             _orderRepository = orderRepository;
             _requestItemRepository = requestItemRepository;
@@ -83,6 +90,8 @@ namespace Ettad.RequestManagement.Service.Orders
             _supplyDetailRepository = supplyDetailRepository;
             _fileDetailsRepository = fileDetailsRepository;
             _baseItemRepository = baseItemRepository;
+            _ammunitionRepository = ammunitionRepository;
+            _ammunitionWeaponAssociationValidator = ammunitionWeaponAssociationValidator;
             _mapper = mapper;
             _createValidator = createValidator;
             _currentUserService = currentUserService;
@@ -97,6 +106,7 @@ namespace Ettad.RequestManagement.Service.Orders
             _transactionManager = transactionManager;
             _workflowStartNotificationService = workflowStartNotificationService;
             _orderPriorityService = orderPriorityService;
+            _weaponAssociationEnrichmentService = weaponAssociationEnrichmentService;
         }
 
         public async Task<APIOperationResponse<OrderDto>> GetByIdAsync(long id)
@@ -111,7 +121,8 @@ namespace Ettad.RequestManagement.Service.Orders
                     nameof(Order.Department),
                     nameof(Order.Requester),
                     nameof(Order.RequestPurpose),
-                    $"{nameof(Order.RequestItems)}.{nameof(RequestItem.Item)}"
+                    $"{nameof(Order.RequestItems)}.{nameof(RequestItem.Item)}",
+                    $"{nameof(Order.RequestItems)}.{nameof(RequestItem.WeaponAssociations)}"
                 );
 
                 if (order == null)
@@ -127,6 +138,7 @@ namespace Ettad.RequestManagement.Service.Orders
                 }
 
                 var dto = _mapper.Map<OrderDto>(order);
+                await _weaponAssociationEnrichmentService.EnrichAsync(dto);
                 
                 _logger.LogInformation("Successfully retrieved order. OrderId: {OrderId}, OrderNo: {OrderNo}", id, order.RequestNo);
                 return APIOperationResponse<OrderDto>.Success(dto);
@@ -150,7 +162,8 @@ namespace Ettad.RequestManagement.Service.Orders
                     nameof(Order.Department),
                     nameof(Order.Requester),
                     nameof(Order.RequestPurpose),
-                    $"{nameof(Order.RequestItems)}.{nameof(RequestItem.Item)}"
+                    $"{nameof(Order.RequestItems)}.{nameof(RequestItem.Item)}",
+                    $"{nameof(Order.RequestItems)}.{nameof(RequestItem.WeaponAssociations)}"
                 );
 
                 // Filter out soft-deleted request items from all orders
@@ -163,6 +176,7 @@ namespace Ettad.RequestManagement.Service.Orders
                 }
 
                 var dtos = _mapper.Map<List<OrderDto>>(orders);
+                await _weaponAssociationEnrichmentService.EnrichAsync(dtos);
                 
                 _logger.LogInformation("Successfully retrieved {OrderCount} orders. User: {UserId}", dtos.Count, _currentUserService.UserId);
                 return APIOperationResponse<List<OrderDto>>.Success(dtos);
@@ -226,12 +240,12 @@ namespace Ettad.RequestManagement.Service.Orders
                 if (inputDto.RequestItems != null && inputDto.RequestItems.Any())
                 {
                     var itemIds = inputDto.RequestItems.Select(ri => ri.ItemId).Distinct().ToList();
-                    var items = await _baseItemRepository.FindAsync(
-                        item => itemIds.Contains(item.Id) && !item.IsDeleted);
+                    var itemsList = (await _baseItemRepository.FindAsync(
+                        item => itemIds.Contains(item.Id) && !item.IsDeleted)).ToList();
 
-                    if (items.Count() != itemIds.Count)
+                    if (itemsList.Count != itemIds.Count)
                     {
-                        var foundIds = items.Select(i => i.Id).ToList();
+                        var foundIds = itemsList.Select(i => i.Id).ToList();
                         var missingIds = itemIds.Except(foundIds).ToList();
                         _logger.LogWarning("Some items not found. Missing ItemIds: {MissingIds}, User: {UserId}",
                             string.Join(", ", missingIds), currentUserId);
@@ -239,7 +253,7 @@ namespace Ettad.RequestManagement.Service.Orders
                             $"One or more items not found. Item IDs: {string.Join(", ", missingIds)}");
                     }
 
-                    var itemTypes = items.Select(i => i.ItemType).Distinct().ToList();
+                    var itemTypes = itemsList.Select(i => i.ItemType).Distinct().ToList();
                     var hasWeapon = itemTypes.Contains(ItemType.Weapon);
                     var hasAmmunition = itemTypes.Contains(ItemType.Ammunition);
                     var hasExplosive = itemTypes.Contains(ItemType.Explosive);
@@ -255,10 +269,60 @@ namespace Ettad.RequestManagement.Service.Orders
                     }
 
                     // Determine if this is a weapon order (all items are weapons)
-                    isWeaponOrder = items.All(i => i.ItemType == ItemType.Weapon);
+                    isWeaponOrder = itemsList.All(i => i.ItemType == ItemType.Weapon);
 
                     // Rule 2: Ammunition and Explosive can be ordered together (already satisfied by Rule 1)
                     // Rule 3: All items must be of the same type if ordering weapons (enforced by Rule 1)
+
+                    // Validate weapon association for ammunition items (metadata; requires Ammunitions row + caliber)
+                    if (hasAmmunition)
+                    {
+                        var ammunitionItemIds = itemsList
+                            .Where(i => i.ItemType == ItemType.Ammunition)
+                            .Select(i => i.Id)
+                            .Distinct()
+                            .ToList();
+
+                        var ammunitionRows = await _ammunitionRepository.FindAsync(
+                            a => ammunitionItemIds.Contains(a.Id) && !a.IsDeleted);
+                        var ammunitionById = ammunitionRows.ToDictionary(a => a.Id);
+                        var itemById = itemsList.ToDictionary(i => i.Id);
+
+                        var associationErrors = new List<string>();
+                        var ammunitionLineCount = 0;
+
+                        foreach (var ri in inputDto.RequestItems)
+                        {
+                            if (!itemById.TryGetValue(ri.ItemId, out var lineItem) || lineItem.ItemType != ItemType.Ammunition)
+                                continue;
+
+                            ammunitionLineCount++;
+
+                            if (!ammunitionById.TryGetValue(ri.ItemId, out var ammoEntity))
+                            {
+                                associationErrors.Add($"Ammunition catalog data not found for item {ri.ItemId}.");
+                                continue;
+                            }
+
+                            var errs = await _ammunitionWeaponAssociationValidator.ValidateAmmunitionLineAsync(ri, ammoEntity.CaliberId);
+                            associationErrors.AddRange(errs);
+                        }
+
+                        if (ammunitionLineCount > 0)
+                        {
+                            _logger.LogInformation("Validated weapon associations for {Count} ammunition items",
+                                ammunitionLineCount);
+                        }
+
+                        if (associationErrors.Count > 0)
+                        {
+                            _logger.LogWarning(
+                                "Ammunition weapon association validation failed. User: {UserId}, Errors: {Errors}",
+                                currentUserId, string.Join("; ", associationErrors));
+                            return APIOperationResponse<long>.Fail(ResponseType.BadRequest,
+                                string.Join(", ", associationErrors));
+                        }
+                    }
                 }
 
                 // Rule 4: Training Order is not valid for weapon orders
@@ -324,6 +388,12 @@ namespace Ettad.RequestManagement.Service.Orders
                         {
                             item.CreationDate = _dateTimeProvider.Now;
                             item.CreatedBy = _currentUserService.UserId;
+                            foreach (var wa in item.WeaponAssociations ?? Array.Empty<RequestItemWeaponAssociation>())
+                            {
+                                wa.CreationDate = _dateTimeProvider.Now;
+                                wa.CreatedBy = _currentUserService.UserId;
+                                wa.IsDeleted = false;
+                            }
                             order.RequestItems.Add(item);
                         }
                     }
@@ -454,6 +524,15 @@ namespace Ettad.RequestManagement.Service.Orders
 
                     _logger.LogInformation("Order created successfully. OrderId: {OrderId}, OrderNo: {OrderNo}, ItemCount: {ItemCount}, IsFromAllowance: {IsFromAllowance}, User: {UserId}",
                         createdOrder.Id, createdOrder.RequestNo, createdOrder.RequestItems?.Count ?? 0, createdOrder.IsFromAllowance, currentUserId);
+
+                    _logger.LogInformation(
+                        "Order created with weapon associations. OrderId: {OrderId}, AmmoLinesWithAssociations: {AmmoCount}",
+                        createdOrder.Id,
+                        createdOrder.RequestItems?.Count(ri =>
+                            ri.WeaponAssociations != null &&
+                            ri.WeaponAssociations.Any(w => !w.IsDeleted &&
+                                (w.AssociatedWeaponItemId != null ||
+                                 !string.IsNullOrEmpty(w.AssociatedWeaponOtherName)))) ?? 0);
 
                     return APIOperationResponse<long>.Success(createdOrder.Id, "Order created successfully");
                 }
@@ -641,11 +720,36 @@ namespace Ettad.RequestManagement.Service.Orders
                         "Item already exists in this order. Use update quantity instead.");
                 }
 
+                var lineBaseItem = await _baseItemRepository.FindOneAsync(b => b.Id == itemDto.ItemId && !b.IsDeleted);
+                if (lineBaseItem == null)
+                {
+                    return APIOperationResponse<long>.Fail(ResponseType.BadRequest,
+                        $"Catalog item not found for ItemId {itemDto.ItemId}.");
+                }
+
+                if (lineBaseItem.ItemType == ItemType.Ammunition)
+                {
+                    var ammoRow = await _ammunitionRepository.FindOneAsync(a => a.Id == itemDto.ItemId && !a.IsDeleted);
+                    var assocErrors =
+                        await _ammunitionWeaponAssociationValidator.ValidateAmmunitionLineAsync(itemDto, ammoRow?.CaliberId);
+                    if (assocErrors.Count > 0)
+                    {
+                        return APIOperationResponse<long>.Fail(ResponseType.BadRequest,
+                            string.Join(", ", assocErrors));
+                    }
+                }
+
                 // Create new request item
                 var newItem = _mapper.Map<RequestItem>(itemDto);
                 newItem.RequestId = orderId;
                 newItem.CreationDate = _dateTimeProvider.Now;
                 newItem.CreatedBy = _currentUserService.UserId;
+                foreach (var wa in newItem.WeaponAssociations ?? Enumerable.Empty<RequestItemWeaponAssociation>())
+                {
+                    wa.CreationDate = _dateTimeProvider.Now;
+                    wa.CreatedBy = _currentUserService.UserId;
+                    wa.IsDeleted = false;
+                }
 
                 var createdItem = await _requestItemRepository.AddAsync(newItem);
 

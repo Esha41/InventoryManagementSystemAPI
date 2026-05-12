@@ -18,6 +18,7 @@ using Ettad.Data.Interfaces.Repositories;
 using Ettad.Inventory.Service.Common.Interfaces;
 using Ettad.Inventory.Service.ItemDepartmentAssignments.Interfaces;
 using Ettad.Inventory.Service.Weapons.Interfaces;
+using Ettad.Inventory.Service.Common.Services;
 
 namespace Ettad.Inventory.Service.Weapons.Services
 {
@@ -57,6 +58,7 @@ namespace Ettad.Inventory.Service.Weapons.Services
         private readonly IInventoryPermanentDeleteExecutor _inventoryPermanentDeleteExecutor;
         private readonly AssetImportManager<CreateUpdateWeaponDto, WeaponImportDto> _importManager;
         private readonly IItemDepartmentAssignmentService _itemDepartmentAssignmentService;
+        private readonly ICaliberCompatibilityService _caliberCompatibility;
 
         // In-memory lookups
         private List<Unit> _units;
@@ -98,7 +100,8 @@ namespace Ettad.Inventory.Service.Weapons.Services
             ITransactionManager transactionManager,
             IDateTimeProvider dateTimeProvider,
             IInventoryPermanentDeleteExecutor inventoryPermanentDeleteExecutor,
-            IItemDepartmentAssignmentService itemDepartmentAssignmentService)
+            IItemDepartmentAssignmentService itemDepartmentAssignmentService,
+            ICaliberCompatibilityService caliberCompatibilityService)
         {
             _weaponRepository = weaponRepository;
             _baseItemPrimaryPurposRepository = baseItemPrimaryPurposRepository;
@@ -123,6 +126,7 @@ namespace Ettad.Inventory.Service.Weapons.Services
             _dateTimeProvider = dateTimeProvider;
             _inventoryPermanentDeleteExecutor = inventoryPermanentDeleteExecutor;
             _itemDepartmentAssignmentService = itemDepartmentAssignmentService;
+            _caliberCompatibility = caliberCompatibilityService;
 
             _importManager = new AssetImportManager<CreateUpdateWeaponDto, WeaponImportDto>(excelImportService,
                new LoggerFactory().CreateLogger<AssetImportManager<CreateUpdateWeaponDto, WeaponImportDto>>());
@@ -268,6 +272,90 @@ namespace Ettad.Inventory.Service.Weapons.Services
             {
                 _logger.LogError(ex, "Error retrieving all weapons. User: {UserId}", _currentUserService.UserId);
                 return APIOperationResponse<List<WeaponDto>>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
+            }
+        }
+
+        public async Task<APIOperationResponse<List<WeaponAssociationGroupDto>>> GetForAmmunitionAssociationAsync(
+            IReadOnlyList<long> ammunitionCaliberIds)
+        {
+            _logger.LogInformation("Getting weapons for ammunition association. User: {UserId}", _currentUserService.UserId);
+
+            try
+            {
+                var distinctIds = (ammunitionCaliberIds ?? Array.Empty<long>())
+                    .Where(id => id > 0)
+                    .Distinct()
+                    .ToList();
+
+                if (distinctIds.Count == 0)
+                {
+                    return APIOperationResponse<List<WeaponAssociationGroupDto>>.Success(new List<WeaponAssociationGroupDto>());
+                }
+
+                var assignedItemIds = await GetAssignedItemIdsAsync();
+                var groups = new List<WeaponAssociationGroupDto>();
+
+                foreach (var ammoCaliberId in distinctIds)
+                {
+                    var weaponCaliberList = await _caliberCompatibility.GetWeaponCaliberIdsCompatibleWithAmmunitionCaliberIdAsync(ammoCaliberId);
+                    var weaponCaliberSet = weaponCaliberList.ToHashSet();
+                    if (weaponCaliberSet.Count == 0)
+                    {
+                        groups.Add(new WeaponAssociationGroupDto
+                        {
+                            AmmunitionCaliberId = ammoCaliberId,
+                            Weapons = new List<WeaponDto>()
+                        });
+                        continue;
+                    }
+
+                    var weapons = await _weaponRepository.FindAsync(
+                        w =>
+                            !w.IsDeleted &&
+                            (assignedItemIds == null || assignedItemIds.Contains(w.Id)) &&
+                            w.CaliberId != null &&
+                            weaponCaliberSet.Contains(w.CaliberId.Value),
+                        false,
+                        nameof(Weapon.CaliberUnit),
+                        nameof(Weapon.LookupCaliber),
+                        nameof(Weapon.CountryOfManufacture),
+                        nameof(Weapon.Classification),
+                        nameof(Weapon.Type),
+                        "BaseItemPrimaryPurposes.PrimaryPurpos"
+                    );
+
+                    var list = weapons.ToList();
+                    var dtos = _mapper.Map<List<WeaponDto>>(list);
+
+                    var entityIds = dtos.Select(d => d.Id).ToList();
+                    if (entityIds.Count > 0)
+                    {
+                        var imagesResult = await _fileUploadService.GetByEntitiesAsync(FileEntityType.Weapon, entityIds);
+                        if (imagesResult.Succeeded && imagesResult.Data != null)
+                        {
+                            foreach (var dto in dtos)
+                            {
+                                dto.Images = imagesResult.Data.ContainsKey(dto.Id)
+                                    ? imagesResult.Data[dto.Id]
+                                    : new List<FileUploadDto>();
+                            }
+                        }
+                    }
+
+                    groups.Add(new WeaponAssociationGroupDto
+                    {
+                        AmmunitionCaliberId = ammoCaliberId,
+                        Weapons = dtos
+                    });
+                }
+
+                return APIOperationResponse<List<WeaponAssociationGroupDto>>.Success(groups);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting weapons for ammunition association. User: {UserId}", _currentUserService.UserId);
+                return APIOperationResponse<List<WeaponAssociationGroupDto>>.Fail(ResponseType.InternalServerError,
+                    $"An error occurred: {ex.Message}");
             }
         }
 
