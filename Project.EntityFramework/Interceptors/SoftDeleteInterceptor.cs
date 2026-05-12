@@ -2,7 +2,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Ettad.CrossCutting.Comman.Base;
 using Ettad.Application.Common.Interfaces;
-using System.Runtime.InteropServices;
 using Ettad.CrossCutting.Comman.Time;
 using Ettad.CrossCutting.Comman.Interface;
 

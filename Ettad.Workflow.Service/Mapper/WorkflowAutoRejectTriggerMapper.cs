@@ -16,7 +16,6 @@ public static class WorkflowAutoRejectTriggerMapper
             dto.AutoRejectTriggerMode = null;
             dto.AutoRejectTriggerRoleIds = [];
             dto.AutoRejectTriggerStepIds = [];
-            dto.AutoRejectResetOnReApproval = true;
             return;
         }
 
@@ -29,6 +28,5 @@ public static class WorkflowAutoRejectTriggerMapper
         };
         dto.AutoRejectTriggerRoleIds = WorkflowAutoRejectConfigParser.FilterRoleIds(trigger.TriggerRoles).ToList();
         dto.AutoRejectTriggerStepIds = WorkflowAutoRejectConfigParser.FilterStepIds(trigger.TriggerSteps).ToList();
-        dto.AutoRejectResetOnReApproval = trigger.ResetOnReApproval;
     }
 }

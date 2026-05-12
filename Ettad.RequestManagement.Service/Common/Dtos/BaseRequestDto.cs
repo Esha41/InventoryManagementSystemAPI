@@ -34,6 +34,13 @@ namespace Ettad.RequestManagement.Service.Common.Dtos
         // Audit fields
         public DateTime CreationDate { get; set; }
 
+        /// <summary>
+        /// Populated only when <see cref="Status"/> is <c>AutoRejected</c>.
+        /// Reflects the exact moment the auto-reject job fired (ModificationDate at rejection time).
+        /// Null for all other statuses.
+        /// </summary>
+        public DateTime? AutoRejectedAt { get; set; }
+
         public bool IsMyTurn { get; set; }
     }
 }

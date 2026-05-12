@@ -33,9 +33,6 @@ namespace Ettad.Workflows.Service.Dtos
         [JsonPropertyName("autoRejectTriggerStepIds")]
         public List<long> AutoRejectTriggerStepIds { get; set; } = new();
 
-        [JsonPropertyName("autoRejectResetOnReApproval")]
-        public bool AutoRejectResetOnReApproval { get; set; } = true;
-
         // Steps in the workflow
         public List<WorkflowStepDto> WorkflowSteps { get; set; } = new();
     }

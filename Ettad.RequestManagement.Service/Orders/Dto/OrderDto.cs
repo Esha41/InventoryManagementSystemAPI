@@ -18,9 +18,15 @@ namespace Ettad.RequestManagement.Service.Orders.Dto
         public int? NumberOfOtherRank { get; set; }
         
         /// <summary>
-        /// Date when the order should be supplied
+        /// Date when the order should be supplied.
         /// </summary>
         public DateTime? SupplyDate { get; set; }
+
+        /// <summary>
+        /// Calendar days remaining until UsageDateFrom (negative = past due).
+        /// Computed fresh on every read via <see cref="OrderDaysUntilDueResolver"/>.
+        /// </summary>
+        public int DaysUntilDue { get; set; }
         #endregion
 
         //#region Navigation Names (Order-Specific - Flattened for convenience)

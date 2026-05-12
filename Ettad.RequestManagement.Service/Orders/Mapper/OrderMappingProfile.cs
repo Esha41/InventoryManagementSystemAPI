@@ -9,7 +9,11 @@ namespace Ettad.RequestManagement.Service.Orders.Mapper
     {
         public OrderMappingProfile()
         {
-            CreateMap<Order, OrderDto>();
+            CreateMap<Order, OrderDto>()
+                // Priority is recalculated fresh on every read — always accurate
+                .ForMember(dest => dest.Priority,     opt => opt.MapFrom<OrderPriorityResolver>())
+                // Days remaining exposed directly on DTO — frontend needs no date math
+                .ForMember(dest => dest.DaysUntilDue, opt => opt.MapFrom<OrderDaysUntilDueResolver>());
 
             // CreateUpdateRequestItemDto to RequestItem
             CreateMap<CreateUpdateRequestItemDto, RequestItem>()

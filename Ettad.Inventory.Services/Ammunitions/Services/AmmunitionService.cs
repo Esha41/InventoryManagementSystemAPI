@@ -48,7 +48,6 @@ namespace Ettad.Inventory.Service.Ammunitions.Services
         private readonly ICrossCuttingRepository<AllowanceItem> _allowanceItemRepository;
         private readonly ICrossCuttingRepository<AssetSupplyDetail> _assetSupplyDetailRepository;
         private readonly ICrossCuttingRepository<Asset> _assetRepository;
-        private readonly ICrossCuttingRepository<BaseItem> _baseItemRepository;
         private readonly ICrossCuttingRepository<Unit> _unitRepository;
         private readonly ICrossCuttingRepository<CaseType> _caseTypeRepository;
         private readonly ICrossCuttingRepository<Propellant> _propellantRepository;
@@ -68,6 +67,7 @@ namespace Ettad.Inventory.Service.Ammunitions.Services
         private readonly IFileUploadService _fileUploadService;
         private readonly ITransactionManager _transactionManager;
         private readonly IDateTimeProvider _dateTimeProvider;
+        private readonly IInventoryPermanentDeleteExecutor _inventoryPermanentDeleteExecutor;
         private readonly AssetImportManager<CreateUpdateAmmunitionDto, AmmunitionImportDto> _importManager;
         private readonly IItemDepartmentAssignmentService _itemDepartmentAssignmentService;
 
@@ -105,7 +105,6 @@ namespace Ettad.Inventory.Service.Ammunitions.Services
             ICrossCuttingRepository<AllowanceItem> allowanceItemRepository,
             ICrossCuttingRepository<AssetSupplyDetail> assetSupplyDetailRepository,
             ICrossCuttingRepository<Asset> assetRepository,
-            ICrossCuttingRepository<BaseItem> baseItemRepository,
             ICrossCuttingRepository<Unit> unitRepository,
             ICrossCuttingRepository<CaseType> caseTypeRepository,
             ICrossCuttingRepository<Propellant> propellantRepository,
@@ -126,6 +125,7 @@ namespace Ettad.Inventory.Service.Ammunitions.Services
             IExcelImportService excelImportService,
             ITransactionManager transactionManager,
             IDateTimeProvider dateTimeProvider,
+            IInventoryPermanentDeleteExecutor inventoryPermanentDeleteExecutor,
             IItemDepartmentAssignmentService itemDepartmentAssignmentService)
         {
             _ammunitionRepository = ammunitionRepository;
@@ -138,7 +138,6 @@ namespace Ettad.Inventory.Service.Ammunitions.Services
             _allowanceItemRepository = allowanceItemRepository;
             _assetSupplyDetailRepository = assetSupplyDetailRepository;
             _assetRepository = assetRepository;
-            _baseItemRepository = baseItemRepository;
             _unitRepository = unitRepository;
             _caseTypeRepository = caseTypeRepository;
             _propellantRepository = propellantRepository;
@@ -158,6 +157,7 @@ namespace Ettad.Inventory.Service.Ammunitions.Services
             _fileUploadService = fileUploadService;
             _transactionManager = transactionManager;
             _dateTimeProvider = dateTimeProvider;
+            _inventoryPermanentDeleteExecutor = inventoryPermanentDeleteExecutor;
             _itemDepartmentAssignmentService = itemDepartmentAssignmentService;
 
             _importManager = new AssetImportManager<CreateUpdateAmmunitionDto, AmmunitionImportDto>(excelImportService,
@@ -556,6 +556,12 @@ namespace Ettad.Inventory.Service.Ammunitions.Services
         {
             try
             {
+                if (!_currentUserService.IsSuperAdmin)
+                {
+                    return APIOperationResponse<bool>.Fail(ResponseType.Forbidden,
+                        "Only a super administrator can permanently delete ammunition.");
+                }
+
                 var ammunition = await _ammunitionRepository.FindOneAsync(a => a.Id == id, includeSoftDeleted: true);
                 if (ammunition == null)
                 {
@@ -570,25 +576,21 @@ namespace Ettad.Inventory.Service.Ammunitions.Services
                 await using var transaction = await _transactionManager.BeginAsync();
                 try
                 {
-                    var purposes = (await _baseItemPrimaryPurposRepository.FindAsync(x => x.BaseItemId == id)).ToList();
-                    foreach (var p in purposes)
-                        await _baseItemPrimaryPurposRepository.DeleteAsync(p);
+                    var (ammoRows, baseRows) = await _inventoryPermanentDeleteExecutor.ExecuteAsync(
+                        InventoryPermanentDeleteKind.Ammunition,
+                        id);
 
-                    await _ammunitionRepository.DeleteAsync(ammunition);
-
-                    var baseItem = await _baseItemRepository.GetByIdAsync(id);
-                    if (baseItem == null)
+                    if (ammoRows == 0 || baseRows == 0)
                     {
                         await _transactionManager.RollbackAsync();
-                        return APIOperationResponse<bool>.Fail(ResponseType.InternalServerError, "Failed to remove base item record");
+                        return APIOperationResponse<bool>.Fail(ResponseType.InternalServerError,
+                            "Failed to permanently delete ammunition rows from the database.");
                     }
-
-                    await _baseItemRepository.DeleteAsync(baseItem);
 
                     await _transactionManager.CommitAsync();
                     return APIOperationResponse<bool>.Success(true, "Ammunition permanently deleted");
                 }
-                catch (Exception ex)
+                catch (Exception)
                 {
                     await _transactionManager.RollbackAsync();
                     throw;

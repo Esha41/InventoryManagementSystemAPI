@@ -47,6 +47,7 @@ using Ettad.Inventory.Service.Assets.Background;
 using Ettad.Inventory.Service.Assets.Interfaces;
 using Ettad.Inventory.Service.Employees.Interfaces;
 using Ettad.Inventory.Service.Employees.Implementation;
+using Ettad.Inventory.Service.Monitoring.BackgroundJobs;
 
 namespace Ettad.Inventory.Service
 {
@@ -103,6 +104,13 @@ namespace Ettad.Inventory.Service
             services.AddScoped<IInventoryDashboardMonitoringService, InventoryDashboardMonitoringService>();
             services.AddScoped<LowStockEmailTemplateService>();
             services.AddScoped<LowStockMonitorJob>();
+
+            // Crtitical Stock Monitor services
+            services.AddScoped<ICriticalStockMonitorBackgroundService, CriticalStockMonitorBackgroundService>();
+            services.AddScoped<ICriticalStockMonitorSettingsService, CriticalStockMonitorSettingsService>();
+            services.AddScoped<ICriticalStockMonitoringService, CriticalStockMonitoringService>();
+            services.AddScoped<CriticalStockEmailTemplateService>();
+            services.AddScoped<CriticalStockMonitorJob>();
             services.AddScoped<IExcelImportService, ExcelImportService>();
 
             // Asset Supply Services

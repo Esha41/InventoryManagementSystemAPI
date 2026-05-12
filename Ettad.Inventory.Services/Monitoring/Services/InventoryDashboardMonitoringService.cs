@@ -42,6 +42,7 @@ namespace Ettad.Inventory.Service.Monitoring.Services
         private readonly ICurrentUserService _currentUserService;
         private readonly IInventoryService _inventoryService;
         private readonly ILowStockMonitoringService _lowStockMonitoringService;
+        private readonly ICriticalStockMonitoringService _criticalStockMonitoringService;
         private readonly IExpiringLotMonitoringService _expiringLotMonitoringService;
         private readonly ILogger<InventoryDashboardMonitoringService> _logger;
 
@@ -60,6 +61,7 @@ namespace Ettad.Inventory.Service.Monitoring.Services
             ICurrentUserService currentUserService,
             IInventoryService inventoryService,
             ILowStockMonitoringService lowStockMonitoringService,
+            ICriticalStockMonitoringService criticalStockMonitoringService,
             IExpiringLotMonitoringService expiringLotMonitoringService,
             ILogger<InventoryDashboardMonitoringService> logger)
         {
@@ -83,6 +85,7 @@ namespace Ettad.Inventory.Service.Monitoring.Services
             _currentUserService = currentUserService;
             _inventoryService = inventoryService;
             _lowStockMonitoringService = lowStockMonitoringService;
+            _criticalStockMonitoringService = criticalStockMonitoringService;
             _expiringLotMonitoringService = expiringLotMonitoringService;
             _logger = logger;
         }
@@ -264,6 +267,14 @@ namespace Ettad.Inventory.Service.Monitoring.Services
                     return APIOperationResponse<InventoryHeadlineMetricsDto>.Fail((ResponseType)lowResult.StatusCode,
                         lowResult.Message ?? "Low stock count failed.");
 
+                var criticalResult = await _criticalStockMonitoringService
+                    .GetCriticalStockItemsCountAsync(depotId, depotIds)
+                    .ConfigureAwait(false);
+
+                if (!criticalResult.Succeeded)
+                    return APIOperationResponse<InventoryHeadlineMetricsDto>.Fail((ResponseType)criticalResult.StatusCode,
+                        criticalResult.Message ?? "Critical stock count failed.");
+
                 var expResult = await _expiringLotMonitoringService
                     .GetExpiringLotsCountAsync(depotId, depotIds)
                     .ConfigureAwait(false);
@@ -296,6 +307,7 @@ namespace Ettad.Inventory.Service.Monitoring.Services
                 return APIOperationResponse<InventoryHeadlineMetricsDto>.Success(new InventoryHeadlineMetricsDto
                 {
                     LowStockCount = lowResult.Data,
+                    CriticalStockCount = criticalResult.Data,
                     ExpiringSoonCount = expResult.Data,
                     TotalDistinctItems = nonWeapon.Count + weaponGroupCount,
                     TotalRemainingQuantity = invRemainingSum + weaponReadySum,

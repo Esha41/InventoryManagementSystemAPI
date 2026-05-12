@@ -19,8 +19,7 @@ public static class WorkflowAutoRejectConfigParser
         return new WorkflowAutoRejectTriggerConfig(
             trigger.Mode,
             roleIds,
-            stepIds,
-            trigger.ResetOnReApproval);
+            stepIds);
     }
 
     public static IReadOnlyList<string> FilterRoleIds(IEnumerable<WorkflowAutoRejectTriggerRole> roles)

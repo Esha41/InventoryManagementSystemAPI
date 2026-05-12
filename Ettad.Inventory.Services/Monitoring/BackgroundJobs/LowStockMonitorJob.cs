@@ -2,7 +2,7 @@ using System.Threading.Tasks;
 using Ettad.Inventory.Service.Monitoring.Interfaces;
 using Hangfire;
 
-namespace Ettad.Inventory.Service.Monitoring.Services
+namespace Ettad.Inventory.Service.Monitoring.BackgroundJobs
 {
     /// <summary>
     /// Hangfire job class for low stock monitoring.

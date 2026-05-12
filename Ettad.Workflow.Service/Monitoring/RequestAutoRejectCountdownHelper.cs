@@ -32,12 +32,12 @@ internal static class RequestAutoRejectCountdownHelper
         if (current?.WorkflowStep == null)
             return None(requestId);
 
-        if (current.WorkflowStep.StepOrder <= triggerApproval.WorkflowStep.StepOrder)
+        if (current.WorkflowStep.StepOrder < triggerApproval.WorkflowStep.StepOrder)
             return None(requestId);
 
-        var daysSince = (now.Date - triggerApproval.ApprovedDate!.Value.Date).Days;
+        var daysSince = (now.Date - triggerApproval.CreationDate.Date).Days;
         var daysRemaining = globalPolicy.ThresholdDays - daysSince;
-        var dueDate = triggerApproval.ApprovedDate.Value.Date.AddDays(globalPolicy.ThresholdDays);
+        var dueDate = triggerApproval.CreationDate.Date.AddDays(globalPolicy.ThresholdDays);
 
         var maxLead = globalPolicy.ReminderLeadDays.Count > 0 ? globalPolicy.ReminderLeadDays.Max() : 0;
         string state;
@@ -51,7 +51,7 @@ internal static class RequestAutoRejectCountdownHelper
         return new RequestAutoRejectCountdownDto
         {
             RequestId = requestId,
-            TriggerApprovedAt = triggerApproval.ApprovedDate,
+            TriggerReachedAt = triggerApproval.CreationDate,
             ThresholdDays = globalPolicy.ThresholdDays,
             DaysRemaining = Math.Max(daysRemaining, 0),
             DueDate = dueDate,
@@ -77,16 +77,14 @@ internal static class RequestAutoRejectCountdownHelper
         var candidates = filtered
             .Where(s =>
                 s.WorkflowStep != null
-                && s.Status == RequestStatus.Approved
-                && s.ApprovedDate != null
                 && MatchesTriggerConfig(s, config))
             .ToList();
 
         if (candidates.Count == 0)
             return null;
 
-        var sorted = candidates.OrderBy(s => s.ApprovedDate).ToList();
-        return config.ResetOnReApproval ? sorted.Last() : sorted.First();
+        var sorted = candidates.OrderBy(s => s.CreationDate).ToList();
+        return sorted.First();
     }
 
     private static WorkflowApprovalStep? TrySelectTriggerApprovalByGlobalPolicy(
@@ -99,10 +97,8 @@ internal static class RequestAutoRejectCountdownHelper
         return filtered
             .Where(s =>
                 s.WorkflowStep != null
-                && s.WorkflowStep.ApplicationRoleId == policy.TriggerRoleId
-                && s.Status == RequestStatus.Approved
-                && s.ApprovedDate != null)
-            .OrderBy(s => s.ApprovedDate)
+                && s.WorkflowStep.ApplicationRoleId == policy.TriggerRoleId)
+            .OrderBy(s => s.CreationDate)
             .FirstOrDefault();
     }
 
@@ -134,7 +130,7 @@ internal static class RequestAutoRejectCountdownHelper
         ThresholdDays = 0,
         DaysRemaining = 0,
         DueDate = null,
-        TriggerApprovedAt = null
+        TriggerReachedAt = null
     };
 
     private static bool IsAwaitingApproval(RequestStatus status) =>

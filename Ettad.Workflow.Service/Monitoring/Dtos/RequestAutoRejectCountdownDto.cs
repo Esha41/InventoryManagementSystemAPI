@@ -4,7 +4,7 @@ public class RequestAutoRejectCountdownDto
 {
     public long RequestId { get; set; }
 
-    public DateTime? TriggerApprovedAt { get; set; }
+    public DateTime? TriggerReachedAt { get; set; }
 
     public int ThresholdDays { get; set; }
 

@@ -100,7 +100,7 @@ namespace Ettad.HelpCenter.Service.Dtos
         public DateTime? EffectiveDate { get; set; }
     }
 
-    /// <summary>Whether the user must accept the current active terms before using the app tour.</summary>
+    /// <summary>Whether the user must accept (acknowledge) the current active terms before using the app; true whenever active terms exist so the gate runs on each login.</summary>
     public class TermsAcceptanceStatusDto
     {
         public bool MustAccept { get; set; }
