@@ -11,7 +11,7 @@ using Microsoft.Extensions.Logging;
 using OfficeOpenXml;
 using OfficeOpenXml.DataValidation;
 
-namespace Ettad.Inventory.Service.Common.Interfaces
+namespace Ettad.Inventory.Service.Common.Services
 {
     public interface IAssetImportManager<TDto, TImportDto>
     {

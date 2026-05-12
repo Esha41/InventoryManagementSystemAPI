@@ -1,9 +1,10 @@
 using Ettad.Data.Entities;
 using Ettad.Data.Interfaces.Repositories;
 using Ettad.RequestManagement.Service.Common.Dtos;
+using Ettad.RequestManagement.Service.Common.Interfaces;
 using Ettad.RequestManagement.Service.Orders.Dto;
 
-namespace Ettad.RequestManagement.Service.Common
+namespace Ettad.RequestManagement.Service.Common.Services
 {
     public class RequestItemWeaponAssociationEnrichmentService : IRequestItemWeaponAssociationEnrichmentService
     {

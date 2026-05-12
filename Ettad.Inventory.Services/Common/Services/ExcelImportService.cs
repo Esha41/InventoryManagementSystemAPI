@@ -4,7 +4,7 @@ using System.ComponentModel.DataAnnotations;
 using System.Globalization;
 using System.Reflection;
 
-namespace Ettad.Inventory.Service.Common.Interfaces
+namespace Ettad.Inventory.Service.Common.Services
 {
     public class ImportResult<T>
     {

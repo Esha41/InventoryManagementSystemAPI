@@ -1,6 +1,6 @@
 using Ettad.Data.Enums;
 
-namespace Ettad.RequestManagement.Service.Common
+namespace Ettad.RequestManagement.Service.Common.Interfaces
 {
     public interface IRequestNoGeneratorService
     {

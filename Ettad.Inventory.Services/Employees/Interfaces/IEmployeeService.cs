@@ -1,5 +1,5 @@
 using Ettad.Inventory.Service.Assets.Dtos;
-using Ettad.Inventory.Service.Common.Interfaces;
+using Ettad.Inventory.Service.Common.Services;
 using Ettad.ResponseHandler.Models;
 using Microsoft.AspNetCore.Http;
 

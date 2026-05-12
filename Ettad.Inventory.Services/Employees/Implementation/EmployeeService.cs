@@ -12,8 +12,8 @@ using Ettad.CrossCutting.Comman.Time;
 using OfficeOpenXml;
 using OfficeOpenXml.Style;
 using Ettad.Data.Interfaces.Repositories;
-using Ettad.Inventory.Service.Common.Interfaces;
 using Ettad.Inventory.Service.Employees.Interfaces;
+using Ettad.Inventory.Service.Common.Services;
 
 namespace Ettad.Inventory.Service.Employees.Implementation
 {

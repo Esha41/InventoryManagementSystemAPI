@@ -3,7 +3,6 @@ using FluentValidation;
 using Ettad.Data.Entities;
 using Ettad.Data.Enums;
 using Ettad.RequestManagement.Service.Returns.Dtos;
-using Ettad.RequestManagement.Service.Common;
 using Ettad.Module.lookup.Dtos;
 using Ettad.CrossCutting.Comman.FileUpload;
 using Ettad.ResponseHandler.Consts;
@@ -22,6 +21,7 @@ using Ettad.Data.Interfaces.Repositories;
 using Ettad.Notification.Service.Interfaces;
 using Ettad.Workflow.Service.Interface;
 using MediatR;
+using Ettad.RequestManagement.Service.Common.Interfaces;
 
 namespace Ettad.RequestManagement.Service.Returns
 {

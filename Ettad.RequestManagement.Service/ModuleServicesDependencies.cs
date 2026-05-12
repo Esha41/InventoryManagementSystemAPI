@@ -2,7 +2,6 @@ using Microsoft.Extensions.DependencyInjection;
 using FluentValidation;
 using System.Reflection;
 using Ettad.RequestManagement.Service.Discards;
-using Ettad.RequestManagement.Service.Common;
 using Ettad.RequestManagement.Service.RequestPurposes;
 using Ettad.RequestManagement.Service.Returns;
 using Ettad.RequestManagement.Service.Orders;
@@ -13,6 +12,8 @@ using Ettad.RequestManagement.Service.Request;
 using Ettad.RequestManagement.Service.SupplyManagement.Interfaces;
 using Ettad.RequestManagement.Service.SupplyManagement.Services;
 using Ettad.RequestManagement.Service.Orders.Validators;
+using Ettad.RequestManagement.Service.Common.Interfaces;
+using Ettad.RequestManagement.Service.Common.Services;
 
 namespace Ettad.RequestManagement.Service
 {

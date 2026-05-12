@@ -4,7 +4,6 @@ using FluentValidation;
 using Ettad.Data.Entities;
 using Ettad.Data.Enums;
 using Ettad.RequestManagement.Service.Discards.Dtos;
-using Ettad.RequestManagement.Service.Common;
 using Ettad.ResponseHandler.Consts;
 using Ettad.ResponseHandler.Models;
 using Ettad.Application.Common.Interfaces;
@@ -19,6 +18,7 @@ using Ettad.Workflow.Service.Interface;
 using Ettad.Workflows.Service.Commands.WorkflowApproval.StartWorkflow;
 using MediatR;
 using Microsoft.AspNetCore.Http;
+using Ettad.RequestManagement.Service.Common.Interfaces;
 
 namespace Ettad.RequestManagement.Service.Discards
 {

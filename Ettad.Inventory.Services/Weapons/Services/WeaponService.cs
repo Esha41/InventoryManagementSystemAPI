@@ -18,6 +18,7 @@ using Ettad.Data.Interfaces.Repositories;
 using Ettad.Inventory.Service.Common.Interfaces;
 using Ettad.Inventory.Service.ItemDepartmentAssignments.Interfaces;
 using Ettad.Inventory.Service.Weapons.Interfaces;
+using Ettad.Inventory.Service.Common.Services;
 
 namespace Ettad.Inventory.Service.Weapons.Services
 {

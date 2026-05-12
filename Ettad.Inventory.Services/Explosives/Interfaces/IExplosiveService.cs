@@ -3,7 +3,7 @@ using Ettad.ResponseHandler.Models;
 using Microsoft.AspNetCore.Http;
 using Ettad.Data.Enums;
 using Ettad.CrossCutting.Comman.Models;
-using Ettad.Inventory.Service.Common.Interfaces;
+using Ettad.Inventory.Service.Common.Services;
 
 namespace Ettad.Inventory.Service.Explosives.Interfaces
 {
