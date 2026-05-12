@@ -26,12 +26,12 @@ namespace Ettad.Workflows.API.Controllers
         }
 
         [HttpGet]
-        [CheckAuthorize("Permissions.RequestReciever.Page", "Permissions.RequestReciever.View")]
+        [CheckAuthorize("Permissions.RequestReciever.Page", "Permissions.RequestReciever.View", "CanCancelRequest")]
         public async Task<IActionResult> GetAll()
             => ProcessResponse(await _mediator.Send(new GetWorkflowApprovalStepsQuery()));
 
         [HttpGet("{id}")]
-        [CheckAuthorize("Permissions.RequestReciever.Page", "Permissions.RequestReciever.View")]
+        [CheckAuthorize("Permissions.RequestReciever.Page", "Permissions.RequestReciever.View", "CanCancelRequest")]
         public async Task<IActionResult> Get(long id)
             => ProcessResponse(await _mediator.Send(new GetWorkflowApprovalStepByIdQuery(id)));
 
@@ -41,7 +41,7 @@ namespace Ettad.Workflows.API.Controllers
         //    => ProcessResponse(await _mediator.Send(new GetOrdersWithApprovalStepsQuery()));
 
         [HttpGet("AllBaseRequests")]
-        [CheckAuthorize("Permissions.RequestReciever.Page", "Permissions.RequestReciever.View")]
+        [CheckAuthorize("Permissions.RequestReciever.Page", "Permissions.RequestReciever.View", "CanCancelRequest")]
         public async Task<IActionResult> GetAllBaseRequests()
         {
             var result = await _mediator.Send(new GetAllBaseRequestsQuery());
@@ -49,7 +49,7 @@ namespace Ettad.Workflows.API.Controllers
         }
 
         [HttpGet("BaseRequest/{requestId}")]
-        [CheckAuthorize("Permissions.RequestReciever.Page", "Permissions.RequestReciever.View")]
+        [CheckAuthorize("Permissions.RequestReciever.Page", "Permissions.RequestReciever.View", "CanCancelRequest")]
         public async Task<IActionResult> GetBaseRequestById(long requestId)
         {
             var result = await _mediator.Send(new GetBaseRequestByIdQuery(requestId));
@@ -58,14 +58,14 @@ namespace Ettad.Workflows.API.Controllers
 
         [HttpPost("process-action")]
         [Consumes("multipart/form-data", "application/json")]
-        [CheckAuthorize("Permissions.RequestReciever.Create", "Permissions.RequestReciever.Edit")]
+        [CheckAuthorize("Permissions.RequestReciever.Create", "Permissions.RequestReciever.Edit", "CanCancelRequest")]
         public async Task<IActionResult> ProcessAction(
             [FromForm] ApproveRejectWorkflowApprovalDto dto,
             [FromForm] List<IFormFile>? files = null)
             => ProcessResponse(await _mediator.Send(new ProcessWorkflowActionCommand(dto, files)));
 
         [HttpGet("previous-steps/{requestId}")]
-        [CheckAuthorize("Permissions.RequestReciever.Page", "Permissions.RequestReciever.View")]
+        [CheckAuthorize("Permissions.RequestReciever.Page", "Permissions.RequestReciever.View", "CanCancelRequest")]
         public async Task<IActionResult> GetPreviousWorkflowStepsForReturn(long requestId)
             => ProcessResponse(await _mediator.Send(new GetPreviousStepsForReturnQuery(requestId)));
 

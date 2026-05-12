@@ -71,6 +71,10 @@ namespace Ettad.CrossCutting.Comman.Utilities
         [Category(PlainPermissionsGenerator.Workflow)]
         CannotRejectRequest,
 
+        /// <summary>Cancel in-flight workflow-backed requests without being the current approver.</summary>
+        [Category(PlainPermissionsGenerator.Workflow)]
+        CanCancelRequest,
+
         [Category(PlainPermissionsGenerator.Workflow)]
         ReviewWeaponSupply,
 
