@@ -1,6 +1,7 @@
 using Ettad.Application.Common.Interfaces;
 using Ettad.CrossCutting.Comman.FileUpload;
 using Ettad.CrossCutting.Comman.Time;
+using Ettad.CrossCutting.Comman.Utilities;
 using Ettad.Data.Constants;
 using Ettad.Data.Entities;
 using Ettad.Data.Entities.Workflows;
@@ -47,6 +48,7 @@ namespace Ettad.Workflows.Service.Commands.WorkflowApproval.ProcessWorkflowActio
         private readonly IDateTimeProvider _dateTimeProvider;
         private readonly ITransactionManager _transactionManager;
         private readonly IMediator _mediator;
+        private readonly IPermissionService _permissionService;
         private readonly ILogger<ProcessWorkflowActionCommandHandler> _logger;
 
         public ProcessWorkflowActionCommandHandler(
@@ -60,6 +62,7 @@ namespace Ettad.Workflows.Service.Commands.WorkflowApproval.ProcessWorkflowActio
             IDateTimeProvider dateTimeProvider,
             ITransactionManager transactionManager,
             IMediator mediator,
+            IPermissionService permissionService,
             ILogger<ProcessWorkflowActionCommandHandler> logger)
         {
             _context = context;
@@ -72,6 +75,7 @@ namespace Ettad.Workflows.Service.Commands.WorkflowApproval.ProcessWorkflowActio
             _dateTimeProvider = dateTimeProvider;
             _transactionManager = transactionManager;
             _mediator = mediator;
+            _permissionService = permissionService;
             _logger = logger;
         }
 
@@ -101,38 +105,61 @@ namespace Ettad.Workflows.Service.Commands.WorkflowApproval.ProcessWorkflowActio
                     savedFileMasterIds = saveFilesResult.Data;
                 }
 
-                var currentStep = await _mediator.Send(
-                    new GetCurrentApprovalStepByRequestIdQuery(model.BaseRequestID),
-                    cancellationToken);
-                if (currentStep == null)
-                    return APIOperationResponse<bool>.Fail(ResponseType.NotFound, "No current workflow step found for this request.");
-
-                var oldStatus = currentStep.Status;
-
-                currentStep.Comments = model.Comments;
-
                 var actingUserId = _currentUserService.UserId;
                 var actingRoleId = await ResolveActingRoleIdAsync(actingUserId);
 
-                switch (model.Action)
+                WorkflowApprovalStep currentStep;
+
+                if (model.Action == RequestStatus.Cancelled)
                 {
-                    case RequestStatus.Approved:
-                        await ApproveStepAsync(currentStep, model, actingRoleId);
-                        break;
+                    if (!_currentUserService.IsSuperAdmin &&
+                        !await _permissionService.HasPermissionAsync(PlainPermissions.CanCancelRequest.ToString()))
+                    {
+                        return APIOperationResponse<bool>.Fail(ResponseType.Forbidden,
+                            "You do not have permission to cancel this request.");
+                    }
 
-                    case RequestStatus.Rejected:
-                        await RejectStepAsync(currentStep, model, actingRoleId);
-                        break;
+                    if (files == null || files.Count == 0)
+                    {
+                        return APIOperationResponse<bool>.Fail(ResponseType.BadRequest,
+                            "At least one attachment is required to cancel this request.");
+                    }
 
-                    case RequestStatus.ReturnedForReview:
-                        await ReturnStepAsync(currentStep, model, actingRoleId);
-                        break;
-
-                    default:
-                        return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, "Invalid workflow action.");
+                    currentStep = await CancelWorkflowRequestCoreAsync(model, actingUserId, actingRoleId, cancellationToken);
                 }
+                else
+                {
+                    currentStep = await _mediator.Send(
+                        new GetCurrentApprovalStepByRequestIdQuery(model.BaseRequestID),
+                        cancellationToken);
+                    if (currentStep == null)
+                        return APIOperationResponse<bool>.Fail(ResponseType.NotFound, "No current workflow step found for this request.");
 
-                await LogStepActionAsync(currentStep.Id, currentStep.WorkflowStepId, oldStatus, model.Action, model.Comments, actingUserId, actingRoleId);
+                    var oldStatus = currentStep.Status;
+
+                    currentStep.Comments = model.Comments;
+
+                    switch (model.Action)
+                    {
+                        case RequestStatus.Approved:
+                            await ApproveStepAsync(currentStep, model, actingRoleId);
+                            break;
+
+                        case RequestStatus.Rejected:
+                            await RejectStepAsync(currentStep, model, actingRoleId);
+                            break;
+
+                        case RequestStatus.ReturnedForReview:
+                            await ReturnStepAsync(currentStep, model, actingRoleId);
+                            break;
+
+                        default:
+                            return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, "Invalid workflow action.");
+                    }
+
+                    await LogStepActionAsync(currentStep.Id, currentStep.WorkflowStepId, oldStatus, model.Action,
+                        model.Comments, actingUserId, actingRoleId);
+                }
 
                 await _context.SaveChangesAsync(cancellationToken);
                 if (ownsTransaction)
@@ -197,6 +224,122 @@ namespace Ettad.Workflows.Service.Commands.WorkflowApproval.ProcessWorkflowActio
                     "An error occurred while processing workflow action. RequestId: {RequestId}, Action: {Action}",
                     model.BaseRequestID, model.Action);
                 return APIOperationResponse<bool>.Fail(ResponseType.InternalServerError, $"Processing failed: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Cancels all current pending workflow steps, updates base request, releases order draft fulfillment, logs history per step, notifies requester.
+        /// </summary>
+        private async Task<WorkflowApprovalStep> CancelWorkflowRequestCoreAsync(
+            ApproveRejectWorkflowApprovalDto model,
+            string? actingUserId,
+            string? actingRoleId,
+            CancellationToken cancellationToken)
+        {
+            var baseRequest = await _context.BaseRequests
+                .FirstOrDefaultAsync(x => x.Id == model.BaseRequestID && !x.IsDeleted, cancellationToken);
+            if (baseRequest == null)
+                throw new KeyNotFoundException($"Request with ID {model.BaseRequestID} not found.");
+
+            if (baseRequest.Status is RequestStatus.Approved or RequestStatus.Rejected or RequestStatus.Cancelled
+                or RequestStatus.AutoRejected)
+            {
+                throw new InvalidOperationException(
+                    "This request cannot be cancelled because it has already been completed or terminated.");
+            }
+
+            var pendingSteps = await _context.WorkflowApprovalSteps
+                .Include(x => x.WorkflowStep!)
+                    .ThenInclude(ws => ws.ApplicationRole)
+                .Include(x => x.WorkflowStep!)
+                    .ThenInclude(ws => ws.ParallelRoles)
+                .Include(x => x.WorkflowStep!)
+                    .ThenInclude(ws => ws.Transitions)
+                .Where(x => x.TargetRequestId == model.BaseRequestID &&
+                            x.IsCurrent &&
+                            x.Status != RequestStatus.Approved &&
+                            x.Status != RequestStatus.Rejected &&
+                            x.Status != RequestStatus.Cancelled &&
+                            x.Status != RequestStatus.AutoRejected)
+                .OrderBy(x => x.Id)
+                .ToListAsync(cancellationToken);
+
+            if (!pendingSteps.Any())
+                throw new InvalidOperationException("No active workflow step found for this request.");
+
+            foreach (var step in pendingSteps)
+            {
+                var oldStatus = step.Status;
+                step.Status = RequestStatus.Cancelled;
+                step.ApproverUserId = actingUserId;
+                step.ApproverRoleId = actingRoleId;
+                step.ApprovedDate = _dateTimeProvider.Now;
+                step.IsCurrent = false;
+                step.Comments = model.Comments ?? step.Comments;
+                step.ModifiedBy = actingUserId;
+                step.ModificationDate = _dateTimeProvider.Now;
+
+                await LogStepActionAsync(step.Id, step.WorkflowStepId, oldStatus, RequestStatus.Cancelled,
+                    model.Comments, actingUserId, actingRoleId);
+            }
+
+            baseRequest.Status = RequestStatus.Cancelled;
+            baseRequest.ModifiedBy = actingUserId;
+            baseRequest.ModificationDate = _dateTimeProvider.Now;
+
+            if (baseRequest.RequestType == RequestType.Order)
+                await ReleaseOrderDraftFulfillmentAsync(baseRequest.Id, cancellationToken);
+
+            var cancelMsg = $"Request #{baseRequest.RequestNo} has been cancelled" +
+                (string.IsNullOrWhiteSpace(model.Comments) ? "." : $". Comments: {model.Comments}");
+
+            await _notificationHelperService.SendNotificationAsync(
+                $"Request #{baseRequest.RequestNo} Cancelled",
+                cancelMsg,
+                "Request",
+                baseRequest.Id,
+                new List<string> { baseRequest.CreatedBy },
+                null,
+                actingUserId
+            );
+
+            return pendingSteps[0];
+        }
+
+        /// <summary>
+        /// Removes draft supply (lot reservations), weapon batch selections, and draft asset supplies for an order.
+        /// </summary>
+        private async Task ReleaseOrderDraftFulfillmentAsync(long orderId, CancellationToken cancellationToken)
+        {
+            var draftSupply = await _context.Supplies
+                .Include(s => s.SupplyDetails)
+                .FirstOrDefaultAsync(
+                    s => s.OrderId == orderId && s.SubmissionStatus == SupplySubmissionStatus.Draft,
+                    cancellationToken);
+
+            if (draftSupply != null)
+            {
+                if (draftSupply.SupplyDetails != null && draftSupply.SupplyDetails.Any())
+                    _context.SupplyDetails.RemoveRange(draftSupply.SupplyDetails);
+                _context.Supplies.Remove(draftSupply);
+            }
+
+            var weaponSelections = await _context.WeaponSupplySelections
+                .Where(ws => ws.OrderId == orderId)
+                .ToListAsync(cancellationToken);
+            if (weaponSelections.Count > 0)
+                _context.WeaponSupplySelections.RemoveRange(weaponSelections);
+
+            var draftAssetSupplies = await _context.AssetSupplies
+                .Include(a => a.SupplyDetails)
+                .Where(a => a.OrderId == orderId && a.SubmissionStatus == SupplySubmissionStatus.Draft)
+                .ToListAsync(cancellationToken);
+
+            foreach (var assetSupply in draftAssetSupplies)
+            {
+                if (assetSupply.SupplyDetails != null && assetSupply.SupplyDetails.Any())
+                    _context.AssetSupplyDetails.RemoveRange(assetSupply.SupplyDetails);
+                _context.AssetSupplies.Remove(assetSupply);
             }
         }
 
@@ -351,11 +494,12 @@ namespace Ettad.Workflows.Service.Commands.WorkflowApproval.ProcessWorkflowActio
                     }
                 }
 
-                var approver = await _context.Users.FirstOrDefaultAsync(u => u.Id == _currentUserService.UserId);
+                var approvedMsg = $"Request #{baseRequest.RequestNo} has been approved" +
+                    (string.IsNullOrWhiteSpace(model.Comments) ? "." : $". Comments: {model.Comments}");
 
                 await _notificationHelperService.SendNotificationAsync(
-                    "Request Approved",
-                    $"Approved by {approver?.UserName}",
+                    $"Request #{baseRequest.RequestNo} Approved",
+                    approvedMsg,
                     "Request",
                     baseRequest.Id,
                     new List<string> { baseRequest.CreatedBy },
@@ -418,10 +562,12 @@ namespace Ettad.Workflows.Service.Commands.WorkflowApproval.ProcessWorkflowActio
 
             baseRequest.Status = RequestStatus.Rejected;
 
-            var approver = await _context.Users.FirstOrDefaultAsync(u => u.Id == _currentUserService.UserId);
+            var rejectedMsg = $"Request #{baseRequest.RequestNo} has been rejected" +
+                (string.IsNullOrWhiteSpace(model.Comments) ? "." : $". Comments: {model.Comments}");
+
             await _notificationHelperService.SendNotificationAsync(
-                "Request Rejected",
-                $"Rejected by {approver?.UserName}",
+                $"Request #{baseRequest.RequestNo} Rejected",
+                rejectedMsg,
                 "Request",
                 baseRequest.Id,
                 new List<string> { baseRequest.CreatedBy },
@@ -523,10 +669,12 @@ namespace Ettad.Workflows.Service.Commands.WorkflowApproval.ProcessWorkflowActio
 
             var (userIds, roleIds) = await FilterNotificationRecipientsByDepartmentAsync(returnRoles, baseRequest.DepartmentId);
 
-            var approver = await _context.Users.FirstOrDefaultAsync(u => u.Id == _currentUserService.UserId);
+            var returnedMsg = $"Request #{baseRequest.RequestNo} has been returned for review" +
+                (string.IsNullOrWhiteSpace(model.Comments) ? "." : $". Comments: {model.Comments}");
+
             await _notificationHelperService.SendNotificationAsync(
-                "Request Returned for Review",
-                $"Request #{baseRequest.RequestNo} has been returned for review by {approver?.UserName}. Comments: {model.Comments}",
+                $"Request #{baseRequest.RequestNo} Returned for Review",
+                returnedMsg,
                 "Request",
                 baseRequest.Id,
                 userIds,
@@ -700,24 +848,31 @@ namespace Ettad.Workflows.Service.Commands.WorkflowApproval.ProcessWorkflowActio
                     return;
                 }
 
-                var approver = await _context.Users.FirstOrDefaultAsync(u => u.Id == _currentUserService.UserId);
-                var approverName = approver?.FullNameEN ?? approver?.FullNameAR ?? approver?.UserName ?? "System";
-
                 var (title, message) = model.Action switch
                 {
                     RequestStatus.Approved => (
                         $"Request #{baseRequest.RequestNo} Approved",
-                        $"Request #{baseRequest.RequestNo} has been approved by {approverName}" +
+                        $"Request #{baseRequest.RequestNo} has been approved" +
                         (string.IsNullOrWhiteSpace(model.Comments) ? "." : $". Comments: {model.Comments}")
                     ),
                     RequestStatus.Rejected => (
                         $"Request #{baseRequest.RequestNo} Rejected",
-                        $"Request #{baseRequest.RequestNo} has been rejected by {approverName}" +
+                        $"Request #{baseRequest.RequestNo} has been rejected" +
+                        (string.IsNullOrWhiteSpace(model.Comments) ? "." : $". Comments: {model.Comments}")
+                    ),
+                    RequestStatus.Cancelled => (
+                        $"Request #{baseRequest.RequestNo} Cancelled",
+                        $"Request #{baseRequest.RequestNo} has been cancelled" +
+                        (string.IsNullOrWhiteSpace(model.Comments) ? "." : $". Comments: {model.Comments}")
+                    ),
+                    RequestStatus.ReturnedForReview => (
+                        $"Request #{baseRequest.RequestNo} Returned for Review",
+                        $"Request #{baseRequest.RequestNo} has been returned for review" +
                         (string.IsNullOrWhiteSpace(model.Comments) ? "." : $". Comments: {model.Comments}")
                     ),
                     _ => (
                         $"Request #{baseRequest.RequestNo} Action Taken",
-                        $"An action has been taken on request #{baseRequest.RequestNo} by {approverName}"
+                        $"An action has been taken on request #{baseRequest.RequestNo}."
                     )
                 };
 

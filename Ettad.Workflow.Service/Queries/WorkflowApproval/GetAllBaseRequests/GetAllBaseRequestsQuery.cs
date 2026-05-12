@@ -430,16 +430,21 @@ namespace Ettad.Workflows.Service.Queries.WorkflowApproval.GetAllBaseRequests
                         }
                     }
 
-                    // Check if request has been rejected - if so, don't show any pending/future steps
-                    bool isRejected = baseRequest.Status == RequestStatus.Rejected;
-                    
-                    if (!isRejected && combinedHistory.Any(h => h.NewRequestStatus == RequestStatus.Rejected))
+                    // Do not synthesize pending/future steps when the workflow has ended
+                    bool skipPendingAndFutureSteps =
+                        baseRequest.Status == RequestStatus.Rejected ||
+                        baseRequest.Status == RequestStatus.Cancelled ||
+                        baseRequest.Status == RequestStatus.Approved ||
+                        baseRequest.Status == RequestStatus.AutoRejected;
+
+                    if (!skipPendingAndFutureSteps && combinedHistory.Any(h =>
+                        h.NewRequestStatus == RequestStatus.Rejected ||
+                        h.NewRequestStatus == RequestStatus.Cancelled))
                     {
-                        isRejected = true;
+                        skipPendingAndFutureSteps = true;
                     }
 
-                    // Only show pending/future steps if request is not rejected
-                    if (!isRejected)
+                    if (!skipPendingAndFutureSteps)
                     {
                         // Get the workflow for this request type
                         var workflowType = (WorkflowType)baseRequest.RequestType;
