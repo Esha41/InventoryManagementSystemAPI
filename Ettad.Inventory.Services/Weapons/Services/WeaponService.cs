@@ -197,7 +197,8 @@ namespace Ettad.Inventory.Service.Weapons.Services
                     nameof(Weapon.Classification),
                     nameof(Weapon.Type),
                     "BaseItemPrimaryPurposes.PrimaryPurpos"
-                );
+                )
+                    .OrderBy(w => w.Id);
 
                 var paginatedEntities = await PaginatedList<Weapon>.CreateAsyncForTableBinding(query, request);
 
