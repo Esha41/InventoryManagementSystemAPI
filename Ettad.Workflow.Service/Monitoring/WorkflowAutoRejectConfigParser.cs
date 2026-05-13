@@ -13,6 +13,12 @@ public static class WorkflowAutoRejectConfigParser
         if (trigger == null || trigger.Mode == AutoRejectTriggerMode.None)
             return WorkflowAutoRejectTriggerConfig.Disabled;
 
+        if (trigger.Mode == AutoRejectTriggerMode.Disabled)
+            return new WorkflowAutoRejectTriggerConfig(
+                AutoRejectTriggerMode.Disabled,
+                Array.Empty<string>(),
+                Array.Empty<long>());
+
         var roleIds = FilterRoleIds(trigger.TriggerRoles ?? Enumerable.Empty<WorkflowAutoRejectTriggerRole>());
         var stepIds = FilterStepIds(trigger.TriggerSteps ?? Enumerable.Empty<WorkflowAutoRejectTriggerStep>());
 

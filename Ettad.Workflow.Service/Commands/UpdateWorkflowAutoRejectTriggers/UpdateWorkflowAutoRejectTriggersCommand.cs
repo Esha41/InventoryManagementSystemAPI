@@ -9,7 +9,6 @@ public class UpdateWorkflowAutoRejectTriggersCommand : IRequest<APIOperationResp
 {
     public long WorkflowId { get; set; }
 
-    /// <summary><see cref="AutoRejectTriggerMode.None"/> = remove per-workflow triggers; <see cref="AutoRejectTriggerMode.Role"/> / <see cref="AutoRejectTriggerMode.Step"/> = active mode.</summary>
     public AutoRejectTriggerMode? Mode { get; set; }
 
     public List<string> TriggerRoleIds { get; set; } = [];

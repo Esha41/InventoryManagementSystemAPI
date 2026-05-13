@@ -120,7 +120,7 @@ public sealed class UpdateWorkflowAutoRejectTriggersCommandHandler
                     "One or more selected steps are invalid for this workflow.");
             }
         }
-        else
+        else if (mode != AutoRejectTriggerMode.Disabled)
         {
             return APIOperationResponse<WorkflowAutoRejectTriggerDto>.BadRequest("Invalid trigger mode");
         }
@@ -173,7 +173,7 @@ public sealed class UpdateWorkflowAutoRejectTriggersCommandHandler
                     });
                 }
             }
-            else
+            else if (mode == AutoRejectTriggerMode.Step)
             {
                 foreach (var sid in NormalizeStepIds(request.TriggerStepIds))
                 {
@@ -258,6 +258,7 @@ public sealed class UpdateWorkflowAutoRejectTriggersCommandHandler
         {
             AutoRejectTriggerMode.Role => "Role",
             AutoRejectTriggerMode.Step => "Step",
+            AutoRejectTriggerMode.Disabled => "Disabled",
             AutoRejectTriggerMode.None => "None",
             _ => null
         };

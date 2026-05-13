@@ -66,7 +66,12 @@ internal static class RequestAutoRejectCountdownHelper
         WorkflowAutoRejectTriggerConfig? workflowConfig)
     {
         if (workflowConfig?.IsEnabled == true)
+        {
+            if (workflowConfig.Mode == AutoRejectTriggerMode.Disabled)
+                return null;
             return TrySelectTriggerApprovalByWorkflowConfig(filtered, workflowConfig);
+        }
+
         return TrySelectTriggerApprovalByGlobalPolicy(filtered, globalPolicy);
     }
 
@@ -105,6 +110,9 @@ internal static class RequestAutoRejectCountdownHelper
     private static bool MatchesTriggerConfig(WorkflowApprovalStep approval, WorkflowAutoRejectTriggerConfig config)
     {
         if (approval.WorkflowStep == null)
+            return false;
+
+        if (config.Mode == AutoRejectTriggerMode.Disabled)
             return false;
 
         if (config.Mode == AutoRejectTriggerMode.Step)

@@ -23,6 +23,7 @@ public static class WorkflowAutoRejectTriggerMapper
         {
             AutoRejectTriggerMode.Role => "Role",
             AutoRejectTriggerMode.Step => "Step",
+            AutoRejectTriggerMode.Disabled => "Disabled",
             AutoRejectTriggerMode.None => "None",
             _ => null
         };
