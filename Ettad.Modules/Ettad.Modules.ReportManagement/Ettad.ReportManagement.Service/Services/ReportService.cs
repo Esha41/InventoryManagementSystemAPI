@@ -528,6 +528,18 @@ namespace Ettad.ReportManagement.Service.Services
                         Url = ReportConstants.AssetsReportTemplate,
                         Name = "Assets Report",
                         Description = "Template for all Assets"
+                    },
+                    new ReportTemplateDto
+                    {
+                        Url = ReportConstants.LoginAuditReportTemplate,
+                        Name = "Login Audit Report",
+                        Description = "Provides audit information about user login activities."
+                    },
+                    new ReportTemplateDto
+                    {
+                        Url = ReportConstants.PendingAuditorOrderReportTemplate,
+                        Name = "Pending Auditor Order Report",
+                        Description = "Shows approvals pending by auditors for more than 3 days."
                     }
                 };
 
