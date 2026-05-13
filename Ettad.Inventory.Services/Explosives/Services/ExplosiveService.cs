@@ -224,7 +224,8 @@ namespace Ettad.Inventory.Service.Explosives.Services
                     nameof(Explosive.Type),
                     nameof(Explosive.Unit),
                     $"{nameof(Explosive.BaseItemPrimaryPurposes)}.{nameof(BaseItemPrimaryPurpos.PrimaryPurpos)}"
-                );
+                )
+                    .OrderBy(e => e.Id);
 
                 var paginatedEntities = await PaginatedList<Explosive>.CreateAsyncForTableBinding(query, request);
 

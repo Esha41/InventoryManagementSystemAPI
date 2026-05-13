@@ -289,7 +289,8 @@ namespace Ettad.Inventory.Service.Ammunitions.Services
                     nameof(Ammunition.HazardDivision),
                     nameof(Ammunition.Classification),
                     nameof(Ammunition.Type)
-                );
+                )
+                    .OrderBy(a => a.Id);
 
                 var paginatedEntities = await PaginatedList<Ammunition>.CreateAsyncForTableBinding(query, request);
 

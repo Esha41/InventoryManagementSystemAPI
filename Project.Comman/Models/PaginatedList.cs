@@ -90,8 +90,10 @@ namespace Ettad.CrossCutting.Comman.Models
             // Filtered indexes (WHERE IsDeleted = 0) significantly improve count performance
             var count = await source.CountAsync();
 
+            // Includes + AsSplitQuery (e.g. GeneralRepository.Find) cannot combine with Skip/Take unless the
+            // query is switched to single-query mode or has an explicit OrderBy — see EF Core Split queries.
             var items = await source
-                .AsNoTracking() // Performance optimization for read-only lists
+                .AsNoTracking() // Performance optimization for read-only lists                .AsSingleQuery()
                 .Skip((request.Page - 1) * request.PageSize)
                 .Take(request.PageSize)
                 .ToListAsync();
