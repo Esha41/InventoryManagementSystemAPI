@@ -143,9 +143,6 @@ namespace Ettad.RequestManagement.Service.Orders.Validators
                 return errors;
             }
 
-            if (!weapon.CaliberId.HasValue)
-                errors.Add("The selected catalog weapon does not have a caliber defined.");
-
             return errors;
         }
     }
