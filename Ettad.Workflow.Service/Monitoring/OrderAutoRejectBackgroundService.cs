@@ -6,6 +6,7 @@ using Ettad.Data.Entities.Settings;
 using Ettad.Data.Entities.Workflows;
 using Ettad.Data.Enums;
 using Ettad.Data.Interfaces.Repositories;
+using Ettad.Data.Orders;
 using Ettad.Notification.Service.Interfaces;
 using Ettad.Workflows.Service.Dtos;
 using Microsoft.AspNetCore.Identity;
@@ -18,6 +19,7 @@ namespace Ettad.Workflows.Service.Monitoring;
 public class OrderAutoRejectBackgroundService : IOrderAutoRejectBackgroundService
 {
     private readonly ICrossCuttingRepository<BaseRequest> _baseRequestRepository;
+    private readonly ICrossCuttingRepository<Order> _orderRepository;
     private readonly ICrossCuttingRepository<OrderAutoRejectPolicy> _orderAutoRejectPolicyRepository;
     private readonly ICrossCuttingRepository<Ettad.Data.Entities.Settings.Settings> _settingsRepository;
     private readonly ICrossCuttingRepository<WorkflowApprovalStep> _workflowApprovalStepRepository;
@@ -33,6 +35,7 @@ public class OrderAutoRejectBackgroundService : IOrderAutoRejectBackgroundServic
 
     public OrderAutoRejectBackgroundService(
         ICrossCuttingRepository<BaseRequest> baseRequestRepository,
+        ICrossCuttingRepository<Order> orderRepository,
         ICrossCuttingRepository<OrderAutoRejectPolicy> orderAutoRejectPolicyRepository,
         ICrossCuttingRepository<Ettad.Data.Entities.Settings.Settings> settingsRepository,
         ICrossCuttingRepository<WorkflowApprovalStep> workflowApprovalStepRepository,
@@ -47,6 +50,7 @@ public class OrderAutoRejectBackgroundService : IOrderAutoRejectBackgroundServic
         ILogger<OrderAutoRejectBackgroundService> logger)
     {
         _baseRequestRepository = baseRequestRepository;
+        _orderRepository = orderRepository;
         _orderAutoRejectPolicyRepository = orderAutoRejectPolicyRepository;
         _settingsRepository = settingsRepository;
         _workflowApprovalStepRepository = workflowApprovalStepRepository;
@@ -246,6 +250,15 @@ public class OrderAutoRejectBackgroundService : IOrderAutoRejectBackgroundServic
 
         baseRequest.Status = RequestStatus.AutoRejected;
         baseRequest.ModificationDate = now;
+
+        if (baseRequest.RequestType == RequestType.Order)
+        {
+            var order = await _orderRepository.FindOneAsync(o => o.Id == requestId);
+            if (order != null)
+            {
+                baseRequest.Priority = OrderPriorityFromUsage.CalculatePriorityFromUsageStart(order.UsageDateFrom, now);
+            }
+        }
 
         var notifyUserIds = await ResolveRecipientUserIdsAsync(baseRequest.RequesterId, policy, cancellationToken);
 

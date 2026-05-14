@@ -1,14 +1,13 @@
 using Ettad.CrossCutting.Comman.Time;
+using Ettad.Data.Entities;
 using Ettad.Data.Enums;
+using Ettad.Data.Orders;
 
 namespace Ettad.RequestManagement.Service.Orders.Services;
 
 /// <inheritdoc />
 public sealed class OrderPriorityService : IOrderPriorityService
 {
-    private const int VeryUrgentThresholdDays = 7;
-    private const int UrgentThresholdDays     = 14;
-
     private readonly IDateTimeProvider _dateTimeProvider;
 
     public OrderPriorityService(IDateTimeProvider dateTimeProvider)
@@ -17,31 +16,19 @@ public sealed class OrderPriorityService : IOrderPriorityService
     }
 
     /// <inheritdoc />
-    public RequestPriority CalculatePriorityFromUsageDate(DateTime usageDateFrom)
-    {
-        var days = GetDaysUntilUsageDate(usageDateFrom);
-
-        // Overdue orders (days < 0) are treated as VeryUrgent —
-        // validator blocks past dates at creation, but dates become
-        // past over time as active orders age.
-        return days switch
-        {
-            <= VeryUrgentThresholdDays => RequestPriority.VeryUrgent,
-            <= UrgentThresholdDays     => RequestPriority.Urgent,
-            _                          => RequestPriority.Normal
-        };
-    }
+    public RequestPriority CalculatePriorityFromUsageDate(DateTime usageDateFrom) =>
+        OrderPriorityFromUsage.CalculatePriorityFromUsageStart(usageDateFrom, _dateTimeProvider.Now);
 
     /// <inheritdoc />
-    public int GetDaysUntilUsageDate(DateTime usageDateFrom)
+    public int GetDaysUntilUsageDate(DateTime usageDateFrom) =>
+        OrderPriorityFromUsage.GetCalendarDaysUntilUsageStart(usageDateFrom, _dateTimeProvider.Now);
+
+    /// <inheritdoc />
+    public RequestPriority ResolvePriorityForOrderDto(Order order)
     {
-        var now = _dateTimeProvider.Now;
+        if (!OrderPriorityLifecycle.UsesLivePriorityFromUsageDate(order.Status))
+            return order.Priority;
 
-
-        var usageLocalDate = usageDateFrom.Kind == DateTimeKind.Utc
-            ? usageDateFrom.ToLocalTime().Date
-            : usageDateFrom.Date;
-
-        return (usageLocalDate - now.Date).Days;
+        return OrderPriorityFromUsage.CalculatePriorityFromUsageStart(order.UsageDateFrom, _dateTimeProvider.Now);
     }
 }
