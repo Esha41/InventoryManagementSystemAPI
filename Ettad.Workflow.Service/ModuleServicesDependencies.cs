@@ -13,7 +13,7 @@ namespace Ettad.Workflow.Service
     {
         public static IServiceCollection AddWorkflowServices(this IServiceCollection service)
         {
-            service.AddAutoMapper(typeof(MappingProfile));
+            service.AddAutoMapper(typeof(Ettad.Services.Mapper.MappingProfile), typeof(Ettad.Workflows.Service.Mapper.MappingProfile));
             service.AddTransient<IHelpureService, HelpureService>();
             
             // Register WorkflowStepNotifierService
