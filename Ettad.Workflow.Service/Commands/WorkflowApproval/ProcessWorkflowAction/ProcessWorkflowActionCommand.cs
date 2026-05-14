@@ -375,6 +375,7 @@ namespace Ettad.Workflows.Service.Commands.WorkflowApproval.ProcessWorkflowActio
 
                 if (created)
                 {
+                    await TryNotifyRequesterAfterQtyConfiguredStepApprovalAsync(step.WorkflowStepId, baseRequest);
                     return;
                 }
             }
@@ -510,6 +511,8 @@ namespace Ettad.Workflows.Service.Commands.WorkflowApproval.ProcessWorkflowActio
 
             baseRequest.ModifiedBy = _currentUserService.UserId;
             baseRequest.ModificationDate = _dateTimeProvider.Now;
+
+            await TryNotifyRequesterAfterQtyConfiguredStepApprovalAsync(step.WorkflowStepId, baseRequest);
 
             await _mediator.Publish(new WorkflowStepApprovedEvent
             {
@@ -686,6 +689,64 @@ namespace Ettad.Workflows.Service.Commands.WorkflowApproval.ProcessWorkflowActio
 
             baseRequest.ModifiedBy = _currentUserService.UserId;
             baseRequest.ModificationDate = _dateTimeProvider.Now;
+        }
+
+        private async Task TryNotifyRequesterAfterQtyConfiguredStepApprovalAsync(long workflowStepId, BaseRequest baseRequest)
+        {
+            try
+            {
+                var configured = await _context.WorkflowStepRequesterQuantityNotifications
+                    .AsNoTracking()
+                    .AnyAsync(x => x.WorkflowStepId == workflowStepId);
+
+                if (!configured || string.IsNullOrEmpty(baseRequest.RequesterId))
+                    return;
+
+                string message;
+                if (baseRequest.RequestType == RequestType.Order)
+                {
+                    var lines = await _context.RequestItems
+                        .AsNoTracking()
+                        .Include(ri => ri.Item)
+                        .Where(ri => ri.RequestId == baseRequest.Id && !ri.IsDeleted)
+                        .OrderBy(ri => ri.Id)
+                        .ToListAsync();
+
+                    var parts = lines.Select(ri =>
+                    {
+                        var name = ri.Item?.Name ?? $"Item {ri.ItemId}";
+                        var no = ri.Item?.ItemNo;
+                        var label = string.IsNullOrWhiteSpace(no) ? name : $"{name} ({no})";
+                        return $"• {label}: qty {ri.Quantity}";
+                    });
+
+                    message =
+                        $"Your order #{baseRequest.RequestNo} was approved at a workflow step configured to notify you about line quantities.\n" +
+                        "Current line quantities:\n" +
+                        string.Join("\n", parts);
+                }
+                else
+                {
+                    message =
+                        $"Your request #{baseRequest.RequestNo} was approved at a workflow step configured to notify you about quantities.";
+                }
+
+                await _notificationHelperService.SendNotificationAsync(
+                    $"Request #{baseRequest.RequestNo} — quantities after workflow approval",
+                    message,
+                    nameof(Order),
+                    baseRequest.Id,
+                    new List<string> { baseRequest.RequesterId },
+                    null,
+                    _currentUserService.UserId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex,
+                    "Requester notification for qty-configured workflow step failed. RequestId: {RequestId}, WorkflowStepId: {WorkflowStepId}",
+                    baseRequest.Id,
+                    workflowStepId);
+            }
         }
 
         private async Task<bool> HandleHigherApprovalAsync(WorkflowApprovalStep step, BaseRequest baseRequest)
