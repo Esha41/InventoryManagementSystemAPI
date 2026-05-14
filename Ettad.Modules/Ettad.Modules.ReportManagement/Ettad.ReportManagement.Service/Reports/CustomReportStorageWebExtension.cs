@@ -100,6 +100,16 @@ namespace Ettad.ReportManagement.Service.Reports
                     param.Enabled = false;
                 }
 
+                //  APPLY PARAMETERS TO SQL DATA SOURCE and force fresh data
+                foreach (var ds in report.ComponentStorage)
+                {
+                    if (ds is DevExpress.DataAccess.Sql.SqlDataSource sqlDs)
+                    {
+                        sqlDs.RebuildResultSchema();
+                        sqlDs.Fill();
+                    }
+                }
+
                 using var ms = new MemoryStream();
                 report.SaveLayoutToXml(ms);
                 return ms.ToArray();
