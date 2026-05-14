@@ -37,6 +37,9 @@ namespace Ettad.ReportManagement.Service.Reports.Templates
         private DevExpress.XtraReports.UI.XRTableCell xrTableCell3;
         private DevExpress.XtraReports.UI.XRTableCell xrTableCellSrNoHeader;
         private DevExpress.XtraReports.UI.XRTableCell xrTableCellSrNoDetail;
+        [System.Xml.Serialization.XmlIgnore]
+        [System.NonSerialized]
+        private DevExpress.XtraReports.UI.GroupFooterBand GroupFooter1;
         private DevExpress.DataAccess.Sql.SqlDataSource LoginDataSource;
         private DevExpress.XtraReports.UI.CalculatedField LoginTypeValue;
         private DevExpress.XtraReports.UI.CalculatedField IsSuccessfulValue;
@@ -122,6 +125,7 @@ namespace Ettad.ReportManagement.Service.Reports.Templates
             this.ReportFooter = new DevExpress.XtraReports.UI.ReportFooterBand();
             this.xrLabelReportFooter = new DevExpress.XtraReports.UI.XRLabel();
             this.Language = new DevExpress.XtraReports.Parameters.Parameter();
+            this.GroupFooter1 = new DevExpress.XtraReports.UI.GroupFooterBand();
             this.LoginTypeValue = new DevExpress.XtraReports.UI.CalculatedField();
             this.IsSuccessfulValue = new DevExpress.XtraReports.UI.CalculatedField();
             this.AttemptDateOnly = new DevExpress.XtraReports.UI.CalculatedField();
@@ -158,29 +162,15 @@ namespace Ettad.ReportManagement.Service.Reports.Templates
             // 
             this.xrTable1.Borders = ((DevExpress.XtraPrinting.BorderSide)((DevExpress.XtraPrinting.BorderSide.Left | DevExpress.XtraPrinting.BorderSide.Right)));
             this.xrTable1.BorderWidth = 1F;
-            this.xrTable1.LocationFloat = new DevExpress.Utils.PointFloat(0.0001382828F, 0F);
+            this.xrTable1.LocationFloat = new DevExpress.Utils.PointFloat(0.6945027F, 0F);
             this.xrTable1.Name = "xrTable1";
             this.xrTable1.Padding = new DevExpress.XtraPrinting.PaddingInfo(2F, 2F, 0F, 0F, 100F);
             this.xrTable1.Rows.AddRange(new DevExpress.XtraReports.UI.XRTableRow[] {
             this.xrTableRow1});
-            this.xrTable1.SizeF = new System.Drawing.SizeF(807.9999F, 25F);
+            this.xrTable1.SizeF = new System.Drawing.SizeF(830.3055F, 25F);
             // 
             // xrTableRow1
             // 
-            this.xrTableRow1.Borders = ((DevExpress.XtraPrinting.BorderSide)((((DevExpress.XtraPrinting.BorderSide.Left | DevExpress.XtraPrinting.BorderSide.Top) 
-            | DevExpress.XtraPrinting.BorderSide.Right) 
-            | DevExpress.XtraPrinting.BorderSide.Bottom)));
-            this.xrTableRow1.CanPublishOptions.Csv = false;
-            this.xrTableRow1.CanPublishOptions.Docx = false;
-            this.xrTableRow1.CanPublishOptions.Htm = false;
-            this.xrTableRow1.CanPublishOptions.Image = false;
-            this.xrTableRow1.CanPublishOptions.Mht = false;
-            this.xrTableRow1.CanPublishOptions.Pdf = false;
-            this.xrTableRow1.CanPublishOptions.Printing = false;
-            this.xrTableRow1.CanPublishOptions.Rtf = false;
-            this.xrTableRow1.CanPublishOptions.Txt = false;
-            this.xrTableRow1.CanPublishOptions.Xls = false;
-            this.xrTableRow1.CanPublishOptions.Xlsx = false;
             this.xrTableRow1.Cells.AddRange(new DevExpress.XtraReports.UI.XRTableCell[] {
             this.xrTableCellSrNoDetail,
             this.xrTableCell11,
@@ -192,28 +182,28 @@ namespace Ettad.ReportManagement.Service.Reports.Templates
             this.xrTableCell16,
             this.xrTableCell18});
             this.xrTableRow1.Name = "xrTableRow1";
-            this.xrTableRow1.StylePriority.UseBorders = false;
             this.xrTableRow1.Weight = 1D;
             // 
             // xrTableCellSrNoDetail
             // 
-            this.xrTableCellSrNoDetail.Borders = ((DevExpress.XtraPrinting.BorderSide)(((DevExpress.XtraPrinting.BorderSide.Left | DevExpress.XtraPrinting.BorderSide.Right) 
+            this.xrTableCellSrNoDetail.Borders = ((DevExpress.XtraPrinting.BorderSide)((((DevExpress.XtraPrinting.BorderSide.Left | DevExpress.XtraPrinting.BorderSide.Top) 
+            | DevExpress.XtraPrinting.BorderSide.Right) 
             | DevExpress.XtraPrinting.BorderSide.Bottom)));
             this.xrTableCellSrNoDetail.BorderWidth = 1F;
             this.xrTableCellSrNoDetail.Multiline = true;
             this.xrTableCellSrNoDetail.Name = "xrTableCellSrNoDetail";
             this.xrTableCellSrNoDetail.Padding = new DevExpress.XtraPrinting.PaddingInfo(5F, 5F, 5F, 5F, 100F);
-            this.xrTableCellSrNoDetail.StylePriority.UseBorders = false;
             xrSummary1.Func = DevExpress.XtraReports.UI.SummaryFunc.RecordNumber;
             xrSummary1.Running = DevExpress.XtraReports.UI.SummaryRunning.Report;
             this.xrTableCellSrNoDetail.Summary = xrSummary1;
             this.xrTableCellSrNoDetail.Text = "0";
             this.xrTableCellSrNoDetail.TextAlignment = DevExpress.XtraPrinting.TextAlignment.MiddleCenter;
-            this.xrTableCellSrNoDetail.Weight = 0.40007258038147053D;
+            this.xrTableCellSrNoDetail.Weight = 0.39221692935745228D;
             // 
             // xrTableCell11
             // 
-            this.xrTableCell11.Borders = ((DevExpress.XtraPrinting.BorderSide)(((DevExpress.XtraPrinting.BorderSide.Left | DevExpress.XtraPrinting.BorderSide.Right) 
+            this.xrTableCell11.Borders = ((DevExpress.XtraPrinting.BorderSide)((((DevExpress.XtraPrinting.BorderSide.Left | DevExpress.XtraPrinting.BorderSide.Top) 
+            | DevExpress.XtraPrinting.BorderSide.Right) 
             | DevExpress.XtraPrinting.BorderSide.Bottom)));
             this.xrTableCell11.BorderWidth = 1F;
             this.xrTableCell11.ExpressionBindings.AddRange(new DevExpress.XtraReports.UI.ExpressionBinding[] {
@@ -221,14 +211,14 @@ namespace Ettad.ReportManagement.Service.Reports.Templates
             this.xrTableCell11.Multiline = true;
             this.xrTableCell11.Name = "xrTableCell11";
             this.xrTableCell11.Padding = new DevExpress.XtraPrinting.PaddingInfo(5F, 5F, 5F, 5F, 100F);
-            this.xrTableCell11.StylePriority.UseBorders = false;
             this.xrTableCell11.Text = "xrTableCell11";
             this.xrTableCell11.TextAlignment = DevExpress.XtraPrinting.TextAlignment.MiddleLeft;
             this.xrTableCell11.Weight = 1.3113032743320836D;
             // 
             // xrTableCell10
             // 
-            this.xrTableCell10.Borders = ((DevExpress.XtraPrinting.BorderSide)(((DevExpress.XtraPrinting.BorderSide.Left | DevExpress.XtraPrinting.BorderSide.Right) 
+            this.xrTableCell10.Borders = ((DevExpress.XtraPrinting.BorderSide)((((DevExpress.XtraPrinting.BorderSide.Left | DevExpress.XtraPrinting.BorderSide.Top) 
+            | DevExpress.XtraPrinting.BorderSide.Right) 
             | DevExpress.XtraPrinting.BorderSide.Bottom)));
             this.xrTableCell10.BorderWidth = 1F;
             this.xrTableCell10.ExpressionBindings.AddRange(new DevExpress.XtraReports.UI.ExpressionBinding[] {
@@ -236,14 +226,14 @@ namespace Ettad.ReportManagement.Service.Reports.Templates
             this.xrTableCell10.Multiline = true;
             this.xrTableCell10.Name = "xrTableCell10";
             this.xrTableCell10.Padding = new DevExpress.XtraPrinting.PaddingInfo(5F, 5F, 5F, 5F, 100F);
-            this.xrTableCell10.StylePriority.UseBorders = false;
             this.xrTableCell10.Text = "Column2";
             this.xrTableCell10.TextAlignment = DevExpress.XtraPrinting.TextAlignment.MiddleLeft;
             this.xrTableCell10.Weight = 1.3692185201160285D;
             // 
             // xrTableCell1
             // 
-            this.xrTableCell1.Borders = ((DevExpress.XtraPrinting.BorderSide)(((DevExpress.XtraPrinting.BorderSide.Left | DevExpress.XtraPrinting.BorderSide.Right) 
+            this.xrTableCell1.Borders = ((DevExpress.XtraPrinting.BorderSide)((((DevExpress.XtraPrinting.BorderSide.Left | DevExpress.XtraPrinting.BorderSide.Top) 
+            | DevExpress.XtraPrinting.BorderSide.Right) 
             | DevExpress.XtraPrinting.BorderSide.Bottom)));
             this.xrTableCell1.BorderWidth = 1F;
             this.xrTableCell1.ExpressionBindings.AddRange(new DevExpress.XtraReports.UI.ExpressionBinding[] {
@@ -251,7 +241,6 @@ namespace Ettad.ReportManagement.Service.Reports.Templates
             this.xrTableCell1.Multiline = true;
             this.xrTableCell1.Name = "xrTableCell1";
             this.xrTableCell1.Padding = new DevExpress.XtraPrinting.PaddingInfo(5F, 5F, 5F, 5F, 100F);
-            this.xrTableCell1.StylePriority.UseBorders = false;
             this.xrTableCell1.StylePriority.UseTextAlignment = false;
             this.xrTableCell1.Text = "Column3";
             this.xrTableCell1.TextAlignment = DevExpress.XtraPrinting.TextAlignment.MiddleCenter;
@@ -260,7 +249,8 @@ namespace Ettad.ReportManagement.Service.Reports.Templates
             // 
             // xrTableCell9
             // 
-            this.xrTableCell9.Borders = ((DevExpress.XtraPrinting.BorderSide)(((DevExpress.XtraPrinting.BorderSide.Left | DevExpress.XtraPrinting.BorderSide.Right) 
+            this.xrTableCell9.Borders = ((DevExpress.XtraPrinting.BorderSide)((((DevExpress.XtraPrinting.BorderSide.Left | DevExpress.XtraPrinting.BorderSide.Top) 
+            | DevExpress.XtraPrinting.BorderSide.Right) 
             | DevExpress.XtraPrinting.BorderSide.Bottom)));
             this.xrTableCell9.BorderWidth = 1F;
             this.xrTableCell9.ExpressionBindings.AddRange(new DevExpress.XtraReports.UI.ExpressionBinding[] {
@@ -268,7 +258,6 @@ namespace Ettad.ReportManagement.Service.Reports.Templates
             this.xrTableCell9.Multiline = true;
             this.xrTableCell9.Name = "xrTableCell9";
             this.xrTableCell9.Padding = new DevExpress.XtraPrinting.PaddingInfo(5F, 5F, 5F, 5F, 100F);
-            this.xrTableCell9.StylePriority.UseBorders = false;
             this.xrTableCell9.StylePriority.UseTextAlignment = false;
             this.xrTableCell9.Text = "Column4";
             this.xrTableCell9.TextAlignment = DevExpress.XtraPrinting.TextAlignment.MiddleCenter;
@@ -277,7 +266,8 @@ namespace Ettad.ReportManagement.Service.Reports.Templates
             // 
             // xrTableCell14
             // 
-            this.xrTableCell14.Borders = ((DevExpress.XtraPrinting.BorderSide)(((DevExpress.XtraPrinting.BorderSide.Left | DevExpress.XtraPrinting.BorderSide.Right) 
+            this.xrTableCell14.Borders = ((DevExpress.XtraPrinting.BorderSide)((((DevExpress.XtraPrinting.BorderSide.Left | DevExpress.XtraPrinting.BorderSide.Top) 
+            | DevExpress.XtraPrinting.BorderSide.Right) 
             | DevExpress.XtraPrinting.BorderSide.Bottom)));
             this.xrTableCell14.BorderWidth = 1F;
             this.xrTableCell14.ExpressionBindings.AddRange(new DevExpress.XtraReports.UI.ExpressionBinding[] {
@@ -285,7 +275,6 @@ namespace Ettad.ReportManagement.Service.Reports.Templates
             this.xrTableCell14.Multiline = true;
             this.xrTableCell14.Name = "xrTableCell14";
             this.xrTableCell14.Padding = new DevExpress.XtraPrinting.PaddingInfo(5F, 5F, 5F, 5F, 100F);
-            this.xrTableCell14.StylePriority.UseBorders = false;
             this.xrTableCell14.StylePriority.UseTextAlignment = false;
             this.xrTableCell14.Text = "xrTableCell14";
             this.xrTableCell14.TextAlignment = DevExpress.XtraPrinting.TextAlignment.MiddleLeft;
@@ -293,7 +282,8 @@ namespace Ettad.ReportManagement.Service.Reports.Templates
             // 
             // xrTableCell15
             // 
-            this.xrTableCell15.Borders = ((DevExpress.XtraPrinting.BorderSide)(((DevExpress.XtraPrinting.BorderSide.Left | DevExpress.XtraPrinting.BorderSide.Right) 
+            this.xrTableCell15.Borders = ((DevExpress.XtraPrinting.BorderSide)((((DevExpress.XtraPrinting.BorderSide.Left | DevExpress.XtraPrinting.BorderSide.Top) 
+            | DevExpress.XtraPrinting.BorderSide.Right) 
             | DevExpress.XtraPrinting.BorderSide.Bottom)));
             this.xrTableCell15.BorderWidth = 1F;
             this.xrTableCell15.ExpressionBindings.AddRange(new DevExpress.XtraReports.UI.ExpressionBinding[] {
@@ -301,7 +291,6 @@ namespace Ettad.ReportManagement.Service.Reports.Templates
             this.xrTableCell15.Multiline = true;
             this.xrTableCell15.Name = "xrTableCell15";
             this.xrTableCell15.Padding = new DevExpress.XtraPrinting.PaddingInfo(5F, 5F, 5F, 5F, 100F);
-            this.xrTableCell15.StylePriority.UseBorders = false;
             this.xrTableCell15.StylePriority.UseTextAlignment = false;
             this.xrTableCell15.Text = "xrTableCell15";
             this.xrTableCell15.TextAlignment = DevExpress.XtraPrinting.TextAlignment.MiddleLeft;
@@ -309,7 +298,8 @@ namespace Ettad.ReportManagement.Service.Reports.Templates
             // 
             // xrTableCell16
             // 
-            this.xrTableCell16.Borders = ((DevExpress.XtraPrinting.BorderSide)(((DevExpress.XtraPrinting.BorderSide.Left | DevExpress.XtraPrinting.BorderSide.Right) 
+            this.xrTableCell16.Borders = ((DevExpress.XtraPrinting.BorderSide)((((DevExpress.XtraPrinting.BorderSide.Left | DevExpress.XtraPrinting.BorderSide.Top) 
+            | DevExpress.XtraPrinting.BorderSide.Right) 
             | DevExpress.XtraPrinting.BorderSide.Bottom)));
             this.xrTableCell16.BorderWidth = 1F;
             this.xrTableCell16.ExpressionBindings.AddRange(new DevExpress.XtraReports.UI.ExpressionBinding[] {
@@ -317,7 +307,6 @@ namespace Ettad.ReportManagement.Service.Reports.Templates
             this.xrTableCell16.Multiline = true;
             this.xrTableCell16.Name = "xrTableCell16";
             this.xrTableCell16.Padding = new DevExpress.XtraPrinting.PaddingInfo(5F, 5F, 5F, 5F, 100F);
-            this.xrTableCell16.StylePriority.UseBorders = false;
             this.xrTableCell16.StylePriority.UseTextAlignment = false;
             this.xrTableCell16.Text = "xrTableCell16";
             this.xrTableCell16.TextAlignment = DevExpress.XtraPrinting.TextAlignment.MiddleLeft;
@@ -325,7 +314,8 @@ namespace Ettad.ReportManagement.Service.Reports.Templates
             // 
             // xrTableCell18
             // 
-            this.xrTableCell18.Borders = ((DevExpress.XtraPrinting.BorderSide)(((DevExpress.XtraPrinting.BorderSide.Left | DevExpress.XtraPrinting.BorderSide.Right) 
+            this.xrTableCell18.Borders = ((DevExpress.XtraPrinting.BorderSide)((((DevExpress.XtraPrinting.BorderSide.Left | DevExpress.XtraPrinting.BorderSide.Top) 
+            | DevExpress.XtraPrinting.BorderSide.Right) 
             | DevExpress.XtraPrinting.BorderSide.Bottom)));
             this.xrTableCell18.BorderWidth = 1F;
             this.xrTableCell18.ExpressionBindings.AddRange(new DevExpress.XtraReports.UI.ExpressionBinding[] {
@@ -333,11 +323,10 @@ namespace Ettad.ReportManagement.Service.Reports.Templates
             this.xrTableCell18.Multiline = true;
             this.xrTableCell18.Name = "xrTableCell18";
             this.xrTableCell18.Padding = new DevExpress.XtraPrinting.PaddingInfo(5F, 5F, 5F, 5F, 100F);
-            this.xrTableCell18.StylePriority.UseBorders = false;
             this.xrTableCell18.StylePriority.UseTextAlignment = false;
             this.xrTableCell18.Text = "xrTableCell18";
             this.xrTableCell18.TextAlignment = DevExpress.XtraPrinting.TextAlignment.MiddleLeft;
-            this.xrTableCell18.Weight = 0.80556566861706069D;
+            this.xrTableCell18.Weight = 1.0657741848851312D;
             // 
             // bottomMarginBand1
             // 
@@ -415,12 +404,12 @@ namespace Ettad.ReportManagement.Service.Reports.Templates
             | DevExpress.XtraPrinting.BorderSide.Bottom)));
             this.xrTable2.BorderWidth = 1F;
             this.xrTable2.Font = new DevExpress.Drawing.DXFont("Segoe UI", 10F, DevExpress.Drawing.DXFontStyle.Bold);
-            this.xrTable2.LocationFloat = new DevExpress.Utils.PointFloat(0.833457F, 0F);
+            this.xrTable2.LocationFloat = new DevExpress.Utils.PointFloat(0.6944497F, 0F);
             this.xrTable2.Name = "xrTable2";
             this.xrTable2.Padding = new DevExpress.XtraPrinting.PaddingInfo(5F, 5F, 5F, 5F, 100F);
             this.xrTable2.Rows.AddRange(new DevExpress.XtraReports.UI.XRTableRow[] {
             this.xrTableRow2});
-            this.xrTable2.SizeF = new System.Drawing.SizeF(807.1666F, 30F);
+            this.xrTable2.SizeF = new System.Drawing.SizeF(830.3056F, 30F);
             this.xrTable2.StylePriority.UseFont = false;
             // 
             // xrTableRow2
@@ -454,7 +443,7 @@ namespace Ettad.ReportManagement.Service.Reports.Templates
             this.xrTableCellSrNoHeader.StylePriority.UseTextAlignment = false;
             this.xrTableCellSrNoHeader.Text = "Sr #";
             this.xrTableCellSrNoHeader.TextAlignment = DevExpress.XtraPrinting.TextAlignment.MiddleLeft;
-            this.xrTableCellSrNoHeader.Weight = 0.39064302420941605D;
+            this.xrTableCellSrNoHeader.Weight = 0.392215676375054D;
             // 
             // xrTableCell3
             // 
@@ -595,7 +584,7 @@ namespace Ettad.ReportManagement.Service.Reports.Templates
             this.xrTableCell13.StylePriority.UseTextAlignment = false;
             this.xrTableCell13.Text = "Attempt Time";
             this.xrTableCell13.TextAlignment = DevExpress.XtraPrinting.TextAlignment.MiddleLeft;
-            this.xrTableCell13.Weight = 0.805565117413607D;
+            this.xrTableCell13.Weight = 1.0657742156850327D;
             // 
             // PageFooter
             // 
@@ -624,11 +613,11 @@ namespace Ettad.ReportManagement.Service.Reports.Templates
             new DevExpress.XtraReports.UI.ExpressionBinding("BeforePrint", "Text", "Iif(?Language == \'ar\', \'سري - للاستخدام الداخلي فقط\', \'Confidential – For interna" +
                     "l use only\')")});
             this.xrLabel6.Font = new DevExpress.Drawing.DXFont("Segoe UI", 8F, DevExpress.Drawing.DXFontStyle.Italic);
-            this.xrLabel6.LocationFloat = new DevExpress.Utils.PointFloat(96.80549F, 0F);
+            this.xrLabel6.LocationFloat = new DevExpress.Utils.PointFloat(96.80557F, 0F);
             this.xrLabel6.Multiline = true;
             this.xrLabel6.Name = "xrLabel6";
             this.xrLabel6.Padding = new DevExpress.XtraPrinting.PaddingInfo(2F, 2F, 0F, 0F, 100F);
-            this.xrLabel6.SizeF = new System.Drawing.SizeF(584.605F, 18F);
+            this.xrLabel6.SizeF = new System.Drawing.SizeF(573.4939F, 18F);
             this.xrLabel6.StylePriority.UseFont = false;
             this.xrLabel6.StylePriority.UseTextAlignment = false;
             this.xrLabel6.Text = "Confidential – For internal use only";
@@ -639,10 +628,10 @@ namespace Ettad.ReportManagement.Service.Reports.Templates
             this.xrPageInfo.ExpressionBindings.AddRange(new DevExpress.XtraReports.UI.ExpressionBinding[] {
             new DevExpress.XtraReports.UI.ExpressionBinding("BeforePrint", "TextFormatString", "Iif(?Language == \'ar\', \'???? {0} ?? {1}\', \'Page {0} of {1}\')")});
             this.xrPageInfo.Font = new DevExpress.Drawing.DXFont("Segoe UI", 8F);
-            this.xrPageInfo.LocationFloat = new DevExpress.Utils.PointFloat(681.4104F, 0F);
+            this.xrPageInfo.LocationFloat = new DevExpress.Utils.PointFloat(670.2996F, 0F);
             this.xrPageInfo.Name = "xrPageInfo";
             this.xrPageInfo.Padding = new DevExpress.XtraPrinting.PaddingInfo(2F, 2F, 0F, 0F, 100F);
-            this.xrPageInfo.SizeF = new System.Drawing.SizeF(126.5894F, 18F);
+            this.xrPageInfo.SizeF = new System.Drawing.SizeF(120.7004F, 18F);
             this.xrPageInfo.TextAlignment = DevExpress.XtraPrinting.TextAlignment.MiddleRight;
             this.xrPageInfo.TextFormatString = "Page {0} of {1}";
             // 
@@ -661,7 +650,7 @@ namespace Ettad.ReportManagement.Service.Reports.Templates
             this.xrLabelReportFooter.LocationFloat = new DevExpress.Utils.PointFloat(0F, 0F);
             this.xrLabelReportFooter.Name = "xrLabelReportFooter";
             this.xrLabelReportFooter.Padding = new DevExpress.XtraPrinting.PaddingInfo(2F, 2F, 0F, 0F, 100F);
-            this.xrLabelReportFooter.SizeF = new System.Drawing.SizeF(808F, 68.69444F);
+            this.xrLabelReportFooter.SizeF = new System.Drawing.SizeF(791F, 68.69444F);
             this.xrLabelReportFooter.Text = "End of Report";
             this.xrLabelReportFooter.TextAlignment = DevExpress.XtraPrinting.TextAlignment.MiddleCenter;
             // 
@@ -673,6 +662,11 @@ namespace Ettad.ReportManagement.Service.Reports.Templates
             staticListLookUpSettings1.LookUpValues.Add(new DevExpress.XtraReports.Parameters.LookUpValue("en", "English"));
             staticListLookUpSettings1.LookUpValues.Add(new DevExpress.XtraReports.Parameters.LookUpValue("ar", "Arabic"));
             this.Language.ValueSourceSettings = staticListLookUpSettings1;
+            // 
+            // GroupFooter1
+            // 
+            this.GroupFooter1.HeightF = 31.66661F;
+            this.GroupFooter1.Name = "GroupFooter1";
             // 
             // LoginTypeValue
             // 
@@ -713,7 +707,8 @@ namespace Ettad.ReportManagement.Service.Reports.Templates
             this.ReportHeader,
             this.PageHeader,
             this.PageFooter,
-            this.ReportFooter});
+            this.ReportFooter,
+            this.GroupFooter1});
             this.CalculatedFields.AddRange(new DevExpress.XtraReports.UI.CalculatedField[] {
             this.LoginTypeValue,
             this.IsSuccessfulValue,
@@ -724,7 +719,7 @@ namespace Ettad.ReportManagement.Service.Reports.Templates
             this.LoginDataSource});
             this.DataMember = "Query";
             this.DataSource = this.LoginDataSource;
-            this.Margins = new DevExpress.Drawing.DXMargins(23F, 19F, 35.41667F, 38.19444F);
+            this.Margins = new DevExpress.Drawing.DXMargins(15F, 4F, 35.41667F, 38.19444F);
             this.ParameterPanelLayoutItems.AddRange(new DevExpress.XtraReports.Parameters.ParameterPanelLayoutItem[] {
             new DevExpress.XtraReports.Parameters.ParameterLayoutItem(this.Language, DevExpress.XtraReports.Parameters.Orientation.Horizontal)});
             this.Parameters.AddRange(new DevExpress.XtraReports.Parameters.Parameter[] {
