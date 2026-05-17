@@ -31,6 +31,10 @@ namespace Ettad.CrossCutting.Comman.Utilities
         [Category(PlainPermissionsGenerator.SystemFeatures)]
         StockNotificationSettingsPage,
 
+        /// <summary>Settings: workflow steps that notify the requester when order line quantity changes.</summary>
+        [Category(PlainPermissionsGenerator.SystemFeatures)]
+        RequesterQtyChangeNotificationSettingsPage,
+
         /// <summary>Admin dashboard: view all delegations, history, and delegation system settings.</summary>
         [Category(PlainPermissionsGenerator.SystemFeatures)]
         DelegationManagement,

@@ -25,7 +25,7 @@ namespace Ettad.Workflows.API.Controllers
         /// <summary>Configured workflow step IDs for the given workflow (requester notification when that step is approved).</summary>
         [HttpGet("workflow/{workflowId:long}")]
         [ProducesResponseType(typeof(APIOperationResponse<List<long>>), (int)HttpStatusCode.OK)]
-        [CheckAuthorize("Permissions.Workflow.View", "Permissions.Workflow.Page")]
+        [CheckAuthorize("RequesterQtyChangeNotificationSettingsPage")]
         public async Task<IActionResult> GetConfiguredStepIdsForWorkflow(long workflowId)
         {
             var ids = await _mediator.Send(new GetWorkflowStepRequesterQtyNotificationsQuery(workflowId));
@@ -36,7 +36,7 @@ namespace Ettad.Workflows.API.Controllers
         /// <summary>Replace configured workflow step IDs for one workflow (deletes existing rows for that workflow, then inserts the new set).</summary>
         [HttpPut]
         [ProducesResponseType(typeof(APIOperationResponse<bool>), (int)HttpStatusCode.OK)]
-        [CheckAuthorize("Permissions.Workflow.Edit")]
+        [CheckAuthorize("RequesterQtyChangeNotificationSettingsPage")]
         public async Task<IActionResult> Replace([FromBody] ReplaceWorkflowStepRequesterQtyNotificationsDto dto)
         {
             var result = await _mediator.Send(new ReplaceWorkflowStepRequesterQtyNotificationsCommand(dto));

@@ -53,6 +53,7 @@ namespace Ettad.User.Services.Services
             "Permissions.LdapSettings.View",
             "AdminImportExport",
             "StockNotificationSettingsPage",
+            "RequesterQtyChangeNotificationSettingsPage",
             "DelegationManagement",
             "Permissions.Workflow.Page", 
             "Permissions.Workflow.View", 

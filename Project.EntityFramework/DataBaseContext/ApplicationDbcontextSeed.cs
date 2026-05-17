@@ -174,6 +174,7 @@ namespace Ettad.EntityFramework.DataBaseContext
 
                     // Stock Notification Settings
                     "StockNotificationSettingsPage",
+                    "RequesterQtyChangeNotificationSettingsPage",
 
                     // Workflows (CRUD)
                     "Permissions.Workflow.Page", 
