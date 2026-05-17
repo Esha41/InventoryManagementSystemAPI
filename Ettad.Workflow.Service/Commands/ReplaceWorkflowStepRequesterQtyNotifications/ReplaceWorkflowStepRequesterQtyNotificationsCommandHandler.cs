@@ -53,74 +53,68 @@ namespace Ettad.Workflows.Service.Commands.ReplaceWorkflowStepRequesterQtyNotifi
                 return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, "Workflow not found");
             }
 
-            if (distinctIds.Count == 0)
+            if (distinctIds.Count > 0)
             {
-                await using var txEmpty = await _context.Database.BeginTransactionAsync(cancellationToken);
-                try
-                {
-                    var existingForWorkflow = await _context.WorkflowStepRequesterQuantityNotifications
-                        .Where(x => x.WorkflowId == dto.WorkflowId)
-                        .ToListAsync(cancellationToken);
-                    _context.WorkflowStepRequesterQuantityNotifications.RemoveRange(existingForWorkflow);
-                    await _context.SaveChangesAsync(cancellationToken);
-                    await txEmpty.CommitAsync(cancellationToken);
-                    _logger.LogInformation("Cleared requester quantity notification steps for workflow {WorkflowId}", dto.WorkflowId);
-                    return APIOperationResponse<bool>.Success(true, null);
-                }
-                catch (Exception ex)
-                {
-                    await txEmpty.RollbackAsync(cancellationToken);
-                    _logger.LogError(ex, "Failed to clear requester quantity notification configuration");
-                    return APIOperationResponse<bool>.Fail(ResponseType.InternalServerError, ex.Message);
-                }
-            }
+                var validStepIds = await _context.WorkflowSteps
+                    .AsNoTracking()
+                    .Where(s => distinctIds.Contains(s.Id) && s.WorkflowId == dto.WorkflowId)
+                    .Select(s => s.Id)
+                    .ToListAsync(cancellationToken);
 
-            var validStepIds = await _context.WorkflowSteps
-                .AsNoTracking()
-                .Where(s => distinctIds.Contains(s.Id) && s.WorkflowId == dto.WorkflowId)
-                .Select(s => s.Id)
-                .ToListAsync(cancellationToken);
-
-            if (validStepIds.Count != distinctIds.Count)
-            {
-                var missing = distinctIds.Except(validStepIds).ToList();
-                _logger.LogWarning(
-                    "Replace requester qty notification config: invalid or foreign step ids for workflow {WorkflowId}: {Missing}",
-                    dto.WorkflowId,
-                    missing);
-                return APIOperationResponse<bool>.Fail(ResponseType.BadRequest,
-                    "One or more workflow step IDs are invalid or do not belong to this workflow");
+                if (validStepIds.Count != distinctIds.Count)
+                {
+                    var missing = distinctIds.Except(validStepIds).ToList();
+                    _logger.LogWarning(
+                        "Replace requester qty notification config: invalid or foreign step ids for workflow {WorkflowId}: {Missing}",
+                        dto.WorkflowId,
+                        missing);
+                    return APIOperationResponse<bool>.Fail(ResponseType.BadRequest,
+                        "One or more workflow step IDs are invalid or do not belong to this workflow");
+                }
             }
 
             await using var tx = await _context.Database.BeginTransactionAsync(cancellationToken);
             try
             {
-                var rows = await _context.WorkflowStepRequesterQuantityNotifications
+                var existingForWorkflow = await _context.WorkflowStepRequesterQuantityNotifications
                     .Where(x => x.WorkflowId == dto.WorkflowId)
                     .ToListAsync(cancellationToken);
-                _context.WorkflowStepRequesterQuantityNotifications.RemoveRange(rows);
+                _context.WorkflowStepRequesterQuantityNotifications.RemoveRange(existingForWorkflow);
 
-                var now = _dateTimeProvider.Now;
-                var userId = _currentUserService.UserId ?? "System";
-
-                foreach (var stepId in distinctIds.OrderBy(x => x))
+                if (distinctIds.Count > 0)
                 {
-                    _context.WorkflowStepRequesterQuantityNotifications.Add(new WorkflowStepRequesterQuantityNotification
+                    var now = _dateTimeProvider.Now;
+                    var userId = _currentUserService.UserId ?? "System";
+
+                    foreach (var stepId in distinctIds.OrderBy(x => x))
                     {
-                        WorkflowId = dto.WorkflowId,
-                        WorkflowStepId = stepId,
-                        CreationDate = now,
-                        CreatedBy = userId
-                    });
+                        _context.WorkflowStepRequesterQuantityNotifications.Add(new WorkflowStepRequesterQuantityNotification
+                        {
+                            WorkflowId = dto.WorkflowId,
+                            WorkflowStepId = stepId,
+                            CreationDate = now,
+                            CreatedBy = userId
+                        });
+                    }
                 }
 
                 await _context.SaveChangesAsync(cancellationToken);
                 await tx.CommitAsync(cancellationToken);
 
-                _logger.LogInformation(
-                    "Replaced requester quantity notification steps for workflow {WorkflowId}; count {Count}",
-                    dto.WorkflowId,
-                    distinctIds.Count);
+                if (distinctIds.Count == 0)
+                {
+                    _logger.LogInformation(
+                        "Cleared requester quantity notification steps for workflow {WorkflowId}",
+                        dto.WorkflowId);
+                }
+                else
+                {
+                    _logger.LogInformation(
+                        "Replaced requester quantity notification steps for workflow {WorkflowId}; count {Count}",
+                        dto.WorkflowId,
+                        distinctIds.Count);
+                }
+
                 return APIOperationResponse<bool>.Success(true, null);
             }
             catch (Exception ex)
