@@ -139,20 +139,14 @@ namespace Ettad.Modules.FileUpload.API.Services
             var details = await _detailsRepository.FindAsync(
                 d => d.Entity == entity && d.EntityId == entityId,
                 false,
-                nameof(FileUplodDetails.FileUplodMaster));
+                nameof(FileUplodDetails.FileUplodMaster),
+                nameof(FileUplodDetails.AttachmentRequirement));
 
             var result = details
                 .Where(d => d.FileUplodMaster != null)
-                .Select(d => new FileUploadDto
-                {
-                    Id = d.FileUplodMasterId,
-                    FileUrl = d.FileUplodMaster.FileUrl,
-                    FileName = d.FileUplodMaster.FileName,
-                    OriginalName = d.FileUplodMaster.OriginalName,
-                    IsMain = d.FileUplodMaster.IsMain,
-                    Entity = d.Entity,
-                    EntityId = d.EntityId
-                })
+                .Select(MapDetailToDto)
+                .Where(dto => dto != null)
+                .Cast<FileUploadDto>()
                 .ToList();
 
             return APIOperationResponse<List<FileUploadDto>>.Success(result);
@@ -172,24 +166,18 @@ namespace Ettad.Modules.FileUpload.API.Services
             var details = await _detailsRepository.FindAsync(
                 d => d.Entity == entity && entityIds.Contains(d.EntityId),
                 false,
-                nameof(FileUplodDetails.FileUplodMaster));
+                nameof(FileUplodDetails.FileUplodMaster),
+                nameof(FileUplodDetails.AttachmentRequirement));
 
             var result = details
                 .Where(d => d.FileUplodMaster != null)
                 .GroupBy(d => d.EntityId)
                 .ToDictionary(
                     g => g.Key,
-                    g => g.Select(d => new FileUploadDto
-                    {
-                        Id = d.FileUplodMasterId,
-                        FileUrl = d.FileUplodMaster.FileUrl,
-                        FileName = d.FileUplodMaster.FileName,
-                        OriginalName = d.FileUplodMaster.OriginalName,
-                        IsMain = d.FileUplodMaster.IsMain,
-                        Entity = d.Entity,
-                        EntityId = d.EntityId
-                    }).ToList()
-                );
+                    g => g.Select(MapDetailToDto!)
+                        .Where(dto => dto != null)
+                        .Cast<FileUploadDto>()
+                        .ToList());
 
             // Ensure all entityIds are in the dictionary (even if they have no files)
             foreach (var entityId in entityIds)
@@ -205,24 +193,16 @@ namespace Ettad.Modules.FileUpload.API.Services
 
         public async Task<APIOperationResponse<FileUploadDto>> GetByIdAsync(long id)
         {
-            var master = await _masterRepository.FindOneAsync(m => m.Id == id, false, nameof(FileUplodMaster.Details));
+            var detailsPath = nameof(FileUplodMaster.Details);
+            var nestedAr = $"{detailsPath}.{nameof(FileUplodDetails.AttachmentRequirement)}";
+            var master = await _masterRepository.FindOneAsync(m => m.Id == id, false, detailsPath, nestedAr);
             if (master == null)
             {
                 return APIOperationResponse<FileUploadDto>.NotFound("File not found");
             }
 
             var detail = master.Details.FirstOrDefault();
-
-            var dto = new FileUploadDto
-            {
-                Id = master.Id,
-                FileUrl = master.FileUrl,
-                FileName = master.FileName,
-                OriginalName = master.OriginalName,
-                IsMain = master.IsMain,
-                Entity = detail?.Entity ?? default,
-                EntityId = detail?.EntityId ?? 0
-            };
+            var dto = MapDetailToDto(detail, master);
 
             return APIOperationResponse<FileUploadDto>.Success(dto);
         }
@@ -292,6 +272,33 @@ namespace Ettad.Modules.FileUpload.API.Services
             }
 
             return APIOperationResponse<bool>.Success(true, "Main file updated successfully");
+        }
+
+        /// <summary>Maps a file detail row (+ master) into API DTO including optional attachment-slot metadata.</summary>
+        private static FileUploadDto? MapDetailToDto(FileUplodDetails d)
+        {
+            if (d.FileUplodMaster == null)
+                return null;
+            return MapDetailToDto(d, d.FileUplodMaster);
+        }
+
+        private static FileUploadDto MapDetailToDto(FileUplodDetails? d, FileUplodMaster master)
+        {
+            var file = d?.FileUplodMaster ?? master;
+            var ar = d?.AttachmentRequirement;
+            return new FileUploadDto
+            {
+                Id = file.Id,
+                FileUrl = file.FileUrl,
+                FileName = file.FileName,
+                OriginalName = file.OriginalName,
+                IsMain = file.IsMain,
+                Entity = d?.Entity ?? default,
+                EntityId = d?.EntityId ?? 0,
+                AttachmentRequirementId = d?.AttachmentRequirementId,
+                AttachmentRequirementNameEn = ar?.NameEn,
+                AttachmentRequirementNameAr = ar?.NameAr
+            };
         }
     }
 }
