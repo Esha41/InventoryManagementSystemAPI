@@ -1398,7 +1398,7 @@ namespace Ettad.Inventory.Service.Assets.Implementation
 
                         if (string.IsNullOrWhiteSpace(row.BatchNumber))
                         {
-                            rowErrors.Add("Batch number is required");
+                            rowErrors.Add("Policy number is required");
                         }
 
                         if (rowErrors.Any())
@@ -1634,7 +1634,7 @@ namespace Ettad.Inventory.Service.Assets.Implementation
 
                     if (string.IsNullOrWhiteSpace(row.BatchNumber))
                     {
-                        rowErrors.Add("Batch number is required");
+                        rowErrors.Add("Policy number is required");
                     }
 
                     if (rowErrors.Any())
@@ -1754,13 +1754,13 @@ namespace Ettad.Inventory.Service.Assets.Implementation
                 var headers = isAr
                     ? new[]
                     {
-                        "اسم الصنف", "رقم الدفعة", "رقم التسلسل", "RFID", "الحالة التشغيلية",
+                        "اسم الصنف", "رقم البوليصة", "رقم التسلسل", "RFID", "الحالة التشغيلية",
                         "تاريخ الشراء", "تاريخ انتهاء الضمان", "سعر الشراء", "إيصال التسليم", "ملاحظات",
                         "وضع التعيين", "القسم", "الموظف", "ملاحظات التخصيص"
                     }
                     : new[]
                     {
-                        "Item Name", "Batch Number", "Serial Number", "RFID", "Status",
+                        "Item Name", "Policy number", "Serial Number", "RFID", "Status",
                         "Purchase Date", "Warranty Expiry Date", "Purchase Price", "Delivery Receipt", "Notes",
                         "Assignment Mode", "Department", "Employee", "Assignment Notes"
                     };
@@ -1875,7 +1875,8 @@ namespace Ettad.Inventory.Service.Assets.Implementation
                 { "Item Name", nameof(AssetImportDto.ItemName) },
                 { "Item No", nameof(AssetImportDto.ItemNo) },
                 { "Item ID", nameof(AssetImportDto.ItemId) },
-                { "Batch Number", nameof(AssetImportDto.BatchNumber) },
+                { "Policy number", nameof(AssetImportDto.BatchNumber) },
+                { "Batch Number", nameof(AssetImportDto.BatchNumber) }, // legacy template header
                 { "Serial Number", nameof(AssetImportDto.SerialNumber) },
                 { "RFID", nameof(AssetImportDto.RFID) },
                 { "Purchase Date", nameof(AssetImportDto.PurchaseDate) },
@@ -1890,7 +1891,8 @@ namespace Ettad.Inventory.Service.Assets.Implementation
                 { "اسم الصنف", nameof(AssetImportDto.ItemName) },
                 { "رقم الصنف", nameof(AssetImportDto.ItemNo) },
                 { "رقم التعريف", nameof(AssetImportDto.ItemId) },
-                { "رقم الدفعة", nameof(AssetImportDto.BatchNumber) },
+                { "رقم البوليصة", nameof(AssetImportDto.BatchNumber) },
+                { "رقم الدفعة", nameof(AssetImportDto.BatchNumber) }, // legacy template header
                 { "رقم التسلسل", nameof(AssetImportDto.SerialNumber) },
                 { "RFID*", nameof(AssetImportDto.RFID) }, // Sometimes templates have RFID in English even in Arabic template
                 { "تاريخ الشراء", nameof(AssetImportDto.PurchaseDate) },
