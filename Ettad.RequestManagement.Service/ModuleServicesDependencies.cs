@@ -43,6 +43,7 @@ namespace Ettad.RequestManagement.Service
             services.AddScoped<IWorkflowSupplySummaryService, WorkflowSupplySummaryService>();
             services.AddScoped<IRequestService, RequestService>();
             services.AddScoped<IOrderItemTrackingService, OrderItemTrackingService>();
+            services.AddScoped<IAttachmentRequirementUploadValidationService, AttachmentRequirementUploadValidationService>();
 
             return services;
         }

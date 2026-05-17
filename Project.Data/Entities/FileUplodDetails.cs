@@ -20,9 +20,17 @@ namespace Ettad.Data.Entities
         /// </summary>
         public long EntityId { get; set; }
 
+        /// <summary>
+        /// Optional link to the <see cref="AttachmentRequirement"/> slot this file fulfills.
+        /// Null for entity-only / legacy "other" files that are not bound to a requirement.
+        /// </summary>
+        public long? AttachmentRequirementId { get; set; }
+
         #region Navigation Properties
 
         public FileUplodMaster FileUplodMaster { get; set; }
+
+        public AttachmentRequirement AttachmentRequirement { get; set; }
 
         #endregion
     }

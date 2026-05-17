@@ -54,6 +54,7 @@ namespace Ettad.RequestManagement.Service.Orders
         private readonly IWorkflowStartNotificationService _workflowStartNotificationService;
         private readonly IOrderPriorityService _orderPriorityService;
         private readonly IRequestItemWeaponAssociationEnrichmentService _weaponAssociationEnrichmentService;
+        private readonly IAttachmentRequirementUploadValidationService _attachmentRequirementUploadValidationService;
 
         public OrderService(
             ICrossCuttingRepository<Order> orderRepository,
@@ -80,7 +81,8 @@ namespace Ettad.RequestManagement.Service.Orders
             ITransactionManager transactionManager,
             IWorkflowStartNotificationService workflowStartNotificationService,
             IOrderPriorityService orderPriorityService,
-            IRequestItemWeaponAssociationEnrichmentService weaponAssociationEnrichmentService)
+            IRequestItemWeaponAssociationEnrichmentService weaponAssociationEnrichmentService,
+            IAttachmentRequirementUploadValidationService attachmentRequirementUploadValidationService)
         {
             _orderRepository = orderRepository;
             _requestItemRepository = requestItemRepository;
@@ -107,6 +109,7 @@ namespace Ettad.RequestManagement.Service.Orders
             _workflowStartNotificationService = workflowStartNotificationService;
             _orderPriorityService = orderPriorityService;
             _weaponAssociationEnrichmentService = weaponAssociationEnrichmentService;
+            _attachmentRequirementUploadValidationService = attachmentRequirementUploadValidationService;
         }
 
         public async Task<APIOperationResponse<OrderDto>> GetByIdAsync(long id)
@@ -188,12 +191,18 @@ namespace Ettad.RequestManagement.Service.Orders
             }
         }
 
-        public async Task<APIOperationResponse<long>> CreateAsync(CreateOrderDto inputDto)
+        public Task<APIOperationResponse<long>> CreateAsync(CreateOrderDto inputDto, List<IFormFile>? otherFiles = null)
         {
-            return await CreateAsync(inputDto, null);
+            return CreateAsync(
+                inputDto,
+                new Dictionary<long, IReadOnlyList<IFormFile>>(),
+                otherFiles);
         }
 
-        public async Task<APIOperationResponse<long>> CreateAsync(CreateOrderDto inputDto, List<IFormFile> files)
+        public async Task<APIOperationResponse<long>> CreateAsync(
+            CreateOrderDto inputDto,
+            IReadOnlyDictionary<long, IReadOnlyList<IFormFile>> filesByAttachmentRequirementId,
+            List<IFormFile>? otherFiles = null)
         {
             var currentUserId = _currentUserService.UserId;
             var departmentId = _currentUserService.DepartmentId;
@@ -205,9 +214,17 @@ namespace Ettad.RequestManagement.Service.Orders
                     "Department not found for current user. Cannot create order.");
             }
 
-            _logger.LogInformation("Creating new order. DepartmentId: {DepartmentId}, IsFromAllowance: {IsFromAllowance}, User: {UserId}, HasFiles: {HasFiles}",
-                departmentId.Value, inputDto.IsFromAllowance, currentUserId, files != null && files.Count > 0);
-            
+            filesByAttachmentRequirementId ??= new Dictionary<long, IReadOnlyList<IFormFile>>();
+
+            var slotFileCount = filesByAttachmentRequirementId
+                .Sum(kvp => (kvp.Value ?? Array.Empty<IFormFile>()).Count(f => f != null && f.Length > 0));
+            var otherFileCount = (otherFiles ?? new List<IFormFile>())
+                .Count(f => f != null && f.Length > 0);
+
+            _logger.LogInformation(
+                "Creating new order. DepartmentId: {DepartmentId}, IsFromAllowance: {IsFromAllowance}, User: {UserId}, SlotFileCount: {SlotFileCount}, OtherFileCount: {OtherFileCount}",
+                departmentId.Value, inputDto.IsFromAllowance, currentUserId, slotFileCount, otherFileCount);
+
             try
             {
                 // Validate input
@@ -220,10 +237,20 @@ namespace Ettad.RequestManagement.Service.Orders
                     return APIOperationResponse<long>.Fail(ResponseType.BadRequest, errors);
                 }
 
-                // Validate that at least one file is provided
-                if (files == null || !files.Any() || files.All(f => f == null || f.Length == 0))
+                // Validate AttachmentRequirement slots (centralized: required, min, max, unknown keys).
+                // otherFiles is optional, no generic "at least one file" rule.
+                var attachmentValidation = await _attachmentRequirementUploadValidationService.ValidateAsync(
+                    inputDto.RequestPurposeId,
+                    filesByAttachmentRequirementId,
+                    otherFiles);
+
+                if (!attachmentValidation.Succeeded)
                 {
-                    return APIOperationResponse<long>.Fail(ResponseType.BadRequest, "At least one file attachment is required.");
+                    _logger.LogWarning(
+                        "Attachment requirement validation failed. RequestPurposeId: {RequestPurposeId}, Errors: {Errors}, User: {UserId}",
+                        inputDto.RequestPurposeId, attachmentValidation.Message, currentUserId);
+                    return APIOperationResponse<long>.Fail(ResponseType.BadRequest,
+                        attachmentValidation.Message ?? "Attachment validation failed.");
                 }
 
                 // Ensure request purpose is for orders
@@ -339,11 +366,41 @@ namespace Ettad.RequestManagement.Service.Orders
                 Order createdOrder;
                 try
                 {
-                    // Save files inside the same DB transaction as order + workflow so FileUplodMaster rows roll back on failure.
-                    List<long> savedFileMasterIds = null;
-                    if (files != null && files.Count > 0)
+                    // Flatten the per-requirement map plus otherFiles into a single ordered upload list.
+                    // The parallel attachmentRequirementIds list tracks which AttachmentRequirementId
+                    // (or null for otherFiles) corresponds to each saved master id by position.
+                    var flatFiles = new List<IFormFile>();
+                    var attachmentRequirementIds = new List<long?>();
+
+                    foreach (var kvp in filesByAttachmentRequirementId)
                     {
-                        var saveFilesResult = await _fileUploadService.SaveFilesAsync(files, FileEntityType.Order);
+                        foreach (var file in kvp.Value ?? Array.Empty<IFormFile>())
+                        {
+                            if (file == null || file.Length == 0)
+                                continue;
+
+                            flatFiles.Add(file);
+                            attachmentRequirementIds.Add(kvp.Key);
+                        }
+                    }
+
+                    if (otherFiles != null)
+                    {
+                        foreach (var file in otherFiles)
+                        {
+                            if (file == null || file.Length == 0)
+                                continue;
+
+                            flatFiles.Add(file);
+                            attachmentRequirementIds.Add(null);
+                        }
+                    }
+
+                    // Save files inside the same DB transaction as order + workflow so FileUplodMaster rows roll back on failure.
+                    List<long>? savedFileMasterIds = null;
+                    if (flatFiles.Count > 0)
+                    {
+                        var saveFilesResult = await _fileUploadService.SaveFilesAsync(flatFiles, FileEntityType.Order);
                         if (!saveFilesResult.Succeeded || saveFilesResult.Data == null)
                         {
                             await _transactionManager.RollbackAsync();
@@ -355,7 +412,7 @@ namespace Ettad.RequestManagement.Service.Orders
 
                         savedFileMasterIds = saveFilesResult.Data;
                         _logger.LogInformation("Files saved during order transaction. FileCount: {FileCount}, MasterIds: {MasterIds}, User: {UserId}",
-                            files.Count, string.Join(", ", savedFileMasterIds), currentUserId);
+                            flatFiles.Count, string.Join(", ", savedFileMasterIds), currentUserId);
                     }
 
                     // Map DTO to entity (exclude RequestItems for now)
@@ -437,16 +494,21 @@ namespace Ettad.RequestManagement.Service.Orders
                         }
                     }
 
-                    // Step 4: Link files to the order (create FileUplodDetails records) if files were saved
+                    // Step 4: Link files to the order (create FileUplodDetails records) if files were saved.
+                    // AttachmentRequirementId is carried from the parallel attachmentRequirementIds list:
+                    // a slot-bound file gets its requirement id; an "otherFiles" file gets null.
                     if (savedFileMasterIds != null && savedFileMasterIds.Count > 0)
                     {
-                        foreach (var masterId in savedFileMasterIds)
+                        for (var i = 0; i < savedFileMasterIds.Count; i++)
                         {
                             var detail = new FileUplodDetails
                             {
-                                FileUplodMasterId = masterId,
+                                FileUplodMasterId = savedFileMasterIds[i],
                                 Entity = FileEntityType.Order,
-                                EntityId = createdOrder.Id
+                                EntityId = createdOrder.Id,
+                                AttachmentRequirementId = i < attachmentRequirementIds.Count
+                                    ? attachmentRequirementIds[i]
+                                    : null
                             };
 
                             await _fileDetailsRepository.AddAsync(detail);

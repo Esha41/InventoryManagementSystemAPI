@@ -1,5 +1,6 @@
 using Ettad.Application.Common.Interfaces;
 using Ettad.CrossCutting.Common.Security;
+using Ettad.RequestManagement.API.Models.Orders;
 using Ettad.RequestManagement.Service.Orders;
 using Ettad.RequestManagement.Service.Orders.Dto;
 using Ettad.ResponseHandler.Consts;
@@ -54,11 +55,13 @@ namespace Ettad.RequestManagement.API.Controllers
         }
 
         /// <summary>
-        /// Create a new order
+        /// Create a new order.
+        /// Files are submitted in two buckets:
+        /// - <paramref name="attachmentUploads"/> contains per-AttachmentRequirement groups
+        ///   (each item has an AttachmentRequirementId + one or more Files).
+        /// - <paramref name="otherFiles"/> is the optional entity-only bucket for files that
+        ///   are not bound to any requirement.
         /// </summary>
-        /// <param name="dto">Order creation data</param>
-        /// <param name="files">Optional list of files to attach to the workflow approval step</param>
-        /// <returns>Created order ID</returns>
         [HttpPost]
         [Consumes("multipart/form-data")]
         [ProducesResponseType(typeof(APIOperationResponse<long>), (int)HttpStatusCode.Created)]
@@ -66,13 +69,22 @@ namespace Ettad.RequestManagement.API.Controllers
         [CheckAuthorize("Permissions.Order.Create")]
         public async Task<IActionResult> Create(
             [FromForm] CreateOrderDto dto,
-            [FromForm] List<IFormFile>? files = null)
+            [FromForm] List<AttachmentUploadGroupDto>? attachmentUploads = null,
+            [FromForm] List<IFormFile>? otherFiles = null)
         {
             try
             {
-                var result = files != null && files.Count > 0
-                    ? await _orderService.CreateAsync(dto, files)
-                    : await _orderService.CreateAsync(dto);
+                var map = (attachmentUploads ?? new List<AttachmentUploadGroupDto>())
+                    .Where(g => g.AttachmentRequirementId > 0 && g.Files != null)
+                    .GroupBy(g => g.AttachmentRequirementId)
+                    .ToDictionary(
+                        grp => grp.Key,
+                        grp => (IReadOnlyList<IFormFile>)grp
+                            .SelectMany(g => g.Files ?? new List<IFormFile>())
+                            .Where(f => f != null && f.Length > 0)
+                            .ToList());
+
+                var result = await _orderService.CreateAsync(dto, map, otherFiles);
                 return ProcessResponse(result);
             }
             catch (Exception ex)

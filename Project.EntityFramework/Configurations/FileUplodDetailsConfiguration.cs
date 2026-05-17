@@ -19,6 +19,15 @@ namespace Ettad.EntityFramework.Configurations
             builder.Property(x => x.EntityId)
                 .HasColumnName("entityId")
                 .IsRequired();
+
+            builder.Property(x => x.AttachmentRequirementId)
+                .HasColumnName("AttachmentRequirementId")
+                .IsRequired(false);
+
+            builder.HasOne(x => x.AttachmentRequirement)
+                .WithMany()
+                .HasForeignKey(x => x.AttachmentRequirementId)
+                .OnDelete(DeleteBehavior.Restrict);
         }
     }
 }
