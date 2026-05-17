@@ -537,8 +537,8 @@ namespace Ettad.ReportManagement.Service.Services
                     },
                     new ReportTemplateDto
                     {
-                        Url = ReportConstants.PendingAuditorOrderReportTemplate,
-                        Name = "Pending Auditor Order Report",
+                        Url = ReportConstants.AuditorPendingApprovalsReportTemplate,
+                        Name = "Auditor Pending Approvals Report Template",
                         Description = "Shows approvals pending by auditors for more than 3 days."
                     }
                 };

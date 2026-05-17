@@ -142,7 +142,7 @@ namespace Ettad.ReportManagement.Service.Reports
                 urls[ReportConstants.UserReportTemplate] = "Users Report";
                 urls[ReportConstants.AssetsReportTemplate] = "Assets Template";
                 urls[ReportConstants.LoginAuditReportTemplate] = "Login Audit Report";
-                urls[ReportConstants.PendingAuditorOrderReportTemplate] = "Pending Auditor Order Report";
+                urls[ReportConstants.AuditorPendingApprovalsReportTemplate] = "Auditors Pending Approvals Request Report";
                 return urls;
             }
             catch (FaultException ex)

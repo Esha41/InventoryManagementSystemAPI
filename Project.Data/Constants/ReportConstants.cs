@@ -6,6 +6,6 @@ public static class ReportConstants
     public const string UserReportTemplate = "UsersReportTemplate";
     public const string AssetsReportTemplate = "AssetsReportTemplate";
     public const string LoginAuditReportTemplate = "LoginAuditReportTemplate";
-    public const string PendingAuditorOrderReportTemplate = "PendingAuditorOrderReportTemplate";
+    public const string AuditorPendingApprovalsReportTemplate = "AuditorPendingApprovalsReportTemplate";
 }
 

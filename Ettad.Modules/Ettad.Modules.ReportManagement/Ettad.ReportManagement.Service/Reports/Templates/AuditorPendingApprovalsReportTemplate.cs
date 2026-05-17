@@ -4,7 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Ettad.ReportManagement.Service.Reports.Templates
 {
-    public partial class PendingAuditorOrderReportTemplate : DevExpress.XtraReports.UI.XtraReport
+    public partial class AuditorPendingApprovalsReportTemplate : DevExpress.XtraReports.UI.XtraReport
     {
         private DevExpress.XtraReports.UI.TopMarginBand topMarginBand1;
         private DevExpress.XtraReports.UI.DetailBand detailBand1;
@@ -67,7 +67,7 @@ namespace Ettad.ReportManagement.Service.Reports.Templates
             }
         }
 
-        public PendingAuditorOrderReportTemplate()
+        public AuditorPendingApprovalsReportTemplate()
         {
             InitializeComponent();
         }
@@ -76,7 +76,7 @@ namespace Ettad.ReportManagement.Service.Reports.Templates
         {
             this.components = new System.ComponentModel.Container();
             DevExpress.XtraReports.UI.XRSummary xrSummary2 = new DevExpress.XtraReports.UI.XRSummary();
-            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(PendingAuditorOrderReportTemplate));
+            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(AuditorPendingApprovalsReportTemplate));
             DevExpress.XtraReports.Parameters.StaticListLookUpSettings staticListLookUpSettings2 = new DevExpress.XtraReports.Parameters.StaticListLookUpSettings();
             DevExpress.DataAccess.Sql.StoredProcQuery storedProcQuery2 = new DevExpress.DataAccess.Sql.StoredProcQuery();
             this.topMarginBand1 = new DevExpress.XtraReports.UI.TopMarginBand();
@@ -612,7 +612,7 @@ namespace Ettad.ReportManagement.Service.Reports.Templates
             this.xrTableCell16.TextAlignment = DevExpress.XtraPrinting.TextAlignment.MiddleRight;
             this.xrTableCell16.Weight = 1.4920749780793165D;
             // 
-            // PendingAuditorOrderReportTemplate
+            // AuditorPendingApprovalsReportTemplate
             // 
             this.Bands.AddRange(new DevExpress.XtraReports.UI.Band[] {
             this.topMarginBand1,
