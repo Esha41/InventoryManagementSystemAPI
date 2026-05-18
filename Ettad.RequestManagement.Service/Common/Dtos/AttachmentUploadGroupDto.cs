@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Http;
 
-namespace Ettad.RequestManagement.API.Models.Orders
+namespace Ettad.RequestManagement.Service.Common.Dtos
 {
     /// <summary>
     /// Multipart binding model for a single per-AttachmentRequirement upload group.

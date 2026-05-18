@@ -1,5 +1,5 @@
 using Ettad.CrossCutting.Common.Security;
-using Ettad.RequestManagement.API.Models.Orders;
+using Ettad.RequestManagement.Service.Common.Dtos;
 using Ettad.RequestManagement.Service.Returns;
 using Ettad.RequestManagement.Service.Returns.Dtos;
 using Ettad.Data.Enums;

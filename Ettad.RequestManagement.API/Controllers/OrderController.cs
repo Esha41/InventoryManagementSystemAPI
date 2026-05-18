@@ -1,6 +1,6 @@
 using Ettad.Application.Common.Interfaces;
 using Ettad.CrossCutting.Common.Security;
-using Ettad.RequestManagement.API.Models.Orders;
+using Ettad.RequestManagement.Service.Common.Dtos;
 using Ettad.RequestManagement.Service.Orders;
 using Ettad.RequestManagement.Service.Orders.Dto;
 using Ettad.ResponseHandler.Consts;
