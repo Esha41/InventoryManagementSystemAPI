@@ -35,6 +35,8 @@ namespace Ettad.RequestManagement.Service.SupplyManagement.Dtos
         public string Lot { get; set; } = string.Empty;
         public long? DepotId { get; set; }
         public string? DepotName { get; set; }
+        public string? DepotNameEn { get; set; }
+        public string? DepotNameAr { get; set; }
         public string? DepotCode { get; set; }
         public string? Notes { get; set; }
     }
@@ -46,6 +48,8 @@ namespace Ettad.RequestManagement.Service.SupplyManagement.Dtos
         public string ItemName { get; set; } = string.Empty;
         public long DepotId { get; set; }
         public string? DepotName { get; set; }
+        public string? DepotNameEn { get; set; }
+        public string? DepotNameAr { get; set; }
         public string? DepotCode { get; set; }
         public long BatchId { get; set; }
         public string BatchNumber { get; set; } = string.Empty;
@@ -61,6 +65,8 @@ namespace Ettad.RequestManagement.Service.SupplyManagement.Dtos
         public string? SerialNumber { get; set; }
         public long? DepotId { get; set; }
         public string? DepotName { get; set; }
+        public string? DepotNameEn { get; set; }
+        public string? DepotNameAr { get; set; }
         public string? DepotCode { get; set; }
         public string? BatchNumber { get; set; }
         public string? AssigneeName { get; set; }

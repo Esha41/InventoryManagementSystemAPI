@@ -158,6 +158,8 @@ namespace Ettad.RequestManagement.Service.SupplyManagement.Services
                     ItemName = s.Item?.Name ?? string.Empty,
                     DepotId = s.DepotId,
                     DepotName = s.Depot?.NameEn,
+                    DepotNameEn = s.Depot?.NameEn,
+                    DepotNameAr = s.Depot?.NameAr,
                     DepotCode = s.Depot?.Code,
                     BatchId = s.BatchId,
                     BatchNumber = s.Batch?.BatchNumber ?? string.Empty,
@@ -198,6 +200,8 @@ namespace Ettad.RequestManagement.Service.SupplyManagement.Services
                     ItemName = s.Item?.Name ?? string.Empty,
                     DepotId = s.DepotId,
                     DepotName = s.Depot?.NameEn,
+                    DepotNameEn = s.Depot?.NameEn,
+                    DepotNameAr = s.Depot?.NameAr,
                     DepotCode = s.Depot?.Code,
                     BatchId = s.BatchId,
                     BatchNumber = s.Batch?.BatchNumber ?? string.Empty,
@@ -222,6 +226,8 @@ namespace Ettad.RequestManagement.Service.SupplyManagement.Services
                     a.SerialNumber,
                     a.DepotId,
                     DepotName = a.Depot?.NameEn,
+                    DepotNameEn = a.Depot?.NameEn,
+                    DepotNameAr = a.Depot?.NameAr,
                     DepotCode = a.Depot?.Code,
                     BatchNumber = a.Batch?.BatchNumber
                 });
@@ -261,7 +267,9 @@ namespace Ettad.RequestManagement.Service.SupplyManagement.Services
                     AssetId = line.AssetId,
                     SerialNumber = asset?.SerialNumber ?? line.AssetSerialNumber,
                     DepotId = asset?.DepotId,
-                    DepotName = asset?.DepotName,
+                    DepotName = asset?.DepotNameEn,
+                    DepotNameEn = asset?.DepotNameEn,
+                    DepotNameAr = asset?.DepotNameAr,
                     DepotCode = asset?.DepotCode,
                     BatchNumber = asset?.BatchNumber,
                     AssigneeName = assigneeName,
@@ -323,7 +331,9 @@ namespace Ettad.RequestManagement.Service.SupplyManagement.Services
                     SuppliedQuantity = d.Quantity,
                     Lot = d.Lot ?? string.Empty,
                     DepotId = dep?.DepotId,
-                    DepotName = dep?.DepotName,
+                    DepotName = dep?.DepotNameEn,
+                    DepotNameEn = dep?.DepotNameEn,
+                    DepotNameAr = dep?.DepotNameAr,
                     DepotCode = dep?.DepotCode,
                     Notes = d.Notes
                 });
@@ -392,7 +402,8 @@ namespace Ettad.RequestManagement.Service.SupplyManagement.Services
                     id.ItemId,
                     Lot = (id.Lot ?? string.Empty).Trim(),
                     id.Inventory!.DepoId,
-                    DepotName = id.Inventory.Depo!.NameEn,
+                    DepotNameEn = id.Inventory.Depo!.NameEn,
+                    DepotNameAr = id.Inventory.Depo!.NameAr,
                     DepotCode = id.Inventory.Depo.Code
                 })
                 .ToListAsync();
@@ -405,7 +416,7 @@ namespace Ettad.RequestManagement.Service.SupplyManagement.Services
                     continue;
                 var match = candidates.FirstOrDefault(c => c.ItemId == k.ItemId && string.Equals(c.Lot, k.Lot, StringComparison.Ordinal));
                 if (match != null)
-                    result[keyStr] = new DepotRow(match.DepoId, match.DepotName, match.DepotCode);
+                    result[keyStr] = new DepotRow(match.DepoId, match.DepotNameEn, match.DepotNameAr, match.DepotCode);
             }
 
             return result;
@@ -419,6 +430,6 @@ namespace Ettad.RequestManagement.Service.SupplyManagement.Services
             return user?.FullNameEN ?? user?.FullNameAR ?? user?.UserName;
         }
 
-        private sealed record DepotRow(long DepotId, string? DepotName, string? DepotCode);
+        private sealed record DepotRow(long DepotId, string? DepotNameEn, string? DepotNameAr, string? DepotCode);
     }
 }

@@ -1,3 +1,4 @@
+using Ettad.Data.Entities;
 using Ettad.Data.Enums;
 
 namespace Ettad.RequestManagement.Service.Orders.Services;
@@ -19,4 +20,5 @@ public interface IOrderPriorityService
     /// Negative value means the date has already passed.
     /// </summary>
     int GetDaysUntilUsageDate(DateTime usageDateFrom);
+    RequestPriority ResolvePriorityForOrderDto(Order order);
 }

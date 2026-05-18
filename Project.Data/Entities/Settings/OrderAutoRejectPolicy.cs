@@ -1,22 +1,15 @@
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
 using Ettad.CrossCutting.Comman.Base;
-using Ettad.CrossCutting.Comman.Idenitity;
 
 namespace Ettad.Data.Entities.Settings;
 
 /// <summary>
 /// Global singleton policy for order workflow auto-rejection (one row expected).
+/// Threshold, reminders, notifications, and scan schedule; trigger anchor is per-workflow.
 /// </summary>
 public class OrderAutoRejectPolicy : AuditEntity<int>
 {
-    [Required]
-    [ForeignKey(nameof(TriggerRole))]
-    public string TriggerRoleId { get; set; }
-
-    public virtual ApplicationRole TriggerRole { get; set; }
-
     [Required]
     public int ThresholdDays { get; set; }
 

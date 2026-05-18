@@ -375,6 +375,7 @@ namespace Ettad.Workflows.Service.Commands.WorkflowApproval.ProcessWorkflowActio
 
                 if (created)
                 {
+                    await TryNotifyRequesterAfterQtyConfiguredStepApprovalAsync(step.WorkflowStepId, baseRequest);
                     return;
                 }
             }
@@ -510,6 +511,8 @@ namespace Ettad.Workflows.Service.Commands.WorkflowApproval.ProcessWorkflowActio
 
             baseRequest.ModifiedBy = _currentUserService.UserId;
             baseRequest.ModificationDate = _dateTimeProvider.Now;
+
+            await TryNotifyRequesterAfterQtyConfiguredStepApprovalAsync(step.WorkflowStepId, baseRequest);
 
             await _mediator.Publish(new WorkflowStepApprovedEvent
             {
@@ -686,6 +689,108 @@ namespace Ettad.Workflows.Service.Commands.WorkflowApproval.ProcessWorkflowActio
 
             baseRequest.ModifiedBy = _currentUserService.UserId;
             baseRequest.ModificationDate = _dateTimeProvider.Now;
+        }
+
+        private async Task TryNotifyRequesterAfterQtyConfiguredStepApprovalAsync(long workflowStepId, BaseRequest baseRequest)
+        {
+            try
+            {
+                var configured = await _context.WorkflowStepRequesterQuantityNotifications
+                    .AsNoTracking()
+                    .AnyAsync(x => x.WorkflowStepId == workflowStepId);
+
+                if (!configured || string.IsNullOrEmpty(baseRequest.RequesterId))
+                    return;
+
+                var title = $"Order #{baseRequest.RequestNo} QTY Updated";
+                string message;
+                if (baseRequest.RequestType == RequestType.Order)
+                {
+                    var lines = await _context.RequestItems
+                        .AsNoTracking()
+                        .Include(ri => ri.Item)
+                        .Where(ri => ri.RequestId == baseRequest.Id && !ri.IsDeleted)
+                        .OrderBy(ri => ri.Id)
+                        .ToListAsync();
+
+                    var itemIds = lines.Select(ri => ri.Id).ToList();
+                    var histories = itemIds.Count == 0
+                        ? new List<OrderItemHistory>()
+                        : await _context.OrderItemHistory
+                            .AsNoTracking()
+                            .Where(h =>
+                                h.OrderId == baseRequest.Id &&
+                                h.RequestItemId.HasValue &&
+                                itemIds.Contains(h.RequestItemId.Value) &&
+                                (h.ActionType == OrderItemActionType.Added ||
+                                 h.ActionType == OrderItemActionType.QuantityModified))
+                            .ToListAsync();
+
+                    var byRequestItemId = histories
+                        .GroupBy(h => h.RequestItemId!.Value)
+                        .ToDictionary(
+                            g => g.Key,
+                            g => g.OrderBy(h => h.ActionDate).ThenBy(h => h.Id).ToList());
+
+                    var parts = lines.Select(ri =>
+                    {
+                        var name = ri.Item?.Name ?? $"Item {ri.ItemId}";
+                        var no = ri.Item?.ItemNo;
+                        var label = string.IsNullOrWhiteSpace(no) ? name : $"{name} ({no})";
+                        byRequestItemId.TryGetValue(ri.Id, out var itemHistories);
+                        var requestedQty = ResolveRequestedQuantity(ri.Quantity, itemHistories);
+                        var approvedQty = ri.Quantity;
+                        return requestedQty != approvedQty
+                            ? $"• {label}: requested quantity {requestedQty} → approved quantity {approvedQty}"
+                            : $"• {label}: quantity remains {approvedQty}";
+                    });
+
+                    message =
+                        $"Your order #{baseRequest.RequestNo} has been updated.\n\n" +
+                        "The following line quantities were adjusted:\n" +
+                        string.Join("\n", parts);
+                }
+                else
+                {
+                    message =
+                        $"Your request #{baseRequest.RequestNo} has been updated.";
+                }
+
+                await _notificationHelperService.SendNotificationAsync(
+                    title,
+                    message,
+                    nameof(Order),
+                    baseRequest.Id,
+                    new List<string> { baseRequest.RequesterId },
+                    null,
+                    _currentUserService.UserId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex,
+                    "Requester notification for qty-configured workflow step failed. RequestId: {RequestId}, WorkflowStepId: {WorkflowStepId}",
+                    baseRequest.Id,
+                    workflowStepId);
+            }
+        }
+
+        /// <summary>
+        /// Quantity the requester originally asked for (first Added row), or before the first tracked quantity change if Added is missing.
+        /// </summary>
+        private static long ResolveRequestedQuantity(long currentQuantity, List<OrderItemHistory>? itemHistories)
+        {
+            if (itemHistories == null || itemHistories.Count == 0)
+                return currentQuantity;
+
+            var added = itemHistories.FirstOrDefault(h => h.ActionType == OrderItemActionType.Added);
+            if (added?.NewQuantity is long addedQty)
+                return addedQty;
+
+            var firstMod = itemHistories.FirstOrDefault(h => h.ActionType == OrderItemActionType.QuantityModified);
+            if (firstMod?.PreviousQuantity is long prevQty)
+                return prevQty;
+
+            return currentQuantity;
         }
 
         private async Task<bool> HandleHigherApprovalAsync(WorkflowApprovalStep step, BaseRequest baseRequest)

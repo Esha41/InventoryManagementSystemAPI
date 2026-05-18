@@ -197,7 +197,8 @@ namespace Ettad.Inventory.Service.Weapons.Services
                     nameof(Weapon.Classification),
                     nameof(Weapon.Type),
                     "BaseItemPrimaryPurposes.PrimaryPurpos"
-                );
+                )
+                    .OrderBy(w => w.Id);
 
                 var paginatedEntities = await PaginatedList<Weapon>.CreateAsyncForTableBinding(query, request);
 
@@ -295,51 +296,56 @@ namespace Ettad.Inventory.Service.Weapons.Services
                 var assignedItemIds = await GetAssignedItemIdsAsync();
                 var groups = new List<WeaponAssociationGroupDto>();
 
+                List<WeaponDto>? allWeaponsCache = null;
+
                 foreach (var ammoCaliberId in distinctIds)
                 {
                     var weaponCaliberList = await _caliberCompatibility.GetWeaponCaliberIdsCompatibleWithAmmunitionCaliberIdAsync(ammoCaliberId);
                     var weaponCaliberSet = weaponCaliberList.ToHashSet();
-                    if (weaponCaliberSet.Count == 0)
+                    var skipCaliberFilter = weaponCaliberSet.Count == 0;
+
+                    List<WeaponDto> dtos;
+
+                    if (skipCaliberFilter && allWeaponsCache != null)
                     {
-                        groups.Add(new WeaponAssociationGroupDto
-                        {
-                            AmmunitionCaliberId = ammoCaliberId,
-                            Weapons = new List<WeaponDto>()
-                        });
-                        continue;
+                        dtos = allWeaponsCache;
                     }
-
-                    var weapons = await _weaponRepository.FindAsync(
-                        w =>
-                            !w.IsDeleted &&
-                            (assignedItemIds == null || assignedItemIds.Contains(w.Id)) &&
-                            w.CaliberId != null &&
-                            weaponCaliberSet.Contains(w.CaliberId.Value),
-                        false,
-                        nameof(Weapon.CaliberUnit),
-                        nameof(Weapon.LookupCaliber),
-                        nameof(Weapon.CountryOfManufacture),
-                        nameof(Weapon.Classification),
-                        nameof(Weapon.Type),
-                        "BaseItemPrimaryPurposes.PrimaryPurpos"
-                    );
-
-                    var list = weapons.ToList();
-                    var dtos = _mapper.Map<List<WeaponDto>>(list);
-
-                    var entityIds = dtos.Select(d => d.Id).ToList();
-                    if (entityIds.Count > 0)
+                    else
                     {
-                        var imagesResult = await _fileUploadService.GetByEntitiesAsync(FileEntityType.Weapon, entityIds);
-                        if (imagesResult.Succeeded && imagesResult.Data != null)
+                        var weapons = await _weaponRepository.FindAsync(
+                            w =>
+                                !w.IsDeleted &&
+                                (assignedItemIds == null || assignedItemIds.Contains(w.Id)) &&
+                                (skipCaliberFilter || (w.CaliberId != null && weaponCaliberSet.Contains(w.CaliberId.Value))),
+                            false,
+                            nameof(Weapon.CaliberUnit),
+                            nameof(Weapon.LookupCaliber),
+                            nameof(Weapon.CountryOfManufacture),
+                            nameof(Weapon.Classification),
+                            nameof(Weapon.Type),
+                            "BaseItemPrimaryPurposes.PrimaryPurpos"
+                        );
+
+                        var list = weapons.ToList();
+                        dtos = _mapper.Map<List<WeaponDto>>(list);
+
+                        var entityIds = dtos.Select(d => d.Id).ToList();
+                        if (entityIds.Count > 0)
                         {
-                            foreach (var dto in dtos)
+                            var imagesResult = await _fileUploadService.GetByEntitiesAsync(FileEntityType.Weapon, entityIds);
+                            if (imagesResult.Succeeded && imagesResult.Data != null)
                             {
-                                dto.Images = imagesResult.Data.ContainsKey(dto.Id)
-                                    ? imagesResult.Data[dto.Id]
-                                    : new List<FileUploadDto>();
+                                foreach (var dto in dtos)
+                                {
+                                    dto.Images = imagesResult.Data.ContainsKey(dto.Id)
+                                        ? imagesResult.Data[dto.Id]
+                                        : new List<FileUploadDto>();
+                                }
                             }
                         }
+
+                        if (skipCaliberFilter)
+                            allWeaponsCache = dtos;
                     }
 
                     groups.Add(new WeaponAssociationGroupDto
