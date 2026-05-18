@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Ettad.Data.Enums;
 using Ettad.RequestManagement.Service.Returns.Dtos;
 using Ettad.ResponseHandler.Models;
@@ -11,6 +12,10 @@ namespace Ettad.RequestManagement.Service.Returns
         Task<APIOperationResponse<List<ReturnDto>>> GetAllAsync();
         Task<APIOperationResponse<long>> CreateAsync(CreateReturnDto inputDto);
         Task<APIOperationResponse<long>> CreateAsync(CreateReturnDto inputDto, List<IFormFile> files);
+        Task<APIOperationResponse<long>> CreateAsync(
+            CreateReturnDto inputDto,
+            IReadOnlyDictionary<long, IReadOnlyList<IFormFile>> filesByAttachmentRequirementId,
+            List<IFormFile>? otherFiles);
         Task<APIOperationResponse<bool>> ChangePriorityAsync(long id, RequestPriority priority);
         Task<APIOperationResponse<bool>> DeleteAsync(long id);
         Task<APIOperationResponse<bool>> SetDepotAsync(long returnId, SetReturnDepotDto dto);

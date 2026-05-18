@@ -1,4 +1,5 @@
 using Ettad.CrossCutting.Common.Security;
+using Ettad.RequestManagement.API.Models.Orders;
 using Ettad.RequestManagement.Service.Returns;
 using Ettad.RequestManagement.Service.Returns.Dtos;
 using Ettad.Data.Enums;
@@ -62,9 +63,10 @@ namespace Ettad.RequestManagement.API.Controllers
         }
 
         /// <summary>
-        /// Create a new return (multipart/form-data: DTO fields + optional files).
+        /// Create a new return. Files may be sent as:
+        /// - <paramref name="attachmentUploads"/> per AttachmentRequirement (indexed groups), plus optional <paramref name="OtherFiles"/>;
+        /// - legacy <paramref name="files"/> only when structured attachmentUploads is absent/empty (all go to the other bucket).
         /// </summary>
-        /// <returns>Created return ID</returns>
         [HttpPost]
         [Consumes("multipart/form-data")]
         [ProducesResponseType(typeof(APIOperationResponse<long>), (int)HttpStatusCode.Created)]
@@ -72,13 +74,36 @@ namespace Ettad.RequestManagement.API.Controllers
         [CheckAuthorize("Permissions.Return.Create")]
         public async Task<IActionResult> Create(
             [FromForm] CreateReturnDto dto,
+            [FromForm] List<AttachmentUploadGroupDto>? attachmentUploads = null,
+            [FromForm] List<IFormFile>? otherFiles = null,
             [FromForm] List<IFormFile>? files = null)
         {
             try
             {
-                var result = files != null && files.Count > 0
-                    ? await _returnService.CreateAsync(dto, files)
-                    : await _returnService.CreateAsync(dto);
+                var map = (attachmentUploads ?? new List<AttachmentUploadGroupDto>())
+                    .Where(g => g.AttachmentRequirementId > 0 && g.Files != null)
+                    .GroupBy(g => g.AttachmentRequirementId)
+                    .ToDictionary(
+                        grp => grp.Key,
+                        grp => (IReadOnlyList<IFormFile>)grp
+                            .SelectMany(g => g.Files ?? new List<IFormFile>())
+                            .Where(f => f != null && f.Length > 0)
+                            .ToList());
+
+                var hasStructuredUploads = map.Count > 0;
+
+                var mergedOther = new List<IFormFile>();
+                if (otherFiles != null)
+                {
+                    mergedOther.AddRange(otherFiles.Where(f => f != null && f.Length > 0));
+                }
+
+                if (!hasStructuredUploads && files != null)
+                {
+                    mergedOther.AddRange(files.Where(f => f != null && f.Length > 0));
+                }
+
+                var result = await _returnService.CreateAsync(dto, map, mergedOther.Count > 0 ? mergedOther : null);
                 return ProcessResponse(result);
             }
             catch (Exception ex)
