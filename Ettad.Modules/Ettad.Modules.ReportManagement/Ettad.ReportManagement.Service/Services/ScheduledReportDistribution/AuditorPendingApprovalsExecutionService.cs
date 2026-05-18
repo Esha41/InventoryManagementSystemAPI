@@ -88,8 +88,8 @@ namespace Ettad.ReportManagement.Service.Services.ScheduledReportDistribution
                 return;
             }
 
-            var subjectBase = scheduledReport.EmailSubject ?? $"Scheduled Report: {scheduledReport.ScheduleName}";
-            var bodyBase = scheduledReport.EmailBody ?? $"Please find the attached report: {scheduledReport.ScheduleName}";
+            var subjectBase = scheduledReport.EmailSubject ?? $"Pending Approvals By Auditor Report: {scheduledReport.ScheduleName}";
+            var bodyBase = scheduledReport.EmailBody ?? $"This email contains a list of requests that are pending approvals by auditor. Please find the attached report: {scheduledReport.ScheduleName}";
 
             var sentCount = 0;
             var anySkipped = false;
