@@ -9,10 +9,6 @@ public class RoleRefDto
 
 public class OrderAutoRejectSettingsDto
 {
-    public string? TriggerRoleId { get; set; }
-
-    public string? TriggerRoleName { get; set; }
-
     public int ThresholdDays { get; set; }
 
     public string ScanCron { get; set; } = string.Empty;
@@ -28,8 +24,6 @@ public class OrderAutoRejectSettingsDto
 
 public class UpdateOrderAutoRejectSettingsDto
 {
-    public string? TriggerRoleId { get; set; }
-
     public int ThresholdDays { get; set; }
 
     public string ScanCron { get; set; } = string.Empty;

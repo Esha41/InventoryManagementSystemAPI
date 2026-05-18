@@ -22,7 +22,6 @@ public class OrderAutoRejectSettingsService : IOrderAutoRejectSettingsService
     {
         nameof(OrderAutoRejectPolicy.NotifyRoles),
         nameof(OrderAutoRejectPolicy.ReminderLeadDays),
-        nameof(OrderAutoRejectPolicy.TriggerRole),
     };
 
     private static readonly string[] PolicyEditIncludes =
@@ -109,7 +108,6 @@ public class OrderAutoRejectSettingsService : IOrderAutoRejectSettingsService
                 {
                     CreationDate = now,
                     CreatedBy = userId,
-                    TriggerRoleId = dto.TriggerRoleId!.Trim(),
                     ThresholdDays = dto.ThresholdDays,
                     ScanCron = cron,
                     IsEnabled = dto.IsEnabled,
@@ -145,7 +143,6 @@ public class OrderAutoRejectSettingsService : IOrderAutoRejectSettingsService
                 policy.NotifyRoles.Clear();
                 policy.ReminderLeadDays.Clear();
 
-                policy.TriggerRoleId = dto.TriggerRoleId!.Trim();
                 policy.ThresholdDays = dto.ThresholdDays;
                 policy.ScanCron = cron;
                 policy.IsEnabled = dto.IsEnabled;
@@ -199,11 +196,6 @@ public class OrderAutoRejectSettingsService : IOrderAutoRejectSettingsService
     {
         var failures = new List<ValidationFailure>();
 
-        if (string.IsNullOrWhiteSpace(dto.TriggerRoleId))
-            failures.Add(new ValidationFailure(nameof(dto.TriggerRoleId), "A trigger role must be selected."));
-        else if (!await _roleRepository.Find(r => r.Id == dto.TriggerRoleId.Trim()).AnyAsync(cancellationToken))
-            failures.Add(new ValidationFailure(nameof(dto.TriggerRoleId), "Unknown trigger role id."));
-
         if (dto.ThresholdDays < 1 || dto.ThresholdDays > 365)
             failures.Add(new ValidationFailure(nameof(dto.ThresholdDays), "Threshold must be between 1 and 365 inclusive."));
 
@@ -256,8 +248,6 @@ public class OrderAutoRejectSettingsService : IOrderAutoRejectSettingsService
 
         return new OrderAutoRejectSettingsDto
         {
-            TriggerRoleId = policy.TriggerRoleId,
-            TriggerRoleName = policy.TriggerRole?.Name,
             ThresholdDays = policy.ThresholdDays,
             ScanCron = policy.ScanCron,
             IsEnabled = policy.IsEnabled,
@@ -271,26 +261,20 @@ public class OrderAutoRejectSettingsService : IOrderAutoRejectSettingsService
 
     private async Task<OrderAutoRejectSettingsDto> BuildDtoFromLegacySettingsOnlyAsync(CancellationToken cancellationToken)
     {
-        var triggerIdRaw = await GetStoredValueAsync(OrderAutoRejectConstants.TriggerRoleIdKey, cancellationToken);
         var thresholdStr = await GetStoredValueAsync(OrderAutoRejectConstants.ThresholdDaysKey, cancellationToken);
         var cron = await GetStoredValueAsync(OrderAutoRejectConstants.ScanCronKey, cancellationToken);
 
-        string? triggerId = string.IsNullOrWhiteSpace(triggerIdRaw) ? null : triggerIdRaw.Trim();
-        var threshold = int.TryParse(thresholdStr, out var td) ? td : OrderAutoRejectConstants.DefaultThresholdDays;
+        var threshold = int.TryParse(thresholdStr, out var td) && td > 0 ? td : OrderAutoRejectConstants.DefaultThresholdDays;
         if (string.IsNullOrWhiteSpace(cron))
             cron = OrderAutoRejectConstants.DefaultCronExpression;
 
-        var roleName = string.IsNullOrEmpty(triggerId)
-            ? null
-            : await _roleRepository.Find(r => r.Id == triggerId).Select(r => r.Name).FirstOrDefaultAsync(cancellationToken);
+        var hasLegacyThreshold = !string.IsNullOrWhiteSpace(thresholdStr) && int.TryParse(thresholdStr, out var parsed) && parsed > 0;
 
         return new OrderAutoRejectSettingsDto
         {
-            TriggerRoleId = triggerId,
-            TriggerRoleName = roleName,
             ThresholdDays = threshold,
             ScanCron = cron ?? OrderAutoRejectConstants.DefaultCronExpression,
-            IsEnabled = !string.IsNullOrEmpty(triggerId),
+            IsEnabled = hasLegacyThreshold,
             NotifyRequester = true,
             ReminderLeadDays = new List<int> { 7 },
             NotifyRoles = new List<RoleRefDto>()
@@ -302,19 +286,13 @@ public class OrderAutoRejectSettingsService : IOrderAutoRejectSettingsService
     /// </summary>
     private async Task TryMaterializePolicyFromLegacyAsync(CancellationToken cancellationToken)
     {
-        var triggerIdRaw = await GetStoredValueAsync(OrderAutoRejectConstants.TriggerRoleIdKey, cancellationToken);
-        var triggerId = string.IsNullOrWhiteSpace(triggerIdRaw) ? null : triggerIdRaw.Trim();
-        if (string.IsNullOrEmpty(triggerId))
-            return;
-
-        if (!await _roleRepository.Find(r => r.Id == triggerId).AnyAsync(cancellationToken))
-            return;
-
         if (await _policyRepository.Find(_ => true).AnyAsync(cancellationToken))
             return;
 
         var thresholdStr = await GetStoredValueAsync(OrderAutoRejectConstants.ThresholdDaysKey, cancellationToken);
-        var threshold = int.TryParse(thresholdStr, out var td) && td > 0 ? td : OrderAutoRejectConstants.DefaultThresholdDays;
+        if (string.IsNullOrWhiteSpace(thresholdStr) || !int.TryParse(thresholdStr, out var threshold) || threshold <= 0)
+            return;
+
         var cronRaw = await GetStoredValueAsync(OrderAutoRejectConstants.ScanCronKey, cancellationToken);
         var cron = string.IsNullOrWhiteSpace(cronRaw) ? OrderAutoRejectConstants.DefaultCronExpression : cronRaw.Trim();
 
@@ -323,7 +301,6 @@ public class OrderAutoRejectSettingsService : IOrderAutoRejectSettingsService
 
         var policy = new OrderAutoRejectPolicy
         {
-            TriggerRoleId = triggerId,
             ThresholdDays = threshold,
             ScanCron = cron,
             IsEnabled = true,

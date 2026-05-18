@@ -11,12 +11,12 @@ internal static class RequestAutoRejectCountdownHelper
     public static RequestAutoRejectCountdownDto Compute(
         long requestId,
         IReadOnlyList<WorkflowApprovalStep> steps,
-        OrderAutoRejectEffectivePolicy? globalPolicy,
+        OrderAutoRejectEffectivePolicy? organizationPolicy,
         WorkflowAutoRejectTriggerConfig? workflowConfig,
         DateTime now,
         IReadOnlyList<WorkflowType>? applicableWorkflowTypes = null)
     {
-        if (globalPolicy == null || !globalPolicy.IsEnabled)
+        if (organizationPolicy == null || !organizationPolicy.IsEnabled)
             return None(requestId);
 
         var typeFilter = applicableWorkflowTypes ?? OrderAutoRejectConstants.OrderWorkflowTypes;
@@ -24,7 +24,7 @@ internal static class RequestAutoRejectCountdownHelper
         if (filtered.Count == 0)
             return None(requestId);
 
-        var triggerApproval = SelectTriggerApproval(filtered, globalPolicy, workflowConfig);
+        var triggerApproval = SelectTriggerApproval(filtered, workflowConfig);
         if (triggerApproval?.WorkflowStep == null)
             return None(requestId);
 
@@ -36,10 +36,10 @@ internal static class RequestAutoRejectCountdownHelper
             return None(requestId);
 
         var daysSince = (now.Date - triggerApproval.CreationDate.Date).Days;
-        var daysRemaining = globalPolicy.ThresholdDays - daysSince;
-        var dueDate = triggerApproval.CreationDate.Date.AddDays(globalPolicy.ThresholdDays);
+        var daysRemaining = organizationPolicy.ThresholdDays - daysSince;
+        var dueDate = triggerApproval.CreationDate.Date.AddDays(organizationPolicy.ThresholdDays);
 
-        var maxLead = globalPolicy.ReminderLeadDays.Count > 0 ? globalPolicy.ReminderLeadDays.Max() : 0;
+        var maxLead = organizationPolicy.ReminderLeadDays.Count > 0 ? organizationPolicy.ReminderLeadDays.Max() : 0;
         string state;
         if (daysRemaining <= 0)
             state = "expired";
@@ -52,7 +52,7 @@ internal static class RequestAutoRejectCountdownHelper
         {
             RequestId = requestId,
             TriggerReachedAt = triggerApproval.CreationDate,
-            ThresholdDays = globalPolicy.ThresholdDays,
+            ThresholdDays = organizationPolicy.ThresholdDays,
             DaysRemaining = Math.Max(daysRemaining, 0),
             DueDate = dueDate,
             State = state
@@ -62,17 +62,15 @@ internal static class RequestAutoRejectCountdownHelper
     /// <summary>Shared trigger row selection for countdown and Hangfire scan.</summary>
     internal static WorkflowApprovalStep? SelectTriggerApproval(
         IReadOnlyList<WorkflowApprovalStep> filtered,
-        OrderAutoRejectEffectivePolicy? globalPolicy,
         WorkflowAutoRejectTriggerConfig? workflowConfig)
     {
-        if (workflowConfig?.IsEnabled == true)
-        {
-            if (workflowConfig.Mode == AutoRejectTriggerMode.Disabled)
-                return null;
-            return TrySelectTriggerApprovalByWorkflowConfig(filtered, workflowConfig);
-        }
+        if (workflowConfig?.IsEnabled != true)
+            return null;
 
-        return TrySelectTriggerApprovalByGlobalPolicy(filtered, globalPolicy);
+        if (workflowConfig.Mode == AutoRejectTriggerMode.Disabled)
+            return null;
+
+        return TrySelectTriggerApprovalByWorkflowConfig(filtered, workflowConfig);
     }
 
     private static WorkflowApprovalStep? TrySelectTriggerApprovalByWorkflowConfig(
@@ -90,21 +88,6 @@ internal static class RequestAutoRejectCountdownHelper
 
         var sorted = candidates.OrderBy(s => s.CreationDate).ToList();
         return sorted.First();
-    }
-
-    private static WorkflowApprovalStep? TrySelectTriggerApprovalByGlobalPolicy(
-        IReadOnlyList<WorkflowApprovalStep> filtered,
-        OrderAutoRejectEffectivePolicy? policy)
-    {
-        if (policy?.IsEnabled != true || string.IsNullOrEmpty(policy.TriggerRoleId))
-            return null;
-
-        return filtered
-            .Where(s =>
-                s.WorkflowStep != null
-                && s.WorkflowStep.ApplicationRoleId == policy.TriggerRoleId)
-            .OrderBy(s => s.CreationDate)
-            .FirstOrDefault();
     }
 
     private static bool MatchesTriggerConfig(WorkflowApprovalStep approval, WorkflowAutoRejectTriggerConfig config)

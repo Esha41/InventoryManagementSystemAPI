@@ -12,10 +12,6 @@ internal class OrderAutoRejectPolicyConfiguration : IEntityTypeConfiguration<Ord
 
         builder.HasKey(x => x.Id);
 
-        builder.Property(x => x.TriggerRoleId)
-            .IsRequired()
-            .HasMaxLength(450);
-
         builder.Property(x => x.ThresholdDays)
             .IsRequired();
 
@@ -30,11 +26,6 @@ internal class OrderAutoRejectPolicyConfiguration : IEntityTypeConfiguration<Ord
         builder.Property(x => x.NotifyRequester)
             .IsRequired()
             .HasDefaultValue(true);
-
-        builder.HasOne(x => x.TriggerRole)
-            .WithMany()
-            .HasForeignKey(x => x.TriggerRoleId)
-            .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasMany(x => x.NotifyRoles)
             .WithOne(x => x.Policy)
