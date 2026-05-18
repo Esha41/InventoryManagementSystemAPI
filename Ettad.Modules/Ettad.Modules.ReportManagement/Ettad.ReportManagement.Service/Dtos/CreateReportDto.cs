@@ -19,6 +19,9 @@ namespace Ettad.ReportManagement.Service.Dtos
         [MaxLength(1000)]
         public string? Description { get; set; }
 
+        [MaxLength(200)]
+        public string? TemplateName { get; set; }
+
         public byte[]? LayoutData { get; set; }
 
         public string? ReportParameters { get; set; }

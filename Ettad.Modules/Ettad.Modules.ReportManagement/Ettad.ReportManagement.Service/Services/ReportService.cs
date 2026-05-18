@@ -520,19 +520,19 @@ namespace Ettad.ReportManagement.Service.Services
                     new ReportTemplateDto
                     {
                         Url = ReportConstants.UserReportTemplate,
-                        Name = "Users Report",
+                        Name = "Users Report Template",
                         Description = "Template for Managed Users"
                     },
                     new ReportTemplateDto
                     {
                         Url = ReportConstants.AssetsReportTemplate,
-                        Name = "Assets Report",
+                        Name = "Assets Report Template",
                         Description = "Template for all Assets"
                     },
                     new ReportTemplateDto
                     {
                         Url = ReportConstants.LoginAuditReportTemplate,
-                        Name = "Login Audit Report",
+                        Name = "Login Audit Report Template",
                         Description = "Provides audit information about user login activities."
                     },
                     new ReportTemplateDto

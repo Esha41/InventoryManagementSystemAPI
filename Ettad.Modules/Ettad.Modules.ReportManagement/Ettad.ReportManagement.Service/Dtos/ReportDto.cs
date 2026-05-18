@@ -8,6 +8,7 @@ namespace Ettad.ReportManagement.Service.Dtos
         public string ReportName { get; set; } = string.Empty;
         public ReportStatuses ReportStatusId { get; set; }
         public string Url { get; set; } = string.Empty;
+        public string? TemplateName { get; set; }
         public string? Description { get; set; }
         public byte[]? LayoutData { get; set; }
         public string? ReportParameters { get; set; }

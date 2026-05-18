@@ -1,7 +1,9 @@
 ﻿using DevExpress.XtraReports.Web.Extensions;
+using Ettad.ReportManagement.Service.BackgroundJob;
 using Ettad.ReportManagement.Service.Interfaces;
 using Ettad.ReportManagement.Service.Mapper;
 using Ettad.ReportManagement.Service.Services;
+using Ettad.ReportManagement.Service.Services.ScheduledReportDistribution;
 using Microsoft.Extensions.DependencyInjection;
 using System.Reflection;
 
@@ -14,7 +16,10 @@ namespace Ettad.ReportManagement.Service
             // Register Report services
             services.AddScoped<IReportService, ReportService>();
             services.AddScoped<IScheduledReportService, ScheduledReportService>();
+            services.AddScoped<IScheduledReportExportMailHelper, ScheduledReportExportMailHelper>();
+            services.AddScoped<IScheduledReportDistributionStrategy, AuditorPendingApprovalsExecutionService>();
             services.AddScoped<IScheduledReportExecutionService, ScheduledReportExecutionService>();
+            services.AddScoped<ScheduledReportJob>();
             services.AddScoped<Reports.Factories.ReportFactory>();
             services.AddScoped<ReportStorageWebExtension, Reports.CustomReportStorageWebExtension>();
             services.AddAutoMapper(Assembly.GetExecutingAssembly());

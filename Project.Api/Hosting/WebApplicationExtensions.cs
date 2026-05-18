@@ -1,5 +1,6 @@
 
 using Ettad.Inventory.Service.Monitoring.BackgroundJobs;
+using Ettad.ReportManagement.Service.BackgroundJob;
 
 namespace Ettad.Api.Hosting;
 
@@ -101,66 +102,114 @@ public static class WebApplicationExtensions
         var recurringJobManager = scope.ServiceProvider.GetRequiredService<IRecurringJobManager>();
         var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
 
+        await RegisterLowStockMonitorRecurringJobAsync(app, recurringJobManager, context).ConfigureAwait(false);
+        await RegisterCriticalStockMonitorRecurringJobAsync(app, recurringJobManager, context).ConfigureAwait(false);
+        await RegisterOrderAutoRejectRecurringJobAsync(app, recurringJobManager, context).ConfigureAwait(false);
+        RegisterScheduledReportsRecurringJob(app, recurringJobManager);
+    }
+
+    private static async Task RegisterLowStockMonitorRecurringJobAsync(
+        WebApplication app,
+        IRecurringJobManager recurringJobManager,
+        ApplicationDbContext context)
+    {
         var scheduleSetting = await context.Settings
             .FirstOrDefaultAsync(s =>
                 s.Key == LowStockMonitorConstants.SCHEDULE_SETTINGS_KEY &&
-                s.Group == LowStockMonitorConstants.SCHEDULE_SETTINGS_GROUP);
+                s.Group == LowStockMonitorConstants.SCHEDULE_SETTINGS_GROUP)
+            .ConfigureAwait(false);
 
-        var lowStockCronExpression = scheduleSetting?.Value
+        var cronExpression = scheduleSetting?.Value
             ?? app.Configuration.GetValue<string>("BackgroundJobs:LowStockMonitor:CronExpression")
             ?? LowStockMonitorConstants.DEFAULT_CRON_EXPRESSION;
 
         recurringJobManager.AddOrUpdate<LowStockMonitorJob>(
             LowStockMonitorConstants.JOB_ID,
             job => job.ExecuteAsync(),
-            lowStockCronExpression,
+            cronExpression,
             new RecurringJobOptions { TimeZone = TimeZoneInfo.Local });
 
         Log.Information(
             "Low Stock Monitor job registered: cron={Cron} hangfireTz={Tz}",
-            lowStockCronExpression,
+            cronExpression,
             TimeZoneInfo.Local.Id);
+    }
 
-        var criticalScheduleSetting = await context.Settings
+    private static async Task RegisterCriticalStockMonitorRecurringJobAsync(
+        WebApplication app,
+        IRecurringJobManager recurringJobManager,
+        ApplicationDbContext context)
+    {
+        var scheduleSetting = await context.Settings
             .FirstOrDefaultAsync(s =>
                 s.Key == CriticalStockMonitorConstants.SCHEDULE_SETTINGS_KEY &&
-                s.Group == CriticalStockMonitorConstants.SCHEDULE_SETTINGS_GROUP);
+                s.Group == CriticalStockMonitorConstants.SCHEDULE_SETTINGS_GROUP)
+            .ConfigureAwait(false);
 
-        var criticalStockCronExpression = criticalScheduleSetting?.Value
+        var cronExpression = scheduleSetting?.Value
             ?? app.Configuration.GetValue<string>("BackgroundJobs:CriticalStockMonitor:CronExpression")
             ?? CriticalStockMonitorConstants.DEFAULT_CRON_EXPRESSION;
 
         recurringJobManager.AddOrUpdate<CriticalStockMonitorJob>(
             CriticalStockMonitorConstants.JOB_ID,
             job => job.ExecuteAsync(),
-            criticalStockCronExpression,
+            cronExpression,
             new RecurringJobOptions { TimeZone = TimeZoneInfo.Local });
 
         Log.Information(
             "Critical Stock Monitor job registered: cron={Cron} hangfireTz={Tz}",
-            criticalStockCronExpression,
+            cronExpression,
             TimeZoneInfo.Local.Id);
+    }
 
-        var orderAutoRejectCron = app.Configuration.GetValue<string>("BackgroundJobs:OrderAutoReject:CronExpression")
+    private static async Task RegisterOrderAutoRejectRecurringJobAsync(
+        WebApplication app,
+        IRecurringJobManager recurringJobManager,
+        ApplicationDbContext context)
+    {
+        var (cronExpression, enabled) = await ResolveOrderAutoRejectScheduleAsync(app, context).ConfigureAwait(false);
+
+        if (enabled)
+        {
+            recurringJobManager.AddOrUpdate<OrderAutoRejectHangfireJob>(
+                OrderAutoRejectConstants.JobId,
+                job => job.ExecuteAsync(),
+                cronExpression,
+                new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
+            Log.Information("Order auto-reject job registered with schedule: {Schedule}", cronExpression);
+        }
+        else
+        {
+            recurringJobManager.RemoveIfExists(OrderAutoRejectConstants.JobId);
+            Log.Information("Order auto-reject recurring job removed (disabled in policy).");
+        }
+    }
+
+    private static async Task<(string CronExpression, bool Enabled)> ResolveOrderAutoRejectScheduleAsync(
+        WebApplication app,
+        ApplicationDbContext context)
+    {
+        var cron = app.Configuration.GetValue<string>("BackgroundJobs:OrderAutoReject:CronExpression")
             ?? OrderAutoRejectConstants.DefaultCronExpression;
-        var orderAutoRejectEnabled = true;
+        var enabled = true;
 
         try
         {
-            var policy = await context.OrderAutoRejectPolicies.AsNoTracking().FirstOrDefaultAsync();
+            var policy = await context.OrderAutoRejectPolicies.AsNoTracking().FirstOrDefaultAsync().ConfigureAwait(false);
             if (policy != null)
             {
-                orderAutoRejectCron = string.IsNullOrWhiteSpace(policy.ScanCron)
+                cron = string.IsNullOrWhiteSpace(policy.ScanCron)
                     ? OrderAutoRejectConstants.DefaultCronExpression
                     : policy.ScanCron.Trim();
-                orderAutoRejectEnabled = policy.IsEnabled;
+                enabled = policy.IsEnabled;
             }
             else
             {
-                var orderAutoRejectCronSetting = await context.Settings
+                var setting = await context.Settings
                     .FirstOrDefaultAsync(s =>
-                        s.Key == OrderAutoRejectConstants.ScanCronKey && s.Group == OrderAutoRejectConstants.Group);
-                orderAutoRejectCron = orderAutoRejectCronSetting?.Value?.Trim()
+                        s.Key == OrderAutoRejectConstants.ScanCronKey && s.Group == OrderAutoRejectConstants.Group)
+                    .ConfigureAwait(false);
+                cron = setting?.Value?.Trim()
                     ?? app.Configuration.GetValue<string>("BackgroundJobs:OrderAutoReject:CronExpression")
                     ?? OrderAutoRejectConstants.DefaultCronExpression;
             }
@@ -169,27 +218,35 @@ public static class WebApplicationExtensions
         {
             Log.Warning(ex,
                 "Could not read OrderAutoRejectPolicies; using Settings/appsettings for order auto-reject cron.");
-            var orderAutoRejectCronSetting = await context.Settings
+            var setting = await context.Settings
                 .FirstOrDefaultAsync(s =>
-                    s.Key == OrderAutoRejectConstants.ScanCronKey && s.Group == OrderAutoRejectConstants.Group);
-            orderAutoRejectCron = orderAutoRejectCronSetting?.Value?.Trim()
+                    s.Key == OrderAutoRejectConstants.ScanCronKey && s.Group == OrderAutoRejectConstants.Group)
+                .ConfigureAwait(false);
+            cron = setting?.Value?.Trim()
                 ?? app.Configuration.GetValue<string>("BackgroundJobs:OrderAutoReject:CronExpression")
                 ?? OrderAutoRejectConstants.DefaultCronExpression;
         }
 
-        if (orderAutoRejectEnabled)
-        {
-            recurringJobManager.AddOrUpdate<OrderAutoRejectHangfireJob>(
-                OrderAutoRejectConstants.JobId,
-                job => job.ExecuteAsync(),
-                orderAutoRejectCron,
-                new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
-            Log.Information("Order auto-reject job registered with schedule: {Schedule}", orderAutoRejectCron);
-        }
-        else
-        {
-            recurringJobManager.RemoveIfExists(OrderAutoRejectConstants.JobId);
-            Log.Information("Order auto-reject recurring job removed (disabled in policy).");
-        }
+        return (cron, enabled);
+    }
+
+    private static void RegisterScheduledReportsRecurringJob(
+        WebApplication app,
+        IRecurringJobManager recurringJobManager)
+    {
+        var cronExpression = app.Configuration.GetValue<string>("BackgroundJobs:ScheduledReports:CronExpression")
+            ?? ScheduledReportHangfireConstants.DefaultCronExpression;
+
+        recurringJobManager.AddOrUpdate<ScheduledReportJob>(
+            ScheduledReportHangfireConstants.RecurringJobId,
+            job => job.ExecuteAsync(),
+            cronExpression,
+            new RecurringJobOptions { TimeZone = TimeZoneInfo.Local });
+
+        Log.Information(
+            "Scheduled reports Hangfire poll registered: jobId={JobId}, cron={Cron}, hangfireTz={Tz}",
+            ScheduledReportHangfireConstants.RecurringJobId,
+            cronExpression,
+            TimeZoneInfo.Local.Id);
     }
 }

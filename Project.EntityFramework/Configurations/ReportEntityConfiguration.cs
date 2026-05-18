@@ -25,6 +25,9 @@ namespace Ettad.EntityFramework.Configurations
                 .IsRequired()
                 .HasMaxLength(500);
 
+            builder.Property(r => r.TemplateName)
+                .HasMaxLength(200);
+
             builder.Property(r => r.Description)
                 .HasMaxLength(1000);
 

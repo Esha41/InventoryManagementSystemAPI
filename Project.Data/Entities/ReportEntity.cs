@@ -25,6 +25,11 @@ namespace Ettad.Data.Entities
         public string Url { get; set; } = string.Empty;
 
         /// <summary>
+        /// Built-in template URL key this report was first created from (e.g. <see cref="Ettad.Data.Constants.ReportConstants.BaseReportTemplate"/>); null for legacy/import.
+        /// </summary>
+        public string? TemplateName { get; set; }
+
+        /// <summary>
         /// Report description
         /// </summary>
         public string Description { get; set; }
