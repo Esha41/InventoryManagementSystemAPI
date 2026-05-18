@@ -147,7 +147,7 @@ public class OrderAutoRejectBackgroundService : IOrderAutoRejectBackgroundServic
             ? await _workflowAutoRejectConfigCache.GetConfigAsync(workflowId.Value, cancellationToken)
             : WorkflowAutoRejectTriggerConfig.Disabled;
 
-        var triggerApproval = RequestAutoRejectCountdownHelper.SelectTriggerApproval(filtered, policy, workflowConfig);
+        var triggerApproval = RequestAutoRejectCountdownHelper.SelectTriggerApproval(filtered, workflowConfig);
 
         if (triggerApproval?.WorkflowStep == null)
             return;
