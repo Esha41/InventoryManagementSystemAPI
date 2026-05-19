@@ -22,6 +22,8 @@ using Ettad.Notification.Service.Interfaces;
 using Ettad.Workflow.Service.Interface;
 using MediatR;
 using Ettad.RequestManagement.Service.Common.Interfaces;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace Ettad.RequestManagement.Service.Returns
 {
@@ -50,6 +52,7 @@ namespace Ettad.RequestManagement.Service.Returns
         private readonly IMediator _mediator;
         private readonly ITransactionManager _transactionManager;
         private readonly IWorkflowStartNotificationService _workflowStartNotificationService;
+        private readonly IAttachmentRequirementUploadValidationService _attachmentRequirementUploadValidationService;
 
         public ReturnService(
             ICrossCuttingRepository<Return> returnRepository,
@@ -74,7 +77,8 @@ namespace Ettad.RequestManagement.Service.Returns
             ICrossCuttingRepository<ReturnTrackingLine> returnTrackingLineRepository,
             IMediator mediator,
             ITransactionManager transactionManager,
-            IWorkflowStartNotificationService workflowStartNotificationService)
+            IWorkflowStartNotificationService workflowStartNotificationService,
+            IAttachmentRequirementUploadValidationService attachmentRequirementUploadValidationService)
         {
             _returnRepository = returnRepository;
             _requestItemRepository = requestItemRepository;
@@ -99,6 +103,7 @@ namespace Ettad.RequestManagement.Service.Returns
             _mediator = mediator;
             _transactionManager = transactionManager;
             _workflowStartNotificationService = workflowStartNotificationService;
+            _attachmentRequirementUploadValidationService = attachmentRequirementUploadValidationService;
         }
 
         public async Task<APIOperationResponse<ReturnDto>> GetByIdAsync(long id)
@@ -163,12 +168,20 @@ namespace Ettad.RequestManagement.Service.Returns
             }
         }
 
-        public async Task<APIOperationResponse<long>> CreateAsync(CreateReturnDto inputDto)
+        public Task<APIOperationResponse<long>> CreateAsync(CreateReturnDto inputDto)
         {
-            return await CreateAsync(inputDto, null);
+            return CreateAsync(inputDto, new Dictionary<long, IReadOnlyList<IFormFile>>(), null);
         }
 
-        public async Task<APIOperationResponse<long>> CreateAsync(CreateReturnDto inputDto, List<IFormFile> files)
+        public Task<APIOperationResponse<long>> CreateAsync(CreateReturnDto inputDto, List<IFormFile> files)
+        {
+            return CreateAsync(inputDto, new Dictionary<long, IReadOnlyList<IFormFile>>(), files);
+        }
+
+        public async Task<APIOperationResponse<long>> CreateAsync(
+            CreateReturnDto inputDto,
+            IReadOnlyDictionary<long, IReadOnlyList<IFormFile>> filesByAttachmentRequirementId,
+            List<IFormFile>? otherFiles)
         {
             var currentUserId = _currentUserService.UserId;
             var departmentId = _currentUserService.DepartmentId;
@@ -179,40 +192,52 @@ namespace Ettad.RequestManagement.Service.Returns
                 return APIOperationResponse<long>.Fail(ResponseType.BadRequest, "Department not found for current user.");
             }
 
-            _logger.LogInformation("Creating new return. DepartmentId: {DepartmentId}, RequestPurposeId: {RequestPurposeId}, User: {UserId}, HasFiles: {HasFiles}", 
-                departmentId.Value, inputDto.RequestPurposeId, currentUserId, files != null && files.Count > 0);
-            
+            filesByAttachmentRequirementId ??= new Dictionary<long, IReadOnlyList<IFormFile>>();
+            var slotFileCount = filesByAttachmentRequirementId
+                .Sum(kvp => (kvp.Value ?? Array.Empty<IFormFile>()).Count(f => f != null && f.Length > 0));
+            var otherFileCount = (otherFiles ?? new List<IFormFile>())
+                .Count(f => f != null && f.Length > 0);
+
+            _logger.LogInformation(
+                "Creating new return. DepartmentId: {DepartmentId}, RequestPurposeId: {RequestPurposeId}, User: {UserId}, SlotFileCount: {SlotFileCount}, OtherFileCount: {OtherFileCount}",
+                departmentId.Value, inputDto.RequestPurposeId, currentUserId, slotFileCount, otherFileCount);
+
             try
             {
-                // Validate input
                 var validationResult = await _createValidator.ValidateAsync(inputDto);
                 if (!validationResult.IsValid)
                 {
                     var errors = string.Join(", ", validationResult.Errors.Select(e => e.ErrorMessage));
-                    _logger.LogWarning("Return validation failed. DepartmentId: {DepartmentId}, Errors: {ValidationErrors}, User: {UserId}", 
+                    _logger.LogWarning("Return validation failed. DepartmentId: {DepartmentId}, Errors: {ValidationErrors}, User: {UserId}",
                         departmentId.Value, errors, currentUserId);
                     return APIOperationResponse<long>.Fail(ResponseType.BadRequest, errors);
                 }
 
-                // Validate that at least one file is provided
-                if (files == null || !files.Any() || files.All(f => f == null || f.Length == 0))
-                {
-                    return APIOperationResponse<long>.Fail(ResponseType.BadRequest, "At least one file attachment is required.");
-                }
-
-                // Validate that RequestPurposeId belongs to a RequestPurpose with type Return
                 var requestPurpose = await _requestPurposeRepository.FindOneAsync(
                     rp => rp.Id == inputDto.RequestPurposeId && rp.RequestType == RequestType.Return && !rp.IsDeleted
                 );
 
                 if (requestPurpose == null)
                 {
-                    _logger.LogWarning("Invalid request purpose for return. RequestPurposeId: {RequestPurposeId}, User: {UserId}", 
+                    _logger.LogWarning("Invalid request purpose for return. RequestPurposeId: {RequestPurposeId}, User: {UserId}",
                         inputDto.RequestPurposeId, _currentUserService.UserId);
                     return APIOperationResponse<long>.Fail(ResponseType.BadRequest, "Request purpose must be of type Return");
                 }
 
-                // Validate item types, reject weapon mixed with other types (same rule as orders), and pick workflow template
+                var attachmentValidation = await _attachmentRequirementUploadValidationService.ValidateAsync(
+                    inputDto.RequestPurposeId,
+                    filesByAttachmentRequirementId,
+                    otherFiles);
+
+                if (!attachmentValidation.Succeeded)
+                {
+                    _logger.LogWarning(
+                        "Return attachment requirement validation failed. RequestPurposeId: {RequestPurposeId}, Message: {Message}, User: {UserId}",
+                        inputDto.RequestPurposeId, attachmentValidation.Message, currentUserId);
+                    return APIOperationResponse<long>.Fail(ResponseType.BadRequest,
+                        attachmentValidation.Message ?? "Attachment validation failed.");
+                }
+
                 WorkflowType returnWorkflowType = WorkflowType.Return;
                 if (inputDto.ReturnItems != null && inputDto.ReturnItems.Any())
                 {
@@ -253,11 +278,37 @@ namespace Ettad.RequestManagement.Service.Returns
                 Return createdReturn;
                 try
                 {
-                    // Save files inside the same DB transaction as return + workflow so FileUplodMaster rows roll back on failure.
-                    List<long> savedFileMasterIds = null;
-                    if (files != null && files.Count > 0)
+                    var flatFiles = new List<IFormFile>();
+                    var attachmentRequirementIds = new List<long?>();
+
+                    foreach (var kvp in filesByAttachmentRequirementId.OrderBy(x => x.Key))
                     {
-                        var saveFilesResult = await _fileUploadService.SaveFilesAsync(files, FileEntityType.Return);
+                        foreach (var file in kvp.Value ?? Array.Empty<IFormFile>())
+                        {
+                            if (file == null || file.Length == 0)
+                                continue;
+
+                            flatFiles.Add(file);
+                            attachmentRequirementIds.Add(kvp.Key);
+                        }
+                    }
+
+                    if (otherFiles != null)
+                    {
+                        foreach (var file in otherFiles)
+                        {
+                            if (file == null || file.Length == 0)
+                                continue;
+
+                            flatFiles.Add(file);
+                            attachmentRequirementIds.Add(null);
+                        }
+                    }
+
+                    List<long>? savedFileMasterIds = null;
+                    if (flatFiles.Count > 0)
+                    {
+                        var saveFilesResult = await _fileUploadService.SaveFilesAsync(flatFiles, FileEntityType.Order);
                         if (!saveFilesResult.Succeeded || saveFilesResult.Data == null)
                         {
                             await _transactionManager.RollbackAsync();
@@ -269,25 +320,22 @@ namespace Ettad.RequestManagement.Service.Returns
 
                         savedFileMasterIds = saveFilesResult.Data;
                         _logger.LogInformation("Files saved during return transaction. FileCount: {FileCount}, MasterIds: {MasterIds}, User: {UserId}",
-                            files.Count, string.Join(", ", savedFileMasterIds), currentUserId);
+                            flatFiles.Count, string.Join(", ", savedFileMasterIds), currentUserId);
                     }
 
-                    // Map DTO to entity
                     var returnEntity = _mapper.Map<Return>(inputDto);
                     returnEntity.DepartmentId = departmentId.Value;
 
-                    // Generate RequestNo
                     returnEntity.RequestNo = await _requestNoGeneratorService.GenerateRequestNoAsync(RequestType.Return, departmentId.Value);
 
                     _logger.LogInformation("Generated RequestNo: {RequestNo} for return", returnEntity.RequestNo);
 
                     returnEntity.RequestType = RequestType.Return;
-                    returnEntity.Status = RequestStatus.New; // Always set to New when creating
+                    returnEntity.Status = RequestStatus.New;
                     returnEntity.CreationDate = _dateTimeProvider.Now;
                     returnEntity.CreatedBy = currentUserId;
                     returnEntity.RequesterId = currentUserId;
 
-                    // Map return items
                     returnEntity.RequestItems = inputDto.ReturnItems
                         .Select(item =>
                         {
@@ -299,19 +347,20 @@ namespace Ettad.RequestManagement.Service.Returns
                     _logger.LogInformation("Adding {ItemCount} return items to return. RequestNo: {RequestNo}",
                         returnEntity.RequestItems.Count, returnEntity.RequestNo);
 
-                    // Step 3: Add to repository
                     createdReturn = await _returnRepository.AddAsync(returnEntity);
 
-                    // Step 4: Link files to the return (create FileUplodDetails records) if files were saved
                     if (savedFileMasterIds != null && savedFileMasterIds.Count > 0)
                     {
-                        foreach (var masterId in savedFileMasterIds)
+                        for (var i = 0; i < savedFileMasterIds.Count; i++)
                         {
                             var detail = new FileUplodDetails
                             {
-                                FileUplodMasterId = masterId,
+                                FileUplodMasterId = savedFileMasterIds[i],
                                 Entity = FileEntityType.Order,
-                                EntityId = createdReturn.Id
+                                EntityId = createdReturn.Id,
+                                AttachmentRequirementId = i < attachmentRequirementIds.Count
+                                    ? attachmentRequirementIds[i]
+                                    : null
                             };
 
                             await _fileDetailsRepository.AddAsync(detail);

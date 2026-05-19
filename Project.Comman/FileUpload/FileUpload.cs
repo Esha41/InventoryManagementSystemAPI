@@ -155,6 +155,12 @@ namespace Ettad.CrossCutting.Comman.FileUpload
         public bool IsMain { get; set; }
         public FileEntityType Entity { get; set; }
         public long EntityId { get; set; }
+
+        /// <summary>When non-null, this file fulfills a labeled request-purpose attachment slot.</summary>
+        public long? AttachmentRequirementId { get; set; }
+
+        public string? AttachmentRequirementNameEn { get; set; }
+        public string? AttachmentRequirementNameAr { get; set; }
     }
 }
 

@@ -14,6 +14,9 @@ namespace Ettad.RequestManagement.Service.RequestPurposes.Validators
             RuleFor(x => x.NameEn)
                 .NotEmpty().WithMessage("English name is required")
                 .MaximumLength(500).WithMessage("English name cannot exceed 500 characters");
+
+            RuleForEach(x => x.AttachmentRequirements)
+                .SetValidator(new CreateUpdateAttachmentRequirementDtoValidator());
         }
     }
 }

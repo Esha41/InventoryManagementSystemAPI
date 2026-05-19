@@ -59,6 +59,7 @@ namespace Ettad.EntityFramework.DataBaseContext
         public DbSet<ItemTypeLookup> ItemTypes { get; set; }
         public DbSet<Caliber> Calibers { get; set; }
         public DbSet<RequestPurpose> RequestPurposes { get; set; }
+        public DbSet<AttachmentRequirement> AttachmentRequirements { get; set; }
         public DbSet<BaseRequest> BaseRequests { get; set; }
         public DbSet<RequestItem> RequestItems { get; set; }
         public DbSet<RequestItemWeaponAssociation> RequestItemWeaponAssociations { get; set; }

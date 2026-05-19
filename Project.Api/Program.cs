@@ -25,7 +25,6 @@ try
         .Enrich.FromLogContext()
         .WithUserEnricher(services));
 
-
     builder.Services
         .AddEttadCoreInfrastructure(configuration)
         .AddEttadPersistence(configuration)
