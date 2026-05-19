@@ -1,4 +1,5 @@
 
+using Ettad.Data.Entities;
 using Ettad.Inventory.Service.Monitoring.BackgroundJobs;
 using Ettad.ReportManagement.Service.BackgroundJob;
 
@@ -236,10 +237,10 @@ public static class WebApplicationExtensions
 
         foreach (var schedule in schedules)
         {
-            var cron = BuildWeeklyCron(schedule.TimeOfDay, schedule.DayOfWeek.Value);
+            var cron = BuildCron(schedule);
 
             recurringJobManager.AddOrUpdate<ScheduledReportJob>(
-                $"ettad-scheduled-reports-poll-{cron.GetHashCode()}",
+                $"scheduled-report-{schedule.Id}",
                 job => job.ExecuteAsync(),
                 cron,
                 new RecurringJobOptions
@@ -253,13 +254,20 @@ public static class WebApplicationExtensions
             TimeZoneInfo.Local.Id);
     }
 
-    private static string BuildWeeklyCron(string timeOfDay, int dayOfWeek)
+    private static string BuildCron(ScheduledReport schedule)
     {
-        var parts = timeOfDay.Split(':');
+        var parts = schedule.TimeOfDay.Split(':');
 
         var hour = parts[0];
         var minute = parts[1];
 
-        return $"{minute} {hour} * * {dayOfWeek}";
+        if (schedule.Frequency == "Weekly")
+            return $"{minute} {hour} * * {schedule.DayOfWeek}";
+
+        if (schedule.Frequency == "Monthly")
+            return $"{minute} {hour} {schedule.DayOfMonth.Value} * *";
+
+        // Daily
+        return $"{minute} {hour} * * *";
     }
 }
