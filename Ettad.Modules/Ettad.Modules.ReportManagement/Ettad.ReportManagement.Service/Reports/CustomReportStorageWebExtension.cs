@@ -1,13 +1,13 @@
 using DevExpress.XtraReports.UI;
 using DevExpress.XtraReports.Web.ClientControls;
 using DevExpress.XtraReports.Web.Extensions;
+using Ettad.Data.Constants;
 using Ettad.Data.Enums;
-using Ettad.ReportManagement.Service.Reports.Factories;
 using Ettad.ReportManagement.Service.Dtos;
 using Ettad.ReportManagement.Service.Interfaces;
+using Ettad.ReportManagement.Service.Reports.Factories;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.DependencyInjection;
-using Ettad.Data.Constants;
 
 namespace Ettad.ReportManagement.Service.Reports
 {
@@ -27,7 +27,6 @@ namespace Ettad.ReportManagement.Service.Reports
 
         public override bool IsValidUrl(string url)
         {
-            // Validate report URL format
             return !string.IsNullOrEmpty(url) &&
                    !url.Contains("..") &&
                    url.Length < 500; // Reasonable length limit
@@ -84,10 +83,21 @@ namespace Ettad.ReportManagement.Service.Reports
                     using var layoutStream = new MemoryStream(result.Data.LayoutData);
                     report = new XtraReport();
                     report.LoadLayoutFromXml(layoutStream);
+
+                    //  APPLY PARAMETERS TO SQL DATA SOURCE and force fresh data
+                    foreach (var ds in report.ComponentStorage)
+                    {
+                        if (ds is DevExpress.DataAccess.Sql.SqlDataSource sqlDs)
+                        {
+                        //    sqlDs.RebuildResultSchema();
+                            sqlDs.Fill();
+                        }
+                    }
                 }
                 else
                 {
                     report = _reportFactory.Create(baseUrl);
+                    report.Tag = baseUrl;
                 }
 
                 // Set Department Parameter - support multiple departments
@@ -129,8 +139,11 @@ namespace Ettad.ReportManagement.Service.Reports
                 }
 
                 urls[ReportConstants.BaseReportTemplate] = "Base Report Template";
-                urls[ReportConstants.UserReportTemplate] = "Users Report";
-                urls[ReportConstants.AssetsReportTemplate] = "Assets Template";
+                urls[ReportConstants.UserReportTemplate] = "Users Report Template";
+                urls[ReportConstants.AssetsReportTemplate] = "Assets Report Template";
+                urls[ReportConstants.LoginAuditReportTemplate] = "Login Audit Report Template";
+                urls[ReportConstants.AuditorPendingApprovalsReportTemplate] = "Auditor Pending Approvals Report Template";
+
                 return urls;
             }
             catch (FaultException ex)
@@ -164,11 +177,12 @@ namespace Ettad.ReportManagement.Service.Reports
                 var updateDto = new UpdateReportDto
                 {
                     ReportName = reportName ?? url,
-                    ReportStatusId = existingReportResult.Data.ReportStatusId, // Keep existing status
+                    ReportStatusId = existingReportResult.Data.ReportStatusId,
                     Url = url,
                     Description = existingReportResult.Data.Description,
                     LayoutData = layoutData,
-                    ReportParameters = existingReportResult.Data.ReportParameters
+                    ReportParameters = existingReportResult.Data.ReportParameters,
+                    TemplateName = report.Tag?.ToString()
                 };
 
                 var updateResult = _reportService.UpdateAsync(existingReportResult.Data.Id, updateDto).GetAwaiter().GetResult();
@@ -192,7 +206,6 @@ namespace Ettad.ReportManagement.Service.Reports
             if (ReportExists(reportName))
                 throw new FaultException("Report with this name already exists, Try another.");
 
-            // Save report layout
             byte[] layoutData;
             using (var ms = new MemoryStream())
             {
@@ -206,7 +219,8 @@ namespace Ettad.ReportManagement.Service.Reports
                 ReportName = reportName ?? url,
                 ReportStatusId = ReportStatuses.Draft,
                 Url = url,
-                LayoutData = layoutData
+                LayoutData = layoutData,
+                TemplateName = report.Tag?.ToString(),
             };
 
             var createResult = _reportService.CreateAsync(createDto).GetAwaiter().GetResult();
@@ -218,4 +232,3 @@ namespace Ettad.ReportManagement.Service.Reports
         }
     }
 }
-

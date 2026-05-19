@@ -4,7 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Ettad.ReportManagement.Service.Reports.Templates
 {
-    public partial class UsersReportTemplate : DevExpress.XtraReports.UI.XtraReport
+    public partial class LoginAuditReportTemplate : DevExpress.XtraReports.UI.XtraReport
     {
         private DevExpress.XtraReports.UI.TopMarginBand topMarginBand1;
         private DevExpress.XtraReports.UI.DetailBand detailBand1;
@@ -40,10 +40,20 @@ namespace Ettad.ReportManagement.Service.Reports.Templates
         [System.Xml.Serialization.XmlIgnore]
         [System.NonSerialized]
         private DevExpress.XtraReports.UI.GroupFooterBand GroupFooter1;
-        private DevExpress.DataAccess.Sql.SqlDataSource UsersDataSource;
-        private DevExpress.DataAccess.Sql.SqlDataSource EttadDataSource;
-        private DevExpress.XtraReports.Parameters.Parameter Department;
-        private DevExpress.XtraReports.Parameters.Parameter Roles;
+        private DevExpress.DataAccess.Sql.SqlDataSource LoginDataSource;
+        private DevExpress.XtraReports.UI.CalculatedField LoginTypeValue;
+        private DevExpress.XtraReports.UI.CalculatedField IsSuccessfulValue;
+        private DevExpress.XtraReports.UI.XRTableCell xrTableCell2;
+        private DevExpress.XtraReports.UI.XRTableCell xrTableCell7;
+        private DevExpress.XtraReports.UI.XRTableCell xrTableCell8;
+        private DevExpress.XtraReports.UI.CalculatedField AttemptDateOnly;
+        private DevExpress.XtraReports.UI.CalculatedField AttemptDayOnly;
+        private DevExpress.XtraReports.UI.CalculatedField AttemptTimeOnly;
+        private DevExpress.XtraReports.UI.XRTableCell xrTableCell13;
+        private DevExpress.XtraReports.UI.XRTableCell xrTableCell14;
+        private DevExpress.XtraReports.UI.XRTableCell xrTableCell15;
+        private DevExpress.XtraReports.UI.XRTableCell xrTableCell16;
+        private DevExpress.XtraReports.UI.XRTableCell xrTableCell18;
         private int _rowCounter = 0;
 
         private void detailBand1_BeforePrint(object sender, System.ComponentModel.CancelEventArgs e)
@@ -64,7 +74,7 @@ namespace Ettad.ReportManagement.Service.Reports.Templates
             }
         }
 
-        public UsersReportTemplate()
+        public LoginAuditReportTemplate()
         {
             InitializeComponent();
         }
@@ -72,16 +82,11 @@ namespace Ettad.ReportManagement.Service.Reports.Templates
         private void InitializeComponent()
         {
             this.components = new System.ComponentModel.Container();
-            DevExpress.DataAccess.Sql.CustomSqlQuery customSqlQuery1 = new DevExpress.DataAccess.Sql.CustomSqlQuery();
-            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(UsersReportTemplate));
             DevExpress.DataAccess.Sql.CustomSqlQuery customSqlQuery2 = new DevExpress.DataAccess.Sql.CustomSqlQuery();
-            DevExpress.DataAccess.Sql.CustomSqlQuery customSqlQuery3 = new DevExpress.DataAccess.Sql.CustomSqlQuery();
-            DevExpress.XtraReports.UI.XRSummary xrSummary1 = new DevExpress.XtraReports.UI.XRSummary();
-            DevExpress.XtraReports.Parameters.StaticListLookUpSettings staticListLookUpSettings1 = new DevExpress.XtraReports.Parameters.StaticListLookUpSettings();
-            DevExpress.XtraReports.Parameters.DynamicListLookUpSettings dynamicListLookUpSettings1 = new DevExpress.XtraReports.Parameters.DynamicListLookUpSettings();
-            DevExpress.XtraReports.Parameters.DynamicListLookUpSettings dynamicListLookUpSettings2 = new DevExpress.XtraReports.Parameters.DynamicListLookUpSettings();
-            this.EttadDataSource = new DevExpress.DataAccess.Sql.SqlDataSource(this.components);
-            this.UsersDataSource = new DevExpress.DataAccess.Sql.SqlDataSource(this.components);
+            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(LoginAuditReportTemplate));
+            DevExpress.XtraReports.UI.XRSummary xrSummary2 = new DevExpress.XtraReports.UI.XRSummary();
+            DevExpress.XtraReports.Parameters.StaticListLookUpSettings staticListLookUpSettings2 = new DevExpress.XtraReports.Parameters.StaticListLookUpSettings();
+            this.LoginDataSource = new DevExpress.DataAccess.Sql.SqlDataSource(this.components);
             this.topMarginBand1 = new DevExpress.XtraReports.UI.TopMarginBand();
             this.detailBand1 = new DevExpress.XtraReports.UI.DetailBand();
             this.xrTable1 = new DevExpress.XtraReports.UI.XRTable();
@@ -91,6 +96,10 @@ namespace Ettad.ReportManagement.Service.Reports.Templates
             this.xrTableCell10 = new DevExpress.XtraReports.UI.XRTableCell();
             this.xrTableCell1 = new DevExpress.XtraReports.UI.XRTableCell();
             this.xrTableCell9 = new DevExpress.XtraReports.UI.XRTableCell();
+            this.xrTableCell14 = new DevExpress.XtraReports.UI.XRTableCell();
+            this.xrTableCell15 = new DevExpress.XtraReports.UI.XRTableCell();
+            this.xrTableCell16 = new DevExpress.XtraReports.UI.XRTableCell();
+            this.xrTableCell18 = new DevExpress.XtraReports.UI.XRTableCell();
             this.bottomMarginBand1 = new DevExpress.XtraReports.UI.BottomMarginBand();
             this.ReportHeader = new DevExpress.XtraReports.UI.ReportHeaderBand();
             this.xrLabel1 = new DevExpress.XtraReports.UI.XRLabel();
@@ -105,6 +114,10 @@ namespace Ettad.ReportManagement.Service.Reports.Templates
             this.xrTableCell4 = new DevExpress.XtraReports.UI.XRTableCell();
             this.xrTableCell5 = new DevExpress.XtraReports.UI.XRTableCell();
             this.xrTableCell6 = new DevExpress.XtraReports.UI.XRTableCell();
+            this.xrTableCell2 = new DevExpress.XtraReports.UI.XRTableCell();
+            this.xrTableCell7 = new DevExpress.XtraReports.UI.XRTableCell();
+            this.xrTableCell8 = new DevExpress.XtraReports.UI.XRTableCell();
+            this.xrTableCell13 = new DevExpress.XtraReports.UI.XRTableCell();
             this.PageFooter = new DevExpress.XtraReports.UI.PageFooterBand();
             this.xrLabelCompanyName = new DevExpress.XtraReports.UI.XRLabel();
             this.xrLabel6 = new DevExpress.XtraReports.UI.XRLabel();
@@ -113,34 +126,24 @@ namespace Ettad.ReportManagement.Service.Reports.Templates
             this.xrLabelReportFooter = new DevExpress.XtraReports.UI.XRLabel();
             this.Language = new DevExpress.XtraReports.Parameters.Parameter();
             this.GroupFooter1 = new DevExpress.XtraReports.UI.GroupFooterBand();
-            this.Department = new DevExpress.XtraReports.Parameters.Parameter();
-            this.Roles = new DevExpress.XtraReports.Parameters.Parameter();
+            this.LoginTypeValue = new DevExpress.XtraReports.UI.CalculatedField();
+            this.IsSuccessfulValue = new DevExpress.XtraReports.UI.CalculatedField();
+            this.AttemptDateOnly = new DevExpress.XtraReports.UI.CalculatedField();
+            this.AttemptDayOnly = new DevExpress.XtraReports.UI.CalculatedField();
+            this.AttemptTimeOnly = new DevExpress.XtraReports.UI.CalculatedField();
             ((System.ComponentModel.ISupportInitialize)(this.xrTable1)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.xrTable2)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this)).BeginInit();
             // 
-            // EttadDataSource
+            // LoginDataSource
             // 
-            this.EttadDataSource.ConnectionName = "DefaultConnection";
-            this.EttadDataSource.Name = "EttadDataSource";
-            customSqlQuery1.Name = "AspNetRoles";
-            customSqlQuery1.Sql = resources.GetString("customSqlQuery1.Sql");
-            customSqlQuery2.Name = "Departments";
+            this.LoginDataSource.ConnectionName = "DefaultConnection";
+            this.LoginDataSource.Name = "LoginDataSource";
+            customSqlQuery2.Name = "Query";
             customSqlQuery2.Sql = resources.GetString("customSqlQuery2.Sql");
-            this.EttadDataSource.Queries.AddRange(new DevExpress.DataAccess.Sql.SqlQuery[] {
-            customSqlQuery1,
+            this.LoginDataSource.Queries.AddRange(new DevExpress.DataAccess.Sql.SqlQuery[] {
             customSqlQuery2});
-            this.EttadDataSource.ResultSchemaSerializable = resources.GetString("EttadDataSource.ResultSchemaSerializable");
-            // 
-            // UsersDataSource
-            // 
-            this.UsersDataSource.ConnectionName = "DefaultConnection";
-            this.UsersDataSource.Name = "UsersDataSource";
-            customSqlQuery3.Name = "AspNetUsers_1";
-            customSqlQuery3.Sql = resources.GetString("customSqlQuery3.Sql");
-            this.UsersDataSource.Queries.AddRange(new DevExpress.DataAccess.Sql.SqlQuery[] {
-            customSqlQuery3});
-            this.UsersDataSource.ResultSchemaSerializable = resources.GetString("UsersDataSource.ResultSchemaSerializable");
+            this.LoginDataSource.ResultSchemaSerializable = resources.GetString("LoginDataSource.ResultSchemaSerializable");
             // 
             // topMarginBand1
             // 
@@ -164,7 +167,7 @@ namespace Ettad.ReportManagement.Service.Reports.Templates
             this.xrTable1.Padding = new DevExpress.XtraPrinting.PaddingInfo(2F, 2F, 0F, 0F, 100F);
             this.xrTable1.Rows.AddRange(new DevExpress.XtraReports.UI.XRTableRow[] {
             this.xrTableRow1});
-            this.xrTable1.SizeF = new System.Drawing.SizeF(790.3055F, 25F);
+            this.xrTable1.SizeF = new System.Drawing.SizeF(820.3055F, 25F);
             // 
             // xrTableRow1
             // 
@@ -173,7 +176,11 @@ namespace Ettad.ReportManagement.Service.Reports.Templates
             this.xrTableCell11,
             this.xrTableCell10,
             this.xrTableCell1,
-            this.xrTableCell9});
+            this.xrTableCell9,
+            this.xrTableCell14,
+            this.xrTableCell15,
+            this.xrTableCell16,
+            this.xrTableCell18});
             this.xrTableRow1.Name = "xrTableRow1";
             this.xrTableRow1.Weight = 1D;
             // 
@@ -186,12 +193,12 @@ namespace Ettad.ReportManagement.Service.Reports.Templates
             this.xrTableCellSrNoDetail.Name = "xrTableCellSrNoDetail";
             this.xrTableCellSrNoDetail.Padding = new DevExpress.XtraPrinting.PaddingInfo(5F, 5F, 5F, 5F, 100F);
             this.xrTableCellSrNoDetail.StylePriority.UseBorders = false;
-            xrSummary1.Func = DevExpress.XtraReports.UI.SummaryFunc.RecordNumber;
-            xrSummary1.Running = DevExpress.XtraReports.UI.SummaryRunning.Report;
-            this.xrTableCellSrNoDetail.Summary = xrSummary1;
+            xrSummary2.Func = DevExpress.XtraReports.UI.SummaryFunc.RecordNumber;
+            xrSummary2.Running = DevExpress.XtraReports.UI.SummaryRunning.Report;
+            this.xrTableCellSrNoDetail.Summary = xrSummary2;
             this.xrTableCellSrNoDetail.Text = "0";
             this.xrTableCellSrNoDetail.TextAlignment = DevExpress.XtraPrinting.TextAlignment.MiddleCenter;
-            this.xrTableCellSrNoDetail.Weight = 0.27125550273638843D;
+            this.xrTableCellSrNoDetail.Weight = 0.39221692935745228D;
             // 
             // xrTableCell11
             // 
@@ -199,14 +206,14 @@ namespace Ettad.ReportManagement.Service.Reports.Templates
             | DevExpress.XtraPrinting.BorderSide.Bottom)));
             this.xrTableCell11.BorderWidth = 1F;
             this.xrTableCell11.ExpressionBindings.AddRange(new DevExpress.XtraReports.UI.ExpressionBinding[] {
-            new DevExpress.XtraReports.UI.ExpressionBinding("BeforePrint", "Text", "Iif(?Language = \'ar\', [AspNetUser_NameAr], [AspNetUser_NameEn])")});
+            new DevExpress.XtraReports.UI.ExpressionBinding("BeforePrint", "Text", "[Username]")});
             this.xrTableCell11.Multiline = true;
             this.xrTableCell11.Name = "xrTableCell11";
             this.xrTableCell11.Padding = new DevExpress.XtraPrinting.PaddingInfo(5F, 5F, 5F, 5F, 100F);
             this.xrTableCell11.StylePriority.UseBorders = false;
             this.xrTableCell11.Text = "xrTableCell11";
             this.xrTableCell11.TextAlignment = DevExpress.XtraPrinting.TextAlignment.MiddleLeft;
-            this.xrTableCell11.Weight = 0.97658426434231171D;
+            this.xrTableCell11.Weight = 1.3113032743320836D;
             // 
             // xrTableCell10
             // 
@@ -214,14 +221,14 @@ namespace Ettad.ReportManagement.Service.Reports.Templates
             | DevExpress.XtraPrinting.BorderSide.Bottom)));
             this.xrTableCell10.BorderWidth = 1F;
             this.xrTableCell10.ExpressionBindings.AddRange(new DevExpress.XtraReports.UI.ExpressionBinding[] {
-            new DevExpress.XtraReports.UI.ExpressionBinding("BeforePrint", "Text", "[Email]")});
+            new DevExpress.XtraReports.UI.ExpressionBinding("BeforePrint", "Text", "Iif(?Language = \'ar\', [FullNameAR], [FullNameEN])\n")});
             this.xrTableCell10.Multiline = true;
             this.xrTableCell10.Name = "xrTableCell10";
             this.xrTableCell10.Padding = new DevExpress.XtraPrinting.PaddingInfo(5F, 5F, 5F, 5F, 100F);
             this.xrTableCell10.StylePriority.UseBorders = false;
             this.xrTableCell10.Text = "Column2";
             this.xrTableCell10.TextAlignment = DevExpress.XtraPrinting.TextAlignment.MiddleLeft;
-            this.xrTableCell10.Weight = 1.447782436939028D;
+            this.xrTableCell10.Weight = 1.3692185201160285D;
             // 
             // xrTableCell1
             // 
@@ -229,15 +236,16 @@ namespace Ettad.ReportManagement.Service.Reports.Templates
             | DevExpress.XtraPrinting.BorderSide.Bottom)));
             this.xrTableCell1.BorderWidth = 1F;
             this.xrTableCell1.ExpressionBindings.AddRange(new DevExpress.XtraReports.UI.ExpressionBinding[] {
-            new DevExpress.XtraReports.UI.ExpressionBinding("BeforePrint", "Text", "Iif(?Language = \'ar\', [Departments_NameAr], [Departments_NameEn])\n")});
+            new DevExpress.XtraReports.UI.ExpressionBinding("BeforePrint", "Text", "[LoginTypeValue]")});
             this.xrTableCell1.Multiline = true;
             this.xrTableCell1.Name = "xrTableCell1";
             this.xrTableCell1.Padding = new DevExpress.XtraPrinting.PaddingInfo(5F, 5F, 5F, 5F, 100F);
             this.xrTableCell1.StylePriority.UseBorders = false;
+            this.xrTableCell1.StylePriority.UseTextAlignment = false;
             this.xrTableCell1.Text = "Column3";
-            this.xrTableCell1.TextAlignment = DevExpress.XtraPrinting.TextAlignment.MiddleRight;
+            this.xrTableCell1.TextAlignment = DevExpress.XtraPrinting.TextAlignment.MiddleCenter;
             this.xrTableCell1.TextFormatString = "{0:N2}";
-            this.xrTableCell1.Weight = 0.91616257047178207D;
+            this.xrTableCell1.Weight = 1.0261525546493555D;
             // 
             // xrTableCell9
             // 
@@ -245,15 +253,80 @@ namespace Ettad.ReportManagement.Service.Reports.Templates
             | DevExpress.XtraPrinting.BorderSide.Bottom)));
             this.xrTableCell9.BorderWidth = 1F;
             this.xrTableCell9.ExpressionBindings.AddRange(new DevExpress.XtraReports.UI.ExpressionBinding[] {
-            new DevExpress.XtraReports.UI.ExpressionBinding("BeforePrint", "Text", "Iif(?Language = \'ar\', [AspNetRoles_NameAr], [AspNetRoles_NameEn])\n")});
+            new DevExpress.XtraReports.UI.ExpressionBinding("BeforePrint", "Text", "[IsSuccessfulValue]")});
             this.xrTableCell9.Multiline = true;
             this.xrTableCell9.Name = "xrTableCell9";
             this.xrTableCell9.Padding = new DevExpress.XtraPrinting.PaddingInfo(5F, 5F, 5F, 5F, 100F);
             this.xrTableCell9.StylePriority.UseBorders = false;
+            this.xrTableCell9.StylePriority.UseTextAlignment = false;
             this.xrTableCell9.Text = "Column4";
-            this.xrTableCell9.TextAlignment = DevExpress.XtraPrinting.TextAlignment.MiddleRight;
+            this.xrTableCell9.TextAlignment = DevExpress.XtraPrinting.TextAlignment.MiddleCenter;
             this.xrTableCell9.TextFormatString = "{0:N2}";
-            this.xrTableCell9.Weight = 0.88821522551048993D;
+            this.xrTableCell9.Weight = 0.888215743398808D;
+            // 
+            // xrTableCell14
+            // 
+            this.xrTableCell14.Borders = ((DevExpress.XtraPrinting.BorderSide)(((DevExpress.XtraPrinting.BorderSide.Left | DevExpress.XtraPrinting.BorderSide.Right) 
+            | DevExpress.XtraPrinting.BorderSide.Bottom)));
+            this.xrTableCell14.BorderWidth = 1F;
+            this.xrTableCell14.ExpressionBindings.AddRange(new DevExpress.XtraReports.UI.ExpressionBinding[] {
+            new DevExpress.XtraReports.UI.ExpressionBinding("BeforePrint", "Text", "[FailureReason]")});
+            this.xrTableCell14.Multiline = true;
+            this.xrTableCell14.Name = "xrTableCell14";
+            this.xrTableCell14.Padding = new DevExpress.XtraPrinting.PaddingInfo(5F, 5F, 5F, 5F, 100F);
+            this.xrTableCell14.StylePriority.UseBorders = false;
+            this.xrTableCell14.StylePriority.UseTextAlignment = false;
+            this.xrTableCell14.Text = "xrTableCell14";
+            this.xrTableCell14.TextAlignment = DevExpress.XtraPrinting.TextAlignment.MiddleLeft;
+            this.xrTableCell14.Weight = 1.296754360064112D;
+            // 
+            // xrTableCell15
+            // 
+            this.xrTableCell15.Borders = ((DevExpress.XtraPrinting.BorderSide)(((DevExpress.XtraPrinting.BorderSide.Left | DevExpress.XtraPrinting.BorderSide.Right) 
+            | DevExpress.XtraPrinting.BorderSide.Bottom)));
+            this.xrTableCell15.BorderWidth = 1F;
+            this.xrTableCell15.ExpressionBindings.AddRange(new DevExpress.XtraReports.UI.ExpressionBinding[] {
+            new DevExpress.XtraReports.UI.ExpressionBinding("BeforePrint", "Text", "[IpAddress]")});
+            this.xrTableCell15.Multiline = true;
+            this.xrTableCell15.Name = "xrTableCell15";
+            this.xrTableCell15.Padding = new DevExpress.XtraPrinting.PaddingInfo(5F, 5F, 5F, 5F, 100F);
+            this.xrTableCell15.StylePriority.UseBorders = false;
+            this.xrTableCell15.StylePriority.UseTextAlignment = false;
+            this.xrTableCell15.Text = "xrTableCell15";
+            this.xrTableCell15.TextAlignment = DevExpress.XtraPrinting.TextAlignment.MiddleLeft;
+            this.xrTableCell15.Weight = 0.94605489181671554D;
+            // 
+            // xrTableCell16
+            // 
+            this.xrTableCell16.Borders = ((DevExpress.XtraPrinting.BorderSide)(((DevExpress.XtraPrinting.BorderSide.Left | DevExpress.XtraPrinting.BorderSide.Right) 
+            | DevExpress.XtraPrinting.BorderSide.Bottom)));
+            this.xrTableCell16.BorderWidth = 1F;
+            this.xrTableCell16.ExpressionBindings.AddRange(new DevExpress.XtraReports.UI.ExpressionBinding[] {
+            new DevExpress.XtraReports.UI.ExpressionBinding("BeforePrint", "Text", "[AttemptDateOnly]")});
+            this.xrTableCell16.Multiline = true;
+            this.xrTableCell16.Name = "xrTableCell16";
+            this.xrTableCell16.Padding = new DevExpress.XtraPrinting.PaddingInfo(5F, 5F, 5F, 5F, 100F);
+            this.xrTableCell16.StylePriority.UseBorders = false;
+            this.xrTableCell16.StylePriority.UseTextAlignment = false;
+            this.xrTableCell16.Text = "xrTableCell16";
+            this.xrTableCell16.TextAlignment = DevExpress.XtraPrinting.TextAlignment.MiddleLeft;
+            this.xrTableCell16.Weight = 1.0979239148497437D;
+            // 
+            // xrTableCell18
+            // 
+            this.xrTableCell18.Borders = ((DevExpress.XtraPrinting.BorderSide)(((DevExpress.XtraPrinting.BorderSide.Left | DevExpress.XtraPrinting.BorderSide.Right) 
+            | DevExpress.XtraPrinting.BorderSide.Bottom)));
+            this.xrTableCell18.BorderWidth = 1F;
+            this.xrTableCell18.ExpressionBindings.AddRange(new DevExpress.XtraReports.UI.ExpressionBinding[] {
+            new DevExpress.XtraReports.UI.ExpressionBinding("BeforePrint", "Text", "[AttemptTimeOnly]")});
+            this.xrTableCell18.Multiline = true;
+            this.xrTableCell18.Name = "xrTableCell18";
+            this.xrTableCell18.Padding = new DevExpress.XtraPrinting.PaddingInfo(5F, 5F, 5F, 5F, 100F);
+            this.xrTableCell18.StylePriority.UseBorders = false;
+            this.xrTableCell18.StylePriority.UseTextAlignment = false;
+            this.xrTableCell18.Text = "xrTableCell18";
+            this.xrTableCell18.TextAlignment = DevExpress.XtraPrinting.TextAlignment.MiddleLeft;
+            this.xrTableCell18.Weight = 0.95264043766994877D;
             // 
             // bottomMarginBand1
             // 
@@ -267,7 +340,7 @@ namespace Ettad.ReportManagement.Service.Reports.Templates
             this.xrPageInfo1,
             this.xrLabelReportTitle,
             this.xrPictureBoxLogo});
-            this.ReportHeader.HeightF = 135.5556F;
+            this.ReportHeader.HeightF = 139.0278F;
             this.ReportHeader.Name = "ReportHeader";
             // 
             // xrLabel1
@@ -295,7 +368,7 @@ namespace Ettad.ReportManagement.Service.Reports.Templates
             this.xrLabelReportTitle.Borders = DevExpress.XtraPrinting.BorderSide.Bottom;
             this.xrLabelReportTitle.BorderWidth = 3F;
             this.xrLabelReportTitle.ExpressionBindings.AddRange(new DevExpress.XtraReports.UI.ExpressionBinding[] {
-            new DevExpress.XtraReports.UI.ExpressionBinding("BeforePrint", "Text", "Iif(?Language == \'ar\', \'تقرير المستخدمين\', \'Users Report\')")});
+            new DevExpress.XtraReports.UI.ExpressionBinding("BeforePrint", "Text", "Iif(?Language == \'ar\', \'تقرير تدقيق تسجيل الدخول\', \'Login Audit Report\')")});
             this.xrLabelReportTitle.Font = new DevExpress.Drawing.DXFont("Segoe UI", 22F, DevExpress.Drawing.DXFontStyle.Bold);
             this.xrLabelReportTitle.LocationFloat = new DevExpress.Utils.PointFloat(224.1667F, 10F);
             this.xrLabelReportTitle.Multiline = true;
@@ -336,7 +409,7 @@ namespace Ettad.ReportManagement.Service.Reports.Templates
             this.xrTable2.Padding = new DevExpress.XtraPrinting.PaddingInfo(5F, 5F, 5F, 5F, 100F);
             this.xrTable2.Rows.AddRange(new DevExpress.XtraReports.UI.XRTableRow[] {
             this.xrTableRow2});
-            this.xrTable2.SizeF = new System.Drawing.SizeF(790.3055F, 30F);
+            this.xrTable2.SizeF = new System.Drawing.SizeF(820.3056F, 30F);
             this.xrTable2.StylePriority.UseFont = false;
             // 
             // xrTableRow2
@@ -346,7 +419,11 @@ namespace Ettad.ReportManagement.Service.Reports.Templates
             this.xrTableCell3,
             this.xrTableCell4,
             this.xrTableCell5,
-            this.xrTableCell6});
+            this.xrTableCell6,
+            this.xrTableCell2,
+            this.xrTableCell7,
+            this.xrTableCell8,
+            this.xrTableCell13});
             this.xrTableRow2.Name = "xrTableRow2";
             this.xrTableRow2.Weight = 1D;
             // 
@@ -366,7 +443,7 @@ namespace Ettad.ReportManagement.Service.Reports.Templates
             this.xrTableCellSrNoHeader.StylePriority.UseTextAlignment = false;
             this.xrTableCellSrNoHeader.Text = "Sr #";
             this.xrTableCellSrNoHeader.TextAlignment = DevExpress.XtraPrinting.TextAlignment.MiddleLeft;
-            this.xrTableCellSrNoHeader.Weight = 0.266510781199649D;
+            this.xrTableCellSrNoHeader.Weight = 0.392215676375054D;
             // 
             // xrTableCell3
             // 
@@ -376,14 +453,15 @@ namespace Ettad.ReportManagement.Service.Reports.Templates
             | DevExpress.XtraPrinting.BorderSide.Bottom)));
             this.xrTableCell3.BorderWidth = 1F;
             this.xrTableCell3.ExpressionBindings.AddRange(new DevExpress.XtraReports.UI.ExpressionBinding[] {
-            new DevExpress.XtraReports.UI.ExpressionBinding("BeforePrint", "Text", "Iif(?Language == \'ar\', \'اسم\', \'Name\')")});
+            new DevExpress.XtraReports.UI.ExpressionBinding("BeforePrint", "Text", "Iif(?Language == \'ar\', \'اسم المستخدم\', \'Username\')\n")});
             this.xrTableCell3.ForeColor = System.Drawing.Color.White;
             this.xrTableCell3.Multiline = true;
             this.xrTableCell3.Name = "xrTableCell3";
             this.xrTableCell3.Padding = new DevExpress.XtraPrinting.PaddingInfo(5F, 5F, 5F, 5F, 100F);
-            this.xrTableCell3.Text = "Name";
+            this.xrTableCell3.StylePriority.UseTextAlignment = false;
+            this.xrTableCell3.Text = "Username";
             this.xrTableCell3.TextAlignment = DevExpress.XtraPrinting.TextAlignment.MiddleLeft;
-            this.xrTableCell3.Weight = 0.98132878188341188D;
+            this.xrTableCell3.Weight = 1.3113040804695029D;
             // 
             // xrTableCell4
             // 
@@ -393,14 +471,14 @@ namespace Ettad.ReportManagement.Service.Reports.Templates
             | DevExpress.XtraPrinting.BorderSide.Bottom)));
             this.xrTableCell4.BorderWidth = 1F;
             this.xrTableCell4.ExpressionBindings.AddRange(new DevExpress.XtraReports.UI.ExpressionBinding[] {
-            new DevExpress.XtraReports.UI.ExpressionBinding("BeforePrint", "Text", "Iif(?Language == \'ar\', \'بريد إلكتروني\', \'Email\')")});
+            new DevExpress.XtraReports.UI.ExpressionBinding("BeforePrint", "Text", "Iif(?Language == \'ar\', \'الاسم الكامل\', \'Full Name\')")});
             this.xrTableCell4.ForeColor = System.Drawing.Color.White;
             this.xrTableCell4.Multiline = true;
             this.xrTableCell4.Name = "xrTableCell4";
             this.xrTableCell4.Padding = new DevExpress.XtraPrinting.PaddingInfo(5F, 5F, 5F, 5F, 100F);
-            this.xrTableCell4.Text = "Email";
+            this.xrTableCell4.Text = "Full Name";
             this.xrTableCell4.TextAlignment = DevExpress.XtraPrinting.TextAlignment.MiddleLeft;
-            this.xrTableCell4.Weight = 1.4477824360073619D;
+            this.xrTableCell4.Weight = 1.3692169925080986D;
             // 
             // xrTableCell5
             // 
@@ -410,14 +488,15 @@ namespace Ettad.ReportManagement.Service.Reports.Templates
             | DevExpress.XtraPrinting.BorderSide.Bottom)));
             this.xrTableCell5.BorderWidth = 1F;
             this.xrTableCell5.ExpressionBindings.AddRange(new DevExpress.XtraReports.UI.ExpressionBinding[] {
-            new DevExpress.XtraReports.UI.ExpressionBinding("BeforePrint", "Text", "Iif(?Language == \'ar\', \'قسم\', \'Department\')")});
+            new DevExpress.XtraReports.UI.ExpressionBinding("BeforePrint", "Text", "Iif(?Language == \'ar\', \'نوع تسجيل الدخول\', \'Login Type\')")});
             this.xrTableCell5.ForeColor = System.Drawing.Color.White;
             this.xrTableCell5.Multiline = true;
             this.xrTableCell5.Name = "xrTableCell5";
             this.xrTableCell5.Padding = new DevExpress.XtraPrinting.PaddingInfo(5F, 5F, 5F, 5F, 100F);
-            this.xrTableCell5.Text = "Department";
-            this.xrTableCell5.TextAlignment = DevExpress.XtraPrinting.TextAlignment.MiddleRight;
-            this.xrTableCell5.Weight = 0.9161617079864D;
+            this.xrTableCell5.StylePriority.UseTextAlignment = false;
+            this.xrTableCell5.Text = "Login Type";
+            this.xrTableCell5.TextAlignment = DevExpress.XtraPrinting.TextAlignment.MiddleLeft;
+            this.xrTableCell5.Weight = 1.0261532080448026D;
             // 
             // xrTableCell6
             // 
@@ -427,14 +506,85 @@ namespace Ettad.ReportManagement.Service.Reports.Templates
             | DevExpress.XtraPrinting.BorderSide.Bottom)));
             this.xrTableCell6.BorderWidth = 1F;
             this.xrTableCell6.ExpressionBindings.AddRange(new DevExpress.XtraReports.UI.ExpressionBinding[] {
-            new DevExpress.XtraReports.UI.ExpressionBinding("BeforePrint", "Text", "Iif(?Language == \'ar\', \'الأدوار\', \'Roles\')")});
+            new DevExpress.XtraReports.UI.ExpressionBinding("BeforePrint", "Text", "Iif(?Language == \'ar\', \'حالة تسجيل الدخول\', \'Login Status\')")});
             this.xrTableCell6.ForeColor = System.Drawing.Color.White;
             this.xrTableCell6.Multiline = true;
             this.xrTableCell6.Name = "xrTableCell6";
             this.xrTableCell6.Padding = new DevExpress.XtraPrinting.PaddingInfo(5F, 5F, 5F, 5F, 100F);
-            this.xrTableCell6.Text = "Roles";
-            this.xrTableCell6.TextAlignment = DevExpress.XtraPrinting.TextAlignment.MiddleRight;
-            this.xrTableCell6.Weight = 0.88821488573172425D;
+            this.xrTableCell6.StylePriority.UseTextAlignment = false;
+            this.xrTableCell6.Text = "Login Status";
+            this.xrTableCell6.TextAlignment = DevExpress.XtraPrinting.TextAlignment.MiddleLeft;
+            this.xrTableCell6.Weight = 0.88821544677720954D;
+            // 
+            // xrTableCell2
+            // 
+            this.xrTableCell2.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(31)))), ((int)(((byte)(58)))), ((int)(((byte)(95)))));
+            this.xrTableCell2.Borders = ((DevExpress.XtraPrinting.BorderSide)((((DevExpress.XtraPrinting.BorderSide.Left | DevExpress.XtraPrinting.BorderSide.Top) 
+            | DevExpress.XtraPrinting.BorderSide.Right) 
+            | DevExpress.XtraPrinting.BorderSide.Bottom)));
+            this.xrTableCell2.BorderWidth = 1F;
+            this.xrTableCell2.ExpressionBindings.AddRange(new DevExpress.XtraReports.UI.ExpressionBinding[] {
+            new DevExpress.XtraReports.UI.ExpressionBinding("BeforePrint", "Text", "Iif(?Language == \'ar\', \'سبب الفشل\', \'Failure Reason\')\n")});
+            this.xrTableCell2.ForeColor = System.Drawing.Color.White;
+            this.xrTableCell2.Multiline = true;
+            this.xrTableCell2.Name = "xrTableCell2";
+            this.xrTableCell2.Padding = new DevExpress.XtraPrinting.PaddingInfo(5F, 5F, 5F, 5F, 100F);
+            this.xrTableCell2.StylePriority.UseTextAlignment = false;
+            this.xrTableCell2.Text = "Failure Reason";
+            this.xrTableCell2.TextAlignment = DevExpress.XtraPrinting.TextAlignment.MiddleLeft;
+            this.xrTableCell2.Weight = 1.2967549588782306D;
+            // 
+            // xrTableCell7
+            // 
+            this.xrTableCell7.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(31)))), ((int)(((byte)(58)))), ((int)(((byte)(95)))));
+            this.xrTableCell7.Borders = ((DevExpress.XtraPrinting.BorderSide)((((DevExpress.XtraPrinting.BorderSide.Left | DevExpress.XtraPrinting.BorderSide.Top) 
+            | DevExpress.XtraPrinting.BorderSide.Right) 
+            | DevExpress.XtraPrinting.BorderSide.Bottom)));
+            this.xrTableCell7.BorderWidth = 1F;
+            this.xrTableCell7.ForeColor = System.Drawing.Color.White;
+            this.xrTableCell7.Multiline = true;
+            this.xrTableCell7.Name = "xrTableCell7";
+            this.xrTableCell7.Padding = new DevExpress.XtraPrinting.PaddingInfo(5F, 5F, 5F, 5F, 100F);
+            this.xrTableCell7.StylePriority.UseTextAlignment = false;
+            this.xrTableCell7.Text = "IP Address";
+            this.xrTableCell7.TextAlignment = DevExpress.XtraPrinting.TextAlignment.MiddleLeft;
+            this.xrTableCell7.Weight = 0.94605440269692065D;
+            // 
+            // xrTableCell8
+            // 
+            this.xrTableCell8.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(31)))), ((int)(((byte)(58)))), ((int)(((byte)(95)))));
+            this.xrTableCell8.Borders = ((DevExpress.XtraPrinting.BorderSide)((((DevExpress.XtraPrinting.BorderSide.Left | DevExpress.XtraPrinting.BorderSide.Top) 
+            | DevExpress.XtraPrinting.BorderSide.Right) 
+            | DevExpress.XtraPrinting.BorderSide.Bottom)));
+            this.xrTableCell8.BorderWidth = 1F;
+            this.xrTableCell8.ExpressionBindings.AddRange(new DevExpress.XtraReports.UI.ExpressionBinding[] {
+            new DevExpress.XtraReports.UI.ExpressionBinding("BeforePrint", "Text", "Iif(?Language == \'ar\', \'تاريخ المحاولة\', \'Attempt Date\')\n")});
+            this.xrTableCell8.ForeColor = System.Drawing.Color.White;
+            this.xrTableCell8.Multiline = true;
+            this.xrTableCell8.Name = "xrTableCell8";
+            this.xrTableCell8.Padding = new DevExpress.XtraPrinting.PaddingInfo(5F, 5F, 5F, 5F, 100F);
+            this.xrTableCell8.StylePriority.UseTextAlignment = false;
+            this.xrTableCell8.Text = "Attempt Date";
+            this.xrTableCell8.TextAlignment = DevExpress.XtraPrinting.TextAlignment.MiddleLeft;
+            this.xrTableCell8.Weight = 1.0979228556719929D;
+            // 
+            // xrTableCell13
+            // 
+            this.xrTableCell13.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(31)))), ((int)(((byte)(58)))), ((int)(((byte)(95)))));
+            this.xrTableCell13.Borders = ((DevExpress.XtraPrinting.BorderSide)((((DevExpress.XtraPrinting.BorderSide.Left | DevExpress.XtraPrinting.BorderSide.Top) 
+            | DevExpress.XtraPrinting.BorderSide.Right) 
+            | DevExpress.XtraPrinting.BorderSide.Bottom)));
+            this.xrTableCell13.BorderWidth = 1F;
+            this.xrTableCell13.ExpressionBindings.AddRange(new DevExpress.XtraReports.UI.ExpressionBinding[] {
+            new DevExpress.XtraReports.UI.ExpressionBinding("BeforePrint", "Text", "Iif(?Language == \'ar\', \'وقت المحاولة\', \'Attempt Time\')\n")});
+            this.xrTableCell13.ForeColor = System.Drawing.Color.White;
+            this.xrTableCell13.Multiline = true;
+            this.xrTableCell13.Name = "xrTableCell13";
+            this.xrTableCell13.Padding = new DevExpress.XtraPrinting.PaddingInfo(5F, 5F, 5F, 5F, 100F);
+            this.xrTableCell13.StylePriority.UseTextAlignment = false;
+            this.xrTableCell13.Text = "Attempt Time";
+            this.xrTableCell13.TextAlignment = DevExpress.XtraPrinting.TextAlignment.MiddleLeft;
+            this.xrTableCell13.Weight = 0.95263982513223888D;
             // 
             // PageFooter
             // 
@@ -463,11 +613,11 @@ namespace Ettad.ReportManagement.Service.Reports.Templates
             new DevExpress.XtraReports.UI.ExpressionBinding("BeforePrint", "Text", "Iif(?Language == \'ar\', \'سري - للاستخدام الداخلي فقط\', \'Confidential – For interna" +
                     "l use only\')")});
             this.xrLabel6.Font = new DevExpress.Drawing.DXFont("Segoe UI", 8F, DevExpress.Drawing.DXFontStyle.Italic);
-            this.xrLabel6.LocationFloat = new DevExpress.Utils.PointFloat(96.80557F, 0F);
+            this.xrLabel6.LocationFloat = new DevExpress.Utils.PointFloat(96.80549F, 0F);
             this.xrLabel6.Multiline = true;
             this.xrLabel6.Name = "xrLabel6";
             this.xrLabel6.Padding = new DevExpress.XtraPrinting.PaddingInfo(2F, 2F, 0F, 0F, 100F);
-            this.xrLabel6.SizeF = new System.Drawing.SizeF(573.4939F, 18F);
+            this.xrLabel6.SizeF = new System.Drawing.SizeF(608.9105F, 18F);
             this.xrLabel6.StylePriority.UseFont = false;
             this.xrLabel6.StylePriority.UseTextAlignment = false;
             this.xrLabel6.Text = "Confidential – For internal use only";
@@ -478,10 +628,10 @@ namespace Ettad.ReportManagement.Service.Reports.Templates
             this.xrPageInfo.ExpressionBindings.AddRange(new DevExpress.XtraReports.UI.ExpressionBinding[] {
             new DevExpress.XtraReports.UI.ExpressionBinding("BeforePrint", "TextFormatString", "Iif(?Language == \'ar\', \'???? {0} ?? {1}\', \'Page {0} of {1}\')")});
             this.xrPageInfo.Font = new DevExpress.Drawing.DXFont("Segoe UI", 8F);
-            this.xrPageInfo.LocationFloat = new DevExpress.Utils.PointFloat(670.2996F, 0F);
+            this.xrPageInfo.LocationFloat = new DevExpress.Utils.PointFloat(705.7159F, 0F);
             this.xrPageInfo.Name = "xrPageInfo";
             this.xrPageInfo.Padding = new DevExpress.XtraPrinting.PaddingInfo(2F, 2F, 0F, 0F, 100F);
-            this.xrPageInfo.SizeF = new System.Drawing.SizeF(120.7004F, 18F);
+            this.xrPageInfo.SizeF = new System.Drawing.SizeF(115.2839F, 18F);
             this.xrPageInfo.TextAlignment = DevExpress.XtraPrinting.TextAlignment.MiddleRight;
             this.xrPageInfo.TextFormatString = "Page {0} of {1}";
             // 
@@ -500,7 +650,7 @@ namespace Ettad.ReportManagement.Service.Reports.Templates
             this.xrLabelReportFooter.LocationFloat = new DevExpress.Utils.PointFloat(0F, 0F);
             this.xrLabelReportFooter.Name = "xrLabelReportFooter";
             this.xrLabelReportFooter.Padding = new DevExpress.XtraPrinting.PaddingInfo(2F, 2F, 0F, 0F, 100F);
-            this.xrLabelReportFooter.SizeF = new System.Drawing.SizeF(791F, 68.69444F);
+            this.xrLabelReportFooter.SizeF = new System.Drawing.SizeF(821F, 68.69444F);
             this.xrLabelReportFooter.Text = "End of Report";
             this.xrLabelReportFooter.TextAlignment = DevExpress.XtraPrinting.TextAlignment.MiddleCenter;
             // 
@@ -509,47 +659,46 @@ namespace Ettad.ReportManagement.Service.Reports.Templates
             this.Language.Description = "Language";
             this.Language.Name = "Language";
             this.Language.ValueInfo = "en";
-            staticListLookUpSettings1.LookUpValues.Add(new DevExpress.XtraReports.Parameters.LookUpValue("en", "English"));
-            staticListLookUpSettings1.LookUpValues.Add(new DevExpress.XtraReports.Parameters.LookUpValue("ar", "Arabic"));
-            this.Language.ValueSourceSettings = staticListLookUpSettings1;
+            staticListLookUpSettings2.LookUpValues.Add(new DevExpress.XtraReports.Parameters.LookUpValue("en", "English"));
+            staticListLookUpSettings2.LookUpValues.Add(new DevExpress.XtraReports.Parameters.LookUpValue("ar", "Arabic"));
+            this.Language.ValueSourceSettings = staticListLookUpSettings2;
             // 
             // GroupFooter1
             // 
             this.GroupFooter1.HeightF = 31.66661F;
             this.GroupFooter1.Name = "GroupFooter1";
             // 
-            // Department
+            // LoginTypeValue
             // 
-            this.Department.AllowNull = true;
-            this.Department.Description = "Department";
-            this.Department.MultiValue = true;
-            this.Department.Name = "Department";
-            this.Department.SelectAllValues = true;
-            this.Department.Type = typeof(long);
-            dynamicListLookUpSettings1.DataMember = "Departments";
-            dynamicListLookUpSettings1.DataSource = this.EttadDataSource;
-            dynamicListLookUpSettings1.DisplayMember = "NameEn";
-            dynamicListLookUpSettings1.SortMember = "NameEn";
-            dynamicListLookUpSettings1.SortOrder = DevExpress.Data.ColumnSortOrder.Ascending;
-            dynamicListLookUpSettings1.ValueMember = "Id";
-            this.Department.ValueSourceSettings = dynamicListLookUpSettings1;
+            this.LoginTypeValue.DataMember = "Query";
+            this.LoginTypeValue.Expression = "Iif([LoginType] == 1, \'Local\', \n    Iif([LoginType] == 2, \'LDAP\', \'Unknown\'))";
+            this.LoginTypeValue.Name = "LoginTypeValue";
             // 
-            // Roles
+            // IsSuccessfulValue
             // 
-            this.Roles.AllowNull = true;
-            this.Roles.Description = "Roles";
-            this.Roles.MultiValue = true;
-            this.Roles.Name = "Roles";
-            this.Roles.SelectAllValues = true;
-            dynamicListLookUpSettings2.DataMember = "AspNetRoles";
-            dynamicListLookUpSettings2.DataSource = this.EttadDataSource;
-            dynamicListLookUpSettings2.DisplayMember = "Name";
-            dynamicListLookUpSettings2.SortMember = "Name";
-            dynamicListLookUpSettings2.SortOrder = DevExpress.Data.ColumnSortOrder.Ascending;
-            dynamicListLookUpSettings2.ValueMember = "Id";
-            this.Roles.ValueSourceSettings = dynamicListLookUpSettings2;
+            this.IsSuccessfulValue.DataMember = "Query";
+            this.IsSuccessfulValue.Expression = "Iif([IsSuccessful] == True, \'Success\', \'Failed\')";
+            this.IsSuccessfulValue.Name = "IsSuccessfulValue";
             // 
-            // UsersReportTemplate
+            // AttemptDateOnly
+            // 
+            this.AttemptDateOnly.DataMember = "Query";
+            this.AttemptDateOnly.Expression = "FormatString(\'{0:yyyy-MM-dd}\', [AttemptDate])";
+            this.AttemptDateOnly.Name = "AttemptDateOnly";
+            // 
+            // AttemptDayOnly
+            // 
+            this.AttemptDayOnly.DataMember = "Query";
+            this.AttemptDayOnly.Expression = "GetDayOfWeek([AttemptDate])";
+            this.AttemptDayOnly.Name = "AttemptDayOnly";
+            // 
+            // AttemptTimeOnly
+            // 
+            this.AttemptTimeOnly.DataMember = "Query";
+            this.AttemptTimeOnly.Expression = "FormatString(\'{0:HH:mm:ss}\', [AttemptDate])";
+            this.AttemptTimeOnly.Name = "AttemptTimeOnly";
+            // 
+            // LoginAuditReportTemplate
             // 
             this.Bands.AddRange(new DevExpress.XtraReports.UI.Band[] {
             this.topMarginBand1,
@@ -560,21 +709,21 @@ namespace Ettad.ReportManagement.Service.Reports.Templates
             this.PageFooter,
             this.ReportFooter,
             this.GroupFooter1});
+            this.CalculatedFields.AddRange(new DevExpress.XtraReports.UI.CalculatedField[] {
+            this.LoginTypeValue,
+            this.IsSuccessfulValue,
+            this.AttemptDateOnly,
+            this.AttemptDayOnly,
+            this.AttemptTimeOnly});
             this.ComponentStorage.AddRange(new System.ComponentModel.IComponent[] {
-            this.UsersDataSource,
-            this.EttadDataSource});
-            this.DataMember = "AspNetUsers_1";
-            this.DataSource = this.UsersDataSource;
-            this.FilterString = resources.GetString("$this.FilterString");
-            this.Margins = new DevExpress.Drawing.DXMargins(34F, 11F, 35.41667F, 38.19444F);
+            this.LoginDataSource});
+            this.DataMember = "Query";
+            this.DataSource = this.LoginDataSource;
+            this.Margins = new DevExpress.Drawing.DXMargins(15F, 14F, 35.41667F, 38.19444F);
             this.ParameterPanelLayoutItems.AddRange(new DevExpress.XtraReports.Parameters.ParameterPanelLayoutItem[] {
-            new DevExpress.XtraReports.Parameters.ParameterLayoutItem(this.Language, DevExpress.XtraReports.Parameters.Orientation.Horizontal),
-            new DevExpress.XtraReports.Parameters.ParameterLayoutItem(this.Department, DevExpress.XtraReports.Parameters.Orientation.Horizontal),
-            new DevExpress.XtraReports.Parameters.ParameterLayoutItem(this.Roles, DevExpress.XtraReports.Parameters.Orientation.Horizontal)});
+            new DevExpress.XtraReports.Parameters.ParameterLayoutItem(this.Language, DevExpress.XtraReports.Parameters.Orientation.Horizontal)});
             this.Parameters.AddRange(new DevExpress.XtraReports.Parameters.Parameter[] {
-            this.Language,
-            this.Department,
-            this.Roles});
+            this.Language});
             this.Version = "25.2";
             ((System.ComponentModel.ISupportInitialize)(this.xrTable1)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.xrTable2)).EndInit();
