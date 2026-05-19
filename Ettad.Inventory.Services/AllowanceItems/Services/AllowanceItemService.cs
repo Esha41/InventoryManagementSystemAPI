@@ -935,6 +935,7 @@ namespace Ettad.Inventory.Service.AllowanceItems.Services
                     // Get item details
                     var item = allowanceItem.Item;
                     var itemName = item?.Name ?? "Unknown Item";
+                    var itemNameAr = item?.NameAr;
                     var itemNo = item?.ItemNo ?? "";
                     // BatchNo is now on InventoryDetail, not BaseItem - set to null for allowance items
                     string? batchNo = null;
@@ -943,6 +944,7 @@ namespace Ettad.Inventory.Service.AllowanceItems.Services
                     {
                         ItemId = itemId,
                         ItemName = itemName,
+                        ItemNameAr = itemNameAr,
                         ItemNo = itemNo,
                         BatchNo = batchNo,
                         OriginalQuantity = itemOriginalQuantity,

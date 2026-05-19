@@ -7,6 +7,8 @@ namespace Ettad.Inventory.Service.Monitoring.Dtos
         public long InventoryDetailId { get; set; }
         public long ItemId { get; set; }
         public string ItemName { get; set; } = string.Empty;
+        /// <summary>Arabic catalog name when available (UI falls back to <see cref="ItemName"/>).</summary>
+        public string? ItemNameAr { get; set; }
         public string? ItemNo { get; set; }
         public string Lot { get; set; } = string.Empty;
         public string? BatchNo { get; set; }

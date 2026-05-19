@@ -7,6 +7,8 @@ namespace Ettad.Data.Entities
     {
         public string Name { get; set; }
 
+        public string? NameAr { get; set; }
+
         public string ItemNo { get; set; }
        
         public ItemType ItemType { get; set; }

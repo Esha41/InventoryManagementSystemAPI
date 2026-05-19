@@ -4,6 +4,7 @@ namespace Ettad.Inventory.Service.AllowanceItems.Dtos
     {
         public long ItemId { get; set; }
         public string ItemName { get; set; }
+        public string? ItemNameAr { get; set; }
         public string ItemNo { get; set; }
         public string? BatchNo { get; set; }
         public int OriginalQuantity { get; set; }

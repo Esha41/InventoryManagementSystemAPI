@@ -181,11 +181,12 @@ namespace Ettad.Inventory.Service.Batches.Services
                     assetQueryBase = assetQueryBase.Where(a => a.IsAssigned == filterByIsAssigned.Value);
 
                 var itemCounts = await assetQueryBase
-                    .GroupBy(a => new { a.ItemId, Name = a.Item.Name, ItemNo = a.Item.ItemNo, Nsn = a.Item.Nsn })
+                    .GroupBy(a => new { a.ItemId, Name = a.Item.Name, NameAr = a.Item.NameAr, ItemNo = a.Item.ItemNo, Nsn = a.Item.Nsn })
                     .Select(g => new BatchAssetItemCountDto
                     {
                         ItemId = g.Key.ItemId,
                         ItemName = g.Key.Name ?? string.Empty,
+                        ItemNameAr = g.Key.NameAr,
                         ItemNo = g.Key.ItemNo,
                         Nsn = g.Key.Nsn,
                         Count = g.Count()

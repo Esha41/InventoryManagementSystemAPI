@@ -11,5 +11,7 @@ namespace Ettad.RequestManagement.Service.Common.Dtos
         public long? AssociatedWeaponCaliberId { get; set; }
 
         public string? AssociatedWeaponName { get; set; }
+
+        public string? AssociatedWeaponNameAr { get; set; }
     }
 }

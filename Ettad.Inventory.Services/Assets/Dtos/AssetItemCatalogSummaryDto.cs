@@ -9,6 +9,7 @@ namespace Ettad.Inventory.Service.Assets.Dtos
     {
         public long ItemId { get; set; }
         public string ItemName { get; set; }
+        public string? ItemNameAr { get; set; }
         public string ItemNo { get; set; }
         public string Nsn { get; set; }
         public string PartNo { get; set; }

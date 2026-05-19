@@ -1350,6 +1350,7 @@ namespace Ettad.Inventory.Service.Inventories.Services
                     var lots = itemGroup.ToList();
                     var firstLotItem = lots.FirstOrDefault()?.Item;
                     var itemName = firstLotItem?.Name ?? "Unknown Item";
+                    var itemNameAr = firstLotItem?.NameAr;
                     var itemNo = firstLotItem?.ItemNo ?? string.Empty;
                     var itemType = firstLotItem?.ItemType ?? default;
                     var nsn = firstLotItem?.Nsn ?? string.Empty;
@@ -1383,6 +1384,7 @@ namespace Ettad.Inventory.Service.Inventories.Services
                     {
                         ItemId = itemId,
                         ItemName = itemName,
+                        ItemNameAr = itemNameAr,
                         ItemNo = itemNo,
                         ItemType = itemType,
                         Nsn = nsn,
@@ -1472,6 +1474,7 @@ namespace Ettad.Inventory.Service.Inventories.Services
                 // Get item properties from first lot
                 var firstLotItem = lots.FirstOrDefault()?.Item;
                 var itemName = firstLotItem?.Name ?? "Unknown Item";
+                var itemNameAr = firstLotItem?.NameAr;
                 var itemNo = firstLotItem?.ItemNo ?? string.Empty;
                 var itemType = firstLotItem?.ItemType ?? default;
                 var nsn = firstLotItem?.Nsn ?? string.Empty;
@@ -1490,6 +1493,7 @@ namespace Ettad.Inventory.Service.Inventories.Services
                     {
                         ItemId = itemId,
                         ItemName = itemName,
+                        ItemNameAr = itemNameAr,
                         ItemNo = itemNo,
                         ItemType = itemType,
                         Nsn = nsn,
@@ -1540,6 +1544,7 @@ namespace Ettad.Inventory.Service.Inventories.Services
                 {
                     ItemId = itemId,
                     ItemName = itemName,
+                    ItemNameAr = itemNameAr,
                     ItemNo = itemNo,
                     ItemType = itemType,
                     Nsn = nsn,

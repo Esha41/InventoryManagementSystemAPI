@@ -120,6 +120,7 @@ namespace Ettad.Inventory.Service.Monitoring.Services
                         {
                             ItemId = item.Id,
                             ItemName = item.Name ?? string.Empty,
+                            ItemNameAr = item.NameAr,
                             ItemNo = item.ItemNo,
                             Nsn = item.Nsn,
                             MinimumQuantity = item.MinimumQuantity,
@@ -199,6 +200,7 @@ namespace Ettad.Inventory.Service.Monitoring.Services
                         {
                             ItemId = item.Id,
                             ItemName = item.Name ?? string.Empty,
+                            ItemNameAr = item.NameAr,
                             ItemNo = item.ItemNo,
                             Nsn = item.Nsn,
                             MinimumQuantity = item.MinimumQuantity,
