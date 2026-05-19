@@ -239,7 +239,7 @@ public static class WebApplicationExtensions
             var cron = BuildWeeklyCron(schedule.TimeOfDay, schedule.DayOfWeek.Value);
 
             recurringJobManager.AddOrUpdate<ScheduledReportJob>(
-                $"{ScheduledReportHangfireConstants.RecurringJobId}-{cron.GetHashCode()}",
+                $"ettad-scheduled-reports-poll-{cron.GetHashCode()}",
                 job => job.ExecuteAsync(),
                 cron,
                 new RecurringJobOptions
