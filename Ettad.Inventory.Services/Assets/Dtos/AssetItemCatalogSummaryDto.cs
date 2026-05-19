@@ -13,6 +13,9 @@ namespace Ettad.Inventory.Service.Assets.Dtos
         public string Nsn { get; set; }
         public string PartNo { get; set; }
         public ItemType ItemType { get; set; }
+        /// <summary>Lookup id for weapon caliber; aligns with asset list CaliberId filter.</summary>
+        public long? CaliberId { get; set; }
+        public string Caliber { get; set; }
         /// <summary>Count of non-deleted assets for this catalog item in the requested depot scope.</summary>
         public long TotalAssets { get; set; }
     }

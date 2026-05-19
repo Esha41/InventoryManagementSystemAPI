@@ -108,6 +108,23 @@ namespace Ettad.Inventory.Service.Assets.Implementation
         private static bool WantsIntakeAssignment(CreateAssetDto dto) =>
             dto.AssignToEmployeeId.HasValue || dto.AssignToDepartmentId.HasValue;
 
+        private static void MapWeaponCaliber(Weapon weapon, out string caliber, out long? caliberId)
+        {
+            caliber = null;
+            caliberId = null;
+            if (weapon == null) return;
+
+            if (weapon.LookupCaliber != null)
+            {
+                caliber = weapon.LookupCaliber.NameEn ?? weapon.LookupCaliber.NameAr;
+                caliberId = weapon.LookupCaliber.Id;
+            }
+            else if (weapon.CaliberId.HasValue)
+            {
+                caliberId = weapon.CaliberId;
+            }
+        }
+
         /// <summary>
         /// EF include paths for <see cref="Asset.Item"/> weapon/ammunition caliber data (same pattern as inventory summaries).
         /// </summary>
@@ -290,11 +307,20 @@ namespace Ettad.Inventory.Service.Assets.Implementation
                     .ToListAsync();
 
                 var rowById = grouped.ToDictionary(x => x.ItemId);
+
+                var weaponsById = await _weaponRepository
+                    .Find(
+                        w => pageItemIds.Contains(w.Id) && !w.IsDeleted,
+                        false,
+                        nameof(Weapon.LookupCaliber))
+                    .ToDictionaryAsync(w => w.Id);
+
                 var items = new List<AssetItemCatalogSummaryDto>();
                 foreach (var id in pageItemIds)
                 {
                     if (!rowById.TryGetValue(id, out var row))
                         continue;
+                    MapWeaponCaliber(weaponsById.GetValueOrDefault(id), out var caliber, out var caliberId);
                     items.Add(new AssetItemCatalogSummaryDto
                     {
                         ItemId = row.ItemId,
@@ -303,6 +329,8 @@ namespace Ettad.Inventory.Service.Assets.Implementation
                         Nsn = row.Nsn ?? string.Empty,
                         PartNo = row.PartNo ?? string.Empty,
                         ItemType = row.ItemType,
+                        CaliberId = caliberId,
+                        Caliber = caliber,
                         TotalAssets = row.TotalAssets
                     });
                 }
