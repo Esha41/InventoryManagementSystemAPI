@@ -108,10 +108,9 @@ namespace Ettad.Inventory.Service.Assets.Implementation
         private static bool WantsIntakeAssignment(CreateAssetDto dto) =>
             dto.AssignToEmployeeId.HasValue || dto.AssignToDepartmentId.HasValue;
 
-        private static void MapWeaponCaliber(Weapon weapon, out string caliber, out string caliberUnitName, out long? caliberId)
+        private static void MapWeaponCaliber(Weapon weapon, out string caliber, out long? caliberId)
         {
             caliber = null;
-            caliberUnitName = null;
             caliberId = null;
             if (weapon == null) return;
 
@@ -123,11 +122,6 @@ namespace Ettad.Inventory.Service.Assets.Implementation
             else if (weapon.CaliberId.HasValue)
             {
                 caliberId = weapon.CaliberId;
-            }
-
-            if (weapon.CaliberUnit != null)
-            {
-                caliberUnitName = weapon.CaliberUnit.NameEn ?? weapon.CaliberUnit.NameAr;
             }
         }
 
@@ -318,8 +312,7 @@ namespace Ettad.Inventory.Service.Assets.Implementation
                     .Find(
                         w => pageItemIds.Contains(w.Id) && !w.IsDeleted,
                         false,
-                        nameof(Weapon.LookupCaliber),
-                        nameof(Weapon.CaliberUnit))
+                        nameof(Weapon.LookupCaliber))
                     .ToDictionaryAsync(w => w.Id);
 
                 var items = new List<AssetItemCatalogSummaryDto>();
@@ -327,7 +320,7 @@ namespace Ettad.Inventory.Service.Assets.Implementation
                 {
                     if (!rowById.TryGetValue(id, out var row))
                         continue;
-                    MapWeaponCaliber(weaponsById.GetValueOrDefault(id), out var caliber, out var caliberUnit, out var caliberId);
+                    MapWeaponCaliber(weaponsById.GetValueOrDefault(id), out var caliber, out var caliberId);
                     items.Add(new AssetItemCatalogSummaryDto
                     {
                         ItemId = row.ItemId,
@@ -338,7 +331,6 @@ namespace Ettad.Inventory.Service.Assets.Implementation
                         ItemType = row.ItemType,
                         CaliberId = caliberId,
                         Caliber = caliber,
-                        CaliberUnitName = caliberUnit,
                         TotalAssets = row.TotalAssets
                     });
                 }
