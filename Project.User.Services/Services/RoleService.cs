@@ -442,15 +442,22 @@ namespace Ettad.User.Services.Services
                 return APIOperationResponse<string>.BadRequest($"The role '{role.Name}' is protected and cannot be deleted. This role is used in critical business logic.");
             }
 
-            var result = await _roleManager.DeleteAsync(role);
-
-            if (!result.Succeeded)
+            try
             {
-                var errors = result.Errors.Select(e => e.Description).ToList();
-                return APIOperationResponse<string>.BadRequest("Failed to delete role.", errors);
-            }
+                var result = await _roleManager.DeleteAsync(role);
 
-            return APIOperationResponse<string>.Deleted("Role deleted successfully.");
+                if (!result.Succeeded)
+                {
+                    var errors = result.Errors.Select(e => e.Description).ToList();
+                    return APIOperationResponse<string>.BadRequest("Failed to delete role.", errors);
+                }
+
+                return APIOperationResponse<string>.Deleted("Role deleted successfully.");
+            }
+            catch (DbUpdateException)
+            {
+                return APIOperationResponse<string>.BadRequest("This role cannot be deleted because it is currently in use.");
+            }
         }
 
         public async Task<APIOperationResponse<List<CrudPermissions>>> GetPlainPermissionsForRoleAsync(string roleId)
