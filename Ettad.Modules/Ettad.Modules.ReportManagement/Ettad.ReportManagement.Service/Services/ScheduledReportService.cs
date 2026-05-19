@@ -302,8 +302,14 @@ namespace Ettad.ReportManagement.Service.Services
 
             var hour = parts[0];
             var minute = parts[1];
+            string cron;
 
-            var cron = $"{minute} {hour} * * {schedule.DayOfWeek}";
+            if (schedule.Frequency == "Weekly")
+                cron = $"{minute} {hour} * * {schedule.DayOfWeek}"; 
+            else if (schedule.Frequency == "Monthly")
+                cron = $"{minute} {hour} {schedule.DayOfMonth} * *"; 
+            else
+                cron = $"{minute} {hour} * * *"; 
 
             _recurringJobManager.AddOrUpdate<ScheduledReportJob>(
                 $"scheduled-report-{schedule.Id}",
