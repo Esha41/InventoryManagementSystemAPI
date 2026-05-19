@@ -10,7 +10,6 @@ using Ettad.ResponseHandler.Models;
 using Ettad.User.Services.DTO;
 using Ettad.User.Services.Interfaces;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.Extensions.Caching.Memory;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 using Ettad.CrossCutting.Comman.Time;
@@ -26,7 +25,7 @@ namespace Ettad.User.Services.Services
         private readonly ICrossCuttingRepository<RoleApplicationEntity> _roleApplicationEntityRepository;
         private readonly ICrossCuttingRepository<ApplicationEntity> _applicationEntityRepository;
         private readonly ICurrentUserService _currentUserService;
-        private readonly IMemoryCache _cache;
+        private readonly IPermissionService _permissionService;
         private readonly IDateTimeProvider _dateTimeProvider;
 
         // Protected role names that cannot be updated or deleted (used in business logic)
@@ -125,7 +124,7 @@ namespace Ettad.User.Services.Services
             IMapper mapper,
             ICrossCuttingRepository<RoleApplicationEntity> roleApplicationEntityRepository,
             ICrossCuttingRepository<ApplicationEntity> applicationEntityRepository,
-            IMemoryCache cache,
+            IPermissionService permissionService,
             IDateTimeProvider dateTimeProvider)
         {
             _roleManager = roleManager;
@@ -134,7 +133,7 @@ namespace Ettad.User.Services.Services
             _mapper = mapper;
             _roleApplicationEntityRepository = roleApplicationEntityRepository;
             _applicationEntityRepository = applicationEntityRepository;
-            _cache = cache;
+            _permissionService = permissionService;
             _dateTimeProvider = dateTimeProvider;
         }
 
@@ -573,11 +572,10 @@ namespace Ettad.User.Services.Services
                     }
                 }
 
-                // Invalidate permission cache for all users in this role
                 var usersInRole = await _userManager.GetUsersInRoleAsync(role.Name);
                 foreach (var user in usersInRole)
                 {
-                    _cache.Remove($"user_permissions_{user.Id}");
+                    await _permissionService.InvalidatePermissionCacheForUserAsync(user.Id);
                 }
 
                 return APIOperationResponse<bool>.Success(true, "Permissions assigned successfully.");

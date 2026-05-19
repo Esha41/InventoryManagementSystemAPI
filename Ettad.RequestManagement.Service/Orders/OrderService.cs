@@ -581,7 +581,7 @@ namespace Ettad.RequestManagement.Service.Orders
 
                     await NotifyOrderAsync(
                         "Order Created",
-                        $"Order request {createdOrder.RequestNo} has been created{(createdOrder.IsFromAllowance ? " from allowance" : "")}.",
+                        $"Order request {createdOrder.RequestNo} has been created.",
                         createdOrder.Id);
 
                     _logger.LogInformation("Order created successfully. OrderId: {OrderId}, OrderNo: {OrderNo}, ItemCount: {ItemCount}, IsFromAllowance: {IsFromAllowance}, User: {UserId}",
