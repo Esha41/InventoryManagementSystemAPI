@@ -105,7 +105,7 @@ public static class WebApplicationExtensions
         await RegisterLowStockMonitorRecurringJobAsync(app, recurringJobManager, context).ConfigureAwait(false);
         await RegisterCriticalStockMonitorRecurringJobAsync(app, recurringJobManager, context).ConfigureAwait(false);
         await RegisterOrderAutoRejectRecurringJobAsync(app, recurringJobManager, context).ConfigureAwait(false);
-        RegisterScheduledReportsRecurringJob(app, recurringJobManager);
+        await RegisterScheduledReportsRecurringJob(app, recurringJobManager, context);
     }
 
     private static async Task RegisterLowStockMonitorRecurringJobAsync(
@@ -230,23 +230,36 @@ public static class WebApplicationExtensions
         return (cron, enabled);
     }
 
-    private static void RegisterScheduledReportsRecurringJob(
-        WebApplication app,
-        IRecurringJobManager recurringJobManager)
+    private static async Task RegisterScheduledReportsRecurringJob(WebApplication app, IRecurringJobManager recurringJobManager, ApplicationDbContext context)
     {
-        var cronExpression = app.Configuration.GetValue<string>("BackgroundJobs:ScheduledReports:CronExpression")
-            ?? ScheduledReportHangfireConstants.DefaultCronExpression;
+        var schedules = await context.ScheduledReports.Where(x => x.IsActive && !x.IsDeleted).ToListAsync();
 
-        recurringJobManager.AddOrUpdate<ScheduledReportJob>(
-            ScheduledReportHangfireConstants.RecurringJobId,
-            job => job.ExecuteAsync(),
-            cronExpression,
-            new RecurringJobOptions { TimeZone = TimeZoneInfo.Local });
+        foreach (var schedule in schedules)
+        {
+            var cron = BuildWeeklyCron(schedule.TimeOfDay, schedule.DayOfWeek.Value);
+
+            recurringJobManager.AddOrUpdate<ScheduledReportJob>(
+                $"{ScheduledReportHangfireConstants.RecurringJobId}-{cron.GetHashCode()}",
+                job => job.ExecuteAsync(),
+                cron,
+                new RecurringJobOptions
+                {
+                    TimeZone = TimeZoneInfo.Local
+                });
+        }
 
         Log.Information(
             "Scheduled reports Hangfire poll registered: jobId={JobId}, cron={Cron}, hangfireTz={Tz}",
-            ScheduledReportHangfireConstants.RecurringJobId,
-            cronExpression,
             TimeZoneInfo.Local.Id);
+    }
+
+    private static string BuildWeeklyCron(string timeOfDay, int dayOfWeek)
+    {
+        var parts = timeOfDay.Split(':');
+
+        var hour = parts[0];
+        var minute = parts[1];
+
+        return $"{minute} {hour} * * {dayOfWeek}";
     }
 }

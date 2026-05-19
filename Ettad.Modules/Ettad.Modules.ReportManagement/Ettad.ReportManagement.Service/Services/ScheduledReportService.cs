@@ -1,15 +1,17 @@
 using AutoMapper;
 using Ettad.Application.Common.Interfaces;
 using Ettad.CrossCutting.Comman.Time;
+using Ettad.Data.Entities;
+using Ettad.Data.Interfaces.Repositories;
+using Ettad.ReportManagement.Service.BackgroundJob;
+using Ettad.ReportManagement.Service.Dtos;
+using Ettad.ReportManagement.Service.Interfaces;
 using Ettad.ResponseHandler.Consts;
 using Ettad.ResponseHandler.Models;
+using Ettad.User.Services.Interfaces;
+using Hangfire;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using Ettad.ReportManagement.Service.Dtos;
-using Ettad.Data.Entities;
-using Ettad.User.Services.Interfaces;
-using Ettad.ReportManagement.Service.Interfaces;
-using Ettad.Data.Interfaces.Repositories;
 
 namespace Ettad.ReportManagement.Service.Services
 {
@@ -25,6 +27,7 @@ namespace Ettad.ReportManagement.Service.Services
         private readonly IScheduledReportExecutionService _executionService;
         private readonly IUserService _userService;
         private readonly IMapper _mapper;
+        private readonly IRecurringJobManager _recurringJobManager;
 
         public ScheduledReportService(
             ICrossCuttingRepository<ScheduledReport> scheduledReportRepository,
@@ -36,6 +39,7 @@ namespace Ettad.ReportManagement.Service.Services
             IDateTimeProvider dateTimeProvider,
             IScheduledReportExecutionService executionService,
             IUserService userService,
+            IRecurringJobManager recurringJobManager,
             IMapper mapper)
         {
             _scheduledReportRepository = scheduledReportRepository;
@@ -47,6 +51,7 @@ namespace Ettad.ReportManagement.Service.Services
             _dateTimeProvider = dateTimeProvider;
             _executionService = executionService;
             _userService = userService;
+            _recurringJobManager = recurringJobManager;
             _mapper = mapper;
         }
 
@@ -178,6 +183,9 @@ namespace Ettad.ReportManagement.Service.Services
 
                 await _scheduledReportRepository.AddAsync(scheduledReport);
 
+                //rebuild corn
+                RegisterOrUpdateRecurringJob(scheduledReport);
+
                 _logger.LogInformation("Created scheduled report {Id}. User: {UserId}", scheduledReport.Id, _currentUserService.UserId);
                 return APIOperationResponse<Guid>.Success(scheduledReport.Id);
             }
@@ -272,6 +280,9 @@ namespace Ettad.ReportManagement.Service.Services
 
                 await _scheduledReportRepository.UpdateAsync(scheduledReport);
 
+                // Rebuild cron
+                RegisterOrUpdateRecurringJob(scheduledReport);
+
                 _logger.LogInformation("Updated scheduled report {Id}. User: {UserId}", id, _currentUserService.UserId);
                 return APIOperationResponse<bool>.Success(true);
             }
@@ -283,6 +294,25 @@ namespace Ettad.ReportManagement.Service.Services
                     $"An error occurred: {ex.Message}"
                 );
             }
+        }
+
+        private void RegisterOrUpdateRecurringJob(ScheduledReport schedule)
+        {
+            var parts = schedule.TimeOfDay.Split(':');
+
+            var hour = parts[0];
+            var minute = parts[1];
+
+            var cron = $"{minute} {hour} * * {schedule.DayOfWeek}";
+
+            _recurringJobManager.AddOrUpdate<ScheduledReportJob>(
+                $"scheduled-report-{schedule.Id}",
+                job => job.ExecuteAsync(),
+                cron,
+                new RecurringJobOptions
+                {
+                    TimeZone = TimeZoneInfo.Local
+                });
         }
 
         public async Task<APIOperationResponse<bool>> DeleteAsync(Guid id)
