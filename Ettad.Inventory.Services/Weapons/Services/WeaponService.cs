@@ -686,13 +686,13 @@ namespace Ettad.Inventory.Service.Weapons.Services
             var headers = language == "ar"
                    ? new[]
                    {
-                        "الاسم*", "رقم الصنف*", "Part No", "رقم NSN", "السعر", "الكمية الدنيا",
+                        "الاسم*", "الاسم (بالعربية)", "رقم الصنف*", "Part No", "رقم NSN", "السعر", "الكمية الدنيا",
                         "العيار", "وحدة العيار", "سنة الصنع", "بلد الصنع", "النموذج",
                         "رقم الأمم المتحدة", "التوزيع", "الرقم المرجعي", "التصنيف", "النوع", "ملاحظات"
                    }
                    : new[]
                    {
-                        "Name*", "Item No*", "Part No", "NSN", "Price", "Minimum Quantity",
+                        "Name*", "Name (Arabic)", "Item No*", "Part No", "NSN", "Price", "Minimum Quantity",
                         "Caliber", "Caliber Unit", "Year Of Manufacture", "Country Of Manufacture", "Model",
                         "UN Number", "Distribution", "Reference No", "Classification", "Type", "Notes"
                    };
@@ -712,22 +712,23 @@ namespace Ettad.Inventory.Service.Weapons.Services
                     {
                         var isAr = language == "ar";
                         sheet.Cells[2, 1].Value = firstAsset.Name;
-                        sheet.Cells[2, 2].Value = firstAsset.ItemNo;
-                        sheet.Cells[2, 3].Value = firstAsset.PartNo;
-                        sheet.Cells[2, 4].Value = firstAsset.Nsn;
-                        sheet.Cells[2, 5].Value = firstAsset.Price;
-                        sheet.Cells[2, 6].Value = firstAsset.MinimumQuantity;
-                        sheet.Cells[2, 7].Value = isAr ? firstAsset.LookupCaliber?.NameAr : firstAsset.LookupCaliber?.NameEn;
-                        sheet.Cells[2, 8].Value = isAr ? firstAsset.CaliberUnit?.NameAr : firstAsset.CaliberUnit?.NameEn;
-                        sheet.Cells[2, 9].Value = firstAsset.YearOfManufacture;
-                        sheet.Cells[2, 10].Value = isAr ? firstAsset.CountryOfManufacture?.NameAr : firstAsset.CountryOfManufacture?.NameEn;
-                        sheet.Cells[2, 11].Value = firstAsset.Model;
-                        sheet.Cells[2, 12].Value = firstAsset.UNNumber;
-                        sheet.Cells[2, 13].Value = firstAsset.Distribution;
-                        sheet.Cells[2, 14].Value = firstAsset.ReferenceNo;
-                        sheet.Cells[2, 15].Value = isAr ? firstAsset.Classification?.NameAr : firstAsset.Classification?.NameEn;
-                        sheet.Cells[2, 16].Value = isAr ? firstAsset.Type?.NameAr : firstAsset.Type?.NameEn;
-                        sheet.Cells[2, 17].Value = firstAsset.Notes;
+                        sheet.Cells[2, 2].Value = firstAsset.NameAr;
+                        sheet.Cells[2, 3].Value = firstAsset.ItemNo;
+                        sheet.Cells[2, 4].Value = firstAsset.PartNo;
+                        sheet.Cells[2, 5].Value = firstAsset.Nsn;
+                        sheet.Cells[2, 6].Value = firstAsset.Price;
+                        sheet.Cells[2, 7].Value = firstAsset.MinimumQuantity;
+                        sheet.Cells[2, 8].Value = isAr ? firstAsset.LookupCaliber?.NameAr : firstAsset.LookupCaliber?.NameEn;
+                        sheet.Cells[2, 9].Value = isAr ? firstAsset.CaliberUnit?.NameAr : firstAsset.CaliberUnit?.NameEn;
+                        sheet.Cells[2, 10].Value = firstAsset.YearOfManufacture;
+                        sheet.Cells[2, 11].Value = isAr ? firstAsset.CountryOfManufacture?.NameAr : firstAsset.CountryOfManufacture?.NameEn;
+                        sheet.Cells[2, 12].Value = firstAsset.Model;
+                        sheet.Cells[2, 13].Value = firstAsset.UNNumber;
+                        sheet.Cells[2, 14].Value = firstAsset.Distribution;
+                        sheet.Cells[2, 15].Value = firstAsset.ReferenceNo;
+                        sheet.Cells[2, 16].Value = isAr ? firstAsset.Classification?.NameAr : firstAsset.Classification?.NameEn;
+                        sheet.Cells[2, 17].Value = isAr ? firstAsset.Type?.NameAr : firstAsset.Type?.NameEn;
+                        sheet.Cells[2, 18].Value = firstAsset.Notes;
                     }
                     else
                     {
@@ -745,11 +746,11 @@ namespace Ettad.Inventory.Service.Weapons.Services
                 },
                 (sheet) =>
                 {
-                    AddDataValidation(sheet, 7, "Calibers");
-                    AddDataValidation(sheet, 8, "Units");
-                    AddDataValidation(sheet, 10, "Countries");
-                    AddDataValidation(sheet, 15, "Classifications");
-                    AddDataValidation(sheet, 16, "ItemTypes");
+                    AddDataValidation(sheet, 8, "Calibers");
+                    AddDataValidation(sheet, 9, "Units");
+                    AddDataValidation(sheet, 11, "Countries");
+                    AddDataValidation(sheet, 16, "Classifications");
+                    AddDataValidation(sheet, 17, "ItemTypes");
                 }
             );
         }
@@ -799,6 +800,7 @@ namespace Ettad.Inventory.Service.Weapons.Services
             var dto = new CreateUpdateWeaponDto
             {
                 Name = importDto.Name,
+                NameAr = importDto.NameAr,
                 ItemNo = importDto.ItemNo,
                 PartNo = importDto.PartNo,
                 Price = importDto.Price,
@@ -882,6 +884,8 @@ namespace Ettad.Inventory.Service.Weapons.Services
             return new Dictionary<string, string>
             {
                 { "Name*", nameof(WeaponImportDto.Name) },
+                { "Name (Arabic)", nameof(WeaponImportDto.NameAr) },
+                { "Name Arabic", nameof(WeaponImportDto.NameAr) },
                 { "Item No*", nameof(WeaponImportDto.ItemNo) },
                 { "Part No", nameof(WeaponImportDto.PartNo) },
                 { "NSN", nameof(WeaponImportDto.Nsn) },
@@ -900,6 +904,7 @@ namespace Ettad.Inventory.Service.Weapons.Services
                 { "Notes", nameof(WeaponImportDto.Notes) },
                 // Arabic
                  { "الاسم*", nameof(WeaponImportDto.Name) },
+                { "الاسم (بالعربية)", nameof(WeaponImportDto.NameAr) },
                 { "رقم الصنف*", nameof(WeaponImportDto.ItemNo) },
                 { "رقم القطعة", nameof(WeaponImportDto.PartNo) },
                 { "رقم الجزء", nameof(WeaponImportDto.PartNo) }, // backward compatible

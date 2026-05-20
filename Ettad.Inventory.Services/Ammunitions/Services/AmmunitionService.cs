@@ -695,7 +695,7 @@ namespace Ettad.Inventory.Service.Ammunitions.Services
             var headers = language == "ar"
                    ? new[]
                    {
-                        "الاسم*", "رقم الصنف*", "Part No", "رقم ARM", "NSN", "السعر", "الكمية الدنيا",
+                        "الاسم*", "الاسم (بالعربية)", "رقم الصنف*", "Part No", "رقم ARM", "NSN", "السعر", "الكمية الدنيا",
                         "قطر الرصاصة", "وحدة قطر الرصاصة", "الوزن الكلي", "مرتبط", "الكبسولة",
                         "نوع الغلاف", "المادة الدافعة", "التوافق", "قسم الخطر", "خيار الطبيعة",
                         "الغرض الأساسي", "لون المقذوف", "مادة المقذوف", "العيار",
@@ -703,7 +703,7 @@ namespace Ettad.Inventory.Service.Ammunitions.Services
                    }
                    : new[]
                    {
-                        "Name*", "Item No*", "Part No", "Arm Number", "NSN", "Price", "Minimum Quantity",
+                        "Name*", "Name (Arabic)", "Item No*", "Part No", "Arm Number", "NSN", "Price", "Minimum Quantity",
                         "Bullet Diameter", "Bullet Diameter Unit", "Total Weight", "Is Linked", "Primer",
                         "Case Type", "Propellant", "Compatibility", "Hazard Division", "Nature Option",
                         "Primary Purpose", "Projectile Color", "Projectile Material", "Caliber",
@@ -725,34 +725,35 @@ namespace Ettad.Inventory.Service.Ammunitions.Services
                     {
                         var isAr = language == "ar";
                         sheet.Cells[2, 1].Value = firstAsset.Name;
-                        sheet.Cells[2, 2].Value = firstAsset.ItemNo;
-                        sheet.Cells[2, 3].Value = firstAsset.PartNo;
-                        sheet.Cells[2, 4].Value = firstAsset.ArmNumber;
-                        sheet.Cells[2, 5].Value = firstAsset.Nsn;
-                        sheet.Cells[2, 6].Value = firstAsset.Price;
-                        sheet.Cells[2, 7].Value = firstAsset.MinimumQuantity;
-                        sheet.Cells[2, 8].Value = firstAsset.BulletDiameter;
-                        sheet.Cells[2, 9].Value = isAr ? firstAsset.BulletDiameterUnit?.NameAr : firstAsset.BulletDiameterUnit?.NameEn;
-                        sheet.Cells[2, 10].Value = firstAsset.TotalWeight;
-                        sheet.Cells[2, 11].Value = firstAsset.IsLinked ? "Yes" : "No";
-                        sheet.Cells[2, 12].Value = firstAsset.Primer;
-                        sheet.Cells[2, 13].Value = isAr ? firstAsset.CaseType?.NameAr : firstAsset.CaseType?.NameEn;
-                        sheet.Cells[2, 14].Value = isAr ? firstAsset.Propellant?.NameAr : firstAsset.Propellant?.NameEn;
-                        sheet.Cells[2, 15].Value = isAr ? firstAsset.Compatibility?.NameAr : firstAsset.Compatibility?.NameEn;
-                        sheet.Cells[2, 16].Value = isAr ? firstAsset.HazardDivision?.NameAr : firstAsset.HazardDivision?.NameEn;
-                        sheet.Cells[2, 17].Value = isAr ? firstAsset.NatureOption?.NameAr : firstAsset.NatureOption?.NameEn;
-                        sheet.Cells[2, 18].Value = isAr
+                        sheet.Cells[2, 2].Value = firstAsset.NameAr;
+                        sheet.Cells[2, 3].Value = firstAsset.ItemNo;
+                        sheet.Cells[2, 4].Value = firstAsset.PartNo;
+                        sheet.Cells[2, 5].Value = firstAsset.ArmNumber;
+                        sheet.Cells[2, 6].Value = firstAsset.Nsn;
+                        sheet.Cells[2, 7].Value = firstAsset.Price;
+                        sheet.Cells[2, 8].Value = firstAsset.MinimumQuantity;
+                        sheet.Cells[2, 9].Value = firstAsset.BulletDiameter;
+                        sheet.Cells[2, 10].Value = isAr ? firstAsset.BulletDiameterUnit?.NameAr : firstAsset.BulletDiameterUnit?.NameEn;
+                        sheet.Cells[2, 11].Value = firstAsset.TotalWeight;
+                        sheet.Cells[2, 12].Value = firstAsset.IsLinked ? "Yes" : "No";
+                        sheet.Cells[2, 13].Value = firstAsset.Primer;
+                        sheet.Cells[2, 14].Value = isAr ? firstAsset.CaseType?.NameAr : firstAsset.CaseType?.NameEn;
+                        sheet.Cells[2, 15].Value = isAr ? firstAsset.Propellant?.NameAr : firstAsset.Propellant?.NameEn;
+                        sheet.Cells[2, 16].Value = isAr ? firstAsset.Compatibility?.NameAr : firstAsset.Compatibility?.NameEn;
+                        sheet.Cells[2, 17].Value = isAr ? firstAsset.HazardDivision?.NameAr : firstAsset.HazardDivision?.NameEn;
+                        sheet.Cells[2, 18].Value = isAr ? firstAsset.NatureOption?.NameAr : firstAsset.NatureOption?.NameEn;
+                        sheet.Cells[2, 19].Value = isAr
                             ? firstAsset.BaseItemPrimaryPurposes?.FirstOrDefault()?.PrimaryPurpos?.NameAr
                             : firstAsset.BaseItemPrimaryPurposes?.FirstOrDefault()?.PrimaryPurpos?.NameEn;
-                        sheet.Cells[2, 19].Value = isAr ? firstAsset.ProjectileColor?.NameAr : firstAsset.ProjectileColor?.NameEn;
-                        sheet.Cells[2, 20].Value = isAr ? firstAsset.ProjectailMaterial?.NameAr : firstAsset.ProjectailMaterial?.NameEn;
-                        sheet.Cells[2, 21].Value = isAr ? firstAsset.LookupCaliber?.NameAr : firstAsset.LookupCaliber?.NameEn;
-                        sheet.Cells[2, 22].Value = firstAsset.UNNumber;
-                        sheet.Cells[2, 23].Value = firstAsset.Distribution;
-                        sheet.Cells[2, 24].Value = firstAsset.ReferenceNo;
-                        sheet.Cells[2, 25].Value = isAr ? firstAsset.Classification?.NameAr : firstAsset.Classification?.NameEn;
-                        sheet.Cells[2, 26].Value = isAr ? firstAsset.Type?.NameAr : firstAsset.Type?.NameEn;
-                        sheet.Cells[2, 27].Value = firstAsset.Notes;
+                        sheet.Cells[2, 20].Value = isAr ? firstAsset.ProjectileColor?.NameAr : firstAsset.ProjectileColor?.NameEn;
+                        sheet.Cells[2, 21].Value = isAr ? firstAsset.ProjectailMaterial?.NameAr : firstAsset.ProjectailMaterial?.NameEn;
+                        sheet.Cells[2, 22].Value = isAr ? firstAsset.LookupCaliber?.NameAr : firstAsset.LookupCaliber?.NameEn;
+                        sheet.Cells[2, 23].Value = firstAsset.UNNumber;
+                        sheet.Cells[2, 24].Value = firstAsset.Distribution;
+                        sheet.Cells[2, 25].Value = firstAsset.ReferenceNo;
+                        sheet.Cells[2, 26].Value = isAr ? firstAsset.Classification?.NameAr : firstAsset.Classification?.NameEn;
+                        sheet.Cells[2, 27].Value = isAr ? firstAsset.Type?.NameAr : firstAsset.Type?.NameEn;
+                        sheet.Cells[2, 28].Value = firstAsset.Notes;
                     }
                     else
                     {
@@ -777,19 +778,19 @@ namespace Ettad.Inventory.Service.Ammunitions.Services
                 },
                 (sheet) =>
                 {
-                    AddDataValidation(sheet, 9, "Units");
-                    AddYesNoValidation(sheet, 11);
-                    AddDataValidation(sheet, 13, "CaseTypes");
-                    AddDataValidation(sheet, 14, "Propellants");
-                    AddDataValidation(sheet, 15, "Compatibilities");
-                    AddDataValidation(sheet, 16, "HazardDivisions");
-                    AddDataValidation(sheet, 17, "NatureOptions");
-                    AddDataValidation(sheet, 18, "PrimaryPurposes");
-                    AddDataValidation(sheet, 19, "ProjectileColors");
-                    AddDataValidation(sheet, 20, "ProjectileMaterials");
-                    AddDataValidation(sheet, 21, "Calibers");
-                    AddDataValidation(sheet, 25, "Classifications");
-                    AddDataValidation(sheet, 26, "ItemTypes");
+                    AddDataValidation(sheet, 10, "Units");
+                    AddYesNoValidation(sheet, 12);
+                    AddDataValidation(sheet, 14, "CaseTypes");
+                    AddDataValidation(sheet, 15, "Propellants");
+                    AddDataValidation(sheet, 16, "Compatibilities");
+                    AddDataValidation(sheet, 17, "HazardDivisions");
+                    AddDataValidation(sheet, 18, "NatureOptions");
+                    AddDataValidation(sheet, 19, "PrimaryPurposes");
+                    AddDataValidation(sheet, 20, "ProjectileColors");
+                    AddDataValidation(sheet, 21, "ProjectileMaterials");
+                    AddDataValidation(sheet, 22, "Calibers");
+                    AddDataValidation(sheet, 26, "Classifications");
+                    AddDataValidation(sheet, 27, "ItemTypes");
                 }
             );
         }
@@ -853,6 +854,7 @@ namespace Ettad.Inventory.Service.Ammunitions.Services
             var dto = new CreateUpdateAmmunitionDto
             {
                 Name = importDto.Name,
+                NameAr = importDto.NameAr,
                 ItemNo = importDto.ItemNo,
                 PartNo = importDto.PartNo,
                 Price = importDto.Price,
@@ -950,6 +952,8 @@ namespace Ettad.Inventory.Service.Ammunitions.Services
             return new Dictionary<string, string>
             {
                 { "Name*", nameof(AmmunitionImportDto.Name) },
+                { "Name (Arabic)", nameof(AmmunitionImportDto.NameAr) },
+                { "Name Arabic", nameof(AmmunitionImportDto.NameAr) },
                 { "Item No*", nameof(AmmunitionImportDto.ItemNo) },
                 { "Part No", nameof(AmmunitionImportDto.PartNo) },
                 { "Arm Number", nameof(AmmunitionImportDto.ArmNumber) },
@@ -978,6 +982,7 @@ namespace Ettad.Inventory.Service.Ammunitions.Services
                 { "Notes", nameof(AmmunitionImportDto.Notes) },
                 // Arabic...
                 { "الاسم*", nameof(AmmunitionImportDto.Name) },
+                { "الاسم (بالعربية)", nameof(AmmunitionImportDto.NameAr) },
                 { "رقم الصنف*", nameof(AmmunitionImportDto.ItemNo) },
                 { "رقم القطعة", nameof(AmmunitionImportDto.PartNo) },
                 { "رقم الجزء", nameof(AmmunitionImportDto.PartNo) }, // backward compatible

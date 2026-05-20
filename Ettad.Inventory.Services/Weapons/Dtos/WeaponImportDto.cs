@@ -7,6 +7,7 @@ namespace Ettad.Inventory.Service.Weapons.Dtos
         public int RowNumber { get; set; }
         // Base Item Properties
         public string Name { get; set; }
+        public string? NameAr { get; set; }
         public string ItemNo { get; set; }
         public string? PartNo { get; set; }
         public decimal? Price { get; set; }
