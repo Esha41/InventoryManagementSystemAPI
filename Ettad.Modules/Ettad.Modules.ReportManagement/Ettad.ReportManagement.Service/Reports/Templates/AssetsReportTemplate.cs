@@ -80,14 +80,14 @@ namespace Ettad.ReportManagement.Service.Reports.Templates
         private void InitializeComponent()
         {
             this.components = new System.ComponentModel.Container();
-            DevExpress.DataAccess.Sql.CustomSqlQuery customSqlQuery7 = new DevExpress.DataAccess.Sql.CustomSqlQuery();
+            DevExpress.DataAccess.Sql.CustomSqlQuery customSqlQuery1 = new DevExpress.DataAccess.Sql.CustomSqlQuery();
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(AssetsReportTemplate));
-            DevExpress.DataAccess.Sql.CustomSqlQuery customSqlQuery8 = new DevExpress.DataAccess.Sql.CustomSqlQuery();
-            DevExpress.XtraReports.UI.XRSummary xrSummary4 = new DevExpress.XtraReports.UI.XRSummary();
-            DevExpress.XtraReports.Parameters.StaticListLookUpSettings staticListLookUpSettings10 = new DevExpress.XtraReports.Parameters.StaticListLookUpSettings();
-            DevExpress.XtraReports.Parameters.DynamicListLookUpSettings dynamicListLookUpSettings4 = new DevExpress.XtraReports.Parameters.DynamicListLookUpSettings();
-            DevExpress.XtraReports.Parameters.StaticListLookUpSettings staticListLookUpSettings11 = new DevExpress.XtraReports.Parameters.StaticListLookUpSettings();
-            DevExpress.XtraReports.Parameters.StaticListLookUpSettings staticListLookUpSettings12 = new DevExpress.XtraReports.Parameters.StaticListLookUpSettings();
+            DevExpress.DataAccess.Sql.CustomSqlQuery customSqlQuery2 = new DevExpress.DataAccess.Sql.CustomSqlQuery();
+            DevExpress.XtraReports.UI.XRSummary xrSummary1 = new DevExpress.XtraReports.UI.XRSummary();
+            DevExpress.XtraReports.Parameters.StaticListLookUpSettings staticListLookUpSettings1 = new DevExpress.XtraReports.Parameters.StaticListLookUpSettings();
+            DevExpress.XtraReports.Parameters.DynamicListLookUpSettings dynamicListLookUpSettings1 = new DevExpress.XtraReports.Parameters.DynamicListLookUpSettings();
+            DevExpress.XtraReports.Parameters.StaticListLookUpSettings staticListLookUpSettings2 = new DevExpress.XtraReports.Parameters.StaticListLookUpSettings();
+            DevExpress.XtraReports.Parameters.StaticListLookUpSettings staticListLookUpSettings3 = new DevExpress.XtraReports.Parameters.StaticListLookUpSettings();
             this.EttadDataSource = new DevExpress.DataAccess.Sql.SqlDataSource(this.components);
             this.AssetsDataSource = new DevExpress.DataAccess.Sql.SqlDataSource(this.components);
             this.topMarginBand1 = new DevExpress.XtraReports.UI.TopMarginBand();
@@ -139,20 +139,20 @@ namespace Ettad.ReportManagement.Service.Reports.Templates
             // 
             this.EttadDataSource.ConnectionName = "DefaultConnection";
             this.EttadDataSource.Name = "EttadDataSource";
-            customSqlQuery7.Name = "PrimaryPurposes";
-            customSqlQuery7.Sql = resources.GetString("customSqlQuery7.Sql");
+            customSqlQuery1.Name = "PrimaryPurposes";
+            customSqlQuery1.Sql = resources.GetString("customSqlQuery1.Sql");
             this.EttadDataSource.Queries.AddRange(new DevExpress.DataAccess.Sql.SqlQuery[] {
-            customSqlQuery7});
+            customSqlQuery1});
             this.EttadDataSource.ResultSchemaSerializable = resources.GetString("EttadDataSource.ResultSchemaSerializable");
             // 
             // AssetsDataSource
             // 
             this.AssetsDataSource.ConnectionName = "DefaultConnection";
             this.AssetsDataSource.Name = "AssetsDataSource";
-            customSqlQuery8.Name = "AssetsQuery_WeaponAmm";
-            customSqlQuery8.Sql = resources.GetString("customSqlQuery8.Sql");
+            customSqlQuery2.Name = "AssetsQuery_WeaponAmm";
+            customSqlQuery2.Sql = resources.GetString("customSqlQuery2.Sql");
             this.AssetsDataSource.Queries.AddRange(new DevExpress.DataAccess.Sql.SqlQuery[] {
-            customSqlQuery8});
+            customSqlQuery2});
             this.AssetsDataSource.ResultSchemaSerializable = resources.GetString("AssetsDataSource.ResultSchemaSerializable");
             // 
             // topMarginBand1
@@ -202,9 +202,9 @@ namespace Ettad.ReportManagement.Service.Reports.Templates
             this.xrTableCellSrNoDetail.Name = "xrTableCellSrNoDetail";
             this.xrTableCellSrNoDetail.Padding = new DevExpress.XtraPrinting.PaddingInfo(5F, 5F, 5F, 5F, 100F);
             this.xrTableCellSrNoDetail.StylePriority.UseBorders = false;
-            xrSummary4.Func = DevExpress.XtraReports.UI.SummaryFunc.RecordNumber;
-            xrSummary4.Running = DevExpress.XtraReports.UI.SummaryRunning.Report;
-            this.xrTableCellSrNoDetail.Summary = xrSummary4;
+            xrSummary1.Func = DevExpress.XtraReports.UI.SummaryFunc.RecordNumber;
+            xrSummary1.Running = DevExpress.XtraReports.UI.SummaryRunning.Report;
+            this.xrTableCellSrNoDetail.Summary = xrSummary1;
             this.xrTableCellSrNoDetail.Text = "0";
             this.xrTableCellSrNoDetail.TextAlignment = DevExpress.XtraPrinting.TextAlignment.MiddleCenter;
             this.xrTableCellSrNoDetail.Weight = 0.27125550273638843D;
@@ -235,9 +235,10 @@ namespace Ettad.ReportManagement.Service.Reports.Templates
             this.xrTableCell10.Name = "xrTableCell10";
             this.xrTableCell10.Padding = new DevExpress.XtraPrinting.PaddingInfo(5F, 5F, 5F, 5F, 100F);
             this.xrTableCell10.StylePriority.UseBorders = false;
+            this.xrTableCell10.StylePriority.UseTextAlignment = false;
             this.xrTableCell10.Text = "Column2";
-            this.xrTableCell10.TextAlignment = DevExpress.XtraPrinting.TextAlignment.MiddleLeft;
-            this.xrTableCell10.Weight = 0.59324519652870644D;
+            this.xrTableCell10.TextAlignment = DevExpress.XtraPrinting.TextAlignment.MiddleCenter;
+            this.xrTableCell10.Weight = 0.501528649173586D;
             // 
             // xrTableCell1
             // 
@@ -250,10 +251,11 @@ namespace Ettad.ReportManagement.Service.Reports.Templates
             this.xrTableCell1.Name = "xrTableCell1";
             this.xrTableCell1.Padding = new DevExpress.XtraPrinting.PaddingInfo(5F, 5F, 5F, 5F, 100F);
             this.xrTableCell1.StylePriority.UseBorders = false;
+            this.xrTableCell1.StylePriority.UseTextAlignment = false;
             this.xrTableCell1.Text = "Column3";
-            this.xrTableCell1.TextAlignment = DevExpress.XtraPrinting.TextAlignment.MiddleRight;
+            this.xrTableCell1.TextAlignment = DevExpress.XtraPrinting.TextAlignment.MiddleLeft;
             this.xrTableCell1.TextFormatString = "{0:N2}";
-            this.xrTableCell1.Weight = 0.4555174014488495D;
+            this.xrTableCell1.Weight = 0.62750012518384291D;
             // 
             // xrTableCell2
             // 
@@ -266,9 +268,10 @@ namespace Ettad.ReportManagement.Service.Reports.Templates
             this.xrTableCell2.Name = "xrTableCell2";
             this.xrTableCell2.Padding = new DevExpress.XtraPrinting.PaddingInfo(5F, 5F, 5F, 5F, 100F);
             this.xrTableCell2.StylePriority.UseBorders = false;
+            this.xrTableCell2.StylePriority.UseTextAlignment = false;
             this.xrTableCell2.Text = "xrTableCell2";
-            this.xrTableCell2.TextAlignment = DevExpress.XtraPrinting.TextAlignment.MiddleRight;
-            this.xrTableCell2.Weight = 0.55534621781635407D;
+            this.xrTableCell2.TextAlignment = DevExpress.XtraPrinting.TextAlignment.MiddleCenter;
+            this.xrTableCell2.Weight = 0.47508004143648119D;
             // 
             // xrTableCell8
             // 
@@ -281,8 +284,9 @@ namespace Ettad.ReportManagement.Service.Reports.Templates
             this.xrTableCell8.Name = "xrTableCell8";
             this.xrTableCell8.Padding = new DevExpress.XtraPrinting.PaddingInfo(5F, 5F, 5F, 5F, 100F);
             this.xrTableCell8.StylePriority.UseBorders = false;
+            this.xrTableCell8.StylePriority.UseTextAlignment = false;
             this.xrTableCell8.Text = "xrTableCell8";
-            this.xrTableCell8.TextAlignment = DevExpress.XtraPrinting.TextAlignment.MiddleRight;
+            this.xrTableCell8.TextAlignment = DevExpress.XtraPrinting.TextAlignment.MiddleCenter;
             this.xrTableCell8.Weight = 0.72889300675735447D;
             // 
             // xrTableCell12
@@ -296,8 +300,9 @@ namespace Ettad.ReportManagement.Service.Reports.Templates
             this.xrTableCell12.Name = "xrTableCell12";
             this.xrTableCell12.Padding = new DevExpress.XtraPrinting.PaddingInfo(5F, 5F, 5F, 5F, 100F);
             this.xrTableCell12.StylePriority.UseBorders = false;
+            this.xrTableCell12.StylePriority.UseTextAlignment = false;
             this.xrTableCell12.Text = "xrTableCell12";
-            this.xrTableCell12.TextAlignment = DevExpress.XtraPrinting.TextAlignment.MiddleRight;
+            this.xrTableCell12.TextAlignment = DevExpress.XtraPrinting.TextAlignment.MiddleCenter;
             this.xrTableCell12.Weight = 0.64547073411790545D;
             // 
             // xrTableCell14
@@ -311,8 +316,9 @@ namespace Ettad.ReportManagement.Service.Reports.Templates
             this.xrTableCell14.Name = "xrTableCell14";
             this.xrTableCell14.Padding = new DevExpress.XtraPrinting.PaddingInfo(5F, 5F, 5F, 5F, 100F);
             this.xrTableCell14.StylePriority.UseBorders = false;
+            this.xrTableCell14.StylePriority.UseTextAlignment = false;
             this.xrTableCell14.Text = "xrTableCell14";
-            this.xrTableCell14.TextAlignment = DevExpress.XtraPrinting.TextAlignment.MiddleRight;
+            this.xrTableCell14.TextAlignment = DevExpress.XtraPrinting.TextAlignment.MiddleCenter;
             this.xrTableCell14.Weight = 0.64547073411790545D;
             // 
             // bottomMarginBand1
@@ -352,16 +358,20 @@ namespace Ettad.ReportManagement.Service.Reports.Templates
             // 
             // xrLabelReportTitle
             // 
-            this.xrLabelReportTitle.Borders = DevExpress.XtraPrinting.BorderSide.Bottom;
+            this.xrLabelReportTitle.Borders = DevExpress.XtraPrinting.BorderSide.None;
             this.xrLabelReportTitle.BorderWidth = 3F;
             this.xrLabelReportTitle.ExpressionBindings.AddRange(new DevExpress.XtraReports.UI.ExpressionBinding[] {
             new DevExpress.XtraReports.UI.ExpressionBinding("BeforePrint", "Text", "Iif(?Language == \'ar\', \'تقرير الأصول\', \'Assets Report\')")});
-            this.xrLabelReportTitle.Font = new DevExpress.Drawing.DXFont("Segoe UI", 22F, DevExpress.Drawing.DXFontStyle.Bold);
+            this.xrLabelReportTitle.Font = new DevExpress.Drawing.DXFont("Segoe UI", 18F, DevExpress.Drawing.DXFontStyle.Bold);
+            this.xrLabelReportTitle.ForeColor = System.Drawing.Color.Red;
             this.xrLabelReportTitle.LocationFloat = new DevExpress.Utils.PointFloat(224.1667F, 10F);
             this.xrLabelReportTitle.Multiline = true;
             this.xrLabelReportTitle.Name = "xrLabelReportTitle";
             this.xrLabelReportTitle.Padding = new DevExpress.XtraPrinting.PaddingInfo(10F, 10F, 15F, 10F, 100F);
             this.xrLabelReportTitle.SizeF = new System.Drawing.SizeF(376F, 50F);
+            this.xrLabelReportTitle.StylePriority.UseBorders = false;
+            this.xrLabelReportTitle.StylePriority.UseFont = false;
+            this.xrLabelReportTitle.StylePriority.UseForeColor = false;
             this.xrLabelReportTitle.StylePriority.UseTextAlignment = false;
             this.xrLabelReportTitle.Text = "Users Report";
             this.xrLabelReportTitle.TextAlignment = DevExpress.XtraPrinting.TextAlignment.MiddleCenter;
@@ -444,8 +454,9 @@ namespace Ettad.ReportManagement.Service.Reports.Templates
             this.xrTableCell3.Multiline = true;
             this.xrTableCell3.Name = "xrTableCell3";
             this.xrTableCell3.Padding = new DevExpress.XtraPrinting.PaddingInfo(5F, 5F, 5F, 5F, 100F);
+            this.xrTableCell3.StylePriority.UseTextAlignment = false;
             this.xrTableCell3.Text = "Name";
-            this.xrTableCell3.TextAlignment = DevExpress.XtraPrinting.TextAlignment.MiddleLeft;
+            this.xrTableCell3.TextAlignment = DevExpress.XtraPrinting.TextAlignment.MiddleCenter;
             this.xrTableCell3.Weight = 1.0621365571037751D;
             // 
             // xrTableCell4
@@ -461,9 +472,10 @@ namespace Ettad.ReportManagement.Service.Reports.Templates
             this.xrTableCell4.Multiline = true;
             this.xrTableCell4.Name = "xrTableCell4";
             this.xrTableCell4.Padding = new DevExpress.XtraPrinting.PaddingInfo(5F, 5F, 5F, 5F, 100F);
+            this.xrTableCell4.StylePriority.UseTextAlignment = false;
             this.xrTableCell4.Text = "Item No";
-            this.xrTableCell4.TextAlignment = DevExpress.XtraPrinting.TextAlignment.MiddleLeft;
-            this.xrTableCell4.Weight = 0.6356167450786756D;
+            this.xrTableCell4.TextAlignment = DevExpress.XtraPrinting.TextAlignment.MiddleCenter;
+            this.xrTableCell4.Weight = 0.535503385904587D;
             // 
             // xrTableCell5
             // 
@@ -478,9 +490,10 @@ namespace Ettad.ReportManagement.Service.Reports.Templates
             this.xrTableCell5.Multiline = true;
             this.xrTableCell5.Name = "xrTableCell5";
             this.xrTableCell5.Padding = new DevExpress.XtraPrinting.PaddingInfo(5F, 5F, 5F, 5F, 100F);
+            this.xrTableCell5.StylePriority.UseTextAlignment = false;
             this.xrTableCell5.Text = "Part No";
-            this.xrTableCell5.TextAlignment = DevExpress.XtraPrinting.TextAlignment.MiddleRight;
-            this.xrTableCell5.Weight = 0.48501553871239622D;
+            this.xrTableCell5.TextAlignment = DevExpress.XtraPrinting.TextAlignment.MiddleCenter;
+            this.xrTableCell5.Weight = 0.66703970086139142D;
             // 
             // xrTableCell6
             // 
@@ -495,9 +508,10 @@ namespace Ettad.ReportManagement.Service.Reports.Templates
             this.xrTableCell6.Multiline = true;
             this.xrTableCell6.Name = "xrTableCell6";
             this.xrTableCell6.Padding = new DevExpress.XtraPrinting.PaddingInfo(5F, 5F, 5F, 5F, 100F);
+            this.xrTableCell6.StylePriority.UseTextAlignment = false;
             this.xrTableCell6.Text = "Low Stock";
-            this.xrTableCell6.TextAlignment = DevExpress.XtraPrinting.TextAlignment.MiddleRight;
-            this.xrTableCell6.Weight = 0.5913092209641323D;
+            this.xrTableCell6.TextAlignment = DevExpress.XtraPrinting.TextAlignment.MiddleCenter;
+            this.xrTableCell6.Weight = 0.50939841798922569D;
             // 
             // xrTableCell9
             // 
@@ -512,8 +526,9 @@ namespace Ettad.ReportManagement.Service.Reports.Templates
             this.xrTableCell9.Multiline = true;
             this.xrTableCell9.Name = "xrTableCell9";
             this.xrTableCell9.Padding = new DevExpress.XtraPrinting.PaddingInfo(5F, 5F, 5F, 5F, 100F);
+            this.xrTableCell9.StylePriority.UseTextAlignment = false;
             this.xrTableCell9.Text = "Primary Purpose";
-            this.xrTableCell9.TextAlignment = DevExpress.XtraPrinting.TextAlignment.MiddleRight;
+            this.xrTableCell9.TextAlignment = DevExpress.XtraPrinting.TextAlignment.MiddleCenter;
             this.xrTableCell9.Weight = 0.77609551445392377D;
             // 
             // xrTableCell7
@@ -529,8 +544,9 @@ namespace Ettad.ReportManagement.Service.Reports.Templates
             this.xrTableCell7.Multiline = true;
             this.xrTableCell7.Name = "xrTableCell7";
             this.xrTableCell7.Padding = new DevExpress.XtraPrinting.PaddingInfo(5F, 5F, 5F, 5F, 100F);
+            this.xrTableCell7.StylePriority.UseTextAlignment = false;
             this.xrTableCell7.Text = "Caliber Category";
-            this.xrTableCell7.TextAlignment = DevExpress.XtraPrinting.TextAlignment.MiddleRight;
+            this.xrTableCell7.TextAlignment = DevExpress.XtraPrinting.TextAlignment.MiddleCenter;
             this.xrTableCell7.Weight = 0.68331562736976859D;
             // 
             // xrTableCell13
@@ -546,8 +562,9 @@ namespace Ettad.ReportManagement.Service.Reports.Templates
             this.xrTableCell13.Multiline = true;
             this.xrTableCell13.Name = "xrTableCell13";
             this.xrTableCell13.Padding = new DevExpress.XtraPrinting.PaddingInfo(5F, 5F, 5F, 5F, 100F);
+            this.xrTableCell13.StylePriority.UseTextAlignment = false;
             this.xrTableCell13.Text = "Caliber";
-            this.xrTableCell13.TextAlignment = DevExpress.XtraPrinting.TextAlignment.MiddleRight;
+            this.xrTableCell13.TextAlignment = DevExpress.XtraPrinting.TextAlignment.MiddleCenter;
             this.xrTableCell13.Weight = 0.68331562736976859D;
             // 
             // PageFooter
@@ -625,9 +642,9 @@ namespace Ettad.ReportManagement.Service.Reports.Templates
             this.Language.Description = "Language";
             this.Language.Name = "Language";
             this.Language.ValueInfo = "en";
-            staticListLookUpSettings10.LookUpValues.Add(new DevExpress.XtraReports.Parameters.LookUpValue("en", "English"));
-            staticListLookUpSettings10.LookUpValues.Add(new DevExpress.XtraReports.Parameters.LookUpValue("ar", "Arabic"));
-            this.Language.ValueSourceSettings = staticListLookUpSettings10;
+            staticListLookUpSettings1.LookUpValues.Add(new DevExpress.XtraReports.Parameters.LookUpValue("en", "English"));
+            staticListLookUpSettings1.LookUpValues.Add(new DevExpress.XtraReports.Parameters.LookUpValue("ar", "Arabic"));
+            this.Language.ValueSourceSettings = staticListLookUpSettings1;
             // 
             // GroupFooter1
             // 
@@ -642,13 +659,13 @@ namespace Ettad.ReportManagement.Service.Reports.Templates
             this.Primary_Purpose.Name = "Primary_Purpose";
             this.Primary_Purpose.SelectAllValues = true;
             this.Primary_Purpose.Type = typeof(int);
-            dynamicListLookUpSettings4.DataMember = "PrimaryPurposes";
-            dynamicListLookUpSettings4.DataSource = this.EttadDataSource;
-            dynamicListLookUpSettings4.DisplayMember = "NameEn";
-            dynamicListLookUpSettings4.SortMember = "NameEn";
-            dynamicListLookUpSettings4.SortOrder = DevExpress.Data.ColumnSortOrder.Ascending;
-            dynamicListLookUpSettings4.ValueMember = "Id";
-            this.Primary_Purpose.ValueSourceSettings = dynamicListLookUpSettings4;
+            dynamicListLookUpSettings1.DataMember = "PrimaryPurposes";
+            dynamicListLookUpSettings1.DataSource = this.EttadDataSource;
+            dynamicListLookUpSettings1.DisplayMember = "NameEn";
+            dynamicListLookUpSettings1.SortMember = "NameEn";
+            dynamicListLookUpSettings1.SortOrder = DevExpress.Data.ColumnSortOrder.Ascending;
+            dynamicListLookUpSettings1.ValueMember = "Id";
+            this.Primary_Purpose.ValueSourceSettings = dynamicListLookUpSettings1;
             // 
             // calculatedField1
             // 
@@ -664,10 +681,10 @@ namespace Ettad.ReportManagement.Service.Reports.Templates
             this.Caliber_Category.Name = "Caliber_Category";
             this.Caliber_Category.SelectAllValues = true;
             this.Caliber_Category.Type = typeof(int);
-            staticListLookUpSettings11.LookUpValues.Add(new DevExpress.XtraReports.Parameters.LookUpValue(1, "Small"));
-            staticListLookUpSettings11.LookUpValues.Add(new DevExpress.XtraReports.Parameters.LookUpValue(2, "Medium"));
-            staticListLookUpSettings11.LookUpValues.Add(new DevExpress.XtraReports.Parameters.LookUpValue(3, "Large"));
-            this.Caliber_Category.ValueSourceSettings = staticListLookUpSettings11;
+            staticListLookUpSettings2.LookUpValues.Add(new DevExpress.XtraReports.Parameters.LookUpValue(1, "Small"));
+            staticListLookUpSettings2.LookUpValues.Add(new DevExpress.XtraReports.Parameters.LookUpValue(2, "Medium"));
+            staticListLookUpSettings2.LookUpValues.Add(new DevExpress.XtraReports.Parameters.LookUpValue(3, "Large"));
+            this.Caliber_Category.ValueSourceSettings = staticListLookUpSettings2;
             // 
             // Asset
             // 
@@ -676,9 +693,9 @@ namespace Ettad.ReportManagement.Service.Reports.Templates
             this.Asset.Name = "Asset";
             this.Asset.SelectAllValues = true;
             this.Asset.Type = typeof(int);
-            staticListLookUpSettings12.LookUpValues.Add(new DevExpress.XtraReports.Parameters.LookUpValue(1, "Ammunitions"));
-            staticListLookUpSettings12.LookUpValues.Add(new DevExpress.XtraReports.Parameters.LookUpValue(2, "Weapons"));
-            this.Asset.ValueSourceSettings = staticListLookUpSettings12;
+            staticListLookUpSettings3.LookUpValues.Add(new DevExpress.XtraReports.Parameters.LookUpValue(1, "Ammunitions"));
+            staticListLookUpSettings3.LookUpValues.Add(new DevExpress.XtraReports.Parameters.LookUpValue(2, "Weapons"));
+            this.Asset.ValueSourceSettings = staticListLookUpSettings3;
             // 
             // AssetsReportTemplate
             // 

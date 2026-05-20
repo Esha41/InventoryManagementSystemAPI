@@ -72,14 +72,14 @@ namespace Ettad.ReportManagement.Service.Reports.Templates
         private void InitializeComponent()
         {
             this.components = new System.ComponentModel.Container();
-            DevExpress.DataAccess.Sql.CustomSqlQuery customSqlQuery1 = new DevExpress.DataAccess.Sql.CustomSqlQuery();
+            DevExpress.DataAccess.Sql.CustomSqlQuery customSqlQuery10 = new DevExpress.DataAccess.Sql.CustomSqlQuery();
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(UsersReportTemplate));
-            DevExpress.DataAccess.Sql.CustomSqlQuery customSqlQuery2 = new DevExpress.DataAccess.Sql.CustomSqlQuery();
-            DevExpress.DataAccess.Sql.CustomSqlQuery customSqlQuery3 = new DevExpress.DataAccess.Sql.CustomSqlQuery();
-            DevExpress.XtraReports.UI.XRSummary xrSummary1 = new DevExpress.XtraReports.UI.XRSummary();
-            DevExpress.XtraReports.Parameters.StaticListLookUpSettings staticListLookUpSettings1 = new DevExpress.XtraReports.Parameters.StaticListLookUpSettings();
-            DevExpress.XtraReports.Parameters.DynamicListLookUpSettings dynamicListLookUpSettings1 = new DevExpress.XtraReports.Parameters.DynamicListLookUpSettings();
-            DevExpress.XtraReports.Parameters.DynamicListLookUpSettings dynamicListLookUpSettings2 = new DevExpress.XtraReports.Parameters.DynamicListLookUpSettings();
+            DevExpress.DataAccess.Sql.CustomSqlQuery customSqlQuery11 = new DevExpress.DataAccess.Sql.CustomSqlQuery();
+            DevExpress.DataAccess.Sql.CustomSqlQuery customSqlQuery12 = new DevExpress.DataAccess.Sql.CustomSqlQuery();
+            DevExpress.XtraReports.UI.XRSummary xrSummary4 = new DevExpress.XtraReports.UI.XRSummary();
+            DevExpress.XtraReports.Parameters.StaticListLookUpSettings staticListLookUpSettings4 = new DevExpress.XtraReports.Parameters.StaticListLookUpSettings();
+            DevExpress.XtraReports.Parameters.DynamicListLookUpSettings dynamicListLookUpSettings7 = new DevExpress.XtraReports.Parameters.DynamicListLookUpSettings();
+            DevExpress.XtraReports.Parameters.DynamicListLookUpSettings dynamicListLookUpSettings8 = new DevExpress.XtraReports.Parameters.DynamicListLookUpSettings();
             this.EttadDataSource = new DevExpress.DataAccess.Sql.SqlDataSource(this.components);
             this.UsersDataSource = new DevExpress.DataAccess.Sql.SqlDataSource(this.components);
             this.topMarginBand1 = new DevExpress.XtraReports.UI.TopMarginBand();
@@ -123,23 +123,23 @@ namespace Ettad.ReportManagement.Service.Reports.Templates
             // 
             this.EttadDataSource.ConnectionName = "DefaultConnection";
             this.EttadDataSource.Name = "EttadDataSource";
-            customSqlQuery1.Name = "AspNetRoles";
-            customSqlQuery1.Sql = resources.GetString("customSqlQuery1.Sql");
-            customSqlQuery2.Name = "Departments";
-            customSqlQuery2.Sql = resources.GetString("customSqlQuery2.Sql");
+            customSqlQuery10.Name = "AspNetRoles";
+            customSqlQuery10.Sql = resources.GetString("customSqlQuery10.Sql");
+            customSqlQuery11.Name = "Departments";
+            customSqlQuery11.Sql = resources.GetString("customSqlQuery11.Sql");
             this.EttadDataSource.Queries.AddRange(new DevExpress.DataAccess.Sql.SqlQuery[] {
-            customSqlQuery1,
-            customSqlQuery2});
+            customSqlQuery10,
+            customSqlQuery11});
             this.EttadDataSource.ResultSchemaSerializable = resources.GetString("EttadDataSource.ResultSchemaSerializable");
             // 
             // UsersDataSource
             // 
             this.UsersDataSource.ConnectionName = "DefaultConnection";
             this.UsersDataSource.Name = "UsersDataSource";
-            customSqlQuery3.Name = "AspNetUsers_1";
-            customSqlQuery3.Sql = resources.GetString("customSqlQuery3.Sql");
+            customSqlQuery12.Name = "AspNetUsers_1";
+            customSqlQuery12.Sql = resources.GetString("customSqlQuery12.Sql");
             this.UsersDataSource.Queries.AddRange(new DevExpress.DataAccess.Sql.SqlQuery[] {
-            customSqlQuery3});
+            customSqlQuery12});
             this.UsersDataSource.ResultSchemaSerializable = resources.GetString("UsersDataSource.ResultSchemaSerializable");
             // 
             // topMarginBand1
@@ -186,9 +186,9 @@ namespace Ettad.ReportManagement.Service.Reports.Templates
             this.xrTableCellSrNoDetail.Name = "xrTableCellSrNoDetail";
             this.xrTableCellSrNoDetail.Padding = new DevExpress.XtraPrinting.PaddingInfo(5F, 5F, 5F, 5F, 100F);
             this.xrTableCellSrNoDetail.StylePriority.UseBorders = false;
-            xrSummary1.Func = DevExpress.XtraReports.UI.SummaryFunc.RecordNumber;
-            xrSummary1.Running = DevExpress.XtraReports.UI.SummaryRunning.Report;
-            this.xrTableCellSrNoDetail.Summary = xrSummary1;
+            xrSummary4.Func = DevExpress.XtraReports.UI.SummaryFunc.RecordNumber;
+            xrSummary4.Running = DevExpress.XtraReports.UI.SummaryRunning.Report;
+            this.xrTableCellSrNoDetail.Summary = xrSummary4;
             this.xrTableCellSrNoDetail.Text = "0";
             this.xrTableCellSrNoDetail.TextAlignment = DevExpress.XtraPrinting.TextAlignment.MiddleCenter;
             this.xrTableCellSrNoDetail.Weight = 0.27125550273638843D;
@@ -234,8 +234,9 @@ namespace Ettad.ReportManagement.Service.Reports.Templates
             this.xrTableCell1.Name = "xrTableCell1";
             this.xrTableCell1.Padding = new DevExpress.XtraPrinting.PaddingInfo(5F, 5F, 5F, 5F, 100F);
             this.xrTableCell1.StylePriority.UseBorders = false;
+            this.xrTableCell1.StylePriority.UseTextAlignment = false;
             this.xrTableCell1.Text = "Column3";
-            this.xrTableCell1.TextAlignment = DevExpress.XtraPrinting.TextAlignment.MiddleRight;
+            this.xrTableCell1.TextAlignment = DevExpress.XtraPrinting.TextAlignment.MiddleLeft;
             this.xrTableCell1.TextFormatString = "{0:N2}";
             this.xrTableCell1.Weight = 0.91616257047178207D;
             // 
@@ -250,8 +251,9 @@ namespace Ettad.ReportManagement.Service.Reports.Templates
             this.xrTableCell9.Name = "xrTableCell9";
             this.xrTableCell9.Padding = new DevExpress.XtraPrinting.PaddingInfo(5F, 5F, 5F, 5F, 100F);
             this.xrTableCell9.StylePriority.UseBorders = false;
+            this.xrTableCell9.StylePriority.UseTextAlignment = false;
             this.xrTableCell9.Text = "Column4";
-            this.xrTableCell9.TextAlignment = DevExpress.XtraPrinting.TextAlignment.MiddleRight;
+            this.xrTableCell9.TextAlignment = DevExpress.XtraPrinting.TextAlignment.MiddleLeft;
             this.xrTableCell9.TextFormatString = "{0:N2}";
             this.xrTableCell9.Weight = 0.88821522551048993D;
             // 
@@ -292,16 +294,20 @@ namespace Ettad.ReportManagement.Service.Reports.Templates
             // 
             // xrLabelReportTitle
             // 
-            this.xrLabelReportTitle.Borders = DevExpress.XtraPrinting.BorderSide.Bottom;
+            this.xrLabelReportTitle.Borders = DevExpress.XtraPrinting.BorderSide.None;
             this.xrLabelReportTitle.BorderWidth = 3F;
             this.xrLabelReportTitle.ExpressionBindings.AddRange(new DevExpress.XtraReports.UI.ExpressionBinding[] {
             new DevExpress.XtraReports.UI.ExpressionBinding("BeforePrint", "Text", "Iif(?Language == \'ar\', \'تقرير المستخدمين\', \'Users Report\')")});
-            this.xrLabelReportTitle.Font = new DevExpress.Drawing.DXFont("Segoe UI", 22F, DevExpress.Drawing.DXFontStyle.Bold);
+            this.xrLabelReportTitle.Font = new DevExpress.Drawing.DXFont("Segoe UI", 18F, DevExpress.Drawing.DXFontStyle.Bold);
+            this.xrLabelReportTitle.ForeColor = System.Drawing.Color.Red;
             this.xrLabelReportTitle.LocationFloat = new DevExpress.Utils.PointFloat(224.1667F, 10F);
             this.xrLabelReportTitle.Multiline = true;
             this.xrLabelReportTitle.Name = "xrLabelReportTitle";
             this.xrLabelReportTitle.Padding = new DevExpress.XtraPrinting.PaddingInfo(10F, 10F, 15F, 10F, 100F);
             this.xrLabelReportTitle.SizeF = new System.Drawing.SizeF(376F, 50F);
+            this.xrLabelReportTitle.StylePriority.UseBorders = false;
+            this.xrLabelReportTitle.StylePriority.UseFont = false;
+            this.xrLabelReportTitle.StylePriority.UseForeColor = false;
             this.xrLabelReportTitle.StylePriority.UseTextAlignment = false;
             this.xrLabelReportTitle.Text = "Users Report";
             this.xrLabelReportTitle.TextAlignment = DevExpress.XtraPrinting.TextAlignment.MiddleCenter;
@@ -381,8 +387,9 @@ namespace Ettad.ReportManagement.Service.Reports.Templates
             this.xrTableCell3.Multiline = true;
             this.xrTableCell3.Name = "xrTableCell3";
             this.xrTableCell3.Padding = new DevExpress.XtraPrinting.PaddingInfo(5F, 5F, 5F, 5F, 100F);
+            this.xrTableCell3.StylePriority.UseTextAlignment = false;
             this.xrTableCell3.Text = "Name";
-            this.xrTableCell3.TextAlignment = DevExpress.XtraPrinting.TextAlignment.MiddleLeft;
+            this.xrTableCell3.TextAlignment = DevExpress.XtraPrinting.TextAlignment.MiddleCenter;
             this.xrTableCell3.Weight = 0.98132878188341188D;
             // 
             // xrTableCell4
@@ -398,8 +405,9 @@ namespace Ettad.ReportManagement.Service.Reports.Templates
             this.xrTableCell4.Multiline = true;
             this.xrTableCell4.Name = "xrTableCell4";
             this.xrTableCell4.Padding = new DevExpress.XtraPrinting.PaddingInfo(5F, 5F, 5F, 5F, 100F);
+            this.xrTableCell4.StylePriority.UseTextAlignment = false;
             this.xrTableCell4.Text = "Email";
-            this.xrTableCell4.TextAlignment = DevExpress.XtraPrinting.TextAlignment.MiddleLeft;
+            this.xrTableCell4.TextAlignment = DevExpress.XtraPrinting.TextAlignment.MiddleCenter;
             this.xrTableCell4.Weight = 1.4477824360073619D;
             // 
             // xrTableCell5
@@ -415,8 +423,9 @@ namespace Ettad.ReportManagement.Service.Reports.Templates
             this.xrTableCell5.Multiline = true;
             this.xrTableCell5.Name = "xrTableCell5";
             this.xrTableCell5.Padding = new DevExpress.XtraPrinting.PaddingInfo(5F, 5F, 5F, 5F, 100F);
+            this.xrTableCell5.StylePriority.UseTextAlignment = false;
             this.xrTableCell5.Text = "Department";
-            this.xrTableCell5.TextAlignment = DevExpress.XtraPrinting.TextAlignment.MiddleRight;
+            this.xrTableCell5.TextAlignment = DevExpress.XtraPrinting.TextAlignment.MiddleCenter;
             this.xrTableCell5.Weight = 0.9161617079864D;
             // 
             // xrTableCell6
@@ -432,8 +441,9 @@ namespace Ettad.ReportManagement.Service.Reports.Templates
             this.xrTableCell6.Multiline = true;
             this.xrTableCell6.Name = "xrTableCell6";
             this.xrTableCell6.Padding = new DevExpress.XtraPrinting.PaddingInfo(5F, 5F, 5F, 5F, 100F);
+            this.xrTableCell6.StylePriority.UseTextAlignment = false;
             this.xrTableCell6.Text = "Roles";
-            this.xrTableCell6.TextAlignment = DevExpress.XtraPrinting.TextAlignment.MiddleRight;
+            this.xrTableCell6.TextAlignment = DevExpress.XtraPrinting.TextAlignment.MiddleCenter;
             this.xrTableCell6.Weight = 0.88821488573172425D;
             // 
             // PageFooter
@@ -509,9 +519,9 @@ namespace Ettad.ReportManagement.Service.Reports.Templates
             this.Language.Description = "Language";
             this.Language.Name = "Language";
             this.Language.ValueInfo = "en";
-            staticListLookUpSettings1.LookUpValues.Add(new DevExpress.XtraReports.Parameters.LookUpValue("en", "English"));
-            staticListLookUpSettings1.LookUpValues.Add(new DevExpress.XtraReports.Parameters.LookUpValue("ar", "Arabic"));
-            this.Language.ValueSourceSettings = staticListLookUpSettings1;
+            staticListLookUpSettings4.LookUpValues.Add(new DevExpress.XtraReports.Parameters.LookUpValue("en", "English"));
+            staticListLookUpSettings4.LookUpValues.Add(new DevExpress.XtraReports.Parameters.LookUpValue("ar", "Arabic"));
+            this.Language.ValueSourceSettings = staticListLookUpSettings4;
             // 
             // GroupFooter1
             // 
@@ -526,13 +536,13 @@ namespace Ettad.ReportManagement.Service.Reports.Templates
             this.Department.Name = "Department";
             this.Department.SelectAllValues = true;
             this.Department.Type = typeof(long);
-            dynamicListLookUpSettings1.DataMember = "Departments";
-            dynamicListLookUpSettings1.DataSource = this.EttadDataSource;
-            dynamicListLookUpSettings1.DisplayMember = "NameEn";
-            dynamicListLookUpSettings1.SortMember = "NameEn";
-            dynamicListLookUpSettings1.SortOrder = DevExpress.Data.ColumnSortOrder.Ascending;
-            dynamicListLookUpSettings1.ValueMember = "Id";
-            this.Department.ValueSourceSettings = dynamicListLookUpSettings1;
+            dynamicListLookUpSettings7.DataMember = "Departments";
+            dynamicListLookUpSettings7.DataSource = this.EttadDataSource;
+            dynamicListLookUpSettings7.DisplayMember = "NameEn";
+            dynamicListLookUpSettings7.SortMember = "NameEn";
+            dynamicListLookUpSettings7.SortOrder = DevExpress.Data.ColumnSortOrder.Ascending;
+            dynamicListLookUpSettings7.ValueMember = "Id";
+            this.Department.ValueSourceSettings = dynamicListLookUpSettings7;
             // 
             // Roles
             // 
@@ -541,13 +551,13 @@ namespace Ettad.ReportManagement.Service.Reports.Templates
             this.Roles.MultiValue = true;
             this.Roles.Name = "Roles";
             this.Roles.SelectAllValues = true;
-            dynamicListLookUpSettings2.DataMember = "AspNetRoles";
-            dynamicListLookUpSettings2.DataSource = this.EttadDataSource;
-            dynamicListLookUpSettings2.DisplayMember = "Name";
-            dynamicListLookUpSettings2.SortMember = "Name";
-            dynamicListLookUpSettings2.SortOrder = DevExpress.Data.ColumnSortOrder.Ascending;
-            dynamicListLookUpSettings2.ValueMember = "Id";
-            this.Roles.ValueSourceSettings = dynamicListLookUpSettings2;
+            dynamicListLookUpSettings8.DataMember = "AspNetRoles";
+            dynamicListLookUpSettings8.DataSource = this.EttadDataSource;
+            dynamicListLookUpSettings8.DisplayMember = "Name";
+            dynamicListLookUpSettings8.SortMember = "Name";
+            dynamicListLookUpSettings8.SortOrder = DevExpress.Data.ColumnSortOrder.Ascending;
+            dynamicListLookUpSettings8.ValueMember = "Id";
+            this.Roles.ValueSourceSettings = dynamicListLookUpSettings8;
             // 
             // UsersReportTemplate
             // 
