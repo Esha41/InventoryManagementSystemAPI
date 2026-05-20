@@ -422,7 +422,7 @@ namespace Ettad.Inventory.Service.Monitoring.Services
                         RowId = s.Id,
                         OrderId = o.Id,
                         OrderNumber = o.RequestNo,
-                        SubmissionStatus = s.SubmissionStatus.ToString()
+                        SubmissionStatus = s.SubmissionStatus
                     })
                 .OrderBy(x => x.OrderId)
                 .ThenBy(x => x.RowId)
@@ -442,7 +442,7 @@ namespace Ettad.Inventory.Service.Monitoring.Services
                         RowId = a.Id,
                         OrderId = o.Id,
                         OrderNumber = o.RequestNo,
-                        SubmissionStatus = a.SubmissionStatus.ToString()
+                        SubmissionStatus = a.SubmissionStatus
                     })
                 .OrderBy(x => x.OrderId)
                 .ThenBy(x => x.RowId)
@@ -541,7 +541,7 @@ namespace Ettad.Inventory.Service.Monitoring.Services
                 {
                     OrderId = row.Id,
                     OrderNumber = row.RequestNo,
-                    Status = row.Status.ToString()
+                    Status = row.Status
                 });
             }
 

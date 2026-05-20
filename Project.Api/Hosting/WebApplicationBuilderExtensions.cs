@@ -27,8 +27,6 @@ public static class WebApplicationBuilderExtensions
             .AddJsonOptions(options =>
             {
                 options.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
-                options.JsonSerializerOptions.Converters.Add(
-                    new System.Text.Json.Serialization.JsonStringEnumConverter());
             });
 
         return services;
@@ -160,8 +158,6 @@ public static class WebApplicationBuilderExtensions
         services.AddSwaggerGen(options =>
         {
             options.CustomSchemaIds(type => type.FullName);
-            options.SchemaFilter<EnumAsStringSchemaFilter>();
-            options.ParameterFilter<EnumAsStringParameterFilter>();
             options.MapType<IFormFile>(() => new OpenApiSchema { Type = "string", Format = "binary" });
             options.MapType<FileStream>(() => new OpenApiSchema { Type = "string", Format = "binary" });
             options.OperationFilter<FileUploadOperationFilter>();

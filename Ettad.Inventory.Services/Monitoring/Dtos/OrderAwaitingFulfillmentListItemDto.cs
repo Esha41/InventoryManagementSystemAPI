@@ -1,3 +1,5 @@
+using Ettad.Data.Enums;
+
 namespace Ettad.Inventory.Service.Monitoring.Dtos
 {
     /// <summary>Approved order that is not fully fulfilled per monitoring rules.</summary>
@@ -7,7 +9,6 @@ namespace Ettad.Inventory.Service.Monitoring.Dtos
 
         public string? OrderNumber { get; set; }
 
-        /// <summary>Serialized <see cref="Ettad.Data.Enums.RequestStatus"/>.</summary>
-        public string Status { get; set; } = string.Empty;
+        public RequestStatus Status { get; set; }
     }
 }
