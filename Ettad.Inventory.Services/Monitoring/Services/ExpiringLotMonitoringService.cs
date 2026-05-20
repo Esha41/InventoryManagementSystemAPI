@@ -228,6 +228,7 @@ namespace Ettad.Inventory.Service.Monitoring.Services
                     InventoryDetailId = lot.Id,
                     ItemId = lot.ItemId,
                     ItemName = lot.Item?.Name ?? string.Empty,
+                    ItemNameAr = lot.Item?.NameAr,
                     ItemNo = lot.Item?.ItemNo,
                     Lot = lot.Lot,
                     BatchNo = lot.BatchNo,

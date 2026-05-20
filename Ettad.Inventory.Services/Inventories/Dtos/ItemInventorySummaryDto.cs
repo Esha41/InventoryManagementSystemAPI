@@ -9,6 +9,8 @@ namespace Ettad.Inventory.Service.Inventories.Dtos
     {
         public long ItemId { get; set; }
         public string ItemName { get; set; }
+        /// <summary>Arabic catalog name when set; UI falls back to <see cref="ItemName"/>.</summary>
+        public string? ItemNameAr { get; set; }
         public string ItemNo { get; set; }
         public ItemType ItemType { get; set; }
         public string Nsn { get; set; }

@@ -4,6 +4,8 @@ namespace Ettad.Inventory.Service.Common.Dtos
     {
         public string Name { get; set; }
 
+        public string? NameAr { get; set; }
+
         public string ItemNo { get; set; }
 
         // All other fields are optional - only Name and ItemNo are required

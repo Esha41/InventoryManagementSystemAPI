@@ -14,6 +14,7 @@ namespace Ettad.RequestManagement.Service.Common.Dtos
 
         #region Navigation Properties (Simplified)
         public string ItemName { get; set; }
+        public string? ItemNameAr { get; set; }
         public string ItemNo { get; set; }
         public string Nsn { get; set; }
         public ItemType ItemType { get; set; }

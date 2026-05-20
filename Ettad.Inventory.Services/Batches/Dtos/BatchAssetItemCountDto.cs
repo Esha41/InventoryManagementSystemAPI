@@ -10,6 +10,8 @@ namespace Ettad.Inventory.Service.Batches.Dtos
 
         public string ItemName { get; set; } = string.Empty;
 
+        public string? ItemNameAr { get; set; }
+
         public string? ItemNo { get; set; }
 
         public string? Nsn { get; set; }

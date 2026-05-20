@@ -78,6 +78,10 @@ namespace Ettad.EntityFramework.Configurations
            
             builder.HasIndex(x => x.Name);
 
+            builder.Property(x => x.NameAr)
+                .IsRequired(false)
+                .HasMaxLength(500);
+
            
             builder.HasIndex(x => x.TypeId);
             builder.HasIndex(x => x.ClassificationId);

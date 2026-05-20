@@ -68,7 +68,9 @@ namespace Ettad.RequestManagement.Service.Common.Services
             var weapons = await _baseItemRepository.FindAsync(
                 item => weaponIds.Contains(item.Id) && !item.IsDeleted);
 
-            var nameMap = weapons.ToDictionary(item => item.Id, item => item.Name);
+            var nameMap = weapons.ToDictionary(
+                item => item.Id,
+                item => (Name: item.Name, NameAr: item.NameAr));
 
             foreach (var item in items)
             {
@@ -79,9 +81,10 @@ namespace Ettad.RequestManagement.Service.Common.Services
                         continue;
                     }
 
-                    if (nameMap.TryGetValue(association.AssociatedWeaponItemId.Value, out var name))
+                    if (nameMap.TryGetValue(association.AssociatedWeaponItemId.Value, out var names))
                     {
-                        association.AssociatedWeaponName = name;
+                        association.AssociatedWeaponName = names.Name;
+                        association.AssociatedWeaponNameAr = names.NameAr;
                     }
                 }
             }

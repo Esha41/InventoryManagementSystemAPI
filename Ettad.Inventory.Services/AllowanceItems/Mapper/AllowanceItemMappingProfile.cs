@@ -11,11 +11,13 @@ namespace Ettad.Inventory.Service.AllowanceItems.Mapper
             // Entity to DTO
             CreateMap<AllowanceItem, AllowanceItemDto>()
                 .ForMember(dest => dest.ItemName, opt => opt.MapFrom(src => src.Item != null ? src.Item.Name : null))
+                .ForMember(dest => dest.ItemNameAr, opt => opt.MapFrom(src => src.Item != null ? src.Item.NameAr : null))
                 .ForMember(dest => dest.ItemNo, opt => opt.MapFrom(src => src.Item != null ? src.Item.ItemNo : null));
 
             // Entity to Detail DTO
             CreateMap<AllowanceItem, AllowanceItemDetailDto>()
                 .ForMember(dest => dest.ItemName, opt => opt.MapFrom(src => src.Item != null ? src.Item.Name : null))
+                .ForMember(dest => dest.ItemNameAr, opt => opt.MapFrom(src => src.Item != null ? src.Item.NameAr : null))
                 .ForMember(dest => dest.ItemNo, opt => opt.MapFrom(src => src.Item != null ? src.Item.ItemNo : null));
 
             // CreateUpdate DTO to Entity

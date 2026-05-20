@@ -299,6 +299,7 @@ namespace Ettad.Inventory.Service.Assets.Implementation
                         ItemId = g.Key,
                         TotalAssets = g.Count(),
                         ItemName = g.Select(x => x.Item.Name).FirstOrDefault(),
+                        ItemNameAr = g.Select(x => x.Item.NameAr).FirstOrDefault(),
                         ItemNo = g.Select(x => x.Item.ItemNo).FirstOrDefault(),
                         Nsn = g.Select(x => x.Item.Nsn).FirstOrDefault(),
                         PartNo = g.Select(x => x.Item.PartNo).FirstOrDefault(),
@@ -325,6 +326,7 @@ namespace Ettad.Inventory.Service.Assets.Implementation
                     {
                         ItemId = row.ItemId,
                         ItemName = row.ItemName ?? string.Empty,
+                        ItemNameAr = row.ItemNameAr,
                         ItemNo = row.ItemNo ?? string.Empty,
                         Nsn = row.Nsn ?? string.Empty,
                         PartNo = row.PartNo ?? string.Empty,
