@@ -16,6 +16,10 @@ namespace Ettad.EntityFramework.Configurations
             builder.Property(x => x.RequestType)
                 .IsRequired();
 
+            builder.Property(x => x.AllowanceContext)
+                .IsRequired()
+                .HasDefaultValue(RequestPurposeAllowanceContext.Both);
+
             builder.Property(x => x.NameAr)
                 .IsRequired()
                 .HasMaxLength(500);
@@ -43,35 +47,40 @@ namespace Ettad.EntityFramework.Configurations
                     Id = 1,
                     NameAr = "طلب عادي",
                     NameEn = "Normal Order",
-                    RequestType = RequestType.Order
+                    RequestType = RequestType.Order,
+                    AllowanceContext = RequestPurposeAllowanceContext.FromAllowance
                 },
                 new RequestPurpose
                 {
                     Id = 2,
                     NameAr = "طلب خدمة",
                     NameEn = "Duty Order",
-                    RequestType = RequestType.Order
+                    RequestType = RequestType.Order,
+                    AllowanceContext = RequestPurposeAllowanceContext.FromAllowance
                 },
                 new RequestPurpose
                 {
                     Id = 3,
                     NameAr = "طلب عملية",
                     NameEn = "Operation Order",
-                    RequestType = RequestType.Order
+                    RequestType = RequestType.Order,
+                    AllowanceContext = RequestPurposeAllowanceContext.FromAllowance
                 },
                 new RequestPurpose
                 {
                     Id = 4,
                     NameAr = "طلب تدريبي",
                     NameEn = "Training Order",
-                    RequestType = RequestType.Order
+                    RequestType = RequestType.Order,
+                    AllowanceContext = RequestPurposeAllowanceContext.OutsideAllowance
                 },
                 new RequestPurpose
                 {
                     Id = 12,
                     NameAr = "تطهير الميدان",
                     NameEn = "Field Clearance",
-                    RequestType = RequestType.Order
+                    RequestType = RequestType.Order,
+                    AllowanceContext = RequestPurposeAllowanceContext.FromAllowance
                 },
                 // Return purposes
                 new RequestPurpose
@@ -79,28 +88,32 @@ namespace Ettad.EntityFramework.Configurations
                     Id = 5,
                     NameAr = "إرجاع عادي",
                     NameEn = "Normal Return",
-                    RequestType = RequestType.Return
+                    RequestType = RequestType.Return,
+                    AllowanceContext = RequestPurposeAllowanceContext.Both
                 },
                 new RequestPurpose
                 {
                     Id = 6,
                     NameAr = "إرجاع بعد انتهاء الخدمة",
                     NameEn = "Return After Service",
-                    RequestType = RequestType.Return
+                    RequestType = RequestType.Return,
+                    AllowanceContext = RequestPurposeAllowanceContext.Both
                 },
                 new RequestPurpose
                 {
                     Id = 7,
                     NameAr = "إرجاع بعد العملية",
                     NameEn = "Return After Operation",
-                    RequestType = RequestType.Return
+                    RequestType = RequestType.Return,
+                    AllowanceContext = RequestPurposeAllowanceContext.Both
                 },
                 new RequestPurpose
                 {
                     Id = 8,
                     NameAr = "إرجاع بعد التدريب",
                     NameEn = "Return After Training",
-                    RequestType = RequestType.Return
+                    RequestType = RequestType.Return,
+                    AllowanceContext = RequestPurposeAllowanceContext.Both
                 },
                 // Discard purposes
                 new RequestPurpose
@@ -108,21 +121,24 @@ namespace Ettad.EntityFramework.Configurations
                     Id = 9,
                     NameAr = "تسديد تالف",
                     NameEn = "Damaged Discard",
-                    RequestType = RequestType.Discard
+                    RequestType = RequestType.Discard,
+                    AllowanceContext = RequestPurposeAllowanceContext.Both
                 },
                 new RequestPurpose
                 {
                     Id = 10,
                     NameAr = "تسديد منتهي الصلاحية",
                     NameEn = "Expired Discard",
-                    RequestType = RequestType.Discard
+                    RequestType = RequestType.Discard,
+                    AllowanceContext = RequestPurposeAllowanceContext.Both
                 },
                 new RequestPurpose
                 {
                     Id = 11,
                     NameAr = "تسديد غير مستخدم",
                     NameEn = "Unused Discard",
-                    RequestType = RequestType.Discard
+                    RequestType = RequestType.Discard,
+                    AllowanceContext = RequestPurposeAllowanceContext.Both
                 }
             );
         }

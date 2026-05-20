@@ -15,7 +15,7 @@ namespace Ettad.RequestManagement.Service.RequestPurposes
         
         Task<APIOperationResponse<List<RequestPurposeDto>>> GetAllForDiscardAsync();
         Task<APIOperationResponse<List<RequestPurposeDto>>> GetAllForReturnAsync();
-        Task<APIOperationResponse<List<RequestPurposeDto>>> GetAllForOrderAsync();
+        Task<APIOperationResponse<List<RequestPurposeDto>>> GetAllForOrderAsync(bool? isFromAllowance = null);
         
         Task<APIOperationResponse<bool>> UpdateAsync(long id, CreateUpdateRequestPurposeDto inputDto);
         Task<APIOperationResponse<bool>> DeleteAsync(long id);

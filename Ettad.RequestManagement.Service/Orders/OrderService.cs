@@ -262,6 +262,20 @@ namespace Ettad.RequestManagement.Service.Orders
                     return APIOperationResponse<long>.Fail(ResponseType.BadRequest, "Request purpose must be of type Order");
                 }
 
+                if (inputDto.IsFromAllowance &&
+                    requestPurpose.AllowanceContext == RequestPurposeAllowanceContext.OutsideAllowance)
+                {
+                    return APIOperationResponse<long>.Fail(ResponseType.BadRequest,
+                        "The selected use purpose is not valid for orders from allowance.");
+                }
+
+                if (!inputDto.IsFromAllowance &&
+                    requestPurpose.AllowanceContext == RequestPurposeAllowanceContext.FromAllowance)
+                {
+                    return APIOperationResponse<long>.Fail(ResponseType.BadRequest,
+                        "The selected use purpose is not valid for orders outside allowance.");
+                }
+
                 // Validate item type combinations and determine if this is a weapon order
                 bool isWeaponOrder = false;
                 if (inputDto.RequestItems != null && inputDto.RequestItems.Any())
