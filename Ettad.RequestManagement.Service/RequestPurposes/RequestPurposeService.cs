@@ -8,7 +8,6 @@ using Ettad.ResponseHandler.Models;
 using Ettad.Application.Common.Interfaces;
 using Ettad.CrossCutting.Comman.Time;
 using Ettad.Data.Interfaces.Repositories;
-using Microsoft.EntityFrameworkCore;
 
 namespace Ettad.RequestManagement.Service.RequestPurposes
 {
@@ -26,8 +25,6 @@ namespace Ettad.RequestManagement.Service.RequestPurposes
 
         private const string DuplicateNameEnKey = "lookupManagement.errors.requestPurposeDuplicateNameEn";
         private const string DuplicateNameArKey = "lookupManagement.errors.requestPurposeDuplicateNameAr";
-        private const string DuplicateNameGenericKey = "lookupManagement.errors.requestPurposeDuplicateName";
-        private const string SaveFailedKey = "lookupManagement.errors.requestPurposeSaveFailed";
 
         public RequestPurposeService(
             ICrossCuttingRepository<RequestPurpose> requestPurposeRepository,
@@ -108,17 +105,9 @@ namespace Ettad.RequestManagement.Service.RequestPurposes
 
                 return APIOperationResponse<long>.Success(created.Id, "Request purpose created successfully");
             }
-            catch (DbUpdateException dbEx) when (TryMapDuplicateDbException(dbEx, out var duplicateMessage))
+            catch (Exception ex)
             {
-                return APIOperationResponse<long>.BadRequest(duplicateMessage);
-            }
-            catch (DbUpdateException)
-            {
-                return APIOperationResponse<long>.ServerError(SaveFailedKey);
-            }
-            catch (Exception)
-            {
-                return APIOperationResponse<long>.ServerError(SaveFailedKey);
+                return APIOperationResponse<long>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
             }
         }
 
@@ -250,17 +239,9 @@ namespace Ettad.RequestManagement.Service.RequestPurposes
 
                 return APIOperationResponse<bool>.Success(true, "Request purpose updated successfully");
             }
-            catch (DbUpdateException dbEx) when (TryMapDuplicateDbException(dbEx, out var duplicateMessage))
+            catch (Exception ex)
             {
-                return APIOperationResponse<bool>.BadRequest(duplicateMessage);
-            }
-            catch (DbUpdateException)
-            {
-                return APIOperationResponse<bool>.ServerError(SaveFailedKey);
-            }
-            catch (Exception)
-            {
-                return APIOperationResponse<bool>.ServerError(SaveFailedKey);
+                return APIOperationResponse<bool>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
             }
         }
 
@@ -427,52 +408,6 @@ namespace Ettad.RequestManagement.Service.RequestPurposes
             }
 
             return null;
-        }
-
-        private static bool TryMapDuplicateDbException(DbUpdateException dbEx, out string message)
-        {
-            var errorMessage = GetFullExceptionMessage(dbEx);
-
-            if (errorMessage.Contains("IX_RequestPurposes_NameEn", StringComparison.OrdinalIgnoreCase)
-                || (errorMessage.Contains("NameEn", StringComparison.OrdinalIgnoreCase)
-                    && errorMessage.Contains("duplicate", StringComparison.OrdinalIgnoreCase)))
-            {
-                message = DuplicateNameEnKey;
-                return true;
-            }
-
-            if (errorMessage.Contains("IX_RequestPurposes_NameAr", StringComparison.OrdinalIgnoreCase)
-                || (errorMessage.Contains("NameAr", StringComparison.OrdinalIgnoreCase)
-                    && errorMessage.Contains("duplicate", StringComparison.OrdinalIgnoreCase)))
-            {
-                message = DuplicateNameArKey;
-                return true;
-            }
-
-            if (errorMessage.Contains("RequestPurposes", StringComparison.OrdinalIgnoreCase)
-                && (errorMessage.Contains("UNIQUE KEY", StringComparison.OrdinalIgnoreCase)
-                    || errorMessage.Contains("unique constraint", StringComparison.OrdinalIgnoreCase)
-                    || errorMessage.Contains("duplicate key", StringComparison.OrdinalIgnoreCase)
-                    || errorMessage.Contains("Cannot insert duplicate", StringComparison.OrdinalIgnoreCase)))
-            {
-                message = DuplicateNameGenericKey;
-                return true;
-            }
-
-            message = string.Empty;
-            return false;
-        }
-
-        private static string GetFullExceptionMessage(Exception ex)
-        {
-            var messages = new List<string>();
-            for (var current = ex; current != null; current = current.InnerException)
-            {
-                if (!string.IsNullOrWhiteSpace(current.Message))
-                    messages.Add(current.Message);
-            }
-
-            return string.Join(" ", messages);
         }
     }
 }

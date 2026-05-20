@@ -7,7 +7,6 @@ using System.Net;
 using Ettad.CrossCutting.Comman.Models;
 using Ettad.ResponseHandler.Models;
 using System.Text;
-using System.Text.Json.Serialization;
 using Ettad.Inventory.Service.Batches.Interfaces;
 
 namespace Ettad.Inventory.API.Controllers
@@ -106,8 +105,7 @@ namespace Ettad.Inventory.API.Controllers
             {
                 dto = System.Text.Json.JsonSerializer.Deserialize<BulkUpdateBatchAssetsDto>(dtoJson, new System.Text.Json.JsonSerializerOptions
                 {
-                    PropertyNameCaseInsensitive = true,
-                    Converters = { new JsonStringEnumConverter() }
+                    PropertyNameCaseInsensitive = true
                 });
             }
             catch (System.Text.Json.JsonException ex)

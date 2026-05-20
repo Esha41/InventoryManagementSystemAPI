@@ -1,3 +1,5 @@
+using Ettad.Data.Enums;
+
 namespace Ettad.Inventory.Service.Monitoring.Dtos
 {
     /// <summary>Unified row for draft <see cref="Ettad.Data.Entities.Supply"/> and draft <see cref="Ettad.Data.Entities.AssetSupply"/> (monitoring list).</summary>
@@ -12,7 +14,6 @@ namespace Ettad.Inventory.Service.Monitoring.Dtos
 
         public string? OrderNumber { get; set; }
 
-        /// <summary>Serialized <see cref="Ettad.Data.Enums.SupplySubmissionStatus"/>.</summary>
-        public string SubmissionStatus { get; set; } = string.Empty;
+        public SupplySubmissionStatus SubmissionStatus { get; set; }
     }
 }
