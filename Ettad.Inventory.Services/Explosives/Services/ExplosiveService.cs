@@ -581,13 +581,13 @@ namespace Ettad.Inventory.Service.Explosives.Services
              var headers = language == "ar"
                     ? new[]
                     {
-                        "الاسم*", "رقم الصنف*", "Part No", "رقم ARM", "NSN", "السعر", "الكمية الدنيا",
+                        "الاسم*", "الاسم (بالعربية)", "رقم الصنف*", "Part No", "رقم ARM", "NSN", "السعر", "الكمية الدنيا",
                         "رقم الأمم المتحدة", "وحدة",
                         "التوزيع", "الرقم المرجعي", "التوافق", "قسم الخطر", "التصنيف", "النوع", "ملاحظات"
                     }
                     : new[]
                     {
-                        "Name*", "Item No*", "Part No", "Arm Number", "NSN", "Price", "Minimum Quantity",
+                        "Name*", "Name (Arabic)", "Item No*", "Part No", "Arm Number", "NSN", "Price", "Minimum Quantity",
                         "UN Number", "Unit",
                         "Distribution", "Reference No", "Compatibility", "Hazard Division", "Classification", "Type", "Notes"
                     };
@@ -607,21 +607,22 @@ namespace Ettad.Inventory.Service.Explosives.Services
                     {
                         var isAr = language == "ar";
                         sheet.Cells[2, 1].Value = firstAsset.Name;
-                        sheet.Cells[2, 2].Value = firstAsset.ItemNo;
-                        sheet.Cells[2, 3].Value = firstAsset.PartNo;
-                        sheet.Cells[2, 4].Value = firstAsset.ArmNumber;
-                        sheet.Cells[2, 5].Value = firstAsset.Nsn;
-                        sheet.Cells[2, 6].Value = firstAsset.Price;
-                        sheet.Cells[2, 7].Value = firstAsset.MinimumQuantity;
-                        sheet.Cells[2, 8].Value = firstAsset.UNNumber;
-                        sheet.Cells[2, 9].Value = isAr ? firstAsset.Unit?.NameAr : firstAsset.Unit?.NameEn; // Unit
-                        sheet.Cells[2, 10].Value = firstAsset.Distribution;
-                        sheet.Cells[2, 11].Value = firstAsset.ReferenceNo;
-                        sheet.Cells[2, 12].Value = isAr ? firstAsset.Compatibility?.NameAr : firstAsset.Compatibility?.NameEn;
-                        sheet.Cells[2, 13].Value = isAr ? firstAsset.HazardDivision?.NameAr : firstAsset.HazardDivision?.NameEn;
-                        sheet.Cells[2, 14].Value = isAr ? firstAsset.Classification?.NameAr : firstAsset.Classification?.NameEn;
-                        sheet.Cells[2, 15].Value = isAr ? firstAsset.Type?.NameAr : firstAsset.Type?.NameEn;
-                        sheet.Cells[2, 16].Value = firstAsset.Notes;
+                        sheet.Cells[2, 2].Value = firstAsset.NameAr;
+                        sheet.Cells[2, 3].Value = firstAsset.ItemNo;
+                        sheet.Cells[2, 4].Value = firstAsset.PartNo;
+                        sheet.Cells[2, 5].Value = firstAsset.ArmNumber;
+                        sheet.Cells[2, 6].Value = firstAsset.Nsn;
+                        sheet.Cells[2, 7].Value = firstAsset.Price;
+                        sheet.Cells[2, 8].Value = firstAsset.MinimumQuantity;
+                        sheet.Cells[2, 9].Value = firstAsset.UNNumber;
+                        sheet.Cells[2, 10].Value = isAr ? firstAsset.Unit?.NameAr : firstAsset.Unit?.NameEn; // Unit
+                        sheet.Cells[2, 11].Value = firstAsset.Distribution;
+                        sheet.Cells[2, 12].Value = firstAsset.ReferenceNo;
+                        sheet.Cells[2, 13].Value = isAr ? firstAsset.Compatibility?.NameAr : firstAsset.Compatibility?.NameEn;
+                        sheet.Cells[2, 14].Value = isAr ? firstAsset.HazardDivision?.NameAr : firstAsset.HazardDivision?.NameEn;
+                        sheet.Cells[2, 15].Value = isAr ? firstAsset.Classification?.NameAr : firstAsset.Classification?.NameEn;
+                        sheet.Cells[2, 16].Value = isAr ? firstAsset.Type?.NameAr : firstAsset.Type?.NameEn;
+                        sheet.Cells[2, 17].Value = firstAsset.Notes;
                     }
                     else
                     {
@@ -639,11 +640,11 @@ namespace Ettad.Inventory.Service.Explosives.Services
                 },
                 (sheet) =>
                 {
-                    AddDataValidation(sheet, 9, "Units"); // Unit dropdown
-                    AddDataValidation(sheet, 12, "Compatibilities"); // Compatibility dropdown
-                    AddDataValidation(sheet, 13, "HazardDivisions"); 
-                    AddDataValidation(sheet, 14, "Classifications"); 
-                    AddDataValidation(sheet, 15, "ItemTypes"); 
+                    AddDataValidation(sheet, 10, "Units"); // Unit dropdown
+                    AddDataValidation(sheet, 13, "Compatibilities"); // Compatibility dropdown
+                    AddDataValidation(sheet, 14, "HazardDivisions"); 
+                    AddDataValidation(sheet, 15, "Classifications"); 
+                    AddDataValidation(sheet, 16, "ItemTypes"); 
                 }
             );
         }
@@ -695,6 +696,7 @@ namespace Ettad.Inventory.Service.Explosives.Services
             var dto = new CreateUpdateExplosiveDto
             {
                 Name = importDto.Name,
+                NameAr = importDto.NameAr,
                 ItemNo = importDto.ItemNo,
                 PartNo = importDto.PartNo,
                 ArmNumber = string.IsNullOrWhiteSpace(importDto.ArmNumber) ? null : importDto.ArmNumber.Trim(),
@@ -777,6 +779,8 @@ namespace Ettad.Inventory.Service.Explosives.Services
             return new Dictionary<string, string>
             {
                 { "Name*", nameof(ExplosiveImportDto.Name) },
+                { "Name (Arabic)", nameof(ExplosiveImportDto.NameAr) },
+                { "Name Arabic", nameof(ExplosiveImportDto.NameAr) },
                 { "Item No*", nameof(ExplosiveImportDto.ItemNo) },
                 { "Part No", nameof(ExplosiveImportDto.PartNo) },
                 { "Arm Number", nameof(ExplosiveImportDto.ArmNumber) },
@@ -794,6 +798,7 @@ namespace Ettad.Inventory.Service.Explosives.Services
                 { "Notes", nameof(ExplosiveImportDto.Notes) },
                 // Arabic
                 { "الاسم*", nameof(ExplosiveImportDto.Name) },
+                { "الاسم (بالعربية)", nameof(ExplosiveImportDto.NameAr) },
                 { "رقم الصنف*", nameof(ExplosiveImportDto.ItemNo) },
                 { "رقم القطعة", nameof(ExplosiveImportDto.PartNo) },
                 { "رقم الجزء", nameof(ExplosiveImportDto.PartNo) }, // backward compatible
