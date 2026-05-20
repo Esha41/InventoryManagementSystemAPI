@@ -117,14 +117,13 @@ namespace Ettad.RequestManagement.API.Controllers
         }
 
         /// <summary>
-        /// Get all request purposes for Order
         /// </summary>
         [HttpGet("order")]
         [ProducesResponseType((int)HttpStatusCode.OK)]
         [CheckAuthorize("Permissions.RequestPurpose.View", "Permissions.RequestPurpose.Page")]
-        public async Task<IActionResult> GetAllForOrder()
+        public async Task<IActionResult> GetAllForOrder([FromQuery] bool? isFromAllowance)
         {
-            var result = await _requestPurposeService.GetAllForOrderAsync();
+            var result = await _requestPurposeService.GetAllForOrderAsync(isFromAllowance);
             return ProcessResponse(result);
         }
 

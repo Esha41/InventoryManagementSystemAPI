@@ -1,4 +1,5 @@
 using FluentValidation;
+using Ettad.Data.Enums;
 using Ettad.RequestManagement.Service.RequestPurposes.Dtos;
 
 namespace Ettad.RequestManagement.Service.RequestPurposes.Validators
@@ -14,6 +15,10 @@ namespace Ettad.RequestManagement.Service.RequestPurposes.Validators
             RuleFor(x => x.NameEn)
                 .NotEmpty().WithMessage("English name is required")
                 .MaximumLength(500).WithMessage("English name cannot exceed 500 characters");
+
+            RuleFor(x => x.AllowanceContext)
+                .Must(ctx => !ctx.HasValue || Enum.IsDefined(typeof(RequestPurposeAllowanceContext), ctx.Value))
+                .WithMessage("Allowance context must be FromAllowance, OutsideAllowance, or Both");
 
             RuleForEach(x => x.AttachmentRequirements)
                 .SetValidator(new CreateUpdateAttachmentRequirementDtoValidator());

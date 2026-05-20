@@ -6,6 +6,7 @@ namespace Ettad.RequestManagement.Service.RequestPurposes.Dtos
     {
         public string NameAr { get; set; }
         public string NameEn { get; set; }
+        public RequestPurposeAllowanceContext? AllowanceContext { get; set; }
 
         public List<CreateUpdateAttachmentRequirementDto> AttachmentRequirements { get; set; }
             = new List<CreateUpdateAttachmentRequirementDto>();
@@ -17,6 +18,7 @@ namespace Ettad.RequestManagement.Service.RequestPurposes.Dtos
         public string NameAr { get; set; }
         public string NameEn { get; set; }
         public RequestType RequestType { get; set; }
+        public RequestPurposeAllowanceContext AllowanceContext { get; set; }
 
         public List<AttachmentRequirementDto> AttachmentRequirements { get; set; }
             = new List<AttachmentRequirementDto>();

@@ -9,5 +9,6 @@ namespace Ettad.Data.Entities
         public string NameEn { get ; set; }
         public string NameAr { get ; set; }
         public RequestType RequestType { get ; set; }
+        public RequestPurposeAllowanceContext AllowanceContext { get; set; }
     }
 }

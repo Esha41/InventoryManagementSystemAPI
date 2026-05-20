@@ -8,6 +8,7 @@ using Ettad.ResponseHandler.Models;
 using Ettad.Application.Common.Interfaces;
 using Ettad.CrossCutting.Comman.Time;
 using Ettad.Data.Interfaces.Repositories;
+using Microsoft.EntityFrameworkCore;
 
 namespace Ettad.RequestManagement.Service.RequestPurposes
 {
@@ -22,6 +23,11 @@ namespace Ettad.RequestManagement.Service.RequestPurposes
 
         private static AttachmentRequirementParentType PurposeParent =>
             AttachmentRequirementParentType.RequestPurpose;
+
+        private const string DuplicateNameEnKey = "lookupManagement.errors.requestPurposeDuplicateNameEn";
+        private const string DuplicateNameArKey = "lookupManagement.errors.requestPurposeDuplicateNameAr";
+        private const string DuplicateNameGenericKey = "lookupManagement.errors.requestPurposeDuplicateName";
+        private const string SaveFailedKey = "lookupManagement.errors.requestPurposeSaveFailed";
 
         public RequestPurposeService(
             ICrossCuttingRepository<RequestPurpose> requestPurposeRepository,
@@ -65,10 +71,23 @@ namespace Ettad.RequestManagement.Service.RequestPurposes
                     return APIOperationResponse<long>.Fail(ResponseType.BadRequest, errors);
                 }
 
+                if (requestType == RequestType.Order)
+                {
+                    if (!inputDto.AllowanceContext.HasValue)
+                        return APIOperationResponse<long>.Fail(ResponseType.BadRequest,
+                            "Allowance context is required for order request purposes.");
+                }
+
+                var duplicateError = await ValidateUniqueNamesAsync(inputDto.NameEn, inputDto.NameAr, excludeId: null);
+                if (duplicateError != null)
+                    return APIOperationResponse<long>.BadRequest(duplicateError);
+
                 var now = _dateTimeProvider.Now;
                 var userId = _currentUserService.UserId;
                 var requestPurpose = _mapper.Map<RequestPurpose>(inputDto);
                 requestPurpose.RequestType = requestType;
+                if (requestType != RequestType.Order)
+                    requestPurpose.AllowanceContext = inputDto.AllowanceContext ?? RequestPurposeAllowanceContext.Both;
                 requestPurpose.CreationDate = now;
                 requestPurpose.CreatedBy = userId;
 
@@ -89,9 +108,17 @@ namespace Ettad.RequestManagement.Service.RequestPurposes
 
                 return APIOperationResponse<long>.Success(created.Id, "Request purpose created successfully");
             }
-            catch (Exception ex)
+            catch (DbUpdateException dbEx) when (TryMapDuplicateDbException(dbEx, out var duplicateMessage))
             {
-                return APIOperationResponse<long>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
+                return APIOperationResponse<long>.BadRequest(duplicateMessage);
+            }
+            catch (DbUpdateException)
+            {
+                return APIOperationResponse<long>.ServerError(SaveFailedKey);
+            }
+            catch (Exception)
+            {
+                return APIOperationResponse<long>.ServerError(SaveFailedKey);
             }
         }
 
@@ -141,17 +168,26 @@ namespace Ettad.RequestManagement.Service.RequestPurposes
             return await GetAllAsync(RequestType.Return);
         }
 
-        public async Task<APIOperationResponse<List<RequestPurposeDto>>> GetAllForOrderAsync()
+        public async Task<APIOperationResponse<List<RequestPurposeDto>>> GetAllForOrderAsync(bool? isFromAllowance = null)
         {
-            return await GetAllAsync(RequestType.Order);
+            return await GetAllAsync(RequestType.Order, isFromAllowance);
         }
 
-        private async Task<APIOperationResponse<List<RequestPurposeDto>>> GetAllAsync(RequestType requestType)
+        private async Task<APIOperationResponse<List<RequestPurposeDto>>> GetAllAsync(
+            RequestType requestType,
+            bool? isFromAllowance = null)
         {
             try
             {
                 var requestPurposes = (await _requestPurposeRepository.FindAsync(
                     rp => rp.RequestType == requestType && !rp.IsDeleted)).ToList();
+
+                if (requestType == RequestType.Order && isFromAllowance.HasValue)
+                {
+                    requestPurposes = requestPurposes
+                        .Where(rp => IsPurposeAllowedForAllowance(rp.AllowanceContext, isFromAllowance.Value))
+                        .ToList();
+                }
 
                 var purposeIds = requestPurposes.Select(rp => rp.Id).ToList();
                 var byPurposeId = await LoadAttachmentRequirementsGroupedByPurposeIdAsync(purposeIds);
@@ -190,10 +226,20 @@ namespace Ettad.RequestManagement.Service.RequestPurposes
                 if (existing == null)
                     return APIOperationResponse<bool>.Fail(ResponseType.NotFound, "Request purpose not found");
 
+                if (existing.RequestType == RequestType.Order && !inputDto.AllowanceContext.HasValue)
+                    return APIOperationResponse<bool>.Fail(ResponseType.BadRequest,
+                        "Allowance context is required for order request purposes.");
+
+                var duplicateError = await ValidateUniqueNamesAsync(inputDto.NameEn, inputDto.NameAr, excludeId: id);
+                if (duplicateError != null)
+                    return APIOperationResponse<bool>.BadRequest(duplicateError);
+
                 var now = _dateTimeProvider.Now;
                 var userId = _currentUserService.UserId;
 
                 _mapper.Map(inputDto, existing);
+                if (existing.RequestType != RequestType.Order && !inputDto.AllowanceContext.HasValue)
+                    existing.AllowanceContext = RequestPurposeAllowanceContext.Both;
                 existing.ModificationDate = now;
                 existing.ModifiedBy = userId;
 
@@ -204,9 +250,17 @@ namespace Ettad.RequestManagement.Service.RequestPurposes
 
                 return APIOperationResponse<bool>.Success(true, "Request purpose updated successfully");
             }
-            catch (Exception ex)
+            catch (DbUpdateException dbEx) when (TryMapDuplicateDbException(dbEx, out var duplicateMessage))
             {
-                return APIOperationResponse<bool>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
+                return APIOperationResponse<bool>.BadRequest(duplicateMessage);
+            }
+            catch (DbUpdateException)
+            {
+                return APIOperationResponse<bool>.ServerError(SaveFailedKey);
+            }
+            catch (Exception)
+            {
+                return APIOperationResponse<bool>.ServerError(SaveFailedKey);
             }
         }
 
@@ -332,6 +386,93 @@ namespace Ettad.RequestManagement.Service.RequestPurposes
                 result[g.Key] = g.OrderBy(ar => ar.DisplayOrder).ToList();
 
             return result;
+        }
+
+        private static bool IsPurposeAllowedForAllowance(
+            RequestPurposeAllowanceContext context,
+            bool isFromAllowance)
+        {
+            return context switch
+            {
+                RequestPurposeAllowanceContext.Both => true,
+                RequestPurposeAllowanceContext.FromAllowance => isFromAllowance,
+                RequestPurposeAllowanceContext.OutsideAllowance => !isFromAllowance,
+                _ => false
+            };
+        }
+
+        private async Task<string?> ValidateUniqueNamesAsync(string? nameEn, string? nameAr, long? excludeId)
+        {
+            var trimmedEn = nameEn?.Trim();
+            var trimmedAr = nameAr?.Trim();
+
+            if (!string.IsNullOrEmpty(trimmedEn))
+            {
+                var existingEn = await _requestPurposeRepository.FindOneAsync(
+                    rp => rp.NameEn == trimmedEn && (!excludeId.HasValue || rp.Id != excludeId.Value),
+                    includeSoftDeleted: true);
+
+                if (existingEn != null)
+                    return DuplicateNameEnKey;
+            }
+
+            if (!string.IsNullOrEmpty(trimmedAr))
+            {
+                var existingAr = await _requestPurposeRepository.FindOneAsync(
+                    rp => rp.NameAr == trimmedAr && (!excludeId.HasValue || rp.Id != excludeId.Value),
+                    includeSoftDeleted: true);
+
+                if (existingAr != null)
+                    return DuplicateNameArKey;
+            }
+
+            return null;
+        }
+
+        private static bool TryMapDuplicateDbException(DbUpdateException dbEx, out string message)
+        {
+            var errorMessage = GetFullExceptionMessage(dbEx);
+
+            if (errorMessage.Contains("IX_RequestPurposes_NameEn", StringComparison.OrdinalIgnoreCase)
+                || (errorMessage.Contains("NameEn", StringComparison.OrdinalIgnoreCase)
+                    && errorMessage.Contains("duplicate", StringComparison.OrdinalIgnoreCase)))
+            {
+                message = DuplicateNameEnKey;
+                return true;
+            }
+
+            if (errorMessage.Contains("IX_RequestPurposes_NameAr", StringComparison.OrdinalIgnoreCase)
+                || (errorMessage.Contains("NameAr", StringComparison.OrdinalIgnoreCase)
+                    && errorMessage.Contains("duplicate", StringComparison.OrdinalIgnoreCase)))
+            {
+                message = DuplicateNameArKey;
+                return true;
+            }
+
+            if (errorMessage.Contains("RequestPurposes", StringComparison.OrdinalIgnoreCase)
+                && (errorMessage.Contains("UNIQUE KEY", StringComparison.OrdinalIgnoreCase)
+                    || errorMessage.Contains("unique constraint", StringComparison.OrdinalIgnoreCase)
+                    || errorMessage.Contains("duplicate key", StringComparison.OrdinalIgnoreCase)
+                    || errorMessage.Contains("Cannot insert duplicate", StringComparison.OrdinalIgnoreCase)))
+            {
+                message = DuplicateNameGenericKey;
+                return true;
+            }
+
+            message = string.Empty;
+            return false;
+        }
+
+        private static string GetFullExceptionMessage(Exception ex)
+        {
+            var messages = new List<string>();
+            for (var current = ex; current != null; current = current.InnerException)
+            {
+                if (!string.IsNullOrWhiteSpace(current.Message))
+                    messages.Add(current.Message);
+            }
+
+            return string.Join(" ", messages);
         }
     }
 }
