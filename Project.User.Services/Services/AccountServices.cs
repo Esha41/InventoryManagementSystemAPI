@@ -288,16 +288,49 @@ namespace Ettad.User.Services.Services
                     "server.invalidLogin");
             }
 
-            // Check if user already has an active session (single-session: block unless ForceLogin or same browser via refresh cookie)
-            if (!loginInformation.ForceLogin && !string.IsNullOrEmpty(user.RefreshToken) && user.RefreshTokenExpiryDate.HasValue && user.RefreshTokenExpiryDate.Value > _dateTimeProvider.Now && !RequestRefreshTokenMatchesUser(user))
+            // Single-session enforcement — fires only when an active session exists on a
+            // DIFFERENT client (current request cookie does not match the DB token).
+            if (!string.IsNullOrEmpty(user.RefreshToken)
+                && user.RefreshTokenExpiryDate.HasValue
+                && user.RefreshTokenExpiryDate.Value > _dateTimeProvider.Now
+                && !RequestRefreshTokenMatchesUser(user))
             {
+                // Distinguish a genuine different-device login from a deadlock-recovery
+                // login: after a token rotation whose Set-Cookie response was lost in
+                // transit, the client retries with the old (now-previous) cookie. That
+                // old cookie is kept valid for 60 seconds in PreviousRefreshToken.
+                var cookieToken = _httpContextAccessor.HttpContext?.Request.Cookies["refreshToken"];
+                var isGraceWindowRecovery = !string.IsNullOrEmpty(cookieToken)
+                    && cookieToken == user.PreviousRefreshToken
+                    && user.PreviousRefreshTokenExpiresAt.HasValue
+                    && user.PreviousRefreshTokenExpiresAt.Value > _dateTimeProvider.Now;
+
+                if (!isGraceWindowRecovery && !loginInformation.ForceLogin)
+                {
+                    // Genuinely different device or browser — enforce single-session.
+                    // NOT recorded as a failed attempt: the user's credentials were valid;
+                    // this is a policy block, not an authentication failure. Counting it
+                    // as a failure would lock the user out after 5 legitimate attempts from
+                    // a different device, which would be a serious UX/security regression.
+                    _logger.LogInformation(
+                        "[ADMIN LOGIN] BLOCKED - Active session on different client | Username: {Username} | UserId: {UserId} | IP: {ClientIP}",
+                        loginInformation.Username, user.Id, clientIp);
+                    return APIOperationResponse<AuthenticatedResponse>.Fail(
+                        ResponseType.Conflict,
+                        CommonErrorCodes.ALREADY_LOGGED_IN,
+                        "An active session was found. This may be from a previous session or another device.");
+                }
+
+                // Grace-window recovery or explicit ForceLogin — clear old session and proceed.
                 _logger.LogInformation(
-                    "[ADMIN LOGIN] BLOCKED - Active session exists | Username: {Username} | UserId: {UserId} | IP: {ClientIP}",
+                    "[ADMIN LOGIN] {Reason} — clearing old session | Username: {Username} | UserId: {UserId} | IP: {ClientIP}",
+                    isGraceWindowRecovery ? "Grace window recovery" : "Force login override",
                     loginInformation.Username, user.Id, clientIp);
-                return APIOperationResponse<AuthenticatedResponse>.Fail(
-                    ResponseType.Conflict,
-                    CommonErrorCodes.ALREADY_LOGGED_IN,
-                    "An active session was found. This may be from a previous session or another device.");
+                user.RefreshToken = null;
+                user.RefreshTokenExpiryDate = null;
+                user.PreviousRefreshToken = null;
+                user.PreviousRefreshTokenExpiresAt = null;
+                await _userRepository.UpdateAsync(user);
             }
 
             // Record successful login
@@ -646,16 +679,49 @@ namespace Ettad.User.Services.Services
                     }
                 }
 
-                // Check if user already has an active session (single-session: block unless ForceLogin or same browser via refresh cookie)
-                if (!loginInformation.ForceLogin && !string.IsNullOrEmpty(user.RefreshToken) && user.RefreshTokenExpiryDate.HasValue && user.RefreshTokenExpiryDate.Value > _dateTimeProvider.Now && !RequestRefreshTokenMatchesUser(user))
+                // Single-session enforcement — fires only when an active session exists on a
+                // DIFFERENT client (current request cookie does not match the DB token).
+                if (!string.IsNullOrEmpty(user.RefreshToken)
+                    && user.RefreshTokenExpiryDate.HasValue
+                    && user.RefreshTokenExpiryDate.Value > _dateTimeProvider.Now
+                    && !RequestRefreshTokenMatchesUser(user))
                 {
+                    // Distinguish a genuine different-device login from a deadlock-recovery
+                    // login: after a token rotation whose Set-Cookie response was lost in
+                    // transit, the client retries with the old (now-previous) cookie. That
+                    // old cookie is kept valid for 60 seconds in PreviousRefreshToken.
+                    var cookieToken = _httpContextAccessor.HttpContext?.Request.Cookies["refreshToken"];
+                    var isGraceWindowRecovery = !string.IsNullOrEmpty(cookieToken)
+                        && cookieToken == user.PreviousRefreshToken
+                        && user.PreviousRefreshTokenExpiresAt.HasValue
+                        && user.PreviousRefreshTokenExpiresAt.Value > _dateTimeProvider.Now;
+
+                    if (!isGraceWindowRecovery && !loginInformation.ForceLogin)
+                    {
+                        // Genuinely different device or browser — enforce single-session.
+                        // NOT recorded as a failed attempt: credentials were valid;
+                        // this is a policy block, not an authentication failure. Counting it
+                        // as a failure would lock the user out after 5 legitimate attempts from
+                        // a different device, which would be a serious UX/security regression.
+                        _logger.LogInformation(
+                            "[LDAP LOGIN] BLOCKED - Active session on different client | Username: {Username} | UserId: {UserId} | IP: {ClientIP}",
+                            resolvedUsername, user.Id, clientIp);
+                        return APIOperationResponse<AuthenticatedResponse>.Fail(
+                            ResponseType.Conflict,
+                            CommonErrorCodes.ALREADY_LOGGED_IN,
+                            "An active session was found. This may be from a previous session or another device.");
+                    }
+
+                    // Grace-window recovery or explicit ForceLogin — clear old session and proceed.
                     _logger.LogInformation(
-                        "[LDAP LOGIN] BLOCKED - Active session exists | Username: {Username} | UserId: {UserId} | IP: {ClientIP}",
+                        "[LDAP LOGIN] {Reason} — clearing old session | Username: {Username} | UserId: {UserId} | IP: {ClientIP}",
+                        isGraceWindowRecovery ? "Grace window recovery" : "Force login override",
                         resolvedUsername, user.Id, clientIp);
-                    return APIOperationResponse<AuthenticatedResponse>.Fail(
-                        ResponseType.Conflict,
-                        CommonErrorCodes.ALREADY_LOGGED_IN,
-                        "An active session was found. This may be from a previous session or another device.");
+                    user.RefreshToken = null;
+                    user.RefreshTokenExpiryDate = null;
+                    user.PreviousRefreshToken = null;
+                    user.PreviousRefreshTokenExpiresAt = null;
+                    await _userRepository.UpdateAsync(user);
                 }
 
                 // Record successful login before token issuance
@@ -724,8 +790,21 @@ namespace Ettad.User.Services.Services
                         "server.invalidRefreshRequest");
                 }
 
+                var now = _dateTimeProvider.Now;
+
+                // Accept the current refresh token OR the previous one if it is still
+                // within the 60-second grace window. The grace window covers the case
+                // where the server rotated the token but the Set-Cookie response was
+                // lost in transit — the client retries with the old cookie and we let it through.
                 var user = await _userRepository.Users
-                    .FirstOrDefaultAsync(u => u.RefreshToken == refreshToken && !u.IsDeleted, cancellationToken);
+                    .FirstOrDefaultAsync(u =>
+                        !u.IsDeleted &&
+                        (u.RefreshToken == refreshToken ||
+                         (u.PreviousRefreshToken == refreshToken &&
+                          u.PreviousRefreshTokenExpiresAt.HasValue &&
+                          u.PreviousRefreshTokenExpiresAt.Value > now)),
+                        cancellationToken);
+
                 if (user == null)
                 {
                     return APIOperationResponse<AuthenticatedResponse>.Fail(
@@ -734,7 +813,21 @@ namespace Ettad.User.Services.Services
                         "server.invalidRefreshToken");
                 }
 
-                var authResponse = await _jwtServices.RefreshAsync(new UserRefreshToken(user.Id, refreshToken));
+                // When the grace token was presented, pass the current active token to
+                // RefreshAsync so its internal validation passes and rotation proceeds normally.
+                // Guard against the (extremely unlikely) race where a concurrent logout cleared
+                // RefreshToken between the lookup and here.
+                if (string.IsNullOrEmpty(user.RefreshToken))
+                {
+                    return APIOperationResponse<AuthenticatedResponse>.Fail(
+                        ResponseType.Unauthorized,
+                        CommonErrorCodes.UN_AUTHORIZED,
+                        "server.invalidRefreshToken");
+                }
+
+                var tokenToRefreshWith = user.RefreshToken;
+
+                var authResponse = await _jwtServices.RefreshAsync(new UserRefreshToken(user.Id, tokenToRefreshWith));
                 return APIOperationResponse<AuthenticatedResponse>.Success(authResponse);
             }
             catch (ApiException ex)
@@ -876,7 +969,9 @@ namespace Ettad.User.Services.Services
             var refreshToken = _jwtServices.GenerateRefreshToken();
             user.RefreshToken = refreshToken;
             user.RefreshTokenExpiryDate = _dateTimeProvider.Now.AddMinutes(_jwtOptions.RefreshTokenExpireInMinutes);
-
+            // Clear grace-window fields — a fresh login starts with a clean slate.
+            user.PreviousRefreshToken = null;
+            user.PreviousRefreshTokenExpiresAt = null;
 
             await _userRepository.UpdateAsync(user);
 
@@ -1112,10 +1207,13 @@ namespace Ettad.User.Services.Services
                     }
                 }
 
-                // Clear all tokens and set logout timestamp
+                // Clear all tokens on logout — including the grace-window previous token
+                // so it cannot be replayed after the user explicitly signed out.
                 var hadRefreshToken = !string.IsNullOrEmpty(user.RefreshToken);
                 user.RefreshToken = null;
                 user.RefreshTokenExpiryDate = null;
+                user.PreviousRefreshToken = null;
+                user.PreviousRefreshTokenExpiresAt = null;
                 user.CurrentTokenId = null;
                
                 await _userRepository.UpdateAsync(user);
