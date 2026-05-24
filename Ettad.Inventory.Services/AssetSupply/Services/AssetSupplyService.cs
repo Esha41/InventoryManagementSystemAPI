@@ -123,6 +123,50 @@ namespace Ettad.Inventory.Service.AssetSupply.Services
             _mediator = mediator;
         }
 
+        public async Task<APIOperationResponse<List<long>>> GetDepotsWithAvailableItemsAsync(long orderId)
+        {
+            _logger.LogInformation("Getting depots with available items for order. OrderId: {OrderId}, User: {UserId}",
+                orderId, _currentUserService.UserId);
+
+            try
+            {
+                var order = await _orderRepository.FindOneAsync(
+                    o => o.Id == orderId && !o.IsDeleted,
+                    false,
+                    nameof(Order.RequestItems));
+
+                if (order == null)
+                    return APIOperationResponse<List<long>>.Fail(ResponseType.NotFound, "Order not found");
+
+                var requestedItemIds = order.RequestItems?
+                    .Where(ri => !ri.IsDeleted)
+                    .Select(ri => ri.ItemId)
+                    .Distinct()
+                    .ToList() ?? new List<long>();
+
+                if (!requestedItemIds.Any())
+                    return APIOperationResponse<List<long>>.Fail(ResponseType.BadRequest, "Order has no request items");
+
+                var depotIds = await _assetRepository
+                    .Find(
+                        a => !a.IsDeleted
+                            && requestedItemIds.Contains(a.ItemId)
+                            && !a.IsAssigned
+                            && a.Status == AssetStatus.ReadyToIssue)
+                    .Select(a => a.DepotId)
+                    .Distinct()
+                    .ToListAsync();
+
+                return APIOperationResponse<List<long>>.Success(depotIds);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting depots with available items. OrderId: {OrderId}, User: {UserId}",
+                    orderId, _currentUserService.UserId);
+                return APIOperationResponse<List<long>>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
+            }
+        }
+
         public async Task<APIOperationResponse<List<BatchForOrderDepotDto>>> GetBatchesForOrderDepotsAsync(long orderId, List<long> depotIds)
         {
             _logger.LogInformation("Getting batches for order depots. OrderId: {OrderId}, DepotIds: {DepotIds}, User: {UserId}",

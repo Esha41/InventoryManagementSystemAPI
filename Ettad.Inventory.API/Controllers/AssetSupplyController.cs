@@ -40,6 +40,18 @@ namespace Ettad.Inventory.API.Controllers
         /// <summary>
         /// Get batches in the given depots that contain assets matching the order's requested items.
         /// </summary>
+        /// <summary>
+        /// Get depot IDs that have ready-to-issue assets matching the order's requested items.
+        /// </summary>
+        [HttpGet("order/{orderId}/depots-with-available-items")]
+        [ProducesResponseType(typeof(APIOperationResponse<List<long>>), (int)HttpStatusCode.OK)]
+        [CheckAuthorize("Permissions.AssetSupply.View", "Permissions.AssetSupply.Page", "SelectDepots")]
+        public async Task<IActionResult> GetDepotsWithAvailableItems(long orderId)
+        {
+            var result = await _assetSupplyService.GetDepotsWithAvailableItemsAsync(orderId);
+            return ProcessResponse(result);
+        }
+
         [HttpGet("order/{orderId}/batches-for-depots")]
         [ProducesResponseType(typeof(APIOperationResponse<List<BatchForOrderDepotDto>>), (int)HttpStatusCode.OK)]
         [CheckAuthorize("Permissions.AssetSupply.View", "Permissions.AssetSupply.Page", "SelectDepots")]
