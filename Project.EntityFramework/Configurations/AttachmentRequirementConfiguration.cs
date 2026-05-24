@@ -27,6 +27,14 @@ namespace Ettad.EntityFramework.Configurations
                 .IsRequired()
                 .HasMaxLength(500);
 
+            builder.Property(x => x.Code)
+                .HasMaxLength(100)
+                .IsRequired(false);
+
+            builder.Property(x => x.ApplicableEntityType)
+                .HasConversion<int?>()
+                .IsRequired(false);
+
             builder.Property(x => x.IsRequired)
                 .IsRequired()
                 .HasDefaultValue(true);
@@ -45,6 +53,10 @@ namespace Ettad.EntityFramework.Configurations
 
             builder.HasIndex(x => new { x.ParentType, x.ParentId, x.NameEn })
                 .IsUnique();
+
+            builder.HasIndex(x => x.Code)
+                .IsUnique()
+                .HasFilter("[Code] IS NOT NULL");
         }
     }
 }

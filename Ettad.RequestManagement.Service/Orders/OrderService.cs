@@ -55,6 +55,7 @@ namespace Ettad.RequestManagement.Service.Orders
         private readonly IOrderPriorityService _orderPriorityService;
         private readonly IRequestItemWeaponAssociationEnrichmentService _weaponAssociationEnrichmentService;
         private readonly IAttachmentRequirementUploadValidationService _attachmentRequirementUploadValidationService;
+        private readonly ISystemAttachmentSlotResolver _systemAttachmentSlotResolver;
 
         public OrderService(
             ICrossCuttingRepository<Order> orderRepository,
@@ -82,7 +83,8 @@ namespace Ettad.RequestManagement.Service.Orders
             IWorkflowStartNotificationService workflowStartNotificationService,
             IOrderPriorityService orderPriorityService,
             IRequestItemWeaponAssociationEnrichmentService weaponAssociationEnrichmentService,
-            IAttachmentRequirementUploadValidationService attachmentRequirementUploadValidationService)
+            IAttachmentRequirementUploadValidationService attachmentRequirementUploadValidationService,
+            ISystemAttachmentSlotResolver systemAttachmentSlotResolver)
         {
             _orderRepository = orderRepository;
             _requestItemRepository = requestItemRepository;
@@ -110,7 +112,17 @@ namespace Ettad.RequestManagement.Service.Orders
             _orderPriorityService = orderPriorityService;
             _weaponAssociationEnrichmentService = weaponAssociationEnrichmentService;
             _attachmentRequirementUploadValidationService = attachmentRequirementUploadValidationService;
+            _systemAttachmentSlotResolver = systemAttachmentSlotResolver;
         }
+
+        /// <summary>
+        /// Order needs the WEAPON_ASSOCIATION attachment slot when at least one ammunition
+        /// line uses a non-catalog weapon (provided <c>AssociatedWeaponOtherName</c>).
+        /// </summary>
+        private static bool RequiresWeaponAssociationAttachments(CreateOrderDto dto) =>
+            dto.RequestItems?.Any(ri =>
+                ri.WeaponAssociations?.Any(wa =>
+                    !string.IsNullOrWhiteSpace(wa.AssociatedWeaponOtherName)) == true) == true;
 
         public async Task<APIOperationResponse<OrderDto>> GetByIdAsync(long id)
         {
@@ -202,7 +214,8 @@ namespace Ettad.RequestManagement.Service.Orders
         public async Task<APIOperationResponse<long>> CreateAsync(
             CreateOrderDto inputDto,
             IReadOnlyDictionary<long, IReadOnlyList<IFormFile>> filesByAttachmentRequirementId,
-            List<IFormFile>? otherFiles = null)
+            List<IFormFile>? otherFiles = null,
+            List<IFormFile>? weaponAssociationFiles = null)
         {
             var currentUserId = _currentUserService.UserId;
             var departmentId = _currentUserService.DepartmentId;
@@ -220,10 +233,13 @@ namespace Ettad.RequestManagement.Service.Orders
                 .Sum(kvp => (kvp.Value ?? Array.Empty<IFormFile>()).Count(f => f != null && f.Length > 0));
             var otherFileCount = (otherFiles ?? new List<IFormFile>())
                 .Count(f => f != null && f.Length > 0);
+            var effectiveWeaponFiles = (weaponAssociationFiles ?? new List<IFormFile>())
+                .Where(f => f != null && f.Length > 0)
+                .ToList();
 
             _logger.LogInformation(
-                "Creating new order. DepartmentId: {DepartmentId}, IsFromAllowance: {IsFromAllowance}, User: {UserId}, SlotFileCount: {SlotFileCount}, OtherFileCount: {OtherFileCount}",
-                departmentId.Value, inputDto.IsFromAllowance, currentUserId, slotFileCount, otherFileCount);
+                "Creating new order. DepartmentId: {DepartmentId}, IsFromAllowance: {IsFromAllowance}, User: {UserId}, SlotFileCount: {SlotFileCount}, OtherFileCount: {OtherFileCount}, WeaponAssociationFileCount: {WeaponAssociationFileCount}",
+                departmentId.Value, inputDto.IsFromAllowance, currentUserId, slotFileCount, otherFileCount, effectiveWeaponFiles.Count);
 
             try
             {
@@ -251,6 +267,43 @@ namespace Ettad.RequestManagement.Service.Orders
                         inputDto.RequestPurposeId, attachmentValidation.Message, currentUserId);
                     return APIOperationResponse<long>.Fail(ResponseType.BadRequest,
                         attachmentValidation.Message ?? "Attachment validation failed.");
+                }
+
+                // Conditional system slot: Weapon Association Attachments are required when any
+                // ammunition line uses a non-catalog weapon. Resolve the slot up front so the
+                // call also fails fast if the system row is missing or mis-targeted.
+                var needsWeaponAttachments = RequiresWeaponAssociationAttachments(inputDto);
+                AttachmentRequirement? weaponAssociationSlot = null;
+
+                if (needsWeaponAttachments || effectiveWeaponFiles.Count > 0)
+                {
+                    weaponAssociationSlot = await _systemAttachmentSlotResolver.ResolveAsync(
+                        SystemAttachmentSlotCode.WeaponAssociation,
+                        FileEntityType.Order);
+                }
+
+                if (needsWeaponAttachments && effectiveWeaponFiles.Count == 0)
+                {
+                    _logger.LogWarning(
+                        "Weapon Association attachments are required for this order. User: {UserId}",
+                        currentUserId);
+                    return APIOperationResponse<long>.Fail(ResponseType.BadRequest,
+                        "Weapon Association Attachments are required when any ammunition line uses a non-catalog weapon.");
+                }
+
+                if (weaponAssociationSlot != null && effectiveWeaponFiles.Count > 0)
+                {
+                    if (effectiveWeaponFiles.Count < weaponAssociationSlot.MinCount)
+                    {
+                        return APIOperationResponse<long>.Fail(ResponseType.BadRequest,
+                            $"Attachment '{weaponAssociationSlot.NameEn}' requires at least {weaponAssociationSlot.MinCount} file(s).");
+                    }
+
+                    if (effectiveWeaponFiles.Count > weaponAssociationSlot.MaxCount)
+                    {
+                        return APIOperationResponse<long>.Fail(ResponseType.BadRequest,
+                            $"Attachment '{weaponAssociationSlot.NameEn}' allows at most {weaponAssociationSlot.MaxCount} file(s), {effectiveWeaponFiles.Count} were provided.");
+                    }
                 }
 
                 // Ensure request purpose is for orders
@@ -407,6 +460,18 @@ namespace Ettad.RequestManagement.Service.Orders
 
                             flatFiles.Add(file);
                             attachmentRequirementIds.Add(null);
+                        }
+                    }
+
+                    // Weapon Association Attachments persist as order-level files linked to the
+                    // resolved system slot id, so workflow approval can render them under their
+                    // own labeled group.
+                    if (weaponAssociationSlot != null)
+                    {
+                        foreach (var file in effectiveWeaponFiles)
+                        {
+                            flatFiles.Add(file);
+                            attachmentRequirementIds.Add(weaponAssociationSlot.Id);
                         }
                     }
 

@@ -19,13 +19,17 @@ namespace Ettad.RequestManagement.Service.Orders
 
         /// <summary>
         /// Creates an Order with files grouped per AttachmentRequirement plus optional
-        /// entity-only "other" files. Centralized validation enforces required/min/max
-        /// per requirement, and persists AttachmentRequirementId on each file row.
+        /// entity-only "other" files and an optional weapon-association bucket.
+        /// Centralized validation enforces required/min/max per requirement, and persists
+        /// AttachmentRequirementId on each file row. When any ammunition line uses a
+        /// non-catalog weapon (AssociatedWeaponOtherName), <paramref name="weaponAssociationFiles"/>
+        /// is required and the files are linked to the system slot <c>WEAPON_ASSOCIATION</c>.
         /// </summary>
         Task<APIOperationResponse<long>> CreateAsync(
             CreateOrderDto inputDto,
             IReadOnlyDictionary<long, IReadOnlyList<IFormFile>> filesByAttachmentRequirementId,
-            List<IFormFile>? otherFiles = null);
+            List<IFormFile>? otherFiles = null,
+            List<IFormFile>? weaponAssociationFiles = null);
 
         Task<APIOperationResponse<bool>> DeleteAsync(long id);
 

@@ -1,3 +1,4 @@
+using Ettad.CrossCutting.Comman.FileUpload;
 using Ettad.Data.Entities;
 using Ettad.Data.Enums;
 using Microsoft.AspNetCore.Hosting;
@@ -125,6 +126,10 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                 // Seed item type lookup data
                 await SeedItemTypeLookupDataAsync(context);
                 Console.WriteLine("✓ Item Types seeded");
+
+                // Seed product-defined (system) attachment requirement slots
+                await SeedSystemAttachmentRequirementsAsync(context);
+                Console.WriteLine("✓ System AttachmentRequirements seeded");
 
                 // Only seed items, inventory, and allowance data in Development environment
                 if (isDevelopment)
@@ -1614,6 +1619,80 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
             }
 
             await context.AllowanceItems.AddRangeAsync(allowanceItems);
+            await context.SaveChangesAsync();
+        }
+
+        /// <summary>
+        /// Seeds product-defined attachment slots (ParentType = System) identified by Code.
+        /// Idempotent: skips rows whose Code already exists; refreshes display fields for existing rows.
+        /// </summary>
+        private static async Task SeedSystemAttachmentRequirementsAsync(ApplicationDbContext context)
+        {
+            var systemSlots = new[]
+            {
+                new AttachmentRequirement
+                {
+                    ParentType = AttachmentRequirementParentType.System,
+                    ParentId = 0,
+                    Code = SystemAttachmentSlotCodeExtensions.WeaponAssociationCode,
+                    ApplicableEntityType = FileEntityType.Order,
+                    NameEn = "Weapon Association Attachments",
+                    NameAr = "مرفقات ربط الأسلحة",
+                    IsRequired = false,
+                    MinCount = 1,
+                    MaxCount = 10,
+                    DisplayOrder = 0
+                }
+            };
+
+            var utcNow = DateTime.UtcNow;
+            const string systemUser = "SYSTEM";
+
+            foreach (var slot in systemSlots)
+            {
+                var existing = await context.AttachmentRequirements
+                    .FirstOrDefaultAsync(ar => ar.Code == slot.Code);
+
+                if (existing == null)
+                {
+                    slot.CreationDate = utcNow;
+                    slot.CreatedBy = systemUser;
+                    await context.AttachmentRequirements.AddAsync(slot);
+                }
+                else
+                {
+                    var changed =
+                        existing.ParentType != slot.ParentType ||
+                        existing.ParentId != slot.ParentId ||
+                        existing.ApplicableEntityType != slot.ApplicableEntityType ||
+                        existing.NameEn != slot.NameEn ||
+                        existing.NameAr != slot.NameAr ||
+                        existing.IsRequired != slot.IsRequired ||
+                        existing.MinCount != slot.MinCount ||
+                        existing.MaxCount != slot.MaxCount ||
+                        existing.DisplayOrder != slot.DisplayOrder ||
+                        existing.IsDeleted;
+
+                    if (changed)
+                    {
+                        existing.ParentType = slot.ParentType;
+                        existing.ParentId = slot.ParentId;
+                        existing.ApplicableEntityType = slot.ApplicableEntityType;
+                        existing.NameEn = slot.NameEn;
+                        existing.NameAr = slot.NameAr;
+                        existing.IsRequired = slot.IsRequired;
+                        existing.MinCount = slot.MinCount;
+                        existing.MaxCount = slot.MaxCount;
+                        existing.DisplayOrder = slot.DisplayOrder;
+                        existing.IsDeleted = false;
+                        existing.DeletionDate = null;
+                        existing.DeletedBy = null;
+                        existing.ModificationDate = utcNow;
+                        existing.ModifiedBy = systemUser;
+                    }
+                }
+            }
+
             await context.SaveChangesAsync();
         }
     }
