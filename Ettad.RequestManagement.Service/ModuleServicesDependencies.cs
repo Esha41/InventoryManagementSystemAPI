@@ -44,6 +44,7 @@ namespace Ettad.RequestManagement.Service
             services.AddScoped<IRequestService, RequestService>();
             services.AddScoped<IOrderItemTrackingService, OrderItemTrackingService>();
             services.AddScoped<IAttachmentRequirementUploadValidationService, AttachmentRequirementUploadValidationService>();
+            services.AddScoped<ISystemAttachmentSlotResolver, SystemAttachmentSlotResolver>();
 
             return services;
         }

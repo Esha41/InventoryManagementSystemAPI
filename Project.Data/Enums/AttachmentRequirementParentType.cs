@@ -5,8 +5,14 @@ namespace Ettad.Data.Enums
     /// </summary>
     public enum AttachmentRequirementParentType
     {
-        RequestPurpose = 1
+        RequestPurpose = 1,
 
-        // Future: DiscardPurpose = 2, ReturnPurpose = 3, ...
+        /// <summary>
+        /// Product-defined slots not configured per business entity (no parent row).
+        /// Identified by <see cref="Entities.AttachmentRequirement.Code"/>; <c>ParentId</c> is 0.
+        /// </summary>
+        System = 2
+
+        // Future: DiscardPurpose = 3, ReturnPurpose = 4, ...
     }
 }

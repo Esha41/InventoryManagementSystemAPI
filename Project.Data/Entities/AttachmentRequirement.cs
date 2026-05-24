@@ -1,4 +1,5 @@
 using Ettad.CrossCutting.Comman.Base;
+using Ettad.CrossCutting.Comman.FileUpload;
 using Ettad.Data.Enums;
 
 namespace Ettad.Data.Entities
@@ -17,11 +18,26 @@ namespace Ettad.Data.Entities
 
         /// <summary>
         /// Primary key of the parent entity identified by <see cref="ParentType"/>.
+        /// For <see cref="AttachmentRequirementParentType.System"/> rows this is <c>0</c>; the
+        /// row is identified by <see cref="Code"/>.
         /// </summary>
         public long ParentId { get; set; }
 
         public string NameAr { get; set; }
         public string NameEn { get; set; }
+
+        /// <summary>
+        /// Stable logical key for product-defined system slots (for example
+        /// <c>WEAPON_ASSOCIATION</c>). Null for admin-configured purpose slots.
+        /// Unique when present.
+        /// </summary>
+        public string? Code { get; set; }
+
+        /// <summary>
+        /// When set, restricts this slot to files whose <see cref="FileUplodDetails.Entity"/> matches.
+        /// Null for legacy purpose slots (no entity restriction).
+        /// </summary>
+        public FileEntityType? ApplicableEntityType { get; set; }
 
         public bool IsRequired { get; set; } = true;
 

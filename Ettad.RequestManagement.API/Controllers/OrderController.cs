@@ -56,11 +56,14 @@ namespace Ettad.RequestManagement.API.Controllers
 
         /// <summary>
         /// Create a new order.
-        /// Files are submitted in two buckets:
+        /// Files are submitted in three buckets:
         /// - <paramref name="attachmentUploads"/> contains per-AttachmentRequirement groups
         ///   (each item has an AttachmentRequirementId + one or more Files).
         /// - <paramref name="otherFiles"/> is the optional entity-only bucket for files that
         ///   are not bound to any requirement.
+        /// - <paramref name="weaponAssociationFiles"/> is required when any ammunition line
+        ///   uses a non-catalog weapon (Other not in catalog); files are linked to the system
+        ///   slot <c>WEAPON_ASSOCIATION</c>.
         /// </summary>
         [HttpPost]
         [Consumes("multipart/form-data")]
@@ -70,7 +73,8 @@ namespace Ettad.RequestManagement.API.Controllers
         public async Task<IActionResult> Create(
             [FromForm] CreateOrderDto dto,
             [FromForm] List<AttachmentUploadGroupDto>? attachmentUploads = null,
-            [FromForm] List<IFormFile>? otherFiles = null)
+            [FromForm] List<IFormFile>? otherFiles = null,
+            [FromForm] List<IFormFile>? weaponAssociationFiles = null)
         {
             try
             {
@@ -84,7 +88,7 @@ namespace Ettad.RequestManagement.API.Controllers
                             .Where(f => f != null && f.Length > 0)
                             .ToList());
 
-                var result = await _orderService.CreateAsync(dto, map, otherFiles);
+                var result = await _orderService.CreateAsync(dto, map, otherFiles, weaponAssociationFiles);
                 return ProcessResponse(result);
             }
             catch (Exception ex)
