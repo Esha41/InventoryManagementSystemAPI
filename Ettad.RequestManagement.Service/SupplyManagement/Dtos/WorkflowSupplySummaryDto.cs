@@ -1,3 +1,4 @@
+using Ettad.CrossCutting.Comman.FileUpload;
 using Ettad.Data.Enums;
 
 namespace Ettad.RequestManagement.Service.SupplyManagement.Dtos
@@ -21,6 +22,8 @@ namespace Ettad.RequestManagement.Service.SupplyManagement.Dtos
         public List<WorkflowSupplySummaryLineDto> Lines { get; set; } = new();
         public List<WeaponSelectionLineDto> SelectionLines { get; set; } = new();
         public List<WeaponSuppliedLineDto> WeaponLines { get; set; } = new();
+        /// <summary>Supply submission files (receiver signature and supporting attachments).</summary>
+        public List<FileUploadDto> Files { get; set; } = new();
     }
 
     public class WorkflowSupplySummaryLineDto

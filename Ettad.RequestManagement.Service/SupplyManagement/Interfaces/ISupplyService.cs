@@ -19,7 +19,11 @@ namespace Ettad.RequestManagement.Service.SupplyManagement.Interfaces
 		Task<APIOperationResponse<bool>> UpdateSupplyDetailAsync(long supplyId, long detailId, UpdateSupplyDetailDto detailDto);
 		Task<APIOperationResponse<bool>> DeleteSupplyDetailAsync(long supplyId, long detailId);
 		Task<APIOperationResponse<bool>> ReplaceSupplyDetailsAsync(long supplyId, List<CreateSupplyDetailDto> newDetails);
-		Task<APIOperationResponse<bool>> SubmitSupplyAsync(long id, SubmitSupplyDto inputDto, List<IFormFile> files);
+		Task<APIOperationResponse<bool>> SubmitSupplyAsync(
+			long id,
+			SubmitSupplyDto inputDto,
+			IFormFile? receiverSignatureFile,
+			List<IFormFile> otherFiles);
 		Task<APIOperationResponse<bool>> SetSupplyPickupDateAsync(long orderId, SetSupplyPickupDateDto inputDto);
 		Task<APIOperationResponse<bool>> ConfirmSupplyPickupDateAsync(long orderId, ConfirmSupplyPickupDateDto inputDto);
 	}

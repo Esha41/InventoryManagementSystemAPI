@@ -44,9 +44,12 @@ namespace Ettad.Inventory.Service.AssetSupply.Interfaces
         Task<APIOperationResponse<List<AssetSupplyDto>>> GetAllAsync();
 
         /// <summary>
-        /// Create and submit a new asset supply, including file attachments.
+        /// Create and submit a new asset supply with required supporting files and optional receiver signature.
         /// </summary>
-        Task<APIOperationResponse<long>> CreateAndSubmitAsync(CreateAssetSupplyDto dto, List<IFormFile> files);
+        Task<APIOperationResponse<long>> CreateAndSubmitAsync(
+            CreateAssetSupplyDto dto,
+            IFormFile? receiverSignatureFile,
+            List<IFormFile> otherFiles);
 
         /// <summary>
         /// Cancel an asset supply

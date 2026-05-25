@@ -1,4 +1,5 @@
 using Ettad.Comman.Idenitity;
+using Ettad.CrossCutting.Comman.FileUpload;
 using Ettad.Data.Entities;
 using Ettad.Data.Enums;
 using InventoryRecord = Ettad.Data.Entities.Inventory;
@@ -58,6 +59,7 @@ namespace Ettad.RequestManagement.Service.SupplyManagement.Services
         private readonly ICrossCuttingRepository<InventoryDetail> _inventoryDetailRepository;
         private readonly ICrossCuttingRepository<ApplicationUser> _applicationUserRepository;
         private readonly IAssetSupplyService _assetSupplyService;
+        private readonly IFileUploadService _fileUploadService;
         private readonly ILogger<WorkflowSupplySummaryService> _logger;
 
         public WorkflowSupplySummaryService(
@@ -70,6 +72,7 @@ namespace Ettad.RequestManagement.Service.SupplyManagement.Services
             ICrossCuttingRepository<InventoryDetail> inventoryDetailRepository,
             ICrossCuttingRepository<ApplicationUser> applicationUserRepository,
             IAssetSupplyService assetSupplyService,
+            IFileUploadService fileUploadService,
             ILogger<WorkflowSupplySummaryService> logger)
         {
             _orderRepository = orderRepository;
@@ -81,6 +84,7 @@ namespace Ettad.RequestManagement.Service.SupplyManagement.Services
             _inventoryDetailRepository = inventoryDetailRepository;
             _applicationUserRepository = applicationUserRepository;
             _assetSupplyService = assetSupplyService;
+            _fileUploadService = fileUploadService;
             _logger = logger;
         }
 
@@ -185,7 +189,8 @@ namespace Ettad.RequestManagement.Service.SupplyManagement.Services
                 Notes = data.Notes,
                 IsWeaponOrder = true,
                 IsOrderCompleted = order.Status == RequestStatus.Approved,
-                Phase = "Supplied"
+                Phase = "Supplied",
+                Files = data.Files ?? new List<FileUploadDto>()
             };
 
             var selections = await _weaponSupplySelectionRepository
@@ -305,6 +310,10 @@ namespace Ettad.RequestManagement.Service.SupplyManagement.Services
             dto.ReceiverMilitaryId = supply.ReceiverEmployee?.MilitaryId;
             dto.ReceiverRankName = supply.ReceiverEmployee?.Rank?.NameEn ?? supply.ReceiverEmployee?.Rank?.NameAr;
             dto.Notes = supply.Notes;
+
+            var filesResult = await _fileUploadService.GetByEntityAsync(FileEntityType.Supply, supply.Id);
+            if (filesResult.Succeeded && filesResult.Data != null)
+                dto.Files = filesResult.Data;
 
             var details = supply.SupplyDetails?.Where(sd => !sd.IsDeleted).ToList() ?? new List<SupplyDetail>();
             if (details.Count == 0)

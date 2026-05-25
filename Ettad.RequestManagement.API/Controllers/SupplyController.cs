@@ -219,7 +219,8 @@ namespace Ettad.RequestManagement.API.Controllers
         /// </summary>
         /// <param name="id">Supply ID</param>
         /// <param name="dto">Submission data</param>
-        /// <param name="files">File attachments (at least one required)</param>
+        /// <param name="receiverSignatureFile">Optional receiver signature image (tagged to ORDER_RECEIVER_SIGNATURE when provided)</param>
+        /// <param name="otherFiles">Supporting document attachments (at least one required)</param>
         /// <returns>Success result</returns>
         [HttpPost("{id}/submit")]
         [Consumes("multipart/form-data")]
@@ -227,9 +228,13 @@ namespace Ettad.RequestManagement.API.Controllers
         [ProducesResponseType((int)HttpStatusCode.BadRequest)]
         [ProducesResponseType((int)HttpStatusCode.NotFound)]
         [CheckAuthorize("SubmitSupply")]
-        public async Task<IActionResult> Submit(long id, [FromForm] SubmitSupplyDto dto, [FromForm] List<IFormFile> files)
+        public async Task<IActionResult> Submit(
+            long id,
+            [FromForm] SubmitSupplyDto dto,
+            IFormFile? receiverSignatureFile,
+            [FromForm] List<IFormFile> otherFiles)
         {
-            var result = await _supplyService.SubmitSupplyAsync(id, dto, files);
+            var result = await _supplyService.SubmitSupplyAsync(id, dto, receiverSignatureFile, otherFiles);
             return ProcessResponse(result);
         }
 

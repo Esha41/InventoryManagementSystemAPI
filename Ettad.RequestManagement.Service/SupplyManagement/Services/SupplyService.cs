@@ -46,6 +46,8 @@ namespace Ettad.RequestManagement.Service.SupplyManagement.Services
 		private readonly UserManager<ApplicationUser> _userManager;
 		private readonly ILogger<SupplyService> _logger;
 		private readonly IFileUploadService _fileUploadService;
+		private readonly ICrossCuttingRepository<FileUplodDetails> _fileDetailsRepository;
+		private readonly ISystemAttachmentSlotResolver _systemAttachmentSlotResolver;
 		private readonly IDateTimeProvider _dateTimeProvider;
 		private readonly IOrderItemTrackingService _orderItemTrackingService;
 		private readonly ITransactionManager _transactionManager;
@@ -72,6 +74,8 @@ namespace Ettad.RequestManagement.Service.SupplyManagement.Services
 			UserManager<ApplicationUser> userManager,
 			ILogger<SupplyService> logger,
 			IFileUploadService fileUploadService,
+			ICrossCuttingRepository<FileUplodDetails> fileDetailsRepository,
+			ISystemAttachmentSlotResolver systemAttachmentSlotResolver,
 			IDateTimeProvider dateTimeProvider,
 			IOrderItemTrackingService orderItemTrackingService,
 			ITransactionManager transactionManager,
@@ -97,6 +101,8 @@ namespace Ettad.RequestManagement.Service.SupplyManagement.Services
 			_userManager = userManager;
 			_logger = logger;
 			_fileUploadService = fileUploadService;
+			_fileDetailsRepository = fileDetailsRepository;
+			_systemAttachmentSlotResolver = systemAttachmentSlotResolver;
 			_dateTimeProvider = dateTimeProvider;
 			_orderItemTrackingService = orderItemTrackingService;
 			_transactionManager = transactionManager;
@@ -1136,7 +1142,11 @@ namespace Ettad.RequestManagement.Service.SupplyManagement.Services
 			}
 		}
 
-		public async Task<APIOperationResponse<bool>> SubmitSupplyAsync(long id, SubmitSupplyDto inputDto, List<IFormFile> files)
+		public async Task<APIOperationResponse<bool>> SubmitSupplyAsync(
+			long id,
+			SubmitSupplyDto inputDto,
+			IFormFile? receiverSignatureFile,
+			List<IFormFile> otherFiles)
 		{
 			try
 			{
@@ -1147,17 +1157,22 @@ namespace Ettad.RequestManagement.Service.SupplyManagement.Services
 					return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, errors);
 				}
 
-				// Validate that at least one file is provided
-				if (files == null || !files.Any() || files.All(f => f == null || f.Length == 0))
+				var effectiveOtherFiles = (otherFiles ?? new List<IFormFile>())
+					.Where(f => f != null && f.Length > 0)
+					.ToList();
+
+				if (!effectiveOtherFiles.Any())
 				{
-					return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, "At least one file attachment is required when submitting a supply.");
+					return APIOperationResponse<bool>.Fail(ResponseType.BadRequest,
+						"At least one supporting file attachment is required when submitting a supply.");
 				}
 
-				// Pre-filter files before opening a transaction
-				var validFiles = files.Where(f => f != null && f.Length > 0).ToList();
-				if (!validFiles.Any())
+				AttachmentRequirement? receiverSignatureSlot = null;
+				if (receiverSignatureFile != null && receiverSignatureFile.Length > 0)
 				{
-					return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, "At least one valid file attachment is required when submitting a supply.");
+					receiverSignatureSlot = await _systemAttachmentSlotResolver.ResolveAsync(
+						SystemAttachmentSlotCode.OrderReceiverSignature,
+						FileEntityType.Supply);
 				}
 
 				var supply = await _supplyRepository.FindOneAsync(
@@ -1196,20 +1211,44 @@ namespace Ettad.RequestManagement.Service.SupplyManagement.Services
 				await using var transaction = await _transactionManager.BeginAsync();
 				try
 				{
-					// Upload files and link them to the supply
-					var uploadResult = await _fileUploadService.UploadFilesForEntityAsync(
-						validFiles,
-						FileEntityType.Supply,
-						supply.Id
-					);
+					var flatFiles = new List<IFormFile>();
+					var attachmentRequirementIds = new List<long?>();
 
-					if (!uploadResult.Succeeded)
+					if (receiverSignatureSlot != null && receiverSignatureFile != null)
+					{
+						flatFiles.Add(receiverSignatureFile);
+						attachmentRequirementIds.Add(receiverSignatureSlot.Id);
+					}
+
+					foreach (var file in effectiveOtherFiles)
+					{
+						flatFiles.Add(file);
+						attachmentRequirementIds.Add(null);
+					}
+
+					var saveFilesResult = await _fileUploadService.SaveFilesAsync(flatFiles, FileEntityType.Supply);
+					if (!saveFilesResult.Succeeded || saveFilesResult.Data == null)
 					{
 						await _transactionManager.RollbackAsync();
 						_logger.LogError("Failed to upload files for supply. SupplyId: {SupplyId}, Error: {Error}, UserId: {UserId}",
-							id, uploadResult.Message, _currentUserService.UserId);
+							id, saveFilesResult.Message, _currentUserService.UserId);
 						return APIOperationResponse<bool>.Fail(ResponseType.BadRequest,
-							$"Failed to upload files: {uploadResult.Message}");
+							$"Failed to upload files: {saveFilesResult.Message}");
+					}
+
+					for (var i = 0; i < saveFilesResult.Data.Count; i++)
+					{
+						var detail = new FileUplodDetails
+						{
+							FileUplodMasterId = saveFilesResult.Data[i],
+							Entity = FileEntityType.Supply,
+							EntityId = supply.Id,
+							AttachmentRequirementId = i < attachmentRequirementIds.Count
+								? attachmentRequirementIds[i]
+								: null
+						};
+
+						await _fileDetailsRepository.AddAsync(detail);
 					}
 
 					// Update receiver information and submission metadata

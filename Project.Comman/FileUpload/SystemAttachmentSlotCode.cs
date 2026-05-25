@@ -10,9 +10,8 @@ namespace Ettad.CrossCutting.Comman.FileUpload
     /// </summary>
     public enum SystemAttachmentSlotCode
     {
-        WeaponAssociation = 1
-
-        // Future: Passport = 2, NationalId = 3, RequestItemProof = 4, ...
+        WeaponAssociation = 1,
+        OrderReceiverSignature = 2
     }
 
     /// <summary>
@@ -23,10 +22,12 @@ namespace Ettad.CrossCutting.Comman.FileUpload
     public static class SystemAttachmentSlotCodeExtensions
     {
         public const string WeaponAssociationCode = "WEAPON_ASSOCIATION";
+        public const string OrderReceiverSignatureCode = "ORDER_RECEIVER_SIGNATURE";
 
         public static string ToDbCode(this SystemAttachmentSlotCode code) => code switch
         {
             SystemAttachmentSlotCode.WeaponAssociation => WeaponAssociationCode,
+            SystemAttachmentSlotCode.OrderReceiverSignature => OrderReceiverSignatureCode,
             _ => throw new ArgumentOutOfRangeException(nameof(code), code, "Unknown system attachment slot code.")
         };
     }

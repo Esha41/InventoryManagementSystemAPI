@@ -1642,6 +1642,19 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                     MinCount = 1,
                     MaxCount = 10,
                     DisplayOrder = 0
+                },
+                new AttachmentRequirement
+                {
+                    ParentType = AttachmentRequirementParentType.System,
+                    ParentId = 0,
+                    Code = SystemAttachmentSlotCodeExtensions.OrderReceiverSignatureCode,
+                    ApplicableEntityType = null,
+                    NameEn = "Order Receiver Signature",
+                    NameAr = "توقيع المستلم",
+                    IsRequired = true,
+                    MinCount = 1,
+                    MaxCount = 1,
+                    DisplayOrder = 1
                 }
             };
 

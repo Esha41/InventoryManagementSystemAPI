@@ -122,9 +122,12 @@ namespace Ettad.Inventory.API.Controllers
         [Consumes("multipart/form-data")]
         [ProducesResponseType(typeof(APIOperationResponse<long>), (int)HttpStatusCode.Created)]
         [CheckAuthorize("Permissions.AssetSupply.Create")]
-        public async Task<IActionResult> Create([FromForm] CreateAssetSupplyDto dto, [FromForm] List<IFormFile> files)
+        public async Task<IActionResult> Create(
+            [FromForm] CreateAssetSupplyDto dto,
+            IFormFile? receiverSignatureFile,
+            [FromForm] List<IFormFile> otherFiles)
         {
-            var result = await _assetSupplyService.CreateAndSubmitAsync(dto, files);
+            var result = await _assetSupplyService.CreateAndSubmitAsync(dto, receiverSignatureFile, otherFiles);
             return ProcessResponse(result);
         }
 

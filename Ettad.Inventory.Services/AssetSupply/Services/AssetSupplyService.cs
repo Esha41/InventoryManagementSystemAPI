@@ -76,6 +76,8 @@ namespace Ettad.Inventory.Service.AssetSupply.Services
         private readonly IDateTimeProvider _dateTimeProvider;
         private readonly IOrderItemTrackingService _orderItemTrackingService;
         private readonly IFileUploadService _fileUploadService;
+        private readonly ICrossCuttingRepository<FileUplodDetails> _fileDetailsRepository;
+        private readonly ISystemAttachmentSlotResolver _systemAttachmentSlotResolver;
         private readonly ITransactionManager _transactionManager;
         private readonly IMediator _mediator;
 
@@ -98,6 +100,8 @@ namespace Ettad.Inventory.Service.AssetSupply.Services
             IDateTimeProvider dateTimeProvider,
             IOrderItemTrackingService orderItemTrackingService,
             IFileUploadService fileUploadService,
+            ICrossCuttingRepository<FileUplodDetails> fileDetailsRepository,
+            ISystemAttachmentSlotResolver systemAttachmentSlotResolver,
             ITransactionManager transactionManager,
             IMediator mediator)
         {
@@ -119,6 +123,8 @@ namespace Ettad.Inventory.Service.AssetSupply.Services
             _dateTimeProvider = dateTimeProvider;
             _orderItemTrackingService = orderItemTrackingService;
             _fileUploadService = fileUploadService;
+            _fileDetailsRepository = fileDetailsRepository;
+            _systemAttachmentSlotResolver = systemAttachmentSlotResolver;
             _transactionManager = transactionManager;
             _mediator = mediator;
         }
@@ -492,7 +498,10 @@ namespace Ettad.Inventory.Service.AssetSupply.Services
             }
         }
 
-        public async Task<APIOperationResponse<long>> CreateAndSubmitAsync(CreateAssetSupplyDto dto, List<IFormFile> files)
+        public async Task<APIOperationResponse<long>> CreateAndSubmitAsync(
+            CreateAssetSupplyDto dto,
+            IFormFile? receiverSignatureFile,
+            List<IFormFile> otherFiles)
         {
             _logger.LogInformation("Creating and submitting asset supply. OrderId: {OrderId}, AssetCount: {AssetCount}, User: {UserId}",
                 dto.OrderId, dto.SupplyDetails?.Count ?? 0, _currentUserService.UserId);
@@ -507,11 +516,22 @@ namespace Ettad.Inventory.Service.AssetSupply.Services
                     return APIOperationResponse<long>.Fail(ResponseType.BadRequest, errors);
                 }
 
-                // Upload files and link them to the asset supply
-                // Require at least one valid file, mirroring ammunition supply submit behaviour
-                if (files == null || !files.Any(f => f != null && f.Length > 0))
+                var effectiveOtherFiles = (otherFiles ?? new List<IFormFile>())
+                    .Where(f => f != null && f.Length > 0)
+                    .ToList();
+
+                if (!effectiveOtherFiles.Any())
                 {
-                    return APIOperationResponse<long>.Fail(ResponseType.BadRequest, "At least one file attachment is required when creating an asset supply.");
+                    return APIOperationResponse<long>.Fail(ResponseType.BadRequest,
+                        "At least one supporting file attachment is required when creating an asset supply.");
+                }
+
+                AttachmentRequirement? receiverSignatureSlot = null;
+                if (receiverSignatureFile != null && receiverSignatureFile.Length > 0)
+                {
+                    receiverSignatureSlot = await _systemAttachmentSlotResolver.ResolveAsync(
+                        SystemAttachmentSlotCode.OrderReceiverSignature,
+                        FileEntityType.AssetSupply);
                 }
 
                 // Check order exists
@@ -778,17 +798,42 @@ namespace Ettad.Inventory.Service.AssetSupply.Services
                         await _assetRepository.UpdateAsync(asset);
                     }
 
-                    var validFiles = files.Where(f => f != null && f.Length > 0).ToList();
-                    var uploadResult = await _fileUploadService.UploadFilesForEntityAsync(
-                        validFiles,
-                        FileEntityType.AssetSupply,
-                        createdSupply.Id);
+                    var flatFiles = new List<IFormFile>();
+                    var attachmentRequirementIds = new List<long?>();
 
-                    if (!uploadResult.Succeeded)
+                    if (receiverSignatureSlot != null && receiverSignatureFile != null)
+                    {
+                        flatFiles.Add(receiverSignatureFile);
+                        attachmentRequirementIds.Add(receiverSignatureSlot.Id);
+                    }
+
+                    foreach (var file in effectiveOtherFiles)
+                    {
+                        flatFiles.Add(file);
+                        attachmentRequirementIds.Add(null);
+                    }
+
+                    var saveFilesResult = await _fileUploadService.SaveFilesAsync(flatFiles, FileEntityType.AssetSupply);
+                    if (!saveFilesResult.Succeeded || saveFilesResult.Data == null)
                     {
                         await _transactionManager.RollbackAsync();
-                        _logger.LogError("Failed to upload files for asset supply. SupplyId: {SupplyId}, Error: {Error}", createdSupply.Id, uploadResult.Message);
-                        return APIOperationResponse<long>.Fail(ResponseType.BadRequest, $"Failed to upload files: {uploadResult.Message}");
+                        _logger.LogError("Failed to upload files for asset supply. SupplyId: {SupplyId}, Error: {Error}", createdSupply.Id, saveFilesResult.Message);
+                        return APIOperationResponse<long>.Fail(ResponseType.BadRequest, $"Failed to upload files: {saveFilesResult.Message}");
+                    }
+
+                    for (var i = 0; i < saveFilesResult.Data.Count; i++)
+                    {
+                        var detail = new FileUplodDetails
+                        {
+                            FileUplodMasterId = saveFilesResult.Data[i],
+                            Entity = FileEntityType.AssetSupply,
+                            EntityId = createdSupply.Id,
+                            AttachmentRequirementId = i < attachmentRequirementIds.Count
+                                ? attachmentRequirementIds[i]
+                                : null
+                        };
+
+                        await _fileDetailsRepository.AddAsync(detail);
                     }
 
                     // Record order item history for asset supply
