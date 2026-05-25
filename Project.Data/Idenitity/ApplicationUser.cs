@@ -12,6 +12,15 @@ namespace Ettad.Comman.Idenitity
         public bool IsSuperAdmin { get; set; }
         public string? RefreshToken { get; set; }
         public DateTime? RefreshTokenExpiryDate { get; set; }
+
+        /// <summary>
+        /// The immediately-previous refresh token kept valid for a short grace window
+        /// after rotation. Handles the case where the server rotated the token but the
+        /// Set-Cookie response was lost before the client received it.
+        /// </summary>
+        public string? PreviousRefreshToken { get; set; }
+        public DateTime? PreviousRefreshTokenExpiresAt { get; set; }
+
         public string? CurrentTokenId { get; set; }
         public string ExtraEmployeesView { get; set; } = string.Empty;
 

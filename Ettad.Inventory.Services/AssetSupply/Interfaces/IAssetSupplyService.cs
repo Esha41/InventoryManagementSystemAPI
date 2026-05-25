@@ -15,6 +15,11 @@ namespace Ettad.Inventory.Service.AssetSupply.Interfaces
         Task<APIOperationResponse<List<BatchForOrderDepotDto>>> GetBatchesForOrderDepotsAsync(long orderId, List<long> depotIds);
 
         /// <summary>
+        /// Get depot IDs that have ready-to-issue, unassigned assets matching the order's requested items.
+        /// </summary>
+        Task<APIOperationResponse<List<long>>> GetDepotsWithAvailableItemsAsync(long orderId);
+
+        /// <summary>
         /// Get available assets to supply for an order.
         /// Returns assets ordered by FIFO (oldest first), with serial numbers only, and not already assigned.
         /// </summary>

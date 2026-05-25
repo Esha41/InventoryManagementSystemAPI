@@ -205,8 +205,16 @@ namespace Ettad.User.Services.Services
             if (!user.RefreshTokenExpiryDate.HasValue || user.RefreshTokenExpiryDate.Value < _dateTimeProvider.Now)
                 throw new ApiException("server.refreshTokenExpired");
 
-            // Issue a new refresh token and save
+            // Issue a new refresh token.
+            // Keep the old token in PreviousRefreshToken for a 60-second grace window.
+            // This covers the scenario where the backend rotated the token and wrote it
+            // to the DB, but the Set-Cookie response was lost before the client received
+            // it (network drop / load-balancer timeout). On the client's retry the old
+            // cookie is still presented — we accept it within the grace window so the
+            // user is not permanently locked out.
             var newRefresh = GenerateRefreshToken();
+            user.PreviousRefreshToken = user.RefreshToken;
+            user.PreviousRefreshTokenExpiresAt = _dateTimeProvider.Now.AddSeconds(60);
             user.RefreshToken = newRefresh;
             user.RefreshTokenExpiryDate = _dateTimeProvider.Now.AddMinutes(_jwtOptions.RefreshTokenExpireInMinutes);
 
