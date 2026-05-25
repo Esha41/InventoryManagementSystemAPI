@@ -3,10 +3,10 @@ using Ettad.CrossCutting.Comman.FileUpload;
 using Ettad.Data.Entities;
 using Ettad.Data.Enums;
 using Ettad.Data.Interfaces.Repositories;
-using Ettad.RequestManagement.Service.Common.Interfaces;
+using Ettad.Data.Interfaces.Services;
 using Microsoft.Extensions.Logging;
 
-namespace Ettad.RequestManagement.Service.Common.Services
+namespace Ettad.Repository.Services
 {
     /// <inheritdoc cref="ISystemAttachmentSlotResolver"/>
     /// <remarks>

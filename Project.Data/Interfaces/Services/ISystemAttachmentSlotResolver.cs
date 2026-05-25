@@ -1,7 +1,7 @@
 using Ettad.CrossCutting.Comman.FileUpload;
 using Ettad.Data.Entities;
 
-namespace Ettad.RequestManagement.Service.Common.Interfaces
+namespace Ettad.Data.Interfaces.Services
 {
     /// <summary>
     /// Resolves product-defined attachment slots (rows on <see cref="AttachmentRequirement"/>

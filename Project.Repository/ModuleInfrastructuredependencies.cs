@@ -1,5 +1,7 @@
 using Ettad.Data.Interfaces.Repositories;
+using Ettad.Data.Interfaces.Services;
 using Ettad.Repository.Repositories;
+using Ettad.Repository.Services;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -24,6 +26,8 @@ namespace Ettad.Repository
             service.AddScoped<IAssetBulkDeletionPersistence, AssetBulkDeletionPersistence>();
 
             service.AddScoped<IInventoryPermanentDeleteExecutor, InventoryPermanentDeleteExecutor>();
+
+            service.AddScoped<ISystemAttachmentSlotResolver, SystemAttachmentSlotResolver>();
 
             return service;
         }
