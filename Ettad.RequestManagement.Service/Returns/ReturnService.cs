@@ -22,8 +22,11 @@ using Ettad.Notification.Service.Interfaces;
 using Ettad.Workflow.Service.Interface;
 using MediatR;
 using Ettad.RequestManagement.Service.Common.Interfaces;
+using Ettad.Inventory.Service.AssetHistory.Dtos;
+using Ettad.Inventory.Service.AssetHistory.Interfaces;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.Json;
 
 namespace Ettad.RequestManagement.Service.Returns
 {
@@ -45,6 +48,8 @@ namespace Ettad.RequestManagement.Service.Returns
         private readonly ICrossCuttingRepository<Ettad.Data.Entities.Inventory> _inventoryRepository;
         private readonly ICrossCuttingRepository<InventoryDetail> _inventoryDetailRepository;
         private readonly ICrossCuttingRepository<Asset> _assetRepository;
+        private readonly ICrossCuttingRepository<AssetAssignment> _assignmentRepository;
+        private readonly IAssetHistoryService _assetHistoryService;
         private readonly ICrossCuttingRepository<Batch> _batchRepository;
         private readonly ICrossCuttingRepository<Depot> _depotRepository;
         private readonly ICrossCuttingRepository<BaseItem> _baseItemRepository;
@@ -71,6 +76,8 @@ namespace Ettad.RequestManagement.Service.Returns
             ICrossCuttingRepository<Ettad.Data.Entities.Inventory> inventoryRepository,
             ICrossCuttingRepository<InventoryDetail> inventoryDetailRepository,
             ICrossCuttingRepository<Asset> assetRepository,
+            ICrossCuttingRepository<AssetAssignment> assignmentRepository,
+            IAssetHistoryService assetHistoryService,
             ICrossCuttingRepository<Batch> batchRepository,
             ICrossCuttingRepository<Depot> depotRepository,
             ICrossCuttingRepository<BaseItem> baseItemRepository,
@@ -96,6 +103,8 @@ namespace Ettad.RequestManagement.Service.Returns
             _inventoryRepository = inventoryRepository;
             _inventoryDetailRepository = inventoryDetailRepository;
             _assetRepository = assetRepository;
+            _assignmentRepository = assignmentRepository;
+            _assetHistoryService = assetHistoryService;
             _batchRepository = batchRepository;
             _depotRepository = depotRepository;
             _baseItemRepository = baseItemRepository;
@@ -604,6 +613,8 @@ namespace Ettad.RequestManagement.Service.Returns
                 }
 
                 var depotId = returnEntity.ReturnToDepotId.Value;
+                var returnDepot = await _depotRepository.FindOneAsync(d => d.Id == depotId && !d.IsDeleted);
+                var depotName = returnDepot?.NameEn ?? returnDepot?.NameAr ?? depotId.ToString();
 
                 foreach (var item in dto.AmmoExplosiveItems ?? Enumerable.Empty<ReturnAmmoExplosiveItemDto>())
                 {
@@ -760,6 +771,13 @@ namespace Ettad.RequestManagement.Service.Returns
 
                         if (asset != null)
                         {
+                            await ClearAssetAssignmentOnWeaponReturnAsync(
+                                asset,
+                                assetNotes,
+                                returnEntity.Id,
+                                returnEntity.RequestNo,
+                                depotName);
+
                             asset.Status = item.Status;
                             asset.BatchId = batch.Id;
                             asset.DepotId = depotId;
@@ -975,6 +993,75 @@ namespace Ettad.RequestManagement.Service.Returns
                 _logger.LogError(ex, "Error getting return tracking lines. ReturnId: {ReturnId}", returnId);
                 return APIOperationResponse<List<ReturnTrackingLineDto>>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
             }
+        }
+
+        private async Task ClearAssetAssignmentOnWeaponReturnAsync(
+            Asset asset,
+            string? returnNotes,
+            long returnId,
+            string requestNo,
+            string depotName)
+        {
+            if (!asset.IsAssigned && !asset.CurrentAssignmentId.HasValue)
+            {
+                return;
+            }
+
+            AssetAssignment? assignment = null;
+            if (asset.CurrentAssignmentId.HasValue)
+            {
+                assignment = await _assignmentRepository.FindOneAsync(
+                    a => a.Id == asset.CurrentAssignmentId.Value
+                        && a.AssetId == asset.Id
+                        && !a.IsDeleted);
+            }
+
+            long? previousDepartmentId = null;
+            long? previousCustodianId = null;
+            string? previousLocation = null;
+            long? assignmentId = null;
+            long? orderId = null;
+
+            if (assignment != null && assignment.Status == AssetAssignmentStatus.Active)
+            {
+                previousDepartmentId = assignment.DepartmentId;
+                previousCustodianId = assignment.CustodianId;
+                previousLocation = assignment.Location;
+                assignmentId = assignment.Id;
+                orderId = assignment.OrderId;
+
+                assignment.Status = AssetAssignmentStatus.Returned;
+                assignment.ActualReturnDate = _dateTimeProvider.Now;
+                if (!string.IsNullOrWhiteSpace(returnNotes))
+                {
+                    assignment.Notes = string.IsNullOrEmpty(assignment.Notes)
+                        ? returnNotes
+                        : $"{assignment.Notes}\n{returnNotes}";
+                }
+
+                assignment.ModificationDate = _dateTimeProvider.Now;
+                assignment.ModifiedBy = _currentUserService.UserId;
+                await _assignmentRepository.UpdateAsync(assignment);
+            }
+
+            asset.IsAssigned = false;
+            asset.CurrentAssignmentId = null;
+
+            await _assetHistoryService.RecordHistoryAsync(asset.Id, AssetHistoryActionType.Returned, new AssetHistoryContext
+            {
+                Description = $"Weapon returned to depot {depotName} via return request {requestNo}",
+                PreviousDepartmentId = previousDepartmentId,
+                PreviousCustodianId = previousCustodianId,
+                PreviousLocation = previousLocation,
+                AssetAssignmentId = assignmentId,
+                OrderId = orderId,
+                Notes = returnNotes,
+                Metadata = JsonSerializer.Serialize(new { ReturnId = returnId, RequestNo = requestNo, DepotName = depotName })
+            });
+
+            _logger.LogInformation(
+                "Cleared weapon assignment on return. AssetId: {AssetId}, AssignmentId: {AssignmentId}, ReturnId: {ReturnId}, User: {UserId}",
+                asset.Id, assignmentId, returnId, _currentUserService.UserId);
         }
 
         private async Task<APIOperationResponse<bool>?> ValidateRequestItemBelongsToReturnAsync(long returnId, long? requestItemId)
