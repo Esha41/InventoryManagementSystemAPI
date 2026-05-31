@@ -161,13 +161,13 @@ namespace Ettad.ReportManagement.Service.Reports.Templates
             // 
             // xrTableCellSrNoDetail
             // 
-            this.xrTableCellSrNoDetail.Borders = ((DevExpress.XtraPrinting.BorderSide)((((DevExpress.XtraPrinting.BorderSide.Left | DevExpress.XtraPrinting.BorderSide.Top) 
-            | DevExpress.XtraPrinting.BorderSide.Right) 
+            this.xrTableCellSrNoDetail.Borders = ((DevExpress.XtraPrinting.BorderSide)(((DevExpress.XtraPrinting.BorderSide.Left | DevExpress.XtraPrinting.BorderSide.Right) 
             | DevExpress.XtraPrinting.BorderSide.Bottom)));
             this.xrTableCellSrNoDetail.BorderWidth = 1F;
             this.xrTableCellSrNoDetail.Multiline = true;
             this.xrTableCellSrNoDetail.Name = "xrTableCellSrNoDetail";
             this.xrTableCellSrNoDetail.Padding = new DevExpress.XtraPrinting.PaddingInfo(5F, 5F, 5F, 5F, 100F);
+            this.xrTableCellSrNoDetail.StylePriority.UseBorders = false;
             xrSummary1.Func = DevExpress.XtraReports.UI.SummaryFunc.RecordNumber;
             xrSummary1.Running = DevExpress.XtraReports.UI.SummaryRunning.Report;
             this.xrTableCellSrNoDetail.Summary = xrSummary1;
