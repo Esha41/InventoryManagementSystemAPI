@@ -80,14 +80,14 @@ namespace Ettad.ReportManagement.Service.Reports.Templates
         private void InitializeComponent()
         {
             this.components = new System.ComponentModel.Container();
-            DevExpress.DataAccess.Sql.CustomSqlQuery customSqlQuery1 = new DevExpress.DataAccess.Sql.CustomSqlQuery();
+            DevExpress.DataAccess.Sql.CustomSqlQuery customSqlQuery3 = new DevExpress.DataAccess.Sql.CustomSqlQuery();
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(AssetsReportTemplate));
-            DevExpress.DataAccess.Sql.CustomSqlQuery customSqlQuery2 = new DevExpress.DataAccess.Sql.CustomSqlQuery();
-            DevExpress.XtraReports.UI.XRSummary xrSummary1 = new DevExpress.XtraReports.UI.XRSummary();
-            DevExpress.XtraReports.Parameters.StaticListLookUpSettings staticListLookUpSettings1 = new DevExpress.XtraReports.Parameters.StaticListLookUpSettings();
-            DevExpress.XtraReports.Parameters.DynamicListLookUpSettings dynamicListLookUpSettings1 = new DevExpress.XtraReports.Parameters.DynamicListLookUpSettings();
-            DevExpress.XtraReports.Parameters.StaticListLookUpSettings staticListLookUpSettings2 = new DevExpress.XtraReports.Parameters.StaticListLookUpSettings();
-            DevExpress.XtraReports.Parameters.StaticListLookUpSettings staticListLookUpSettings3 = new DevExpress.XtraReports.Parameters.StaticListLookUpSettings();
+            DevExpress.DataAccess.Sql.CustomSqlQuery customSqlQuery4 = new DevExpress.DataAccess.Sql.CustomSqlQuery();
+            DevExpress.XtraReports.UI.XRSummary xrSummary2 = new DevExpress.XtraReports.UI.XRSummary();
+            DevExpress.XtraReports.Parameters.StaticListLookUpSettings staticListLookUpSettings4 = new DevExpress.XtraReports.Parameters.StaticListLookUpSettings();
+            DevExpress.XtraReports.Parameters.DynamicListLookUpSettings dynamicListLookUpSettings2 = new DevExpress.XtraReports.Parameters.DynamicListLookUpSettings();
+            DevExpress.XtraReports.Parameters.StaticListLookUpSettings staticListLookUpSettings5 = new DevExpress.XtraReports.Parameters.StaticListLookUpSettings();
+            DevExpress.XtraReports.Parameters.StaticListLookUpSettings staticListLookUpSettings6 = new DevExpress.XtraReports.Parameters.StaticListLookUpSettings();
             this.EttadDataSource = new DevExpress.DataAccess.Sql.SqlDataSource(this.components);
             this.AssetsDataSource = new DevExpress.DataAccess.Sql.SqlDataSource(this.components);
             this.topMarginBand1 = new DevExpress.XtraReports.UI.TopMarginBand();
@@ -139,20 +139,20 @@ namespace Ettad.ReportManagement.Service.Reports.Templates
             // 
             this.EttadDataSource.ConnectionName = "DefaultConnection";
             this.EttadDataSource.Name = "EttadDataSource";
-            customSqlQuery1.Name = "PrimaryPurposes";
-            customSqlQuery1.Sql = resources.GetString("customSqlQuery1.Sql");
+            customSqlQuery3.Name = "PrimaryPurposes";
+            customSqlQuery3.Sql = resources.GetString("customSqlQuery3.Sql");
             this.EttadDataSource.Queries.AddRange(new DevExpress.DataAccess.Sql.SqlQuery[] {
-            customSqlQuery1});
+            customSqlQuery3});
             this.EttadDataSource.ResultSchemaSerializable = resources.GetString("EttadDataSource.ResultSchemaSerializable");
             // 
             // AssetsDataSource
             // 
             this.AssetsDataSource.ConnectionName = "DefaultConnection";
             this.AssetsDataSource.Name = "AssetsDataSource";
-            customSqlQuery2.Name = "AssetsQuery_WeaponAmm";
-            customSqlQuery2.Sql = resources.GetString("customSqlQuery2.Sql");
+            customSqlQuery4.Name = "AssetsQuery_WeaponAmm";
+            customSqlQuery4.Sql = resources.GetString("customSqlQuery4.Sql");
             this.AssetsDataSource.Queries.AddRange(new DevExpress.DataAccess.Sql.SqlQuery[] {
-            customSqlQuery2});
+            customSqlQuery4});
             this.AssetsDataSource.ResultSchemaSerializable = resources.GetString("AssetsDataSource.ResultSchemaSerializable");
             // 
             // topMarginBand1
@@ -202,9 +202,9 @@ namespace Ettad.ReportManagement.Service.Reports.Templates
             this.xrTableCellSrNoDetail.Name = "xrTableCellSrNoDetail";
             this.xrTableCellSrNoDetail.Padding = new DevExpress.XtraPrinting.PaddingInfo(5F, 5F, 5F, 5F, 100F);
             this.xrTableCellSrNoDetail.StylePriority.UseBorders = false;
-            xrSummary1.Func = DevExpress.XtraReports.UI.SummaryFunc.RecordNumber;
-            xrSummary1.Running = DevExpress.XtraReports.UI.SummaryRunning.Report;
-            this.xrTableCellSrNoDetail.Summary = xrSummary1;
+            xrSummary2.Func = DevExpress.XtraReports.UI.SummaryFunc.RecordNumber;
+            xrSummary2.Running = DevExpress.XtraReports.UI.SummaryRunning.Report;
+            this.xrTableCellSrNoDetail.Summary = xrSummary2;
             this.xrTableCellSrNoDetail.Text = "0";
             this.xrTableCellSrNoDetail.TextAlignment = DevExpress.XtraPrinting.TextAlignment.MiddleCenter;
             this.xrTableCellSrNoDetail.Weight = 0.27125550273638843D;
@@ -333,14 +333,14 @@ namespace Ettad.ReportManagement.Service.Reports.Templates
             this.xrPageInfo1,
             this.xrLabelReportTitle,
             this.xrPictureBoxLogo});
-            this.ReportHeader.HeightF = 136.25F;
+            this.ReportHeader.HeightF = 124.4445F;
             this.ReportHeader.Name = "ReportHeader";
             // 
             // xrLabel1
             // 
             this.xrLabel1.ExpressionBindings.AddRange(new DevExpress.XtraReports.UI.ExpressionBinding[] {
             new DevExpress.XtraReports.UI.ExpressionBinding("BeforePrint", "Text", "Iif(?Language == \'ar\', \'تم الإنشاء بتاريخ :\', \'Generated on :\')")});
-            this.xrLabel1.LocationFloat = new DevExpress.Utils.PointFloat(598.0834F, 102.5556F);
+            this.xrLabel1.LocationFloat = new DevExpress.Utils.PointFloat(598.0834F, 84.50004F);
             this.xrLabel1.Multiline = true;
             this.xrLabel1.Name = "xrLabel1";
             this.xrLabel1.Padding = new DevExpress.XtraPrinting.PaddingInfo(2F, 2F, 0F, 0F, 100F);
@@ -349,7 +349,7 @@ namespace Ettad.ReportManagement.Service.Reports.Templates
             // 
             // xrPageInfo1
             // 
-            this.xrPageInfo1.LocationFloat = new DevExpress.Utils.PointFloat(694.889F, 102.5556F);
+            this.xrPageInfo1.LocationFloat = new DevExpress.Utils.PointFloat(694.889F, 84.50004F);
             this.xrPageInfo1.Name = "xrPageInfo1";
             this.xrPageInfo1.Padding = new DevExpress.XtraPrinting.PaddingInfo(2F, 2F, 0F, 0F, 100F);
             this.xrPageInfo1.PageInfo = DevExpress.XtraPrinting.PageInfo.DateTime;
@@ -364,7 +364,7 @@ namespace Ettad.ReportManagement.Service.Reports.Templates
             new DevExpress.XtraReports.UI.ExpressionBinding("BeforePrint", "Text", "Iif(?Language == \'ar\', \'تقرير الأصول\', \'Assets Report\')")});
             this.xrLabelReportTitle.Font = new DevExpress.Drawing.DXFont("Segoe UI", 18F, DevExpress.Drawing.DXFontStyle.Bold);
             this.xrLabelReportTitle.ForeColor = System.Drawing.Color.Red;
-            this.xrLabelReportTitle.LocationFloat = new DevExpress.Utils.PointFloat(224.1667F, 10F);
+            this.xrLabelReportTitle.LocationFloat = new DevExpress.Utils.PointFloat(202.7583F, 9.999996F);
             this.xrLabelReportTitle.Multiline = true;
             this.xrLabelReportTitle.Name = "xrLabelReportTitle";
             this.xrLabelReportTitle.Padding = new DevExpress.XtraPrinting.PaddingInfo(10F, 10F, 15F, 10F, 100F);
@@ -383,7 +383,7 @@ namespace Ettad.ReportManagement.Service.Reports.Templates
             this.xrPictureBoxLogo.ImageSource = new DevExpress.XtraPrinting.Drawing.ImageSource("img", resources.GetString("xrPictureBoxLogo.ImageSource"));
             this.xrPictureBoxLogo.LocationFloat = new DevExpress.Utils.PointFloat(0.8332994F, 0F);
             this.xrPictureBoxLogo.Name = "xrPictureBoxLogo";
-            this.xrPictureBoxLogo.SizeF = new System.Drawing.SizeF(183.0556F, 112.5556F);
+            this.xrPictureBoxLogo.SizeF = new System.Drawing.SizeF(127.5001F, 79.22227F);
             this.xrPictureBoxLogo.Sizing = DevExpress.XtraPrinting.ImageSizeMode.Cover;
             this.xrPictureBoxLogo.StylePriority.UseBackColor = false;
             // 
@@ -642,9 +642,9 @@ namespace Ettad.ReportManagement.Service.Reports.Templates
             this.Language.Description = "Language";
             this.Language.Name = "Language";
             this.Language.ValueInfo = "en";
-            staticListLookUpSettings1.LookUpValues.Add(new DevExpress.XtraReports.Parameters.LookUpValue("en", "English"));
-            staticListLookUpSettings1.LookUpValues.Add(new DevExpress.XtraReports.Parameters.LookUpValue("ar", "Arabic"));
-            this.Language.ValueSourceSettings = staticListLookUpSettings1;
+            staticListLookUpSettings4.LookUpValues.Add(new DevExpress.XtraReports.Parameters.LookUpValue("en", "English"));
+            staticListLookUpSettings4.LookUpValues.Add(new DevExpress.XtraReports.Parameters.LookUpValue("ar", "Arabic"));
+            this.Language.ValueSourceSettings = staticListLookUpSettings4;
             // 
             // GroupFooter1
             // 
@@ -659,13 +659,13 @@ namespace Ettad.ReportManagement.Service.Reports.Templates
             this.Primary_Purpose.Name = "Primary_Purpose";
             this.Primary_Purpose.SelectAllValues = true;
             this.Primary_Purpose.Type = typeof(int);
-            dynamicListLookUpSettings1.DataMember = "PrimaryPurposes";
-            dynamicListLookUpSettings1.DataSource = this.EttadDataSource;
-            dynamicListLookUpSettings1.DisplayMember = "NameEn";
-            dynamicListLookUpSettings1.SortMember = "NameEn";
-            dynamicListLookUpSettings1.SortOrder = DevExpress.Data.ColumnSortOrder.Ascending;
-            dynamicListLookUpSettings1.ValueMember = "Id";
-            this.Primary_Purpose.ValueSourceSettings = dynamicListLookUpSettings1;
+            dynamicListLookUpSettings2.DataMember = "PrimaryPurposes";
+            dynamicListLookUpSettings2.DataSource = this.EttadDataSource;
+            dynamicListLookUpSettings2.DisplayMember = "NameEn";
+            dynamicListLookUpSettings2.SortMember = "NameEn";
+            dynamicListLookUpSettings2.SortOrder = DevExpress.Data.ColumnSortOrder.Ascending;
+            dynamicListLookUpSettings2.ValueMember = "Id";
+            this.Primary_Purpose.ValueSourceSettings = dynamicListLookUpSettings2;
             // 
             // calculatedField1
             // 
@@ -681,10 +681,10 @@ namespace Ettad.ReportManagement.Service.Reports.Templates
             this.Caliber_Category.Name = "Caliber_Category";
             this.Caliber_Category.SelectAllValues = true;
             this.Caliber_Category.Type = typeof(int);
-            staticListLookUpSettings2.LookUpValues.Add(new DevExpress.XtraReports.Parameters.LookUpValue(1, "Small"));
-            staticListLookUpSettings2.LookUpValues.Add(new DevExpress.XtraReports.Parameters.LookUpValue(2, "Medium"));
-            staticListLookUpSettings2.LookUpValues.Add(new DevExpress.XtraReports.Parameters.LookUpValue(3, "Large"));
-            this.Caliber_Category.ValueSourceSettings = staticListLookUpSettings2;
+            staticListLookUpSettings5.LookUpValues.Add(new DevExpress.XtraReports.Parameters.LookUpValue(1, "Small"));
+            staticListLookUpSettings5.LookUpValues.Add(new DevExpress.XtraReports.Parameters.LookUpValue(2, "Medium"));
+            staticListLookUpSettings5.LookUpValues.Add(new DevExpress.XtraReports.Parameters.LookUpValue(3, "Large"));
+            this.Caliber_Category.ValueSourceSettings = staticListLookUpSettings5;
             // 
             // Asset
             // 
@@ -693,9 +693,9 @@ namespace Ettad.ReportManagement.Service.Reports.Templates
             this.Asset.Name = "Asset";
             this.Asset.SelectAllValues = true;
             this.Asset.Type = typeof(int);
-            staticListLookUpSettings3.LookUpValues.Add(new DevExpress.XtraReports.Parameters.LookUpValue(1, "Ammunitions"));
-            staticListLookUpSettings3.LookUpValues.Add(new DevExpress.XtraReports.Parameters.LookUpValue(2, "Weapons"));
-            this.Asset.ValueSourceSettings = staticListLookUpSettings3;
+            staticListLookUpSettings6.LookUpValues.Add(new DevExpress.XtraReports.Parameters.LookUpValue(1, "Ammunitions"));
+            staticListLookUpSettings6.LookUpValues.Add(new DevExpress.XtraReports.Parameters.LookUpValue(2, "Weapons"));
+            this.Asset.ValueSourceSettings = staticListLookUpSettings6;
             // 
             // AssetsReportTemplate
             // 

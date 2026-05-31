@@ -82,10 +82,10 @@ namespace Ettad.ReportManagement.Service.Reports.Templates
         private void InitializeComponent()
         {
             this.components = new System.ComponentModel.Container();
-            DevExpress.DataAccess.Sql.CustomSqlQuery customSqlQuery3 = new DevExpress.DataAccess.Sql.CustomSqlQuery();
+            DevExpress.DataAccess.Sql.CustomSqlQuery customSqlQuery1 = new DevExpress.DataAccess.Sql.CustomSqlQuery();
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(LoginAuditReportTemplate));
-            DevExpress.XtraReports.UI.XRSummary xrSummary3 = new DevExpress.XtraReports.UI.XRSummary();
-            DevExpress.XtraReports.Parameters.StaticListLookUpSettings staticListLookUpSettings3 = new DevExpress.XtraReports.Parameters.StaticListLookUpSettings();
+            DevExpress.XtraReports.UI.XRSummary xrSummary1 = new DevExpress.XtraReports.UI.XRSummary();
+            DevExpress.XtraReports.Parameters.StaticListLookUpSettings staticListLookUpSettings1 = new DevExpress.XtraReports.Parameters.StaticListLookUpSettings();
             this.LoginDataSource = new DevExpress.DataAccess.Sql.SqlDataSource(this.components);
             this.topMarginBand1 = new DevExpress.XtraReports.UI.TopMarginBand();
             this.detailBand1 = new DevExpress.XtraReports.UI.DetailBand();
@@ -139,10 +139,10 @@ namespace Ettad.ReportManagement.Service.Reports.Templates
             // 
             this.LoginDataSource.ConnectionName = "DefaultConnection";
             this.LoginDataSource.Name = "LoginDataSource";
-            customSqlQuery3.Name = "Query";
-            customSqlQuery3.Sql = resources.GetString("customSqlQuery3.Sql");
+            customSqlQuery1.Name = "Query";
+            customSqlQuery1.Sql = resources.GetString("customSqlQuery1.Sql");
             this.LoginDataSource.Queries.AddRange(new DevExpress.DataAccess.Sql.SqlQuery[] {
-            customSqlQuery3});
+            customSqlQuery1});
             this.LoginDataSource.ResultSchemaSerializable = resources.GetString("LoginDataSource.ResultSchemaSerializable");
             // 
             // topMarginBand1
@@ -193,9 +193,9 @@ namespace Ettad.ReportManagement.Service.Reports.Templates
             this.xrTableCellSrNoDetail.Name = "xrTableCellSrNoDetail";
             this.xrTableCellSrNoDetail.Padding = new DevExpress.XtraPrinting.PaddingInfo(5F, 5F, 5F, 5F, 100F);
             this.xrTableCellSrNoDetail.StylePriority.UseBorders = false;
-            xrSummary3.Func = DevExpress.XtraReports.UI.SummaryFunc.RecordNumber;
-            xrSummary3.Running = DevExpress.XtraReports.UI.SummaryRunning.Report;
-            this.xrTableCellSrNoDetail.Summary = xrSummary3;
+            xrSummary1.Func = DevExpress.XtraReports.UI.SummaryFunc.RecordNumber;
+            xrSummary1.Running = DevExpress.XtraReports.UI.SummaryRunning.Report;
+            this.xrTableCellSrNoDetail.Summary = xrSummary1;
             this.xrTableCellSrNoDetail.Text = "0";
             this.xrTableCellSrNoDetail.TextAlignment = DevExpress.XtraPrinting.TextAlignment.MiddleCenter;
             this.xrTableCellSrNoDetail.Weight = 0.39221692935745228D;
@@ -340,14 +340,14 @@ namespace Ettad.ReportManagement.Service.Reports.Templates
             this.xrPageInfo1,
             this.xrLabelReportTitle,
             this.xrPictureBoxLogo});
-            this.ReportHeader.HeightF = 139.0278F;
+            this.ReportHeader.HeightF = 123.0556F;
             this.ReportHeader.Name = "ReportHeader";
             // 
             // xrLabel1
             // 
             this.xrLabel1.ExpressionBindings.AddRange(new DevExpress.XtraReports.UI.ExpressionBinding[] {
             new DevExpress.XtraReports.UI.ExpressionBinding("BeforePrint", "Text", "Iif(?Language == \'ar\', \'تم الإنشاء بتاريخ :\', \'Generated on :\')")});
-            this.xrLabel1.LocationFloat = new DevExpress.Utils.PointFloat(598.0834F, 102.5556F);
+            this.xrLabel1.LocationFloat = new DevExpress.Utils.PointFloat(618.0833F, 81.02782F);
             this.xrLabel1.Multiline = true;
             this.xrLabel1.Name = "xrLabel1";
             this.xrLabel1.Padding = new DevExpress.XtraPrinting.PaddingInfo(2F, 2F, 0F, 0F, 100F);
@@ -356,7 +356,7 @@ namespace Ettad.ReportManagement.Service.Reports.Templates
             // 
             // xrPageInfo1
             // 
-            this.xrPageInfo1.LocationFloat = new DevExpress.Utils.PointFloat(694.889F, 102.5556F);
+            this.xrPageInfo1.LocationFloat = new DevExpress.Utils.PointFloat(714.8889F, 81.02782F);
             this.xrPageInfo1.Name = "xrPageInfo1";
             this.xrPageInfo1.Padding = new DevExpress.XtraPrinting.PaddingInfo(2F, 2F, 0F, 0F, 100F);
             this.xrPageInfo1.PageInfo = DevExpress.XtraPrinting.PageInfo.DateTime;
@@ -371,7 +371,7 @@ namespace Ettad.ReportManagement.Service.Reports.Templates
             new DevExpress.XtraReports.UI.ExpressionBinding("BeforePrint", "Text", "Iif(?Language == \'ar\', \'تقرير تدقيق تسجيل الدخول\', \'Login Audit Report\')")});
             this.xrLabelReportTitle.Font = new DevExpress.Drawing.DXFont("Segoe UI", 18F, DevExpress.Drawing.DXFontStyle.Bold);
             this.xrLabelReportTitle.ForeColor = System.Drawing.Color.Red;
-            this.xrLabelReportTitle.LocationFloat = new DevExpress.Utils.PointFloat(224.1667F, 10F);
+            this.xrLabelReportTitle.LocationFloat = new DevExpress.Utils.PointFloat(201.25F, 9.999996F);
             this.xrLabelReportTitle.Multiline = true;
             this.xrLabelReportTitle.Name = "xrLabelReportTitle";
             this.xrLabelReportTitle.Padding = new DevExpress.XtraPrinting.PaddingInfo(10F, 10F, 15F, 10F, 100F);
@@ -390,7 +390,7 @@ namespace Ettad.ReportManagement.Service.Reports.Templates
             this.xrPictureBoxLogo.ImageSource = new DevExpress.XtraPrinting.Drawing.ImageSource("img", resources.GetString("xrPictureBoxLogo.ImageSource"));
             this.xrPictureBoxLogo.LocationFloat = new DevExpress.Utils.PointFloat(0.8332994F, 0F);
             this.xrPictureBoxLogo.Name = "xrPictureBoxLogo";
-            this.xrPictureBoxLogo.SizeF = new System.Drawing.SizeF(183.0556F, 112.5556F);
+            this.xrPictureBoxLogo.SizeF = new System.Drawing.SizeF(128.9083F, 79.22227F);
             this.xrPictureBoxLogo.Sizing = DevExpress.XtraPrinting.ImageSizeMode.Cover;
             this.xrPictureBoxLogo.StylePriority.UseBackColor = false;
             // 
@@ -664,9 +664,9 @@ namespace Ettad.ReportManagement.Service.Reports.Templates
             this.Language.Description = "Language";
             this.Language.Name = "Language";
             this.Language.ValueInfo = "en";
-            staticListLookUpSettings3.LookUpValues.Add(new DevExpress.XtraReports.Parameters.LookUpValue("en", "English"));
-            staticListLookUpSettings3.LookUpValues.Add(new DevExpress.XtraReports.Parameters.LookUpValue("ar", "Arabic"));
-            this.Language.ValueSourceSettings = staticListLookUpSettings3;
+            staticListLookUpSettings1.LookUpValues.Add(new DevExpress.XtraReports.Parameters.LookUpValue("en", "English"));
+            staticListLookUpSettings1.LookUpValues.Add(new DevExpress.XtraReports.Parameters.LookUpValue("ar", "Arabic"));
+            this.Language.ValueSourceSettings = staticListLookUpSettings1;
             // 
             // GroupFooter1
             // 

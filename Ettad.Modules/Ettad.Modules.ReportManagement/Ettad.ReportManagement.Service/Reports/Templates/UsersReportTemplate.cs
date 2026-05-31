@@ -269,14 +269,14 @@ namespace Ettad.ReportManagement.Service.Reports.Templates
             this.xrPageInfo1,
             this.xrLabelReportTitle,
             this.xrPictureBoxLogo});
-            this.ReportHeader.HeightF = 135.5556F;
+            this.ReportHeader.HeightF = 128.6112F;
             this.ReportHeader.Name = "ReportHeader";
             // 
             // xrLabel1
             // 
             this.xrLabel1.ExpressionBindings.AddRange(new DevExpress.XtraReports.UI.ExpressionBinding[] {
             new DevExpress.XtraReports.UI.ExpressionBinding("BeforePrint", "Text", "Iif(?Language == \'ar\', \'تم الإنشاء بتاريخ :\', \'Generated on :\')")});
-            this.xrLabel1.LocationFloat = new DevExpress.Utils.PointFloat(598.0834F, 102.5556F);
+            this.xrLabel1.LocationFloat = new DevExpress.Utils.PointFloat(598.0833F, 85.88892F);
             this.xrLabel1.Multiline = true;
             this.xrLabel1.Name = "xrLabel1";
             this.xrLabel1.Padding = new DevExpress.XtraPrinting.PaddingInfo(2F, 2F, 0F, 0F, 100F);
@@ -285,7 +285,7 @@ namespace Ettad.ReportManagement.Service.Reports.Templates
             // 
             // xrPageInfo1
             // 
-            this.xrPageInfo1.LocationFloat = new DevExpress.Utils.PointFloat(694.889F, 102.5556F);
+            this.xrPageInfo1.LocationFloat = new DevExpress.Utils.PointFloat(694.8889F, 85.88892F);
             this.xrPageInfo1.Name = "xrPageInfo1";
             this.xrPageInfo1.Padding = new DevExpress.XtraPrinting.PaddingInfo(2F, 2F, 0F, 0F, 100F);
             this.xrPageInfo1.PageInfo = DevExpress.XtraPrinting.PageInfo.DateTime;
@@ -300,7 +300,7 @@ namespace Ettad.ReportManagement.Service.Reports.Templates
             new DevExpress.XtraReports.UI.ExpressionBinding("BeforePrint", "Text", "Iif(?Language == \'ar\', \'تقرير المستخدمين\', \'Users Report\')")});
             this.xrLabelReportTitle.Font = new DevExpress.Drawing.DXFont("Segoe UI", 18F, DevExpress.Drawing.DXFontStyle.Bold);
             this.xrLabelReportTitle.ForeColor = System.Drawing.Color.Red;
-            this.xrLabelReportTitle.LocationFloat = new DevExpress.Utils.PointFloat(224.1667F, 10F);
+            this.xrLabelReportTitle.LocationFloat = new DevExpress.Utils.PointFloat(200.5556F, 9.999996F);
             this.xrLabelReportTitle.Multiline = true;
             this.xrLabelReportTitle.Name = "xrLabelReportTitle";
             this.xrLabelReportTitle.Padding = new DevExpress.XtraPrinting.PaddingInfo(10F, 10F, 15F, 10F, 100F);
@@ -317,9 +317,9 @@ namespace Ettad.ReportManagement.Service.Reports.Templates
             this.xrPictureBoxLogo.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(31)))), ((int)(((byte)(58)))), ((int)(((byte)(95)))));
             this.xrPictureBoxLogo.ImageAlignment = DevExpress.XtraPrinting.ImageAlignment.TopCenter;
             this.xrPictureBoxLogo.ImageSource = new DevExpress.XtraPrinting.Drawing.ImageSource("img", resources.GetString("xrPictureBoxLogo.ImageSource"));
-            this.xrPictureBoxLogo.LocationFloat = new DevExpress.Utils.PointFloat(0.8332994F, 0F);
+            this.xrPictureBoxLogo.LocationFloat = new DevExpress.Utils.PointFloat(0.694508F, 0F);
             this.xrPictureBoxLogo.Name = "xrPictureBoxLogo";
-            this.xrPictureBoxLogo.SizeF = new System.Drawing.SizeF(183.0556F, 112.5556F);
+            this.xrPictureBoxLogo.SizeF = new System.Drawing.SizeF(128.889F, 78.52782F);
             this.xrPictureBoxLogo.Sizing = DevExpress.XtraPrinting.ImageSizeMode.Cover;
             this.xrPictureBoxLogo.StylePriority.UseBackColor = false;
             // 

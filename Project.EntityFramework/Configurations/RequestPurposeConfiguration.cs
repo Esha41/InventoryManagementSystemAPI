@@ -25,14 +25,16 @@ namespace Ettad.EntityFramework.Configurations
                 .HasMaxLength(500);
 
             builder.HasIndex(x => x.NameAr)
-                .IsUnique();
+                .IsUnique()
+                .HasFilter("[IsDeleted] = 0");
 
             builder.Property(x => x.NameEn)
                 .IsRequired()
                 .HasMaxLength(500);
 
             builder.HasIndex(x => x.NameEn)
-                .IsUnique();
+                .IsUnique()
+                .HasFilter("[IsDeleted] = 0");
 
             // Configure CreationDate to use database default - prevents EF Core from comparing it in seeded data
             builder.Property(x => x.CreationDate)
