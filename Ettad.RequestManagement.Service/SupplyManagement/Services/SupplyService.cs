@@ -1198,6 +1198,8 @@ namespace Ettad.RequestManagement.Service.SupplyManagement.Services
 					return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, "Supply must have at least one detail before submission.");
 				}
 
+				var fulfillmentStatus = CalculateFulfillmentStatus(supply);
+
 				// Store OrderId and DepartmentId before clearing navigation property
 				var orderId = supply.OrderId;
 				var orderDepartmentId = supply.Order?.DepartmentId;
@@ -1263,7 +1265,7 @@ namespace Ettad.RequestManagement.Service.SupplyManagement.Services
 					supply.ReceiverEmployeeId = inputDto.ReceiverEmployeeId;
 					supply.Notes = inputDto.Notes;
 					supply.SubmissionStatus = SupplySubmissionStatus.Submitted;
-					supply.FulfillmentStatus = CalculateFulfillmentStatus(supply);
+					supply.FulfillmentStatus = fulfillmentStatus;
 					supply.ModificationDate = _dateTimeProvider.Now;
 					supply.ModifiedBy = _currentUserService.UserId;
 
