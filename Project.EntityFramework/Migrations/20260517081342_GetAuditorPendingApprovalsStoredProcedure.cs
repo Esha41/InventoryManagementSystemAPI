@@ -13,7 +13,7 @@ namespace Ettad.EntityFramework.Migrations
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.Sql("""
-                CREATE OR ALTER PROCEDURE dbo.GetAuditorPendingApprovals
+                CREATE OR ALTER PROCEDURE [dbo].[GetAuditorPendingApprovals]
                 AS
                 BEGIN
                   SET NOCOUNT ON;
@@ -73,7 +73,7 @@ namespace Ettad.EntityFramework.Migrations
                       CASE r.Priority
                         WHEN 1 THEN N'Normal'
                         WHEN 2 THEN N'Urgent'
-                        WHEN 3 THEN N'VeryUrgent'
+                        WHEN 3 THEN N'Very Urgent'
                         ELSE CAST(r.Priority AS NVARCHAR(20))
                       END AS Priority,
                       CASE r.RequestType
@@ -197,11 +197,21 @@ namespace Ettad.EntityFramework.Migrations
                     AND NULLIF(LTRIM(RTRIM(z.PendingBy)), N'') IS NOT NULL
                     AND z.NextApprover IS NOT NULL
                     AND NULLIF(LTRIM(RTRIM(z.NextApprover)), N'') IS NOT NULL
-                    AND LTRIM(z.PendingBy COLLATE DATABASE_DEFAULT) COLLATE DATABASE_DEFAULT LIKE N'Auditor%' COLLATE DATABASE_DEFAULT
-                    AND LTRIM(z.NextApprover COLLATE DATABASE_DEFAULT) COLLATE DATABASE_DEFAULT LIKE N'Head%' COLLATE DATABASE_DEFAULT
+                       AND (
+                    (
+                        CHARINDEX(N'Auditor', z.PendingBy COLLATE DATABASE_DEFAULT) > 0
+                        AND CHARINDEX(N'Head', z.NextApprover COLLATE DATABASE_DEFAULT) > 0
+                    )
+                    OR
+                    (
+                        CHARINDEX(N'Military Training Officer', z.PendingBy COLLATE DATABASE_DEFAULT) > 0
+                        AND CHARINDEX(N'Head of Military Training', z.NextApprover COLLATE DATABASE_DEFAULT) > 0
+                    )
+                 )
+
                   ORDER BY z.PendingFrom DESC, z.OrderId ASC;
                 END;
-                GO
+             GO
              """);
         }
 
