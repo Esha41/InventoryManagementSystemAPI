@@ -52,7 +52,8 @@ namespace Ettad.EntityFramework.Configurations
                 .HasDefaultValue(0);
 
             builder.HasIndex(x => new { x.ParentType, x.ParentId, x.NameEn })
-                .IsUnique();
+                .IsUnique()
+                .HasFilter("[IsDeleted] = 0");
 
             builder.HasIndex(x => x.Code)
                 .IsUnique()

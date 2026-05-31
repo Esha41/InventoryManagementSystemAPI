@@ -2,12 +2,12 @@ using AutoMapper;
 using FluentValidation;
 using Ettad.Data.Entities;
 using Ettad.Data.Enums;
+using Ettad.Data.Interfaces.Repositories;
 using Ettad.RequestManagement.Service.RequestPurposes.Dtos;
 using Ettad.ResponseHandler.Consts;
 using Ettad.ResponseHandler.Models;
 using Ettad.Application.Common.Interfaces;
 using Ettad.CrossCutting.Comman.Time;
-using Ettad.Data.Interfaces.Repositories;
 
 namespace Ettad.RequestManagement.Service.RequestPurposes
 {
@@ -19,12 +19,14 @@ namespace Ettad.RequestManagement.Service.RequestPurposes
         private readonly IValidator<CreateUpdateRequestPurposeDto> _validator;
         private readonly ICurrentUserService _currentUserService;
         private readonly IDateTimeProvider _dateTimeProvider;
+        private readonly ITransactionManager _transactionManager;
 
         private static AttachmentRequirementParentType PurposeParent =>
             AttachmentRequirementParentType.RequestPurpose;
 
         private const string DuplicateNameEnKey = "lookupManagement.errors.requestPurposeDuplicateNameEn";
         private const string DuplicateNameArKey = "lookupManagement.errors.requestPurposeDuplicateNameAr";
+        private const string DuplicateAttachmentNameEnKey = "lookupManagement.errors.requestPurposeAttachmentDuplicateNameEn";
 
         public RequestPurposeService(
             ICrossCuttingRepository<RequestPurpose> requestPurposeRepository,
@@ -32,7 +34,8 @@ namespace Ettad.RequestManagement.Service.RequestPurposes
             IMapper mapper,
             IValidator<CreateUpdateRequestPurposeDto> validator,
             ICurrentUserService currentUserService,
-            IDateTimeProvider dateTimeProvider)
+            IDateTimeProvider dateTimeProvider,
+            ITransactionManager transactionManager)
         {
             _requestPurposeRepository = requestPurposeRepository;
             _attachmentRequirementRepository = attachmentRequirementRepository;
@@ -40,6 +43,7 @@ namespace Ettad.RequestManagement.Service.RequestPurposes
             _validator = validator;
             _currentUserService = currentUserService;
             _dateTimeProvider = dateTimeProvider;
+            _transactionManager = transactionManager;
         }
 
         public async Task<APIOperationResponse<long>> CreateForDiscardAsync(CreateUpdateRequestPurposeDto inputDto)
@@ -68,42 +72,91 @@ namespace Ettad.RequestManagement.Service.RequestPurposes
                     return APIOperationResponse<long>.Fail(ResponseType.BadRequest, errors);
                 }
 
-                if (requestType == RequestType.Order)
+                if (requestType == RequestType.Order && !inputDto.AllowanceContext.HasValue)
                 {
-                    if (!inputDto.AllowanceContext.HasValue)
-                        return APIOperationResponse<long>.Fail(ResponseType.BadRequest,
-                            "Allowance context is required for order request purposes.");
+                    return APIOperationResponse<long>.Fail(ResponseType.BadRequest,
+                        "Allowance context is required for order request purposes.");
                 }
-
-                var duplicateError = await ValidateUniqueNamesAsync(inputDto.NameEn, inputDto.NameAr, excludeId: null);
-                if (duplicateError != null)
-                    return APIOperationResponse<long>.BadRequest(duplicateError);
 
                 var now = _dateTimeProvider.Now;
                 var userId = _currentUserService.UserId;
-                var requestPurpose = _mapper.Map<RequestPurpose>(inputDto);
-                requestPurpose.RequestType = requestType;
-                if (requestType != RequestType.Order)
-                    requestPurpose.AllowanceContext = inputDto.AllowanceContext ?? RequestPurposeAllowanceContext.Both;
-                requestPurpose.CreationDate = now;
-                requestPurpose.CreatedBy = userId;
+                var trimmedEn = NormalizeName(inputDto.NameEn);
+                var trimmedAr = NormalizeName(inputDto.NameAr);
 
-                var created = await _requestPurposeRepository.AddAsync(requestPurpose);
+                await _transactionManager.BeginAsync();
 
-                if (inputDto.AttachmentRequirements != null)
+                try
                 {
-                    foreach (var arDto in inputDto.AttachmentRequirements)
-                    {
-                        var ar = _mapper.Map<AttachmentRequirement>(arDto);
-                        ar.ParentType = PurposeParent;
-                        ar.ParentId = created.Id;
-                        ar.CreationDate = now;
-                        ar.CreatedBy = userId;
-                        await _attachmentRequirementRepository.AddAsync(ar);
-                    }
-                }
+                    var softDeleted = await _requestPurposeRepository.FindOneAsync(
+                        rp => rp.IsDeleted
+                              && rp.RequestType == requestType
+                              && rp.NameEn == trimmedEn
+                              && rp.NameAr == trimmedAr,
+                        includeSoftDeleted: true);
 
-                return APIOperationResponse<long>.Success(created.Id, "Request purpose created successfully");
+                    if (softDeleted != null)
+                    {
+                        _mapper.Map(inputDto, softDeleted);
+                        softDeleted.NameEn = trimmedEn;
+                        softDeleted.NameAr = trimmedAr;
+                        softDeleted.RequestType = requestType;
+                        if (requestType != RequestType.Order)
+                            softDeleted.AllowanceContext = inputDto.AllowanceContext ?? RequestPurposeAllowanceContext.Both;
+                        RestoreSoftDeleted(softDeleted, now, userId);
+
+                        await _requestPurposeRepository.UpdateAsync(softDeleted);
+
+                        var restoredAttachmentRows = await LoadAllAttachmentRequirementsForPurposeAsync(softDeleted.Id);
+                        var attachmentError = await UpsertAttachmentRequirementsAsync(
+                            softDeleted.Id, inputDto.AttachmentRequirements, restoredAttachmentRows, now, userId);
+                        if (attachmentError != null)
+                        {
+                            await _transactionManager.RollbackAsync();
+                            return APIOperationResponse<long>.BadRequest(attachmentError);
+                        }
+
+                        await _transactionManager.CommitAsync();
+                        return APIOperationResponse<long>.Success(softDeleted.Id, "Request purpose restored successfully");
+                    }
+
+                    var duplicateError = await ValidateActiveUniqueNamesAsync(trimmedEn, trimmedAr, excludeId: null);
+                    if (duplicateError != null)
+                    {
+                        await _transactionManager.RollbackAsync();
+                        return APIOperationResponse<long>.BadRequest(duplicateError);
+                    }
+
+                    var requestPurpose = _mapper.Map<RequestPurpose>(inputDto);
+                    requestPurpose.NameEn = trimmedEn;
+                    requestPurpose.NameAr = trimmedAr;
+                    requestPurpose.RequestType = requestType;
+                    if (requestType != RequestType.Order)
+                        requestPurpose.AllowanceContext = inputDto.AllowanceContext ?? RequestPurposeAllowanceContext.Both;
+                    requestPurpose.CreationDate = now;
+                    requestPurpose.CreatedBy = userId;
+
+                    var created = await _requestPurposeRepository.AddAsync(requestPurpose);
+
+                    if (inputDto.AttachmentRequirements != null && inputDto.AttachmentRequirements.Count > 0)
+                    {
+                        var attachmentRows = await LoadAllAttachmentRequirementsForPurposeAsync(created.Id);
+                        var attachmentError = await UpsertAttachmentRequirementsAsync(
+                            created.Id, inputDto.AttachmentRequirements, attachmentRows, now, userId);
+                        if (attachmentError != null)
+                        {
+                            await _transactionManager.RollbackAsync();
+                            return APIOperationResponse<long>.BadRequest(attachmentError);
+                        }
+                    }
+
+                    await _transactionManager.CommitAsync();
+                    return APIOperationResponse<long>.Success(created.Id, "Request purpose created successfully");
+                }
+                catch
+                {
+                    await _transactionManager.RollbackAsync();
+                    throw;
+                }
             }
             catch (Exception ex)
             {
@@ -216,28 +269,52 @@ namespace Ettad.RequestManagement.Service.RequestPurposes
                     return APIOperationResponse<bool>.Fail(ResponseType.NotFound, "Request purpose not found");
 
                 if (existing.RequestType == RequestType.Order && !inputDto.AllowanceContext.HasValue)
+                {
                     return APIOperationResponse<bool>.Fail(ResponseType.BadRequest,
                         "Allowance context is required for order request purposes.");
+                }
 
-                var duplicateError = await ValidateUniqueNamesAsync(inputDto.NameEn, inputDto.NameAr, excludeId: id);
+                var trimmedEn = NormalizeName(inputDto.NameEn);
+                var trimmedAr = NormalizeName(inputDto.NameAr);
+
+                var duplicateError = await ValidateActiveUniqueNamesAsync(trimmedEn, trimmedAr, excludeId: id);
                 if (duplicateError != null)
                     return APIOperationResponse<bool>.BadRequest(duplicateError);
 
                 var now = _dateTimeProvider.Now;
                 var userId = _currentUserService.UserId;
 
-                _mapper.Map(inputDto, existing);
-                if (existing.RequestType != RequestType.Order && !inputDto.AllowanceContext.HasValue)
-                    existing.AllowanceContext = RequestPurposeAllowanceContext.Both;
-                existing.ModificationDate = now;
-                existing.ModifiedBy = userId;
+                await _transactionManager.BeginAsync();
 
-                await _requestPurposeRepository.UpdateAsync(existing);
+                try
+                {
+                    _mapper.Map(inputDto, existing);
+                    existing.NameEn = trimmedEn;
+                    existing.NameAr = trimmedAr;
+                    if (existing.RequestType != RequestType.Order && !inputDto.AllowanceContext.HasValue)
+                        existing.AllowanceContext = RequestPurposeAllowanceContext.Both;
+                    existing.ModificationDate = now;
+                    existing.ModifiedBy = userId;
 
-                var attachmentRows = await LoadAttachmentRequirementsForPurposeAsync(existing.Id);
-                await UpsertAttachmentRequirementsAsync(existing.Id, inputDto.AttachmentRequirements, attachmentRows, now, userId);
+                    await _requestPurposeRepository.UpdateAsync(existing);
 
-                return APIOperationResponse<bool>.Success(true, "Request purpose updated successfully");
+                    var attachmentRows = await LoadAllAttachmentRequirementsForPurposeAsync(existing.Id);
+                    var attachmentError = await UpsertAttachmentRequirementsAsync(
+                        existing.Id, inputDto.AttachmentRequirements, attachmentRows, now, userId);
+                    if (attachmentError != null)
+                    {
+                        await _transactionManager.RollbackAsync();
+                        return APIOperationResponse<bool>.BadRequest(attachmentError);
+                    }
+
+                    await _transactionManager.CommitAsync();
+                    return APIOperationResponse<bool>.Success(true, "Request purpose updated successfully");
+                }
+                catch
+                {
+                    await _transactionManager.RollbackAsync();
+                    throw;
+                }
             }
             catch (Exception ex)
             {
@@ -247,8 +324,9 @@ namespace Ettad.RequestManagement.Service.RequestPurposes
 
         /// <summary>
         /// Upserts attachment slots for a RequestPurpose (<see cref="PurposeParent"/> + <paramref name="requestPurposeId"/>).
+        /// Returns an i18n error key when a duplicate English name is detected among active slots.
         /// </summary>
-        private async Task UpsertAttachmentRequirementsAsync(
+        private async Task<string?> UpsertAttachmentRequirementsAsync(
             long requestPurposeId,
             List<CreateUpdateAttachmentRequirementDto> incoming,
             ICollection<AttachmentRequirement> existing,
@@ -258,16 +336,27 @@ namespace Ettad.RequestManagement.Service.RequestPurposes
             incoming ??= new List<CreateUpdateAttachmentRequirementDto>();
             existing ??= new List<AttachmentRequirement>();
 
-            var existingActive = existing
-                .Where(ar => !ar.IsDeleted
-                            && ar.ParentType == PurposeParent
-                            && ar.ParentId == requestPurposeId)
+            var scopedExisting = existing
+                .Where(ar => ar.ParentType == PurposeParent && ar.ParentId == requestPurposeId)
                 .ToList();
+
+            var existingActive = scopedExisting.Where(ar => !ar.IsDeleted).ToList();
 
             var incomingIds = incoming
                 .Where(x => x.Id.HasValue && x.Id.Value > 0)
                 .Select(x => x.Id!.Value)
                 .ToHashSet();
+
+            var seenIncomingNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var dto in incoming)
+            {
+                var nameEn = NormalizeName(dto.NameEn);
+                if (string.IsNullOrEmpty(nameEn))
+                    continue;
+
+                if (!seenIncomingNames.Add(nameEn))
+                    return DuplicateAttachmentNameEnKey;
+            }
 
             foreach (var stale in existingActive.Where(ar => !incomingIds.Contains(ar.Id)))
             {
@@ -279,18 +368,20 @@ namespace Ettad.RequestManagement.Service.RequestPurposes
 
             foreach (var dto in incoming)
             {
+                var nameEn = NormalizeName(dto.NameEn);
+                var nameAr = NormalizeName(dto.NameAr);
+
                 if (dto.Id.HasValue && dto.Id.Value > 0)
                 {
-                    var row = existingActive.FirstOrDefault(ar =>
-                        ar.Id == dto.Id.Value
-                        && ar.ParentType == PurposeParent
-                        && ar.ParentId == requestPurposeId);
-
+                    var row = scopedExisting.FirstOrDefault(ar => ar.Id == dto.Id.Value);
                     if (row == null)
                         continue;
 
-                    row.NameAr = dto.NameAr;
-                    row.NameEn = dto.NameEn;
+                    if (row.IsDeleted)
+                        RestoreSoftDeleted(row, now, userId);
+
+                    row.NameAr = nameAr;
+                    row.NameEn = nameEn;
                     row.IsRequired = dto.IsRequired;
                     row.MinCount = dto.MinCount;
                     row.MaxCount = dto.MaxCount;
@@ -301,7 +392,33 @@ namespace Ettad.RequestManagement.Service.RequestPurposes
                 }
                 else
                 {
+                    var deletedMatch = scopedExisting.FirstOrDefault(ar =>
+                        ar.IsDeleted
+                        && string.Equals(ar.NameEn, nameEn, StringComparison.OrdinalIgnoreCase));
+
+                    if (deletedMatch != null)
+                    {
+                        deletedMatch.NameAr = nameAr;
+                        deletedMatch.NameEn = nameEn;
+                        deletedMatch.IsRequired = dto.IsRequired;
+                        deletedMatch.MinCount = dto.MinCount;
+                        deletedMatch.MaxCount = dto.MaxCount;
+                        deletedMatch.DisplayOrder = dto.DisplayOrder;
+                        RestoreSoftDeleted(deletedMatch, now, userId);
+                        await _attachmentRequirementRepository.UpdateAsync(deletedMatch);
+                        continue;
+                    }
+
+                    if (existingActive.Any(ar =>
+                            incomingIds.Contains(ar.Id)
+                            && string.Equals(ar.NameEn, nameEn, StringComparison.OrdinalIgnoreCase)))
+                    {
+                        return DuplicateAttachmentNameEnKey;
+                    }
+
                     var entity = _mapper.Map<AttachmentRequirement>(dto);
+                    entity.NameEn = nameEn;
+                    entity.NameAr = nameAr;
                     entity.ParentType = PurposeParent;
                     entity.ParentId = requestPurposeId;
                     entity.CreationDate = now;
@@ -309,6 +426,8 @@ namespace Ettad.RequestManagement.Service.RequestPurposes
                     await _attachmentRequirementRepository.AddAsync(entity);
                 }
             }
+
+            return null;
         }
 
         public async Task<APIOperationResponse<bool>> DeleteAsync(long id)
@@ -350,6 +469,15 @@ namespace Ettad.RequestManagement.Service.RequestPurposes
             return rows.OrderBy(ar => ar.DisplayOrder).ToList();
         }
 
+        private async Task<List<AttachmentRequirement>> LoadAllAttachmentRequirementsForPurposeAsync(long purposeId)
+        {
+            var rows = await _attachmentRequirementRepository.FindAsync(
+                ar => ar.ParentType == PurposeParent && ar.ParentId == purposeId,
+                includeSoftDeleted: true);
+
+            return rows.OrderBy(ar => ar.DisplayOrder).ToList();
+        }
+
         private async Task<Dictionary<long, List<AttachmentRequirement>>> LoadAttachmentRequirementsGroupedByPurposeIdAsync(
             List<long> purposeIds)
         {
@@ -382,16 +510,20 @@ namespace Ettad.RequestManagement.Service.RequestPurposes
             };
         }
 
-        private async Task<string?> ValidateUniqueNamesAsync(string? nameEn, string? nameAr, long? excludeId)
+        /// <summary>
+        /// Validates uniqueness against active (non-deleted) request purposes only.
+        /// </summary>
+        private async Task<string?> ValidateActiveUniqueNamesAsync(string? nameEn, string? nameAr, long? excludeId)
         {
-            var trimmedEn = nameEn?.Trim();
-            var trimmedAr = nameAr?.Trim();
+            var trimmedEn = NormalizeName(nameEn);
+            var trimmedAr = NormalizeName(nameAr);
 
             if (!string.IsNullOrEmpty(trimmedEn))
             {
                 var existingEn = await _requestPurposeRepository.FindOneAsync(
-                    rp => rp.NameEn == trimmedEn && (!excludeId.HasValue || rp.Id != excludeId.Value),
-                    includeSoftDeleted: true);
+                    rp => !rp.IsDeleted
+                          && rp.NameEn == trimmedEn
+                          && (!excludeId.HasValue || rp.Id != excludeId.Value));
 
                 if (existingEn != null)
                     return DuplicateNameEnKey;
@@ -400,14 +532,35 @@ namespace Ettad.RequestManagement.Service.RequestPurposes
             if (!string.IsNullOrEmpty(trimmedAr))
             {
                 var existingAr = await _requestPurposeRepository.FindOneAsync(
-                    rp => rp.NameAr == trimmedAr && (!excludeId.HasValue || rp.Id != excludeId.Value),
-                    includeSoftDeleted: true);
+                    rp => !rp.IsDeleted
+                          && rp.NameAr == trimmedAr
+                          && (!excludeId.HasValue || rp.Id != excludeId.Value));
 
                 if (existingAr != null)
                     return DuplicateNameArKey;
             }
 
             return null;
+        }
+
+        private static string NormalizeName(string? name) => name?.Trim() ?? string.Empty;
+
+        private static void RestoreSoftDeleted(RequestPurpose entity, DateTime now, string? userId)
+        {
+            entity.IsDeleted = false;
+            entity.DeletionDate = null;
+            entity.DeletedBy = null;
+            entity.ModificationDate = now;
+            entity.ModifiedBy = userId;
+        }
+
+        private static void RestoreSoftDeleted(AttachmentRequirement entity, DateTime now, string? userId)
+        {
+            entity.IsDeleted = false;
+            entity.DeletionDate = null;
+            entity.DeletedBy = null;
+            entity.ModificationDate = now;
+            entity.ModifiedBy = userId;
         }
     }
 }
