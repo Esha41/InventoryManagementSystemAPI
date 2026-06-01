@@ -36,9 +36,17 @@ namespace Ettad.Data.Entities
         public int DelegationStatus { get; set; } = 0; // 0 = Pending by default
 
         /// <summary>
-        /// Bitwise flags indicating what scopes are delegated.
-        /// Uses DelegationScope enum values: WorkflowApproval = 1, RequestManagement = 2, etc.
+        /// Legacy bitwise scope column. Scope-based delegation has been removed; this column is
+        /// retained for backward compatibility and is written as 0 for new delegations.
         /// </summary>
         public long DelegationScopes { get; set; }
+
+        /// <summary>
+        /// AspNetRoles.Id of the role the delegator was logged in with (active role) when
+        /// the delegation was created. The delegatee inherits exactly this role's permissions,
+        /// approval authority, and visibility while the delegation is active. Nullable to keep
+        /// legacy rows (created before this column) valid.
+        /// </summary>
+        public string DelegatorRoleId { get; set; }
     }
 }

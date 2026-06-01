@@ -16,4 +16,3 @@ namespace Ettad.Data.Enums
         Submitted = 2
     }
 }
-

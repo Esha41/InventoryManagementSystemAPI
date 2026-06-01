@@ -42,6 +42,7 @@ namespace Ettad.User.Services.Services
         private readonly IMediator _mediator;
         private readonly IPermissionService _permissionService;
         private readonly IEffectiveRoleRepository _effectiveRoleService;
+        private readonly IUserDelegationService _userDelegationService;
         private readonly ICrossCuttingRepository<LoginAttempt> _loginAttemptRepository;
         private readonly int _maxFailedAttempts;
         private readonly int _lockoutDurationMinutes;
@@ -56,6 +57,7 @@ namespace Ettad.User.Services.Services
             SignInManager<ApplicationUser> signInManager, RoleManager<ApplicationRole> roleManager, ICurrentUserService currentUserService, IEmailSender emailSender,
             ILogger<AccountServices> logger, IHttpContextAccessor httpContextAccessor, ICaptchaService captchaService, ITokenBlacklistService tokenBlacklistService, IMediator mediator,
             IPermissionService permissionService, IEffectiveRoleRepository effectiveRoleService, ICrossCuttingRepository<LoginAttempt> loginAttemptRepository,
+            IUserDelegationService userDelegationService,
             IConfiguration configuration)
         {
             _jwtServices = jwtServices ?? throw new ArgumentNullException(nameof(jwtServices));
@@ -75,6 +77,7 @@ namespace Ettad.User.Services.Services
             _mediator = mediator ?? throw new ArgumentNullException(nameof(mediator));
             _permissionService = permissionService ?? throw new ArgumentNullException(nameof(permissionService));
             _effectiveRoleService = effectiveRoleService ?? throw new ArgumentNullException(nameof(effectiveRoleService));
+            _userDelegationService = userDelegationService ?? throw new ArgumentNullException(nameof(userDelegationService));
             _loginAttemptRepository = loginAttemptRepository ?? throw new ArgumentNullException(nameof(loginAttemptRepository));
 
             _maxFailedAttempts = configuration.GetValue<int?>("Security:Login:MaxFailedAttempts") ?? 5;
@@ -982,27 +985,54 @@ namespace Ettad.User.Services.Services
         public async Task<APIOperationResponse<List<ClaimDto>>> GetRoleClaimsOnlyAsync()
         {
             var roleClaims = new List<ClaimDto>();
+            var seen = new HashSet<string>();
 
             // 1. Get the current user
             var user = await _userRepository.FindByIdAsync(_currentUserService.UserId);
             if (user == null)
                 return APIOperationResponse<List<ClaimDto>>.Success(roleClaims);
 
+            // 2. The user's own effective role claims
             var effectiveRoleId = await _effectiveRoleService.GetEffectiveRoleIdAsync(user.Id);
-            var effectiveRole = !string.IsNullOrEmpty(effectiveRoleId)
-                ? await _roleManager.FindByIdAsync(effectiveRoleId)
-                : null;
-            if (effectiveRole == null)
-                return APIOperationResponse<List<ClaimDto>>.Success(roleClaims);
-
-            var claims = await _roleManager.GetClaimsAsync(effectiveRole);
-            roleClaims.AddRange(claims.Select(x => new ClaimDto
+            if (!string.IsNullOrEmpty(effectiveRoleId))
             {
-                Id = x.Value,
-                ClaimType = x.Type,
-            }));
+                var effectiveRole = await _roleManager.FindByIdAsync(effectiveRoleId);
+                if (effectiveRole != null)
+                    await AppendRoleClaimsAsync(effectiveRole, roleClaims, seen);
+            }
+
+            // 3. Claims inherited via active delegations: the delegatee gains exactly the role
+            // each delegator was logged in with (captured at creation) while the delegation is
+            // active. Keeps the front-end hasPermission() in sync with backend permission checks.
+            var activeDelegations = await _userDelegationService.GetActiveDelegationsForUserAsync(user.Id);
+            foreach (var roleId in activeDelegations
+                         .Select(d => d.DelegatorRoleId)
+                         .Where(id => !string.IsNullOrEmpty(id))
+                         .Distinct())
+            {
+                var delegatedRole = await _roleManager.FindByIdAsync(roleId);
+                if (delegatedRole != null)
+                    await AppendRoleClaimsAsync(delegatedRole, roleClaims, seen);
+            }
 
             return APIOperationResponse<List<ClaimDto>>.Success(roleClaims);
+        }
+
+        private async Task AppendRoleClaimsAsync(ApplicationRole role, List<ClaimDto> roleClaims, HashSet<string> seen)
+        {
+            var claims = await _roleManager.GetClaimsAsync(role);
+            foreach (var x in claims)
+            {
+                var key = $"{x.Type}::{x.Value}";
+                if (seen.Add(key))
+                {
+                    roleClaims.Add(new ClaimDto
+                    {
+                        Id = x.Value,
+                        ClaimType = x.Type,
+                    });
+                }
+            }
         }
 
         public async Task<APIOperationResponse<string>> ForgotPasswordAsync(ForgotPasswordDto request)
