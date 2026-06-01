@@ -634,14 +634,12 @@ namespace Ettad.RequestManagement.Service.Returns
                     }
                 }
 
-                var ammoReceipts = new List<(ReturnAmmoExplosiveItemDto Dto, long InventoryDetailId)>();
+                var ammoTrackingItems = new List<ReturnAmmoExplosiveItemDto>();
                 var weaponReceipts = new List<(ReturnWeaponItemDto Dto, long AssetId)>();
 
-                // Process Ammo/Explosive items (inventory details + notes)
+                // Ammo/Explosive: validate lines only; inventory is not updated (tracking history is written later).
                 if (dto.AmmoExplosiveItems != null && dto.AmmoExplosiveItems.Any())
                 {
-                    Ettad.Data.Entities.Inventory returnInventory = null;
-
                     foreach (var item in dto.AmmoExplosiveItems)
                     {
                         var baseItem = await _baseItemRepository.FindOneAsync(i => i.Id == item.ItemId && !i.IsDeleted);
@@ -656,65 +654,7 @@ namespace Ettad.RequestManagement.Service.Returns
                                 $"Item {item.ItemId} is not Ammunition or Explosive type");
                         }
 
-                        var lotKey = (item.Lot ?? string.Empty).Trim();
-                        var detailNotes = string.IsNullOrWhiteSpace(item.Notes) ? null : item.Notes.Trim();
-
-                        var existingDetail = await _inventoryDetailRepository.FindOneAsync(
-                            id => id.ItemId == item.ItemId
-                                && id.Lot == lotKey
-                                && id.Inventory.DepoId == depotId
-                                && !id.Inventory.IsDeleted,
-                            false,
-                            nameof(InventoryDetail.Inventory)
-                        );
-
-                        if (existingDetail != null)
-                        {
-                            existingDetail.ItemQuantity += item.Quantity;
-                            existingDetail.IsReturned = true;
-                            existingDetail.ReadyForIssue = item.ReadyForIssue;
-                            existingDetail.Notes = detailNotes;
-                            await _inventoryDetailRepository.UpdateAsync(existingDetail);
-
-                            ammoReceipts.Add((item, existingDetail.Id));
-
-                            _logger.LogInformation("Updated existing inventory detail. ItemId: {ItemId}, Lot: {Lot}, NewQuantity: {Quantity}",
-                                item.ItemId, lotKey, existingDetail.ItemQuantity);
-                        }
-                        else
-                        {
-                            if (returnInventory == null)
-                            {
-                                returnInventory = new Ettad.Data.Entities.Inventory
-                                {
-                                    DepoId = depotId,
-                                    Notes = $"Return #{returnEntity.RequestNo}",
-                                    RecievedDate = _dateTimeProvider.Now,
-                                    CreationDate = _dateTimeProvider.Now,
-                                    CreatedBy = _currentUserService.UserId,
-                                    InventoryDetails = new List<InventoryDetail>()
-                                };
-                                returnInventory = await _inventoryRepository.AddAsync(returnInventory);
-                            }
-
-                            var newDetail = new InventoryDetail
-                            {
-                                ItemId = item.ItemId,
-                                Lot = lotKey,
-                                ItemQuantity = item.Quantity,
-                                InventoryId = returnInventory.Id,
-                                IsReturned = true,
-                                ReadyForIssue = item.ReadyForIssue,
-                                IsLotEmpty = string.IsNullOrEmpty(lotKey),
-                                Notes = detailNotes
-                            };
-                            newDetail = await _inventoryDetailRepository.AddAsync(newDetail);
-
-                            ammoReceipts.Add((item, newDetail.Id));
-
-                            _logger.LogInformation("Created new inventory detail. ItemId: {ItemId}, Lot: {Lot}, Quantity: {Quantity}, InventoryId: {InventoryId}",
-                                item.ItemId, lotKey, item.Quantity, returnInventory.Id);
-                        }
+                        ammoTrackingItems.Add(item);
                     }
                 }
 
@@ -818,9 +758,8 @@ namespace Ettad.RequestManagement.Service.Returns
                 var now = _dateTimeProvider.Now;
                 var userId = _currentUserService.UserId;
 
-                foreach (var (ammoDto, inventoryDetailId) in ammoReceipts)
+                foreach (var ammoDto in ammoTrackingItems)
                 {
-                    var lotKey = (ammoDto.Lot ?? string.Empty).Trim();
                     var receiptNotes = string.IsNullOrWhiteSpace(ammoDto.Notes) ? null : ammoDto.Notes.Trim();
                     var line = new ReturnTrackingLine
                     {
@@ -830,11 +769,11 @@ namespace Ettad.RequestManagement.Service.Returns
                         RequestItemId = ammoDto.RequestItemId,
                         ReturnedQuantity = ammoDto.ReturnedQuantity ?? ammoDto.Quantity,
                         ReceivedQuantity = ammoDto.Quantity,
-                        Lot = string.IsNullOrEmpty(lotKey) ? null : lotKey,
+                        Lot = null,
                         BatchNumber = null,
                         SerialNumber = null,
                         Notes = receiptNotes,
-                        InventoryDetailId = inventoryDetailId,
+                        InventoryDetailId = null,
                         AssetId = null,
                         CreationDate = now,
                         CreatedBy = userId,
