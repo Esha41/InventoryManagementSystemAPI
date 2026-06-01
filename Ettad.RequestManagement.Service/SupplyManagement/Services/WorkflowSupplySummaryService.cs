@@ -33,7 +33,7 @@ namespace Ettad.RequestManagement.Service.SupplyManagement.Services
         private static readonly string[] SupplySummaryIncludes =
         [
             nameof(Supply.ReceiverEmployee),
-            $"{nameof(Supply.ReceiverEmployee)}.{nameof(ApplicationUser.Rank)}",
+            $"{nameof(Supply.ReceiverEmployee)}.{nameof(Employee.Rank)}",
             nameof(Supply.SupplyDetails),
             $"{nameof(Supply.SupplyDetails)}.{nameof(SupplyDetail.Item)}",
         ];
