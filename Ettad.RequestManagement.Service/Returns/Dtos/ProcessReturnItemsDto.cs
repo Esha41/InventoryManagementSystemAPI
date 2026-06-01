@@ -20,14 +20,9 @@ namespace Ettad.RequestManagement.Service.Returns.Dtos
         /// <summary>Snapshot of quantity from the return request line (audit). When omitted, <see cref="Quantity"/> is used.</summary>
         public long? ReturnedQuantity { get; set; }
 
-        public string Lot { get; set; }
-
         public string? Notes { get; set; }
 
         public long? RequestItemId { get; set; }
-
-        /// <summary>Whether returned stock is ready for issue; persisted on <c>InventoryDetail.ReadyForIssue</c>.</summary>
-        public bool ReadyForIssue { get; set; }
     }
 
     public class ReturnWeaponItemDto
