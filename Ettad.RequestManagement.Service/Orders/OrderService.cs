@@ -784,7 +784,7 @@ namespace Ettad.RequestManagement.Service.Orders
                         await _notificationHelperService.SendNotificationAsync(
                             title: "Supply Pickup Date Set",
                             message: $"The supply pickup date for Order #{order.RequestNo} has been set to {order.SupplyDate:yyyy-MM-dd}. {contactInfo}",
-                            entityType: "Supply",
+                            entityType: "Order",
                             entityId: order.Id,
                             userIds: new List<string> { order.RequesterId },
                             senderId: _currentUserService.UserId
