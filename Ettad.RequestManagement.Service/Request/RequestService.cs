@@ -12,6 +12,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Ettad.User.Services.Interfaces;
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using Ettad.CrossCutting.Comman.Models;
 using Ettad.Data.Constants;
@@ -80,7 +81,7 @@ namespace Ettad.RequestManagement.Service.Request
                 .ToListAsync();
         }
 
-        private IQueryable<BaseRequest> PrepareBaseQuery(IQueryable<BaseRequest> query, FilterData filter)
+        private IQueryable<BaseRequest> PrepareBaseQuery(IQueryable<BaseRequest> query, FilterData filter, bool applyDefaultSort = true)
         {
             if (filter != null)
             {
@@ -97,7 +98,7 @@ namespace Ettad.RequestManagement.Service.Request
 
             // Default sorting for stable pagination (applied ONLY if no client sort provided)
             // Note: PaginatedList.CreateAsyncForTableBinding will apply the client-side sort via ToFilterView
-            if (filter == null || string.IsNullOrEmpty(filter.sortField))
+            if (applyDefaultSort && (filter == null || string.IsNullOrEmpty(filter.sortField)))
             {
                 query = query
                     .OrderByDescending(r => r.Priority)
@@ -105,6 +106,29 @@ namespace Ettad.RequestManagement.Service.Request
             }
 
             return query;
+        }
+
+        private static IQueryable<BaseRequest> OrderByActionRequiredFirst(
+            IQueryable<BaseRequest> query,
+            IQueryable<WorkflowApprovalStep> stepsQuery,
+            string userId,
+            IReadOnlyList<string> activeDelegatorIds,
+            IReadOnlyList<string> userRoles,
+            IReadOnlyList<string> delegatorRoleNames)
+        {
+            return query
+                .OrderByDescending(r => stepsQuery.Any(was =>
+                    was.TargetRequestId == r.Id && was.IsCurrent && (
+                        (was.ApproverUserId == userId || activeDelegatorIds.Contains(was.ApproverUserId)) ||
+                        (was.ApproverUserId == null && (
+                            (userRoles.Contains(was.WorkflowStep.ApplicationRole.Name) || delegatorRoleNames.Contains(was.WorkflowStep.ApplicationRole.Name)) ||
+                            (was.WorkflowStep.HigherApprovalRole != null && (userRoles.Contains(was.WorkflowStep.HigherApprovalRole.Name) || delegatorRoleNames.Contains(was.WorkflowStep.HigherApprovalRole.Name))) ||
+                            was.WorkflowStep.ParallelRoles.Any(pr => userRoles.Contains(pr.Role.Name) || delegatorRoleNames.Contains(pr.Role.Name))
+                        ))
+                    )
+                ))
+                .ThenByDescending(r => r.Priority)
+                .ThenByDescending(r => r.CreationDate);
         }
 
         private static IQueryable<BaseRequest> ApplyUserActionsCompositeSort(
@@ -290,6 +314,13 @@ namespace Ettad.RequestManagement.Service.Request
             {
                 dto.IsMyTurn = myTurnSet.Contains(dto.Id);
             }
+
+            dtos = dtos
+                .OrderByDescending(d => d.IsMyTurn)
+                .ThenByDescending(d => d.Priority)
+                .ThenByDescending(d => d.CreationDate)
+                .ToList();
+
             return APIOperationResponse<List<BaseRequestDto>>.Success(dtos);
         }
 
@@ -310,6 +341,12 @@ namespace Ettad.RequestManagement.Service.Request
             var userId = _currentUserService.UserId;
             var userRoles = _currentUserService.Roles ?? new List<string>();
             var userDepartmentId = _currentUserService.DepartmentId;
+
+            var activeDelegations = await _userDelegationService.GetActiveDelegationsForUserAsync(userId);
+            var activeDelegatorIds = activeDelegations.Select(d => d.DelegatorUserId).Distinct().ToList();
+            var delegatorRoleIds = activeDelegations.Select(d => d.DelegatorRoleId).Where(id => !string.IsNullOrEmpty(id)).Distinct().ToList();
+            var delegatorRoleNames = await GetDelegatorRoleNamesAsync(delegatorRoleIds);
+            var stepsQuery = WorkflowStepsWithNavigations();
 
             IQueryable<BaseRequest> query = _baseRequestRepository.Find(_ => true, false, BaseRequestListIncludes);
 
@@ -337,11 +374,6 @@ namespace Ettad.RequestManagement.Service.Request
                         query = query.Where(r => r.DepartmentId == userDepartmentId.Value);
                     }
 
-                    var activeDelegations = await _userDelegationService.GetActiveDelegationsForUserAsync(userId);
-                    var activeDelegatorIds = activeDelegations.Select(d => d.DelegatorUserId).Distinct().ToList();
-                    var delegatorRoleIds = activeDelegations.Select(d => d.DelegatorRoleId).Where(id => !string.IsNullOrEmpty(id)).Distinct().ToList();
-                    var delegatorRoleNames = await GetDelegatorRoleNamesAsync(delegatorRoleIds);
-
                     bool filterByMyTurn = false;
                     if (request.Filter != null)
                     {
@@ -365,7 +397,6 @@ namespace Ettad.RequestManagement.Service.Request
                         }
                     }
 
-                    var stepsQuery = WorkflowStepsWithNavigations();
                     if (filterByMyTurn)
                     {
                         query = query.Where(r => stepsQuery.Any(was =>
@@ -393,10 +424,15 @@ namespace Ettad.RequestManagement.Service.Request
                 }
             }
 
-            // Apply base query behavior (search and sorting)
-            query = PrepareBaseQuery(query, request.Filter);
+            // Apply search only; default user-actions sort is action-required first
+            query = PrepareBaseQuery(query, request.Filter, applyDefaultSort: false);
 
-            if (request.Filter != null)
+            var hasClientSort = request.Filter != null && !string.IsNullOrEmpty(request.Filter.sortField);
+            if (!hasClientSort)
+            {
+                query = OrderByActionRequiredFirst(query, stepsQuery, userId, activeDelegatorIds, userRoles, delegatorRoleNames);
+            }
+            else
             {
                 query = ApplyUserActionsCompositeSort(query, request.Filter);
             }
@@ -407,11 +443,6 @@ namespace Ettad.RequestManagement.Service.Request
             // Fetch IsMyTurn status
             if (dtos.Any())
             {
-                var activeDelegations = await _userDelegationService.GetActiveDelegationsForUserAsync(userId);
-                var activeDelegatorIds = activeDelegations.Select(d => d.DelegatorUserId).Distinct().ToList();
-                var delegatorRoleIds = activeDelegations.Select(d => d.DelegatorRoleId).Where(id => !string.IsNullOrEmpty(id)).Distinct().ToList();
-                var delegatorRoleNames = await GetDelegatorRoleNamesAsync(delegatorRoleIds);
-
                 var fetchedRequestIds = dtos.Select(r => r.Id).ToList();
                 var myTurnSet = (await WorkflowStepsWithNavigations()
                     .Where(was => was.IsCurrent && fetchedRequestIds.Contains(was.TargetRequestId) && (
