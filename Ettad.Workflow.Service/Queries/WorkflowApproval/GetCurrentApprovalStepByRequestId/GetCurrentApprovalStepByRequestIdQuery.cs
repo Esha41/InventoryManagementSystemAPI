@@ -100,23 +100,25 @@ namespace Ettad.Workflows.Service.Queries.WorkflowApproval.GetCurrentApprovalSte
                 return true;
             }
 
-            var activeDelegatorIds = await _userDelegationService.GetActiveDelegatorsForUserAsync(
-                currentUserId,
-                DelegationScope.WorkflowApproval);
-            if (activeDelegatorIds == null || !activeDelegatorIds.Any())
+            var activeDelegations = await _userDelegationService.GetActiveDelegationsForUserAsync(currentUserId);
+            if (activeDelegations == null || !activeDelegations.Any())
                 return false;
 
-            if (activeDelegatorIds.Contains(step.ApproverUserId))
+            if (activeDelegations.Any(d => d.DelegatorUserId == step.ApproverUserId))
             {
                 step.IsDelegation = true;
                 return true;
             }
 
-            var delegatorRoleIds = new List<string>();
-            foreach (var delegatorId in activeDelegatorIds)
-                delegatorRoleIds.AddRange(await _effectiveRoleService.GetEffectiveRoleIdsAsync(delegatorId));
+            // Authorize via the captured delegated role (the role the delegator was logged in
+            // with when creating the delegation), not the delegator's current effective role.
+            var delegatedRoleIds = activeDelegations
+                .Select(d => d.DelegatorRoleId)
+                .Where(id => !string.IsNullOrEmpty(id))
+                .Distinct()
+                .ToList();
 
-            if (delegatorRoleIds.Any(r => allowedRoles.Contains(r)))
+            if (delegatedRoleIds.Any(r => allowedRoles.Contains(r)))
             {
                 step.IsDelegation = true;
                 return true;

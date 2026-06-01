@@ -41,7 +41,6 @@ namespace Ettad.RequestManagement.Service.Request
 
         private readonly ICrossCuttingRepository<BaseRequest> _baseRequestRepository;
         private readonly ICrossCuttingRepository<WorkflowApprovalStep> _workflowApprovalStepRepository;
-        private readonly ICrossCuttingRepository<IdentityUserRole<string>> _userRoleRepository;
         private readonly ICrossCuttingRepository<ApplicationRole> _roleRepository;
         private readonly ICurrentUserService _currentUserService;
         private readonly IUserDelegationService _userDelegationService;
@@ -50,7 +49,6 @@ namespace Ettad.RequestManagement.Service.Request
         public RequestService(
             ICrossCuttingRepository<BaseRequest> baseRequestRepository,
             ICrossCuttingRepository<WorkflowApprovalStep> workflowApprovalStepRepository,
-            ICrossCuttingRepository<IdentityUserRole<string>> userRoleRepository,
             ICrossCuttingRepository<ApplicationRole> roleRepository,
             ICurrentUserService currentUserService,
             IUserDelegationService userDelegationService,
@@ -58,7 +56,6 @@ namespace Ettad.RequestManagement.Service.Request
         {
             _baseRequestRepository = baseRequestRepository;
             _workflowApprovalStepRepository = workflowApprovalStepRepository;
-            _userRoleRepository = userRoleRepository;
             _roleRepository = roleRepository;
             _currentUserService = currentUserService;
             _userDelegationService = userDelegationService;
@@ -68,16 +65,17 @@ namespace Ettad.RequestManagement.Service.Request
         private IQueryable<WorkflowApprovalStep> WorkflowStepsWithNavigations() =>
             _workflowApprovalStepRepository.Find(_ => true, includeSoftDeleted: false, WorkflowApprovalStepVisibilityIncludes);
 
-        private async Task<List<string>> GetDelegatorRoleNamesAsync(IReadOnlyCollection<string> activeDelegatorIds)
+        private async Task<List<string>> GetDelegatorRoleNamesAsync(IReadOnlyCollection<string> delegatorRoleIds)
         {
-            if (activeDelegatorIds == null || activeDelegatorIds.Count == 0)
+            if (delegatorRoleIds == null || delegatorRoleIds.Count == 0)
                 return new List<string>();
 
-            return await _userRoleRepository
-                .Find(ur => activeDelegatorIds.Contains(ur.UserId))
-                .Join(_roleRepository.Find(_ => true), ur => ur.RoleId, r => r.Id, (ur, r) => r.Name)
-                .Where(n => n != null)
-                .Select(n => n!)
+            // Map the captured delegated role ids (the role each delegator was logged in with at
+            // delegation creation) to their role names, rather than expanding all delegator roles.
+            return await _roleRepository
+                .Find(r => delegatorRoleIds.Contains(r.Id))
+                .Where(r => r.Name != null)
+                .Select(r => r.Name!)
                 .Distinct()
                 .ToListAsync();
         }
@@ -252,8 +250,10 @@ namespace Ettad.RequestManagement.Service.Request
                 query = query.Where(r => r.DepartmentId == userDepartmentId.Value);
             }
 
-            var activeDelegatorIds = await _userDelegationService.GetActiveDelegatorsForUserAsync(userId, DelegationScope.WorkflowApproval);
-            var delegatorRoleNames = await GetDelegatorRoleNamesAsync(activeDelegatorIds);
+            var activeDelegations = await _userDelegationService.GetActiveDelegationsForUserAsync(userId);
+            var activeDelegatorIds = activeDelegations.Select(d => d.DelegatorUserId).Distinct().ToList();
+            var delegatorRoleIds = activeDelegations.Select(d => d.DelegatorRoleId).Where(id => !string.IsNullOrEmpty(id)).Distinct().ToList();
+            var delegatorRoleNames = await GetDelegatorRoleNamesAsync(delegatorRoleIds);
 
             var stepsQuery = WorkflowStepsWithNavigations();
             query = query.Where(r => stepsQuery.Any(was =>
@@ -337,8 +337,10 @@ namespace Ettad.RequestManagement.Service.Request
                         query = query.Where(r => r.DepartmentId == userDepartmentId.Value);
                     }
 
-                    var activeDelegatorIds = await _userDelegationService.GetActiveDelegatorsForUserAsync(userId, DelegationScope.WorkflowApproval);
-                    var delegatorRoleNames = await GetDelegatorRoleNamesAsync(activeDelegatorIds);
+                    var activeDelegations = await _userDelegationService.GetActiveDelegationsForUserAsync(userId);
+                    var activeDelegatorIds = activeDelegations.Select(d => d.DelegatorUserId).Distinct().ToList();
+                    var delegatorRoleIds = activeDelegations.Select(d => d.DelegatorRoleId).Where(id => !string.IsNullOrEmpty(id)).Distinct().ToList();
+                    var delegatorRoleNames = await GetDelegatorRoleNamesAsync(delegatorRoleIds);
 
                     bool filterByMyTurn = false;
                     if (request.Filter != null)
@@ -405,8 +407,10 @@ namespace Ettad.RequestManagement.Service.Request
             // Fetch IsMyTurn status
             if (dtos.Any())
             {
-                var activeDelegatorIds = await _userDelegationService.GetActiveDelegatorsForUserAsync(userId, DelegationScope.WorkflowApproval);
-                var delegatorRoleNames = await GetDelegatorRoleNamesAsync(activeDelegatorIds);
+                var activeDelegations = await _userDelegationService.GetActiveDelegationsForUserAsync(userId);
+                var activeDelegatorIds = activeDelegations.Select(d => d.DelegatorUserId).Distinct().ToList();
+                var delegatorRoleIds = activeDelegations.Select(d => d.DelegatorRoleId).Where(id => !string.IsNullOrEmpty(id)).Distinct().ToList();
+                var delegatorRoleNames = await GetDelegatorRoleNamesAsync(delegatorRoleIds);
 
                 var fetchedRequestIds = dtos.Select(r => r.Id).ToList();
                 var myTurnSet = (await WorkflowStepsWithNavigations()

@@ -1,6 +1,4 @@
 using System;
-using System.Collections.Generic;
-using Ettad.Data.Enums;
 
 namespace Ettad.User.Services.DTO
 {
@@ -23,10 +21,5 @@ namespace Ettad.User.Services.DTO
         public string Status { get; set; }
         public int DelegationStatus { get; set; } // 0 = Pending, 1 = Approved, 2 = Rejected
         public bool IsIncoming { get; set; }
-
-        /// <summary>
-        /// List of delegated scopes (serialized as string array in JSON)
-        /// </summary>
-        public List<DelegationScope> DelegationScopes { get; set; } = new List<DelegationScope>();
     }
 }

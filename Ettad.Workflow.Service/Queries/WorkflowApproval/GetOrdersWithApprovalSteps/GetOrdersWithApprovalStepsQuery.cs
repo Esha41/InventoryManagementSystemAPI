@@ -49,19 +49,18 @@ namespace Ettad.Workflows.Service.Queries.WorkflowApproval.GetOrdersWithApproval
                     ? new List<string>()
                     : (await _effectiveRoleService.GetEffectiveRoleIdsAsync(currentUserId)).ToList();
 
-                // 1.5 Get active delegations (users who delegated to current user for workflow approval)
-                var activeDelegatorIds = await _userDelegationService.GetActiveDelegatorsForUserAsync(currentUserId, DelegationScope.WorkflowApproval);
-                var delegatorRoleIds = new List<string>();
-                
-                if (activeDelegatorIds != null && activeDelegatorIds.Any())
-                {
-                    foreach (var delegatorId in activeDelegatorIds)
-                        delegatorRoleIds.AddRange(await _effectiveRoleService.GetEffectiveRoleIdsAsync(delegatorId));
-                }
+                // 1.5 Get active delegations (users who delegated to current user). The delegatee
+                // acts as exactly the role the delegator was logged in with at delegation creation.
+                var activeDelegations = await _userDelegationService.GetActiveDelegationsForUserAsync(currentUserId);
+                var activeDelegatorIds = activeDelegations.Select(d => d.DelegatorUserId).Distinct().ToList();
+                var delegatorRoleIds = activeDelegations
+                    .Select(d => d.DelegatorRoleId)
+                    .Where(id => !string.IsNullOrEmpty(id))
+                    .Distinct()
+                    .ToList();
 
                 // Ensure lists are not null for Contains queries (though EF handles this, it's safer)
                 if (userRoleIds == null) userRoleIds = new List<string>();
-                if (delegatorRoleIds == null) delegatorRoleIds = new List<string>();
 
                 // 2. Query workflow approval steps joined with workflow steps and base requests
                 var query = from ws in _context.WorkflowApprovalSteps

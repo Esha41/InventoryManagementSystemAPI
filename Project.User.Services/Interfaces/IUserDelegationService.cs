@@ -1,4 +1,3 @@
-using Ettad.Data.Enums;
 using Ettad.ResponseHandler.Models;
 using Ettad.User.Services.DTO;
 using System.Collections.Generic;
@@ -15,12 +14,19 @@ namespace Ettad.User.Services.Interfaces
         Task<APIOperationResponse<List<UserDelegationDto>>> GetMyDelegationsAsync(); 
         
         /// <summary>
-        /// Gets active delegators for a user, optionally filtered by delegation scope.
+        /// Gets the user IDs of all active delegators for a delegatee.
         /// </summary>
         /// <param name="delegateeUserId">The user ID of the delegatee</param>
-        /// <param name="scope">Optional scope to filter by. If null, returns all active delegators.</param>
         /// <returns>List of delegator user IDs</returns>
-        Task<List<string>> GetActiveDelegatorsForUserAsync(string delegateeUserId, DelegationScope? scope = null);
+        Task<List<string>> GetActiveDelegatorsForUserAsync(string delegateeUserId);
+
+        /// <summary>
+        /// Gets all active delegations for a delegatee, including the delegator user id and the
+        /// role id the delegator was logged in with when the delegation was created.
+        /// </summary>
+        /// <param name="delegateeUserId">The user ID of the delegatee</param>
+        /// <returns>List of active delegation projections</returns>
+        Task<List<ActiveDelegationInfo>> GetActiveDelegationsForUserAsync(string delegateeUserId);
 
         Task<APIOperationResponse<List<UserDto>>> GetAvailableUsersAsync();
 

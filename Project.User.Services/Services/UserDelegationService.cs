@@ -30,6 +30,8 @@ namespace Ettad.User.Services.Services
         private readonly ILogger<UserDelegationService> _logger;
         private readonly IMediator _mediator;
         private readonly IDateTimeProvider _dateTimeProvider;
+        private readonly IEffectiveRoleRepository _effectiveRoleService;
+        private readonly IPermissionService _permissionService;
 
         public UserDelegationService(
             ICrossCuttingRepository<UserDelegation> userDelegationRepository,
@@ -38,7 +40,9 @@ namespace Ettad.User.Services.Services
             UserManager<ApplicationUser> userManager,
             ILogger<UserDelegationService> logger,
             IMediator mediator,
-            IDateTimeProvider dateTimeProvider)
+            IDateTimeProvider dateTimeProvider,
+            IEffectiveRoleRepository effectiveRoleService,
+            IPermissionService permissionService)
         {
             _userDelegationRepository = userDelegationRepository;
             _settingsRepository = settingsRepository;
@@ -47,32 +51,9 @@ namespace Ettad.User.Services.Services
             _logger = logger;
             _mediator = mediator;
             _dateTimeProvider = dateTimeProvider;
+            _effectiveRoleService = effectiveRoleService;
+            _permissionService = permissionService;
         }
-
-        #region Scope Conversion Helpers
-
-        private static long ConvertScopesToLong(List<DelegationScope> scopes)
-        {
-            if (scopes == null || !scopes.Any())
-                return (long)DelegationScope.None;
-
-            return scopes.Aggregate(0L, (current, scope) => current | (long)scope);
-        }
-
-        private static List<DelegationScope> ConvertLongToScopes(long scopesLong)
-        {
-            var scopesList = new List<DelegationScope>();
-            foreach (DelegationScope scope in Enum.GetValues(typeof(DelegationScope)))
-            {
-                if (scope != DelegationScope.None && (scopesLong & (long)scope) != 0)
-                {
-                    scopesList.Add(scope);
-                }
-            }
-            return scopesList;
-        }
-
-        #endregion
 
         public async Task<APIOperationResponse<bool>> CreateDelegationAsync(CreateUserDelegationDto dto)
         {
@@ -80,17 +61,22 @@ namespace Ettad.User.Services.Services
 
             dto.EndDate = dto.EndDate.Date.AddDays(1).AddTicks(-1);
 
-            if (dto.DelegationScopes == null || !dto.DelegationScopes.Any())
-            {
-                return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, "At least one delegation scope must be selected.");
-            }
-
             var validationResult = await ValidateDelegationAsync(dto, currentUserId);
             if (!validationResult.Succeeded)
             {
                 return APIOperationResponse<bool>.Fail(
                     (ResponseType)validationResult.StatusCode,
                     validationResult.Message);
+            }
+
+            // Capture the role the delegator is currently logged in with. The delegatee will
+            // inherit exactly this role's permissions/authority/visibility while the delegation
+            // is active. Fall back to the delegator's effective role if the active role claim
+            // is unavailable.
+            var delegatorRoleId = _currentUserService.ActiveRoleId;
+            if (string.IsNullOrEmpty(delegatorRoleId))
+            {
+                delegatorRoleId = await _effectiveRoleService.GetEffectiveRoleIdAsync(currentUserId);
             }
 
             var entity = new UserDelegation
@@ -102,7 +88,8 @@ namespace Ettad.User.Services.Services
                 Reason = dto.Reason,
                 IsActive = true,
                 DelegationStatus = 0,
-                DelegationScopes = ConvertScopesToLong(dto.DelegationScopes),
+                DelegationScopes = 0,
+                DelegatorRoleId = delegatorRoleId,
                 CreatedBy = currentUserId,
                 CreationDate = _dateTimeProvider.Now
             };
@@ -163,25 +150,35 @@ namespace Ettad.User.Services.Services
             return APIOperationResponse<bool>.Success(true);
         }
 
-        public async Task<List<string>> GetActiveDelegatorsForUserAsync(string delegateeUserId, DelegationScope? scope = null)
+        public async Task<List<string>> GetActiveDelegatorsForUserAsync(string delegateeUserId)
         {
             var now = _dateTimeProvider.Now;
 
-            var query = _userDelegationRepository
+            return await _userDelegationRepository
                 .Find(d => d.DelegateeUserId == delegateeUserId &&
                             d.IsActive && !d.IsDeleted &&
                             d.DelegationStatus == 1 &&
                             d.StartDate <= now &&
-                            d.EndDate >= now);
-
-            if (scope.HasValue)
-            {
-                var scopeLong = (long)scope.Value;
-                query = query.Where(d => (d.DelegationScopes & scopeLong) != 0);
-            }
-
-            return await query
+                            d.EndDate >= now)
                 .Select(d => d.DelegatorUserId)
+                .ToListAsync();
+        }
+
+        public async Task<List<ActiveDelegationInfo>> GetActiveDelegationsForUserAsync(string delegateeUserId)
+        {
+            var now = _dateTimeProvider.Now;
+
+            return await _userDelegationRepository
+                .Find(d => d.DelegateeUserId == delegateeUserId &&
+                            d.IsActive && !d.IsDeleted &&
+                            d.DelegationStatus == 1 &&
+                            d.StartDate <= now &&
+                            d.EndDate >= now)
+                .Select(d => new ActiveDelegationInfo
+                {
+                    DelegatorUserId = d.DelegatorUserId,
+                    DelegatorRoleId = d.DelegatorRoleId
+                })
                 .ToListAsync();
         }
 
@@ -359,6 +356,10 @@ namespace Ettad.User.Services.Services
             delegation.ModificationDate = _dateTimeProvider.Now;
 
             await _userDelegationRepository.UpdateAsync(delegation);
+
+            // Delegatee no longer inherits this delegation's role; refresh their cached permissions.
+            await _permissionService.InvalidatePermissionCacheForUserAsync(delegation.DelegateeUserId);
+
             return APIOperationResponse<bool>.Success(true, "Delegation revoked successfully.");
         }
 
@@ -396,6 +397,9 @@ namespace Ettad.User.Services.Services
                 DelegateeUserId = currentUserId,
                 DelegateeName = delegateeName
             });
+
+            // Delegatee now inherits the delegator's role; refresh their cached permissions.
+            await _permissionService.InvalidatePermissionCacheForUserAsync(delegation.DelegateeUserId);
 
             return APIOperationResponse<bool>.Success(true, "Delegation approved successfully.");
         }
@@ -435,6 +439,9 @@ namespace Ettad.User.Services.Services
                 DelegateeUserId = currentUserId,
                 DelegateeName = delegateeName
             });
+
+            // Delegatee no longer inherits this delegation's role; refresh their cached permissions.
+            await _permissionService.InvalidatePermissionCacheForUserAsync(delegation.DelegateeUserId);
 
             return APIOperationResponse<bool>.Success(true, "Delegation rejected successfully.");
         }
@@ -489,8 +496,7 @@ namespace Ettad.User.Services.Services
                 CreatedDate = entity.CreationDate,
                 Status = status,
                 DelegationStatus = entity.DelegationStatus,
-                IsIncoming = entity.DelegateeUserId == currentUserId,
-                DelegationScopes = ConvertLongToScopes(entity.DelegationScopes)
+                IsIncoming = entity.DelegateeUserId == currentUserId
             };
         }
 

@@ -1,11 +1,17 @@
 using Ettad.Application.Common.Interfaces;
 using Ettad.Comman.Idenitity;
 using Ettad.CrossCutting.Comman.Idenitity;
+using Ettad.CrossCutting.Comman.Time;
+using Ettad.Data.Entities;
 using Ettad.Data.Interfaces.Repositories;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace Ettad.User.Services.Services;
 
@@ -18,6 +24,8 @@ public class PermissionService : IPermissionService
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly RoleManager<ApplicationRole> _roleManager;
     private readonly IEffectiveRoleRepository _effectiveRoleService;
+    private readonly ICrossCuttingRepository<UserDelegation> _userDelegationRepository;
+    private readonly IDateTimeProvider _dateTimeProvider;
     private readonly IMemoryCache _cache;
     private readonly ILogger<PermissionService> _logger;
     private const int CacheExpirationMinutes = 5;
@@ -27,6 +35,8 @@ public class PermissionService : IPermissionService
         UserManager<ApplicationUser> userManager,
         RoleManager<ApplicationRole> roleManager,
         IEffectiveRoleRepository effectiveRoleService,
+        ICrossCuttingRepository<UserDelegation> userDelegationRepository,
+        IDateTimeProvider dateTimeProvider,
         IMemoryCache cache,
         ILogger<PermissionService> logger)
     {
@@ -34,6 +44,8 @@ public class PermissionService : IPermissionService
         _userManager = userManager;
         _roleManager = roleManager;
         _effectiveRoleService = effectiveRoleService;
+        _userDelegationRepository = userDelegationRepository;
+        _dateTimeProvider = dateTimeProvider;
         _cache = cache;
         _logger = logger;
     }
@@ -74,33 +86,46 @@ public class PermissionService : IPermissionService
         }
 
         var effectiveRoleId = await _effectiveRoleService.GetEffectiveRoleIdAsync(userId);
-        var effectiveRole = !string.IsNullOrEmpty(effectiveRoleId)
-            ? await _roleManager.FindByIdAsync(effectiveRoleId)
-            : null;
-        if (effectiveRole == null)
+
+        // Roles inherited via active delegations: the delegatee gains exactly the role each
+        // delegator was logged in with (captured at creation), for as long as the delegation
+        // is active (date-bounded, so expiry is lazy and automatic).
+        var delegatedRoleIds = await GetActiveDelegatedRoleIdsAsync(userId);
+
+        if (string.IsNullOrEmpty(effectiveRoleId) && delegatedRoleIds.Count == 0)
             return new List<string>();
 
-        var cacheKey = $"user_permissions_{userId}_{effectiveRole.Id}";
+        // The cache key embeds the effective role plus the (sorted) delegated role set, so any
+        // approve/revoke/expiry that changes the active delegation set yields a different key
+        // and a fresh computation automatically.
+        var effectivePart = string.IsNullOrEmpty(effectiveRoleId) ? "none" : effectiveRoleId;
+        var delegPart = delegatedRoleIds.Count == 0
+            ? "none"
+            : string.Join("-", delegatedRoleIds);
+        var version = GetPermissionCacheVersion(userId);
+        var cacheKey = $"user_permissions_{userId}_v{version}_{effectivePart}_{delegPart}";
+
         if (_cache.TryGetValue(cacheKey, out List<string> cachedPermissions) && cachedPermissions != null)
         {
-            _logger.LogInformation("Returning cached permissions for user {UserId} role {RoleId}: {Count} permissions", userId, effectiveRole.Id, cachedPermissions.Count);
+            _logger.LogInformation("Returning cached permissions for user {UserId} key {CacheKey}: {Count} permissions", userId, cacheKey, cachedPermissions.Count);
             return cachedPermissions;
         }
 
-        _logger.LogInformation("Loading permissions from database for user {UserId} active role {RoleName}", userId, effectiveRole.Name);
+        _logger.LogInformation("Loading permissions from database for user {UserId} (effective role {RoleId}, {DelegCount} delegated roles)", userId, effectivePart, delegatedRoleIds.Count);
 
         var permissions = new List<string>();
 
-        var roleClaims = await _roleManager.GetClaimsAsync(effectiveRole);
-        _logger.LogInformation("Role {RoleName} has {Count} claims", effectiveRole.Name, roleClaims.Count);
+        var effectiveRole = !string.IsNullOrEmpty(effectiveRoleId)
+            ? await _roleManager.FindByIdAsync(effectiveRoleId)
+            : null;
+        if (effectiveRole != null)
+            await AddRoleClaimsAsync(effectiveRole, permissions);
 
-        foreach (var claim in roleClaims)
+        foreach (var delegatedRoleId in delegatedRoleIds)
         {
-            if (!string.IsNullOrWhiteSpace(claim.Type) && !permissions.Contains(claim.Type))
-                permissions.Add(claim.Type);
-
-            if (!string.IsNullOrWhiteSpace(claim.Value) && !permissions.Contains(claim.Value))
-                permissions.Add(claim.Value);
+            var delegatedRole = await _roleManager.FindByIdAsync(delegatedRoleId);
+            if (delegatedRole != null)
+                await AddRoleClaimsAsync(delegatedRole, permissions);
         }
 
         _logger.LogInformation("Loaded {Count} total permissions for user {UserId}", permissions.Count, userId);
@@ -110,23 +135,69 @@ public class PermissionService : IPermissionService
         return permissions;
     }
 
-    public async Task InvalidatePermissionCacheForUserAsync(string userId)
+    private async Task AddRoleClaimsAsync(ApplicationRole role, List<string> permissions)
+    {
+        var roleClaims = await _roleManager.GetClaimsAsync(role);
+        foreach (var claim in roleClaims)
+        {
+            if (!string.IsNullOrWhiteSpace(claim.Type) && !permissions.Contains(claim.Type))
+                permissions.Add(claim.Type);
+
+            if (!string.IsNullOrWhiteSpace(claim.Value) && !permissions.Contains(claim.Value))
+                permissions.Add(claim.Value);
+        }
+    }
+
+    /// <summary>
+    /// Returns the distinct, sorted role ids the user inherits via currently active delegations
+    /// (approved, within the date window). The repository is queried directly here to avoid a
+    /// dependency cycle with IUserDelegationService (which depends on IPermissionService).
+    /// </summary>
+    private async Task<List<string>> GetActiveDelegatedRoleIdsAsync(string delegateeUserId)
+    {
+        var now = _dateTimeProvider.Now;
+
+        var roleIds = await _userDelegationRepository
+            .Find(d => d.DelegateeUserId == delegateeUserId &&
+                        d.IsActive && !d.IsDeleted &&
+                        d.DelegationStatus == 1 &&
+                        d.StartDate <= now &&
+                        d.EndDate >= now &&
+                        d.DelegatorRoleId != null)
+            .Select(d => d.DelegatorRoleId)
+            .Distinct()
+            .ToListAsync();
+
+        roleIds.Sort(StringComparer.Ordinal);
+        return roleIds;
+    }
+
+    private long GetPermissionCacheVersion(string userId)
+    {
+        return _cache.GetOrCreate($"user_permissions_version_{userId}", entry =>
+        {
+            entry.Priority = CacheItemPriority.NeverRemove;
+            return 0L;
+        });
+    }
+
+    public Task InvalidatePermissionCacheForUserAsync(string userId)
     {
         if (string.IsNullOrEmpty(userId))
-            return;
+            return Task.CompletedTask;
 
-        _cache.Remove($"user_permissions_{userId}");
-
-        var user = await _userManager.FindByIdAsync(userId);
-        if (user == null)
-            return;
-
-        var roleNames = await _userManager.GetRolesAsync(user);
-        foreach (var name in roleNames)
+        // Bump the per-user version so every previously cached key (which embeds the version,
+        // effective role, and delegated role set) is abandoned and recomputed on next access.
+        var versionKey = $"user_permissions_version_{userId}";
+        var current = _cache.GetOrCreate(versionKey, entry =>
         {
-            var r = await _roleManager.FindByNameAsync(name);
-            if (r != null)
-                _cache.Remove($"user_permissions_{userId}_{r.Id}");
-        }
+            entry.Priority = CacheItemPriority.NeverRemove;
+            return 0L;
+        });
+        _cache.Set(versionKey, current + 1, new MemoryCacheEntryOptions { Priority = CacheItemPriority.NeverRemove });
+
+        // Clear the legacy key from the previous cache scheme for safety.
+        _cache.Remove($"user_permissions_{userId}");
+        return Task.CompletedTask;
     }
 }

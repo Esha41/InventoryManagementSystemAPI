@@ -64,31 +64,24 @@ namespace Ettad.Workflows.Service.Queries.WorkflowApproval.GetBaseRequestById
                     ? new List<string>()
                     : (await _effectiveRoleService.GetEffectiveRoleIdsAsync(currentUserId)).ToList();
 
-                var activeDelegatorIds = await _userDelegationService.GetActiveDelegatorsForUserAsync(currentUserId, DelegationScope.WorkflowApproval);
-                
-                var delegatorRoleIds = new List<string>();
-                foreach (var delegatorId in activeDelegatorIds)
-                    delegatorRoleIds.AddRange(await _effectiveRoleService.GetEffectiveRoleIdsAsync(delegatorId));
+                var activeDelegations = await _userDelegationService.GetActiveDelegationsForUserAsync(currentUserId);
+                var activeDelegatorIds = activeDelegations.Select(d => d.DelegatorUserId).Distinct().ToList();
 
-                var allRelevantRoleNames = new List<string>();
-                if (userRoleIds.Count > 0)
-                {
-                    allRelevantRoleNames.AddRange(await _context.Roles
-                        .Where(r => userRoleIds.Contains(r.Id))
+                // Captured delegated roles: the role each delegator was logged in with when the
+                // delegation was created. The delegatee acts as exactly that role.
+                var delegatorRoleIds = activeDelegations
+                    .Select(d => d.DelegatorRoleId)
+                    .Where(id => !string.IsNullOrEmpty(id))
+                    .Distinct()
+                    .ToList();
+
+                var allRelevantRoleIds = userRoleIds.Concat(delegatorRoleIds).Distinct().ToList();
+                var allRelevantRoleNames = allRelevantRoleIds.Count == 0
+                    ? new List<string>()
+                    : await _context.Roles
+                        .Where(r => allRelevantRoleIds.Contains(r.Id))
                         .Select(r => r.Name!)
-                        .ToListAsync(cancellationToken));
-                }
-                foreach (var delegatorId in activeDelegatorIds)
-                {
-                    var dRoleIds = await _effectiveRoleService.GetEffectiveRoleIdsAsync(delegatorId);
-                    if (dRoleIds.Count > 0)
-                    {
-                        allRelevantRoleNames.AddRange(await _context.Roles
-                            .Where(r => dRoleIds.Contains(r.Id))
-                            .Select(r => r.Name!)
-                            .ToListAsync(cancellationToken));
-                    }
-                }
+                        .ToListAsync(cancellationToken);
                 // --- DELEGATION & ROLE PRE-FETCHING END ---
 
                 bool hasPermission = false;
