@@ -232,7 +232,7 @@ public class RequestAutoRejectCountdownService : IRequestAutoRejectCountdownServ
 
     private async Task<List<long>> GetAllowedBulkRequestIdsAsync(IReadOnlyList<long> distinct, CancellationToken cancellationToken)
     {
-        if (_currentUserService.IsUserHasClaim(OrderAutoRejectViewPermission))
+        if (_currentUserService.IsSuperAdmin || _currentUserService.IsUserHasClaim(OrderAutoRejectViewPermission))
             return distinct.ToList();
 
         var userId = _currentUserService.UserId;
@@ -278,6 +278,9 @@ public class RequestAutoRejectCountdownService : IRequestAutoRejectCountdownServ
 
     private async Task<bool> CanViewCountdownAsync(long requestId, CancellationToken cancellationToken)
     {
+        if (_currentUserService.IsSuperAdmin)
+            return true;
+
         if (_currentUserService.IsUserHasClaim(OrderAutoRejectViewPermission))
             return true;
 
