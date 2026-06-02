@@ -584,7 +584,7 @@ namespace Ettad.ReportManagement.Service.Reports.Templates
             // xrPageInfo
             // 
             this.xrPageInfo.ExpressionBindings.AddRange(new DevExpress.XtraReports.UI.ExpressionBinding[] {
-            new DevExpress.XtraReports.UI.ExpressionBinding("BeforePrint", "TextFormatString", "Iif(?Language == \'ar\', \'???? {0} ?? {1}\', \'Page {0} of {1}\')")});
+            new DevExpress.XtraReports.UI.ExpressionBinding("BeforePrint", "TextFormatString", "Iif(?Language == \'ar\', \'صفحة {0} من {1}\', \'Page {0} of {1}\')")});
             this.xrPageInfo.Font = new DevExpress.Drawing.DXFont("Segoe UI", 8F);
             this.xrPageInfo.LocationFloat = new DevExpress.Utils.PointFloat(670.2996F, 0F);
             this.xrPageInfo.Name = "xrPageInfo";
