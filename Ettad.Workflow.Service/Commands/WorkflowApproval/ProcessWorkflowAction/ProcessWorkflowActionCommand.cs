@@ -129,6 +129,29 @@ namespace Ettad.Workflows.Service.Commands.WorkflowApproval.ProcessWorkflowActio
                 }
                 else
                 {
+                    // Optimistic concurrency: if the client told us which step it was looking at and that
+                    // step is no longer current (another approver already actioned it and the workflow moved
+                    // on), reject cleanly with 409 instead of acting on whatever step happens to be current now.
+                    if (model.ExpectedWorkflowApprovalStepId.HasValue)
+                    {
+                        var expectedStepId = model.ExpectedWorkflowApprovalStepId.Value;
+                        var expectedStepStillCurrent = await _context.WorkflowApprovalSteps
+                            .AsNoTracking()
+                            .AnyAsync(x => x.Id == expectedStepId &&
+                                           x.TargetRequestId == model.BaseRequestID &&
+                                           x.IsCurrent &&
+                                           (x.Status == RequestStatus.New || x.Status == RequestStatus.UnderProcess),
+                                cancellationToken);
+
+                        if (!expectedStepStillCurrent)
+                        {
+                            if (ownsTransaction)
+                                await _transactionManager.RollbackAsync(cancellationToken);
+                            return APIOperationResponse<bool>.Fail(ResponseType.Conflict,
+                                "This request has already been actioned by another approver and has moved to the next step. The page has been refreshed with the latest status.");
+                        }
+                    }
+
                     currentStep = await _mediator.Send(
                         new GetCurrentApprovalStepByRequestIdQuery(model.BaseRequestID),
                         cancellationToken);
@@ -202,7 +225,11 @@ namespace Ettad.Workflows.Service.Commands.WorkflowApproval.ProcessWorkflowActio
             {
                 if (ownsTransaction)
                     await _transactionManager.RollbackAsync(cancellationToken);
-                return APIOperationResponse<bool>.Fail(ResponseType.Unauthorized, ex.Message);
+                // The caller is authenticated but not allowed to action this step (e.g. the step
+                // advanced to another role). This is an authorization failure (403), NOT an
+                // authentication failure (401) — returning 401 would make the SPA treat it as an
+                // expired token and force the user to log out.
+                return APIOperationResponse<bool>.Fail(ResponseType.Forbidden, ex.Message);
             }
             catch (KeyNotFoundException ex)
             {

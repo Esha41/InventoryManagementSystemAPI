@@ -47,4 +47,3 @@ namespace Ettad.Notification.Service.Interfaces
             bool includeAllUsers = false);
     }
 }
-
