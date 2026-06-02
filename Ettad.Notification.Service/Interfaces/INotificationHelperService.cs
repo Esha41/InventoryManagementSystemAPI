@@ -33,6 +33,13 @@ namespace Ettad.Notification.Service.Interfaces
             string? htmlContent = null);
 
         /// <summary>
+        /// Broadcasts a lightweight "workflow state changed" signal (SignalR only, no DB row, no email)
+        /// to every client currently subscribed to this request's group. Clients react by re-fetching
+        /// the request so their open page reflects the latest state.
+        /// </summary>
+        Task SendWorkflowStateChangedAsync(long requestId);
+
+        /// <summary>
         /// Sends both notification (SignalR + Database) and email to specified users or roles.
         /// </summary>
         Task SendNotificationAndEmailAsync(
