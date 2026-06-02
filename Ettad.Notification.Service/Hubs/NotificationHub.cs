@@ -46,26 +46,6 @@ namespace Ettad.Notification.Service.Hubs
         {
             await Groups.RemoveFromGroupAsync(Context.ConnectionId, $"role_{roleId}");
         }
-
-        /// <summary>
-        /// Subscribe this connection to live updates for a single request (e.g. while the user has the
-        /// workflow approval detail page open). Mirrors the role/user group pattern.
-        /// </summary>
-        public async Task JoinRequestGroup(string requestId)
-        {
-            if (!string.IsNullOrWhiteSpace(requestId))
-            {
-                await Groups.AddToGroupAsync(Context.ConnectionId, $"request_{requestId}");
-            }
-        }
-
-        public async Task LeaveRequestGroup(string requestId)
-        {
-            if (!string.IsNullOrWhiteSpace(requestId))
-            {
-                await Groups.RemoveFromGroupAsync(Context.ConnectionId, $"request_{requestId}");
-            }
-        }
     }
 }
 

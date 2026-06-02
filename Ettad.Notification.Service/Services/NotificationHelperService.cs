@@ -166,14 +166,6 @@ namespace Ettad.Notification.Service.Services
             }
         }
 
-        public async Task SendWorkflowStateChangedAsync(long requestId)
-        {
-            // SignalR-only signal — deliberately carries just the requestId so clients re-fetch the
-            // authoritative state rather than trusting a (possibly out-of-order) pushed payload.
-            await _hubContext.Clients.Group($"request_{requestId}")
-                .SendAsync("WorkflowStateChanged", new { requestId });
-        }
-
         public async Task SendEmailAsync(
             string title,
             string message,
