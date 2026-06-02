@@ -123,6 +123,22 @@
   <data name="sqlDataSource1.ResultSchemaSerializable" xml:space="preserve">
     <value>PERhdGFTZXQgTmFtZT0ic3FsRGF0YVNvdXJjZTEiPjxWaWV3IE5hbWU9IkdldEF1ZGl0b3JQZW5kaW5nQXBwcm92YWxzIj48RmllbGQgTmFtZT0iUmVxdWVzdElkIiBUeXBlPSJJbnQ2NCIgLz48RmllbGQgTmFtZT0iT3JkZXJJZCIgVHlwZT0iU3RyaW5nIiAvPjxGaWVsZCBOYW1lPSJSZXF1ZXN0RGF0ZSIgVHlwZT0iRGF0ZVRpbWUiIC8+PEZpZWxkIE5hbWU9IlByaW9yaXR5IiBUeXBlPSJTdHJpbmciIC8+PEZpZWxkIE5hbWU9IlJlcXVlc3RUeXBlIiBUeXBlPSJTdHJpbmciIC8+PEZpZWxkIE5hbWU9IlN0YXR1cyIgVHlwZT0iU3RyaW5nIiAvPjxGaWVsZCBOYW1lPSJQZW5kaW5nRnJvbSIgVHlwZT0iRGF0ZVRpbWUiIC8+PEZpZWxkIE5hbWU9IlByZXZpb3VzQXBwcm92ZXIiIFR5cGU9IlN0cmluZyIgLz48RmllbGQgTmFtZT0iUGVuZGluZ0J5IiBUeXBlPSJTdHJpbmciIC8+PEZpZWxkIE5hbWU9Ik5leHRBcHByb3ZlciIgVHlwZT0iU3RyaW5nIiAvPjwvVmlldz48L0RhdGFTZXQ+</value>
   </data>
+  <data name="PriorityLocalized.Expression" xml:space="preserve">
+    <value>Iif(?Language = 'ar',
+    Iif([Priority] = 'Normal', 'طبيعي',
+        Iif([Priority] = 'Urgent', 'عاجل',
+            Iif([Priority] = 'Very Urgent', 'عاجل جداً',
+                [Priority]))),
+    [Priority])</value>
+  </data>
+  <data name="RequestTypeLocalized.Expression" xml:space="preserve">
+    <value>Iif(?Language = 'ar',
+    Iif([RequestType] = 'Order', 'طلب',
+        Iif([RequestType] = 'Return', 'يعود',
+            Iif([RequestType] = 'Discard', 'ينبذ',
+                [RequestType]))),
+    [RequestType])</value>
+  </data>
   <data name="$this.FilterString" xml:space="preserve">
     <value>(?Department Is Null Or [Departments_Id] In (?Department) Or -1 In (?Department) And [Departments_Id] Is Null) And (?Roles Is Null Or [AspNetRoles_Id] In (?Roles) Or 'NONE' In (?Roles) And [AspNetRoles_Id] Is Null)</value>
   </data>

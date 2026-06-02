@@ -47,6 +47,8 @@ namespace Ettad.ReportManagement.Service.Reports.Templates
         private DevExpress.XtraReports.UI.XRTableCell xrTableCell13;
         private DevExpress.XtraReports.UI.XRTableCell xrTableCell15;
         private DevExpress.XtraReports.UI.XRTableCell xrTableCell16;
+        private DevExpress.XtraReports.UI.CalculatedField PriorityLocalized;
+        private DevExpress.XtraReports.UI.CalculatedField RequestTypeLocalized;
         private int _rowCounter = 0;
 
         private void detailBand1_BeforePrint(object sender, System.ComponentModel.CancelEventArgs e)
@@ -117,6 +119,8 @@ namespace Ettad.ReportManagement.Service.Reports.Templates
             this.Language = new DevExpress.XtraReports.Parameters.Parameter();
             this.GroupFooter1 = new DevExpress.XtraReports.UI.GroupFooterBand();
             this.sqlDataSource1 = new DevExpress.DataAccess.Sql.SqlDataSource(this.components);
+            this.PriorityLocalized = new DevExpress.XtraReports.UI.CalculatedField();
+            this.RequestTypeLocalized = new DevExpress.XtraReports.UI.CalculatedField();
             ((System.ComponentModel.ISupportInitialize)(this.xrTable1)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.xrTable2)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this)).BeginInit();
@@ -212,11 +216,11 @@ namespace Ettad.ReportManagement.Service.Reports.Templates
             | DevExpress.XtraPrinting.BorderSide.Bottom)));
             this.xrTableCell1.BorderWidth = 1F;
             this.xrTableCell1.ExpressionBindings.AddRange(new DevExpress.XtraReports.UI.ExpressionBinding[] {
-            new DevExpress.XtraReports.UI.ExpressionBinding("BeforePrint", "Text", "[Priority]"),
             new DevExpress.XtraReports.UI.ExpressionBinding("BeforePrint", "BackColor", "Iif([Priority] = \'Very Urgent\', Rgb(254,242,242),\nIif([Priority] = \'Urgent\', Rgb(" +
                     "255,247,237),\nRgb(240,253,244)))"),
             new DevExpress.XtraReports.UI.ExpressionBinding("BeforePrint", "ForeColor", "Iif([Priority] = \'Very Urgent\', Rgb(220,38,38),\nIif([Priority] = \'Urgent\', Rgb(23" +
-                    "4,88,12),\nRgb(22,163,74)))")});
+                    "4,88,12),\nRgb(22,163,74)))"),
+            new DevExpress.XtraReports.UI.ExpressionBinding("BeforePrint", "Text", "[PriorityLocalized]")});
             this.xrTableCell1.Multiline = true;
             this.xrTableCell1.Name = "xrTableCell1";
             this.xrTableCell1.Padding = new DevExpress.XtraPrinting.PaddingInfo(5F, 5F, 5F, 5F, 100F);
@@ -233,7 +237,7 @@ namespace Ettad.ReportManagement.Service.Reports.Templates
             | DevExpress.XtraPrinting.BorderSide.Bottom)));
             this.xrTableCell9.BorderWidth = 1F;
             this.xrTableCell9.ExpressionBindings.AddRange(new DevExpress.XtraReports.UI.ExpressionBinding[] {
-            new DevExpress.XtraReports.UI.ExpressionBinding("BeforePrint", "Text", "[RequestType]")});
+            new DevExpress.XtraReports.UI.ExpressionBinding("BeforePrint", "Text", "[RequestTypeLocalized]")});
             this.xrTableCell9.Multiline = true;
             this.xrTableCell9.Name = "xrTableCell9";
             this.xrTableCell9.Padding = new DevExpress.XtraPrinting.PaddingInfo(5F, 5F, 5F, 5F, 100F);
@@ -632,6 +636,18 @@ namespace Ettad.ReportManagement.Service.Reports.Templates
             storedProcQuery1});
             this.sqlDataSource1.ResultSchemaSerializable = resources.GetString("sqlDataSource1.ResultSchemaSerializable");
             // 
+            // PriorityLocalized
+            // 
+            this.PriorityLocalized.DataMember = "GetAuditorPendingApprovals";
+            this.PriorityLocalized.Expression = resources.GetString("PriorityLocalized.Expression");
+            this.PriorityLocalized.Name = "PriorityLocalized";
+            // 
+            // RequestTypeLocalized
+            // 
+            this.RequestTypeLocalized.DataMember = "GetAuditorPendingApprovals";
+            this.RequestTypeLocalized.Expression = resources.GetString("RequestTypeLocalized.Expression");
+            this.RequestTypeLocalized.Name = "RequestTypeLocalized";
+            // 
             // AuditorPendingApprovalsReportTemplate
             // 
             this.Bands.AddRange(new DevExpress.XtraReports.UI.Band[] {
@@ -643,6 +659,9 @@ namespace Ettad.ReportManagement.Service.Reports.Templates
             this.PageFooter,
             this.ReportFooter,
             this.GroupFooter1});
+            this.CalculatedFields.AddRange(new DevExpress.XtraReports.UI.CalculatedField[] {
+            this.PriorityLocalized,
+            this.RequestTypeLocalized});
             this.ComponentStorage.AddRange(new System.ComponentModel.IComponent[] {
             this.sqlDataSource1});
             this.DataMember = "GetAuditorPendingApprovals";

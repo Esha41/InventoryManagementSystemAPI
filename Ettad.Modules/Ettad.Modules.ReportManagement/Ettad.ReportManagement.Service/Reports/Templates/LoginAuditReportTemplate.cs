@@ -82,10 +82,10 @@ namespace Ettad.ReportManagement.Service.Reports.Templates
         private void InitializeComponent()
         {
             this.components = new System.ComponentModel.Container();
-            DevExpress.DataAccess.Sql.CustomSqlQuery customSqlQuery1 = new DevExpress.DataAccess.Sql.CustomSqlQuery();
+            DevExpress.DataAccess.Sql.CustomSqlQuery customSqlQuery4 = new DevExpress.DataAccess.Sql.CustomSqlQuery();
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(LoginAuditReportTemplate));
-            DevExpress.XtraReports.UI.XRSummary xrSummary1 = new DevExpress.XtraReports.UI.XRSummary();
-            DevExpress.XtraReports.Parameters.StaticListLookUpSettings staticListLookUpSettings1 = new DevExpress.XtraReports.Parameters.StaticListLookUpSettings();
+            DevExpress.XtraReports.UI.XRSummary xrSummary4 = new DevExpress.XtraReports.UI.XRSummary();
+            DevExpress.XtraReports.Parameters.StaticListLookUpSettings staticListLookUpSettings4 = new DevExpress.XtraReports.Parameters.StaticListLookUpSettings();
             this.LoginDataSource = new DevExpress.DataAccess.Sql.SqlDataSource(this.components);
             this.topMarginBand1 = new DevExpress.XtraReports.UI.TopMarginBand();
             this.detailBand1 = new DevExpress.XtraReports.UI.DetailBand();
@@ -139,10 +139,10 @@ namespace Ettad.ReportManagement.Service.Reports.Templates
             // 
             this.LoginDataSource.ConnectionName = "DefaultConnection";
             this.LoginDataSource.Name = "LoginDataSource";
-            customSqlQuery1.Name = "Query";
-            customSqlQuery1.Sql = resources.GetString("customSqlQuery1.Sql");
+            customSqlQuery4.Name = "Query";
+            customSqlQuery4.Sql = resources.GetString("customSqlQuery4.Sql");
             this.LoginDataSource.Queries.AddRange(new DevExpress.DataAccess.Sql.SqlQuery[] {
-            customSqlQuery1});
+            customSqlQuery4});
             this.LoginDataSource.ResultSchemaSerializable = resources.GetString("LoginDataSource.ResultSchemaSerializable");
             // 
             // topMarginBand1
@@ -154,7 +154,7 @@ namespace Ettad.ReportManagement.Service.Reports.Templates
             // 
             this.detailBand1.Controls.AddRange(new DevExpress.XtraReports.UI.XRControl[] {
             this.xrTable1});
-            this.detailBand1.HeightF = 25.69444F;
+            this.detailBand1.HeightF = 27.49994F;
             this.detailBand1.Name = "detailBand1";
             this.detailBand1.BeforePrint += new DevExpress.XtraReports.UI.BeforePrintEventHandler(this.detailBand1_BeforePrint);
             // 
@@ -193,9 +193,9 @@ namespace Ettad.ReportManagement.Service.Reports.Templates
             this.xrTableCellSrNoDetail.Name = "xrTableCellSrNoDetail";
             this.xrTableCellSrNoDetail.Padding = new DevExpress.XtraPrinting.PaddingInfo(5F, 5F, 5F, 5F, 100F);
             this.xrTableCellSrNoDetail.StylePriority.UseBorders = false;
-            xrSummary1.Func = DevExpress.XtraReports.UI.SummaryFunc.RecordNumber;
-            xrSummary1.Running = DevExpress.XtraReports.UI.SummaryRunning.Report;
-            this.xrTableCellSrNoDetail.Summary = xrSummary1;
+            xrSummary4.Func = DevExpress.XtraReports.UI.SummaryFunc.RecordNumber;
+            xrSummary4.Running = DevExpress.XtraReports.UI.SummaryRunning.Report;
+            this.xrTableCellSrNoDetail.Summary = xrSummary4;
             this.xrTableCellSrNoDetail.Text = "0";
             this.xrTableCellSrNoDetail.TextAlignment = DevExpress.XtraPrinting.TextAlignment.MiddleCenter;
             this.xrTableCellSrNoDetail.Weight = 0.39221692935745228D;
@@ -664,9 +664,9 @@ namespace Ettad.ReportManagement.Service.Reports.Templates
             this.Language.Description = "Language";
             this.Language.Name = "Language";
             this.Language.ValueInfo = "en";
-            staticListLookUpSettings1.LookUpValues.Add(new DevExpress.XtraReports.Parameters.LookUpValue("en", "English"));
-            staticListLookUpSettings1.LookUpValues.Add(new DevExpress.XtraReports.Parameters.LookUpValue("ar", "Arabic"));
-            this.Language.ValueSourceSettings = staticListLookUpSettings1;
+            staticListLookUpSettings4.LookUpValues.Add(new DevExpress.XtraReports.Parameters.LookUpValue("en", "English"));
+            staticListLookUpSettings4.LookUpValues.Add(new DevExpress.XtraReports.Parameters.LookUpValue("ar", "Arabic"));
+            this.Language.ValueSourceSettings = staticListLookUpSettings4;
             // 
             // GroupFooter1
             // 
@@ -676,13 +676,14 @@ namespace Ettad.ReportManagement.Service.Reports.Templates
             // LoginTypeValue
             // 
             this.LoginTypeValue.DataMember = "Query";
-            this.LoginTypeValue.Expression = "Iif([LoginType] == 1, \'Local\', \n    Iif([LoginType] == 2, \'LDAP\', \'Unknown\'))";
+            this.LoginTypeValue.Expression = resources.GetString("LoginTypeValue.Expression");
             this.LoginTypeValue.Name = "LoginTypeValue";
             // 
             // IsSuccessfulValue
             // 
             this.IsSuccessfulValue.DataMember = "Query";
-            this.IsSuccessfulValue.Expression = "Iif([IsSuccessful] == True, \'Success\', \'Failed\')";
+            this.IsSuccessfulValue.Expression = "Iif(?Language = \'ar\',\n    Iif([IsSuccessful] == True, \'ناجح\', \'فشل\'),\n    Iif([Is" +
+    "Successful] == True, \'Success\', \'Failed\'))";
             this.IsSuccessfulValue.Name = "IsSuccessfulValue";
             // 
             // AttemptDateOnly

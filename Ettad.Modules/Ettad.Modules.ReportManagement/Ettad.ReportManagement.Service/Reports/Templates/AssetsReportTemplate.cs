@@ -52,6 +52,7 @@ namespace Ettad.ReportManagement.Service.Reports.Templates
         private DevExpress.XtraReports.Parameters.Parameter Asset;
         private DevExpress.XtraReports.UI.XRTableCell xrTableCell14;
         private DevExpress.XtraReports.UI.XRTableCell xrTableCell13;
+        private DevExpress.XtraReports.UI.CalculatedField CaliberCategoryNameLocalized;
         private int _rowCounter = 0;
 
         private void detailBand1_BeforePrint(object sender, System.ComponentModel.CancelEventArgs e)
@@ -131,6 +132,7 @@ namespace Ettad.ReportManagement.Service.Reports.Templates
             this.calculatedField1 = new DevExpress.XtraReports.UI.CalculatedField();
             this.Caliber_Category = new DevExpress.XtraReports.Parameters.Parameter();
             this.Asset = new DevExpress.XtraReports.Parameters.Parameter();
+            this.CaliberCategoryNameLocalized = new DevExpress.XtraReports.UI.CalculatedField();
             ((System.ComponentModel.ISupportInitialize)(this.xrTable1)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.xrTable2)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this)).BeginInit();
@@ -295,7 +297,7 @@ namespace Ettad.ReportManagement.Service.Reports.Templates
             | DevExpress.XtraPrinting.BorderSide.Bottom)));
             this.xrTableCell12.BorderWidth = 1F;
             this.xrTableCell12.ExpressionBindings.AddRange(new DevExpress.XtraReports.UI.ExpressionBinding[] {
-            new DevExpress.XtraReports.UI.ExpressionBinding("BeforePrint", "Text", "[CaliberCategoryName]")});
+            new DevExpress.XtraReports.UI.ExpressionBinding("BeforePrint", "Text", "[CaliberCategoryNameLocalized]")});
             this.xrTableCell12.Multiline = true;
             this.xrTableCell12.Name = "xrTableCell12";
             this.xrTableCell12.Padding = new DevExpress.XtraPrinting.PaddingInfo(5F, 5F, 5F, 5F, 100F);
@@ -697,6 +699,12 @@ namespace Ettad.ReportManagement.Service.Reports.Templates
             staticListLookUpSettings6.LookUpValues.Add(new DevExpress.XtraReports.Parameters.LookUpValue(2, "Weapons"));
             this.Asset.ValueSourceSettings = staticListLookUpSettings6;
             // 
+            // CaliberCategoryNameLocalized
+            // 
+            this.CaliberCategoryNameLocalized.DataMember = "AssetsQuery_WeaponAmm";
+            this.CaliberCategoryNameLocalized.Expression = resources.GetString("CaliberCategoryNameLocalized.Expression");
+            this.CaliberCategoryNameLocalized.Name = "CaliberCategoryNameLocalized";
+            // 
             // AssetsReportTemplate
             // 
             this.Bands.AddRange(new DevExpress.XtraReports.UI.Band[] {
@@ -709,7 +717,8 @@ namespace Ettad.ReportManagement.Service.Reports.Templates
             this.ReportFooter,
             this.GroupFooter1});
             this.CalculatedFields.AddRange(new DevExpress.XtraReports.UI.CalculatedField[] {
-            this.calculatedField1});
+            this.calculatedField1,
+            this.CaliberCategoryNameLocalized});
             this.ComponentStorage.AddRange(new System.ComponentModel.IComponent[] {
             this.AssetsDataSource,
             this.EttadDataSource});
