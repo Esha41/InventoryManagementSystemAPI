@@ -219,6 +219,19 @@ namespace Ettad.Workflows.Service.Commands.WorkflowApproval.ProcessWorkflowActio
 
                 await SendNotificationsToStepNotifiersAsync(currentStep.WorkflowStepId, model);
 
+                // Live update: tell every client currently viewing this request that its workflow
+                // state changed, so their open page re-fetches instead of acting on stale data.
+                // Best-effort only — a hub failure must never affect the already-committed action.
+                try
+                {
+                    await _notificationHelperService.SendWorkflowStateChangedAsync(model.BaseRequestID);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex,
+                        "Failed to broadcast workflow state change. RequestId: {RequestId}", model.BaseRequestID);
+                }
+
                 return APIOperationResponse<bool>.Success(true);
             }
             catch (UnauthorizedAccessException ex)

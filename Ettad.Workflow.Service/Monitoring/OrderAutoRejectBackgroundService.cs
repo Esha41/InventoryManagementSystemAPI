@@ -199,10 +199,12 @@ public class OrderAutoRejectBackgroundService : IOrderAutoRejectBackgroundServic
             recipientIds = set.ToList();
         }
 
+        var requestRef = FormatRequestRef(baseRequest, requestId);
+
         await _notificationHelperService.SendNotificationAsync(
-            "This order still needs an approval",
-            $"Someone still needs to approve this order. If that does not happen {WithinCalendarDaysPhrase(daysRemaining)}, "
-            + $"the system will reject the order automatically. "
+            $"{requestRef} still needs an approval",
+            $"Someone still needs to approve {requestRef}. If that does not happen {WithinCalendarDaysPhrase(daysRemaining)}, "
+            + $"the system will reject it automatically. "
             + $"Your organization allows {CalendarDaysPhrase(policy.ThresholdDays)} for this approval, counting from when the previous approval in the process was completed.",
             "Request",
             requestId,
@@ -224,8 +226,10 @@ public class OrderAutoRejectBackgroundService : IOrderAutoRejectBackgroundServic
         if (baseRequest == null || baseRequest.Status != RequestStatus.UnderProcess)
             return;
 
+        var requestRef = FormatRequestRef(baseRequest, requestId);
+
         var reason =
-            $"This order was rejected automatically because nobody completed the required approval in time. "
+            $"{requestRef} was rejected automatically because nobody completed the required approval in time. "
             + $"The allowed time was {CalendarDaysPhrase(policy.ThresholdDays)}, starting from when the previous approval in the process was completed.";
 
         current.Status = RequestStatus.AutoRejected;
@@ -263,7 +267,7 @@ public class OrderAutoRejectBackgroundService : IOrderAutoRejectBackgroundServic
         var notifyUserIds = await ResolveRecipientUserIdsAsync(baseRequest.RequesterId, policy, cancellationToken);
 
         await _notificationHelperService.SendNotificationAsync(
-            "This order was automatically rejected",
+            $"{requestRef} was automatically rejected",
             reason,
             "Request",
             baseRequest.Id,
@@ -309,4 +313,9 @@ public class OrderAutoRejectBackgroundService : IOrderAutoRejectBackgroundServic
 
     private static string WithinCalendarDaysPhrase(int days) =>
         days == 1 ? "within 1 calendar day" : $"within {days} calendar days";
+
+    private static string FormatRequestRef(BaseRequest? baseRequest, long requestId) =>
+        !string.IsNullOrWhiteSpace(baseRequest?.RequestNo)
+            ? $"Request #{baseRequest.RequestNo.Trim()}"
+            : $"Request #{requestId}";
 }
