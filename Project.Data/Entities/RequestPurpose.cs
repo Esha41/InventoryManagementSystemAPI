@@ -10,5 +10,6 @@ namespace Ettad.Data.Entities
         public string NameAr { get ; set; }
         public RequestType RequestType { get ; set; }
         public RequestPurposeAllowanceContext AllowanceContext { get; set; }
+        public ICollection<RequestPurposeItemType> RequestPurposeItemTypes { get; set; }
     }
 }

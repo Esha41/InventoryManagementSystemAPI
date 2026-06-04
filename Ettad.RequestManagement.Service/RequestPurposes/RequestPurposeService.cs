@@ -15,6 +15,7 @@ namespace Ettad.RequestManagement.Service.RequestPurposes
     {
         private readonly ICrossCuttingRepository<RequestPurpose> _requestPurposeRepository;
         private readonly ICrossCuttingRepository<AttachmentRequirement> _attachmentRequirementRepository;
+        private readonly ICrossCuttingRepository<RequestPurposeItemType> _requestPurposeItemTypeRepository;
         private readonly IMapper _mapper;
         private readonly IValidator<CreateUpdateRequestPurposeDto> _validator;
         private readonly ICurrentUserService _currentUserService;
@@ -31,6 +32,7 @@ namespace Ettad.RequestManagement.Service.RequestPurposes
         public RequestPurposeService(
             ICrossCuttingRepository<RequestPurpose> requestPurposeRepository,
             ICrossCuttingRepository<AttachmentRequirement> attachmentRequirementRepository,
+            ICrossCuttingRepository<RequestPurposeItemType> requestPurposeItemTypeRepository,
             IMapper mapper,
             IValidator<CreateUpdateRequestPurposeDto> validator,
             ICurrentUserService currentUserService,
@@ -39,6 +41,7 @@ namespace Ettad.RequestManagement.Service.RequestPurposes
         {
             _requestPurposeRepository = requestPurposeRepository;
             _attachmentRequirementRepository = attachmentRequirementRepository;
+            _requestPurposeItemTypeRepository = requestPurposeItemTypeRepository;
             _mapper = mapper;
             _validator = validator;
             _currentUserService = currentUserService;
@@ -106,6 +109,8 @@ namespace Ettad.RequestManagement.Service.RequestPurposes
 
                         await _requestPurposeRepository.UpdateAsync(softDeleted);
 
+                        await SyncItemTypesAsync(softDeleted.Id, inputDto.ItemTypes);
+
                         var restoredAttachmentRows = await LoadAllAttachmentRequirementsForPurposeAsync(softDeleted.Id);
                         var attachmentError = await UpsertAttachmentRequirementsAsync(
                             softDeleted.Id, inputDto.AttachmentRequirements, restoredAttachmentRows, now, userId);
@@ -136,6 +141,8 @@ namespace Ettad.RequestManagement.Service.RequestPurposes
                     requestPurpose.CreatedBy = userId;
 
                     var created = await _requestPurposeRepository.AddAsync(requestPurpose);
+
+                    await SyncItemTypesAsync(created.Id, inputDto.ItemTypes);
 
                     if (inputDto.AttachmentRequirements != null && inputDto.AttachmentRequirements.Count > 0)
                     {
@@ -192,6 +199,7 @@ namespace Ettad.RequestManagement.Service.RequestPurposes
                 var reqs = await LoadAttachmentRequirementsForPurposeAsync(requestPurpose.Id);
                 var dto = _mapper.Map<RequestPurposeDto>(requestPurpose);
                 dto.AttachmentRequirements = _mapper.Map<List<AttachmentRequirementDto>>(reqs);
+                dto.ItemTypes = await LoadItemTypesAsync(requestPurpose.Id);
                 return APIOperationResponse<RequestPurposeDto>.Success(dto);
             }
             catch (Exception ex)
@@ -233,6 +241,7 @@ namespace Ettad.RequestManagement.Service.RequestPurposes
 
                 var purposeIds = requestPurposes.Select(rp => rp.Id).ToList();
                 var byPurposeId = await LoadAttachmentRequirementsGroupedByPurposeIdAsync(purposeIds);
+                var itemTypesByPurposeId = await LoadItemTypesGroupedAsync(purposeIds);
                 var dtos = new List<RequestPurposeDto>();
                 foreach (var rp in requestPurposes)
                 {
@@ -240,6 +249,9 @@ namespace Ettad.RequestManagement.Service.RequestPurposes
                     dto.AttachmentRequirements = byPurposeId.TryGetValue(rp.Id, out var list)
                         ? _mapper.Map<List<AttachmentRequirementDto>>(list)
                         : new List<AttachmentRequirementDto>();
+                    dto.ItemTypes = itemTypesByPurposeId.TryGetValue(rp.Id, out var types)
+                        ? types
+                        : new List<ItemType>();
                     dtos.Add(dto);
                 }
 
@@ -297,6 +309,8 @@ namespace Ettad.RequestManagement.Service.RequestPurposes
                     existing.ModifiedBy = userId;
 
                     await _requestPurposeRepository.UpdateAsync(existing);
+
+                    await SyncItemTypesAsync(existing.Id, inputDto.ItemTypes);
 
                     var attachmentRows = await LoadAllAttachmentRequirementsForPurposeAsync(existing.Id);
                     var attachmentError = await UpsertAttachmentRequirementsAsync(
@@ -561,6 +575,55 @@ namespace Ettad.RequestManagement.Service.RequestPurposes
             entity.DeletedBy = null;
             entity.ModificationDate = now;
             entity.ModifiedBy = userId;
+        }
+
+        private async Task SyncItemTypesAsync(long requestPurposeId, List<ItemType> incoming)
+        {
+            incoming ??= new List<ItemType>();
+            var desired = incoming.Distinct().ToList();
+
+            var existing = (await _requestPurposeItemTypeRepository.FindAsync(
+                x => x.RequestPurposeId == requestPurposeId)).ToList();
+
+            var existingSet = existing.Select(x => x.ItemType).ToHashSet();
+            var desiredSet = desired.ToHashSet();
+
+            var toRemove = existing.Where(x => !desiredSet.Contains(x.ItemType)).ToList();
+            foreach (var item in toRemove)
+                await _requestPurposeItemTypeRepository.DeleteAsync(item);
+
+            var toAdd = desired.Where(x => !existingSet.Contains(x))
+                .Select(itemType => new RequestPurposeItemType
+                {
+                    RequestPurposeId = requestPurposeId,
+                    ItemType = itemType
+                }).ToList();
+
+            if (toAdd.Count > 0)
+                await _requestPurposeItemTypeRepository.AddRangeAsync(toAdd);
+        }
+
+        private async Task<List<ItemType>> LoadItemTypesAsync(long requestPurposeId)
+        {
+            var rows = await _requestPurposeItemTypeRepository.FindAsync(
+                x => x.RequestPurposeId == requestPurposeId);
+            return rows.Select(x => x.ItemType).OrderBy(x => x).ToList();
+        }
+
+        private async Task<Dictionary<long, List<ItemType>>> LoadItemTypesGroupedAsync(List<long> purposeIds)
+        {
+            var result = new Dictionary<long, List<ItemType>>();
+            if (purposeIds.Count == 0)
+                return result;
+
+            var idSet = purposeIds.ToHashSet();
+            var rows = await _requestPurposeItemTypeRepository.FindAsync(
+                x => idSet.Contains(x.RequestPurposeId));
+
+            foreach (var g in rows.GroupBy(x => x.RequestPurposeId))
+                result[g.Key] = g.Select(x => x.ItemType).OrderBy(x => x).ToList();
+
+            return result;
         }
     }
 }
