@@ -757,6 +757,7 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
                         PlainPermissions.CannotRejectRequest.ToString(),
                         PlainPermissions.ReviewWeaponSupply.ToString(),
                         PlainPermissions.SelectDepots.ToString(),
+                        PlainPermissions.WeaponAssetMasterPage.ToString(),
                         "Permissions.Asset.View",
                         "Permissions.Asset.Page",
                         "Permissions.SystemUsers.View",

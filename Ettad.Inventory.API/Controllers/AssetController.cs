@@ -34,7 +34,7 @@ namespace Ettad.Inventory.API.Controllers
 
         [HttpGet("{id}")]
         [ProducesResponseType((int)HttpStatusCode.OK)]
-        [CheckAuthorize("Permissions.Asset.View", "Permissions.Asset.Page")]
+        [CheckAuthorize("Permissions.Asset.View", "Permissions.Asset.Page", "WeaponAssetMasterPage")]
         public async Task<IActionResult> GetById(long id)
         {
             var result = await _assetService.GetByIdAsync(id);
@@ -46,7 +46,7 @@ namespace Ettad.Inventory.API.Controllers
         /// </summary>
         [HttpGet("serial/{serialNumber}")]
         [ProducesResponseType((int)HttpStatusCode.OK)]
-        [CheckAuthorize("Permissions.Asset.View", "Permissions.Asset.Page")]
+        [CheckAuthorize("Permissions.Asset.View", "Permissions.Asset.Page", "WeaponAssetMasterPage")]
         public async Task<IActionResult> GetBySerialNumber(string serialNumber)
         {
             var result = await _assetService.GetBySerialNumberAsync(serialNumber);
@@ -55,7 +55,7 @@ namespace Ettad.Inventory.API.Controllers
 
         [HttpGet]
         [ProducesResponseType((int)HttpStatusCode.OK)]
-        [CheckAuthorize("Permissions.Asset.View", "Permissions.Asset.Page")]
+        [CheckAuthorize("Permissions.Asset.View", "Permissions.Asset.Page", "WeaponAssetMasterPage")]
         public async Task<IActionResult> GetAll([FromQuery] long? depotId = null, [FromQuery] List<long>? depotIds = null)
         {
             var result = await _assetService.GetAllAsync(depotId, depotIds);
@@ -68,7 +68,7 @@ namespace Ettad.Inventory.API.Controllers
         /// </summary>
         [HttpGet("item/{itemId}")]
         [ProducesResponseType((int)HttpStatusCode.OK)]
-        [CheckAuthorize("Permissions.Asset.View", "Permissions.Asset.Page")]
+        [CheckAuthorize("Permissions.Asset.View", "Permissions.Asset.Page", "WeaponAssetMasterPage")]
         public async Task<IActionResult> GetAssetsByItemId(long itemId, [FromQuery] long? depotId = null, [FromQuery] List<long>? depotIds = null)
         {
             var result = await _assetService.GetAssetsByItemIdAsync(itemId, depotId, depotIds);
@@ -80,7 +80,7 @@ namespace Ettad.Inventory.API.Controllers
         /// </summary>
         [HttpPost("item/{itemId}/paged")]
         [ProducesResponseType((int)HttpStatusCode.OK)]
-        [CheckAuthorize("Permissions.Asset.View", "Permissions.Asset.Page")]
+        [CheckAuthorize("Permissions.Asset.View", "Permissions.Asset.Page", "WeaponAssetMasterPage")]
         public async Task<IActionResult> GetAssetsByItemIdPaged(long itemId, [FromBody] PagedListRequest request, [FromQuery] long? depotId = null, [FromQuery] List<long>? depotIds = null)
         {
             var result = await _assetService.GetAssetsByItemIdPagedAsync(itemId, request, depotId, depotIds);
@@ -89,7 +89,7 @@ namespace Ettad.Inventory.API.Controllers
 
         [HttpPost("search")]
         [ProducesResponseType((int)HttpStatusCode.OK)]
-        [CheckAuthorize("Permissions.Asset.View", "Permissions.Asset.Page")]
+        [CheckAuthorize("Permissions.Asset.View", "Permissions.Asset.Page", "WeaponAssetMasterPage")]
         public async Task<IActionResult> Search([FromQuery] long? depotId, [FromBody] PagedListRequest request)
         {
             var result = await _assetService.GetAssetsPaginatedAsync(depotId, request);
@@ -101,7 +101,7 @@ namespace Ettad.Inventory.API.Controllers
         /// </summary>
         [HttpPost("catalog-items/paged")]
         [ProducesResponseType((int)HttpStatusCode.OK)]
-        [CheckAuthorize("Permissions.Asset.View", "Permissions.Asset.Page")]
+        [CheckAuthorize("Permissions.Asset.View", "Permissions.Asset.Page", "WeaponAssetMasterPage")]
         public async Task<IActionResult> GetAssetCatalogItemSummariesPaged(
             [FromBody] PagedListRequest request,
             [FromQuery] long? depotId = null,
