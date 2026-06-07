@@ -29,7 +29,7 @@ namespace Ettad.Inventory.API.Controllers
         /// </summary>
         [HttpGet("asset/{assetId}")]
         [ProducesResponseType(typeof(APIOperationResponse<List<AssetHistoryDto>>), (int)HttpStatusCode.OK)]
-        [CheckAuthorize("Permissions.Asset.View", "Permissions.Asset.Page")]
+        [CheckAuthorize("Permissions.Asset.View", "Permissions.Asset.Page", "WeaponAssetMasterPage")]
         public async Task<IActionResult> GetAssetHistory(long assetId)
         {
             var result = await _historyService.GetAssetHistoryAsync(assetId);
@@ -65,7 +65,7 @@ namespace Ettad.Inventory.API.Controllers
         /// </summary>
         [HttpGet("action-type/{actionType}")]
         [ProducesResponseType(typeof(APIOperationResponse<List<AssetHistoryDto>>), (int)HttpStatusCode.OK)]
-        [CheckAuthorize("Permissions.Asset.View", "Permissions.Asset.Page")]
+        [CheckAuthorize("Permissions.Asset.View", "Permissions.Asset.Page", "WeaponAssetMasterPage")]
         public async Task<IActionResult> GetHistoryByActionType(
             AssetHistoryActionType actionType,
             [FromQuery] DateTime? fromDate = null,

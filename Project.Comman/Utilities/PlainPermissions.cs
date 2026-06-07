@@ -106,6 +106,10 @@ namespace Ettad.CrossCutting.Comman.Utilities
         [Category(PlainPermissionsGenerator.Inventory)]
         AllowanceItemViewAllDepartments,
 
+        /// <summary>Assets: Weapon Tracker page (weapon asset master list and custody history).</summary>
+        [Category(PlainPermissionsGenerator.Inventory)]
+        WeaponAssetMasterPage,
+
         [Category(PlainPermissionsGenerator.BITool)]
         ReportDesigner,
 
