@@ -136,6 +136,8 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
             "Permissions.Weapon.View",
             "Permissions.Explosive.Page",
             "Permissions.Explosive.View",
+            "Permissions.Accessory.Page",
+            "Permissions.Accessory.View",
             "Permissions.Calibers.View",
         };
 
@@ -144,6 +146,7 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
             "Permissions.Ammunition.View",
             "Permissions.Weapon.View",
             "Permissions.Explosive.View",
+            "Permissions.Accessory.View",
             "Permissions.Calibers.View",
         };
 
@@ -158,6 +161,9 @@ namespace Ettad.EntityFramework.DataBaseContext.DataSeeding
             "Permissions.Explosive.Create",
             "Permissions.Explosive.Edit",
             "Permissions.Explosive.Delete",
+            "Permissions.Accessory.Create",
+            "Permissions.Accessory.Edit",
+            "Permissions.Accessory.Delete",
         };
 
         public static List<string> ReadInventory = new()

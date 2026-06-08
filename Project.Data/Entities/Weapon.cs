@@ -17,6 +17,7 @@ namespace Ettad.Data.Entities
         public Caliber LookupCaliber { get; set; }
         public Unit CaliberUnit { get; set; }
         public Country CountryOfManufacture { get; set; }
+        public ICollection<WeaponAccessory> WeaponAccessories { get; set; }
         #endregion
     }
 }

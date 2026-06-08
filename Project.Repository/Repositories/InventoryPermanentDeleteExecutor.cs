@@ -23,6 +23,13 @@ public class InventoryPermanentDeleteExecutor : IInventoryPermanentDeleteExecuto
             $"DELETE FROM BaseItemPrimaryPurposes WHERE BaseItemId = {baseItemId}",
             cancellationToken);
 
+        if (kind == InventoryPermanentDeleteKind.Weapon)
+        {
+            await _context.Database.ExecuteSqlInterpolatedAsync(
+                $"DELETE FROM WeaponAccessories WHERE WeaponId = {baseItemId}",
+                cancellationToken);
+        }
+
         var subtypeRows = kind switch
         {
             InventoryPermanentDeleteKind.Ammunition =>
@@ -36,6 +43,10 @@ public class InventoryPermanentDeleteExecutor : IInventoryPermanentDeleteExecuto
             InventoryPermanentDeleteKind.Explosive =>
                 await _context.Database.ExecuteSqlInterpolatedAsync(
                     $"DELETE FROM Explosives WHERE Id = {baseItemId}",
+                    cancellationToken),
+            InventoryPermanentDeleteKind.Accessory =>
+                await _context.Database.ExecuteSqlInterpolatedAsync(
+                    $"DELETE FROM Accessories WHERE Id = {baseItemId}",
                     cancellationToken),
             _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, null)
         };
