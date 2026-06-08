@@ -74,7 +74,7 @@ namespace Ettad.Inventory.Service.Common.Services
                 var finalResult = new ImportResult<TDto>
                 {
                     TotalProcessed = importResult.TotalProcessed,
-                    ImportHeaders = columnMappings.Values.Distinct().Select(v => System.Text.Json.JsonNamingPolicy.CamelCase.ConvertName(v)).ToList()
+                    ImportHeaders = ResolveImportHeaders(importResult, columnMappings)
                 };
                 finalResult.Errors.AddRange(importResult.Errors);
 
@@ -148,7 +148,7 @@ namespace Ettad.Inventory.Service.Common.Services
                 var finalResult = new ImportResult<TImportDto>
                 {
                     TotalProcessed = importResult.TotalProcessed,
-                    ImportHeaders = columnMappings.Values.Distinct().Select(v => System.Text.Json.JsonNamingPolicy.CamelCase.ConvertName(v)).ToList()
+                    ImportHeaders = ResolveImportHeaders(importResult, columnMappings)
                 };
                 finalResult.Errors.AddRange(importResult.Errors);
 
@@ -249,6 +249,24 @@ namespace Ettad.Inventory.Service.Common.Services
                 _logger.LogError(ex, "Error generating template");
                 return APIOperationResponse<byte[]>.Fail(ResponseType.InternalServerError, ex.Message);
             }
+        }
+
+        private static List<string> ResolveImportHeaders<T>(
+            ImportResult<T> importResult,
+            Dictionary<string, string> columnMappings)
+        {
+            if (importResult.ImportHeaders != null && importResult.ImportHeaders.Count > 0)
+            {
+                return importResult.ImportHeaders
+                    .Where(h => !string.Equals(h, "rowNumber", StringComparison.OrdinalIgnoreCase))
+                    .ToList();
+            }
+
+            return columnMappings.Values
+                .Distinct()
+                .Select(v => System.Text.Json.JsonNamingPolicy.CamelCase.ConvertName(v))
+                .Where(h => !string.Equals(h, "rowNumber", StringComparison.OrdinalIgnoreCase))
+                .ToList();
         }
 
         private void AddError(ImportResult<TDto> result, int rowNumber, string message, object rowData = null)

@@ -1,3 +1,4 @@
+using System.IO;
 using AutoMapper;
 using FluentValidation;
 using Microsoft.EntityFrameworkCore;
@@ -22,13 +23,6 @@ namespace Ettad.Inventory.Service.Accessories.Services
 {
     public class AccessoryService : IAccessoryService
     {
-        private static readonly string[] AccessoryTemplateSampleIncludes =
-        {
-            nameof(Accessory.Classification),
-            nameof(Accessory.Type),
-            $"{nameof(Accessory.BaseItemPrimaryPurposes)}.{nameof(BaseItemPrimaryPurpos.PrimaryPurpos)}"
-        };
-
         private readonly ICrossCuttingRepository<Accessory> _accessoryRepository;
         private readonly ICrossCuttingRepository<BaseItemPrimaryPurpos> _baseItemPrimaryPurposRepository;
         private readonly ICrossCuttingRepository<ItemDepartmentAssignment> _itemDepartmentAssignmentRepository;
@@ -52,13 +46,8 @@ namespace Ettad.Inventory.Service.Accessories.Services
         private readonly AssetImportManager<CreateUpdateAccessoryDto, AccessoryImportDto> _importManager;
         private readonly IItemDepartmentAssignmentService _itemDepartmentAssignmentService;
 
-        private List<Classification> _classifications;
-        private List<ItemTypeLookup> _itemTypes;
-        private Dictionary<string, Dictionary<string, long>> _cachedLookups = new();
         private HashSet<string> _existingItemNos = new(StringComparer.OrdinalIgnoreCase);
-        private HashSet<string> _existingNsns = new(StringComparer.OrdinalIgnoreCase);
         private HashSet<string> _newlyAddedItemNos = new(StringComparer.OrdinalIgnoreCase);
-        private HashSet<string> _newlyAddedNsns = new(StringComparer.OrdinalIgnoreCase);
 
         public AccessoryService(
             ICrossCuttingRepository<Accessory> accessoryRepository,
@@ -296,7 +285,7 @@ namespace Ettad.Inventory.Service.Accessories.Services
             }
         }
 
-        public async Task<APIOperationResponse<bool>> UpdateAsync(long id, CreateUpdateAccessoryDto inputDto)
+        public async Task<APIOperationResponse<bool>> UpdateAsync(long id, CreateUpdateAccessoryDto inputDto, List<IFormFile>? files = null, bool removeImage = false)
         {
             try
             {
@@ -339,12 +328,98 @@ namespace Ettad.Inventory.Service.Accessories.Services
                     await _baseItemPrimaryPurposRepository.AddRangeAsync(newPurposes);
                 }
 
+                if (removeImage || (files != null && files.Any()))
+                {
+                    await RemoveAccessoryImagesAsync(id);
+                }
+
+                if (files != null && files.Any())
+                {
+                    var saveFilesResult = await _fileUploadService.SaveFilesAsync(files, FileEntityType.Accessory);
+                    if (!saveFilesResult.Succeeded)
+                    {
+                        return APIOperationResponse<bool>.Fail(ResponseType.BadRequest,
+                            $"File upload failed: {saveFilesResult.Message}");
+                    }
+
+                    await _fileUploadService.UploadFilesForEntityAsync(files, FileEntityType.Accessory, id);
+                }
+
                 return APIOperationResponse<bool>.Success(true, "Accessory updated successfully");
             }
             catch (Exception ex)
             {
                 return APIOperationResponse<bool>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
             }
+        }
+
+        public async Task<APIOperationResponse<AccessoryImageFileDto>> GetMainImageAsync(long id)
+        {
+            try
+            {
+                var assignedItemIds = await GetAssignedItemIdsAsync();
+                if (assignedItemIds != null && !assignedItemIds.Contains(id))
+                {
+                    return APIOperationResponse<AccessoryImageFileDto>.Fail(ResponseType.NotFound, "Accessory not found");
+                }
+
+                var accessory = await _accessoryRepository.FindOneAsync(a => a.Id == id && !a.IsDeleted);
+                if (accessory == null)
+                    return APIOperationResponse<AccessoryImageFileDto>.Fail(ResponseType.NotFound, "Accessory not found");
+
+                var imagesResult = await _fileUploadService.GetByEntityAsync(FileEntityType.Accessory, id);
+                if (!imagesResult.Succeeded || imagesResult.Data == null || !imagesResult.Data.Any())
+                    return APIOperationResponse<AccessoryImageFileDto>.Fail(ResponseType.NotFound, "Image not found");
+
+                var mainImage = imagesResult.Data
+                    .Where(f => f.IsMain)
+                    .OrderByDescending(f => f.Id)
+                    .FirstOrDefault()
+                    ?? imagesResult.Data.OrderByDescending(f => f.Id).First();
+
+                if (string.IsNullOrWhiteSpace(mainImage.FileUrl) || !File.Exists(mainImage.FileUrl))
+                    return APIOperationResponse<AccessoryImageFileDto>.Fail(ResponseType.NotFound, "Image not found on server");
+
+                var content = await File.ReadAllBytesAsync(mainImage.FileUrl);
+                var contentType = GetImageContentType(mainImage.FileUrl);
+                var fileName = mainImage.OriginalName ?? mainImage.FileName ?? $"accessory-{id}";
+
+                return APIOperationResponse<AccessoryImageFileDto>.Success(new AccessoryImageFileDto
+                {
+                    Content = content,
+                    ContentType = contentType,
+                    FileName = fileName
+                });
+            }
+            catch (Exception ex)
+            {
+                return APIOperationResponse<AccessoryImageFileDto>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
+            }
+        }
+
+        private async Task RemoveAccessoryImagesAsync(long accessoryId)
+        {
+            var imagesResult = await _fileUploadService.GetByEntityAsync(FileEntityType.Accessory, accessoryId);
+            if (!imagesResult.Succeeded || imagesResult.Data == null)
+                return;
+
+            foreach (var image in imagesResult.Data)
+            {
+                await _fileUploadService.DeleteAsync(image.Id);
+            }
+        }
+
+        private static string GetImageContentType(string filePath)
+        {
+            var extension = Path.GetExtension(filePath)?.ToLowerInvariant();
+            return extension switch
+            {
+                ".jpg" or ".jpeg" => "image/jpeg",
+                ".png" => "image/png",
+                ".gif" => "image/gif",
+                ".webp" => "image/webp",
+                _ => "application/octet-stream"
+            };
         }
 
         public async Task<APIOperationResponse<bool>> DeleteAsync(long id)
@@ -465,9 +540,11 @@ namespace Ettad.Inventory.Service.Accessories.Services
             }
         }
 
+        private static readonly string[] AccessoryImportPreviewHeaders = { "name", "nameAr", "itemNo" };
+
         public async Task<APIOperationResponse<ImportResult<CreateUpdateAccessoryDto>>> ImportAsync(IFormFile file, string language = "en")
         {
-            return await _importManager.ImportAsync(
+            var result = await _importManager.ImportAsync(
                 file,
                 language,
                 items => LoadLookupsAsync(items),
@@ -475,17 +552,31 @@ namespace Ettad.Inventory.Service.Accessories.Services
                 ValidateDtoAsync,
                 async (dto) => await CreateAsync(dto),
                 GetColumnMappings(language));
+
+            if (result.Succeeded && result.Data != null)
+            {
+                result.Data.ImportHeaders = AccessoryImportPreviewHeaders.ToList();
+            }
+
+            return result;
         }
 
         public async Task<APIOperationResponse<ImportResult<AccessoryImportDto>>> ImportPreviewAsync(IFormFile file, string language = "en")
         {
-            return await _importManager.ImportPreviewAsync(
+            var result = await _importManager.ImportPreviewAsync(
                file,
                language,
                items => LoadLookupsAsync(items),
                MapImportDtoToEntityAsync,
                ValidateDtoAsync,
                GetColumnMappings(language));
+
+            if (result.Succeeded && result.Data != null)
+            {
+                result.Data.ImportHeaders = AccessoryImportPreviewHeaders.ToList();
+            }
+
+            return result;
         }
 
         public async Task<APIOperationResponse<byte[]>> GenerateImportTemplateAsync(string language = "en")
@@ -493,21 +584,10 @@ namespace Ettad.Inventory.Service.Accessories.Services
             await LoadLookupsAsync();
 
             var headers = language == "ar"
-                ? new[]
-                {
-                    "الاسم*", "الاسم (بالعربية)", "رقم الصنف*", "رقم القطعة", "NSN", "السعر", "الكمية الدنيا",
-                    "رقم الأمم المتحدة", "التوزيع", "الرقم المرجعي", "التصنيف", "النوع", "ملاحظات"
-                }
-                : new[]
-                {
-                    "Name*", "Name (Arabic)", "Item No*", "Part No", "NSN", "Price", "Minimum Quantity",
-                    "UN Number", "Distribution", "Reference No", "Classification", "Type", "Notes"
-                };
+                ? new[] { "الاسم (بالإنجليزية)*", "الاسم (بالعربية)", "رقم المادة*" }
+                : new[] { "Name (English)*", "Name (Arabic)", "Item No*" };
 
-            var firstAsset = await _accessoryRepository.FindOneAsync(
-                a => !a.IsDeleted,
-                false,
-                AccessoryTemplateSampleIncludes);
+            var firstAsset = await _accessoryRepository.FindOneAsync(a => !a.IsDeleted);
 
             return await _importManager.GenerateTemplateAsync(
                 language,
@@ -517,38 +597,19 @@ namespace Ettad.Inventory.Service.Accessories.Services
                 {
                     if (firstAsset != null)
                     {
-                        var isAr = language == "ar";
                         sheet.Cells[2, 1].Value = firstAsset.Name;
                         sheet.Cells[2, 2].Value = firstAsset.NameAr;
                         sheet.Cells[2, 3].Value = firstAsset.ItemNo;
-                        sheet.Cells[2, 4].Value = firstAsset.PartNo;
-                        sheet.Cells[2, 5].Value = firstAsset.Nsn;
-                        sheet.Cells[2, 6].Value = firstAsset.Price;
-                        sheet.Cells[2, 7].Value = firstAsset.MinimumQuantity;
-                        sheet.Cells[2, 8].Value = firstAsset.UNNumber;
-                        sheet.Cells[2, 9].Value = firstAsset.Distribution;
-                        sheet.Cells[2, 10].Value = firstAsset.ReferenceNo;
-                        sheet.Cells[2, 11].Value = isAr ? firstAsset.Classification?.NameAr : firstAsset.Classification?.NameEn;
-                        sheet.Cells[2, 12].Value = isAr ? firstAsset.Type?.NameAr : firstAsset.Type?.NameEn;
-                        sheet.Cells[2, 13].Value = firstAsset.Notes;
                     }
                     else
                     {
-                        sheet.Cells[2, 1].Value = "Sample Accessory";
-                        sheet.Cells[2, 2].Value = "ملحق تجريبي";
+                        sheet.Cells[2, 1].Value = "Rifle Scope";
+                        sheet.Cells[2, 2].Value = "منظار بندقية";
                         sheet.Cells[2, 3].Value = "ACC-001";
                     }
                 },
-                (package) =>
-                {
-                    CreateLookupSheet(package, "Classifications", _classifications);
-                    CreateLookupSheet(package, "ItemTypes", _itemTypes);
-                },
-                (sheet) =>
-                {
-                    AddDataValidation(sheet, 11, "Classifications");
-                    AddDataValidation(sheet, 12, "ItemTypes");
-                }
+                null,
+                null
             );
         }
 
@@ -613,79 +674,33 @@ namespace Ettad.Inventory.Service.Accessories.Services
 
         private async Task LoadLookupsAsync(List<AccessoryImportDto> importItems = null)
         {
-            _classifications = await _classificationRepository.Find(c => !c.IsDeleted).ToListAsync();
-            _itemTypes = await _itemTypeLookupRepository.Find(i => !i.IsDeleted && i.ItemType == ItemType.Accessory).ToListAsync();
-
-            _cachedLookups["Classifications"] = BuildLookup(_classifications, x => x.NameEn, x => x.NameAr, x => x.Id);
-            _cachedLookups["ItemTypes"] = BuildLookup(_itemTypes, x => x.NameEn, x => x.NameAr, x => x.Id);
-
             _existingItemNos.Clear();
-            _existingNsns.Clear();
             _newlyAddedItemNos.Clear();
-            _newlyAddedNsns.Clear();
 
             if (importItems != null && importItems.Any())
             {
                 var itemNos = importItems.Select(x => x.ItemNo).Where(x => !string.IsNullOrEmpty(x)).Distinct().ToList();
-                var nsns = importItems.Select(x => x.Nsn).Where(x => !string.IsNullOrEmpty(x)).Distinct().ToList();
 
                 var existingRecords = await _accessoryRepository
-                    .Find(a => !a.IsDeleted && (itemNos.Contains(a.ItemNo) || (a.Nsn != null && nsns.Contains(a.Nsn))))
-                    .Select(a => new { a.ItemNo, a.Nsn })
+                    .Find(a => !a.IsDeleted && itemNos.Contains(a.ItemNo))
+                    .Select(a => a.ItemNo)
                     .ToListAsync();
 
-                foreach (var rec in existingRecords)
+                foreach (var itemNo in existingRecords)
                 {
-                    if (!string.IsNullOrEmpty(rec.ItemNo)) _existingItemNos.Add(rec.ItemNo);
-                    if (!string.IsNullOrEmpty(rec.Nsn)) _existingNsns.Add(rec.Nsn);
+                    if (!string.IsNullOrEmpty(itemNo)) _existingItemNos.Add(itemNo);
                 }
             }
         }
 
         private Task<CreateUpdateAccessoryDto> MapImportDtoToEntityAsync(AccessoryImportDto importDto, string language)
         {
-            var dto = new CreateUpdateAccessoryDto
+            return Task.FromResult(new CreateUpdateAccessoryDto
             {
                 Name = importDto.Name,
                 NameAr = importDto.NameAr,
-                ItemNo = importDto.ItemNo,
-                PartNo = importDto.PartNo,
-                Price = importDto.Price,
-                MinimumQuantity = importDto.MinimumQuantity,
-                Nsn = importDto.Nsn,
-                Distribution = importDto.Distribution,
-                ReferenceNo = importDto.ReferenceNo,
-                UNNumber = importDto.UNNumber,
-                Notes = importDto.Notes
-            };
-
-            dto.ClassificationId = FindLookupIdCached("Classifications", importDto.Classification);
-            dto.TypeId = FindLookupIdCached("ItemTypes", importDto.Type);
-
-            return Task.FromResult(dto);
-        }
-
-        private Dictionary<string, long> BuildLookup<T>(IEnumerable<T> items, Func<T, string> getNameEn, Func<T, string> getNameAr, Func<T, long> getId)
-        {
-            var dict = new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase);
-            if (items == null) return dict;
-
-            foreach (var item in items)
-            {
-                var en = getNameEn(item);
-                if (!string.IsNullOrWhiteSpace(en) && !dict.ContainsKey(en)) dict[en] = getId(item);
-
-                var ar = getNameAr(item);
-                if (!string.IsNullOrWhiteSpace(ar) && !dict.ContainsKey(ar)) dict[ar] = getId(item);
-            }
-            return dict;
-        }
-
-        private long? FindLookupIdCached(string key, string name)
-        {
-            if (string.IsNullOrWhiteSpace(name) || !_cachedLookups.ContainsKey(key)) return null;
-            if (_cachedLookups[key].TryGetValue(name, out var id)) return id;
-            return null;
+                ItemNo = importDto.ItemNo
+            });
         }
 
         private async Task<List<string>> ValidateDtoAsync(CreateUpdateAccessoryDto dto)
@@ -707,16 +722,6 @@ namespace Ettad.Inventory.Service.Accessories.Services
                     _newlyAddedItemNos.Add(dto.ItemNo);
             }
 
-            if (!string.IsNullOrWhiteSpace(dto.Nsn))
-            {
-                if (_existingNsns.Contains(dto.Nsn))
-                    errors.Add($"NSN '{dto.Nsn}' already exists in the database");
-                else if (_newlyAddedNsns.Contains(dto.Nsn))
-                    errors.Add($"NSN '{dto.Nsn}' is duplicated in the current file");
-                else
-                    _newlyAddedNsns.Add(dto.Nsn);
-            }
-
             return errors;
         }
 
@@ -724,76 +729,23 @@ namespace Ettad.Inventory.Service.Accessories.Services
         {
             return new Dictionary<string, string>
             {
+                { "Name (English)*", nameof(AccessoryImportDto.Name) },
+                { "Name (English)", nameof(AccessoryImportDto.Name) },
                 { "Name*", nameof(AccessoryImportDto.Name) },
+                { "Name", nameof(AccessoryImportDto.Name) },
                 { "Name (Arabic)", nameof(AccessoryImportDto.NameAr) },
                 { "Name Arabic", nameof(AccessoryImportDto.NameAr) },
                 { "Item No*", nameof(AccessoryImportDto.ItemNo) },
-                { "Part No", nameof(AccessoryImportDto.PartNo) },
-                { "NSN", nameof(AccessoryImportDto.Nsn) },
-                { "Price", nameof(AccessoryImportDto.Price) },
-                { "Minimum Quantity", nameof(AccessoryImportDto.MinimumQuantity) },
-                { "UN Number", nameof(AccessoryImportDto.UNNumber) },
-                { "Distribution", nameof(AccessoryImportDto.Distribution) },
-                { "Reference No", nameof(AccessoryImportDto.ReferenceNo) },
-                { "Classification", nameof(AccessoryImportDto.Classification) },
-                { "Type", nameof(AccessoryImportDto.Type) },
-                { "Notes", nameof(AccessoryImportDto.Notes) },
+                { "Item No", nameof(AccessoryImportDto.ItemNo) },
+                { "الاسم (بالإنجليزية)*", nameof(AccessoryImportDto.Name) },
+                { "الاسم (بالإنجليزية)", nameof(AccessoryImportDto.Name) },
                 { "الاسم*", nameof(AccessoryImportDto.Name) },
                 { "الاسم (بالعربية)", nameof(AccessoryImportDto.NameAr) },
+                { "رقم المادة*", nameof(AccessoryImportDto.ItemNo) },
+                { "رقم المادة", nameof(AccessoryImportDto.ItemNo) },
                 { "رقم الصنف*", nameof(AccessoryImportDto.ItemNo) },
-                { "رقم القطعة", nameof(AccessoryImportDto.PartNo) },
-                { "رقم NSN", nameof(AccessoryImportDto.Nsn) },
-                { "السعر", nameof(AccessoryImportDto.Price) },
-                { "الكمية الدنيا", nameof(AccessoryImportDto.MinimumQuantity) },
-                { "رقم الأمم المتحدة", nameof(AccessoryImportDto.UNNumber) },
-                { "التوزيع", nameof(AccessoryImportDto.Distribution) },
-                { "الرقم المرجعي", nameof(AccessoryImportDto.ReferenceNo) },
-                { "التصنيف", nameof(AccessoryImportDto.Classification) },
-                { "النوع", nameof(AccessoryImportDto.Type) },
-                { "ملاحظات", nameof(AccessoryImportDto.Notes) }
+                { "رقم الصنف", nameof(AccessoryImportDto.ItemNo) }
             };
-        }
-
-        private void CreateLookupSheet<T>(ExcelPackage package, string sheetName, List<T> items)
-        {
-            var names = items.Select(x =>
-            {
-                var nameEn = (string)x.GetType().GetProperty("NameEn")?.GetValue(x);
-                var nameAr = (string)x.GetType().GetProperty("NameAr")?.GetValue(x);
-                return nameEn ?? nameAr ?? "";
-            }).Where(x => !string.IsNullOrEmpty(x)).ToList();
-
-            var lookupSheet = package.Workbook.Worksheets.Add(sheetName);
-            lookupSheet.Hidden = eWorkSheetHidden.Hidden;
-
-            for (int i = 0; i < names.Count; i++)
-            {
-                lookupSheet.Cells[i + 1, 1].Value = names[i];
-            }
-        }
-
-        private void AddDataValidation(ExcelWorksheet worksheet, int column, string lookupSheetName)
-        {
-            var columnLetter = GetColumnLetter(column);
-            var validationRange = $"{columnLetter}2:{columnLetter}10000";
-            var validation = worksheet.DataValidations.AddListValidation(validationRange);
-            var lookupSheet = worksheet.Workbook.Worksheets[lookupSheetName];
-            var lastRow = lookupSheet.Dimension?.End.Row ?? 1;
-            validation.Formula.ExcelFormula = $"'{lookupSheetName}'!$A$1:$A${lastRow}";
-            validation.ShowErrorMessage = true;
-            validation.Error = $"Please select a value from the {lookupSheetName} list";
-        }
-
-        private string GetColumnLetter(int columnNumber)
-        {
-            string columnLetter = "";
-            while (columnNumber > 0)
-            {
-                columnNumber--;
-                columnLetter = (char)('A' + columnNumber % 26) + columnLetter;
-                columnNumber /= 26;
-            }
-            return columnLetter;
         }
 
         private async Task<HashSet<long>?> GetAssignedItemIdsAsync()

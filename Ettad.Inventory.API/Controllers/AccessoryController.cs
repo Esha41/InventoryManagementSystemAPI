@@ -124,10 +124,24 @@ namespace Ettad.Inventory.API.Controllers
         [HttpPut("{id}")]
         [ProducesResponseType((int)HttpStatusCode.OK)]
         [CheckAuthorize("Permissions.Accessory.Edit")]
-        public async Task<IActionResult> Update(long id, [FromBody] CreateUpdateAccessoryDto input)
+        public async Task<IActionResult> Update(long id, [FromForm] CreateUpdateAccessoryDto input, [FromForm] List<IFormFile>? files, [FromForm] bool removeImage = false)
         {
-            var result = await _accessoryService.UpdateAsync(id, input);
+            var result = await _accessoryService.UpdateAsync(id, input, files, removeImage);
             return ProcessResponse(result);
+        }
+
+        [HttpGet("{id}/image")]
+        [ProducesResponseType((int)HttpStatusCode.OK)]
+        [ProducesResponseType((int)HttpStatusCode.NotFound)]
+        [CheckAuthorize("Permissions.Accessory.View", "Permissions.Accessory.Page")]
+        public async Task<IActionResult> GetImage(long id)
+        {
+            var result = await _accessoryService.GetMainImageAsync(id);
+            if (!result.Succeeded || result.Data == null)
+                return NotFound(result.Message ?? "Image not found");
+
+            var image = result.Data;
+            return File(image.Content, image.ContentType, image.FileName);
         }
 
         [HttpDelete("{id}")]
