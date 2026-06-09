@@ -586,8 +586,8 @@ namespace Ettad.Inventory.Service.Accessories.Services
             await LoadLookupsAsync();
 
             var headers = language == "ar"
-                ? new[] { "الاسم (بالإنجليزية)*", "الاسم (بالعربية)", "رقم المادة*" }
-                : new[] { "Name (English)*", "Name (Arabic)", "Item No*" };
+                ? new[] { "الاسم (بالإنجليزية)*", "الاسم (بالعربية)", "رقم المادة" }
+                : new[] { "Name (English)*", "Name (Arabic)", "Item No" };
 
             var firstAsset = await _accessoryRepository.FindOneAsync(a => !a.IsDeleted);
 
