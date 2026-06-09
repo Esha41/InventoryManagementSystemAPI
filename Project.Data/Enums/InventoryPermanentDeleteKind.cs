@@ -5,6 +5,7 @@ namespace Ettad.Data.Enums
     {
         Ammunition,
         Weapon,
-        Explosive
+        Explosive,
+        Accessory
     }
 }

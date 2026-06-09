@@ -31,6 +31,8 @@ namespace Ettad.EntityFramework.DataBaseContext
         public DbSet<Ammunition> Ammunitions { get; set; }
         public DbSet<Weapon> Weapons { get; set; }
         public DbSet<Explosive> Explosives { get; set; }
+        public DbSet<Accessory> Accessories { get; set; }
+        public DbSet<WeaponAccessory> WeaponAccessories { get; set; }
         public DbSet<AllowanceItem> AllowanceItems { get; set; }
         public DbSet<ItemDepartmentAssignment> ItemDepartmentAssignments { get; set; }
         public DbSet<CaseType> CaseTypes { get; set; }
@@ -73,6 +75,7 @@ namespace Ettad.EntityFramework.DataBaseContext
         public DbSet<AssetAssignment> AssetAssignments { get; set; }
         public DbSet<AssetSupply> AssetSupplies { get; set; }
         public DbSet<AssetSupplyDetail> AssetSupplyDetails { get; set; }
+        public DbSet<AssetSupplyAccessoryDetail> AssetSupplyAccessoryDetails { get; set; }
         public DbSet<AssetHistory> AssetHistory { get; set; }
         public DbSet<OrderItemHistory> OrderItemHistory { get; set; }
         public DbSet<ApplicationEntity> ApplicationEntities { get;set;}

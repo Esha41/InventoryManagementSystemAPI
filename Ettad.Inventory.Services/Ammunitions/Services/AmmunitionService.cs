@@ -414,6 +414,7 @@ namespace Ettad.Inventory.Service.Ammunitions.Services
                 ammunition.ItemType = ItemType.Ammunition;
                 ammunition.CreationDate = _dateTimeProvider.Now;
                 ammunition.CreatedBy = _currentUserService.UserId;
+                ammunition.ItemNo = inputDto.ItemNo!.Trim();
                 ammunition.Nsn = string.IsNullOrWhiteSpace(inputDto.Nsn) ? null : inputDto.Nsn.Trim();
 
                 var createdAmmunition = await _ammunitionRepository.AddAsync(ammunition);
@@ -473,6 +474,7 @@ namespace Ettad.Inventory.Service.Ammunitions.Services
                 existingAmmunition.AmmunitionType = inputDto.AmmunitionType!.Value;
                 existingAmmunition.ModificationDate = _dateTimeProvider.Now;
                 existingAmmunition.ModifiedBy = _currentUserService.UserId;
+                existingAmmunition.ItemNo = inputDto.ItemNo!.Trim();
                 existingAmmunition.Nsn = string.IsNullOrWhiteSpace(inputDto.Nsn) ? null : inputDto.Nsn.Trim();
 
                 await _ammunitionRepository.UpdateAsync(existingAmmunition);

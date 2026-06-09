@@ -66,5 +66,10 @@ namespace Ettad.Inventory.Service.AssetSupply.Dtos
         /// Optional notes for this specific asset
         /// </summary>
         public string? Notes { get; set; }
+
+        /// <summary>
+        /// Accessories supplied with this weapon asset (per serial).
+        /// </summary>
+        public List<CreateAssetSupplyAccessoryDto> Accessories { get; set; } = new();
     }
 }

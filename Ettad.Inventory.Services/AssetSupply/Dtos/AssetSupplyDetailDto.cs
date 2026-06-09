@@ -20,6 +20,7 @@ namespace Ettad.Inventory.Service.AssetSupply.Dtos
         public DateTime? DeliveredDate { get; set; }
         public string? CustodianId { get; set; }
         public UserDto? Custodian { get; set; }
+        public List<AssetSupplyAccessoryDetailDto> Accessories { get; set; } = new();
     }
 }
 

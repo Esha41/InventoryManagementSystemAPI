@@ -1,4 +1,5 @@
 using Ettad.Data.Entities;
+using Ettad.Data.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -12,11 +13,14 @@ namespace Ettad.EntityFramework.Configurations
             builder.HasKey(x => x.Id);
 
             builder.Property(x => x.ItemNo)
-                .IsRequired()
+                .IsRequired(false)
                 .HasMaxLength(500);
 
+            // ItemNo is required and unique for ammunition, weapons, and explosives only.
+            // Accessories may omit ItemNo or reuse the same number as a weapon.
             builder.HasIndex(x => x.ItemNo)
-                .IsUnique();
+                .IsUnique()
+                .HasFilter($"[{nameof(BaseItem.ItemType)}] <> {(int)ItemType.Accessory}");
 
             builder.Property(x => x.ItemType)
                 .IsRequired();

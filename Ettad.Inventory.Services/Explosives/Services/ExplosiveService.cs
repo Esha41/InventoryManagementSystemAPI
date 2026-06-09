@@ -300,6 +300,7 @@ namespace Ettad.Inventory.Service.Explosives.Services
                 explosive.ItemType = ItemType.Explosive;
                 explosive.CreationDate = _dateTimeProvider.Now;
                 explosive.CreatedBy = _currentUserService.UserId;
+                explosive.ItemNo = inputDto.ItemNo!.Trim();
                 explosive.Nsn = string.IsNullOrWhiteSpace(inputDto.Nsn) ? null : inputDto.Nsn.Trim();
                 explosive.ArmNumber = string.IsNullOrWhiteSpace(inputDto.ArmNumber) ? null : inputDto.ArmNumber.Trim();
 
@@ -359,6 +360,7 @@ namespace Ettad.Inventory.Service.Explosives.Services
                 _mapper.Map(inputDto, existingExplosive);
                 existingExplosive.ModificationDate = _dateTimeProvider.Now;
                 existingExplosive.ModifiedBy = _currentUserService.UserId;
+                existingExplosive.ItemNo = inputDto.ItemNo!.Trim();
                 existingExplosive.Nsn = string.IsNullOrWhiteSpace(inputDto.Nsn) ? null : inputDto.Nsn.Trim();
                 existingExplosive.ArmNumber = string.IsNullOrWhiteSpace(inputDto.ArmNumber) ? null : inputDto.ArmNumber.Trim();
 

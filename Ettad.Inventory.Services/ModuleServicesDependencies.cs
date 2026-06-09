@@ -1,7 +1,11 @@
 using Ettad.Inventory.Service.Weapons.Dtos;
 using Ettad.Inventory.Service.Weapons.Validators;
+using Ettad.Inventory.Service.Accessories.Dtos;
+using Ettad.Inventory.Service.Accessories.Validators;
 using Ettad.Inventory.Service.Explosives.Dtos;
 using Ettad.Inventory.Service.Explosives.Validators;
+using Ettad.Inventory.Service.WeaponAccessories.Dtos;
+using Ettad.Inventory.Service.WeaponAccessories.Validators;
 using FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
 using System.Reflection;
@@ -19,7 +23,9 @@ using Ettad.Inventory.Service.AssetHistory.Interfaces;
 using Ettad.Inventory.Service.AssetSupply.Interfaces;
 using Ettad.Inventory.Service.Batches.Interfaces;
 using Ettad.Inventory.Service.Common.Interfaces;
+using Ettad.Inventory.Service.Accessories.Interfaces;
 using Ettad.Inventory.Service.Explosives.Interfaces;
+using Ettad.Inventory.Service.WeaponAccessories.Interfaces;
 using Ettad.Inventory.Service.Inventories.Interfaces;
 using Ettad.Inventory.Service.ItemDepartmentAssignments.Interfaces;
 using Ettad.Inventory.Service.Monitoring.Interfaces;
@@ -29,7 +35,9 @@ using Ettad.Inventory.Service.Ammunitions.Services;
 using Ettad.Inventory.Service.AssetHistory.Services;
 using Ettad.Inventory.Service.AssetSupply.Services;
 using Ettad.Inventory.Service.Batches.Services;
+using Ettad.Inventory.Service.Accessories.Services;
 using Ettad.Inventory.Service.Explosives.Services;
+using Ettad.Inventory.Service.WeaponAccessories.Services;
 using Ettad.Inventory.Service.Inventories.Services;
 using Ettad.Inventory.Service.ItemDepartmentAssignments.Services;
 using Ettad.Inventory.Service.Monitoring.Services;
@@ -37,7 +45,9 @@ using Ettad.Inventory.Service.Common.Services;
 using Ettad.Inventory.Service.Weapons.Services;
 using Ettad.Inventory.Service.Weapons.Mapper;
 using Ettad.Inventory.Service.Ammunitions.Mapper;
+using Ettad.Inventory.Service.Accessories.Mapper;
 using Ettad.Inventory.Service.Explosives.Mapper;
+using Ettad.Inventory.Service.WeaponAccessories.Mapper;
 using Ettad.Inventory.Service.ItemDepartmentAssignments.Mapper;
 using Ettad.Inventory.Service.Batches.Mapper;
 using Ettad.Inventory.Service.Assets.Mapper;
@@ -77,6 +87,17 @@ namespace Ettad.Inventory.Service
             services.AddScoped<IExplosiveService, ExplosiveService>();
             services.AddScoped<IValidator<CreateUpdateExplosiveDto>, CreateUpdateExplosiveDtoValidator>();
             services.AddAutoMapper(typeof(ExplosiveMappingProfile));
+
+            // Accessory Services
+            services.AddScoped<IAccessoryService, AccessoryService>();
+            services.AddScoped<IValidator<CreateUpdateAccessoryDto>, CreateUpdateAccessoryDtoValidator>();
+            services.AddAutoMapper(typeof(AccessoryMappingProfile));
+
+            // Weapon Accessory link Services
+            services.AddScoped<IWeaponAccessoryService, WeaponAccessoryService>();
+            services.AddScoped<IValidator<CreateUpdateWeaponAccessoryDto>, CreateUpdateWeaponAccessoryDtoValidator>();
+            services.AddScoped<IValidator<BulkReplaceWeaponAccessoriesDto>, BulkReplaceWeaponAccessoriesDtoValidator>();
+            services.AddAutoMapper(typeof(WeaponAccessoryMappingProfile));
 
             services.AddScoped<IAllowanceItemService, AllowanceItemService>();
             services.AddScoped<IItemDepartmentAssignmentService, ItemDepartmentAssignmentService>();

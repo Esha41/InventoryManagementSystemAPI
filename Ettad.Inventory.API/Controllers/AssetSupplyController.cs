@@ -26,6 +26,18 @@ namespace Ettad.Inventory.API.Controllers
         }
 
         /// <summary>
+        /// Get weapon accessory catalog defaults for each weapon item in the order selection.
+        /// </summary>
+        [HttpGet("order/{orderId}/weapon-accessory-defaults")]
+        [ProducesResponseType(typeof(APIOperationResponse<WeaponAccessoryDefaultsDto>), (int)HttpStatusCode.OK)]
+        [CheckAuthorize("Permissions.AssetSupply.View", "Permissions.AssetSupply.Page", "SelectDepots")]
+        public async Task<IActionResult> GetWeaponAccessoryDefaults(long orderId)
+        {
+            var result = await _assetSupplyService.GetWeaponAccessoryDefaultsAsync(orderId);
+            return ProcessResponse(result);
+        }
+
+        /// <summary>
         /// Get saved depot and batch selections for weapon supply.
         /// </summary>
         [HttpGet("order/{orderId}/selection")]

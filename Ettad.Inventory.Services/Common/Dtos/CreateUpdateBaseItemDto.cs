@@ -6,9 +6,9 @@ namespace Ettad.Inventory.Service.Common.Dtos
 
         public string? NameAr { get; set; }
 
-        public string ItemNo { get; set; }
+        public string? ItemNo { get; set; }
 
-        // All other fields are optional - only Name and ItemNo are required
+        // All other fields are optional — Name is always required; ItemNo is required for non-accessory types
 
         public string? PartNo { get; set; }
 

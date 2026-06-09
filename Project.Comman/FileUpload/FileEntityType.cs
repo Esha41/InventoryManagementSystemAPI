@@ -19,7 +19,8 @@ namespace Ettad.CrossCutting.Comman.FileUpload
         ReturnTrackingLine = 11,
         HelpCenter = 12,
         /// <summary>User manual PDFs/docs (singleton: use entityId = 1 for all manual files).</summary>
-        HelpCenterUserManual = 13
+        HelpCenterUserManual = 13,
+        Accessory = 14
         // Add other entities here as needed
     }
 }
