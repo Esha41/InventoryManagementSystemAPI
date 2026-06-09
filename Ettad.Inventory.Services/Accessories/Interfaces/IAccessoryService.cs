@@ -12,8 +12,7 @@ namespace Ettad.Inventory.Service.Accessories.Interfaces
         Task<APIOperationResponse<PaginatedList<AccessoryDto>>> GetAllPaginatedAsync(PagedListRequest request);
         Task<APIOperationResponse<AccessoryDto>> GetByIdAsync(long id, bool includeDeleted = false);
         Task<APIOperationResponse<long>> CreateAsync(CreateUpdateAccessoryDto inputDto, List<IFormFile>? files = null);
-        Task<APIOperationResponse<bool>> UpdateAsync(long id, CreateUpdateAccessoryDto inputDto, List<IFormFile>? files = null, bool removeImage = false);
-        Task<APIOperationResponse<AccessoryImageFileDto>> GetMainImageAsync(long id);
+        Task<APIOperationResponse<bool>> UpdateAsync(long id, CreateUpdateAccessoryDto inputDto);
         Task<APIOperationResponse<bool>> DeleteAsync(long id);
         Task<APIOperationResponse<bool>> RestoreAsync(long id);
         Task<APIOperationResponse<bool>> PermanentDeleteAsync(long id);

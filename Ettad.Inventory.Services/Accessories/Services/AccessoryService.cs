@@ -1,4 +1,3 @@
-using System.IO;
 using AutoMapper;
 using FluentValidation;
 using Microsoft.EntityFrameworkCore;
@@ -286,7 +285,7 @@ namespace Ettad.Inventory.Service.Accessories.Services
             }
         }
 
-        public async Task<APIOperationResponse<bool>> UpdateAsync(long id, CreateUpdateAccessoryDto inputDto, List<IFormFile>? files = null, bool removeImage = false)
+        public async Task<APIOperationResponse<bool>> UpdateAsync(long id, CreateUpdateAccessoryDto inputDto)
         {
             try
             {
@@ -330,98 +329,12 @@ namespace Ettad.Inventory.Service.Accessories.Services
                     await _baseItemPrimaryPurposRepository.AddRangeAsync(newPurposes);
                 }
 
-                if (removeImage || (files != null && files.Any()))
-                {
-                    await RemoveAccessoryImagesAsync(id);
-                }
-
-                if (files != null && files.Any())
-                {
-                    var saveFilesResult = await _fileUploadService.SaveFilesAsync(files, FileEntityType.Accessory);
-                    if (!saveFilesResult.Succeeded)
-                    {
-                        return APIOperationResponse<bool>.Fail(ResponseType.BadRequest,
-                            $"File upload failed: {saveFilesResult.Message}");
-                    }
-
-                    await _fileUploadService.UploadFilesForEntityAsync(files, FileEntityType.Accessory, id);
-                }
-
                 return APIOperationResponse<bool>.Success(true, "Accessory updated successfully");
             }
             catch (Exception ex)
             {
                 return APIOperationResponse<bool>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
             }
-        }
-
-        public async Task<APIOperationResponse<AccessoryImageFileDto>> GetMainImageAsync(long id)
-        {
-            try
-            {
-                var assignedItemIds = await GetAssignedItemIdsAsync();
-                if (assignedItemIds != null && !assignedItemIds.Contains(id))
-                {
-                    return APIOperationResponse<AccessoryImageFileDto>.Fail(ResponseType.NotFound, "Accessory not found");
-                }
-
-                var accessory = await _accessoryRepository.FindOneAsync(a => a.Id == id && !a.IsDeleted);
-                if (accessory == null)
-                    return APIOperationResponse<AccessoryImageFileDto>.Fail(ResponseType.NotFound, "Accessory not found");
-
-                var imagesResult = await _fileUploadService.GetByEntityAsync(FileEntityType.Accessory, id);
-                if (!imagesResult.Succeeded || imagesResult.Data == null || !imagesResult.Data.Any())
-                    return APIOperationResponse<AccessoryImageFileDto>.Fail(ResponseType.NotFound, "Image not found");
-
-                var mainImage = imagesResult.Data
-                    .Where(f => f.IsMain)
-                    .OrderByDescending(f => f.Id)
-                    .FirstOrDefault()
-                    ?? imagesResult.Data.OrderByDescending(f => f.Id).First();
-
-                if (string.IsNullOrWhiteSpace(mainImage.FileUrl) || !File.Exists(mainImage.FileUrl))
-                    return APIOperationResponse<AccessoryImageFileDto>.Fail(ResponseType.NotFound, "Image not found on server");
-
-                var content = await File.ReadAllBytesAsync(mainImage.FileUrl);
-                var contentType = GetImageContentType(mainImage.FileUrl);
-                var fileName = mainImage.OriginalName ?? mainImage.FileName ?? $"accessory-{id}";
-
-                return APIOperationResponse<AccessoryImageFileDto>.Success(new AccessoryImageFileDto
-                {
-                    Content = content,
-                    ContentType = contentType,
-                    FileName = fileName
-                });
-            }
-            catch (Exception ex)
-            {
-                return APIOperationResponse<AccessoryImageFileDto>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
-            }
-        }
-
-        private async Task RemoveAccessoryImagesAsync(long accessoryId)
-        {
-            var imagesResult = await _fileUploadService.GetByEntityAsync(FileEntityType.Accessory, accessoryId);
-            if (!imagesResult.Succeeded || imagesResult.Data == null)
-                return;
-
-            foreach (var image in imagesResult.Data)
-            {
-                await _fileUploadService.DeleteAsync(image.Id);
-            }
-        }
-
-        private static string GetImageContentType(string filePath)
-        {
-            var extension = Path.GetExtension(filePath)?.ToLowerInvariant();
-            return extension switch
-            {
-                ".jpg" or ".jpeg" => "image/jpeg",
-                ".png" => "image/png",
-                ".gif" => "image/gif",
-                ".webp" => "image/webp",
-                _ => "application/octet-stream"
-            };
         }
 
         public async Task<APIOperationResponse<bool>> DeleteAsync(long id)
