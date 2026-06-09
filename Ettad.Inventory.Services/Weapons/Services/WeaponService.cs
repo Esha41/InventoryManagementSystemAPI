@@ -404,6 +404,7 @@ namespace Ettad.Inventory.Service.Weapons.Services
                 weapon.ItemType = ItemType.Weapon;
                 weapon.CreationDate = _dateTimeProvider.Now;
                 weapon.CreatedBy = _currentUserService.UserId;
+                weapon.ItemNo = inputDto.ItemNo!.Trim();
                 weapon.Nsn = string.IsNullOrWhiteSpace(inputDto.Nsn) ? null : inputDto.Nsn.Trim();
 
                 var createdWeapon = await _weaponRepository.AddAsync(weapon);
@@ -462,6 +463,7 @@ namespace Ettad.Inventory.Service.Weapons.Services
                 existingWeapon.CaliberCategory = inputDto.CaliberCategory!.Value;
                 existingWeapon.ModificationDate = _dateTimeProvider.Now;
                 existingWeapon.ModifiedBy = _currentUserService.UserId;
+                existingWeapon.ItemNo = inputDto.ItemNo!.Trim();
                 existingWeapon.Nsn = string.IsNullOrWhiteSpace(inputDto.Nsn) ? null : inputDto.Nsn.Trim();
 
                 await _weaponRepository.UpdateAsync(existingWeapon);

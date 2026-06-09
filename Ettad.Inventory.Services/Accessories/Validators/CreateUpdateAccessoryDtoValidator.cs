@@ -12,8 +12,8 @@ namespace Ettad.Inventory.Service.Accessories.Validators
                 .MaximumLength(200).WithMessage("Name cannot exceed 200 characters");
 
             RuleFor(x => x.ItemNo)
-                .NotEmpty().WithMessage("Item number is required")
-                .MaximumLength(100).WithMessage("Item number cannot exceed 100 characters");
+                .MaximumLength(100).When(x => !string.IsNullOrEmpty(x.ItemNo))
+                .WithMessage("Item number cannot exceed 100 characters");
 
             RuleFor(x => x.NameAr)
                 .MaximumLength(200).When(x => !string.IsNullOrEmpty(x.NameAr))

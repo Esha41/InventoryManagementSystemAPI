@@ -5,7 +5,7 @@ namespace Ettad.Inventory.Service.Accessories.Dtos
         public int RowNumber { get; set; }
         public string Name { get; set; }
         public string? NameAr { get; set; }
-        public string ItemNo { get; set; }
+        public string? ItemNo { get; set; }
         public string? PartNo { get; set; }
         public decimal? Price { get; set; }
         public long? MinimumQuantity { get; set; }

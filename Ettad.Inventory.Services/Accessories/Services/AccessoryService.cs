@@ -266,6 +266,7 @@ namespace Ettad.Inventory.Service.Accessories.Services
                 accessory.ItemType = ItemType.Accessory;
                 accessory.CreationDate = _dateTimeProvider.Now;
                 accessory.CreatedBy = _currentUserService.UserId;
+                accessory.ItemNo = string.IsNullOrWhiteSpace(inputDto.ItemNo) ? null : inputDto.ItemNo.Trim();
                 accessory.Nsn = string.IsNullOrWhiteSpace(inputDto.Nsn) ? null : inputDto.Nsn.Trim();
 
                 var createdAccessory = await _accessoryRepository.AddAsync(accessory);
@@ -323,6 +324,7 @@ namespace Ettad.Inventory.Service.Accessories.Services
                 _mapper.Map(inputDto, existingAccessory);
                 existingAccessory.ModificationDate = _dateTimeProvider.Now;
                 existingAccessory.ModifiedBy = _currentUserService.UserId;
+                existingAccessory.ItemNo = string.IsNullOrWhiteSpace(inputDto.ItemNo) ? null : inputDto.ItemNo.Trim();
                 existingAccessory.Nsn = string.IsNullOrWhiteSpace(inputDto.Nsn) ? null : inputDto.Nsn.Trim();
 
                 await _accessoryRepository.UpdateAsync(existingAccessory);
@@ -495,12 +497,12 @@ namespace Ettad.Inventory.Service.Accessories.Services
             var headers = language == "ar"
                 ? new[]
                 {
-                    "الاسم*", "الاسم (بالعربية)", "رقم الصنف*", "رقم القطعة", "NSN", "السعر", "الكمية الدنيا",
+                    "الاسم*", "الاسم (بالعربية)", "رقم الصنف", "رقم القطعة", "NSN", "السعر", "الكمية الدنيا",
                     "رقم الأمم المتحدة", "التوزيع", "الرقم المرجعي", "التصنيف", "النوع", "ملاحظات"
                 }
                 : new[]
                 {
-                    "Name*", "Name (Arabic)", "Item No*", "Part No", "NSN", "Price", "Minimum Quantity",
+                    "Name*", "Name (Arabic)", "Item No", "Part No", "NSN", "Price", "Minimum Quantity",
                     "UN Number", "Distribution", "Reference No", "Classification", "Type", "Notes"
                 };
 
@@ -648,7 +650,7 @@ namespace Ettad.Inventory.Service.Accessories.Services
             {
                 Name = importDto.Name,
                 NameAr = importDto.NameAr,
-                ItemNo = importDto.ItemNo,
+                ItemNo = string.IsNullOrWhiteSpace(importDto.ItemNo) ? null : importDto.ItemNo.Trim(),
                 PartNo = importDto.PartNo,
                 Price = importDto.Price,
                 MinimumQuantity = importDto.MinimumQuantity,
@@ -695,16 +697,6 @@ namespace Ettad.Inventory.Service.Accessories.Services
             if (!validationResult.IsValid)
             {
                 errors.AddRange(validationResult.Errors.Select(e => e.ErrorMessage));
-            }
-
-            if (!string.IsNullOrWhiteSpace(dto.ItemNo))
-            {
-                if (_existingItemNos.Contains(dto.ItemNo))
-                    errors.Add($"Item No '{dto.ItemNo}' already exists in the database");
-                else if (_newlyAddedItemNos.Contains(dto.ItemNo))
-                    errors.Add($"Item No '{dto.ItemNo}' is duplicated in the current file");
-                else
-                    _newlyAddedItemNos.Add(dto.ItemNo);
             }
 
             if (!string.IsNullOrWhiteSpace(dto.Nsn))

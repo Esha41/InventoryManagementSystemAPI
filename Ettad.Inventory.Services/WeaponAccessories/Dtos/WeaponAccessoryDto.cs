@@ -12,7 +12,7 @@ namespace Ettad.Inventory.Service.WeaponAccessories.Dtos
     public class WeaponAccessoryItemSummaryDto
     {
         public long Id { get; set; }
-        public string ItemNo { get; set; }
+        public string? ItemNo { get; set; }
         public string Name { get; set; }
         public string? NameAr { get; set; }
     }
