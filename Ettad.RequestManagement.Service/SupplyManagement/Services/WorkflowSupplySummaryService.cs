@@ -278,7 +278,18 @@ namespace Ettad.RequestManagement.Service.SupplyManagement.Services
                     DepotCode = asset?.DepotCode,
                     BatchNumber = asset?.BatchNumber,
                     AssigneeName = assigneeName,
-                    Notes = line.Notes
+                    Notes = line.Notes,
+                    Accessories = (line.Accessories ?? new List<AssetSupplyAccessoryDetailDto>())
+                        .Select(a => new WeaponSuppliedAccessoryDto
+                        {
+                            AccessoryId = a.AccessoryId,
+                            ItemNo = a.ItemNo,
+                            Name = a.Name,
+                            NameAr = a.NameAr,
+                            DefaultQuantity = a.DefaultQuantity,
+                            SuppliedQuantity = a.SuppliedQuantity
+                        })
+                        .ToList()
                 });
             }
 

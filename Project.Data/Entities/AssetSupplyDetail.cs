@@ -59,6 +59,7 @@ namespace Ettad.Data.Entities
         public Asset Asset { get; set; }
         public BaseItem Item { get; set; }
         public Employee Custodian { get; set; }
+        public ICollection<AssetSupplyAccessoryDetail> AccessoryDetails { get; set; }
 
         #endregion
     }

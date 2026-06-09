@@ -42,6 +42,30 @@ namespace Ettad.Inventory.Service.AssetSupply.Validators
             RuleFor(x => x.Notes)
                 .MaximumLength(2000).When(x => !string.IsNullOrWhiteSpace(x.Notes))
                 .WithMessage("Notes cannot exceed 2000 characters");
+
+            RuleFor(x => x.Accessories)
+                .Must(accessories =>
+                {
+                    if (accessories == null || accessories.Count == 0)
+                        return true;
+                    var ids = accessories.Select(a => a.AccessoryId).ToList();
+                    return ids.Distinct().Count() == ids.Count;
+                })
+                .WithMessage("Duplicate accessory on the same asset supply line is not allowed");
+
+            RuleForEach(x => x.Accessories).SetValidator(new CreateAssetSupplyAccessoryDtoValidator());
+        }
+    }
+
+    public class CreateAssetSupplyAccessoryDtoValidator : AbstractValidator<CreateAssetSupplyAccessoryDto>
+    {
+        public CreateAssetSupplyAccessoryDtoValidator()
+        {
+            RuleFor(x => x.AccessoryId)
+                .GreaterThan(0).WithMessage("Accessory ID is required and must be greater than 0");
+
+            RuleFor(x => x.SuppliedQuantity)
+                .GreaterThanOrEqualTo(0).WithMessage("Supplied quantity cannot be negative");
         }
     }
 }

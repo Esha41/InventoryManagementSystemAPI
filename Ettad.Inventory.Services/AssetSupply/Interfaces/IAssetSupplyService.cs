@@ -81,5 +81,10 @@ namespace Ettad.Inventory.Service.AssetSupply.Interfaces
         /// Prioritizes assets with serial numbers; fills remaining quantity with non-serial assets.
         /// </summary>
         Task<APIOperationResponse<List<BatchDto>>> GetSelectedBatchesWithAssetsAsync(long orderId);
+
+        /// <summary>
+        /// Get weapon accessory catalog defaults keyed by weapon item id for an order's selections.
+        /// </summary>
+        Task<APIOperationResponse<WeaponAccessoryDefaultsDto>> GetWeaponAccessoryDefaultsAsync(long orderId);
     }
 }

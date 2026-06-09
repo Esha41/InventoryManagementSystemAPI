@@ -37,7 +37,9 @@ namespace Ettad.Inventory.Service.AssetSupply.Services
             $"{nameof(AssetSupplyEntity.ReceiverEmployee)}.{nameof(Employee.Rank)}",
             nameof(AssetSupplyEntity.SupplyDetails),
             $"{nameof(AssetSupplyEntity.SupplyDetails)}.{nameof(AssetSupplyDetail.Asset)}",
-            $"{nameof(AssetSupplyEntity.SupplyDetails)}.{nameof(AssetSupplyDetail.Item)}"
+            $"{nameof(AssetSupplyEntity.SupplyDetails)}.{nameof(AssetSupplyDetail.Item)}",
+            $"{nameof(AssetSupplyEntity.SupplyDetails)}.{nameof(AssetSupplyDetail.AccessoryDetails)}",
+            $"{nameof(AssetSupplyEntity.SupplyDetails)}.{nameof(AssetSupplyDetail.AccessoryDetails)}.{nameof(AssetSupplyAccessoryDetail.Accessory)}"
         };
 
         private static readonly string[] AssetSupplyListIncludes =
@@ -66,6 +68,8 @@ namespace Ettad.Inventory.Service.AssetSupply.Services
         private readonly ICrossCuttingRepository<Batch> _batchRepository;
         private readonly ICrossCuttingRepository<Employee> _employeeRepository;
         private readonly ICrossCuttingRepository<WeaponSupplySelection> _weaponSupplySelectionRepository;
+        private readonly ICrossCuttingRepository<WeaponAccessory> _weaponAccessoryRepository;
+        private readonly ICrossCuttingRepository<BaseItem> _baseItemRepository;
         private readonly IAssetHistoryService _historyService;
         private readonly IMapper _mapper;
         private readonly IValidator<CreateAssetSupplyDto> _createValidator;
@@ -90,6 +94,8 @@ namespace Ettad.Inventory.Service.AssetSupply.Services
             ICrossCuttingRepository<Batch> batchRepository,
             ICrossCuttingRepository<Employee> employeeRepository,
             ICrossCuttingRepository<WeaponSupplySelection> weaponSupplySelectionRepository,
+            ICrossCuttingRepository<WeaponAccessory> weaponAccessoryRepository,
+            ICrossCuttingRepository<BaseItem> baseItemRepository,
             IAssetHistoryService historyService,
             IMapper mapper,
             IValidator<CreateAssetSupplyDto> createValidator,
@@ -113,6 +119,8 @@ namespace Ettad.Inventory.Service.AssetSupply.Services
             _batchRepository = batchRepository;
             _employeeRepository = employeeRepository;
             _weaponSupplySelectionRepository = weaponSupplySelectionRepository;
+            _weaponAccessoryRepository = weaponAccessoryRepository;
+            _baseItemRepository = baseItemRepository;
             _historyService = historyService;
             _mapper = mapper;
             _createValidator = createValidator;
@@ -712,13 +720,33 @@ namespace Ettad.Inventory.Service.AssetSupply.Services
                     supply.CreationDate = _dateTimeProvider.Now;
                     supply.CreatedBy = _currentUserService.UserId;
 
+                    var weaponItemIds = assets.Select(a => a.ItemId).Distinct().ToList();
+                    var weaponAccessoryLinks = await _weaponAccessoryRepository
+                        .Find(wa => weaponItemIds.Contains(wa.WeaponId), false, nameof(WeaponAccessory.Accessory))
+                        .ToListAsync();
+                    var catalogByWeapon = weaponAccessoryLinks
+                        .GroupBy(wa => wa.WeaponId)
+                        .ToDictionary(g => g.Key, g => g.ToList());
+
+                    var accessoryIdsInPayload = dto.SupplyDetails
+                        .SelectMany(d => d.Accessories ?? new List<CreateAssetSupplyAccessoryDto>())
+                        .Select(a => a.AccessoryId)
+                        .Distinct()
+                        .ToList();
+                    var accessoryItems = accessoryIdsInPayload.Count == 0
+                        ? new Dictionary<long, BaseItem>()
+                        : (await _baseItemRepository
+                            .Find(bi => accessoryIdsInPayload.Contains(bi.Id) && !bi.IsDeleted)
+                            .ToListAsync())
+                            .ToDictionary(bi => bi.Id);
+
                     // Create supply details
                     var sequenceNo = 1;
-                    supply.SupplyDetails = dto.SupplyDetails.Select(d =>
+                    supply.SupplyDetails = new List<AssetSupplyDetail>();
+                    foreach (var d in dto.SupplyDetails)
                     {
                         var asset = assets.First(a => a.Id == d.AssetId);
-
-                        return new AssetSupplyDetail
+                        var detail = new AssetSupplyDetail
                         {
                             AssetId = d.AssetId,
                             ItemId = asset.ItemId,
@@ -729,9 +757,50 @@ namespace Ettad.Inventory.Service.AssetSupply.Services
                             IsDelivered = true,
                             DeliveredDate = _dateTimeProvider.Now,
                             CreationDate = _dateTimeProvider.Now,
-                            CreatedBy = _currentUserService.UserId
+                            CreatedBy = _currentUserService.UserId,
+                            AccessoryDetails = new List<AssetSupplyAccessoryDetail>()
                         };
-                    }).ToList();
+
+                        if (d.Accessories != null && d.Accessories.Count > 0)
+                        {
+                            if (!catalogByWeapon.TryGetValue(asset.ItemId, out var weaponCatalog))
+                            {
+                                await _transactionManager.RollbackAsync();
+                                return APIOperationResponse<long>.Fail(ResponseType.BadRequest,
+                                    $"No accessories are configured for weapon item {asset.ItemId}");
+                            }
+
+                            foreach (var accDto in d.Accessories)
+                            {
+                                var catalogRow = weaponCatalog.FirstOrDefault(wa => wa.AccessoryId == accDto.AccessoryId);
+                                if (catalogRow == null)
+                                {
+                                    await _transactionManager.RollbackAsync();
+                                    return APIOperationResponse<long>.Fail(ResponseType.BadRequest,
+                                        $"Accessory {accDto.AccessoryId} is not linked to weapon item {asset.ItemId}");
+                                }
+
+                                if (!accessoryItems.TryGetValue(accDto.AccessoryId, out var accessoryItem)
+                                    || accessoryItem.ItemType != ItemType.Accessory)
+                                {
+                                    await _transactionManager.RollbackAsync();
+                                    return APIOperationResponse<long>.Fail(ResponseType.BadRequest,
+                                        $"Accessory {accDto.AccessoryId} not found or is not a valid accessory item");
+                                }
+
+                                detail.AccessoryDetails.Add(new AssetSupplyAccessoryDetail
+                                {
+                                    AccessoryId = accDto.AccessoryId,
+                                    DefaultQuantity = catalogRow.DefaultQuantity,
+                                    SuppliedQuantity = accDto.SuppliedQuantity,
+                                    CreationDate = _dateTimeProvider.Now,
+                                    CreatedBy = _currentUserService.UserId
+                                });
+                            }
+                        }
+
+                        supply.SupplyDetails.Add(detail);
+                    }
 
                     var createdSupply = await _assetSupplyRepository.AddAsync(supply);
 
@@ -1344,6 +1413,66 @@ namespace Ettad.Inventory.Service.AssetSupply.Services
                 _logger.LogError(ex, "Error getting selected batches with assets. OrderId: {OrderId}, User: {UserId}",
                     orderId, _currentUserService.UserId);
                 return APIOperationResponse<List<BatchDto>>.Fail(
+                    ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
+            }
+        }
+
+        public async Task<APIOperationResponse<WeaponAccessoryDefaultsDto>> GetWeaponAccessoryDefaultsAsync(long orderId)
+        {
+            try
+            {
+                var selections = (await _weaponSupplySelectionRepository.FindAsync(s => s.OrderId == orderId)).ToList();
+                var weaponItemIds = selections.Select(s => s.ItemId).Distinct().ToList();
+
+                if (weaponItemIds.Count == 0)
+                {
+                    var order = await _orderRepository.FindOneAsync(
+                        o => o.Id == orderId && !o.IsDeleted,
+                        false,
+                        $"{nameof(Order.RequestItems)}.{nameof(RequestItem.Item)}");
+
+                    if (order == null)
+                        return APIOperationResponse<WeaponAccessoryDefaultsDto>.Fail(ResponseType.NotFound, "Order not found");
+
+                    weaponItemIds = order.RequestItems?
+                        .Where(ri => !ri.IsDeleted && ri.Item != null && ri.Item.ItemType == ItemType.Weapon)
+                        .Select(ri => ri.ItemId)
+                        .Distinct()
+                        .ToList() ?? new List<long>();
+                }
+
+                var result = new WeaponAccessoryDefaultsDto();
+                if (weaponItemIds.Count == 0)
+                    return APIOperationResponse<WeaponAccessoryDefaultsDto>.Success(result);
+
+                var links = await _weaponAccessoryRepository
+                    .Find(wa => weaponItemIds.Contains(wa.WeaponId), false, nameof(WeaponAccessory.Accessory))
+                    .ToListAsync();
+
+                foreach (var weaponId in weaponItemIds)
+                {
+                    var lines = links
+                        .Where(wa => wa.WeaponId == weaponId)
+                        .Select(wa => new WeaponAccessoryDefaultLineDto
+                        {
+                            AccessoryId = wa.AccessoryId,
+                            ItemNo = wa.Accessory?.ItemNo,
+                            Name = wa.Accessory?.Name ?? string.Empty,
+                            NameAr = wa.Accessory?.NameAr,
+                            DefaultQuantity = wa.DefaultQuantity
+                        })
+                        .ToList();
+
+                    result.DefaultsByWeaponItemId[weaponId] = lines;
+                }
+
+                return APIOperationResponse<WeaponAccessoryDefaultsDto>.Success(result);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting weapon accessory defaults. OrderId: {OrderId}, User: {UserId}",
+                    orderId, _currentUserService.UserId);
+                return APIOperationResponse<WeaponAccessoryDefaultsDto>.Fail(
                     ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
             }
         }
