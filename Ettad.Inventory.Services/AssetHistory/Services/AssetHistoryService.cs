@@ -19,7 +19,10 @@ namespace Ettad.Inventory.Service.AssetHistory.Services
         private static readonly string[] HistoryIncludes =
         {
             nameof(AssetHistoryEntity.Asset),
+            $"{nameof(AssetHistoryEntity.Asset)}.{nameof(Ettad.Data.Entities.Asset.Batch)}",
             nameof(AssetHistoryEntity.Order),
+            nameof(AssetHistoryEntity.AssetSupply),
+            nameof(AssetHistoryEntity.AssetAssignment),
             nameof(AssetHistoryEntity.PreviousDepartment),
             nameof(AssetHistoryEntity.NewDepartment),
             nameof(AssetHistoryEntity.PreviousCustodian),
@@ -54,7 +57,7 @@ namespace Ettad.Inventory.Service.AssetHistory.Services
                     AssetId = assetId,
                     ActionType = actionType,
                     ActionDate = _dateTimeProvider.Now,
-                    Description = context.Description,
+                    Description = string.Empty,
                     PreviousStatus = context.PreviousStatus,
                     NewStatus = context.NewStatus,
                     PreviousDepartmentId = context.PreviousDepartmentId,

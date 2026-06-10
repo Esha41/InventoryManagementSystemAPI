@@ -402,7 +402,6 @@ namespace Ettad.Inventory.Service.Assets.Implementation
 
             await _historyService.RecordHistoryAsync(asset.Id, AssetHistoryActionType.Assigned, new AssetHistoryContext
             {
-                Description = $"Asset assigned on depot intake (asset id {asset.Id})",
                 NewDepartmentId = departmentId,
                 NewCustodianId = custodianId,
                 AssetAssignmentId = assignment.Id,
@@ -815,6 +814,12 @@ namespace Ettad.Inventory.Service.Assets.Implementation
                 _logger.LogInformation("Asset created successfully. AssetId: {AssetId}, User: {UserId}",
                                 createdAsset.Id, _currentUserService.UserId);
 
+                await _historyService.RecordHistoryAsync(createdAsset.Id, AssetHistoryActionType.Created, new AssetHistoryContext
+                {
+                    NewStatus = createdAsset.Status,
+                    Metadata = JsonSerializer.Serialize(new { source = "manual", batchNumber = batch.BatchNumber })
+                });
+
                 // Upload files and link them to the created asset
                 if (files != null && files.Any())
                 {
@@ -969,6 +974,11 @@ namespace Ettad.Inventory.Service.Assets.Implementation
                         continue;
                     }
 
+                    await _historyService.RecordHistoryAsync(asset.Id, AssetHistoryActionType.Created, new AssetHistoryContext
+                    {
+                        NewStatus = asset.Status,
+                        Metadata = JsonSerializer.Serialize(new { source = "bulk", batchNumber = dto.BatchNumber })
+                    });
                     createdIds.Add(asset.Id);
                 }
 
@@ -1137,6 +1147,9 @@ namespace Ettad.Inventory.Service.Assets.Implementation
                 if (updateLookupErr != null)
                     return APIOperationResponse<bool>.Fail(ResponseType.BadRequest, updateLookupErr);
 
+                // Capture state before overwrite for history
+                var previousStatus = existingAsset.Status;
+
                 // Map updates to entity
                 _mapper.Map(inputDto, existingAsset);
                 existingAsset.ModificationDate = _dateTimeProvider.Now;
@@ -1146,6 +1159,20 @@ namespace Ettad.Inventory.Service.Assets.Implementation
 
                 // Update in repository
                 await _assetRepository.UpdateAsync(existingAsset);
+
+                // Record history after successful save
+                if (inputDto.Status.HasValue && inputDto.Status.Value != previousStatus)
+                {
+                    await _historyService.RecordHistoryAsync(id, AssetHistoryActionType.StatusChanged, new AssetHistoryContext
+                    {
+                        PreviousStatus = previousStatus,
+                        NewStatus = inputDto.Status.Value
+                    });
+                }
+                else
+                {
+                    await _historyService.RecordHistoryAsync(id, AssetHistoryActionType.Updated, new AssetHistoryContext());
+                }
 
                 // Upload files (if any) and link them to the asset
                 if (files != null && files.Any())

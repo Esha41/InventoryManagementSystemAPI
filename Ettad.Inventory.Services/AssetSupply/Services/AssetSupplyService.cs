@@ -851,7 +851,6 @@ namespace Ettad.Inventory.Service.AssetSupply.Services
 
                         await _historyService.RecordHistoryAsync(asset.Id, AssetHistoryActionType.Assigned, new AssetHistoryContext
                         {
-                            Description = $"Asset assigned to custodian",
                             NewDepartmentId = assignment.DepartmentId,
                             NewCustodianId = assignment.CustodianId,
                             NewLocation = assignment.Location,
@@ -1152,7 +1151,6 @@ namespace Ettad.Inventory.Service.AssetSupply.Services
                 // Record history
                 await _historyService.RecordHistoryAsync(asset.Id, AssetHistoryActionType.Returned, new AssetHistoryContext
                 {
-                    Description = "Asset returned from assignment",
                     PreviousDepartmentId = previousDepartmentId,
                     PreviousCustodianId = previousCustodianId,
                     PreviousLocation = previousLocation,

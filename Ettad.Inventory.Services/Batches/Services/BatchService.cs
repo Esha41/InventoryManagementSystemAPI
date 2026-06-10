@@ -16,6 +16,7 @@ using Ettad.CrossCutting.Comman.Models;
 using Ettad.Inventory.Service.AssetHistory.Dtos;
 using OfficeOpenXml;
 using OfficeOpenXml.Style;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 using Ettad.Data.Interfaces.Repositories;
 using Ettad.Module.lookup.Interfaces;
@@ -824,6 +825,8 @@ namespace Ettad.Inventory.Service.Batches.Services
                 if (lookupErr != null)
                     return (false, lookupErr);
 
+                var previousStatus = asset.Status;
+
                 asset.ItemId = item.ItemId;
                 asset.SerialNumber = string.IsNullOrWhiteSpace(item.SerialNumber) ? null : item.SerialNumber.Trim();
                 asset.RFID = string.IsNullOrWhiteSpace(item.RFID) ? null : item.RFID.Trim();
@@ -847,6 +850,15 @@ namespace Ettad.Inventory.Service.Batches.Services
                 }
 
                 await _assetRepository.UpdateAsync(asset);
+
+                if (item.Status.HasValue && item.Status.Value != previousStatus)
+                {
+                    await _historyService.RecordHistoryAsync(asset.Id, AssetHistoryActionType.StatusChanged, new AssetHistoryContext
+                    {
+                        PreviousStatus = previousStatus,
+                        NewStatus = item.Status.Value
+                    });
+                }
             }
 
             return (true, null);
@@ -923,7 +935,6 @@ namespace Ettad.Inventory.Service.Batches.Services
                 await _assignmentRepository.UpdateAsync(assignment);
                 await _historyService.RecordHistoryAsync(asset.Id, AssetHistoryActionType.Returned, new AssetHistoryContext
                 {
-                    Description = "Assignment removed from batch edit",
                     PreviousDepartmentId = prevDept,
                     PreviousCustodianId = prevCust,
                     AssetAssignmentId = assignment.Id
@@ -991,7 +1002,6 @@ namespace Ettad.Inventory.Service.Batches.Services
                     await _assignmentRepository.UpdateAsync(old);
                     await _historyService.RecordHistoryAsync(asset.Id, AssetHistoryActionType.Returned, new AssetHistoryContext
                     {
-                        Description = "Previous assignment ended before batch-edit reassignment",
                         PreviousDepartmentId = prevDept,
                         PreviousCustodianId = prevCust,
                         AssetAssignmentId = old.Id
@@ -1023,7 +1033,6 @@ namespace Ettad.Inventory.Service.Batches.Services
 
             await _historyService.RecordHistoryAsync(asset.Id, AssetHistoryActionType.Assigned, new AssetHistoryContext
             {
-                Description = "Asset assigned from batch edit",
                 NewDepartmentId = departmentId,
                 NewCustodianId = custodianId,
                 AssetAssignmentId = newAssignment.Id,
@@ -1935,11 +1944,11 @@ namespace Ettad.Inventory.Service.Batches.Services
 
             await _historyService.RecordHistoryAsync(asset.Id, AssetHistoryActionType.Assigned, new AssetHistoryContext
             {
-                Description = $"Asset assigned on batch Excel import (asset id {asset.Id})",
                 NewDepartmentId = departmentId,
                 NewCustodianId = custodianId,
                 AssetAssignmentId = assignment.Id,
-                Notes = dto.AssignmentNotes
+                Notes = dto.AssignmentNotes,
+                Metadata = JsonSerializer.Serialize(new { source = "excel_import" })
             });
 
             return (true, null);
