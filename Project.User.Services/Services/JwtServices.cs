@@ -22,6 +22,13 @@ namespace Ettad.User.Services.Services
         public const string TokenPurposeClaim = "token_purpose";
         public const string TokenPurposeRoleSelection = "RoleSelection";
 
+        /// <summary>
+        /// Stable per-login session identifier embedded in every access token. Single-session
+        /// validation compares this (not the per-token jti) against <see cref="ApplicationUser.CurrentTokenId"/>,
+        /// so refreshes within one session — including across multiple tabs — stay valid.
+        /// </summary>
+        public const string SessionIdClaim = "sid";
+
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly JwtOptions _jwtOptions;
         private readonly IDateTimeProvider _dateTimeProvider;
@@ -54,7 +61,14 @@ namespace Ettad.User.Services.Services
             return Convert.ToBase64String(randomBytes);
         }
 
-        public async Task<AuthenticatedResponse> GenerateJWTokenAsync(string userId)
+        public DateTime CalculateRefreshTokenExpiry(DateTime sessionStartedAt)
+        {
+            var slidingExpiry = _dateTimeProvider.Now.AddMinutes(_jwtOptions.RefreshTokenExpireInMinutes);
+            var absoluteExpiry = sessionStartedAt.AddMinutes(_jwtOptions.AbsoluteSessionLifetimeMinutes);
+            return slidingExpiry < absoluteExpiry ? slidingExpiry : absoluteExpiry;
+        }
+
+        public async Task<AuthenticatedResponse> GenerateJWTokenAsync(string userId, bool startNewSession = true)
         {
             if (string.IsNullOrWhiteSpace(userId))
                 throw new ArgumentException("userId required", nameof(userId));
@@ -81,6 +95,21 @@ namespace Ettad.User.Services.Services
             var tokenId = Guid.NewGuid().ToString();
             claims.Add(new Claim(JwtRegisteredClaimNames.Jti, tokenId));
 
+            // Session id: rotated on a new login (kills the old session's tokens), but reused on
+            // refresh so concurrent tabs sharing one session don't invalidate each other.
+            string sessionId;
+            if (startNewSession || string.IsNullOrEmpty(user.CurrentTokenId))
+            {
+                sessionId = Guid.NewGuid().ToString();
+                user.CurrentTokenId = sessionId;
+                await _userManager.UpdateAsync(user);
+            }
+            else
+            {
+                sessionId = user.CurrentTokenId;
+            }
+            claims.Add(new Claim(SessionIdClaim, sessionId));
+
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtOptions.Secret));
             var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
@@ -96,10 +125,6 @@ namespace Ettad.User.Services.Services
 
             var handler = new JwtSecurityTokenHandler();
             var tokenString = handler.WriteToken(jwt);
-
-            // Store CurrentTokenId for single-session validation (invalidate previous sessions on new login)
-            user.CurrentTokenId = tokenId;
-            await _userManager.UpdateAsync(user);
 
             return new AuthenticatedResponse
             {
@@ -205,6 +230,12 @@ namespace Ettad.User.Services.Services
             if (!user.RefreshTokenExpiryDate.HasValue || user.RefreshTokenExpiryDate.Value < _dateTimeProvider.Now)
                 throw new ApiException("server.refreshTokenExpired");
 
+            // Sessions issued before SessionStartedAt existed start their absolute clock here.
+            var sessionStartedAt = user.SessionStartedAt ?? _dateTimeProvider.Now;
+            var newExpiry = CalculateRefreshTokenExpiry(sessionStartedAt);
+            if (newExpiry <= _dateTimeProvider.Now)
+                throw new ApiException("server.refreshTokenExpired");
+
             // Issue a new refresh token.
             // Keep the old token in PreviousRefreshToken for a 60-second grace window.
             // This covers the scenario where the backend rotated the token and wrote it
@@ -216,14 +247,15 @@ namespace Ettad.User.Services.Services
             user.PreviousRefreshToken = user.RefreshToken;
             user.PreviousRefreshTokenExpiresAt = _dateTimeProvider.Now.AddSeconds(60);
             user.RefreshToken = newRefresh;
-            user.RefreshTokenExpiryDate = _dateTimeProvider.Now.AddMinutes(_jwtOptions.RefreshTokenExpireInMinutes);
+            user.RefreshTokenExpiryDate = newExpiry;
+            user.SessionStartedAt = sessionStartedAt;
 
             var updateResult = await _userManager.UpdateAsync(user);
             if (!updateResult.Succeeded)
                 throw new ApiException("server.unableToUpdateRefreshToken");
 
-            // Generate a new JWT
-            var authResponse = await GenerateJWTokenAsync(user.Id);
+            // Generate a new JWT, reusing the existing session id so other tabs stay valid.
+            var authResponse = await GenerateJWTokenAsync(user.Id, startNewSession: false);
             authResponse.RefreshToken = newRefresh;
             return authResponse;
         }

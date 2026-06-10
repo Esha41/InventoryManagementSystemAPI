@@ -329,11 +329,7 @@ namespace Ettad.User.Services.Services
                     "[ADMIN LOGIN] {Reason} — clearing old session | Username: {Username} | UserId: {UserId} | IP: {ClientIP}",
                     isGraceWindowRecovery ? "Grace window recovery" : "Force login override",
                     loginInformation.Username, user.Id, clientIp);
-                user.RefreshToken = null;
-                user.RefreshTokenExpiryDate = null;
-                user.PreviousRefreshToken = null;
-                user.PreviousRefreshTokenExpiresAt = null;
-                await _userRepository.UpdateAsync(user);
+                await ClearUserRefreshSessionAsync(user);
             }
 
             // Record successful login
@@ -720,11 +716,7 @@ namespace Ettad.User.Services.Services
                         "[LDAP LOGIN] {Reason} — clearing old session | Username: {Username} | UserId: {UserId} | IP: {ClientIP}",
                         isGraceWindowRecovery ? "Grace window recovery" : "Force login override",
                         resolvedUsername, user.Id, clientIp);
-                    user.RefreshToken = null;
-                    user.RefreshTokenExpiryDate = null;
-                    user.PreviousRefreshToken = null;
-                    user.PreviousRefreshTokenExpiresAt = null;
-                    await _userRepository.UpdateAsync(user);
+                    await ClearUserRefreshSessionAsync(user);
                 }
 
                 // Record successful login before token issuance
@@ -953,6 +945,16 @@ namespace Ettad.User.Services.Services
             return APIOperationResponse<AuthenticatedResponse>.Success(authResponse);
         }
 
+        private async Task ClearUserRefreshSessionAsync(ApplicationUser user)
+        {
+            user.RefreshToken = null;
+            user.RefreshTokenExpiryDate = null;
+            user.SessionStartedAt = null;
+            user.PreviousRefreshToken = null;
+            user.PreviousRefreshTokenExpiresAt = null;
+            await _userRepository.UpdateAsync(user);
+        }
+
         /// <summary>
         /// True when the login request carries the same refresh token cookie as the user's current session (same browser/client).
         /// </summary>
@@ -969,9 +971,11 @@ namespace Ettad.User.Services.Services
 
         private async Task<AuthenticatedResponse> CreateAndReturnAuthResponseAsync(ApplicationUser user, CancellationToken cancellationToken)
         {
+            var sessionStartedAt = _dateTimeProvider.Now;
             var refreshToken = _jwtServices.GenerateRefreshToken();
             user.RefreshToken = refreshToken;
-            user.RefreshTokenExpiryDate = _dateTimeProvider.Now.AddMinutes(_jwtOptions.RefreshTokenExpireInMinutes);
+            user.SessionStartedAt = sessionStartedAt;
+            user.RefreshTokenExpiryDate = _jwtServices.CalculateRefreshTokenExpiry(sessionStartedAt);
             // Clear grace-window fields — a fresh login starts with a clean slate.
             user.PreviousRefreshToken = null;
             user.PreviousRefreshTokenExpiresAt = null;
@@ -1242,6 +1246,7 @@ namespace Ettad.User.Services.Services
                 var hadRefreshToken = !string.IsNullOrEmpty(user.RefreshToken);
                 user.RefreshToken = null;
                 user.RefreshTokenExpiryDate = null;
+                user.SessionStartedAt = null;
                 user.PreviousRefreshToken = null;
                 user.PreviousRefreshTokenExpiresAt = null;
                 user.CurrentTokenId = null;

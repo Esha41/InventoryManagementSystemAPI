@@ -10,7 +10,19 @@ namespace Ettad.User.Services.Interfaces
     public interface IJwtServices
     {
         string GenerateRefreshToken();
-        Task<AuthenticatedResponse> GenerateJWTokenAsync(string userId);
+
+        /// <summary>
+        /// Sliding-window refresh expiry capped at sessionStartedAt + AbsoluteSessionLifetimeMinutes,
+        /// so a session cannot outlive its absolute lifetime no matter how often it refreshes.
+        /// </summary>
+        DateTime CalculateRefreshTokenExpiry(DateTime sessionStartedAt);
+
+        /// <summary>
+        /// Issues an access token. <paramref name="startNewSession"/> = true (login/select-role)
+        /// rotates the session id, invalidating any prior session's tokens. False (refresh) reuses
+        /// the existing session id, so multiple tabs refreshing independently keep one shared session.
+        /// </summary>
+        Task<AuthenticatedResponse> GenerateJWTokenAsync(string userId, bool startNewSession = true);
         Task<AuthenticatedResponse> GenerateAzureJWTokenAsync(LoginWithAzureInformation information);
         Task<AuthenticatedResponse> RefreshAsync(UserRefreshToken userRefreshToken);
 

@@ -54,14 +54,20 @@ internal static class JwtBearerOptionsConfigurator
         if (string.IsNullOrWhiteSpace(userId))
             return;
 
+        // Single-session check is keyed on the session id (stable across refreshes / tabs),
+        // NOT the per-token jti — otherwise each tab's refresh would invalidate the others.
+        var sessionIdClaim = context.Principal?.Claims
+            .FirstOrDefault(c => c.Type == JwtServices.SessionIdClaim);
+        var sessionId = sessionIdClaim?.Value;
+
         var userManager = context.HttpContext.RequestServices
             .GetRequiredService<UserManager<ApplicationUser>>();
         var user = await userManager.FindByIdAsync(userId);
-        if (user == null || user.CurrentTokenId != jtiClaim.Value)
+        if (user == null || string.IsNullOrEmpty(sessionId) || user.CurrentTokenId != sessionId)
         {
             context.Fail("Session invalidated by new login.");
-            Log.Warning("Token rejected - session invalidated. UserId: {UserId}, TokenId: {TokenId}", userId,
-                jtiClaim.Value);
+            Log.Warning("Token rejected - session invalidated. UserId: {UserId}, SessionId: {SessionId}", userId,
+                sessionId);
         }
     }
 }

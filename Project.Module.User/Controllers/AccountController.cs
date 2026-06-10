@@ -4,7 +4,6 @@ using Ettad.ResponseHandler.Models;
 using Ettad.User.Services.DTO;
 using Ettad.User.Services.Interfaces;
 using System.Net;
-using Microsoft.Extensions.Options;
 using Microsoft.AspNetCore.Http;
 
 namespace Ettad.User.Api.Controllers
@@ -18,20 +17,17 @@ namespace Ettad.User.Api.Controllers
         private readonly IAccountServices _authenticationService;
         private readonly ICaptchaService _captchaService;
         private readonly IOnboardingService _onboardingService;
-        private readonly JwtOptions _jwtOptions;
         #endregion
 
         #region ctor
         public AccountController(
             IAccountServices authenticationService,
             ICaptchaService captchaService,
-            IOnboardingService onboardingService,
-            IOptions<JwtOptions> jwtOptions)
+            IOnboardingService onboardingService)
         {
             _authenticationService = authenticationService;
             _captchaService = captchaService;
             _onboardingService = onboardingService;
-            _jwtOptions = jwtOptions?.Value ?? new JwtOptions();
         }
         #endregion
 
@@ -82,13 +78,15 @@ namespace Ettad.User.Api.Controllers
 
         private void SetRefreshTokenCookie(HttpResponse response, string refreshToken)
         {
+            // Session cookie (no MaxAge/Expires): the browser discards it when closed,
+            // so a closed browser cannot silently restore the session. Server-side
+            // expiry (sliding window + absolute cap) bounds it independently.
             var cookieOptions = new CookieOptions
             {
                 HttpOnly = true,
                 Secure = true,
                 SameSite = SameSiteMode.None,
-                Path = "/",
-                MaxAge = TimeSpan.FromMinutes(_jwtOptions.RefreshTokenExpireInMinutes)
+                Path = "/"
             };
             response.Cookies.Append("refreshToken", refreshToken, cookieOptions);
         }
