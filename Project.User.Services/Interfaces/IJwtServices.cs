@@ -10,6 +10,13 @@ namespace Ettad.User.Services.Interfaces
     public interface IJwtServices
     {
         string GenerateRefreshToken();
+
+        /// <summary>
+        /// Sliding-window refresh expiry capped at sessionStartedAt + AbsoluteSessionLifetimeMinutes,
+        /// so a session cannot outlive its absolute lifetime no matter how often it refreshes.
+        /// </summary>
+        DateTime CalculateRefreshTokenExpiry(DateTime sessionStartedAt);
+
         Task<AuthenticatedResponse> GenerateJWTokenAsync(string userId);
         Task<AuthenticatedResponse> GenerateAzureJWTokenAsync(LoginWithAzureInformation information);
         Task<AuthenticatedResponse> RefreshAsync(UserRefreshToken userRefreshToken);

@@ -54,6 +54,13 @@ namespace Ettad.User.Services.Services
             return Convert.ToBase64String(randomBytes);
         }
 
+        public DateTime CalculateRefreshTokenExpiry(DateTime sessionStartedAt)
+        {
+            var slidingExpiry = _dateTimeProvider.Now.AddMinutes(_jwtOptions.RefreshTokenExpireInMinutes);
+            var absoluteExpiry = sessionStartedAt.AddMinutes(_jwtOptions.AbsoluteSessionLifetimeMinutes);
+            return slidingExpiry < absoluteExpiry ? slidingExpiry : absoluteExpiry;
+        }
+
         public async Task<AuthenticatedResponse> GenerateJWTokenAsync(string userId)
         {
             if (string.IsNullOrWhiteSpace(userId))
@@ -205,6 +212,12 @@ namespace Ettad.User.Services.Services
             if (!user.RefreshTokenExpiryDate.HasValue || user.RefreshTokenExpiryDate.Value < _dateTimeProvider.Now)
                 throw new ApiException("server.refreshTokenExpired");
 
+            // Sessions issued before SessionStartedAt existed start their absolute clock here.
+            var sessionStartedAt = user.SessionStartedAt ?? _dateTimeProvider.Now;
+            var newExpiry = CalculateRefreshTokenExpiry(sessionStartedAt);
+            if (newExpiry <= _dateTimeProvider.Now)
+                throw new ApiException("server.refreshTokenExpired");
+
             // Issue a new refresh token.
             // Keep the old token in PreviousRefreshToken for a 60-second grace window.
             // This covers the scenario where the backend rotated the token and wrote it
@@ -216,7 +229,8 @@ namespace Ettad.User.Services.Services
             user.PreviousRefreshToken = user.RefreshToken;
             user.PreviousRefreshTokenExpiresAt = _dateTimeProvider.Now.AddSeconds(60);
             user.RefreshToken = newRefresh;
-            user.RefreshTokenExpiryDate = _dateTimeProvider.Now.AddMinutes(_jwtOptions.RefreshTokenExpireInMinutes);
+            user.RefreshTokenExpiryDate = newExpiry;
+            user.SessionStartedAt = sessionStartedAt;
 
             var updateResult = await _userManager.UpdateAsync(user);
             if (!updateResult.Succeeded)

@@ -14,6 +14,13 @@ namespace Ettad.Comman.Idenitity
         public DateTime? RefreshTokenExpiryDate { get; set; }
 
         /// <summary>
+        /// When the current session began (login / role selection). Refreshes slide
+        /// RefreshTokenExpiryDate forward but never past this plus
+        /// JwtOptions.AbsoluteSessionLifetimeMinutes.
+        /// </summary>
+        public DateTime? SessionStartedAt { get; set; }
+
+        /// <summary>
         /// The immediately-previous refresh token kept valid for a short grace window
         /// after rotation. Handles the case where the server rotated the token but the
         /// Set-Cookie response was lost before the client received it.
