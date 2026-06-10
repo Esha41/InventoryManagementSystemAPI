@@ -6,11 +6,18 @@ using DevExpress.XtraReports.Web.ReportDesigner;
 using DevExpress.XtraReports.Web.ReportDesigner.Services;
 using DevExpress.AspNetCore.Reporting.WebDocumentViewer;
 using DevExpress.AspNetCore.Reporting.WebDocumentViewer.Native.Services;
+using Ettad.CrossCutting.Common.Security;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Ettad.Modules.ReportManagement.API.Controllers
 {
+    /// <summary>
+    /// DevExpress Web Document Viewer (report preview/export). Requires report dashboard or designer permission.
+    /// </summary>
     [ApiExplorerSettings(IgnoreApi = true)]
+    [Authorize]
+    [CheckAuthorize("ReportDashboard", "ReportDesigner")]
     [Route("DXXRDV")]
     [Route("api/DXXRDV")]
     public class CustomWebDocumentViewerController : WebDocumentViewerController
@@ -20,8 +27,13 @@ namespace Ettad.Modules.ReportManagement.API.Controllers
         }
     }
 
+    /// <summary>
+    /// DevExpress Web Report Designer endpoints.
+    /// </summary>
     [ApiExplorerSettings(IgnoreApi = true)]
     [ApiController]
+    [Authorize]
+    [CheckAuthorize("ReportDesigner")]
     [Route("DXXRD")]
     [Route("api/DXXRD")]
     public class CustomReportDesignerController : ReportDesignerController
@@ -56,7 +68,12 @@ namespace Ettad.Modules.ReportManagement.API.Controllers
         }
     }
 
+    /// <summary>
+    /// DevExpress Query Builder (used from the report designer).
+    /// </summary>
     [ApiExplorerSettings(IgnoreApi = true)]
+    [Authorize]
+    [CheckAuthorize("ReportDesigner")]
     [Route("DXXQB")]
     [Route("api/DXXQB")]
     public class CustomQueryBuilderController : QueryBuilderController

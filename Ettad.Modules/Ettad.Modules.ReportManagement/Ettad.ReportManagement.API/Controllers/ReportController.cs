@@ -36,10 +36,11 @@ namespace Ettad.Modules.ReportManagement.API.Controllers
         }
 
         /// <summary>
-        /// Get all public reports (Published status) - accessible to all authenticated users
+        /// Get all public reports (Published status) for the report dashboard.
         /// </summary>
         [HttpGet("public")]
         [ProducesResponseType((int)HttpStatusCode.OK)]
+        [CheckAuthorize("ReportDashboard", "ReportDesigner")]
         public async Task<IActionResult> GetPublicReports()
         {
             var result = await _reportService.GetPublicReportsAsync();
