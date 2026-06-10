@@ -22,6 +22,13 @@ namespace Ettad.User.Services.Services
         public const string TokenPurposeClaim = "token_purpose";
         public const string TokenPurposeRoleSelection = "RoleSelection";
 
+        /// <summary>
+        /// Stable per-login session identifier embedded in every access token. Single-session
+        /// validation compares this (not the per-token jti) against <see cref="ApplicationUser.CurrentTokenId"/>,
+        /// so refreshes within one session — including across multiple tabs — stay valid.
+        /// </summary>
+        public const string SessionIdClaim = "sid";
+
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly JwtOptions _jwtOptions;
         private readonly IDateTimeProvider _dateTimeProvider;
@@ -61,7 +68,7 @@ namespace Ettad.User.Services.Services
             return slidingExpiry < absoluteExpiry ? slidingExpiry : absoluteExpiry;
         }
 
-        public async Task<AuthenticatedResponse> GenerateJWTokenAsync(string userId)
+        public async Task<AuthenticatedResponse> GenerateJWTokenAsync(string userId, bool startNewSession = true)
         {
             if (string.IsNullOrWhiteSpace(userId))
                 throw new ArgumentException("userId required", nameof(userId));
@@ -88,6 +95,21 @@ namespace Ettad.User.Services.Services
             var tokenId = Guid.NewGuid().ToString();
             claims.Add(new Claim(JwtRegisteredClaimNames.Jti, tokenId));
 
+            // Session id: rotated on a new login (kills the old session's tokens), but reused on
+            // refresh so concurrent tabs sharing one session don't invalidate each other.
+            string sessionId;
+            if (startNewSession || string.IsNullOrEmpty(user.CurrentTokenId))
+            {
+                sessionId = Guid.NewGuid().ToString();
+                user.CurrentTokenId = sessionId;
+                await _userManager.UpdateAsync(user);
+            }
+            else
+            {
+                sessionId = user.CurrentTokenId;
+            }
+            claims.Add(new Claim(SessionIdClaim, sessionId));
+
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtOptions.Secret));
             var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
@@ -103,10 +125,6 @@ namespace Ettad.User.Services.Services
 
             var handler = new JwtSecurityTokenHandler();
             var tokenString = handler.WriteToken(jwt);
-
-            // Store CurrentTokenId for single-session validation (invalidate previous sessions on new login)
-            user.CurrentTokenId = tokenId;
-            await _userManager.UpdateAsync(user);
 
             return new AuthenticatedResponse
             {
@@ -236,8 +254,8 @@ namespace Ettad.User.Services.Services
             if (!updateResult.Succeeded)
                 throw new ApiException("server.unableToUpdateRefreshToken");
 
-            // Generate a new JWT
-            var authResponse = await GenerateJWTokenAsync(user.Id);
+            // Generate a new JWT, reusing the existing session id so other tabs stay valid.
+            var authResponse = await GenerateJWTokenAsync(user.Id, startNewSession: false);
             authResponse.RefreshToken = newRefresh;
             return authResponse;
         }
