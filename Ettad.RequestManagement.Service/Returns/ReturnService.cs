@@ -988,7 +988,6 @@ namespace Ettad.RequestManagement.Service.Returns
 
             await _assetHistoryService.RecordHistoryAsync(asset.Id, AssetHistoryActionType.Returned, new AssetHistoryContext
             {
-                Description = $"Weapon returned to depot {depotName} via return request {requestNo}",
                 PreviousDepartmentId = previousDepartmentId,
                 PreviousCustodianId = previousCustodianId,
                 PreviousLocation = previousLocation,
