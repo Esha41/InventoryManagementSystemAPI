@@ -29,6 +29,15 @@ namespace Ettad.Comman.Idenitity
         public DateTime? PreviousRefreshTokenExpiresAt { get; set; }
 
         public string? CurrentTokenId { get; set; }
+
+        /// <summary>
+        /// Opaque id of the browser that owns the current session, mirrored in a persistent
+        /// httpOnly "deviceId" cookie (survives browser close, unlike the refresh session
+        /// cookie). A login whose device cookie matches reclaims an orphaned session silently
+        /// instead of being blocked with ALREADY_LOGGED_IN.
+        /// </summary>
+        public string? LastLoginDeviceId { get; set; }
+
         public string ExtraEmployeesView { get; set; } = string.Empty;
 
         public long? DepartmentId { get; set; }

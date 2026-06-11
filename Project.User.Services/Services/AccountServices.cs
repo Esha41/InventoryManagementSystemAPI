@@ -308,7 +308,12 @@ namespace Ettad.User.Services.Services
                     && user.PreviousRefreshTokenExpiresAt.HasValue
                     && user.PreviousRefreshTokenExpiresAt.Value > _dateTimeProvider.Now;
 
-                if (!isGraceWindowRecovery && !loginInformation.ForceLogin)
+                // Same browser, but the refresh session cookie died with it (browser closed):
+                // the persistent device cookie still identifies this client as the session
+                // owner, so reclaim silently instead of showing the take-over dialog.
+                var isSameDeviceReclaim = RequestIsFromSessionOwnerDevice(user);
+
+                if (!isGraceWindowRecovery && !isSameDeviceReclaim && !loginInformation.ForceLogin)
                 {
                     // Genuinely different device or browser — enforce single-session.
                     // NOT recorded as a failed attempt: the user's credentials were valid;
@@ -324,10 +329,10 @@ namespace Ettad.User.Services.Services
                         "An active session was found. This may be from a previous session or another device.");
                 }
 
-                // Grace-window recovery or explicit ForceLogin — clear old session and proceed.
+                // Grace-window recovery, same-device reclaim, or explicit ForceLogin — clear old session and proceed.
                 _logger.LogInformation(
                     "[ADMIN LOGIN] {Reason} — clearing old session | Username: {Username} | UserId: {UserId} | IP: {ClientIP}",
-                    isGraceWindowRecovery ? "Grace window recovery" : "Force login override",
+                    isGraceWindowRecovery ? "Grace window recovery" : isSameDeviceReclaim ? "Same-device reclaim" : "Force login override",
                     loginInformation.Username, user.Id, clientIp);
                 await ClearUserRefreshSessionAsync(user);
             }
@@ -695,7 +700,12 @@ namespace Ettad.User.Services.Services
                         && user.PreviousRefreshTokenExpiresAt.HasValue
                         && user.PreviousRefreshTokenExpiresAt.Value > _dateTimeProvider.Now;
 
-                    if (!isGraceWindowRecovery && !loginInformation.ForceLogin)
+                    // Same browser, but the refresh session cookie died with it (browser closed):
+                    // the persistent device cookie still identifies this client as the session
+                    // owner, so reclaim silently instead of showing the take-over dialog.
+                    var isSameDeviceReclaim = RequestIsFromSessionOwnerDevice(user);
+
+                    if (!isGraceWindowRecovery && !isSameDeviceReclaim && !loginInformation.ForceLogin)
                     {
                         // Genuinely different device or browser — enforce single-session.
                         // NOT recorded as a failed attempt: credentials were valid;
@@ -711,10 +721,10 @@ namespace Ettad.User.Services.Services
                             "An active session was found. This may be from a previous session or another device.");
                     }
 
-                    // Grace-window recovery or explicit ForceLogin — clear old session and proceed.
+                    // Grace-window recovery, same-device reclaim, or explicit ForceLogin — clear old session and proceed.
                     _logger.LogInformation(
                         "[LDAP LOGIN] {Reason} — clearing old session | Username: {Username} | UserId: {UserId} | IP: {ClientIP}",
-                        isGraceWindowRecovery ? "Grace window recovery" : "Force login override",
+                        isGraceWindowRecovery ? "Grace window recovery" : isSameDeviceReclaim ? "Same-device reclaim" : "Force login override",
                         resolvedUsername, user.Id, clientIp);
                     await ClearUserRefreshSessionAsync(user);
                 }
@@ -955,6 +965,62 @@ namespace Ettad.User.Services.Services
             await _userRepository.UpdateAsync(user);
         }
 
+        private const string DeviceIdCookieName = "deviceId";
+
+        /// <summary>
+        /// True when the login comes from the browser that owns the user's current session,
+        /// identified by the persistent device cookie. Covers the close-and-reopen case: the
+        /// refresh session cookie died with the browser, the server session is orphaned, and
+        /// without this check every re-login would be blocked with ALREADY_LOGGED_IN.
+        /// </summary>
+        private bool RequestIsFromSessionOwnerDevice(ApplicationUser user)
+        {
+            var deviceId = _httpContextAccessor.HttpContext?.Request.Cookies[DeviceIdCookieName];
+            return !string.IsNullOrEmpty(deviceId)
+                && !string.IsNullOrEmpty(user.LastLoginDeviceId)
+                && deviceId == user.LastLoginDeviceId;
+        }
+
+        /// <summary>
+        /// Returns the request's device id, issuing a new one (persistent httpOnly cookie,
+        /// 1 year) when the browser does not have one yet.
+        /// </summary>
+        private string GetOrCreateDeviceId()
+        {
+            var httpContext = _httpContextAccessor.HttpContext;
+            var deviceId = httpContext?.Request.Cookies[DeviceIdCookieName];
+            if (!string.IsNullOrEmpty(deviceId))
+                return deviceId;
+
+            deviceId = Guid.NewGuid().ToString("N");
+            httpContext?.Response.Cookies.Append(DeviceIdCookieName, deviceId, new CookieOptions
+            {
+                HttpOnly = true,
+                Secure = true,
+                SameSite = SameSiteMode.None,
+                Path = "/",
+                MaxAge = TimeSpan.FromDays(365)
+            });
+            return deviceId;
+        }
+
+        private void DeleteRefreshTokenCookie()
+        {
+            try
+            {
+                _httpContextAccessor.HttpContext?.Response.Cookies.Delete("refreshToken", new CookieOptions
+                {
+                    HttpOnly = true,
+                    Secure = true,
+                    SameSite = SameSiteMode.None
+                });
+            }
+            catch
+            {
+                // Best-effort: cookie deletion must never fail a logout.
+            }
+        }
+
         /// <summary>
         /// True when the login request carries the same refresh token cookie as the user's current session (same browser/client).
         /// </summary>
@@ -976,6 +1042,9 @@ namespace Ettad.User.Services.Services
             user.RefreshToken = refreshToken;
             user.SessionStartedAt = sessionStartedAt;
             user.RefreshTokenExpiryDate = _jwtServices.CalculateRefreshTokenExpiry(sessionStartedAt);
+            // Bind the session to this browser's persistent device cookie so a later login
+            // from the same browser (after the session cookie died with it) reclaims silently.
+            user.LastLoginDeviceId = GetOrCreateDeviceId();
             // Clear grace-window fields — a fresh login starts with a clean slate.
             user.PreviousRefreshToken = null;
             user.PreviousRefreshTokenExpiresAt = null;
@@ -1153,37 +1222,39 @@ namespace Ettad.User.Services.Services
                 var windowsIdentity = _httpContextAccessor.HttpContext?.User?.Identity?.Name;
                 var isWindowsAuthenticated = !string.IsNullOrEmpty(windowsIdentity);
 
-                if (string.IsNullOrWhiteSpace(userId))
-                {
-                    // If no userId but Windows authenticated, still allow logout
-                    if (isWindowsAuthenticated)
-                    {
-                        _logger.LogInformation("Windows user logged out (no user ID found). WindowsIdentity: {WindowsIdentity}",
-                            windowsIdentity);
-                        return APIOperationResponse<string>.Success("Logged out successfully.");
-                    }
+                ApplicationUser user = null;
+                if (!string.IsNullOrWhiteSpace(userId))
+                    user = await _userRepository.FindByIdAsync(userId);
 
-                    _logger.LogWarning("Logout attempt failed: No authenticated user context available.");
-                    return APIOperationResponse<string>.Fail(
-                        ResponseType.Unauthorized,
-                        "No authenticated user found.");
-                }
-
-                var user = await _userRepository.FindByIdAsync(userId);
+                // Cookie fallback: the idle-timeout / expired-session logout arrives with an
+                // expired bearer token (the endpoint is AllowAnonymous for exactly this case),
+                // so identify the session by the refresh cookie instead. Without this, an
+                // explicit logout silently leaves the server-side session alive and the next
+                // login is blocked with ALREADY_LOGGED_IN.
                 if (user == null)
                 {
-                    // If Windows authenticated but user not found in DB, still allow logout
-                    if (isWindowsAuthenticated)
+                    var refreshCookie = _httpContextAccessor.HttpContext?.Request.Cookies["refreshToken"];
+                    if (!string.IsNullOrWhiteSpace(refreshCookie))
                     {
-                        _logger.LogInformation("Windows user logged out (user not found in database). UserId: {UserId}, WindowsIdentity: {WindowsIdentity}",
-                            userId, windowsIdentity);
-                        return APIOperationResponse<string>.Success("Logged out successfully.");
+                        user = await _userRepository.Users.FirstOrDefaultAsync(u =>
+                            !u.IsDeleted &&
+                            (u.RefreshToken == refreshCookie || u.PreviousRefreshToken == refreshCookie),
+                            cancellationToken);
+                        if (user != null)
+                            userId = user.Id;
                     }
+                }
 
-                    _logger.LogWarning("Logout attempt failed: User not found. UserId: {UserId}", userId);
-                    return APIOperationResponse<string>.Fail(
-                        ResponseType.NotFound,
-                        "User not found.");
+                if (user == null)
+                {
+                    // No server-side session to clear (already logged out, or the cookie is
+                    // gone/stale). Logout is idempotent: drop the cookie and report success
+                    // so the client can finish clearing its local state.
+                    DeleteRefreshTokenCookie();
+                    _logger.LogInformation(
+                        "Logout with no resolvable session — treated as success. WindowsIdentity: {WindowsIdentity}",
+                        windowsIdentity ?? "N/A");
+                    return APIOperationResponse<string>.Success("Logged out successfully.");
                 }
 
                 // Blacklist the current JWT token
