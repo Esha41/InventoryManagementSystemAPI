@@ -128,8 +128,12 @@ namespace Ettad.User.Api.Controllers
             return Ok(new { captchaId, captchaCode });
         }
 
+        // AllowAnonymous: the idle-timeout logout fires with an already-expired access token,
+        // and the interceptor deliberately never refresh-retries logout calls. The service
+        // resolves the session from the httpOnly refresh cookie instead; a bearer token, when
+        // present and valid, is still used for jti blacklisting.
         [HttpPost("logout")]
-        [Authorize]
+        [AllowAnonymous]
         [ProducesResponseType((int)HttpStatusCode.OK)]
         public async Task<IActionResult> Logout()
         {
