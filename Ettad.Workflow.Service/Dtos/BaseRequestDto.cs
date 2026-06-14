@@ -70,6 +70,8 @@ namespace Ettad.Workflows.Service.Dtos
         public string? ChangedBy { get; set; }
         public string? ApproverNameEn { get; set; }
         public string? ApproverNameAr { get; set; }
+        /// <summary>Login username when display names are not set.</summary>
+        public string? ApproverUserName { get; set; }
         public DateTime ChangedAt { get; set; }
         public int? StepOrder { get; set; }
         public string? ApplicationRoleId { get; set; }

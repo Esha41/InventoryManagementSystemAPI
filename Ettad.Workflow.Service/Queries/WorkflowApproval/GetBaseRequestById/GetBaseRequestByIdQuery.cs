@@ -243,6 +243,7 @@ namespace Ettad.Workflows.Service.Queries.WorkflowApproval.GetBaseRequestById
                                                         ChangedBy = log.ChangedBy,
                                                         ApproverNameEn = user != null ? user.FullNameEN : null,
                                                         ApproverNameAr = user != null ? user.FullNameAR : null,
+                                                        ApproverUserName = user != null ? user.UserName : null,
                                                         ChangedAt = log.ChangedAt,
                                                         StepOrder = wfs != null ? wfs.StepOrder : null,
                                                         ApplicationRoleId = wfs != null ? wfs.ApplicationRoleId : null,
