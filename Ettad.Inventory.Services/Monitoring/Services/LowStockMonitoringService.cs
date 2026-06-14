@@ -76,12 +76,20 @@ namespace Ettad.Inventory.Service.Monitoring.Services
 
                 _logger.LogInformation($"Found {itemsToCheck.Count} items with minimum quantity configured.");
 
-                int lowStockCount = 0;
+                if (itemsToCheck.Count == 0)
+                    return APIOperationResponse<int>.Success(0);
 
+                var itemIds = itemsToCheck.Select(i => i.Id).ToList();
+                var stockMetrics = await GetStockMetricsByItemAsync(itemIds, depotFilter).ConfigureAwait(false);
+
+                int lowStockCount = 0;
                 foreach (var item in itemsToCheck)
                 {
-                    var lowStockInfo = await CheckItemStockAsync(item, depotFilter);
-                    if (lowStockInfo != null)
+                    if (!stockMetrics.TryGetValue(item.Id, out var metrics))
+                        continue;
+
+                    var remaining = metrics.TotalStock - (metrics.HoldQuantity + metrics.SuppliedQuantity);
+                    if (remaining <= item.MinimumQuantity)
                         lowStockCount++;
                 }
 
@@ -231,6 +239,69 @@ namespace Ettad.Inventory.Service.Monitoring.Services
                     ResponseType.InternalServerError,
                     $"An error occurred: {ex.Message}");
             }
+        }
+
+        private sealed class ItemStockMetrics
+        {
+            public long TotalStock { get; init; }
+            public long HoldQuantity { get; init; }
+            public long SuppliedQuantity { get; init; }
+        }
+
+        private async Task<Dictionary<long, ItemStockMetrics>> GetStockMetricsByItemAsync(
+            IReadOnlyList<long> itemIds,
+            IReadOnlyList<long>? effectiveDepotIds)
+        {
+            if (itemIds.Count == 0)
+                return new Dictionary<long, ItemStockMetrics>();
+
+            var inventoryQuery = _inventoryDetailsRepository.Find(
+                id => itemIds.Contains(id.ItemId) && !id.Inventory.IsDeleted,
+                false,
+                nameof(InventoryDetail.Inventory));
+
+            if (effectiveDepotIds != null && effectiveDepotIds.Count > 0)
+                inventoryQuery = inventoryQuery.Where(id => effectiveDepotIds.Contains(id.Inventory.DepoId));
+
+            var totalStockByItem = await inventoryQuery
+                .GroupBy(id => id.ItemId)
+                .Select(g => new { ItemId = g.Key, TotalStock = g.Sum(x => x.ItemQuantity) })
+                .ToListAsync()
+                .ConfigureAwait(false);
+
+            var supplyRows = await _supplyDetailsRepository
+                .Find(
+                    sd => itemIds.Contains(sd.ItemId) && !sd.IsDeleted && !sd.Supply.IsDeleted,
+                    false,
+                    nameof(SupplyDetail.Supply))
+                .Select(sd => new { sd.ItemId, sd.Quantity, sd.Supply.SubmissionStatus })
+                .ToListAsync()
+                .ConfigureAwait(false);
+
+            var holdByItem = supplyRows
+                .Where(sd => sd.SubmissionStatus == SupplySubmissionStatus.Draft)
+                .GroupBy(sd => sd.ItemId)
+                .ToDictionary(g => g.Key, g => g.Sum(x => x.Quantity));
+
+            var suppliedByItem = supplyRows
+                .Where(sd => sd.SubmissionStatus == SupplySubmissionStatus.Submitted)
+                .GroupBy(sd => sd.ItemId)
+                .ToDictionary(g => g.Key, g => g.Sum(x => x.Quantity));
+
+            var result = new Dictionary<long, ItemStockMetrics>();
+            foreach (var row in totalStockByItem)
+            {
+                holdByItem.TryGetValue(row.ItemId, out var hold);
+                suppliedByItem.TryGetValue(row.ItemId, out var supplied);
+                result[row.ItemId] = new ItemStockMetrics
+                {
+                    TotalStock = row.TotalStock,
+                    HoldQuantity = hold,
+                    SuppliedQuantity = supplied
+                };
+            }
+
+            return result;
         }
 
         private async Task<LowStockItemInfo?> CheckItemStockAsync(BaseItem item, IReadOnlyList<long>? effectiveDepotIds)

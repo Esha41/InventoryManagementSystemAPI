@@ -100,23 +100,48 @@ namespace Ettad.Inventory.Service.Monitoring.Services
                 if (distinct.Any())
                     query = query.Where(id => distinct.Contains(id.Inventory.DepoId));
 
-                var expiringLots = await query.ToListAsync();
+                var expiringLots = await query
+                    .Select(id => new { id.ItemId, id.Lot, id.ItemQuantity })
+                    .ToListAsync()
+                    .ConfigureAwait(false);
 
-                // Filter out empty lots by calculating remaining quantity
-                var expiringLotsWithQuantity = new List<InventoryDetail>();
+                if (expiringLots.Count == 0)
+                    return APIOperationResponse<int>.Success(0);
 
+                var itemIds = expiringLots.Select(x => x.ItemId).Distinct().ToList();
+                var lotNumbers = expiringLots.Select(x => x.Lot).Distinct().ToList();
+
+                var supplyRows = await (
+                    from sd in _supplyDetailsRepository.Find(sd => !sd.IsDeleted)
+                    join s in _supplyRepository.Find(s => !s.IsDeleted) on sd.SupplyId equals s.Id
+                    where itemIds.Contains(sd.ItemId) && lotNumbers.Contains(sd.Lot)
+                    select new { sd.ItemId, sd.Lot, sd.Quantity, s.SubmissionStatus }
+                ).ToListAsync().ConfigureAwait(false);
+
+                var usedByItemLot = supplyRows
+                    .Where(x => x.SubmissionStatus == SupplySubmissionStatus.Submitted)
+                    .GroupBy(x => (x.ItemId, x.Lot))
+                    .ToDictionary(g => g.Key, g => g.Sum(x => x.Quantity));
+
+                var reservedByItemLot = supplyRows
+                    .Where(x => x.SubmissionStatus == SupplySubmissionStatus.Draft)
+                    .GroupBy(x => (x.ItemId, x.Lot))
+                    .ToDictionary(g => g.Key, g => g.Sum(x => x.Quantity));
+
+                var expiringCount = 0;
                 foreach (var lot in expiringLots)
                 {
-                    var remainingQuantity = await CalculateRemainingQuantityAsync(lot);
-                    if (remainingQuantity > 0)
-                    {
-                        expiringLotsWithQuantity.Add(lot);
-                    }
+                    var key = (lot.ItemId, lot.Lot);
+                    usedByItemLot.TryGetValue(key, out var used);
+                    reservedByItemLot.TryGetValue(key, out var reserved);
+                    var remaining = Math.Max(0, lot.ItemQuantity - used - reserved);
+                    if (remaining > 0)
+                        expiringCount++;
                 }
 
-                _logger.LogInformation($"Found {expiringLotsWithQuantity.Count} lots expiring in the next 30 days.");
+                _logger.LogInformation($"Found {expiringCount} lots expiring in the next 30 days.");
 
-                return APIOperationResponse<int>.Success(expiringLotsWithQuantity.Count);
+                return APIOperationResponse<int>.Success(expiringCount);
             }
             catch (Exception ex)
             {

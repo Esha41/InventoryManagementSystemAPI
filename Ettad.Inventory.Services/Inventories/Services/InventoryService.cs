@@ -1427,6 +1427,7 @@ namespace Ettad.Inventory.Service.Inventories.Services
         /// <summary>
         /// Same data as <see cref="GetInventorySummaryForAllItemsAsync"/> but paged. Optional <paramref name="itemType"/>
         /// restricts rows before paging (e.g. Ammunition-only for dashboard tabs). When null, all item types are included.
+        /// Aggregates and pages in SQL — does not materialize the full item list.
         /// </summary>
         public async Task<APIOperationResponse<PaginatedList<ItemInventorySummaryDto>>> GetInventorySummaryForAllItemsPaginatedAsync(
             PagedListRequest request,
@@ -1437,28 +1438,382 @@ namespace Ettad.Inventory.Service.Inventories.Services
             request ??= new PagedListRequest();
             PagedListRequestNormalizer.Normalize(request);
 
-            var fullResult = await GetInventorySummaryForAllItemsAsync(depotId, depotIds).ConfigureAwait(false);
-            if (!fullResult.Succeeded || fullResult.Data == null)
+            var scopeResult = await TryResolveInventorySummaryScopeAsync(depotId, depotIds).ConfigureAwait(false);
+            if (!scopeResult.Succeeded)
             {
                 return APIOperationResponse<PaginatedList<ItemInventorySummaryDto>>.Fail(
-                    (ResponseType)fullResult.StatusCode,
-                    fullResult.Message ?? "Inventory summary failed.");
+                    scopeResult.ErrorStatus!.Value,
+                    scopeResult.ErrorMessage ?? "Inventory summary failed.");
             }
 
-            var list = fullResult.Data;
-            if (itemType.HasValue)
+            try
             {
-                list = list.Where(x => x.ItemType == itemType.Value).ToList();
+                var aggQuery = BuildScopedItemInventoryAggQuery(scopeResult.Scope!);
+                if (itemType.HasValue)
+                    aggQuery = aggQuery.Where(x => x.ItemType == itemType.Value);
+
+                var totalCount = await aggQuery.CountAsync().ConfigureAwait(false);
+
+                var pageRows = await aggQuery
+                    .OrderBy(x => x.ItemId)
+                    .Skip((request.Page - 1) * request.PageSize)
+                    .Take(request.PageSize)
+                    .ToListAsync()
+                    .ConfigureAwait(false);
+
+                if (pageRows.Count == 0)
+                {
+                    var emptyPage = new PaginatedList<ItemInventorySummaryDto>(
+                        new List<ItemInventorySummaryDto>(),
+                        totalCount,
+                        request.Page,
+                        request.PageSize);
+                    return APIOperationResponse<PaginatedList<ItemInventorySummaryDto>>.Success(emptyPage);
+                }
+
+                var pageItemIds = pageRows.Select(x => x.ItemId).ToList();
+                var supplyByItem = await GetSupplyQuantityByItemAndStatusAsync(pageItemIds).ConfigureAwait(false);
+                var itemMeta = await LoadItemMetadataForSummaryAsync(pageItemIds).ConfigureAwait(false);
+
+                var pageItems = pageRows.Select(row =>
+                {
+                    supplyByItem.TryGetValue(row.ItemId, out var supply);
+                    var used = supply?.Used ?? 0;
+                    var reserved = supply?.Reserved ?? 0;
+                    var remaining = Math.Max(0, row.TotalQuantity - used - reserved);
+                    itemMeta.TryGetValue(row.ItemId, out var meta);
+
+                    return new ItemInventorySummaryDto
+                    {
+                        ItemId = row.ItemId,
+                        ItemName = meta?.Name ?? "Unknown Item",
+                        ItemNameAr = meta?.NameAr,
+                        ItemNo = meta?.ItemNo ?? string.Empty,
+                        ItemType = row.ItemType,
+                        Nsn = meta?.Nsn ?? string.Empty,
+                        PartNo = meta?.PartNo ?? string.Empty,
+                        CaliberId = meta?.CaliberId,
+                        Caliber = meta?.Caliber,
+                        CaliberUnitName = meta?.CaliberUnitName,
+                        TotalQuantity = row.TotalQuantity,
+                        UsedQuantity = used,
+                        ReservedQuantityByOrdersOnProcessing = reserved,
+                        RemainingQuantity = remaining,
+                        TotalLots = row.TotalLots
+                    };
+                }).ToList();
+
+                var page = new PaginatedList<ItemInventorySummaryDto>(pageItems, totalCount, request.Page, request.PageSize);
+                return APIOperationResponse<PaginatedList<ItemInventorySummaryDto>>.Success(page);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting paginated inventory summary. User: {UserId}", _currentUserService.UserId);
+                return APIOperationResponse<PaginatedList<ItemInventorySummaryDto>>.Fail(
+                    ResponseType.InternalServerError,
+                    $"An error occurred: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// SQL aggregates for dashboard headline metrics without loading full <see cref="ItemInventorySummaryDto"/> rows.
+        /// </summary>
+        public async Task<APIOperationResponse<InventoryHeadlineInventoryAggregatesDto>> GetInventoryHeadlineInventoryAggregatesAsync(
+            long? depotId = null,
+            List<long>? depotIds = null)
+        {
+            var scopeResult = await TryResolveInventorySummaryScopeAsync(depotId, depotIds).ConfigureAwait(false);
+            if (!scopeResult.Succeeded)
+            {
+                return APIOperationResponse<InventoryHeadlineInventoryAggregatesDto>.Fail(
+                    scopeResult.ErrorStatus!.Value,
+                    scopeResult.ErrorMessage ?? "Inventory summary failed.");
             }
 
-            var totalCount = list.Count;
-            var pageItems = list
-                .Skip((request.Page - 1) * request.PageSize)
-                .Take(request.PageSize)
-                .ToList();
+            try
+            {
+                var aggQuery = BuildScopedItemInventoryAggQuery(scopeResult.Scope!)
+                    .Where(x => x.ItemType != ItemType.Weapon);
 
-            var page = new PaginatedList<ItemInventorySummaryDto>(pageItems, totalCount, request.Page, request.PageSize);
-            return APIOperationResponse<PaginatedList<ItemInventorySummaryDto>>.Success(page);
+                var typeCounts = await aggQuery
+                    .GroupBy(x => x.ItemType)
+                    .Select(g => new { ItemType = g.Key, Count = g.Count() })
+                    .ToListAsync()
+                    .ConfigureAwait(false);
+
+                var itemAggs = await aggQuery
+                    .Select(x => new { x.ItemId, x.ItemType, x.TotalQuantity, x.TotalLots })
+                    .ToListAsync()
+                    .ConfigureAwait(false);
+
+                if (itemAggs.Count == 0)
+                {
+                    return APIOperationResponse<InventoryHeadlineInventoryAggregatesDto>.Success(
+                        new InventoryHeadlineInventoryAggregatesDto());
+                }
+
+                var itemIds = itemAggs.Select(x => x.ItemId).ToList();
+                var supplyByItem = await GetSupplyQuantityByItemAndStatusAsync(itemIds).ConfigureAwait(false);
+
+                long remainingSum = 0;
+                long lotsSum = 0;
+                foreach (var row in itemAggs)
+                {
+                    lotsSum += row.TotalLots;
+                    supplyByItem.TryGetValue(row.ItemId, out var supply);
+                    var used = supply?.Used ?? 0;
+                    var reserved = supply?.Reserved ?? 0;
+                    remainingSum += Math.Max(0, row.TotalQuantity - used - reserved);
+                }
+
+                int CountFor(ItemType type) =>
+                    typeCounts.FirstOrDefault(x => x.ItemType == type)?.Count ?? 0;
+
+                return APIOperationResponse<InventoryHeadlineInventoryAggregatesDto>.Success(
+                    new InventoryHeadlineInventoryAggregatesDto
+                    {
+                        AmmunitionItemCount = CountFor(ItemType.Ammunition),
+                        ExplosiveItemCount = CountFor(ItemType.Explosive),
+                        AccessoryItemCount = CountFor(ItemType.Accessory),
+                        TotalNonWeaponDistinctItems = itemAggs.Count,
+                        TotalRemainingQuantity = remainingSum,
+                        TotalLots = lotsSum
+                    });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting inventory headline aggregates. User: {UserId}", _currentUserService.UserId);
+                return APIOperationResponse<InventoryHeadlineInventoryAggregatesDto>.Fail(
+                    ResponseType.InternalServerError,
+                    $"An error occurred: {ex.Message}");
+            }
+        }
+
+        private sealed class InventorySummaryScope
+        {
+            public HashSet<long> EffectiveDepotIds { get; init; } = new();
+            public IReadOnlyList<long>? UserDepotIds { get; init; }
+        }
+
+        private sealed class InventorySummaryScopeResult
+        {
+            public bool Succeeded { get; init; }
+            public ResponseType? ErrorStatus { get; init; }
+            public string? ErrorMessage { get; init; }
+            public InventorySummaryScope? Scope { get; init; }
+
+            public static InventorySummaryScopeResult Ok(InventorySummaryScope scope) =>
+                new() { Succeeded = true, Scope = scope };
+
+            public static InventorySummaryScopeResult Fail(ResponseType status, string message) =>
+                new() { Succeeded = false, ErrorStatus = status, ErrorMessage = message };
+        }
+
+        private sealed class ItemInventoryAggRow
+        {
+            public long ItemId { get; set; }
+            public ItemType ItemType { get; set; }
+            public long TotalQuantity { get; set; }
+            public int TotalLots { get; set; }
+        }
+
+        private sealed class ItemSummaryMetadata
+        {
+            public string? Name { get; init; }
+            public string? NameAr { get; init; }
+            public string? ItemNo { get; init; }
+            public string? Nsn { get; init; }
+            public string? PartNo { get; init; }
+            public long? CaliberId { get; init; }
+            public string? Caliber { get; init; }
+            public string? CaliberUnitName { get; init; }
+        }
+
+        private sealed class ItemSupplyTotals
+        {
+            public long Used { get; init; }
+            public long Reserved { get; init; }
+        }
+
+        private async Task<InventorySummaryScopeResult> TryResolveInventorySummaryScopeAsync(
+            long? depotId,
+            List<long>? depotIds)
+        {
+            var effectiveDepotIds = new HashSet<long>();
+            if (depotIds?.Any() == true)
+                foreach (var d in depotIds)
+                    effectiveDepotIds.Add(d);
+            if (depotId.HasValue)
+                effectiveDepotIds.Add(depotId.Value);
+
+            if (effectiveDepotIds.Any())
+            {
+                var userId = _currentUserService.UserId;
+                if (!string.IsNullOrEmpty(userId))
+                {
+                    foreach (var dId in effectiveDepotIds)
+                    {
+                        if (!await _depotAccessService.HasDepotAccessAsync(userId, dId).ConfigureAwait(false))
+                        {
+                            _logger.LogWarning(
+                                "User {UserId} attempted inventory summary for unauthorized depot {DepotId}",
+                                userId,
+                                dId);
+                            return InventorySummaryScopeResult.Fail(
+                                ResponseType.Forbidden,
+                                "You do not have access to one or more of the requested depots.");
+                        }
+                    }
+                }
+            }
+
+            var userDepotIds = await _depotAccessService.GetUserAccessibleDepotIdsAsync().ConfigureAwait(false);
+            return InventorySummaryScopeResult.Ok(new InventorySummaryScope
+            {
+                EffectiveDepotIds = effectiveDepotIds,
+                UserDepotIds = userDepotIds
+            });
+        }
+
+        private IQueryable<InventoryDetailEntity> ScopedInventoryDetailsQuery(InventorySummaryScope scope)
+        {
+            var q = _inventoryDetailRepository.Find(
+                id => id.ItemQuantity > 0,
+                false,
+                nameof(InventoryDetailEntity.Inventory));
+
+            q = q.Where(id => !id.Inventory.IsDeleted);
+
+            if (scope.UserDepotIds != null)
+                q = q.Where(id => scope.UserDepotIds.Contains(id.Inventory.DepoId));
+
+            if (scope.EffectiveDepotIds.Any())
+                q = q.Where(id => scope.EffectiveDepotIds.Contains(id.Inventory.DepoId));
+
+            return q;
+        }
+
+        private IQueryable<ItemInventoryAggRow> BuildScopedItemInventoryAggQuery(InventorySummaryScope scope)
+        {
+            var details = ScopedInventoryDetailsQuery(scope);
+            var items = _baseItemRepository.Find(i => !i.IsDeleted);
+
+            return from d in details
+                   join i in items on d.ItemId equals i.Id
+                   group d by new { d.ItemId, i.ItemType } into g
+                   select new ItemInventoryAggRow
+                   {
+                       ItemId = g.Key.ItemId,
+                       ItemType = g.Key.ItemType,
+                       TotalQuantity = g.Sum(x => x.ItemQuantity),
+                       TotalLots = g.Count()
+                   };
+        }
+
+        private async Task<Dictionary<long, ItemSupplyTotals>> GetSupplyQuantityByItemAndStatusAsync(
+            IReadOnlyList<long> itemIds)
+        {
+            if (itemIds.Count == 0)
+                return new Dictionary<long, ItemSupplyTotals>();
+
+            var rows = await (
+                from sd in _supplyDetailsRepository.Find(sd => !sd.IsDeleted)
+                join s in _supplyRepository.Find(s => !s.IsDeleted) on sd.SupplyId equals s.Id
+                where itemIds.Contains(sd.ItemId)
+                group sd by new { sd.ItemId, s.SubmissionStatus } into g
+                select new
+                {
+                    g.Key.ItemId,
+                    g.Key.SubmissionStatus,
+                    Quantity = g.Sum(x => x.Quantity)
+                }).ToListAsync().ConfigureAwait(false);
+
+            var totalsByItem = new Dictionary<long, (long Used, long Reserved)>();
+            foreach (var row in rows)
+            {
+                if (!totalsByItem.TryGetValue(row.ItemId, out var totals))
+                    totals = (0, 0);
+
+                if (row.SubmissionStatus == SupplySubmissionStatus.Submitted)
+                    totals = (row.Quantity, totals.Reserved);
+                else if (row.SubmissionStatus == SupplySubmissionStatus.Draft)
+                    totals = (totals.Used, row.Quantity);
+
+                totalsByItem[row.ItemId] = totals;
+            }
+
+            return totalsByItem.ToDictionary(
+                kv => kv.Key,
+                kv => new ItemSupplyTotals { Used = kv.Value.Used, Reserved = kv.Value.Reserved });
+        }
+
+        private async Task<Dictionary<long, ItemSummaryMetadata>> LoadItemMetadataForSummaryAsync(
+            IReadOnlyList<long> itemIds)
+        {
+            if (itemIds.Count == 0)
+                return new Dictionary<long, ItemSummaryMetadata>();
+
+            var baseItems = await _baseItemRepository
+                .Find(i => itemIds.Contains(i.Id) && !i.IsDeleted)
+                .Select(i => new
+                {
+                    i.Id,
+                    i.Name,
+                    i.NameAr,
+                    i.ItemNo,
+                    i.Nsn,
+                    i.PartNo,
+                    i.ItemType
+                })
+                .ToListAsync()
+                .ConfigureAwait(false);
+
+            var ammoIds = baseItems.Where(i => i.ItemType == ItemType.Ammunition).Select(i => i.Id).ToList();
+            var weaponIds = baseItems.Where(i => i.ItemType == ItemType.Weapon).Select(i => i.Id).ToList();
+
+            var ammoCalibers = ammoIds.Count > 0
+                ? await _ammunitionRepository
+                    .Find(a => ammoIds.Contains(a.Id), false, nameof(Ammunition.LookupCaliber))
+                    .ToListAsync()
+                    .ConfigureAwait(false)
+                : new List<Ammunition>();
+
+            var weaponCalibers = weaponIds.Count > 0
+                ? await _weaponRepository
+                    .Find(w => weaponIds.Contains(w.Id), false, nameof(Weapon.LookupCaliber), nameof(Weapon.CaliberUnit))
+                    .ToListAsync()
+                    .ConfigureAwait(false)
+                : new List<Weapon>();
+
+            var ammoById = ammoCalibers.ToDictionary(a => a.Id);
+            var weaponById = weaponCalibers.ToDictionary(w => w.Id);
+
+            var result = new Dictionary<long, ItemSummaryMetadata>();
+            foreach (var item in baseItems)
+            {
+                BaseItem entityForCaliber = item.ItemType switch
+                {
+                    ItemType.Ammunition when ammoById.TryGetValue(item.Id, out var ammo) => ammo,
+                    ItemType.Weapon when weaponById.TryGetValue(item.Id, out var weapon) => weapon,
+                    _ => null
+                };
+
+                MapCaliberFromBaseItem(entityForCaliber, out var caliber, out var caliberUnit, out var caliberId);
+
+                result[item.Id] = new ItemSummaryMetadata
+                {
+                    Name = item.Name,
+                    NameAr = item.NameAr,
+                    ItemNo = item.ItemNo,
+                    Nsn = item.Nsn,
+                    PartNo = item.PartNo,
+                    CaliberId = caliberId,
+                    Caliber = caliber,
+                    CaliberUnitName = caliberUnit
+                };
+            }
+
+            return result;
         }
 
         public async Task<APIOperationResponse<ItemInventorySummaryDto>> GetItemInventorySummaryAsync(long itemId)

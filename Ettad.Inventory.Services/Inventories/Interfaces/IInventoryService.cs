@@ -21,6 +21,7 @@ namespace Ettad.Inventory.Service.Inventories.Interfaces
         Task<APIOperationResponse<ItemInventorySummaryDto>> GetItemInventorySummaryAsync(long itemId);
         Task<APIOperationResponse<List<ItemInventorySummaryDto>>> GetInventorySummaryForAllItemsAsync(long? depotId = null, List<long>? depotIds = null);
         Task<APIOperationResponse<PaginatedList<ItemInventorySummaryDto>>> GetInventorySummaryForAllItemsPaginatedAsync(PagedListRequest request, long? depotId = null, List<long>? depotIds = null, ItemType? itemType = null);
+        Task<APIOperationResponse<InventoryHeadlineInventoryAggregatesDto>> GetInventoryHeadlineInventoryAggregatesAsync(long? depotId = null, List<long>? depotIds = null);
         Task<APIOperationResponse<bool>> ToggleReadyForIssueAsync(long inventoryDetailId);
         Task<APIOperationResponse<ImportResult<InventoryImportRowDto>>> ImportAsync(IFormFile file, long depotId, string language = "en");
         Task<APIOperationResponse<ImportResult<InventoryImportRowDto>>> ImportPreviewAsync(IFormFile file, long depotId, string language = "en");

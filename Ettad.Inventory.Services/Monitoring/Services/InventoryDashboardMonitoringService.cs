@@ -94,13 +94,14 @@ namespace Ettad.Inventory.Service.Monitoring.Services
             long? depotId = null,
             List<long>? depotIds = null)
         {
-            var weaponResult = await GetWeaponAssetDashboardAsync(depotId, depotIds);
+            // Sequential: scoped DbContext is not safe for concurrent repository operations.
+            var weaponResult = await GetWeaponAssetDashboardAsync(depotId, depotIds).ConfigureAwait(false);
             if (!weaponResult.Succeeded || weaponResult.Data == null)
                 return APIOperationResponse<InventoryDashboardSummaryDto>.Fail(
                     (ResponseType)weaponResult.StatusCode,
                     weaponResult.Message ?? "Weapon dashboard failed");
 
-            var pipelineResult = await GetPipelineDashboardAsync(depotId, depotIds);
+            var pipelineResult = await GetPipelineDashboardAsync(depotId, depotIds).ConfigureAwait(false);
             if (!pipelineResult.Succeeded || pipelineResult.Data == null)
                 return APIOperationResponse<InventoryDashboardSummaryDto>.Fail(
                     (ResponseType)pipelineResult.StatusCode,
@@ -251,8 +252,9 @@ namespace Ettad.Inventory.Service.Monitoring.Services
                     return APIOperationResponse<InventoryHeadlineMetricsDto>.Fail(ResponseType.Forbidden,
                         "You do not have access to one or more of the requested depots.");
 
+                // Sequential: scoped DbContext is not safe for concurrent repository operations.
                 var invResult = await _inventoryService
-                    .GetInventorySummaryForAllItemsAsync(depotId, depotIds)
+                    .GetInventoryHeadlineInventoryAggregatesAsync(depotId, depotIds)
                     .ConfigureAwait(false);
 
                 if (!invResult.Succeeded || invResult.Data == null)
@@ -284,13 +286,7 @@ namespace Ettad.Inventory.Service.Monitoring.Services
                         expResult.Message ?? "Expiring lots count failed.");
 
                 var weaponRows = await QueryWeaponAggRowsAsync(scope).ConfigureAwait(false);
-
-                var nonWeapon = invResult.Data.Where(s => s.ItemType != ItemType.Weapon).ToList();
-                long invRemainingSum = nonWeapon.Sum(s => s.RemainingQuantity);
-                long invLotsSum = nonWeapon.Sum(s => (long)s.TotalLots);
-                var ammoCount = nonWeapon.Count(s => s.ItemType == ItemType.Ammunition);
-                var explosiveCount = nonWeapon.Count(s => s.ItemType == ItemType.Explosive);
-                var accessoryCount = nonWeapon.Count(s => s.ItemType == ItemType.Accessory);
+                var invAgg = invResult.Data;
 
                 long weaponLotsSum = 0;
                 long weaponReadySum = 0;
@@ -309,14 +305,14 @@ namespace Ettad.Inventory.Service.Monitoring.Services
                     LowStockCount = lowResult.Data,
                     CriticalStockCount = criticalResult.Data,
                     ExpiringSoonCount = expResult.Data,
-                    TotalDistinctItems = nonWeapon.Count + weaponGroupCount,
-                    TotalRemainingQuantity = invRemainingSum + weaponReadySum,
-                    TotalLots = invLotsSum + weaponLotsSum,
-                    AmmunitionItemCount = ammoCount,
-                    ExplosiveItemCount = explosiveCount,
-                    AccessoryItemCount = accessoryCount,
+                    TotalDistinctItems = invAgg.TotalNonWeaponDistinctItems + weaponGroupCount,
+                    TotalRemainingQuantity = invAgg.TotalRemainingQuantity + weaponReadySum,
+                    TotalLots = invAgg.TotalLots + weaponLotsSum,
+                    AmmunitionItemCount = invAgg.AmmunitionItemCount,
+                    ExplosiveItemCount = invAgg.ExplosiveItemCount,
+                    AccessoryItemCount = invAgg.AccessoryItemCount,
                     WeaponItemGroupsCount = weaponGroupCount,
-                    LotCount = invLotsSum,
+                    LotCount = invAgg.TotalLots,
                     WeaponCount = weaponLotsSum,
                     TotalBatches = totalBatches
                 });
@@ -492,8 +488,51 @@ namespace Ettad.Inventory.Service.Monitoring.Services
 
         private async Task<int> CountOrdersAwaitingFulfillmentAsync(DepotScope scope)
         {
-            var list = await BuildOrdersAwaitingFulfillmentListAsync(scope);
-            return list.Count;
+            var orderRows = await ApprovedOrdersForPipelineQueryable(scope)
+                .Select(o => new { o.Id, o.RequestNo, o.Status })
+                .OrderBy(x => x.Id)
+                .ToListAsync()
+                .ConfigureAwait(false);
+
+            var orderIds = orderRows.Select(x => x.Id).ToList();
+            if (orderIds.Count == 0)
+                return 0;
+
+            var requestItems = await _requestItemRepository.Find(ri => !ri.IsDeleted)
+                .Where(ri => orderIds.Contains(ri.RequestId))
+                .Join(_baseItemRepository.Find(i => !i.IsDeleted), ri => ri.ItemId, i => i.Id, (ri, i) => new { ri.RequestId, i.ItemType })
+                .ToListAsync()
+                .ConfigureAwait(false);
+
+            var itemsByOrder = requestItems.GroupBy(x => x.RequestId).ToDictionary(g => g.Key, g => g.Select(x => x.ItemType).ToList());
+
+            var supplyByOrder = await _supplyRepository.Find(s => !s.IsDeleted)
+                .Where(s => orderIds.Contains(s.OrderId))
+                .ToListAsync()
+                .ConfigureAwait(false);
+
+            var assetSupplyByOrder = await _assetSupplyRepository.Find(s => !s.IsDeleted)
+                .Where(s => orderIds.Contains(s.OrderId))
+                .ToListAsync()
+                .ConfigureAwait(false);
+
+            var count = 0;
+            foreach (var row in orderRows)
+            {
+                var orderId = row.Id;
+                itemsByOrder.TryGetValue(orderId, out var types);
+                types ??= new List<ItemType>();
+                var hasNonWeapon = types.Any(t => t is ItemType.Ammunition or ItemType.Explosive);
+                var hasWeapon = types.Any(t => t == ItemType.Weapon);
+
+                var supplies = supplyByOrder.Where(s => s.OrderId == orderId).ToList();
+                var assetSupplies = assetSupplyByOrder.Where(s => s.OrderId == orderId).ToList();
+
+                if (IsOrderAwaitingFulfillment(hasNonWeapon, hasWeapon, supplies, assetSupplies))
+                    count++;
+            }
+
+            return count;
         }
 
         private async Task<List<OrderAwaitingFulfillmentListItemDto>> BuildOrdersAwaitingFulfillmentListAsync(DepotScope scope)
