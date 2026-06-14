@@ -196,15 +196,15 @@ ORDER BY
        CASE 
            WHEN ("BaseItems"."ItemType" = 2 AND "Weapons"."CaliberCategory" = 1)
              OR ("BaseItems"."ItemType" = 1 AND "Ammunitions"."AmmunitionType" = 1)
-             THEN N'Small'
+             THEN N'Light calibers'
 
            WHEN ("BaseItems"."ItemType" = 2 AND "Weapons"."CaliberCategory" = 2)
              OR ("BaseItems"."ItemType" = 1 AND "Ammunitions"."AmmunitionType" = 2)
-             THEN N'Medium'
+             THEN N'Medium calibers'
 
            WHEN ("BaseItems"."ItemType" = 2 AND "Weapons"."CaliberCategory" = 3)
              OR ("BaseItems"."ItemType" = 1 AND "Ammunitions"."AmmunitionType" = 3)
-             THEN N'Large'
+             THEN N'Heavy calibers'
 
            ELSE N'No Caliber Category'
        END AS "CaliberCategoryName"
@@ -238,9 +238,9 @@ WHERE
   </data>
   <data name="CaliberCategoryNameLocalized.Expression" xml:space="preserve">
     <value>Iif(?Language = 'ar',
-    Iif([CaliberCategoryName] = 'Small', 'صغير',
-        Iif([CaliberCategoryName] = 'Medium', 'متوسط',
-            Iif([CaliberCategoryName] = 'Large', 'كبير',
+    Iif([CaliberCategoryName] = 'Light calibers', 'عيار خفيف',
+        Iif([CaliberCategoryName] = 'Medium calibers', 'عيار متوسط',
+            Iif([CaliberCategoryName] = 'Heavy calibers', 'عيار ثقيل',
                 [CaliberCategoryName]))),
     [CaliberCategoryName])</value>
   </data>

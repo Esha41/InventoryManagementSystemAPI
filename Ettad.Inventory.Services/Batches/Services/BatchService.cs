@@ -2182,7 +2182,7 @@ namespace Ettad.Inventory.Service.Batches.Services
                 importResult.SuccessfulRecords.Remove(row);
         }
 
-        private static IQueryable<Asset> ApplyAssetFilters(IQueryable<Asset> query, BatchAssetFilterDto? filters)
+        private IQueryable<Asset> ApplyAssetFilters(IQueryable<Asset> query, BatchAssetFilterDto? filters)
         {
             if (filters == null) return query;
 
@@ -2197,6 +2197,14 @@ namespace Ettad.Inventory.Service.Batches.Services
 
             if (filters.PrimaryPurposeIds is { Count: > 0 })
                 query = query.Where(a => a.PrimaryPurposId.HasValue && filters.PrimaryPurposeIds.Contains(a.PrimaryPurposId.Value));
+
+            if (filters.CaliberIds is { Count: > 0 })
+            {
+                var matchingWeaponIds = _weaponRepository
+                    .Find(w => !w.IsDeleted && w.CaliberId.HasValue && filters.CaliberIds.Contains(w.CaliberId.Value))
+                    .Select(w => w.Id);
+                query = query.Where(a => matchingWeaponIds.Contains(a.ItemId));
+            }
 
             return query;
         }

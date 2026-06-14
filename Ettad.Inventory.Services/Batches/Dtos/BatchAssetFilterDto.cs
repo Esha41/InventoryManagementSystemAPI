@@ -10,11 +10,13 @@ namespace Ettad.Inventory.Service.Batches.Dtos
         public List<long>? SupplierIds { get; set; }
         public List<long>? ManufacturerIds { get; set; }
         public List<long>? PrimaryPurposeIds { get; set; }
+        public List<long>? CaliberIds { get; set; }
 
         public bool HasAnyFilter =>
             ItemIds is { Count: > 0 } ||
             SupplierIds is { Count: > 0 } ||
             ManufacturerIds is { Count: > 0 } ||
-            PrimaryPurposeIds is { Count: > 0 };
+            PrimaryPurposeIds is { Count: > 0 } ||
+            CaliberIds is { Count: > 0 };
     }
 }

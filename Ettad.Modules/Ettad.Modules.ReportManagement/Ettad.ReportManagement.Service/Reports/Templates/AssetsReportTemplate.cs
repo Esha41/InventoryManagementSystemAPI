@@ -683,9 +683,9 @@ namespace Ettad.ReportManagement.Service.Reports.Templates
             this.Caliber_Category.Name = "Caliber_Category";
             this.Caliber_Category.SelectAllValues = true;
             this.Caliber_Category.Type = typeof(int);
-            staticListLookUpSettings5.LookUpValues.Add(new DevExpress.XtraReports.Parameters.LookUpValue(1, "Small"));
-            staticListLookUpSettings5.LookUpValues.Add(new DevExpress.XtraReports.Parameters.LookUpValue(2, "Medium"));
-            staticListLookUpSettings5.LookUpValues.Add(new DevExpress.XtraReports.Parameters.LookUpValue(3, "Large"));
+            staticListLookUpSettings5.LookUpValues.Add(new DevExpress.XtraReports.Parameters.LookUpValue(1, "Light calibers"));
+            staticListLookUpSettings5.LookUpValues.Add(new DevExpress.XtraReports.Parameters.LookUpValue(2, "Medium calibers"));
+            staticListLookUpSettings5.LookUpValues.Add(new DevExpress.XtraReports.Parameters.LookUpValue(3, "Heavy calibers"));
             this.Caliber_Category.ValueSourceSettings = staticListLookUpSettings5;
             // 
             // Asset

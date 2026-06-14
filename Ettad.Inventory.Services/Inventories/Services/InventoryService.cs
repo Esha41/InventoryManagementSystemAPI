@@ -1215,7 +1215,7 @@ namespace Ettad.Inventory.Service.Inventories.Services
                     return APIOperationResponse<PaginatedList<InventoryDetailDto>>.Fail(ResponseType.Forbidden, "You do not have access to this depot.");
                 }
 
-                var query = _inventoryDetailRepository.Find(
+                IQueryable<InventoryDetailEntity> query = _inventoryDetailRepository.Find(
                         x => x.Inventory.DepoId == depotId && !x.Inventory.IsDeleted,
                         false,
                         nameof(InventoryDetailEntity.Item),
@@ -1231,6 +1231,18 @@ namespace Ettad.Inventory.Service.Inventories.Services
                     // Newest inventory entries first so recently added ammunition/explosives/weapon lots appear at the top
                     .OrderByDescending(x => x.Inventory.CreationDate)
                     .ThenByDescending(x => x.Id);
+
+                // CaliberId lives on Ammunition/Weapon, not BaseItem — strip before dynamic filters run.
+                var caliberFilterId = TryExtractEqFilter(request.Filter, "Item.CaliberId");
+                if (caliberFilterId.HasValue)
+                {
+                    request.Filter = StripEqFilter(request.Filter, "Item.CaliberId");
+                    var ammoItemIds = await _ammunitionRepository
+                        .Find(a => !a.IsDeleted && a.CaliberId == caliberFilterId.Value)
+                        .Select(a => a.Id)
+                        .ToListAsync();
+                    query = query.Where(d => ammoItemIds.Contains(d.ItemId));
+                }
 
                 // Create paginated list of entities first to apply filtering and paging on database
                 var paginatedEntities = await PaginatedList<InventoryDetailEntity>.CreateAsyncForTableBinding(query, request);
@@ -2621,6 +2633,58 @@ namespace Ettad.Inventory.Service.Inventories.Services
                 columnNumber /= 26;
             }
             return columnLetter;
+        }
+
+        private static long? TryExtractEqFilter(FilterData? root, string fieldName)
+        {
+            if (root == null) return null;
+
+            if (root.Filters != null && root.Filters.Any())
+            {
+                foreach (var child in root.Filters)
+                {
+                    var found = TryExtractEqFilter(child, fieldName);
+                    if (found.HasValue) return found;
+                }
+                return null;
+            }
+
+            if (string.Equals(root.Field, fieldName, StringComparison.OrdinalIgnoreCase)
+                && string.Equals(root.Operator, "eq", StringComparison.OrdinalIgnoreCase)
+                && long.TryParse(root.Value?.ToString(), out var id))
+            {
+                return id;
+            }
+
+            return null;
+        }
+
+        private static FilterData? StripEqFilter(FilterData? root, string fieldName)
+        {
+            if (root == null) return null;
+
+            if (!string.IsNullOrEmpty(root.Field)
+                && string.Equals(root.Field, fieldName, StringComparison.OrdinalIgnoreCase)
+                && string.Equals(root.Operator, "eq", StringComparison.OrdinalIgnoreCase))
+            {
+                return null;
+            }
+
+            if (root.Filters != null)
+            {
+                var children = root.Filters
+                    .Select(child => StripEqFilter(child, fieldName))
+                    .Where(x => x != null)
+                    .Cast<FilterData>()
+                    .ToList();
+
+                if (children.Count == 0 && string.IsNullOrEmpty(root.Field))
+                    return null;
+
+                root.Filters = children;
+            }
+
+            return root;
         }
 
         #endregion
