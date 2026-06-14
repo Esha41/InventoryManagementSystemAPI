@@ -675,22 +675,18 @@ namespace Ettad.Inventory.Service.Inventories.Services
                 // Process each request item
                 foreach (var requestItem in order.RequestItems.Where(ri => !ri.IsDeleted))
                 {
+                    var stockSnapshot = await GetItemStockSnapshotAsync(
+                        requestItem.ItemId,
+                        requestItem.Item,
+                        orderId,
+                        depotIds);
+
                     // Calculate already supplied quantity for this item
                     var alreadySuppliedQuantity = suppliedQuantitiesByItem.TryGetValue(requestItem.ItemId, out var supplied) ? supplied : 0;
                     var remainingQuantityNeeded = requestItem.Quantity - alreadySuppliedQuantity;
 
                     _logger.LogInformation("Item supply status. ItemId: {ItemId}, Requested: {Requested}, AlreadySupplied: {Supplied}, RemainingNeeded: {Remaining}, OrderId: {OrderId}",
                         requestItem.ItemId, requestItem.Quantity, alreadySuppliedQuantity, remainingQuantityNeeded, orderId);
-
-                    // Skip items that are already fully supplied
-                    if (remainingQuantityNeeded <= 0)
-                    {
-                        _logger.LogInformation("Item already fully supplied. ItemId: {ItemId}, Requested: {Requested}, Supplied: {Supplied}, OrderId: {OrderId}",
-                            requestItem.ItemId, requestItem.Quantity, alreadySuppliedQuantity, orderId);
-                        continue;
-                    }
-
-                    hasItemsNeedingSupply = true;
 
                     var itemSuggestion = new OrderItemSupplySuggestionDto
                     {
@@ -699,8 +695,24 @@ namespace Ettad.Inventory.Service.Inventories.Services
                         ItemName = requestItem.Item.Name,
                         RequestedQuantity = requestItem.Quantity,
                         SuggestedQuantity = 0,
-                        LotSuggestions = new List<SupplyLotSuggestionDto>()
+                        LotSuggestions = new List<SupplyLotSuggestionDto>(),
+                        RemainingQuantity = stockSnapshot.Remaining,
+                        MinimumQuantity = stockSnapshot.MinimumQuantity,
+                        CriticalQuantity = stockSnapshot.CriticalQuantity,
+                        DraftHoldQuantity = stockSnapshot.DraftHoldQuantity
                     };
+
+                    // Skip lot suggestions for items that are already fully supplied
+                    if (remainingQuantityNeeded <= 0)
+                    {
+                        _logger.LogInformation("Item already fully supplied. ItemId: {ItemId}, Requested: {Requested}, Supplied: {Supplied}, OrderId: {OrderId}",
+                            requestItem.ItemId, requestItem.Quantity, alreadySuppliedQuantity, orderId);
+                        itemSuggestion.CanFulfillCompletely = true;
+                        suggestion.ItemSuggestions.Add(itemSuggestion);
+                        continue;
+                    }
+
+                    hasItemsNeedingSupply = true;
 
                     // Get available lots for the remaining quantity needed
                     var availableLotsResponse = await GetAvailableLotsForQuantityAsync(requestItem.ItemId, remainingQuantityNeeded, depotIds);
@@ -775,6 +787,62 @@ namespace Ettad.Inventory.Service.Inventories.Services
                     orderId, _currentUserService.UserId);
                 return APIOperationResponse<OrderSupplySuggestionDto>.Fail(ResponseType.InternalServerError, $"An error occurred: {ex.Message}");
             }
+        }
+
+        private sealed class ItemStockSnapshot
+        {
+            public long Remaining { get; set; }
+            public long? MinimumQuantity { get; set; }
+            public long? CriticalQuantity { get; set; }
+            public long DraftHoldQuantity { get; set; }
+        }
+
+        private async Task<ItemStockSnapshot> GetItemStockSnapshotAsync(
+            long itemId,
+            BaseItem item,
+            long orderId,
+            IReadOnlyList<long>? depotIds)
+        {
+            var inventoryQuery = _inventoryDetailRepository.Find(
+                id => id.ItemId == itemId && !id.Inventory.IsDeleted,
+                false,
+                nameof(InventoryDetailEntity.Inventory));
+
+            if (depotIds != null && depotIds.Count > 0)
+                inventoryQuery = inventoryQuery.Where(id => depotIds.Contains(id.Inventory.DepoId));
+
+            var totalStock = await inventoryQuery.SumAsync(id => (long?)id.ItemQuantity) ?? 0;
+
+            var supplyDetails = await _supplyDetailsRepository
+                .Find(
+                    sd => sd.ItemId == itemId && !sd.IsDeleted && !sd.Supply.IsDeleted,
+                    false,
+                    nameof(SupplyDetail.Supply))
+                .Select(sd => new { sd.Quantity, sd.Supply.SubmissionStatus, sd.Supply.OrderId })
+                .ToListAsync()
+                .ConfigureAwait(false);
+
+            var holdQuantity = supplyDetails
+                .Where(sd => sd.SubmissionStatus == SupplySubmissionStatus.Draft)
+                .Sum(sd => sd.Quantity);
+
+            var suppliedQuantity = supplyDetails
+                .Where(sd => sd.SubmissionStatus == SupplySubmissionStatus.Submitted)
+                .Sum(sd => sd.Quantity);
+
+            var draftHoldForOrder = supplyDetails
+                .Where(sd => sd.SubmissionStatus == SupplySubmissionStatus.Draft && sd.OrderId == orderId)
+                .Sum(sd => sd.Quantity);
+
+            var remaining = totalStock - (holdQuantity + suppliedQuantity);
+
+            return new ItemStockSnapshot
+            {
+                Remaining = remaining,
+                MinimumQuantity = item?.MinimumQuantity,
+                CriticalQuantity = item?.CriticalQuantity,
+                DraftHoldQuantity = draftHoldForOrder
+            };
         }
 
         public async Task<APIOperationResponse<List<LotDetailDto>>> GetLotsByItemIdAsync(long itemId, long? depotId = null)
