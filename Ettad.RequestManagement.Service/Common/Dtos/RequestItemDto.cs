@@ -18,6 +18,13 @@ namespace Ettad.RequestManagement.Service.Common.Dtos
         public string ItemNo { get; set; }
         public string Nsn { get; set; }
         public ItemType ItemType { get; set; }
+
+        /// <summary>Ammunition line caliber (when ItemType is Ammunition).</summary>
+        public long? ItemCaliberId { get; set; }
+
+        public string? ItemCaliberNameEn { get; set; }
+
+        public string? ItemCaliberNameAr { get; set; }
         #endregion
     }
 }
