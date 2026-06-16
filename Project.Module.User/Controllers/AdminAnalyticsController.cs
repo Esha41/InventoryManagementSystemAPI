@@ -10,7 +10,6 @@ namespace Ettad.User.API.Controllers
     [Authorize]
     [ApiController]
     [Route("api/admin/analytics")]
-    [CheckAuthorize("Permissions.AdminDashboard.View")]
     public class AdminAnalyticsController : ApiControllerBase
     {
         private readonly IAdminAnalyticsService _analyticsService;
@@ -21,6 +20,7 @@ namespace Ettad.User.API.Controllers
         }
 
         [HttpGet("system-health")]
+        [CheckAuthorize("Permissions.Analytics.View", "Permissions.Analytics.Page")]
         public async Task<IActionResult> GetSystemHealth()
         {
             var response = await _analyticsService.GetSystemHealthMetricsAsync();
@@ -28,6 +28,7 @@ namespace Ettad.User.API.Controllers
         }
 
         [HttpGet("performance")]
+        [CheckAuthorize("Permissions.Analytics.View", "Permissions.Analytics.Page")]
         public async Task<IActionResult> GetPerformance()
         {
             var response = await _analyticsService.GetPerformanceMetricsAsync();
@@ -35,6 +36,7 @@ namespace Ettad.User.API.Controllers
         }
 
         [HttpGet("user-activity")]
+        [CheckAuthorize("Permissions.AdminDashboard.View")]
         public async Task<IActionResult> GetUserActivity()
         {
             var response = await _analyticsService.GetUserActivityMetricsAsync();
@@ -42,6 +44,7 @@ namespace Ettad.User.API.Controllers
         }
 
         [HttpGet("request-metrics")]
+        [CheckAuthorize("Permissions.Analytics.View", "Permissions.Analytics.Page")]
         public async Task<IActionResult> GetRequestMetrics()
         {
             var response = await _analyticsService.GetRequestMetricsAsync();
@@ -49,6 +52,7 @@ namespace Ettad.User.API.Controllers
         }
 
         [HttpGet("request-trends")]
+        [CheckAuthorize("Permissions.Analytics.View", "Permissions.Analytics.Page")]
         public async Task<IActionResult> GetRequestTrends([FromQuery] string period = "daily")
         {
             var response = await _analyticsService.GetRequestTrendsAsync(period);
@@ -56,6 +60,7 @@ namespace Ettad.User.API.Controllers
         }
 
         [HttpGet("inventory-distribution")]
+        [CheckAuthorize("Permissions.Analytics.View", "Permissions.Analytics.Page")]
         public async Task<IActionResult> GetInventoryDistribution()
         {
             var response = await _analyticsService.GetInventoryDistributionAsync();
@@ -63,6 +68,7 @@ namespace Ettad.User.API.Controllers
         }
 
         [HttpGet("top-requested-items")]
+        [CheckAuthorize("Permissions.Analytics.View", "Permissions.Analytics.Page")]
         public async Task<IActionResult> GetTopRequestedItems([FromQuery] int limit = 10)
         {
             var response = await _analyticsService.GetTopRequestedItemsAsync(limit);

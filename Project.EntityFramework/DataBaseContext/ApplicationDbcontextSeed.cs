@@ -150,6 +150,8 @@ namespace Ettad.EntityFramework.DataBaseContext
                     // Dashboard
                     "Permissions.AdminDashboard.Page", 
                     "Permissions.AdminDashboard.View",
+                    "Permissions.Analytics.Page",
+                    "Permissions.Analytics.View",
                     
                     // User Management
                     "Permissions.SystemUsers.Page", 

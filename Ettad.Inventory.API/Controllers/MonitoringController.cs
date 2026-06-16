@@ -145,7 +145,11 @@ namespace Ettad.Inventory.API.Controllers
         /// </summary>
         [HttpGet("dashboard/inventory-headline-metrics")]
         [ProducesResponseType(typeof(APIOperationResponse<InventoryHeadlineMetricsDto>), (int)HttpStatusCode.OK)]
-        [CheckAuthorize("Permissions.Inventory.View", "Permissions.Inventory.Page")]
+        [CheckAuthorize(
+            "Permissions.Inventory.View",
+            "Permissions.Inventory.Page",
+            "Permissions.Analytics.View",
+            "Permissions.Analytics.Page")]
         public async Task<IActionResult> GetInventoryHeadlineMetrics([FromQuery] long? depotId = null, [FromQuery] List<long>? depotIds = null)
         {
             var result = await _inventoryDashboardMonitoringService.GetInventoryHeadlineMetricsAsync(depotId, depotIds);
@@ -157,7 +161,11 @@ namespace Ettad.Inventory.API.Controllers
         /// </summary>
         [HttpGet("dashboard/inventory-summary")]
         [ProducesResponseType(typeof(APIOperationResponse<InventoryDashboardSummaryDto>), (int)HttpStatusCode.OK)]
-        [CheckAuthorize("Permissions.Inventory.View", "Permissions.Inventory.Page")]
+        [CheckAuthorize(
+            "Permissions.Inventory.View",
+            "Permissions.Inventory.Page",
+            "Permissions.Analytics.View",
+            "Permissions.Analytics.Page")]
         public async Task<IActionResult> GetInventoryDashboardSummary([FromQuery] long? depotId = null, [FromQuery] List<long>? depotIds = null)
         {
             var result = await _inventoryDashboardMonitoringService.GetInventoryDashboardSummaryAsync(depotId, depotIds);

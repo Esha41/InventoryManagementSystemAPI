@@ -38,6 +38,8 @@ namespace Ettad.User.Services.Services
         {
             "Permissions.AdminDashboard.Page", 
             "Permissions.AdminDashboard.View",
+            "Permissions.Analytics.Page",
+            "Permissions.Analytics.View",
             "Permissions.SystemUsers.Page", 
             "Permissions.SystemUsers.View",
             "Permissions.SystemUsers.Create",
