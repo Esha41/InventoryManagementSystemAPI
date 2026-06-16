@@ -51,10 +51,15 @@ namespace Ettad.Module.lookup.Services
             }
 
             // Scoped read: Depots.View (read depots) or Inventory.View (read inventory in assigned depots). Depots.Page alone does not grant access.
-            var canReadScoped = await _permissionService.HasPermissionAsync("Permissions.Depots.View")
-                || await _permissionService.HasPermissionAsync("Permissions.Inventory.View");
+            var canReadScoped = await HasScopedDepotReadPermissionAsync();
             if (!canReadScoped)
             {
+                if (await HasAnalyticsAggregateAccessAsync())
+                {
+                    _logger.LogDebug("User {UserId} has analytics permissions — allowing aggregate depot read for {DepotId}", userId, depotId);
+                    return true;
+                }
+
                 _logger.LogDebug("User {UserId} lacks Depots.View/Inventory.View — denying access to depot {DepotId}", userId, depotId);
                 return false;
             }
@@ -86,10 +91,15 @@ namespace Ettad.Module.lookup.Services
                 return null;
             }
 
-            var canReadScoped = await _permissionService.HasPermissionAsync("Permissions.Depots.View")
-                || await _permissionService.HasPermissionAsync("Permissions.Inventory.View");
+            var canReadScoped = await HasScopedDepotReadPermissionAsync();
             if (!canReadScoped)
             {
+                if (await HasAnalyticsAggregateAccessAsync())
+                {
+                    _logger.LogDebug("User {UserId} has analytics permissions — unrestricted depot access for aggregates", _currentUserService.UserId);
+                    return null;
+                }
+
                 _logger.LogDebug("User {UserId} lacks Depots.View/Inventory.View — no depot access", _currentUserService.UserId);
                 return new List<long>();
             }
@@ -110,6 +120,26 @@ namespace Ettad.Module.lookup.Services
                 userId, depotIds.Count, string.Join(", ", depotIds));
 
             return depotIds;
+        }
+
+        /// <summary>
+        /// Analytics-only users need organization-wide read access for dashboard aggregates
+        /// without granting Inventory or Depots page permissions.
+        /// </summary>
+        private async Task<bool> HasAnalyticsAggregateAccessAsync()
+        {
+            var hasAnalytics = await _permissionService.HasPermissionAsync("Permissions.Analytics.View")
+                || await _permissionService.HasPermissionAsync("Permissions.Analytics.Page");
+            if (!hasAnalytics)
+                return false;
+
+            return !await HasScopedDepotReadPermissionAsync();
+        }
+
+        private async Task<bool> HasScopedDepotReadPermissionAsync()
+        {
+            return await _permissionService.HasPermissionAsync("Permissions.Depots.View")
+                || await _permissionService.HasPermissionAsync("Permissions.Inventory.View");
         }
     }
 }
