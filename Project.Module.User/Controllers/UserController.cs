@@ -125,7 +125,7 @@ namespace Ettad.User.API.Controllers
         }
 
         [HttpPut("change-password")]
-        [Authorize]
+        [CheckAuthorize("CanChangePassword")]
         public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordDto dto)
         {
             var response = await _userService.ChangePasswordAsync(dto);
