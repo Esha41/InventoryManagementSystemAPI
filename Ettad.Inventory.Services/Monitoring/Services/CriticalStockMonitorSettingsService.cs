@@ -2,8 +2,12 @@ using System;
 using System.Collections.Generic;
 using System.Text.Json;
 using Hangfire;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Ettad.Application.Common.Interfaces;
+using Ettad.Comman.Idenitity;
+using Ettad.CrossCutting.Comman.Idenitity;
 using Ettad.Data.Entities.Settings;
 using Ettad.Inventory.Service.Monitoring.Dtos;
 using Ettad.ResponseHandler.Consts;
@@ -23,17 +27,23 @@ namespace Ettad.Inventory.Service.Monitoring.Services
         private readonly ILogger<CriticalStockMonitorSettingsService> _logger;
         private readonly IRecurringJobManager? _recurringJobManager;
         private readonly IDateTimeProvider _dateTimeProvider;
+        private readonly RoleManager<ApplicationRole> _roleManager;
+        private readonly UserManager<ApplicationUser> _userManager;
 
         public CriticalStockMonitorSettingsService(
             ICrossCuttingRepository<Settings> settingsRepository,
             ICurrentUserService currentUserService,
             ILogger<CriticalStockMonitorSettingsService> logger,
             IDateTimeProvider dateTimeProvider,
+            RoleManager<ApplicationRole> roleManager,
+            UserManager<ApplicationUser> userManager,
             IRecurringJobManager? recurringJobManager = null)
         {
             _settingsRepository = settingsRepository;
             _currentUserService = currentUserService;
             _logger = logger;
+            _roleManager = roleManager;
+            _userManager = userManager;
             _recurringJobManager = recurringJobManager;
             _dateTimeProvider = dateTimeProvider ?? throw new ArgumentNullException(nameof(dateTimeProvider));
         }
@@ -65,6 +75,40 @@ namespace Ettad.Inventory.Service.Monitoring.Services
         {
             try
             {
+                // Reject the request if any supplied role/user ID does not exist, instead of
+                // blindly persisting unvalidated references into the settings blob.
+                if (dto.Roles != null && dto.Roles.Any())
+                {
+                    var existingRoleIds = await _roleManager.Roles
+                        .Where(r => dto.Roles.Contains(r.Id))
+                        .Select(r => r.Id)
+                        .ToListAsync();
+
+                    var invalidRoleIds = dto.Roles.Distinct()
+                        .Where(id => !existingRoleIds.Contains(id, StringComparer.OrdinalIgnoreCase))
+                        .ToList();
+
+                    if (invalidRoleIds.Any())
+                        return APIOperationResponse<bool>.BadRequest(
+                            $"Invalid role IDs: {string.Join(", ", invalidRoleIds)}");
+                }
+
+                if (dto.Users != null && dto.Users.Any())
+                {
+                    var existingUserIds = await _userManager.Users
+                        .Where(u => dto.Users.Contains(u.Id))
+                        .Select(u => u.Id)
+                        .ToListAsync();
+
+                    var invalidUserIds = dto.Users.Distinct()
+                        .Where(id => !existingUserIds.Contains(id, StringComparer.OrdinalIgnoreCase))
+                        .ToList();
+
+                    if (invalidUserIds.Any())
+                        return APIOperationResponse<bool>.BadRequest(
+                            $"Invalid user IDs: {string.Join(", ", invalidUserIds)}");
+                }
+
                 var setting = await _settingsRepository.FindOneAsync(
                     s => s.Key == CriticalStockMonitorConstants.SETTINGS_KEY && s.Group == CriticalStockMonitorConstants.SETTINGS_GROUP);
 
