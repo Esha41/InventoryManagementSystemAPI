@@ -1312,6 +1312,26 @@ namespace Ettad.Inventory.Service.Inventories.Services
                     query = query.Where(d => ammoItemIds.Contains(d.ItemId));
                 }
 
+                // ArmNumber lives on Ammunition/Explosive, not BaseItem — strip before dynamic filters run.
+                var armNumberFilter = TryExtractContainsFilter(request.Filter, "Item.ArmNumber");
+                if (!string.IsNullOrWhiteSpace(armNumberFilter))
+                {
+                    request.Filter = StripContainsFilter(request.Filter, "Item.ArmNumber");
+                    var armNumber = armNumberFilter.Trim();
+                    var ammoArmItemIds = await _ammunitionRepository
+                        .Find(a => !a.IsDeleted && a.ArmNumber != null && a.ArmNumber.Contains(armNumber))
+                        .Select(a => a.Id)
+                        .ToListAsync();
+                    var explosiveArmItemIds = await _explosiveRepository
+                        .Find(e => !e.IsDeleted && e.ArmNumber != null && e.ArmNumber.Contains(armNumber))
+                        .Select(e => e.Id)
+                        .ToListAsync();
+                    var armItemIds = ammoArmItemIds.Union(explosiveArmItemIds).ToList();
+                    query = armItemIds.Count > 0
+                        ? query.Where(d => armItemIds.Contains(d.ItemId))
+                        : query.Where(_ => false);
+                }
+
                 // Create paginated list of entities first to apply filtering and paging on database
                 var paginatedEntities = await PaginatedList<InventoryDetailEntity>.CreateAsyncForTableBinding(query, request);
 
@@ -3097,6 +3117,58 @@ namespace Ettad.Inventory.Service.Inventories.Services
             {
                 var children = root.Filters
                     .Select(child => StripEqFilter(child, fieldName))
+                    .Where(x => x != null)
+                    .Cast<FilterData>()
+                    .ToList();
+
+                if (children.Count == 0 && string.IsNullOrEmpty(root.Field))
+                    return null;
+
+                root.Filters = children;
+            }
+
+            return root;
+        }
+
+        private static string? TryExtractContainsFilter(FilterData? root, string fieldName)
+        {
+            if (root == null) return null;
+
+            if (root.Filters != null && root.Filters.Any())
+            {
+                foreach (var child in root.Filters)
+                {
+                    var found = TryExtractContainsFilter(child, fieldName);
+                    if (!string.IsNullOrWhiteSpace(found)) return found;
+                }
+                return null;
+            }
+
+            if (string.Equals(root.Field, fieldName, StringComparison.OrdinalIgnoreCase)
+                && string.Equals(root.Operator, "contains", StringComparison.OrdinalIgnoreCase)
+                && !string.IsNullOrWhiteSpace(root.Value?.ToString()))
+            {
+                return root.Value!.ToString();
+            }
+
+            return null;
+        }
+
+        private static FilterData? StripContainsFilter(FilterData? root, string fieldName)
+        {
+            if (root == null) return null;
+
+            if (!string.IsNullOrEmpty(root.Field)
+                && string.Equals(root.Field, fieldName, StringComparison.OrdinalIgnoreCase)
+                && string.Equals(root.Operator, "contains", StringComparison.OrdinalIgnoreCase))
+            {
+                return null;
+            }
+
+            if (root.Filters != null)
+            {
+                var children = root.Filters
+                    .Select(child => StripContainsFilter(child, fieldName))
                     .Where(x => x != null)
                     .Cast<FilterData>()
                     .ToList();

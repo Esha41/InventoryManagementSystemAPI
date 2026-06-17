@@ -171,6 +171,17 @@ namespace Ettad.Inventory.Service.Assets.Implementation
                     false,
                     AssetReadMapIncludes);
 
+                var caliberFilterId = TryExtractEqFilter(request.Filter, "Item.CaliberId");
+                if (caliberFilterId.HasValue)
+                {
+                    request.Filter = StripEqFilter(request.Filter, "Item.CaliberId");
+                    var weaponItemIds = await _weaponRepository
+                        .Find(w => !w.IsDeleted && w.CaliberId == caliberFilterId.Value)
+                        .Select(w => w.Id)
+                        .ToListAsync();
+                    query = query.Where(a => weaponItemIds.Contains(a.ItemId));
+                }
+
                 var paginatedEntities = await PaginatedList<Asset>.CreateAsyncForTableBinding(query, request);
 
                 // Map to DTOs
@@ -2020,6 +2031,58 @@ namespace Ettad.Inventory.Service.Assets.Implementation
                 columnNumber /= 26;
             }
             return columnLetter;
+        }
+
+        private static long? TryExtractEqFilter(FilterData? root, string fieldName)
+        {
+            if (root == null) return null;
+
+            if (root.Filters != null && root.Filters.Any())
+            {
+                foreach (var child in root.Filters)
+                {
+                    var found = TryExtractEqFilter(child, fieldName);
+                    if (found.HasValue) return found;
+                }
+                return null;
+            }
+
+            if (string.Equals(root.Field, fieldName, StringComparison.OrdinalIgnoreCase)
+                && string.Equals(root.Operator, "eq", StringComparison.OrdinalIgnoreCase)
+                && long.TryParse(root.Value?.ToString(), out var id))
+            {
+                return id;
+            }
+
+            return null;
+        }
+
+        private static FilterData? StripEqFilter(FilterData? root, string fieldName)
+        {
+            if (root == null) return null;
+
+            if (!string.IsNullOrEmpty(root.Field)
+                && string.Equals(root.Field, fieldName, StringComparison.OrdinalIgnoreCase)
+                && string.Equals(root.Operator, "eq", StringComparison.OrdinalIgnoreCase))
+            {
+                return null;
+            }
+
+            if (root.Filters != null)
+            {
+                var children = root.Filters
+                    .Select(child => StripEqFilter(child, fieldName))
+                    .Where(x => x != null)
+                    .Cast<FilterData>()
+                    .ToList();
+
+                if (children.Count == 0 && string.IsNullOrEmpty(root.Field))
+                    return null;
+
+                root.Filters = children;
+            }
+
+            return root;
         }
     }
 }
