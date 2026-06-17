@@ -6,7 +6,6 @@ using Ettad.Data.Enums;
 using Ettad.ReportManagement.Service.Dtos;
 using Ettad.ReportManagement.Service.Interfaces;
 using Ettad.ReportManagement.Service.Reports.Factories;
-using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Ettad.ReportManagement.Service.Reports
@@ -41,37 +40,7 @@ namespace Ettad.ReportManagement.Service.Reports
         {
             try
             {
-                // Extract departmentId(s) from url
-                List<long> departmentIds = new List<long>();
-                bool? superAdminFromUrl = null;
-
-                var parts = url.Split('?');
-                var baseUrl = parts[0];
-                if (parts.Length > 1)
-                {
-                    var queryParams = QueryHelpers.ParseQuery(parts[1]);
-
-                    if (queryParams.TryGetValue("departmentId", out var value))
-                    {
-                        var values = value.ToString().Split(',', StringSplitOptions.RemoveEmptyEntries);
-                        foreach (var deptValue in values)
-                        {
-                            if (int.TryParse(deptValue.Trim(), out var parsedId))
-                                departmentIds.Add(parsedId);
-                        }
-                    }
-
-                    // Extract superadmin parameter from URL
-                    if (queryParams.TryGetValue("superadmin", out var superAdminValue))
-                    {
-                        if (bool.TryParse(superAdminValue.ToString(), out var parsedSuperAdmin))
-                            superAdminFromUrl = parsedSuperAdmin;
-                    }
-
-                    //if user is not super admin but has NULL departmentID, don't display any data
-                    if ((superAdminFromUrl == null || superAdminFromUrl == false) && departmentIds.Count == 0)
-                        departmentIds.Add(-1);
-                }
+                var baseUrl = url.Split('?')[0];
 
                 XtraReport report;
 
@@ -98,16 +67,6 @@ namespace Ettad.ReportManagement.Service.Reports
                 {
                     report = _reportFactory.Create(baseUrl);
                     report.Tag = baseUrl;
-                }
-
-                // Set Department Parameter - support multiple departments
-                if (departmentIds.Count > 0 && report.Parameters["Department"] != null)
-                {
-                    var param = report.Parameters["Department"];
-                    param.SelectAllValues = false;
-                    param.Value = departmentIds.ToArray();
-                    param.Visible = true;
-                    param.Enabled = false;
                 }
 
                 using var ms = new MemoryStream();
