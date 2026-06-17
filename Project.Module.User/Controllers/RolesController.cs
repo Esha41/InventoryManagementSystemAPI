@@ -11,7 +11,7 @@ namespace Ettad.User.API.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    //[Authorize]
+    [Authorize]
     public class RolesController : ApiControllerBase
     {
         private readonly IRoleService _roleService;
@@ -169,8 +169,9 @@ namespace Ettad.User.API.Controllers
             return ProcessResponse(response);
         }
 
+        [CheckAuthorize("Permissions.Roles.Page", "Permissions.Roles.View")]
         [HttpGet("entities")]
-       public async Task<ActionResult> GetAllAppicationEntities()
+        public async Task<ActionResult> GetAllAppicationEntities()
         {
             // Calls role service to retrieve all application entities
             var result = await _roleService.GetAllApplicationEntitiesAsync();
@@ -179,6 +180,7 @@ namespace Ettad.User.API.Controllers
             return ProcessResponse(result);
         }
 
+        [CheckAuthorize("Permissions.Roles.Page", "Permissions.Roles.View")]
         [HttpGet("getApplicationentities/{roleId}")]
         public async Task<ActionResult<List<RoleApplicationEntityDto>>> GetByRole(string roleId)
         {
