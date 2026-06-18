@@ -23,6 +23,8 @@ namespace Ettad.Data.Entities
 
         public long? CriticalQuantity { get; set; }
 
+        public long? MaximumStock { get; set; }
+
         public string? Distribution { get; set; }
 
         public string? ReferenceNo { get; set; }
