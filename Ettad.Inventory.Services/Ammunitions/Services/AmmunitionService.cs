@@ -697,7 +697,7 @@ namespace Ettad.Inventory.Service.Ammunitions.Services
             var headers = language == "ar"
                    ? new[]
                    {
-                        "الاسم*", "الاسم (بالعربية)", "رقم الصنف*", "Part No", "رقم ARM", "NSN", "السعر", "الكمية الدنيا",
+                        "الاسم*", "الاسم (بالعربية)", "رقم الصنف*", "Part No", "رقم ARM", "NSN", "السعر", "الكمية الدنيا", "الكمية الحرجة", "الحد الأقصى للمخزون",
                         "قطر الرصاصة", "وحدة قطر الرصاصة", "الوزن الكلي", "مرتبط", "الكبسولة",
                         "نوع الغلاف", "المادة الدافعة", "التوافق", "قسم الخطر", "خيار الطبيعة",
                         "الغرض الأساسي", "لون المقذوف", "مادة المقذوف", "العيار",
@@ -705,7 +705,7 @@ namespace Ettad.Inventory.Service.Ammunitions.Services
                    }
                    : new[]
                    {
-                        "Name*", "Name (Arabic)", "Item No*", "Part No", "Arm Number", "NSN", "Price", "Minimum Quantity",
+                        "Name*", "Name (Arabic)", "Item No*", "Part No", "Arm Number", "NSN", "Price", "Minimum Quantity", "Critical Quantity", "Maximum Stock",
                         "Bullet Diameter", "Bullet Diameter Unit", "Total Weight", "Is Linked", "Primer",
                         "Case Type", "Propellant", "Compatibility", "Hazard Division", "Nature Option",
                         "Primary Purpose", "Projectile Color", "Projectile Material", "Caliber",
@@ -734,28 +734,30 @@ namespace Ettad.Inventory.Service.Ammunitions.Services
                         sheet.Cells[2, 6].Value = firstAsset.Nsn;
                         sheet.Cells[2, 7].Value = firstAsset.Price;
                         sheet.Cells[2, 8].Value = firstAsset.MinimumQuantity;
-                        sheet.Cells[2, 9].Value = firstAsset.BulletDiameter;
-                        sheet.Cells[2, 10].Value = isAr ? firstAsset.BulletDiameterUnit?.NameAr : firstAsset.BulletDiameterUnit?.NameEn;
-                        sheet.Cells[2, 11].Value = firstAsset.TotalWeight;
-                        sheet.Cells[2, 12].Value = firstAsset.IsLinked ? "Yes" : "No";
-                        sheet.Cells[2, 13].Value = firstAsset.Primer;
-                        sheet.Cells[2, 14].Value = isAr ? firstAsset.CaseType?.NameAr : firstAsset.CaseType?.NameEn;
-                        sheet.Cells[2, 15].Value = isAr ? firstAsset.Propellant?.NameAr : firstAsset.Propellant?.NameEn;
-                        sheet.Cells[2, 16].Value = isAr ? firstAsset.Compatibility?.NameAr : firstAsset.Compatibility?.NameEn;
-                        sheet.Cells[2, 17].Value = isAr ? firstAsset.HazardDivision?.NameAr : firstAsset.HazardDivision?.NameEn;
-                        sheet.Cells[2, 18].Value = isAr ? firstAsset.NatureOption?.NameAr : firstAsset.NatureOption?.NameEn;
-                        sheet.Cells[2, 19].Value = isAr
+                        sheet.Cells[2, 9].Value = firstAsset.CriticalQuantity;
+                        sheet.Cells[2, 10].Value = firstAsset.MaximumStock;
+                        sheet.Cells[2, 11].Value = firstAsset.BulletDiameter;
+                        sheet.Cells[2, 12].Value = isAr ? firstAsset.BulletDiameterUnit?.NameAr : firstAsset.BulletDiameterUnit?.NameEn;
+                        sheet.Cells[2, 13].Value = firstAsset.TotalWeight;
+                        sheet.Cells[2, 14].Value = firstAsset.IsLinked ? "Yes" : "No";
+                        sheet.Cells[2, 15].Value = firstAsset.Primer;
+                        sheet.Cells[2, 16].Value = isAr ? firstAsset.CaseType?.NameAr : firstAsset.CaseType?.NameEn;
+                        sheet.Cells[2, 17].Value = isAr ? firstAsset.Propellant?.NameAr : firstAsset.Propellant?.NameEn;
+                        sheet.Cells[2, 18].Value = isAr ? firstAsset.Compatibility?.NameAr : firstAsset.Compatibility?.NameEn;
+                        sheet.Cells[2, 19].Value = isAr ? firstAsset.HazardDivision?.NameAr : firstAsset.HazardDivision?.NameEn;
+                        sheet.Cells[2, 20].Value = isAr ? firstAsset.NatureOption?.NameAr : firstAsset.NatureOption?.NameEn;
+                        sheet.Cells[2, 21].Value = isAr
                             ? firstAsset.BaseItemPrimaryPurposes?.FirstOrDefault()?.PrimaryPurpos?.NameAr
                             : firstAsset.BaseItemPrimaryPurposes?.FirstOrDefault()?.PrimaryPurpos?.NameEn;
-                        sheet.Cells[2, 20].Value = isAr ? firstAsset.ProjectileColor?.NameAr : firstAsset.ProjectileColor?.NameEn;
-                        sheet.Cells[2, 21].Value = isAr ? firstAsset.ProjectailMaterial?.NameAr : firstAsset.ProjectailMaterial?.NameEn;
-                        sheet.Cells[2, 22].Value = isAr ? firstAsset.LookupCaliber?.NameAr : firstAsset.LookupCaliber?.NameEn;
-                        sheet.Cells[2, 23].Value = firstAsset.UNNumber;
-                        sheet.Cells[2, 24].Value = firstAsset.Distribution;
-                        sheet.Cells[2, 25].Value = firstAsset.ReferenceNo;
-                        sheet.Cells[2, 26].Value = isAr ? firstAsset.Classification?.NameAr : firstAsset.Classification?.NameEn;
-                        sheet.Cells[2, 27].Value = isAr ? firstAsset.Type?.NameAr : firstAsset.Type?.NameEn;
-                        sheet.Cells[2, 28].Value = firstAsset.Notes;
+                        sheet.Cells[2, 22].Value = isAr ? firstAsset.ProjectileColor?.NameAr : firstAsset.ProjectileColor?.NameEn;
+                        sheet.Cells[2, 23].Value = isAr ? firstAsset.ProjectailMaterial?.NameAr : firstAsset.ProjectailMaterial?.NameEn;
+                        sheet.Cells[2, 24].Value = isAr ? firstAsset.LookupCaliber?.NameAr : firstAsset.LookupCaliber?.NameEn;
+                        sheet.Cells[2, 25].Value = firstAsset.UNNumber;
+                        sheet.Cells[2, 26].Value = firstAsset.Distribution;
+                        sheet.Cells[2, 27].Value = firstAsset.ReferenceNo;
+                        sheet.Cells[2, 28].Value = isAr ? firstAsset.Classification?.NameAr : firstAsset.Classification?.NameEn;
+                        sheet.Cells[2, 29].Value = isAr ? firstAsset.Type?.NameAr : firstAsset.Type?.NameEn;
+                        sheet.Cells[2, 30].Value = firstAsset.Notes;
                     }
                     else
                     {
@@ -780,19 +782,19 @@ namespace Ettad.Inventory.Service.Ammunitions.Services
                 },
                 (sheet) =>
                 {
-                    AddDataValidation(sheet, 10, "Units");
-                    AddYesNoValidation(sheet, 12);
-                    AddDataValidation(sheet, 14, "CaseTypes");
-                    AddDataValidation(sheet, 15, "Propellants");
-                    AddDataValidation(sheet, 16, "Compatibilities");
-                    AddDataValidation(sheet, 17, "HazardDivisions");
-                    AddDataValidation(sheet, 18, "NatureOptions");
-                    AddDataValidation(sheet, 19, "PrimaryPurposes");
-                    AddDataValidation(sheet, 20, "ProjectileColors");
-                    AddDataValidation(sheet, 21, "ProjectileMaterials");
-                    AddDataValidation(sheet, 22, "Calibers");
-                    AddDataValidation(sheet, 26, "Classifications");
-                    AddDataValidation(sheet, 27, "ItemTypes");
+                    AddDataValidation(sheet, 12, "Units");
+                    AddYesNoValidation(sheet, 14);
+                    AddDataValidation(sheet, 16, "CaseTypes");
+                    AddDataValidation(sheet, 17, "Propellants");
+                    AddDataValidation(sheet, 18, "Compatibilities");
+                    AddDataValidation(sheet, 19, "HazardDivisions");
+                    AddDataValidation(sheet, 20, "NatureOptions");
+                    AddDataValidation(sheet, 21, "PrimaryPurposes");
+                    AddDataValidation(sheet, 22, "ProjectileColors");
+                    AddDataValidation(sheet, 23, "ProjectileMaterials");
+                    AddDataValidation(sheet, 24, "Calibers");
+                    AddDataValidation(sheet, 28, "Classifications");
+                    AddDataValidation(sheet, 29, "ItemTypes");
                 }
             );
         }
@@ -861,6 +863,8 @@ namespace Ettad.Inventory.Service.Ammunitions.Services
                 PartNo = importDto.PartNo,
                 Price = importDto.Price,
                 MinimumQuantity = importDto.MinimumQuantity,
+                CriticalQuantity = importDto.CriticalQuantity,
+                MaximumStock = importDto.MaximumStock,
                 Nsn = importDto.Nsn,
                 Distribution = importDto.Distribution,
                 ReferenceNo = importDto.ReferenceNo,
@@ -962,6 +966,9 @@ namespace Ettad.Inventory.Service.Ammunitions.Services
                 { "NSN", nameof(AmmunitionImportDto.Nsn) },
                 { "Price", nameof(AmmunitionImportDto.Price) },
                 { "Minimum Quantity", nameof(AmmunitionImportDto.MinimumQuantity) },
+                { "Critical Quantity", nameof(AmmunitionImportDto.CriticalQuantity) },
+                { "Critical Stock", nameof(AmmunitionImportDto.CriticalQuantity) },
+                { "Maximum Stock", nameof(AmmunitionImportDto.MaximumStock) },
                 { "Bullet Diameter", nameof(AmmunitionImportDto.BulletDiameter) },
                 { "Bullet Diameter Unit", nameof(AmmunitionImportDto.BulletDiameterUnit) },
                 { "Total Weight", nameof(AmmunitionImportDto.TotalWeight) },
@@ -992,6 +999,8 @@ namespace Ettad.Inventory.Service.Ammunitions.Services
                 { "رقم NSN", nameof(AmmunitionImportDto.Nsn) },
                 { "السعر", nameof(AmmunitionImportDto.Price) },
                 { "الكمية الدنيا", nameof(AmmunitionImportDto.MinimumQuantity) },
+                { "الكمية الحرجة", nameof(AmmunitionImportDto.CriticalQuantity) },
+                { "الحد الأقصى للمخزون", nameof(AmmunitionImportDto.MaximumStock) },
                 { "قطر الرصاصة", nameof(AmmunitionImportDto.BulletDiameter) },
                 { "وحدة قطر الرصاصة", nameof(AmmunitionImportDto.BulletDiameterUnit) },
                 { "الوزن الكلي", nameof(AmmunitionImportDto.TotalWeight) },
