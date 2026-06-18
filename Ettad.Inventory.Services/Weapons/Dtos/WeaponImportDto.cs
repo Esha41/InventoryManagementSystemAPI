@@ -12,6 +12,8 @@ namespace Ettad.Inventory.Service.Weapons.Dtos
         public string? PartNo { get; set; }
         public decimal? Price { get; set; }
         public long? MinimumQuantity { get; set; }
+        public long? CriticalQuantity { get; set; }
+        public long? MaximumStock { get; set; }
         public string? Nsn { get; set; }
         public string? Distribution { get; set; }
         public string? ReferenceNo { get; set; }

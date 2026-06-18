@@ -18,6 +18,8 @@ namespace Ettad.Inventory.Service.Common.Dtos
 
         public long? CriticalQuantity { get; set; }
 
+        public long? MaximumStock { get; set; }
+
         public string? Nsn { get; set; }
 
         public string? Distribution { get; set; }

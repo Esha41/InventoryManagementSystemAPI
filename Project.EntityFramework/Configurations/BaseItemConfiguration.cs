@@ -39,6 +39,9 @@ namespace Ettad.EntityFramework.Configurations
             builder.Property(x => x.CriticalQuantity)
                 .IsRequired(false);
 
+            builder.Property(x => x.MaximumStock)
+                .IsRequired(false);
+
             builder.Property(x => x.Distribution)
                 .IsRequired(false)
                 .HasMaxLength(1000);

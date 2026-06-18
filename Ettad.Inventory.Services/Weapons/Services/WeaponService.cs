@@ -688,13 +688,13 @@ namespace Ettad.Inventory.Service.Weapons.Services
             var headers = language == "ar"
                    ? new[]
                    {
-                        "الاسم*", "الاسم (بالعربية)", "رقم الصنف*", "Part No", "رقم NSN", "السعر", "الكمية الدنيا",
+                        "الاسم*", "الاسم (بالعربية)", "رقم الصنف*", "Part No", "رقم NSN", "السعر", "الكمية الدنيا", "الكمية الحرجة", "الحد الأقصى للمخزون",
                         "العيار", "وحدة العيار", "سنة الصنع", "بلد الصنع", "النموذج",
                         "رقم الأمم المتحدة", "التوزيع", "الرقم المرجعي", "التصنيف", "النوع", "ملاحظات"
                    }
                    : new[]
                    {
-                        "Name*", "Name (Arabic)", "Item No*", "Part No", "NSN", "Price", "Minimum Quantity",
+                        "Name*", "Name (Arabic)", "Item No*", "Part No", "NSN", "Price", "Minimum Quantity", "Critical Quantity", "Maximum Stock",
                         "Caliber", "Caliber Unit", "Year Of Manufacture", "Country Of Manufacture", "Model",
                         "UN Number", "Distribution", "Reference No", "Classification", "Type", "Notes"
                    };
@@ -720,17 +720,19 @@ namespace Ettad.Inventory.Service.Weapons.Services
                         sheet.Cells[2, 5].Value = firstAsset.Nsn;
                         sheet.Cells[2, 6].Value = firstAsset.Price;
                         sheet.Cells[2, 7].Value = firstAsset.MinimumQuantity;
-                        sheet.Cells[2, 8].Value = isAr ? firstAsset.LookupCaliber?.NameAr : firstAsset.LookupCaliber?.NameEn;
-                        sheet.Cells[2, 9].Value = isAr ? firstAsset.CaliberUnit?.NameAr : firstAsset.CaliberUnit?.NameEn;
-                        sheet.Cells[2, 10].Value = firstAsset.YearOfManufacture;
-                        sheet.Cells[2, 11].Value = isAr ? firstAsset.CountryOfManufacture?.NameAr : firstAsset.CountryOfManufacture?.NameEn;
-                        sheet.Cells[2, 12].Value = firstAsset.Model;
-                        sheet.Cells[2, 13].Value = firstAsset.UNNumber;
-                        sheet.Cells[2, 14].Value = firstAsset.Distribution;
-                        sheet.Cells[2, 15].Value = firstAsset.ReferenceNo;
-                        sheet.Cells[2, 16].Value = isAr ? firstAsset.Classification?.NameAr : firstAsset.Classification?.NameEn;
-                        sheet.Cells[2, 17].Value = isAr ? firstAsset.Type?.NameAr : firstAsset.Type?.NameEn;
-                        sheet.Cells[2, 18].Value = firstAsset.Notes;
+                        sheet.Cells[2, 8].Value = firstAsset.CriticalQuantity;
+                        sheet.Cells[2, 9].Value = firstAsset.MaximumStock;
+                        sheet.Cells[2, 10].Value = isAr ? firstAsset.LookupCaliber?.NameAr : firstAsset.LookupCaliber?.NameEn;
+                        sheet.Cells[2, 11].Value = isAr ? firstAsset.CaliberUnit?.NameAr : firstAsset.CaliberUnit?.NameEn;
+                        sheet.Cells[2, 12].Value = firstAsset.YearOfManufacture;
+                        sheet.Cells[2, 13].Value = isAr ? firstAsset.CountryOfManufacture?.NameAr : firstAsset.CountryOfManufacture?.NameEn;
+                        sheet.Cells[2, 14].Value = firstAsset.Model;
+                        sheet.Cells[2, 15].Value = firstAsset.UNNumber;
+                        sheet.Cells[2, 16].Value = firstAsset.Distribution;
+                        sheet.Cells[2, 17].Value = firstAsset.ReferenceNo;
+                        sheet.Cells[2, 18].Value = isAr ? firstAsset.Classification?.NameAr : firstAsset.Classification?.NameEn;
+                        sheet.Cells[2, 19].Value = isAr ? firstAsset.Type?.NameAr : firstAsset.Type?.NameEn;
+                        sheet.Cells[2, 20].Value = firstAsset.Notes;
                     }
                     else
                     {
@@ -748,11 +750,11 @@ namespace Ettad.Inventory.Service.Weapons.Services
                 },
                 (sheet) =>
                 {
-                    AddDataValidation(sheet, 8, "Calibers");
-                    AddDataValidation(sheet, 9, "Units");
-                    AddDataValidation(sheet, 11, "Countries");
-                    AddDataValidation(sheet, 16, "Classifications");
-                    AddDataValidation(sheet, 17, "ItemTypes");
+                    AddDataValidation(sheet, 10, "Calibers");
+                    AddDataValidation(sheet, 11, "Units");
+                    AddDataValidation(sheet, 13, "Countries");
+                    AddDataValidation(sheet, 18, "Classifications");
+                    AddDataValidation(sheet, 19, "ItemTypes");
                 }
             );
         }
@@ -807,6 +809,8 @@ namespace Ettad.Inventory.Service.Weapons.Services
                 PartNo = importDto.PartNo,
                 Price = importDto.Price,
                 MinimumQuantity = importDto.MinimumQuantity,
+                CriticalQuantity = importDto.CriticalQuantity,
+                MaximumStock = importDto.MaximumStock,
                 Nsn = importDto.Nsn,
                 Distribution = importDto.Distribution,
                 ReferenceNo = importDto.ReferenceNo,
@@ -893,6 +897,9 @@ namespace Ettad.Inventory.Service.Weapons.Services
                 { "NSN", nameof(WeaponImportDto.Nsn) },
                 { "Price", nameof(WeaponImportDto.Price) },
                 { "Minimum Quantity", nameof(WeaponImportDto.MinimumQuantity) },
+                { "Critical Quantity", nameof(WeaponImportDto.CriticalQuantity) },
+                { "Critical Stock", nameof(WeaponImportDto.CriticalQuantity) },
+                { "Maximum Stock", nameof(WeaponImportDto.MaximumStock) },
                 { "Caliber", nameof(WeaponImportDto.Caliber) },
                 { "Caliber Unit", nameof(WeaponImportDto.CaliberUnit) },
                 { "Year Of Manufacture", nameof(WeaponImportDto.YearOfManufacture) },
@@ -913,6 +920,8 @@ namespace Ettad.Inventory.Service.Weapons.Services
                 { "رقم NSN", nameof(WeaponImportDto.Nsn) },
                 { "السعر", nameof(WeaponImportDto.Price) },
                 { "الكمية الدنيا", nameof(WeaponImportDto.MinimumQuantity) },
+                { "الكمية الحرجة", nameof(WeaponImportDto.CriticalQuantity) },
+                { "الحد الأقصى للمخزون", nameof(WeaponImportDto.MaximumStock) },
                 { "العيار", nameof(WeaponImportDto.Caliber) },
                 { "وحدة العيار", nameof(WeaponImportDto.CaliberUnit) },
                 { "سنة الصنع", nameof(WeaponImportDto.YearOfManufacture) },

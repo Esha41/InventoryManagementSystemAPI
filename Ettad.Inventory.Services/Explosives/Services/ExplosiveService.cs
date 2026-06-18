@@ -583,13 +583,13 @@ namespace Ettad.Inventory.Service.Explosives.Services
              var headers = language == "ar"
                     ? new[]
                     {
-                        "الاسم*", "الاسم (بالعربية)", "رقم الصنف*", "Part No", "رقم ARM", "NSN", "السعر", "الكمية الدنيا",
+                        "الاسم*", "الاسم (بالعربية)", "رقم الصنف*", "Part No", "رقم ARM", "NSN", "السعر", "الكمية الدنيا", "الكمية الحرجة", "الحد الأقصى للمخزون",
                         "رقم الأمم المتحدة", "وحدة",
                         "التوزيع", "الرقم المرجعي", "التوافق", "قسم الخطر", "التصنيف", "النوع", "ملاحظات"
                     }
                     : new[]
                     {
-                        "Name*", "Name (Arabic)", "Item No*", "Part No", "Arm Number", "NSN", "Price", "Minimum Quantity",
+                        "Name*", "Name (Arabic)", "Item No*", "Part No", "Arm Number", "NSN", "Price", "Minimum Quantity", "Critical Quantity", "Maximum Stock",
                         "UN Number", "Unit",
                         "Distribution", "Reference No", "Compatibility", "Hazard Division", "Classification", "Type", "Notes"
                     };
@@ -616,15 +616,17 @@ namespace Ettad.Inventory.Service.Explosives.Services
                         sheet.Cells[2, 6].Value = firstAsset.Nsn;
                         sheet.Cells[2, 7].Value = firstAsset.Price;
                         sheet.Cells[2, 8].Value = firstAsset.MinimumQuantity;
-                        sheet.Cells[2, 9].Value = firstAsset.UNNumber;
-                        sheet.Cells[2, 10].Value = isAr ? firstAsset.Unit?.NameAr : firstAsset.Unit?.NameEn; // Unit
-                        sheet.Cells[2, 11].Value = firstAsset.Distribution;
-                        sheet.Cells[2, 12].Value = firstAsset.ReferenceNo;
-                        sheet.Cells[2, 13].Value = isAr ? firstAsset.Compatibility?.NameAr : firstAsset.Compatibility?.NameEn;
-                        sheet.Cells[2, 14].Value = isAr ? firstAsset.HazardDivision?.NameAr : firstAsset.HazardDivision?.NameEn;
-                        sheet.Cells[2, 15].Value = isAr ? firstAsset.Classification?.NameAr : firstAsset.Classification?.NameEn;
-                        sheet.Cells[2, 16].Value = isAr ? firstAsset.Type?.NameAr : firstAsset.Type?.NameEn;
-                        sheet.Cells[2, 17].Value = firstAsset.Notes;
+                        sheet.Cells[2, 9].Value = firstAsset.CriticalQuantity;
+                        sheet.Cells[2, 10].Value = firstAsset.MaximumStock;
+                        sheet.Cells[2, 11].Value = firstAsset.UNNumber;
+                        sheet.Cells[2, 12].Value = isAr ? firstAsset.Unit?.NameAr : firstAsset.Unit?.NameEn; // Unit
+                        sheet.Cells[2, 13].Value = firstAsset.Distribution;
+                        sheet.Cells[2, 14].Value = firstAsset.ReferenceNo;
+                        sheet.Cells[2, 15].Value = isAr ? firstAsset.Compatibility?.NameAr : firstAsset.Compatibility?.NameEn;
+                        sheet.Cells[2, 16].Value = isAr ? firstAsset.HazardDivision?.NameAr : firstAsset.HazardDivision?.NameEn;
+                        sheet.Cells[2, 17].Value = isAr ? firstAsset.Classification?.NameAr : firstAsset.Classification?.NameEn;
+                        sheet.Cells[2, 18].Value = isAr ? firstAsset.Type?.NameAr : firstAsset.Type?.NameEn;
+                        sheet.Cells[2, 19].Value = firstAsset.Notes;
                     }
                     else
                     {
@@ -642,11 +644,11 @@ namespace Ettad.Inventory.Service.Explosives.Services
                 },
                 (sheet) =>
                 {
-                    AddDataValidation(sheet, 10, "Units"); // Unit dropdown
-                    AddDataValidation(sheet, 13, "Compatibilities"); // Compatibility dropdown
-                    AddDataValidation(sheet, 14, "HazardDivisions"); 
-                    AddDataValidation(sheet, 15, "Classifications"); 
-                    AddDataValidation(sheet, 16, "ItemTypes"); 
+                    AddDataValidation(sheet, 12, "Units"); // Unit dropdown
+                    AddDataValidation(sheet, 15, "Compatibilities"); // Compatibility dropdown
+                    AddDataValidation(sheet, 16, "HazardDivisions"); 
+                    AddDataValidation(sheet, 17, "Classifications"); 
+                    AddDataValidation(sheet, 18, "ItemTypes"); 
                 }
             );
         }
@@ -704,6 +706,8 @@ namespace Ettad.Inventory.Service.Explosives.Services
                 ArmNumber = string.IsNullOrWhiteSpace(importDto.ArmNumber) ? null : importDto.ArmNumber.Trim(),
                 Price = importDto.Price,
                 MinimumQuantity = importDto.MinimumQuantity,
+                CriticalQuantity = importDto.CriticalQuantity,
+                MaximumStock = importDto.MaximumStock,
                 Nsn = importDto.Nsn,
                 Distribution = importDto.Distribution,
                 ReferenceNo = importDto.ReferenceNo,
@@ -789,6 +793,9 @@ namespace Ettad.Inventory.Service.Explosives.Services
                 { "NSN", nameof(ExplosiveImportDto.Nsn) },
                 { "Price", nameof(ExplosiveImportDto.Price) },
                 { "Minimum Quantity", nameof(ExplosiveImportDto.MinimumQuantity) },
+                { "Critical Quantity", nameof(ExplosiveImportDto.CriticalQuantity) },
+                { "Critical Stock", nameof(ExplosiveImportDto.CriticalQuantity) },
+                { "Maximum Stock", nameof(ExplosiveImportDto.MaximumStock) },
                 { "UN Number", nameof(ExplosiveImportDto.UNNumber) },
                 { "Unit", nameof(ExplosiveImportDto.NEQUnit) },
                 { "Distribution", nameof(ExplosiveImportDto.Distribution) },
@@ -808,6 +815,8 @@ namespace Ettad.Inventory.Service.Explosives.Services
                 { "رقم NSN", nameof(ExplosiveImportDto.Nsn) },
                 { "السعر", nameof(ExplosiveImportDto.Price) },
                 { "الكمية الدنيا", nameof(ExplosiveImportDto.MinimumQuantity) },
+                { "الكمية الحرجة", nameof(ExplosiveImportDto.CriticalQuantity) },
+                { "الحد الأقصى للمخزون", nameof(ExplosiveImportDto.MaximumStock) },
                 { "رقم الأمم المتحدة", nameof(ExplosiveImportDto.UNNumber) },
                 { "وحدة", nameof(ExplosiveImportDto.NEQUnit) },
                 { "التوزيع", nameof(ExplosiveImportDto.Distribution) },
