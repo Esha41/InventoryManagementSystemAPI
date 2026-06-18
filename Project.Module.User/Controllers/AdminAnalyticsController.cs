@@ -59,14 +59,6 @@ namespace Ettad.User.API.Controllers
             return ProcessResponse(response);
         }
 
-        [HttpGet("inventory-distribution")]
-        [CheckAuthorize("Permissions.Analytics.View", "Permissions.Analytics.Page")]
-        public async Task<IActionResult> GetInventoryDistribution()
-        {
-            var response = await _analyticsService.GetInventoryDistributionAsync();
-            return ProcessResponse(response);
-        }
-
         [HttpGet("top-requested-items")]
         [CheckAuthorize("Permissions.Analytics.View", "Permissions.Analytics.Page")]
         public async Task<IActionResult> GetTopRequestedItems([FromQuery] int limit = 10)

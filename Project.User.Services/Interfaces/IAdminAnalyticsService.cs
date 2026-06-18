@@ -10,7 +10,6 @@ namespace Ettad.User.Services.Interfaces
         Task<APIOperationResponse<UserActivityMetricsDto>> GetUserActivityMetricsAsync();
         Task<APIOperationResponse<RequestMetricsDto>> GetRequestMetricsAsync();
         Task<APIOperationResponse<RequestTrendsDto>> GetRequestTrendsAsync(string period);
-        Task<APIOperationResponse<InventoryDistributionDto>> GetInventoryDistributionAsync();
         Task<APIOperationResponse<TopRequestedItemsDto>> GetTopRequestedItemsAsync(int limit);
     }
 }

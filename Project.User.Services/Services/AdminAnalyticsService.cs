@@ -8,6 +8,7 @@ using Ettad.User.Services.DTO;
 using Ettad.User.Services.Interfaces;
 using Ettad.CrossCutting.Comman.Time;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 
 namespace Ettad.User.Services.Services
@@ -21,13 +22,21 @@ namespace Ettad.User.Services.Services
         private readonly ICrossCuttingRepository<ApplicationUser> _userRepository;
         private readonly ICrossCuttingRepository<Department> _departmentRepository;
         private readonly ICrossCuttingRepository<BaseRequest> _baseRequestRepository;
-        private readonly ICrossCuttingRepository<Ammunition> _ammunitionRepository;
-        private readonly ICrossCuttingRepository<Weapon> _weaponRepository;
-        private readonly ICrossCuttingRepository<Explosive> _explosiveRepository;
         private readonly ICrossCuttingRepository<RequestItem> _requestItemRepository;
         private readonly ICrossCuttingRepository<BaseItem> _baseItemRepository;
         private readonly ILogger<AdminAnalyticsService> _logger;
         private readonly IDateTimeProvider _dateTimeProvider;
+        private readonly IMemoryCache _memoryCache;
+
+        // Short-lived cache so concurrent dashboard viewers and the page auto-refresh
+        // don't each re-run these aggregate queries against the database.
+        private static readonly MemoryCacheEntryOptions AnalyticsCacheOptions = new()
+        {
+            AbsoluteExpirationRelativeToNow = TimeSpan.FromSeconds(60)
+        };
+        private const string CacheKeyRequestMetrics = "analytics:request-metrics";
+        private const string CacheKeyTopItemsPrefix = "analytics:top-items:";
+        private const string CacheKeyTrendsPrefix = "analytics:trends:";
 
         public AdminAnalyticsService(
             ICrossCuttingRepository<LoginAttempt> loginAttemptRepository,
@@ -37,13 +46,11 @@ namespace Ettad.User.Services.Services
             ICrossCuttingRepository<ApplicationUser> userRepository,
             ICrossCuttingRepository<Department> departmentRepository,
             ICrossCuttingRepository<BaseRequest> baseRequestRepository,
-            ICrossCuttingRepository<Ammunition> ammunitionRepository,
-            ICrossCuttingRepository<Weapon> weaponRepository,
-            ICrossCuttingRepository<Explosive> explosiveRepository,
             ICrossCuttingRepository<RequestItem> requestItemRepository,
             ICrossCuttingRepository<BaseItem> baseItemRepository,
             ILogger<AdminAnalyticsService> logger,
-            IDateTimeProvider dateTimeProvider)
+            IDateTimeProvider dateTimeProvider,
+            IMemoryCache memoryCache)
         {
             _loginAttemptRepository = loginAttemptRepository ?? throw new ArgumentNullException(nameof(loginAttemptRepository));
             _orderRepository = orderRepository ?? throw new ArgumentNullException(nameof(orderRepository));
@@ -52,13 +59,11 @@ namespace Ettad.User.Services.Services
             _userRepository = userRepository ?? throw new ArgumentNullException(nameof(userRepository));
             _departmentRepository = departmentRepository ?? throw new ArgumentNullException(nameof(departmentRepository));
             _baseRequestRepository = baseRequestRepository ?? throw new ArgumentNullException(nameof(baseRequestRepository));
-            _ammunitionRepository = ammunitionRepository ?? throw new ArgumentNullException(nameof(ammunitionRepository));
-            _weaponRepository = weaponRepository ?? throw new ArgumentNullException(nameof(weaponRepository));
-            _explosiveRepository = explosiveRepository ?? throw new ArgumentNullException(nameof(explosiveRepository));
             _requestItemRepository = requestItemRepository ?? throw new ArgumentNullException(nameof(requestItemRepository));
             _baseItemRepository = baseItemRepository ?? throw new ArgumentNullException(nameof(baseItemRepository));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _dateTimeProvider = dateTimeProvider ?? throw new ArgumentNullException(nameof(dateTimeProvider));
+            _memoryCache = memoryCache ?? throw new ArgumentNullException(nameof(memoryCache));
         }
 
         public async Task<APIOperationResponse<SystemHealthMetricsDto>> GetSystemHealthMetricsAsync()
@@ -257,54 +262,42 @@ namespace Ettad.User.Services.Services
             {
                 _logger.LogInformation("Fetching request metrics");
 
-                var pendingOrders = await _orderRepository
-                    .Find(o => !o.IsDeleted && (o.Status == RequestStatus.New || o.Status == RequestStatus.UnderProcess))
-                    .CountAsync();
+                if (_memoryCache.TryGetValue(CacheKeyRequestMetrics, out RequestMetricsDto? cached) && cached != null)
+                {
+                    return APIOperationResponse<RequestMetricsDto>.Success(cached);
+                }
 
-                var pendingReturns = await _returnRepository
-                    .Find(r => !r.IsDeleted && (r.Status == RequestStatus.New || r.Status == RequestStatus.UnderProcess))
-                    .CountAsync();
+                // Order/Return/Discard all derive from BaseRequest (TPH), so one grouped query
+                // replaces the previous ~15 separate Count round-trips.
+                var statusCounts = await _baseRequestRepository
+                    .Find(r => !r.IsDeleted)
+                    .GroupBy(r => new { r.RequestType, r.Status })
+                    .Select(g => new { g.Key.RequestType, g.Key.Status, Count = g.Count() })
+                    .ToListAsync();
 
-                var pendingDiscards = await _discardRepository
-                    .Find(d => !d.IsDeleted && (d.Status == RequestStatus.New || d.Status == RequestStatus.UnderProcess))
-                    .CountAsync();
+                int CountFor(RequestType? type, params RequestStatus[] statuses) =>
+                    statusCounts
+                        .Where(c => (type == null || c.RequestType == type) && statuses.Contains(c.Status))
+                        .Sum(c => c.Count);
 
-                var totalPending = pendingOrders + pendingReturns + pendingDiscards;
-
-                var newRequests = await _orderRepository.Find(o => !o.IsDeleted && o.Status == RequestStatus.New).CountAsync();
-                newRequests += await _returnRepository.Find(r => !r.IsDeleted && r.Status == RequestStatus.New).CountAsync();
-                newRequests += await _discardRepository.Find(d => !d.IsDeleted && d.Status == RequestStatus.New).CountAsync();
-
-                var inProgressRequests = await _orderRepository.Find(o => !o.IsDeleted && o.Status == RequestStatus.UnderProcess).CountAsync();
-                inProgressRequests += await _returnRepository.Find(r => !r.IsDeleted && r.Status == RequestStatus.UnderProcess).CountAsync();
-                inProgressRequests += await _discardRepository.Find(d => !d.IsDeleted && d.Status == RequestStatus.UnderProcess).CountAsync();
-
-                var completedRequests = await _orderRepository.Find(o => !o.IsDeleted && o.Status == RequestStatus.Approved).CountAsync();
-                completedRequests += await _returnRepository.Find(r => !r.IsDeleted && r.Status == RequestStatus.Approved).CountAsync();
-                completedRequests += await _discardRepository.Find(d => !d.IsDeleted && d.Status == RequestStatus.Approved).CountAsync();
-
-                var rejectedRequests = await _orderRepository.Find(o => !o.IsDeleted && o.Status == RequestStatus.Rejected).CountAsync();
-                rejectedRequests += await _returnRepository.Find(r => !r.IsDeleted && r.Status == RequestStatus.Rejected).CountAsync();
-                rejectedRequests += await _discardRepository.Find(d => !d.IsDeleted && d.Status == RequestStatus.Rejected).CountAsync();
-
-                var avgApprovalTime = 0.0;
-
-                var slaCompliance = 0.0;
+                var pendingOrders = CountFor(RequestType.Order, RequestStatus.New, RequestStatus.UnderProcess);
+                var pendingReturns = CountFor(RequestType.Return, RequestStatus.New, RequestStatus.UnderProcess);
+                var pendingDiscards = CountFor(RequestType.Discard, RequestStatus.New, RequestStatus.UnderProcess);
 
                 var metrics = new RequestMetricsDto
                 {
                     PendingOrders = pendingOrders,
                     PendingReturns = pendingReturns,
                     PendingDiscards = pendingDiscards,
-                    TotalPending = totalPending,
-                    NewRequests = newRequests,
-                    InProgressRequests = inProgressRequests,
-                    CompletedRequests = completedRequests,
-                    RejectedRequests = rejectedRequests,
-                    AvgApprovalTime = avgApprovalTime,
-                    SlaCompliance = slaCompliance,
+                    TotalPending = pendingOrders + pendingReturns + pendingDiscards,
+                    NewRequests = CountFor(null, RequestStatus.New),
+                    InProgressRequests = CountFor(null, RequestStatus.UnderProcess),
+                    CompletedRequests = CountFor(null, RequestStatus.Approved),
+                    RejectedRequests = CountFor(null, RequestStatus.Rejected),
                     LastUpdated = _dateTimeProvider.Now
                 };
+
+                _memoryCache.Set(CacheKeyRequestMetrics, metrics, AnalyticsCacheOptions);
 
                 _logger.LogInformation("Request metrics retrieved successfully");
                 return APIOperationResponse<RequestMetricsDto>.Success(metrics);
@@ -324,6 +317,12 @@ namespace Ettad.User.Services.Services
             try
             {
                 _logger.LogInformation("Fetching request trends for period: {Period}", period);
+
+                var trendsCacheKey = CacheKeyTrendsPrefix + (period ?? string.Empty).ToLower();
+                if (_memoryCache.TryGetValue(trendsCacheKey, out RequestTrendsDto? cachedTrends) && cachedTrends != null)
+                {
+                    return APIOperationResponse<RequestTrendsDto>.Success(cachedTrends);
+                }
 
                 var dates = new List<string>();
                 var orders = new List<int>();
@@ -390,6 +389,8 @@ namespace Ettad.User.Services.Services
                     Period = period
                 };
 
+                _memoryCache.Set(trendsCacheKey, trends, AnalyticsCacheOptions);
+
                 _logger.LogInformation("Request trends retrieved successfully");
                 return APIOperationResponse<RequestTrendsDto>.Success(trends);
             }
@@ -403,138 +404,62 @@ namespace Ettad.User.Services.Services
             }
         }
 
-        public async Task<APIOperationResponse<InventoryDistributionDto>> GetInventoryDistributionAsync()
-        {
-            try
-            {
-                _logger.LogInformation("Fetching inventory distribution");
-
-                var ammunitionCount = await _ammunitionRepository
-                    .Find(a => !a.IsDeleted)
-                    .CountAsync();
-
-                var weaponCount = await _weaponRepository
-                    .Find(w => !w.IsDeleted)
-                    .CountAsync();
-
-                var explosiveCount = await _explosiveRepository
-                    .Find(e => !e.IsDeleted)
-                    .CountAsync();
-
-                var totalItems = ammunitionCount + weaponCount + explosiveCount;
-
-                var categories = new List<CategoryDistributionDto>();
-
-                if (totalItems > 0)
-                {
-                    if (ammunitionCount > 0)
-                    {
-                        categories.Add(new CategoryDistributionDto
-                        {
-                            Name = "Ammunition",
-                            Value = ammunitionCount,
-                            Percentage = Math.Round((double)ammunitionCount / totalItems * 100, 2)
-                        });
-                    }
-
-                    if (weaponCount > 0)
-                    {
-                        categories.Add(new CategoryDistributionDto
-                        {
-                            Name = "Weapons",
-                            Value = weaponCount,
-                            Percentage = Math.Round((double)weaponCount / totalItems * 100, 2)
-                        });
-                    }
-
-                    if (explosiveCount > 0)
-                    {
-                        categories.Add(new CategoryDistributionDto
-                        {
-                            Name = "Explosives",
-                            Value = explosiveCount,
-                            Percentage = Math.Round((double)explosiveCount / totalItems * 100, 2)
-                        });
-                    }
-                }
-
-                var distribution = new InventoryDistributionDto
-                {
-                    Categories = categories
-                };
-
-                _logger.LogInformation("Inventory distribution retrieved successfully");
-                return APIOperationResponse<InventoryDistributionDto>.Success(distribution);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error fetching inventory distribution");
-                return APIOperationResponse<InventoryDistributionDto>.Fail(
-                    ResponseType.InternalServerError,
-                    CommonErrorCodes.SERVER_ERROR,
-                    "Failed to retrieve inventory distribution");
-            }
-        }
-
         public async Task<APIOperationResponse<TopRequestedItemsDto>> GetTopRequestedItemsAsync(int limit)
         {
             try
             {
                 _logger.LogInformation("Fetching top {Limit} requested items", limit);
 
+                var topItemsCacheKey = CacheKeyTopItemsPrefix + limit;
+                if (_memoryCache.TryGetValue(topItemsCacheKey, out TopRequestedItemsDto? cachedItems) && cachedItems != null)
+                {
+                    return APIOperationResponse<TopRequestedItemsDto>.Success(cachedItems);
+                }
+
+                // Orders only: "top requested" reflects demand, not returns/discards.
+                // Single grouped query (count + total quantity) instead of the previous
+                // per-item N+1, with category resolved from BaseItem.ItemType.
                 var topItemIds = await _requestItemRepository
-                    .Find(ri => true)
+                    .Find(ri => !ri.Request.IsDeleted && ri.Request.RequestType == RequestType.Order)
                     .GroupBy(ri => ri.ItemId)
                     .Select(g => new
                     {
                         ItemId = g.Key,
-                        Count = g.Count()
+                        Count = g.Count(),
+                        TotalQuantity = g.Sum(x => x.Quantity)
                     })
                     .OrderByDescending(x => x.Count)
                     .Take(limit)
                     .ToListAsync();
 
-                var topItems = new List<RequestedItemDto>();
+                var itemIds = topItemIds.Select(x => x.ItemId).ToList();
 
-                foreach (var item in topItemIds)
-                {
-                    var baseItem = await _baseItemRepository
-                        .Find(bi => bi.Id == item.ItemId)
-                        .FirstOrDefaultAsync();
+                var itemLookup = await _baseItemRepository
+                    .Find(bi => itemIds.Contains(bi.Id))
+                    .Select(bi => new { bi.Id, bi.Name, bi.NameAr, bi.ItemType })
+                    .ToListAsync();
 
-                    if (baseItem != null)
+                var topItems = topItemIds
+                    .Select(t =>
                     {
-                        var category = "Item";
-                        var ammunition = await _ammunitionRepository.FindOneAsync(a => a.Id == item.ItemId);
-                        var weapon = await _weaponRepository.FindOneAsync(w => w.Id == item.ItemId);
-                        var explosive = await _explosiveRepository.FindOneAsync(e => e.Id == item.ItemId);
-
-                        if (ammunition != null)
+                        var info = itemLookup.FirstOrDefault(x => x.Id == t.ItemId);
+                        return new RequestedItemDto
                         {
-                            category = "Ammunition";
-                        }
-                        else if (weapon != null)
-                        {
-                            category = "Weapon";
-                        }
-                        else if (explosive != null)
-                        {
-                            category = "Explosive";
-                        }
-
-                        topItems.Add(new RequestedItemDto
-                        {
-                            ItemName = baseItem.Name ?? "Unknown",
-                            RequestCount = item.Count,
-                            Category = category
-                        });
-                    }
-                }
+                            ItemName = info?.Name ?? "Unknown",
+                            ItemNameAr = info?.NameAr,
+                            RequestCount = t.Count,
+                            TotalQuantity = t.TotalQuantity,
+                            Category = info?.ItemType.ToString() ?? "Item"
+                        };
+                    })
+                    .ToList();
 
                 var result = new TopRequestedItemsDto
                 {
                     Items = topItems
                 };
+
+                _memoryCache.Set(topItemsCacheKey, result, AnalyticsCacheOptions);
 
                 _logger.LogInformation("Top requested items retrieved successfully");
                 return APIOperationResponse<TopRequestedItemsDto>.Success(result);

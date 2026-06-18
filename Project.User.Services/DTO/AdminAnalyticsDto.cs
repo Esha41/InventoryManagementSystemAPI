@@ -61,8 +61,6 @@ namespace Ettad.User.Services.DTO
         public int InProgressRequests { get; set; }
         public int CompletedRequests { get; set; }
         public int RejectedRequests { get; set; }
-        public double AvgApprovalTime { get; set; }
-        public double SlaCompliance { get; set; }
         public DateTime LastUpdated { get; set; }
     }
 
@@ -79,24 +77,6 @@ namespace Ettad.User.Services.DTO
     }
 
     /// <summary>
-    /// Inventory Distribution DTO
-    /// </summary>
-    public class InventoryDistributionDto
-    {
-        public List<CategoryDistributionDto> Categories { get; set; } = new();
-    }
-
-    /// <summary>
-    /// Category Distribution DTO
-    /// </summary>
-    public class CategoryDistributionDto
-    {
-        public string Name { get; set; } = string.Empty;
-        public int Value { get; set; }
-        public double Percentage { get; set; }
-    }
-
-    /// <summary>
     /// Top Requested Items DTO
     /// </summary>
     public class TopRequestedItemsDto
@@ -110,7 +90,9 @@ namespace Ettad.User.Services.DTO
     public class RequestedItemDto
     {
         public string ItemName { get; set; } = string.Empty;
+        public string? ItemNameAr { get; set; }
         public int RequestCount { get; set; }
+        public long TotalQuantity { get; set; }
         public string Category { get; set; } = string.Empty;
     }
 }
