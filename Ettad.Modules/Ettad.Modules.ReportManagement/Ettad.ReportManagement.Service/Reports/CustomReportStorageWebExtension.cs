@@ -102,6 +102,7 @@ namespace Ettad.ReportManagement.Service.Reports
                 urls[ReportConstants.AssetsReportTemplate] = "Assets Report Template";
                 urls[ReportConstants.LoginAuditReportTemplate] = "Login Audit Report Template";
                 urls[ReportConstants.AuditorPendingApprovalsReportTemplate] = "Auditor Pending Approvals Report Template";
+                urls[ReportConstants.AutoRejectedOrdersReportTemplate] = "Auto Rejected Orders Report Template";
 
                 return urls;
             }

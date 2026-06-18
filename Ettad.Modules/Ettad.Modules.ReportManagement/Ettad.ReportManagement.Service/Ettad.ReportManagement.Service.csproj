@@ -35,6 +35,9 @@
     <Compile Update="Reports\Templates\AssetsReportTemplate.cs">
       <SubType>XtraReport</SubType>
     </Compile>
+    <Compile Update="Reports\Templates\AutoRejectedOrdersReportTemplate.cs">
+      <SubType>XtraReport</SubType>
+    </Compile>
     <Compile Update="Reports\Templates\LoginAuditReportTemplate.cs">
       <SubType>XtraReport</SubType>
     </Compile>

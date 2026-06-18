@@ -15,6 +15,7 @@ namespace Ettad.ReportManagement.Service.Reports.Factories
                 ReportConstants.AssetsReportTemplate => new AssetsReportTemplate(),
                 ReportConstants.LoginAuditReportTemplate => new LoginAuditReportTemplate(),
                 ReportConstants.AuditorPendingApprovalsReportTemplate => new AuditorPendingApprovalsReportTemplate(),
+                ReportConstants.AutoRejectedOrdersReportTemplate => new AutoRejectedOrdersReportTemplate(),
                 _ => new BaseReportTemplate()
             };
         }

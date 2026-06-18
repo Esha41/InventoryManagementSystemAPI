@@ -540,6 +540,12 @@ namespace Ettad.ReportManagement.Service.Services
                         Url = ReportConstants.AuditorPendingApprovalsReportTemplate,
                         Name = "Auditor Pending Approvals Report Template",
                         Description = "Shows approvals pending by auditors for more than 3 days."
+                    },
+                    new ReportTemplateDto
+                    {
+                        Url = ReportConstants.AutoRejectedOrdersReportTemplate,
+                        Name = "Auto Rejected Orders Report Template",
+                        Description = "Lists orders that were automatically rejected by the background job."
                     }
                 };
 
