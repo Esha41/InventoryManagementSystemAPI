@@ -66,5 +66,13 @@ namespace Ettad.User.API.Controllers
             var response = await _analyticsService.GetTopRequestedItemsAsync(limit);
             return ProcessResponse(response);
         }
+
+        [HttpGet("workflow-performance")]
+        [CheckAuthorize("Permissions.Analytics.View", "Permissions.Analytics.Page")]
+        public async Task<IActionResult> GetWorkflowPerformance([FromQuery] int days = 90)
+        {
+            var response = await _analyticsService.GetWorkflowPerformanceAsync(days);
+            return ProcessResponse(response);
+        }
     }
 }

@@ -1,5 +1,6 @@
 using Ettad.Comman.Idenitity;
 using Ettad.Data.Entities;
+using Ettad.Data.Entities.Workflows;
 using Ettad.Data.Enums;
 using Ettad.Data.Interfaces.Repositories;
 using Ettad.ResponseHandler.Consts;
@@ -22,6 +23,7 @@ namespace Ettad.User.Services.Services
         private readonly ICrossCuttingRepository<ApplicationUser> _userRepository;
         private readonly ICrossCuttingRepository<Department> _departmentRepository;
         private readonly ICrossCuttingRepository<BaseRequest> _baseRequestRepository;
+        private readonly ICrossCuttingRepository<WorkflowApprovalStep> _approvalStepRepository;
         private readonly ICrossCuttingRepository<RequestItem> _requestItemRepository;
         private readonly ICrossCuttingRepository<BaseItem> _baseItemRepository;
         private readonly ILogger<AdminAnalyticsService> _logger;
@@ -37,6 +39,7 @@ namespace Ettad.User.Services.Services
         private const string CacheKeyRequestMetrics = "analytics:request-metrics";
         private const string CacheKeyTopItemsPrefix = "analytics:top-items:";
         private const string CacheKeyTrendsPrefix = "analytics:trends:";
+        private const string CacheKeyWorkflowPerfPrefix = "analytics:workflow-perf:";
 
         public AdminAnalyticsService(
             ICrossCuttingRepository<LoginAttempt> loginAttemptRepository,
@@ -46,6 +49,7 @@ namespace Ettad.User.Services.Services
             ICrossCuttingRepository<ApplicationUser> userRepository,
             ICrossCuttingRepository<Department> departmentRepository,
             ICrossCuttingRepository<BaseRequest> baseRequestRepository,
+            ICrossCuttingRepository<WorkflowApprovalStep> approvalStepRepository,
             ICrossCuttingRepository<RequestItem> requestItemRepository,
             ICrossCuttingRepository<BaseItem> baseItemRepository,
             ILogger<AdminAnalyticsService> logger,
@@ -59,6 +63,7 @@ namespace Ettad.User.Services.Services
             _userRepository = userRepository ?? throw new ArgumentNullException(nameof(userRepository));
             _departmentRepository = departmentRepository ?? throw new ArgumentNullException(nameof(departmentRepository));
             _baseRequestRepository = baseRequestRepository ?? throw new ArgumentNullException(nameof(baseRequestRepository));
+            _approvalStepRepository = approvalStepRepository ?? throw new ArgumentNullException(nameof(approvalStepRepository));
             _requestItemRepository = requestItemRepository ?? throw new ArgumentNullException(nameof(requestItemRepository));
             _baseItemRepository = baseItemRepository ?? throw new ArgumentNullException(nameof(baseItemRepository));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -472,6 +477,137 @@ namespace Ettad.User.Services.Services
                     CommonErrorCodes.SERVER_ERROR,
                     "Failed to retrieve top requested items");
             }
+        }
+
+        public async Task<APIOperationResponse<WorkflowPerformanceDto>> GetWorkflowPerformanceAsync(int days)
+        {
+            try
+            {
+                if (days <= 0) days = 90;
+                _logger.LogInformation("Fetching workflow performance for last {Days} days", days);
+
+                var cacheKey = CacheKeyWorkflowPerfPrefix + days;
+                if (_memoryCache.TryGetValue(cacheKey, out WorkflowPerformanceDto? cached) && cached != null)
+                {
+                    return APIOperationResponse<WorkflowPerformanceDto>.Success(cached);
+                }
+
+                var now = _dateTimeProvider.Now;
+                var windowStart = now.AddDays(-days);
+
+                var terminalStatuses = new[]
+                {
+                    RequestStatus.Approved,
+                    RequestStatus.Rejected,
+                    RequestStatus.AutoRejected
+                };
+
+                // Completion cohort: requests whose final decision step landed inside the window.
+                // Anchoring on decision date (not submission) avoids survivorship bias — a slow
+                // request that was just approved is counted with its full duration, so p90 is honest.
+                var decisionSteps = await _approvalStepRepository
+                    .Find(s => s.ApprovedDate != null
+                               && s.ApprovedDate >= windowStart
+                               && terminalStatuses.Contains(s.Status))
+                    .GroupBy(s => s.TargetRequestId)
+                    .Select(g => new { RequestId = g.Key, DecidedAt = g.Max(x => x.ApprovedDate) })
+                    .ToListAsync();
+
+                var decidedIds = decisionSteps.Select(d => d.RequestId).ToList();
+                var decidedAtLookup = decisionSteps.ToDictionary(d => d.RequestId, d => d.DecidedAt);
+
+                var decidedRequests = await _baseRequestRepository
+                    .Find(r => decidedIds.Contains(r.Id) && !r.IsDeleted && terminalStatuses.Contains(r.Status))
+                    .Select(r => new { r.Id, r.CreationDate, r.Status })
+                    .ToListAsync();
+
+                var approvedRequests = decidedRequests.Where(r => r.Status == RequestStatus.Approved).ToList();
+                var approvedCount = approvedRequests.Count;
+                var rejectedCount = decidedRequests.Count(r => r.Status == RequestStatus.Rejected || r.Status == RequestStatus.AutoRejected);
+                var decided = approvedCount + rejectedCount;
+                var approvalRate = decided > 0 ? Math.Round((double)approvedCount / decided * 100, 1) : 0;
+
+                var durations = new List<double>();
+                foreach (var request in approvedRequests)
+                {
+                    if (decidedAtLookup.TryGetValue(request.Id, out var decidedAt) && decidedAt.HasValue)
+                    {
+                        var hours = (decidedAt.Value - request.CreationDate).TotalHours;
+                        if (hours >= 0) durations.Add(hours);
+                    }
+                }
+                durations.Sort();
+
+                var completedAging = BucketByDays(durations.Select(h => h / 24.0));
+
+                // Pending aging = a live snapshot of everything still open (not window-bounded).
+                var pendingCreationDates = await _baseRequestRepository
+                    .Find(r => !r.IsDeleted &&
+                               (r.Status == RequestStatus.New ||
+                                r.Status == RequestStatus.UnderProcess ||
+                                r.Status == RequestStatus.ReturnedForReview))
+                    .Select(r => r.CreationDate)
+                    .ToListAsync();
+
+                var pendingAging = BucketByDays(
+                    pendingCreationDates.Select(created => (now - created).TotalDays));
+
+                var dto = new WorkflowPerformanceDto
+                {
+                    Days = days,
+                    CompletedCount = durations.Count,
+                    AvgCycleHours = durations.Count > 0 ? Math.Round(durations.Average(), 1) : 0,
+                    MedianCycleHours = Math.Round(Percentile(durations, 0.5), 1),
+                    P90CycleHours = Math.Round(Percentile(durations, 0.9), 1),
+                    ApprovedCount = approvedCount,
+                    RejectedCount = rejectedCount,
+                    ApprovalRate = approvalRate,
+                    TotalPending = pendingCreationDates.Count,
+                    CompletedAging = completedAging,
+                    PendingAging = pendingAging,
+                    LastUpdated = now
+                };
+
+                _memoryCache.Set(cacheKey, dto, AnalyticsCacheOptions);
+
+                _logger.LogInformation("Workflow performance retrieved successfully");
+                return APIOperationResponse<WorkflowPerformanceDto>.Success(dto);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error fetching workflow performance");
+                return APIOperationResponse<WorkflowPerformanceDto>.Fail(
+                    ResponseType.InternalServerError,
+                    CommonErrorCodes.SERVER_ERROR,
+                    "Failed to retrieve workflow performance");
+            }
+        }
+
+        // Buckets duration-in-days values into the fixed aging brackets used by the card.
+        private static AgingBucketsDto BucketByDays(IEnumerable<double> dayValues)
+        {
+            var aging = new AgingBucketsDto();
+            foreach (var days in dayValues)
+            {
+                if (days <= 3) aging.UpTo3Days++;
+                else if (days <= 7) aging.From3To7Days++;
+                else if (days <= 14) aging.From7To14Days++;
+                else aging.Over14Days++;
+            }
+            return aging;
+        }
+
+        private static double Percentile(List<double> sortedValues, double percentile)
+        {
+            if (sortedValues.Count == 0) return 0;
+            if (sortedValues.Count == 1) return sortedValues[0];
+
+            var rank = percentile * (sortedValues.Count - 1);
+            var low = (int)Math.Floor(rank);
+            var high = (int)Math.Ceiling(rank);
+            if (low == high) return sortedValues[low];
+
+            return sortedValues[low] + (sortedValues[high] - sortedValues[low]) * (rank - low);
         }
     }
 }

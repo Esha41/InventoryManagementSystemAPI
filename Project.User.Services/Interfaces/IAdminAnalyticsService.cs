@@ -11,5 +11,6 @@ namespace Ettad.User.Services.Interfaces
         Task<APIOperationResponse<RequestMetricsDto>> GetRequestMetricsAsync();
         Task<APIOperationResponse<RequestTrendsDto>> GetRequestTrendsAsync(string period);
         Task<APIOperationResponse<TopRequestedItemsDto>> GetTopRequestedItemsAsync(int limit);
+        Task<APIOperationResponse<WorkflowPerformanceDto>> GetWorkflowPerformanceAsync(int days);
     }
 }

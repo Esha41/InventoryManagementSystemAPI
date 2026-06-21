@@ -95,4 +95,36 @@ namespace Ettad.User.Services.DTO
         public long TotalQuantity { get; set; }
         public string Category { get; set; } = string.Empty;
     }
+
+    /// <summary>
+    /// Workflow Performance DTO — approval cycle time, approval rate, finished-request breakdown, and open-queue snapshot.
+    /// </summary>
+    public class WorkflowPerformanceDto
+    {
+        public int Days { get; set; }
+        public int CompletedCount { get; set; }
+        public double AvgCycleHours { get; set; }
+        public double MedianCycleHours { get; set; }
+        public double P90CycleHours { get; set; }
+        public int ApprovedCount { get; set; }
+        public int RejectedCount { get; set; }
+        public double ApprovalRate { get; set; }
+        public int TotalPending { get; set; }
+        /// <summary>Finished requests in the window, bucketed by submit → final approval duration.</summary>
+        public AgingBucketsDto CompletedAging { get; set; } = new();
+        /// <summary>Open requests still awaiting a decision, bucketed by time waiting so far.</summary>
+        public AgingBucketsDto PendingAging { get; set; } = new();
+        public DateTime LastUpdated { get; set; }
+    }
+
+    /// <summary>
+    /// Request counts bucketed by duration in days (used for both completed and pending breakdowns).
+    /// </summary>
+    public class AgingBucketsDto
+    {
+        public int UpTo3Days { get; set; }
+        public int From3To7Days { get; set; }
+        public int From7To14Days { get; set; }
+        public int Over14Days { get; set; }
+    }
 }
